@@ -1,0 +1,26 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.vercel/
+coverage/
+playwright-report/
+test-results/
+
+# Materiales y herramientas locales
+.codex-presentation-build/
+.transcription-runtime/
+.transcription-*
+.transcribe_client_audio.py
+.client-audio-transcript.txt
+.dev-server.pid
+*.pptx.inspect.ndjson
+
+# Sistema
+.DS_Store
+Thumbs.db
+*.log
+
+# App build
+*.tsbuildinfo
