@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { DemoDataProvider } from './context/DemoDataProvider'
 
 import { useAuth } from './context/auth-context'
 import { SplashScreen } from './components/SplashScreen'
@@ -75,7 +76,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <DemoDataProvider>
+          <AppRoutes />
+        </DemoDataProvider>
       </AuthProvider>
     </BrowserRouter>
   )

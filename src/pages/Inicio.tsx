@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useDemoData } from '../context/DemoDataContext'
+import { useDemoData } from '../context/demo-data-context'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
