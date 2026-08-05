@@ -30,9 +30,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     setSplashDone(true)
   }, [])
 
-  if (loading) return <div className="login-page"><p>Cargando...</p></div>
+  if (!splashDone || loading) return <SplashScreen onDone={handleSplashDone} minDuration={2800} />
   if (!user) return <Navigate to="/login" replace />
-  if (!splashDone) return <SplashScreen onDone={handleSplashDone} minDuration={2800} />
   return <>{children}</>
 }
 

@@ -126,7 +126,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(249, 115, 22, 0.15);
+  background: rgba(220, 38, 38, 0.15);
   color: var(--accent-primary);
   border-radius: 50%;
   font-size: 0.75rem;

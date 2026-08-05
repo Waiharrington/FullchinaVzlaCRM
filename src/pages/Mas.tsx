@@ -18,13 +18,23 @@ import './Mas.css'
 
 type Tab = 'credits' | 'close'
 
+// Cache a nivel de módulo: al volver a Más se muestran los datos de la
+// última visita al instante, sin el parpadeo de "Cargando...", mientras se
+// refrescan en segundo plano.
+let masCache: {
+  credits: CreditType[]
+  closes: DailyCloseSummary[]
+  todayStats: TodayStats | null
+  todayOrders: FullOrder[]
+} | null = null
+
 export function Mas() {
   const { user } = useAuth()
-  const [credits, setCredits] = useState<CreditType[]>([])
-  const [closes, setCloses] = useState<DailyCloseSummary[]>([])
-  const [todayStats, setTodayStats] = useState<TodayStats | null>(null)
-  const [todayOrders, setTodayOrders] = useState<FullOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [credits, setCredits] = useState<CreditType[]>(masCache?.credits ?? [])
+  const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
+  const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
+  const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
+  const [, setLoading] = useState(!masCache)
   const [tab, setTab] = useState<Tab>('credits')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
@@ -42,10 +52,12 @@ export function Mas() {
         getOrdersWithItems(),
         getDailyCloses(),
       ])
+      const paidOrders = ordersData.filter(o => o.status === 'paid')
       setCredits(creditsData)
       setTodayStats(stats)
-      setTodayOrders(ordersData.filter(o => o.status === 'paid'))
+      setTodayOrders(paidOrders)
       setCloses(closesData)
+      masCache = { credits: creditsData, closes: closesData, todayStats: stats, todayOrders: paidOrders }
     } catch (e) {
       console.error('Error cargando datos:', e)
     } finally {
@@ -200,17 +212,6 @@ export function Mas() {
   const activeCredits = credits.filter(c => c.status === 'pending' || c.status === 'partial')
   const settledCredits = credits.filter(c => c.status === 'paid')
   const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
-
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <header className="page-header">
-          <h1 className="page-title text-gradient">Más Módulos y Administración</h1>
-          <p className="page-subtitle">Cargando...</p>
-        </header>
-      </div>
-    )
-  }
 
   return (
     <div className="page animate-fade-in">

@@ -1,10 +1,5 @@
 import { useState, useMemo } from 'react'
 import {
-  Search,
-  Plus,
-  Users,
-  Bell,
-  Calendar,
   ChevronDown,
   CookingPot,
   TrendingUp,
@@ -66,7 +61,6 @@ const MOCK_EMPLOYEES: EmployeeProduction[] = [
 ]
 
 export function Produccion() {
-  const [searchQuery, setSearchQuery] = useState('')
   const [selectedRecipe, setSelectedRecipe] = useState('Porcionado de pollo')
   const [outputUnit, setOutputUnit] = useState('Porción')
   const [inputQty, setInputQty] = useState('10.00')
@@ -82,44 +76,6 @@ export function Produccion() {
 
   return (
     <div className="produccion-page animate-fade-in">
-      {/* Top Navbar Global */}
-      <header className="global-topbar">
-        <div className="topbar-search">
-          <Search size={16} className="topbar-search-icon" />
-          <input
-            type="text"
-            placeholder="Buscar productos, clientes, comandas..."
-            className="topbar-search-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <kbd className="topbar-kbd">⌘K</kbd>
-        </div>
-
-        <div className="topbar-actions">
-          <button className="btn-topbar-primary">
-            <Plus size={14} /> Nueva comanda
-          </button>
-          <button className="btn-topbar-secondary">
-            <Users size={14} /> Mesa rápida
-          </button>
-          <div className="topbar-date">
-            <Calendar size={14} /> 24 may 2025
-          </div>
-          <button className="topbar-icon-btn">
-            <Bell size={18} />
-            <span className="topbar-badge">5</span>
-          </button>
-          <div className="topbar-user">
-            <div className="user-avatar-circle">A</div>
-            <div className="user-text">
-              <span className="user-name">Admin</span>
-              <span className="user-role">Administrador</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* 4 Metric Cards Header */}
       <div className="prod-metrics-grid">
         {/* Card 1 */}

@@ -1,9 +1,6 @@
 import { useState, useMemo } from 'react'
 import {
-  Search,
   Plus,
-  Users,
-  Bell,
   Calendar,
   ArrowLeft,
   Info,
@@ -42,7 +39,6 @@ const MOCK_ITEMS: PurchaseRow[] = [
 
 export function Compras() {
   const navigate = useNavigate()
-  const [searchQuery, setSearchQuery] = useState('')
 
   const [supplier, setSupplier] = useState('Distribuidora del Mar S.A.')
   const [purchaseDate, setPurchaseDate] = useState('2025-05-24')
@@ -90,44 +86,6 @@ export function Compras() {
 
   return (
     <div className="compras-page animate-fade-in">
-      {/* Global Top Bar Header */}
-      <header className="global-topbar">
-        <div className="topbar-search">
-          <Search size={16} className="topbar-search-icon" />
-          <input
-            type="text"
-            placeholder="Buscar productos, clientes, comandas..."
-            className="topbar-search-input"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <kbd className="topbar-kbd">⌘K</kbd>
-        </div>
-
-        <div className="topbar-actions">
-          <button className="btn-topbar-primary">
-            <Plus size={14} /> Nueva comanda
-          </button>
-          <button className="btn-topbar-secondary">
-            <Users size={14} /> Mesa rápida
-          </button>
-          <div className="topbar-date">
-            <Calendar size={14} /> 24 may 2025
-          </div>
-          <button className="topbar-icon-btn">
-            <Bell size={18} />
-            <span className="topbar-badge">5</span>
-          </button>
-          <div className="topbar-user">
-            <div className="user-avatar-circle">A</div>
-            <div className="user-text">
-              <span className="user-name">Admin</span>
-              <span className="user-role">Administrador</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Header Row */}
       <div className="compras-header-row">
         <button className="btn-back-square" onClick={() => navigate(-1)}>

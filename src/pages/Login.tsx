@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/auth-context'
 import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Grid3X3 } from 'lucide-react'
 import './Login.css'
@@ -34,6 +34,9 @@ export function Login() {
   const [pin, setPin] = useState('')
   const [isExiting, setIsExiting] = useState(false)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [isTabletViewport, setIsTabletViewport] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const didSetTabletDefault = useRef(false)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -41,6 +44,29 @@ export function Login() {
     }, 10000)
     return () => clearInterval(interval)
   }, [])
+
+  // Tablets en el mostrador funcionan como terminal de caja: PIN es el modo por defecto.
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 680px) and (max-width: 1200px)')
+    const update = () => setIsTabletViewport(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
+    if (isTabletViewport && !didSetTabletDefault.current) {
+      setIsPinMode(true)
+      didSetTabletDefault.current = true
+    }
+  }, [isTabletViewport])
+
+  // Auto-envía al completar 4 dígitos (largo de los PIN configurados en .env y demo).
+  useEffect(() => {
+    if (isPinMode && isTabletViewport && pin.length === 4 && !loading) {
+      formRef.current?.requestSubmit()
+    }
+  }, [pin, isPinMode, isTabletViewport, loading])
 
   const triggerExit = (action: () => void) => {
     setIsExiting(true)
@@ -140,22 +166,20 @@ export function Login() {
           
           <div className="login-left-bottom">
             <div className="login-hero-text">
-              <h2>Sabor que</h2>
-              <h2><span className="text-highlight">enciende</span></h2>
+              <h2>Sabor que</h2>{' '}
+              <h2><span className="text-highlight">enciende</span></h2>{' '}
               <h2>tu día</h2>
             </div>
             
             <p className="login-description">
-              Gestiona tu negocio, controla<br />
-              tus ventas y haz crecer<br />
-              Full China cada día.
+              Gestiona tu negocio, controla tus ventas y haz crecer Full China cada día.
             </p>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Login Card */}
         <div className="login-right">
-          <div className="login-card animate-fade-in">
+          <div className={`login-card animate-fade-in ${isPinMode ? 'pin-active' : ''}`}>
             {/* Logo */}
             <div className="card-logo-wrapper">
               <img src="/logo.png" alt="Full China" className="card-logo-img" />
@@ -166,7 +190,7 @@ export function Login() {
               <p className="login-subtitle">Inicia sesión para continuar</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="login-form">
+            <form onSubmit={handleSubmit} className="login-form" ref={formRef}>
               <div className="form-sections-container">
                 {/* PIN MODE SECTION */}
                 <div className={`form-section ${isPinMode ? 'active' : 'inactive-left'}`}>
@@ -187,8 +211,44 @@ export function Login() {
                         required={isPinMode}
                         disabled={!isPinMode}
                         autoFocus={isPinMode}
+                        readOnly={isTabletViewport}
                       />
                     </div>
+                  </div>
+
+                  <div className="pin-keypad">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                      <button
+                        type="button"
+                        key={digit}
+                        className="keypad-btn"
+                        onClick={() => setPin((p) => (p.length < 6 ? p + digit : p))}
+                      >
+                        {digit}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="keypad-btn keypad-clear"
+                      onClick={() => setPin('')}
+                    >
+                      Borrar
+                    </button>
+                    <button
+                      type="button"
+                      className="keypad-btn"
+                      onClick={() => setPin((p) => (p.length < 6 ? p + '0' : p))}
+                    >
+                      0
+                    </button>
+                    <button
+                      type="button"
+                      className="keypad-btn keypad-back"
+                      onClick={() => setPin((p) => p.slice(0, -1))}
+                      aria-label="Borrar último dígito"
+                    >
+                      ⌫
+                    </button>
                   </div>
                 </div>
 

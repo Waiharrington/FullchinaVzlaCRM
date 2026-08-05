@@ -1,10 +1,8 @@
 import { useState, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { getOrdersWithItems, type FullOrder } from '../lib/dataService'
 import {
   Search,
-  Plus,
-  Users,
-  Bell,
   Calendar,
   ChevronDown,
   Filter,
@@ -14,7 +12,8 @@ import {
   Truck,
   User,
   ShoppingBag,
-  Bike
+  Bike,
+  Plus
 } from 'lucide-react'
 import './Comandas.css'
 
@@ -243,6 +242,7 @@ const COLUMNS = [
 ]
 
 export function Comandas() {
+  const navigate = useNavigate()
   const [comandas, setComandas] = useState<ComandaOrder[]>(MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
@@ -340,46 +340,6 @@ export function Comandas() {
 
   return (
     <div className="comandas-page animate-fade-in">
-      {/* Top Bar Header */}
-      <div className="comandas-topbar">
-        <div className="topbar-search">
-          <Search size={16} />
-          <input
-            type="text"
-            placeholder="Buscar productos, clientes, comandas..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-          <kbd className="topbar-kbd">⌘K</kbd>
-        </div>
-
-        <div className="topbar-actions">
-          <button className="btn-topbar-primary">
-            <Plus size={14} />
-            <span>Nueva comanda</span>
-          </button>
-          <button className="btn-topbar-secondary">
-            <Users size={14} />
-            <span>Mesa rápida</span>
-          </button>
-          <div className="topbar-date">
-            <Calendar size={14} />
-            <span>{new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </div>
-          <button className="topbar-icon-btn">
-            <Bell size={18} />
-            <span className="topbar-badge">5</span>
-          </button>
-          <div className="topbar-user">
-            <div className="user-avatar-circle">A</div>
-            <div className="user-text">
-              <span className="user-name">Admin</span>
-              <span className="user-role">Administrador</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Comandas Header + Stat Cards Row */}
       <div className="comandas-header-row">
         <div className="comandas-header-left">
@@ -390,41 +350,48 @@ export function Comandas() {
           </div>
         </div>
 
-        <div className="comandas-stats-row">
-          <div className="stat-card-mini">
-            <span className="stat-number text-red">34</span>
-            <div className="stat-info">
-              <span className="stat-title">Total comandas</span>
-              <span className="stat-sub">Hoy</span>
+        <div className="comandas-header-right">
+          <div className="comandas-stats-row">
+            <div className="stat-card-mini">
+              <span className="stat-number text-red">34</span>
+              <div className="stat-info">
+                <span className="stat-title">Total comandas</span>
+                <span className="stat-sub">Hoy</span>
+              </div>
+            </div>
+
+            <div className="stat-card-mini">
+              <span className="stat-number text-orange">12</span>
+              <div className="stat-info">
+                <span className="stat-title">Pendientes</span>
+                <span className="stat-sub">Nuevas + En preparación</span>
+              </div>
+            </div>
+
+            <div className="stat-card-mini">
+              <span className="stat-number text-green">15</span>
+              <div className="stat-info">
+                <span className="stat-title">Listas</span>
+                <span className="stat-sub">Para entrega</span>
+              </div>
+            </div>
+
+            <div className="stat-card-mini">
+              <div className="stat-time-group">
+                <Clock size={16} className="text-blue" />
+                <span className="stat-number text-white">28 min</span>
+              </div>
+              <div className="stat-info">
+                <span className="stat-title">Tiempo promedio</span>
+                <span className="stat-sub">Hoy</span>
+              </div>
             </div>
           </div>
 
-          <div className="stat-card-mini">
-            <span className="stat-number text-orange">12</span>
-            <div className="stat-info">
-              <span className="stat-title">Pendientes</span>
-              <span className="stat-sub">Nuevas + En preparación</span>
-            </div>
-          </div>
-
-          <div className="stat-card-mini">
-            <span className="stat-number text-green">15</span>
-            <div className="stat-info">
-              <span className="stat-title">Listas</span>
-              <span className="stat-sub">Para entrega</span>
-            </div>
-          </div>
-
-          <div className="stat-card-mini">
-            <div className="stat-time-group">
-              <Clock size={16} className="text-blue" />
-              <span className="stat-number text-white">28 min</span>
-            </div>
-            <div className="stat-info">
-              <span className="stat-title">Tiempo promedio</span>
-              <span className="stat-sub">Hoy</span>
-            </div>
-          </div>
+          <button className="btn-nueva-comanda" onClick={() => navigate('/caja')}>
+            <Plus size={16} />
+            <span>Nueva comanda</span>
+          </button>
         </div>
       </div>
 

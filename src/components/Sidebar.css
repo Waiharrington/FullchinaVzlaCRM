@@ -28,6 +28,25 @@
   transition: padding 0.3s ease;
 }
 
+.sidebar-brand::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(220, 38, 38, 0.28) 0%, rgba(220, 38, 38, 0) 70%);
+  transform: translate(-50%, -50%);
+  filter: blur(6px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sidebar-brand > * {
+  position: relative;
+  z-index: 1;
+}
+
 .sidebar.collapsed .sidebar-brand {
   padding: 1.5rem 0.5rem 0.5rem;
 }
@@ -50,20 +69,22 @@
 
 .sidebar-toggle {
   position: absolute;
-  right: -14px;
+  right: -13px;
   top: 50%;
   transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 22px;
+  height: 42px;
+  border-radius: 0 10px 10px 0;
   background: #1c1c1e;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: none;
   color: #71717a;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 3px 0 10px rgba(0, 0, 0, 0.35);
   z-index: 30;
 }
 
@@ -71,6 +92,15 @@
   background: #27272a;
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.2);
+  width: 26px;
+}
+
+.sidebar-toggle-icon {
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-toggle-icon.rotated {
+  transform: rotate(180deg);
 }
 
 .sidebar-nav {
@@ -116,6 +146,11 @@
   justify-content: center;
   color: inherit;
   flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-link:hover .sidebar-icon {
+  transform: translateX(2px);
 }
 
 .sidebar-label {
@@ -127,15 +162,32 @@
 }
 
 .sidebar-link:hover {
-  background-color: rgba(255, 255, 255, 0.02);
+  background-color: rgba(255, 255, 255, 0.045);
   color: #f4f4f5;
 }
 
 .sidebar-link.active {
-  background: linear-gradient(135deg, #a31d1d, #7c1313);
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
   color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(163, 29, 29, 0.25);
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  animation: sidebarActivePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sidebar-link.active .sidebar-icon {
+  animation: sidebarIconPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes sidebarActivePop {
+  0% { transform: scale(0.94); }
+  60% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+@keyframes sidebarIconPop {
+  0% { transform: scale(0.7) rotate(-8deg); }
+  60% { transform: scale(1.15) rotate(4deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 
 /* Tooltip for collapsed state */
@@ -256,7 +308,17 @@
   border-radius: 12px;
   cursor: pointer;
   transition: background-color 0.2s;
-  border-top: 1px solid rgba(255, 255, 255, 0.02);
+  position: relative;
+}
+
+.sidebar-user-profile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0.75rem;
+  right: 0.75rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
 }
 
 .sidebar-user-profile:hover {

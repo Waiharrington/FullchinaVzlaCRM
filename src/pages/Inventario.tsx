@@ -27,11 +27,16 @@ import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
 
+// Cache a nivel de módulo: al volver a Inventario se muestran los datos de
+// la última visita al instante, sin el parpadeo de "Cargando...", mientras
+// se refrescan en segundo plano.
+let inventarioCache: { ingredients: Ingredient[]; stockMovements: StockMovement[] } | null = null
+
 export function Inventario() {
   const { user } = useAuth()
-  const [ingredients, setIngredients] = useState<Ingredient[]>([])
-  const [stockMovements, setStockMovements] = useState<StockMovement[]>([])
-  const [loading, setLoading] = useState(true)
+  const [ingredients, setIngredients] = useState<Ingredient[]>(inventarioCache?.ingredients ?? [])
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>(inventarioCache?.stockMovements ?? [])
+  const [, setLoading] = useState(!inventarioCache)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
 
@@ -45,6 +50,7 @@ export function Inventario() {
       ])
       setIngredients(ingData)
       setStockMovements(movData)
+      inventarioCache = { ingredients: ingData, stockMovements: movData }
     } catch (e) {
       console.error('Error:', e)
     } finally {
@@ -137,17 +143,6 @@ export function Inventario() {
     if (diffHours < 24) return `${diffHours}h atrás`
     if (diffDays === 1) return 'Ayer'
     return `${diffDays}d atrás`
-  }
-
-  if (loading) {
-    return (
-      <div className="inv-page">
-        <div className="inv-loading">
-          <RefreshCw size={24} className="spin" />
-          <p>Cargando inventario...</p>
-        </div>
-      </div>
-    )
   }
 
   return (

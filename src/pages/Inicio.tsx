@@ -28,15 +28,26 @@ import './Inicio.css'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
+// Cache a nivel de módulo: al volver al Dashboard se muestran los datos de
+// la última visita al instante, sin el parpadeo de "Cargando...", mientras
+// se refrescan en segundo plano.
+let inicioCache: {
+  stats: TodayStats | null
+  todayOrders: FullOrder[]
+  dailySales: DailySales[]
+  productRanking: ProductRanking[]
+  credits: Credit[]
+} | null = null
+
 export function Inicio() {
   const navigate = useNavigate()
   const { todayStats } = useDemoData()
-  const [stats, setStats] = useState<TodayStats | null>(null)
-  const [todayOrders, setTodayOrders] = useState<FullOrder[]>([])
-  const [dailySales, setDailySales] = useState<DailySales[]>([])
-  const [productRanking, setProductRanking] = useState<ProductRanking[]>([])
-  const [credits, setCredits] = useState<Credit[]>([])
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<TodayStats | null>(inicioCache?.stats ?? null)
+  const [todayOrders, setTodayOrders] = useState<FullOrder[]>(inicioCache?.todayOrders ?? [])
+  const [dailySales, setDailySales] = useState<DailySales[]>(inicioCache?.dailySales ?? [])
+  const [productRanking, setProductRanking] = useState<ProductRanking[]>(inicioCache?.productRanking ?? [])
+  const [credits, setCredits] = useState<Credit[]>(inicioCache?.credits ?? [])
+  const [, setLoading] = useState(!inicioCache)
 
   const fetchData = useCallback(async () => {
     try {
@@ -52,6 +63,7 @@ export function Inicio() {
       setDailySales(salesData)
       setProductRanking(rankingData)
       setCredits(creditsData)
+      inicioCache = { stats: statsData, todayOrders: ordersData, dailySales: salesData, productRanking: rankingData, credits: creditsData }
     } catch (e) {
       console.error('Error:', e)
     } finally {
@@ -159,18 +171,6 @@ export function Inicio() {
 
   const doughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '72%' }
 
-  if (loading) {
-    return (
-      <div className="db-page animate-fade-in">
-        <header className="db-header">
-          <div className="db-header-left">
-            <h1 className="db-greeting">Cargando...</h1>
-          </div>
-        </header>
-      </div>
-    )
-  }
-
   return (
     <div className="db-page animate-fade-in">
       <header className="db-header">
@@ -239,6 +239,10 @@ export function Inicio() {
               </div>
             </div>
           </div>
+        </div>
+        <div className="kpi-banner-img-wrap">
+          <img src="/kpi-bg.png" alt="" className="kpi-banner-img" />
+          <div className="kpi-banner-gradient"></div>
         </div>
       </div>
 

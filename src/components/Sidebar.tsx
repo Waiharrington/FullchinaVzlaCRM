@@ -18,8 +18,7 @@ import {
   Settings,
   LogOut,
   Truck,
-  ChevronLeft,
-  ChevronRight
+  ChevronLeft
 } from 'lucide-react'
 import './Sidebar.css'
 
@@ -79,13 +78,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
         <img src="/logo.png" alt="Full China" className="sidebar-logo-img" />
-        <button 
-          className="sidebar-toggle" 
+        <button
+          className="sidebar-toggle"
           onClick={onToggle}
           onMouseEnter={(e) => showTooltip(collapsed ? 'Expandir menú' : 'Contraer menú', e)}
           onMouseLeave={hideTooltip}
         >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          <ChevronLeft size={16} className={`sidebar-toggle-icon ${collapsed ? 'rotated' : ''}`} />
         </button>
       </div>
 

@@ -7,13 +7,23 @@ import './Reportes.css'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
+// Cache a nivel de módulo: al volver a Reportes se muestran los datos de la
+// última visita al instante, sin el parpadeo de "Cargando...", mientras se
+// refrescan en segundo plano.
+let reportesCache: {
+  dailySales: DailySales[]
+  productRanking: ProductRanking[]
+  categorySales: CategorySales[]
+  paymentMethodSales: PaymentMethodSales[]
+} | null = null
+
 export function Reportes() {
   const { user } = useAuth()
-  const [dailySales, setDailySales] = useState<DailySales[]>([])
-  const [productRanking, setProductRanking] = useState<ProductRanking[]>([])
-  const [categorySales, setCategorySales] = useState<CategorySales[]>([])
-  const [paymentMethodSales, setPaymentMethodSales] = useState<PaymentMethodSales[]>([])
-  const [loading, setLoading] = useState(true)
+  const [dailySales, setDailySales] = useState<DailySales[]>(reportesCache?.dailySales ?? [])
+  const [productRanking, setProductRanking] = useState<ProductRanking[]>(reportesCache?.productRanking ?? [])
+  const [categorySales, setCategorySales] = useState<CategorySales[]>(reportesCache?.categorySales ?? [])
+  const [paymentMethodSales, setPaymentMethodSales] = useState<PaymentMethodSales[]>(reportesCache?.paymentMethodSales ?? [])
+  const [, setLoading] = useState(!reportesCache)
 
   const fetchData = useCallback(async () => {
     try {
@@ -27,6 +37,7 @@ export function Reportes() {
       setProductRanking(ranking)
       setCategorySales(categories)
       setPaymentMethodSales(payments)
+      reportesCache = { dailySales: daily, productRanking: ranking, categorySales: categories, paymentMethodSales: payments }
     } catch (e) {
       console.error('Error:', e)
     } finally {
@@ -150,17 +161,6 @@ export function Reportes() {
         <div className="card restricted-card">
           <p>No tiene permisos para ver reportes financieros.</p>
         </div>
-      </div>
-    )
-  }
-
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <header className="page-header">
-          <h1 className="page-title text-gradient">Reportes</h1>
-          <p className="page-subtitle">Cargando...</p>
-        </header>
       </div>
     )
   }

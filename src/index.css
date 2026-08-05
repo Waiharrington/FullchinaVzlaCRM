@@ -4,17 +4,17 @@
   --bg-tertiary: #1c1c1e;
   --bg-card: rgba(28, 28, 30, 0.98);
   
-  --accent-primary: #f97316;
-  --accent-secondary: #fb923c;
-  --accent-gradient: linear-gradient(135deg, #f97316 0%, #fb923c 50%, #f97316 100%);
-  --accent-glow: 0 0 20px rgba(249, 115, 22, 0.4);
-  
+  --accent-primary: #dc2626;
+  --accent-secondary: #ef4444;
+  --accent-gradient: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #dc2626 100%);
+  --accent-glow: 0 0 20px rgba(220, 38, 38, 0.4);
+
   --text-primary: #ffffff;
   --text-secondary: #aeaeb2;
   --text-muted: rgba(255, 255, 255, 0.55);
-  
+
   --border-color: rgba(255, 255, 255, 0.1);
-  --border-glow: rgba(249, 115, 22, 0.3);
+  --border-glow: rgba(220, 38, 38, 0.3);
   
   --glass-bg: rgba(28, 28, 30, 0.7);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);

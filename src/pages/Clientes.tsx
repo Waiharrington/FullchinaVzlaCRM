@@ -3,10 +3,15 @@ import { useAuth } from '../context/auth-context'
 import { getCredits, addCreditPayment, createCredit, getOrdersWithItems, type Credit as CreditType } from '../lib/dataService'
 import './Clientes.css'
 
+// Cache a nivel de módulo: al volver a esta pestaña se muestran los datos de
+// la última visita al instante, sin el parpadeo de "Cargando...", mientras
+// se refrescan en segundo plano.
+let creditsCache: CreditType[] | null = null
+
 export function Clientes() {
   const { user } = useAuth()
-  const [credits, setCredits] = useState<CreditType[]>([])
-  const [loading, setLoading] = useState(true)
+  const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
+  const [, setLoading] = useState(!creditsCache)
   const [searchTerm, setSearchTerm] = useState('')
   const [showNewModal, setShowNewModal] = useState(false)
   const [newClientName, setNewClientName] = useState('')
@@ -19,6 +24,7 @@ export function Clientes() {
     try {
       const data = await getCredits()
       setCredits(data)
+      creditsCache = data
     } catch (e) {
       console.error('Error cargando créditos:', e)
     } finally {
@@ -83,19 +89,6 @@ export function Clientes() {
 
   const totalOutstanding = credits.reduce((acc, c) => acc + c.balancePending, 0)
   const totalPaid = credits.reduce((acc, c) => acc + c.totalPaid, 0)
-
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <header className="page-header clients-header">
-          <div>
-            <h1 className="page-title text-gradient">Clientes & CRM</h1>
-            <p className="page-subtitle">Cargando...</p>
-          </div>
-        </header>
-      </div>
-    )
-  }
 
   return (
     <div className="page animate-fade-in">

@@ -11,9 +11,14 @@ const STATIONS = [
   { key: 'prep', label: 'Salsas & Empaque', icon: '📦' },
 ]
 
+// Cache a nivel de módulo: al volver a Cocina se muestran las órdenes de la
+// última visita al instante, sin el parpadeo de "Cargando...", mientras se
+// refrescan en segundo plano.
+let cocinaCache: FullOrder[] | null = null
+
 export function Cocina() {
-  const [orders, setOrders] = useState<FullOrder[]>([])
-  const [loading, setLoading] = useState(true)
+  const [orders, setOrders] = useState<FullOrder[]>(cocinaCache ?? [])
+  const [, setLoading] = useState(!cocinaCache)
   const [stationFilter, setStationFilter] = useState<StationFilter>('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -22,7 +27,9 @@ export function Cocina() {
     try {
       const today = new Date().toISOString().split('T')[0]
       const data = await getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59')
-      setOrders(data.filter(o => ['open', 'confirmed', 'preparing', 'ready'].includes(o.status)))
+      const active = data.filter(o => ['open', 'confirmed', 'preparing', 'ready'].includes(o.status))
+      setOrders(active)
+      cocinaCache = active
     } catch (e) {
       console.error('Error cargando órdenes:', e)
     } finally {
@@ -63,24 +70,6 @@ export function Cocina() {
     } finally {
       setUpdatingId(null)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="kds-page animate-fade-in">
-        <header className="kds-header">
-          <div className="kds-header-title">
-            <h1>🍳 KDS - Pantalla de Cocina</h1>
-          </div>
-        </header>
-        <main className="kds-grid">
-          <div className="kds-empty-state">
-            <span className="kds-empty-icon">⏳</span>
-            <h2>Cargando órdenes...</h2>
-          </div>
-        </main>
-      </div>
-    )
   }
 
   return (

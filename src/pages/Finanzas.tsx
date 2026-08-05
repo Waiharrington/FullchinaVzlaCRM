@@ -6,10 +6,15 @@ import './Finanzas.css'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend)
 
+// Cache a nivel de módulo: al volver a Finanzas se muestran los datos de la
+// última visita al instante, sin el parpadeo de "Cargando...", mientras se
+// refrescan en segundo plano.
+let finanzasCache: { stats: TodayStats | null; expenses: Expense[] } | null = null
+
 export function Finanzas() {
-  const [stats, setStats] = useState<TodayStats | null>(null)
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<TodayStats | null>(finanzasCache?.stats ?? null)
+  const [expenses, setExpenses] = useState<Expense[]>(finanzasCache?.expenses ?? [])
+  const [, setLoading] = useState(!finanzasCache)
 
   const fetchData = useCallback(async () => {
     try {
@@ -19,6 +24,7 @@ export function Finanzas() {
       ])
       setStats(statsData)
       setExpenses(expensesData)
+      finanzasCache = { stats: statsData, expenses: expensesData }
     } catch (e) {
       console.error('Error:', e)
     } finally {
@@ -77,17 +83,6 @@ export function Finanzas() {
       x: { ticks: { color: '#aeaeb2' } },
       y: { ticks: { color: '#aeaeb2', callback: (v: string | number) => `$${v}` } },
     },
-  }
-
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <header className="page-header">
-          <h1 className="page-title text-gradient">Finanzas y Estado de Resultados</h1>
-          <p className="page-subtitle">Cargando...</p>
-        </header>
-      </div>
-    )
   }
 
   return (

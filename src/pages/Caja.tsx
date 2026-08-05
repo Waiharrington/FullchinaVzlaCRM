@@ -14,8 +14,6 @@ import {
   type PaymentMethod,
 } from '../lib/dataService'
 import {
-  Search,
-  Bell,
   X,
   Printer,
   CheckCircle,
@@ -84,14 +82,23 @@ function getProductImage(product: Product): string {
   return FOOD_IMAGES[product.category] || FOOD_IMAGES.default
 }
 
+// Cache a nivel de módulo: al volver a Ventas se muestra el catálogo de la
+// última visita al instante, sin el parpadeo de "Cargando...", mientras se
+// refresca en segundo plano.
+let cajaCache: {
+  products: Product[]
+  todayOrders: TodayOrder[]
+  bcvRate: number | null
+} | null = null
+
 export function Caja() {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  const [products, setProducts] = useState<Product[]>([])
-  const [todayOrders, setTodayOrders] = useState<TodayOrder[]>([])
-  const [bcvRate, setBcvRate] = useState<number | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [products, setProducts] = useState<Product[]>(cajaCache?.products ?? [])
+  const [todayOrders, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
+  const [bcvRate, setBcvRate] = useState<number | null>(cajaCache?.bcvRate ?? null)
+  const [, setLoading] = useState(!cajaCache)
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -136,8 +143,12 @@ export function Caja() {
         if (cancelled) return
         setProducts(prods)
         setTodayOrders(orders)
+        cajaCache = { products: prods, todayOrders: orders, bcvRate: cajaCache?.bcvRate ?? null }
         getExchangeRates().then((rates) => {
-          if (!cancelled) setBcvRate(rates.bcv > 0 ? rates.bcv : null)
+          if (cancelled) return
+          const bcv = rates.bcv > 0 ? rates.bcv : null
+          setBcvRate(bcv)
+          if (cajaCache) cajaCache.bcvRate = bcv
         }).catch(() => {})
       } finally {
         if (!cancelled) setLoading(false)
@@ -253,17 +264,6 @@ export function Caja() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <header className="page-header">
-          <h1 className="page-title text-gradient">Ventas</h1>
-          <p className="page-subtitle">Cargando catálogo...</p>
-        </header>
-      </div>
-    )
-  }
-
   // Image 2 Target: Confirmation Screen "¡Pedido cobrado con éxito!"
   if (showConfirmation && currentOrder) {
     const orderNo = `#FC-${String(currentOrder.orderNumber).padStart(6, '0')}`
@@ -272,38 +272,6 @@ export function Caja() {
 
     return (
       <div className="page animate-fade-in">
-        {/* Global Top Navbar */}
-        <header className="global-topbar">
-          <div className="topbar-search">
-            <Search size={16} className="topbar-search-icon" />
-            <input type="text" placeholder="Buscar productos, clientes, comandas..." className="topbar-search-input" readOnly />
-            <kbd className="topbar-kbd">⌘K</kbd>
-          </div>
-
-          <div className="topbar-actions">
-            <button className="btn-topbar-primary" onClick={() => { setShowConfirmation(false); setCart([]) }}>
-              <span>+</span> Nueva comanda
-            </button>
-            <button className="btn-topbar-secondary">
-              <span>🏷️</span> Mesa rápida
-            </button>
-            <div className="topbar-date">
-              <span>📅</span> 24 may 2025
-            </div>
-            <button className="topbar-icon-btn">
-              <Bell size={18} />
-              <span className="topbar-badge">5</span>
-            </button>
-            <div className="topbar-user">
-              <div className="user-avatar-circle">A</div>
-              <div className="user-text">
-                <span className="user-name">Admin</span>
-                <span className="user-role">Administrador</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
         <div className="caja-success-layout">
           {/* LEFT COLUMN: Success Hero Card + Timeline */}
           <div className="success-left-col">
@@ -480,44 +448,6 @@ export function Caja() {
 
   return (
     <div className="page animate-fade-in">
-      {/* Global Top Navbar */}
-      <header className="global-topbar">
-        <div className="topbar-search">
-          <Search size={16} className="topbar-search-icon" />
-          <input
-            type="text"
-            placeholder="Buscar productos, clientes, comandas..."
-            className="topbar-search-input"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <kbd className="topbar-kbd">⌘K</kbd>
-        </div>
-
-        <div className="topbar-actions">
-          <button className="btn-topbar-primary" onClick={() => setCart([])}>
-            <span>+</span> Nueva comanda
-          </button>
-          <button className="btn-topbar-secondary">
-            <span>🏷️</span> Mesa rápida
-          </button>
-          <div className="topbar-date">
-            <span>📅</span> 24 may 2025
-          </div>
-          <button className="topbar-icon-btn" title="Notificaciones">
-            <Bell size={18} />
-            <span className="topbar-badge">5</span>
-          </button>
-          <div className="topbar-user">
-            <div className="user-avatar-circle">A</div>
-            <div className="user-text">
-              <span className="user-name">Admin</span>
-              <span className="user-role">Administrador</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       <div className="caja-layout">
         {/* LEFT: Products */}
         <div className="products-section">
