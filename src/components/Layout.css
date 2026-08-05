@@ -1,26 +1,99 @@
 .app-layout {
   display: flex;
   min-height: 100vh;
+  width: 100%;
+  background-color: var(--color-background);
+  color: var(--color-text);
+}
+
+.main-content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .app-main {
   flex: 1;
   padding: 1.5rem;
-  padding-bottom: 5rem;
-  margin-left: 0;
-  max-width: 100%;
+  padding-bottom: 5rem; /* Space for BottomNav on mobile */
+  width: 100%;
+  overflow-y: auto;
 }
 
-@media (min-width: 768px) {
+/* Sidebar overlay for mobile */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 15; /* Below sidebar, above everything else */
+  display: none;
+}
+
+@media (max-width: 1024px) {
   .app-main {
-    flex: none;
-    width: calc(100% - 260px);
-    margin-left: 260px;
+    padding-bottom: 5rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .sidebar-container {
+    width: 260px;
+    flex-shrink: 0;
+  }
+  
+  .main-content-wrapper {
+    width: calc(100% - 260px); /* Fill remaining space */
+  }
+
+  .app-main {
     padding: 2rem;
     padding-bottom: 2rem;
   }
 }
 
+/* Tablet */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar-container {
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .main-content-wrapper {
+    width: calc(100% - 80px);
+  }
+}
+
+/* Mobile overrides */
+@media (max-width: 768px) {
+  .sidebar-container {
+    display: none; /* Handled by BottomNav */
+  }
+  
+  .sidebar-container.mobile-open {
+    display: block;
+    position: fixed;
+    z-index: 30;
+    top: 0;
+    left: 0;
+    height: 100vh;
+  }
+  
+  .sidebar-container.mobile-open .sidebar {
+    display: flex; /* Override sidebar hidden on mobile */
+    width: 260px;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+
+  .sidebar-container.mobile-open .sidebar-overlay {
+    display: block;
+  }
+}
+
+/* Page Headers (Utility) */
 .page-header {
   margin-bottom: 2rem;
 }
@@ -34,21 +107,6 @@
 
 .page-subtitle {
   font-size: 1rem;
-  color: var(--text-secondary);
+  color: var(--color-text-muted);
   margin: 0.25rem 0 0;
-}
-
-.badge {
-  display: inline-block;
-  padding: 0.375rem 0.75rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.badge-demo {
-  background: var(--accent-gradient);
-  color: #000;
 }

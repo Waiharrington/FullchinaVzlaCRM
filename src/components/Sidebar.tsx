@@ -1,27 +1,46 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
+import { useDemoData } from '../context/demo-data-context'
+import { 
+  Home, 
+  Wallet,
+  ClipboardList, 
+  Package, 
+  Beef,
+  BookOpen,
+  ShoppingCart, 
+  PiggyBank, 
+  Users, 
+  DollarSign,
+  ShieldCheck,
+  BarChart3, 
+  Settings,
+  LogOut,
+  Truck,
+  ChevronDown
+} from 'lucide-react'
 import './Sidebar.css'
 
 const allNavItems = [
-  { path: '/', label: 'Inicio', icon: '🏠', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/caja', label: 'Caja POS', icon: '💰', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/comandas', label: 'Comandas', icon: '📋', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/cocina', label: 'Cocina KDS', icon: '🍳', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/inventario', label: 'Inventario', icon: '📦', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/produccion', label: 'Producción', icon: '🥩', roles: ['owner', 'manager'] },
-  { path: '/recetas', label: 'Recetas', icon: '📖', roles: ['owner', 'manager'] },
-  { path: '/compras', label: 'Compras', icon: '🛍️', roles: ['owner', 'manager'] },
-  { path: '/finanzas', label: 'Finanzas P&L', icon: '📈', roles: ['owner'] },
-  { path: '/clientes', label: 'Clientes CRM', icon: '👥', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/nomina', label: 'Nómina', icon: '💸', roles: ['owner'] },
-  { path: '/auditoria', label: 'Auditoría', icon: '🛡️', roles: ['owner'] },
-  { path: '/reportes', label: 'Reportes', icon: '📊', roles: ['owner', 'manager'] },
-  { path: '/mas', label: 'Más', icon: '⚙️', roles: ['owner', 'manager'] }
+  { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager', 'cashier'] },
+  { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'] },
+  { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'] },
+  { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager', 'cashier'] },
+  { path: '/inventario', label: 'Inventario', icon: Package, roles: ['owner', 'manager', 'cashier'] },
+  { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'] },
+  { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'] },
+  { path: '/compras', label: 'Compras', icon: ShoppingCart, roles: ['owner', 'manager'] },
+  { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'] },
+  { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'] },
+  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, roles: ['owner'] },
+  { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'] },
+  { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'] }
 ]
 
 export function Sidebar() {
   const location = useLocation()
   const { user, signOut } = useAuth()
+  const { todayStats } = useDemoData()
 
   const navItems = allNavItems.filter(item =>
     user?.role ? item.roles.includes(user.role) : true
@@ -30,37 +49,59 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
-        <span className="sidebar-logo">🚚</span>
-        <div>
-          <span className="sidebar-title">Clienta CRM</span>
-          <span className="sidebar-subtitle">Food Truck System</span>
-        </div>
+        <img src="/logo.png" alt="Full China" className="sidebar-logo-img" />
       </div>
+      
       <nav className="sidebar-nav">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              `sidebar-link ${isActive || (item.path !== '/' && location.pathname.startsWith(item.path)) ? 'active' : ''}`
-            }
-          >
-            <span className="sidebar-icon">{item.icon}</span>
-            <span className="sidebar-label">{item.label}</span>
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) =>
+                `sidebar-link ${isActive || (item.path !== '/' && location.pathname.startsWith(item.path)) ? 'active' : ''}`
+              }
+            >
+              <Icon size={18} strokeWidth={1.8} className="sidebar-icon" />
+              <span className="sidebar-label">{item.label}</span>
+            </NavLink>
+          )
+        })}
+        
+        {/* Cerrar Sesión directamente en el menú de navegación */}
+        <button className="sidebar-link sidebar-logout-btn-item" onClick={signOut}>
+          <LogOut size={18} strokeWidth={1.8} className="sidebar-icon" />
+          <span className="sidebar-label">Cerrar sesión</span>
+        </button>
       </nav>
 
-      <div className="sidebar-user-footer">
-        <div className="user-info-box">
-          <div className="user-role-badge">
-            {user?.role === 'owner' ? '👑 Owner' : user?.role === 'manager' ? '📋 Manager' : '💰 Cashier'}
-          </div>
-          <span className="user-email">{user?.email || 'Usuario Demo'}</span>
+      {/* Active Orders Card */}
+      <div className="sidebar-active-orders-card">
+        <div className="orders-card-icon-wrapper">
+          <Truck size={20} className="orders-card-icon" />
         </div>
-        <button className="sidebar-logout-btn" onClick={signOut} title="Cerrar sesión / Cambiar Rol">
-          🚪 Salir
-        </button>
+        <div className="orders-card-content">
+          <span className="orders-card-title">Pedidos hoy</span>
+          <div className="orders-card-data">
+            <span className="orders-card-value">{todayStats?.ordersCount || 0}</span>
+            <span className="orders-card-pct">+12% vs ayer</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Profile Footer */}
+      <div className="sidebar-user-profile">
+        <img 
+          src="/login-carousel/slide7.jpg" 
+          alt="Avatar" 
+          className="sidebar-user-avatar" 
+        />
+        <div className="sidebar-user-info">
+          <span className="sidebar-user-name">Administrador</span>
+          <span className="sidebar-user-sub">Full China</span>
+        </div>
+        <ChevronDown size={14} className="sidebar-user-chevron" />
       </div>
     </aside>
   )

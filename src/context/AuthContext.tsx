@@ -16,8 +16,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isDemoMode) {
+      const savedUser = localStorage.getItem('demo_user')
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser))
+        } catch {
+          setUser(null)
+        }
+      } else {
+        setUser(null)
+      }
       setSession(null)
-      setUser(null)
       setLoading(false)
       return
     }
@@ -55,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     if (isDemoMode) {
       setUser(DEMO_USERS.owner)
+      localStorage.setItem('demo_user', JSON.stringify(DEMO_USERS.owner))
       return {}
     }
 
@@ -66,15 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInAsDemo = (role: 'owner' | 'manager' | 'cashier') => {
     if (isDemoMode) {
       setUser(DEMO_USERS[role])
+      localStorage.setItem('demo_user', JSON.stringify(DEMO_USERS[role]))
     }
   }
 
   const signOut = async () => {
     if (isDemoMode) {
       setUser(null)
+      localStorage.removeItem('demo_user')
       return
     }
     await supabase!.auth.signOut()
+    localStorage.removeItem('demo_user')
   }
 
   return (

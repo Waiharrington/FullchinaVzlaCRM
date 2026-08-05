@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
-        name: 'Clienta Food Truck',
-        short_name: 'Clienta',
+        name: 'Full China',
+        short_name: 'Full China',
         description: 'PWA para administrar la operacion diaria de un food truck',
         theme_color: '#1a1a2e',
         background_color: '#ffffff',
@@ -20,12 +20,12 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'icons/icon-192.png',
+            src: 'pwa-logo.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: 'icons/icon-512.png',
+            src: 'pwa-logo.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

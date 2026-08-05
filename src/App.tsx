@@ -20,21 +20,21 @@ import { Mas } from './pages/Mas'
 import { Reportes } from './pages/Reportes'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, demoMode } = useAuth()
+  const { user, loading } = useAuth()
 
   if (loading) return <div className="login-page"><p>Cargando...</p></div>
-  if (!user && !demoMode) return <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
   return <>{children}</>
 }
 
 function AppRoutes() {
-  const { user, demoMode } = useAuth()
+  const { user } = useAuth()
 
   return (
     <Routes>
       <Route
         path="/login"
-        element={user || demoMode ? <Navigate to="/" replace /> : <Login />}
+        element={user ? <Navigate to="/" replace /> : <Login />}
       />
       <Route
         element={
