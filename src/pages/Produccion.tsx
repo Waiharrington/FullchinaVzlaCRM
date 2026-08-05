@@ -1,422 +1,336 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuth } from '../context/auth-context'
+import { useState, useMemo } from 'react'
 import {
-  getSellableProducts,
-  getRecipeComponents,
-  getProductionBatches,
-  getProductionStats,
-  getProductionBonuses,
-  createProductionBatch,
-  type SellableProduct,
-  type RecipeComponent,
-  type ProductionBatch,
-  type ProductionStats,
-  type ProductionBonus,
-} from '../lib/dataService'
-import {
-  UtensilsCrossed,
+  Search,
+  Plus,
+  Users,
+  Bell,
+  Calendar,
+  ChevronDown,
+  CookingPot,
   TrendingUp,
   Trash2,
   DollarSign,
   Clock,
   Info,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   MoreVertical,
-  RefreshCw,
+  ArrowRight
 } from 'lucide-react'
 import './Produccion.css'
 
-const BONUS_PER_PIECE = 0.15
-const AVATAR_COLORS = ['green', 'blue', 'amber', 'purple']
+export interface IngredientItem {
+  id: string
+  name: string
+  quantity: string
+  cost: number
+}
+
+export interface BatchItem {
+  id: string
+  batchCode: string
+  productName: string
+  date: string
+  responsible: string
+  yieldPct: number
+  status: 'Completado' | 'Parcial'
+}
+
+export interface EmployeeProduction {
+  id: string
+  initials: string
+  color: string
+  name: string
+  pieces: number
+  pct: number
+  bonus: number
+}
+
+const MOCK_INGREDIENTS: IngredientItem[] = [
+  { id: '1', name: 'Pechuga de pollo', quantity: '10.00 kg', cost: 110.0 },
+  { id: '2', name: 'Sal', quantity: '0.10 kg', cost: 1.0 },
+  { id: '3', name: 'Aceite vegetal', quantity: '0.10 L', cost: 4.0 },
+]
+
+const MOCK_BATCHES: BatchItem[] = [
+  { id: '1', batchCode: 'L-0008', productName: 'Porcionado de pollo', date: '24 may 2025, 12:45 p.m.', responsible: 'María Chávez', yieldPct: 88.0, status: 'Completado' },
+  { id: '2', batchCode: 'L-0007', productName: 'Lumpias (carne)', date: '24 may 2025, 11:20 a.m.', responsible: 'Juan Pérez', yieldPct: 92.5, status: 'Completado' },
+  { id: '3', batchCode: 'L-0006', productName: 'Camarones empanizados', date: '24 may 2025, 9:35 a.m.', responsible: 'Ana López', yieldPct: 85.3, status: 'Completado' },
+  { id: '4', batchCode: 'L-0005', productName: 'Porcionado de pollo', date: '23 may 2025, 5:10 p.m.', responsible: 'Roberto Vargas', yieldPct: 83.1, status: 'Parcial' },
+  { id: '5', batchCode: 'L-0004', productName: 'Lumpias (pollo)', date: '23 may 2025, 3:15 p.m.', responsible: 'María Chávez', yieldPct: 89.2, status: 'Completado' },
+]
+
+const MOCK_EMPLOYEES: EmployeeProduction[] = [
+  { id: 'e1', initials: 'MC', color: '#dc2626', name: 'María Chávez', pieces: 120, pct: 38, bonus: 18.0 },
+  { id: 'e2', initials: 'JP', color: '#f97316', name: 'Juan Pérez', pieces: 90, pct: 28, bonus: 13.5 },
+  { id: 'e3', initials: 'AL', color: '#8b5cf6', name: 'Ana López', pieces: 70, pct: 22, bonus: 10.5 },
+  { id: 'e4', initials: 'RV', color: '#eab308', name: 'Roberto Vargas', pieces: 40, pct: 12, bonus: 6.0 },
+]
 
 export function Produccion() {
-  const { user } = useAuth()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedRecipe, setSelectedRecipe] = useState('Porcionado de pollo')
+  const [outputUnit, setOutputUnit] = useState('Porción')
+  const [inputQty, setInputQty] = useState('10.00')
+  const [producedQty, setProducedQty] = useState('40')
+  const [wasteQty, setWasteQty] = useState('0.50')
 
-  const [batches, setBatches] = useState<ProductionBatch[]>([])
-  const [stats, setStats] = useState<ProductionStats | null>(null)
-  const [bonuses, setBonuses] = useState<ProductionBonus[]>([])
-  const [recipes, setRecipes] = useState<SellableProduct[]>([])
-  const [recipeComponents, setRecipeComponents] = useState<RecipeComponent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-
-  const [selectedRecipeId, setSelectedRecipeId] = useState('')
-  const [inputQty, setInputQty] = useState('10')
-  const [outputQty, setOutputQty] = useState('40')
-  const [wasteQty, setWasteQty] = useState('0.5')
-  const [operatorName, setOperatorName] = useState('')
-
-  const [showHistoryModal, setShowHistoryModal] = useState(false)
-  const [historyPage, setHistoryPage] = useState(1)
-  const [selectedBatchDetail, setSelectedBatchDetail] = useState<ProductionBatch | null>(null)
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [batchData, statsData, bonusData, recipeData] = await Promise.all([
-        getProductionBatches(),
-        getProductionStats(),
-        getProductionBonuses(),
-        getSellableProducts(),
-      ])
-      setBatches(batchData)
-      setStats(statsData)
-      setBonuses(bonusData)
-      setRecipes(recipeData)
-    } catch (e) {
-      console.error('Error loading production data:', e)
-    } finally {
-      setLoading(false)
-    }
+  const totalIngredientsCost = useMemo(() => {
+    return MOCK_INGREDIENTS.reduce((acc, item) => acc + item.cost, 0)
   }, [])
 
-  useEffect(() => { fetchData() }, [fetchData])
-
-  useEffect(() => {
-    if (!selectedRecipeId) {
-      setRecipeComponents([])
-      return
-    }
-    getRecipeComponents(selectedRecipeId).then(setRecipeComponents).catch(() => setRecipeComponents([]))
-  }, [selectedRecipeId])
-
-  const selectedRecipe = useMemo(
-    () => recipes.find(r => r.id === selectedRecipeId),
-    [recipes, selectedRecipeId],
-  )
-
-  const ingredientCost = useMemo(
-    () => recipeComponents.reduce((sum, c) => sum + (c.costPerUnit ?? 0) * c.quantity, 0),
-    [recipeComponents],
-  )
-
-  const inputQtyNum = parseFloat(inputQty) || 0
-  const outputQtyNum = parseInt(outputQty) || 0
-  const wasteQtyNum = parseFloat(wasteQty) || 0
-  const totalCost = ingredientCost + wasteQtyNum * (ingredientCost / (inputQtyNum || 1))
-  const costPerPortion = outputQtyNum > 0 ? totalCost / outputQtyNum : 0
-  const wastePct = inputQtyNum > 0 ? (wasteQtyNum / inputQtyNum) * 100 : 0
-
-  const conversionYield = inputQtyNum > 0 ? ((outputQtyNum * 0.25) / inputQtyNum) * 100 : 0
-
-  const recentBatches = useMemo(() => batches.slice(0, 5), [batches])
-
-  const handleSaveBatch = async () => {
-    if (!selectedRecipeId || outputQtyNum <= 0) return
-    setSaving(true)
-    try {
-      const userId = user?.id || ''
-      await createProductionBatch({
-        name: selectedRecipe?.name || 'Lote de Producción',
-        quantityProduced: outputQtyNum,
-        unitId: recipeComponents[0]?.unitId || '',
-        wasteQuantity: wasteQtyNum,
-        notes: operatorName ? `Operador: ${operatorName}` : undefined,
-        items: recipeComponents.map(c => ({
-          ingredientId: c.ingredientId || '',
-          quantityUsed: c.quantity,
-          unitId: c.unitId,
-        })),
-        createdBy: userId,
-      })
-      setSelectedRecipeId('')
-      setInputQty('10')
-      setOutputQty('40')
-      setWasteQty('0.5')
-      setOperatorName('')
-      fetchData()
-    } catch (e) {
-      console.error('Error saving batch:', e)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="prod-page">
-        <div className="prod-loading">
-          <RefreshCw size={24} className="prod-spin" />
-          <p>Cargando producción...</p>
-        </div>
-      </div>
-    )
-  }
+  const totalCost = totalIngredientsCost + 5.0 // Includes waste & extras
+  const costPerPortion = Number(producedQty) > 0 ? totalCost / Number(producedQty) : 0
 
   return (
-    <div className="prod-page">
-      {/* Header */}
-      <header className="prod-header">
-        <div className="prod-header-icon">
-          <UtensilsCrossed size={24} />
+    <div className="produccion-page animate-fade-in">
+      {/* Top Navbar Global */}
+      <header className="global-topbar">
+        <div className="topbar-search">
+          <Search size={16} className="topbar-search-icon" />
+          <input
+            type="text"
+            placeholder="Buscar productos, clientes, comandas..."
+            className="topbar-search-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <kbd className="topbar-kbd">⌘K</kbd>
         </div>
-        <div className="prod-header-text">
-          <h1>Producción</h1>
-          <p>Transformación de materia prima, merma y bonos de producción</p>
+
+        <div className="topbar-actions">
+          <button className="btn-topbar-primary">
+            <Plus size={14} /> Nueva comanda
+          </button>
+          <button className="btn-topbar-secondary">
+            <Users size={14} /> Mesa rápida
+          </button>
+          <div className="topbar-date">
+            <Calendar size={14} /> 24 may 2025
+          </div>
+          <button className="topbar-icon-btn">
+            <Bell size={18} />
+            <span className="topbar-badge">5</span>
+          </button>
+          <div className="topbar-user">
+            <div className="user-avatar-circle">A</div>
+            <div className="user-text">
+              <span className="user-name">Admin</span>
+              <span className="user-role">Administrador</span>
+            </div>
+          </div>
         </div>
       </header>
 
-      {/* KPI Cards */}
-      <div className="prod-kpi-row">
-        <div className="prod-kpi-card">
-          <div className="prod-kpi-icon red">
-            <UtensilsCrossed size={22} />
+      {/* 4 Metric Cards Header */}
+      <div className="prod-metrics-grid">
+        {/* Card 1 */}
+        <div className="prod-metric-card">
+          <div className="metric-icon-box red">
+            <CookingPot size={22} />
           </div>
-          <div className="prod-kpi-info">
-            <span className="prod-kpi-label">Producciones de hoy</span>
-            <span className="prod-kpi-value">{stats?.batchesToday ?? 0}</span>
-            <span className="prod-kpi-sub">
-              lotes completados
-            </span>
-            <span className="prod-kpi-sub green">
-              ↑ {stats ? Math.max(0, stats.batchesToday - stats.batchesYesterday) : 0} vs ayer
-            </span>
+          <div className="metric-info-group">
+            <span className="metric-label">Producciones de hoy</span>
+            <span className="metric-large-val">8</span>
+            <span className="metric-sub-text">lotes completados</span>
+            <span className="metric-trend green">↑ 2 vs ayer</span>
           </div>
         </div>
-        <div className="prod-kpi-card">
-          <div className="prod-kpi-icon amber">
+
+        {/* Card 2 */}
+        <div className="prod-metric-card">
+          <div className="metric-icon-box orange">
             <TrendingUp size={22} />
           </div>
-          <div className="prod-kpi-info">
-            <span className="prod-kpi-label">Rendimiento promedio</span>
-            <span className="prod-kpi-value">{stats?.avgYield ?? 0}%</span>
-            <span className="prod-kpi-sub">de conversión</span>
-            <span className="prod-kpi-sub green">
-              ↑ {Math.abs(stats?.yieldChange ?? 0)}% vs ayer
-            </span>
+          <div className="metric-info-group">
+            <span className="metric-label">Rendimiento promedio</span>
+            <span className="metric-large-val">86.4%</span>
+            <span className="metric-sub-text">de conversión</span>
+            <span className="metric-trend green">↑ 4.3% vs ayer</span>
           </div>
         </div>
-        <div className="prod-kpi-card">
-          <div className="prod-kpi-icon green">
+
+        {/* Card 3 */}
+        <div className="prod-metric-card">
+          <div className="metric-icon-box purple">
             <Trash2 size={22} />
           </div>
-          <div className="prod-kpi-info">
-            <span className="prod-kpi-label">Merma</span>
-            <span className="prod-kpi-value">{stats?.totalWaste ?? 0} kg</span>
-            <span className="prod-kpi-sub">
-              valorado en ${(stats?.totalWaste ?? 0) * 15}
-            </span>
-            <span className="prod-kpi-sub amber">
-              ↓ {Math.abs(stats?.wasteChange ?? 0)} kg vs ayer
-            </span>
+          <div className="metric-info-group">
+            <span className="metric-label">Merma</span>
+            <span className="metric-large-val">1.25 kg</span>
+            <span className="metric-sub-text">valorado en $18.75</span>
+            <span className="metric-trend green">↓ 0.35 kg vs ayer</span>
           </div>
         </div>
-        <div className="prod-kpi-card">
-          <div className="prod-kpi-icon purple">
+
+        {/* Card 4 */}
+        <div className="prod-metric-card">
+          <div className="metric-icon-box green">
             <DollarSign size={22} />
           </div>
-          <div className="prod-kpi-info">
-            <span className="prod-kpi-label">Costo por porción</span>
-            <span className="prod-kpi-value">${stats?.avgCostPerPortion ?? 0}</span>
-            <span className="prod-kpi-sub">promedio del día</span>
-            <span className="prod-kpi-sub red">
-              ↑ ${Math.abs(stats?.costChange ?? 0)} vs ayer
-            </span>
+          <div className="metric-info-group">
+            <span className="metric-label">Costo por porción</span>
+            <span className="metric-large-val">$3.00</span>
+            <span className="metric-sub-text">promedio del día</span>
+            <span className="metric-trend red">↑ $0.10 vs ayer</span>
           </div>
         </div>
       </div>
 
-      {/* Content Grid */}
-      <div className="prod-content-grid">
-        {/* Main Column */}
-        <div className="prod-main-col">
-          {/* Nueva Producción Card */}
-          <div className="prod-card">
-            <div className="prod-card-header">
-              <h2 className="prod-card-title">
-                <span className="prod-card-title-icon">
-                  <UtensilsCrossed size={14} />
-                </span>
-                Nueva producción
-              </h2>
-              <div className="prod-card-actions">
-                <button
-                  className="prod-btn prod-btn-outline"
-                  onClick={() => setShowHistoryModal(true)}
-                >
-                  <Clock size={14} />
-                  Historial de producciones
-                </button>
+      {/* Main 2-Column Section */}
+      <div className="prod-main-grid">
+        {/* LEFT COLUMN: Nueva producción + Lotes recientes */}
+        <div className="prod-left-column">
+          {/* Card: Nueva producción */}
+          <div className="prod-section-card">
+            <div className="prod-card-header-bar">
+              <div className="header-title-group">
+                <div className="card-header-icon-red">
+                  <CookingPot size={16} />
+                </div>
+                <h2 className="prod-card-title">Nueva producción</h2>
               </div>
+              <button className="history-btn-outline">
+                <Clock size={14} /> Historial de producciones
+              </button>
             </div>
 
-            {/* Recipe + Unit Row */}
-            <div className="prod-form-row">
-              <div className="prod-form-group">
-                <label className="prod-form-label">Receta / Producción</label>
+            {/* Dropdown selects */}
+            <div className="prod-form-selects-row mt-3">
+              <div className="select-field-group flex-2">
+                <label className="field-label">Receta / Producción</label>
                 <select
-                  className="prod-form-select"
-                  value={selectedRecipeId}
-                  onChange={e => setSelectedRecipeId(e.target.value)}
+                  className="field-select"
+                  value={selectedRecipe}
+                  onChange={(e) => setSelectedRecipe(e.target.value)}
                 >
-                  <option value="">Seleccionar receta...</option>
-                  {recipes.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.emoji} {r.name}
-                    </option>
-                  ))}
+                  <option value="Porcionado de pollo">Porcionado de pollo</option>
+                  <option value="Lumpias (carne)">Lumpias (carne)</option>
+                  <option value="Lumpias (pollo)">Lumpias (pollo)</option>
+                  <option value="Camarones empanizados">Camarones empanizados</option>
                 </select>
-                {selectedRecipe && (
-                  <span className="prod-form-desc">{selectedRecipe.description}</span>
-                )}
+                <span className="field-subtitle">Convierte pollo crudo en porciones listas para servir.</span>
               </div>
-              <div className="prod-form-group">
-                <label className="prod-form-label">Unidad de salida</label>
-                <select className="prod-form-select" defaultValue="porcion">
-                  <option value="porcion">Porción</option>
-                  <option value="pieza">Pieza</option>
-                  <option value="kg">Kg</option>
+
+              <div className="select-field-group flex-1">
+                <label className="field-label">Unidad de salida</label>
+                <select
+                  className="field-select"
+                  value={outputUnit}
+                  onChange={(e) => setOutputUnit(e.target.value)}
+                >
+                  <option value="Porción">Porción</option>
+                  <option value="Pieza">Pieza</option>
+                  <option value="Kg">Kg</option>
                 </select>
               </div>
             </div>
 
-            {/* Ingredients Table */}
-            {recipeComponents.length > 0 && (
-              <>
-                <table className="prod-ingredients-table">
-                  <thead>
-                    <tr>
-                      <th>Ingrediente</th>
-                      <th>Entrada</th>
-                      <th>Costo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recipeComponents.map(c => (
-                      <tr key={c.id}>
-                        <td>{c.ingredientName}</td>
-                        <td>{c.quantity} {c.unitSymbol}</td>
-                        <td>${((c.costPerUnit ?? 0) * c.quantity).toFixed(2)}</td>
+            {/* Ingredients table + Quantities + Costs split container */}
+            <div className="prod-recipe-details-grid mt-4">
+              {/* Ingredients Box */}
+              <div className="ingredients-box">
+                <h4 className="box-section-title">Ingredientes usados</h4>
+                <div className="ingredients-table-wrap">
+                  <table className="ingredients-mini-table">
+                    <thead>
+                      <tr>
+                        <th>Ingrediente</th>
+                        <th>Entrada</th>
+                        <th>Costo</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="prod-ingredients-total">
-                  <span className="prod-ingredients-total-label">Costo total ingredientes</span>
-                  <span className="prod-ingredients-total-value">${ingredientCost.toFixed(2)}</span>
+                    </thead>
+                    <tbody>
+                      {MOCK_INGREDIENTS.map((item) => (
+                        <tr key={item.id}>
+                          <td>{item.name}</td>
+                          <td>{item.quantity}</td>
+                          <td>${item.cost.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="ingredients-total-footer">
+                    <span>Costo total ingredientes</span>
+                    <span className="total-cost-val">${totalIngredientsCost.toFixed(2)}</span>
+                  </div>
                 </div>
-              </>
-            )}
-
-            {/* Quantities Row */}
-            <div className="prod-quantities-row">
-              <div className="prod-quantity-box">
-                <div className="prod-quantity-label">Cantidad de entrada</div>
-                <div className="prod-quantity-input">
-                  <button
-                    className="prod-quantity-btn"
-                    onClick={() => setInputQty(String(Math.max(0, (parseFloat(inputQty) || 0) - 1)))}
-                  >
-                    −
-                  </button>
-                  <span className="prod-quantity-value">{inputQty}</span>
-                  <button
-                    className="prod-quantity-btn"
-                    onClick={() => setInputQty(String((parseFloat(inputQty) || 0) + 1))}
-                  >
-                    +
-                  </button>
-                </div>
-                <div className="prod-quantity-unit">{selectedRecipe?.name || 'Materia prima'}</div>
               </div>
 
-              <div className="prod-quantity-operator">=</div>
+              {/* Formula & Costs Right Box */}
+              <div className="formula-cost-box">
+                {/* 3 Formula Boxes */}
+                <div className="formula-boxes-row">
+                  <div className="formula-mini-card">
+                    <span className="formula-label">Cantidad de entrada</span>
+                    <div className="formula-value-wrap">
+                      <input
+                        type="text"
+                        className="formula-input"
+                        value={inputQty}
+                        onChange={(e) => setInputQty(e.target.value)}
+                      />
+                      <span className="formula-unit">kg</span>
+                    </div>
+                    <span className="formula-sub">Pollo crudo</span>
+                  </div>
 
-              <div className="prod-quantity-box">
-                <div className="prod-quantity-label">Cantidad producida</div>
-                <div className="prod-quantity-input">
-                  <button
-                    className="prod-quantity-btn"
-                    onClick={() => setOutputQty(String(Math.max(0, (parseInt(outputQty) || 0) - 1)))}
-                  >
-                    −
-                  </button>
-                  <span className="prod-quantity-value">{outputQty}</span>
-                  <button
-                    className="prod-quantity-btn"
-                    onClick={() => setOutputQty(String((parseInt(outputQty) || 0) + 1))}
-                  >
-                    +
-                  </button>
+                  <span className="formula-operator">−</span>
+
+                  <div className="formula-mini-card">
+                    <span className="formula-label">Cantidad producida</span>
+                    <div className="formula-value-wrap">
+                      <input
+                        type="text"
+                        className="formula-input"
+                        value={producedQty}
+                        onChange={(e) => setProducedQty(e.target.value)}
+                      />
+                    </div>
+                    <span className="formula-sub">porciones</span>
+                  </div>
+
+                  <span className="formula-operator">=</span>
+
+                  <div className="formula-mini-card">
+                    <span className="formula-label">Merma estimada</span>
+                    <div className="formula-value-wrap">
+                      <input
+                        type="text"
+                        className="formula-input"
+                        value={wasteQty}
+                        onChange={(e) => setWasteQty(e.target.value)}
+                      />
+                      <span className="formula-unit">kg</span>
+                    </div>
+                    <span className="formula-sub">5.00%</span>
+                  </div>
                 </div>
-                <div className="prod-quantity-unit">porciones</div>
-              </div>
 
-              <div className="prod-quantity-operator">−</div>
+                {/* Cost Summary Row */}
+                <div className="costs-boxes-row mt-3">
+                  <div className="cost-summary-card">
+                    <span className="cost-card-label">Costo total</span>
+                    <span className="cost-card-amount">${totalCost.toFixed(2)}</span>
+                    <span className="cost-card-sub">Incluye merma y extras</span>
+                  </div>
 
-              <div className="prod-quantity-box">
-                <div className="prod-quantity-label">Merma estimada</div>
-                <div className="prod-quantity-input">
-                  <button
-                    className="prod-quantity-btn"
-                    onClick={() => setWasteQty(String(Math.max(0, (parseFloat(wasteQty) || 0) - 0.1)).slice(0, 4))}
-                  >
-                    −
-                  </button>
-                  <span className="prod-quantity-value">{wasteQty}</span>
-                  <button
-                    className="prod-quantity-btn"
-                    onClick={() => setWasteQty(String((parseFloat(wasteQty) || 0) + 0.1).slice(0, 4))}
-                  >
-                    +
-                  </button>
+                  <div className="cost-summary-card">
+                    <span className="cost-card-label">Costo por porción</span>
+                    <span className="cost-card-amount">${costPerPortion.toFixed(2)}</span>
+                    <span className="cost-card-sub">Costo unitario final</span>
+                  </div>
                 </div>
-                <div className="prod-quantity-unit">kg</div>
-                <div className="prod-waste-pct">{wastePct.toFixed(2)}%</div>
               </div>
             </div>
-
-            {/* Cost Summary */}
-            <div className="prod-cost-row">
-              <div className="prod-cost-box">
-                <div className="prod-cost-label">Costo total</div>
-                <div className="prod-cost-value">${totalCost.toFixed(2)}</div>
-                <div className="prod-cost-sub">Incluye merma y extras</div>
-              </div>
-              <div className="prod-cost-box">
-                <div className="prod-cost-label">Costo por porción</div>
-                <div className="prod-cost-value">${costPerPortion.toFixed(2)}</div>
-                <div className="prod-cost-sub">Costo unitario final</div>
-              </div>
-            </div>
-
-            {/* Operator Name */}
-            <div className="prod-form-group" style={{ marginBottom: '1rem' }}>
-              <label className="prod-form-label">Responsable / Operador</label>
-              <input
-                type="text"
-                className="prod-form-input"
-                placeholder="Nombre del empleado"
-                value={operatorName}
-                onChange={e => setOperatorName(e.target.value)}
-              />
-            </div>
-
-            {/* Save Button */}
-            <button
-              className="prod-save-btn"
-              onClick={handleSaveBatch}
-              disabled={saving || !selectedRecipeId || outputQtyNum <= 0}
-            >
-              {saving ? (
-                <>
-                  <RefreshCw size={16} className="prod-spin" />
-                  Guardando...
-                </>
-              ) : (
-                'Guardar lote de producción'
-              )}
-            </button>
           </div>
 
-          {/* Lotes Recientes Card */}
-          <div className="prod-card">
-            <div className="prod-card-header">
+          {/* Card: Lotes recientes */}
+          <div className="prod-section-card mt-4">
+            <div className="prod-card-header-bar">
               <h2 className="prod-card-title">Lotes recientes</h2>
             </div>
-            <div className="prod-table-wrapper">
-              <table className="prod-table">
+
+            <div className="table-responsive-wrapper mt-3">
+              <table className="lotes-table">
                 <thead>
                   <tr>
                     <th>Lote</th>
@@ -429,338 +343,152 @@ export function Produccion() {
                   </tr>
                 </thead>
                 <tbody>
-                  {recentBatches.length === 0 ? (
-                    <tr>
-                      <td colSpan={7}>
-                        <div className="prod-empty-state">
-                          <p>No hay lotes registrados</p>
-                        </div>
+                  {MOCK_BATCHES.map((batch) => (
+                    <tr key={batch.id}>
+                      <td className="font-mono">{batch.batchCode}</td>
+                      <td className="font-bold">{batch.productName}</td>
+                      <td className="text-gray">{batch.date}</td>
+                      <td>{batch.responsible}</td>
+                      <td className="font-semibold">{batch.yieldPct.toFixed(1)}%</td>
+                      <td>
+                        <span className={`status-pill-badge ${batch.status.toLowerCase()}`}>
+                          {batch.status}
+                        </span>
+                      </td>
+                      <td>
+                        <button className="icon-more-btn">
+                          <MoreVertical size={14} />
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    recentBatches.map(batch => (
-                      <tr key={batch.id}>
-                        <td>
-                          <span className="prod-batch-id">
-                            L-{String(batch.batchNumber).padStart(4, '0')}
-                          </span>
-                        </td>
-                        <td>{batch.productName}</td>
-                        <td>{formatDate(batch.createdAt)}</td>
-                        <td>{batch.operator}</td>
-                        <td>{(100 - batch.wastePercentage).toFixed(1)}%</td>
-                        <td>
-                          <span className={`prod-status-badge ${batch.status === 'Completado' ? 'completed' : 'partial'}`}>
-                            {batch.status}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="prod-action-menu">
-                            <button
-                              className="prod-action-btn"
-                              onClick={() => setSelectedBatchDetail(batch)}
-                              title="Ver detalle"
-                            >
-                              <MoreVertical size={14} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
-            {batches.length > 5 && (
-              <div className="prod-table-footer">
-                <button
-                  className="prod-view-all-link"
-                  onClick={() => setShowHistoryModal(true)}
-                >
-                  Ver todos los lotes →
-                </button>
-              </div>
-            )}
+
+            <div className="table-footer-bar">
+              <button className="view-all-link">
+                Ver todos los lotes <ArrowRight size={14} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Right Sidebar */}
-        <div className="prod-sidebar">
-          {/* Producción por empleado */}
-          <div className="prod-card">
-            <div className="prod-employee-header">
+        {/* RIGHT COLUMN: Producción por empleado + Ejemplo de conversión */}
+        <div className="prod-right-column">
+          {/* Card: Producción por empleado */}
+          <div className="prod-section-card">
+            <div className="prod-card-header-bar">
               <h2 className="prod-card-title">Producción por empleado</h2>
-              <button className="prod-period-toggle">
+              <button className="dropdown-pill">
                 Hoy <ChevronDown size={12} />
               </button>
             </div>
 
-            <div className="prod-employee-stats">
-              <div className="prod-emp-stat">
-                <div className="prod-emp-stat-label">Total piezas elaboradas</div>
-                <div className="prod-emp-stat-value">
-                  {bonuses.reduce((sum, b) => sum + b.piecesCount, 0)}
+            {/* Employee Top Stats */}
+            <div className="employee-top-stats mt-3">
+              <div className="emp-stat-box">
+                <span className="emp-stat-label">Total lumpias elaboradas</span>
+                <div className="emp-stat-num-row">
+                  <span className="emp-stat-num">320</span>
+                  <span className="emp-stat-unit">piezas</span>
                 </div>
-                <div className="prod-emp-stat-sub">piezas</div>
               </div>
-              <div className="prod-emp-stat">
-                <div className="prod-emp-stat-label">Bonos por producción</div>
-                <div className="prod-emp-stat-value">
-                  ${bonuses.reduce((sum, b) => sum + b.bonusAmount, 0).toFixed(2)}
+
+              <div className="emp-stat-box">
+                <span className="emp-stat-label">Bonos por producción</span>
+                <div className="emp-stat-num-row">
+                  <span className="emp-stat-num">$48.00</span>
+                  <span className="emp-stat-unit">total del día</span>
                 </div>
-                <div className="prod-emp-stat-sub">total del día</div>
               </div>
             </div>
 
-            <div className="prod-employee-list">
-              {bonuses.length === 0 ? (
-                <div className="prod-empty-state">
-                  <p>Sin bonos registrados hoy</p>
-                </div>
-              ) : (
-                bonuses.map((bonus, idx) => (
-                  <div key={bonus.employeeId} className="prod-employee-item">
-                    <div className={`prod-emp-avatar ${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`}>
-                      {bonus.initials}
-                    </div>
-                    <div className="prod-emp-info">
-                      <div className="prod-emp-name">{bonus.employeeName}</div>
-                      <div className="prod-emp-bar">
-                        <div
-                          className={`prod-emp-bar-fill ${AVATAR_COLORS[idx % AVATAR_COLORS.length]}`}
-                          style={{ width: `${bonus.percentage}%` }}
-                        />
-                      </div>
-                      <div className="prod-emp-pct">{bonus.percentage}%</div>
-                    </div>
-                    <div className="prod-emp-meta">
-                      <div className="prod-emp-pieces">{bonus.piecesCount} pzs</div>
-                      <div className="prod-emp-bonus">${bonus.bonusAmount.toFixed(2)}</div>
+            {/* Employee List */}
+            <div className="employee-list-items mt-3">
+              {MOCK_EMPLOYEES.map((emp) => (
+                <div key={emp.id} className="employee-item-row">
+                  <div
+                    className="emp-avatar-circle"
+                    style={{ backgroundColor: emp.color }}
+                  >
+                    {emp.initials}
+                  </div>
+
+                  <div className="emp-details-center">
+                    <span className="emp-name">{emp.name}</span>
+                    <div className="emp-progress-bar-bg">
+                      <div
+                        className="emp-progress-bar-fill"
+                        style={{
+                          width: `${emp.pct}%`,
+                          backgroundColor: emp.color
+                        }}
+                      />
                     </div>
                   </div>
-                ))
-              )}
+
+                  <div className="emp-pieces-col">
+                    <span className="emp-pieces-val">{emp.pieces} pzs</span>
+                    <span className="emp-pct-sub">{emp.pct}%</span>
+                  </div>
+
+                  <div className="emp-bonus-col font-bold">
+                    ${emp.bonus.toFixed(2)}
+                  </div>
+                </div>
+              ))}
             </div>
 
-            <div className="prod-bonus-info">
-              <Info size={14} className="prod-bonus-info-icon" />
-              <span className="prod-bonus-info-text">
-                Bonificación: ${BONUS_PER_PIECE} por pieza elaborada.
-              </span>
+            {/* Info notice */}
+            <div className="bono-info-notice mt-3">
+              <Info size={14} className="text-blue" />
+              <span>Bonificación: $0.15 por pieza elaborada.</span>
             </div>
           </div>
 
-          {/* Ejemplo de conversión */}
-          <div className="prod-card">
-            <div className="prod-card-header">
+          {/* Card: Ejemplo de conversión */}
+          <div className="prod-section-card mt-4">
+            <div className="prod-card-header-bar">
               <h2 className="prod-card-title">Ejemplo de conversión</h2>
             </div>
 
-            <div className="prod-conversion-visual">
-              <div className="prod-conversion-box">
-                <div className="prod-conversion-emoji">🍗</div>
-                <div className="prod-conversion-qty">{inputQty || 10} kg</div>
-                <div className="prod-conversion-unit">de pollo</div>
+            {/* Graphic Conversion Row */}
+            <div className="conversion-visual-row mt-3">
+              <div className="conversion-card-box">
+                <span className="conversion-icon">🍗</span>
+                <span className="conversion-qty font-bold">10 kg</span>
+                <span className="conversion-unit text-gray">de pollo</span>
               </div>
-              <div className="prod-conversion-arrow">→</div>
-              <div className="prod-conversion-box">
-                <div className="prod-conversion-emoji">🍽️</div>
-                <div className="prod-conversion-qty">{outputQty || 40} porciones</div>
-                <div className="prod-conversion-unit">&nbsp;</div>
+
+              <span className="conversion-arrow">→</span>
+
+              <div className="conversion-card-box">
+                <span className="conversion-icon">🍛</span>
+                <span className="conversion-qty font-bold">40</span>
+                <span className="conversion-unit text-gray">porciones</span>
               </div>
             </div>
 
-            <div className="prod-conversion-costs">
-              <div className="prod-conversion-cost">
-                <div className="prod-conversion-cost-label">Costo total</div>
-                <div className="prod-conversion-cost-value">${totalCost.toFixed(2)}</div>
+            {/* Conversion Cost Row */}
+            <div className="conversion-costs-row mt-3">
+              <div className="conversion-cost-item">
+                <span className="cost-label">Costo total</span>
+                <span className="cost-val text-red font-extrabold">$120.00</span>
               </div>
-              <div className="prod-conversion-cost">
-                <div className="prod-conversion-cost-label">Costo por porción</div>
-                <div className="prod-conversion-cost-value green">${costPerPortion.toFixed(2)}</div>
+
+              <div className="conversion-cost-item">
+                <span className="cost-label">Costo por porción</span>
+                <span className="cost-val text-green font-extrabold">$3.00</span>
               </div>
             </div>
 
-            <div className="prod-conversion-yield">
-              Rendimiento: {conversionYield.toFixed(0)}% (considerando merma del {wastePct.toFixed(0)}%)
+            <div className="conversion-footnote mt-3">
+              <span>Rendimiento: 80% (considerando merma del 20%)</span>
             </div>
           </div>
         </div>
       </div>
-
-      {/* History Modal */}
-      {showHistoryModal && (
-        <div className="prod-modal-overlay" onClick={() => setShowHistoryModal(false)}>
-          <div className="prod-modal-content" onClick={e => e.stopPropagation()}>
-            <div className="prod-modal-header">
-              <h2 className="prod-modal-title">Historial de producciones</h2>
-              <button className="prod-modal-close" onClick={() => setShowHistoryModal(false)}>✕</button>
-            </div>
-            <div className="prod-modal-body">
-              <div className="prod-history-filters">
-                <button className="prod-history-filter active">Todos</button>
-                <button className="prod-history-filter">Completados</button>
-                <button className="prod-history-filter">Parciales</button>
-              </div>
-              <div className="prod-table-wrapper">
-                <table className="prod-table">
-                  <thead>
-                    <tr>
-                      <th>Lote</th>
-                      <th>Producto</th>
-                      <th>Fecha</th>
-                      <th>Responsable</th>
-                      <th>Porciones</th>
-                      <th>Merma</th>
-                      <th>Costo/porción</th>
-                      <th>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {batches.map(batch => (
-                      <tr key={batch.id}>
-                        <td><span className="prod-batch-id">L-{String(batch.batchNumber).padStart(4, '0')}</span></td>
-                        <td>{batch.productName}</td>
-                        <td>{formatDate(batch.createdAt)}</td>
-                        <td>{batch.operator}</td>
-                        <td>{batch.quantityProduced} {batch.unitProduced}</td>
-                        <td>{batch.wasteQuantity} kg</td>
-                        <td>${batch.costPerPortion.toFixed(2)}</td>
-                        <td>
-                          <span className={`prod-status-badge ${batch.status === 'Completado' ? 'completed' : 'partial'}`}>
-                            {batch.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {batches.length > 10 && (
-                <div className="prod-pagination">
-                  <button className="prod-page-btn" disabled={historyPage === 1} onClick={() => setHistoryPage(p => p - 1)}>
-                    <ChevronLeft size={14} />
-                  </button>
-                  <button className="prod-page-btn active">{historyPage}</button>
-                  <button className="prod-page-btn" disabled onClick={() => setHistoryPage(p => p + 1)}>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Batch Detail Modal */}
-      {selectedBatchDetail && (
-        <div className="prod-modal-overlay" onClick={() => setSelectedBatchDetail(null)}>
-          <div className="prod-modal-content" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
-            <div className="prod-modal-header">
-              <h2 className="prod-modal-title">
-                Lote L-{String(selectedBatchDetail.batchNumber).padStart(4, '0')} — {selectedBatchDetail.productName}
-              </h2>
-              <button className="prod-modal-close" onClick={() => setSelectedBatchDetail(null)}>✕</button>
-            </div>
-            <div className="prod-modal-body">
-              <div className="prod-detail-section">
-                <div className="prod-detail-title">Información del lote</div>
-                <div className="prod-detail-grid">
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Fecha</div>
-                    <div className="prod-detail-item-value">{formatDate(selectedBatchDetail.createdAt)}</div>
-                  </div>
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Responsable</div>
-                    <div className="prod-detail-item-value">{selectedBatchDetail.operator}</div>
-                  </div>
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Estado</div>
-                    <div className="prod-detail-item-value">
-                      <span className={`prod-status-badge ${selectedBatchDetail.status === 'Completado' ? 'completed' : 'partial'}`}>
-                        {selectedBatchDetail.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="prod-detail-section">
-                <div className="prod-detail-title">Producción</div>
-                <div className="prod-detail-grid">
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Cantidad producida</div>
-                    <div className="prod-detail-item-value">{selectedBatchDetail.quantityProduced} {selectedBatchDetail.unitProduced}</div>
-                  </div>
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Merma</div>
-                    <div className="prod-detail-item-value">{selectedBatchDetail.wasteQuantity} kg ({selectedBatchDetail.wastePercentage}%)</div>
-                  </div>
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Rendimiento</div>
-                    <div className="prod-detail-item-value">{(100 - selectedBatchDetail.wastePercentage).toFixed(1)}%</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="prod-detail-section">
-                <div className="prod-detail-title">Costos</div>
-                <div className="prod-detail-grid">
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Costo total</div>
-                    <div className="prod-detail-item-value">${selectedBatchDetail.totalCost.toFixed(2)}</div>
-                  </div>
-                  <div className="prod-detail-item">
-                    <div className="prod-detail-item-label">Costo por porción</div>
-                    <div className="prod-detail-item-value">${selectedBatchDetail.costPerPortion.toFixed(2)}</div>
-                  </div>
-                </div>
-              </div>
-
-              {selectedBatchDetail.items.length > 0 && (
-                <div className="prod-detail-section">
-                  <div className="prod-detail-title">Ingredientes</div>
-                  <table className="prod-ingredients-table">
-                    <thead>
-                      <tr>
-                        <th>Ingrediente</th>
-                        <th>Cantidad</th>
-                        <th>Costo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedBatchDetail.items.map(item => (
-                        <tr key={item.id}>
-                          <td>{item.ingredientName}</td>
-                          <td>{item.quantityUsed} {item.unitSymbol}</td>
-                          <td>${(item.costPerUnit * item.quantityUsed).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            <div className="prod-modal-footer">
-              <button className="prod-btn prod-btn-outline" onClick={() => setSelectedBatchDetail(null)}>
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('es-VE', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
 }
