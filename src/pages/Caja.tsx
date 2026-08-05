@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { downloadReceipt } from '../lib/receipt'
 import { getExchangeRates } from '../lib/rates'
@@ -12,6 +13,19 @@ import {
   type TodayOrder,
   type PaymentMethod,
 } from '../lib/dataService'
+import {
+  Search,
+  Bell,
+  X,
+  Printer,
+  CheckCircle,
+  QrCode,
+  ShieldCheck,
+  Share2,
+  ListOrdered,
+  ChefHat,
+  BellRing
+} from 'lucide-react'
 import './Caja.css'
 
 type ViewMode = 'grid' | 'list'
@@ -38,11 +52,12 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: string }> = {
   delivery: { label: 'Delivery', icon: '🛵' },
 }
 
-const PAYMENT_METHODS: Array<{ method: PaymentMethod; label: string; icon: string }> = [
+const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: string }> = [
   { method: 'cash', label: 'Efectivo', icon: '💵' },
   { method: 'card', label: 'Pago móvil', icon: '📱' },
   { method: 'other', label: 'Punto', icon: '💳' },
   { method: 'transfer', label: 'Transferencia', icon: '🏦' },
+  { method: 'split', label: 'Pago combinado', icon: '🔀' },
 ]
 
 const SERVICE_FEE_RATE = 0.05
@@ -71,6 +86,7 @@ function getProductImage(product: Product): string {
 
 export function Caja() {
   const { user } = useAuth()
+  const navigate = useNavigate()
 
   const [products, setProducts] = useState<Product[]>([])
   const [todayOrders, setTodayOrders] = useState<TodayOrder[]>([])
@@ -87,6 +103,14 @@ export function Caja() {
   const [customerName, setCustomerName] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
   const [discount, setDiscount] = useState(0)
+
+  // Payment Modal State (Matching Image 1)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>('card')
+  const [refNumber, setRefNumber] = useState('876543210')
+  const [amountReceived, setAmountReceived] = useState('300.00')
+  const [paymentNote, setPaymentNote] = useState('')
+
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState('')
   const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
@@ -158,8 +182,9 @@ export function Caja() {
   const serviceFee = subtotal * SERVICE_FEE_RATE
   const total = subtotal + serviceFee - discount
 
+  // Action 1: Enviar a Cocina -> Saves order to Supabase and navigates to /comandas
   const handleSendToKitchen = async () => {
-    if (cart.length === 0 || !user) return
+    if (cart.length === 0) return
     setPaying(true)
     setPayError('')
     try {
@@ -167,48 +192,50 @@ export function Caja() {
         items: cart,
         method: 'cash',
         bcvRate,
-        userId: user.id,
+        userId: user?.id || 'demo-user',
         notes: orderNotes || null,
         orderType,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || 'Cliente general',
       })
       setCurrentOrder(order)
       setCart([])
-      setCustomerName('')
-      setOrderNotes('')
-      setDiscount(0)
-      setShowConfirmation(true)
       refreshTodayOrders()
+      // Navigate directly to Comandas page as requested!
+      navigate('/comandas')
     } catch (e) {
-      setPayError(e instanceof Error ? e.message : 'Error al enviar')
+      setPayError(e instanceof Error ? e.message : 'Error al enviar a cocina')
     } finally {
       setPaying(false)
     }
   }
 
-  const handlePayment = async (method: PaymentMethod) => {
-    if (cart.length === 0 || !user) return
+  // Open Payment Modal (Image 1)
+  const handleOpenPaymentModal = () => {
+    if (cart.length === 0) return
+    setShowPaymentModal(true)
+  }
+
+  // Confirm Payment in Modal -> Triggers Confirmation Screen (Image 2)
+  const handleConfirmPayment = async () => {
     setPaying(true)
     setPayError('')
     try {
+      const finalMethod: PaymentMethod = selectedPaymentTab === 'split' ? 'card' : selectedPaymentTab
       const order = await checkout({
         items: cart,
-        method,
+        method: finalMethod,
         bcvRate,
-        userId: user.id,
+        userId: user?.id || 'demo-user',
         notes: orderNotes || null,
         orderType,
-        customerName: customerName || 'Cliente',
+        customerName: customerName || 'Cliente general',
       })
       setCurrentOrder(order)
-      setCart([])
-      setCustomerName('')
-      setOrderNotes('')
-      setDiscount(0)
+      setShowPaymentModal(false)
       setShowConfirmation(true)
       refreshTodayOrders()
     } catch (e) {
-      setPayError(e instanceof Error ? e.message : 'Error al cobrar')
+      setPayError(e instanceof Error ? e.message : 'Error al confirmar pago')
     } finally {
       setPaying(false)
     }
@@ -237,51 +264,212 @@ export function Caja() {
     )
   }
 
+  // Image 2 Target: Confirmation Screen "¡Pedido cobrado con éxito!"
   if (showConfirmation && currentOrder) {
+    const orderNo = `#FC-${String(currentOrder.orderNumber).padStart(6, '0')}`
+    const formattedDate = new Date(currentOrder.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const formattedTime = new Date(currentOrder.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+
     return (
       <div className="page animate-fade-in">
-        <div className="caja-layout">
-          <div className="products-section">
-            <div className="caja-banner">
-              <div className="caja-banner-content">
-                <span className="caja-banner-icon">🛒</span>
-                <div>
-                  <h2 className="caja-banner-title">Venta completada</h2>
-                  <p className="caja-banner-sub">Pedido enviado exitosamente</p>
-                </div>
-              </div>
+        {/* Global Top Navbar */}
+        <header className="global-topbar">
+          <div className="topbar-search">
+            <Search size={16} className="topbar-search-icon" />
+            <input type="text" placeholder="Buscar productos, clientes, comandas..." className="topbar-search-input" readOnly />
+            <kbd className="topbar-kbd">⌘K</kbd>
+          </div>
+
+          <div className="topbar-actions">
+            <button className="btn-topbar-primary" onClick={() => { setShowConfirmation(false); setCart([]) }}>
+              <span>+</span> Nueva comanda
+            </button>
+            <button className="btn-topbar-secondary">
+              <span>🏷️</span> Mesa rápida
+            </button>
+            <div className="topbar-date">
+              <span>📅</span> 24 may 2025
             </div>
-            <div className="confirmation-panel">
-              <div className="confirmation-icon">✅</div>
-              <h2 className="confirmation-title">¡Pago recibido!</h2>
-              <p className="confirmation-amount">${currentOrder.total.toFixed(2)}</p>
-              {bcvRate && (
-                <p className="confirmation-id">Bs {(currentOrder.total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</p>
-              )}
-              <p className="confirmation-id">Orden: FC-{String(currentOrder.orderNumber).padStart(6, '0')}</p>
-              <div className="confirmation-actions">
-                <button className="btn-ghost" onClick={handlePrintReceipt}>🖨️ Imprimir recibo</button>
-                <button className="btn-accent btn-block" onClick={() => { setShowConfirmation(false); setCurrentOrder(null) }}>Nueva venta</button>
+            <button className="topbar-icon-btn">
+              <Bell size={18} />
+              <span className="topbar-badge">5</span>
+            </button>
+            <div className="topbar-user">
+              <div className="user-avatar-circle">A</div>
+              <div className="user-text">
+                <span className="user-name">Admin</span>
+                <span className="user-role">Administrador</span>
               </div>
             </div>
           </div>
-          <div className="cart-sidebar">
-            <div className="cart-sidebar-header">
-              <h3 className="section-title">Resumen</h3>
-            </div>
-            <div className="cart-items-list">
-              {currentOrder.items.map((item, idx) => (
-                <div key={idx} className="cart-item-row">
-                  <span className="cart-item-name">{item.productName}</span>
-                  <span className="cart-item-qty">{item.quantity}x</span>
-                  <span className="cart-item-price">${(item.price * item.quantity).toFixed(2)}</span>
+        </header>
+
+        <div className="caja-success-layout">
+          {/* LEFT COLUMN: Success Hero Card + Timeline */}
+          <div className="success-left-col">
+            {/* Confetti Hero Card */}
+            <div className="success-hero-card">
+              <div className="confetti-dots-bg" />
+              <div className="big-check-circle">
+                <CheckCircle size={44} className="check-icon-glow" />
+              </div>
+              <h1 className="success-hero-title">¡Pedido cobrado con éxito!</h1>
+              <p className="success-hero-sub">Gracias por tu venta. El pedido ha sido enviado a cocina.</p>
+
+              {/* 3 Metrics Row */}
+              <div className="success-metrics-row">
+                <div className="metric-box">
+                  <span className="metric-box-label">Número de pedido</span>
+                  <span className="metric-box-val text-red">{orderNo}</span>
                 </div>
-              ))}
+                <div className="metric-box">
+                  <span className="metric-box-label">Total</span>
+                  <span className="metric-box-val">${currentOrder.total.toFixed(2)}</span>
+                </div>
+                <div className="metric-box">
+                  <span className="metric-box-label">Método de pago</span>
+                  <span className="metric-box-val font-bold">Pago combinado</span>
+                </div>
+              </div>
+
+              {/* Status Badges */}
+              <div className="success-status-badges-row">
+                <span className="badge-status green">🟢 Pagado</span>
+                <span className="badge-status gold">👨‍🍳 Enviado a cocina</span>
+              </div>
             </div>
-            <div className="cart-totals">
-              <div className="cart-total-row">
-                <span>Total</span>
-                <span className="total-amount">${currentOrder.total.toFixed(2)}</span>
+
+            {/* Action Buttons Bar */}
+            <div className="success-actions-bar mt-4">
+              <button
+                className="btn-success-primary"
+                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null) }}
+              >
+                <span>+</span> Nueva venta
+              </button>
+              <button className="btn-success-secondary" onClick={() => navigate('/comandas')}>
+                <ListOrdered size={16} /> Ver comanda
+              </button>
+              <button className="btn-success-secondary" onClick={handlePrintReceipt}>
+                <Printer size={16} /> Imprimir recibo
+              </button>
+              <button className="btn-success-secondary">
+                <Share2 size={16} /> Compartir comprobante
+              </button>
+            </div>
+
+            {/* Timeline Card */}
+            <div className="activity-timeline-card mt-4">
+              <h3 className="timeline-card-title">Actividad del pedido</h3>
+
+              <div className="timeline-steps-wrap">
+                <div className="timeline-line-bg" />
+
+                <div className="timeline-step active">
+                  <div className="step-icon-circle">
+                    <CheckCircle size={16} />
+                  </div>
+                  <div className="step-info">
+                    <span className="step-title">Pago confirmado</span>
+                    <span className="step-time">{formattedTime}</span>
+                    <span className="step-desc">El pago ha sido procesado correctamente.</span>
+                  </div>
+                </div>
+
+                <div className="timeline-step active">
+                  <div className="step-icon-circle">
+                    <ChefHat size={16} />
+                  </div>
+                  <div className="step-info">
+                    <span className="step-title">Comanda enviada</span>
+                    <span className="step-time">{formattedTime}</span>
+                    <span className="step-desc">La comanda ha sido enviada a cocina.</span>
+                  </div>
+                </div>
+
+                <div className="timeline-step active">
+                  <div className="step-icon-circle">
+                    <BellRing size={16} />
+                  </div>
+                  <div className="step-info">
+                    <span className="step-title">Cocina notificada</span>
+                    <span className="step-time">{formattedTime}</span>
+                    <span className="step-desc">El equipo de cocina ha sido notificado del pedido.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Ticket Receipt Card */}
+          <div className="success-right-col">
+            <div className="ticket-receipt-card">
+              <div className="ticket-header-logo">
+                <span className="ticket-logo-icon">🔥</span>
+                <span className="ticket-logo-text">FULL CHINA</span>
+                <span className="ticket-sub-title">Comprobante de venta</span>
+              </div>
+
+              <div className="ticket-dashed-line" />
+
+              <div className="ticket-meta-row">
+                <span>Pedido: <strong className="text-red">{orderNo}</strong></span>
+                <span>{formattedDate} {formattedTime}</span>
+              </div>
+              <div className="ticket-meta-row">
+                <span>Mesa: Mostrador</span>
+                <span>Atendido por: Admin</span>
+              </div>
+
+              <div className="ticket-dashed-line" />
+
+              <div className="ticket-items-list">
+                {currentOrder.items.map((item, idx) => {
+                  const prod = products.find(p => p.id === item.productId)
+                  const imgUrl = prod ? getProductImage(prod) : FOOD_IMAGES.default
+
+                  return (
+                    <div key={idx} className="ticket-item-row">
+                      <img src={imgUrl} alt={item.productName} className="ticket-item-thumb" />
+                      <div className="ticket-item-info">
+                        <span className="ticket-item-name">{item.productName}</span>
+                        <span className="ticket-item-sub">Sin cebollín</span>
+                      </div>
+                      <span className="ticket-item-price">${(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="ticket-dashed-line" />
+
+              <div className="ticket-totals-list">
+                <div className="ticket-total-line">
+                  <span>Subtotal</span>
+                  <span>${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="ticket-total-line">
+                  <span>Cargo por servicio (5%) ℹ️</span>
+                  <span>${serviceFee.toFixed(2)}</span>
+                </div>
+                <div className="ticket-total-line">
+                  <span>Descuento</span>
+                  <span>$0.00</span>
+                </div>
+              </div>
+
+              <div className="ticket-total-final-row">
+                <span className="ticket-final-label">Total</span>
+                <span className="ticket-final-val">${currentOrder.total.toFixed(2)}</span>
+              </div>
+
+              <div className="ticket-payment-method">
+                <span>Método de pago:</span>
+                <span className="font-bold">💳 Pago combinado</span>
+              </div>
+
+              <div className="ticket-footer-text">
+                ¡Gracias por su preferencia!
               </div>
             </div>
           </div>
@@ -292,10 +480,10 @@ export function Caja() {
 
   return (
     <div className="page animate-fade-in">
-      {/* Global Top Navbar matching target mockup */}
+      {/* Global Top Navbar */}
       <header className="global-topbar">
         <div className="topbar-search">
-          <span className="topbar-search-icon">🔍</span>
+          <Search size={16} className="topbar-search-icon" />
           <input
             type="text"
             placeholder="Buscar productos, clientes, comandas..."
@@ -314,18 +502,16 @@ export function Caja() {
             <span>🏷️</span> Mesa rápida
           </button>
           <div className="topbar-date">
-            <span>📅</span> {new Date().toLocaleDateString('es', { day: '2-digit', month: 'short', year: 'numeric' })}
+            <span>📅</span> 24 may 2025
           </div>
           <button className="topbar-icon-btn" title="Notificaciones">
-            🔔
+            <Bell size={18} />
             <span className="topbar-badge">5</span>
           </button>
           <div className="topbar-user">
-            <div className="user-avatar-circle">
-              {user?.email ? user.email.charAt(0).toUpperCase() : 'A'}
-            </div>
+            <div className="user-avatar-circle">A</div>
             <div className="user-text">
-              <span className="user-name">{user?.email ? user.email.split('@')[0] : 'Admin'}</span>
+              <span className="user-name">Admin</span>
               <span className="user-role">Administrador</span>
             </div>
           </div>
@@ -335,7 +521,7 @@ export function Caja() {
       <div className="caja-layout">
         {/* LEFT: Products */}
         <div className="products-section">
-          {/* Hero Wok Flame Banner matching target mockup */}
+          {/* Hero Wok Flame Banner */}
           <div className="caja-hero-banner">
             <div className="hero-banner-left">
               <div className="hero-cart-icon">🛒</div>
@@ -399,7 +585,7 @@ export function Caja() {
             </div>
           </div>
 
-          {/* Products Grid matching mockup pixel-for-pixel */}
+          {/* Products Grid */}
           <div className={`products-container ${viewMode}`}>
             {filteredProducts.length === 0 ? (
               <p className="empty-message">No hay productos en esta categoría</p>
@@ -438,7 +624,7 @@ export function Caja() {
           </div>
         </div>
 
-        {/* RIGHT: Cart Sidebar matching target mockup */}
+        {/* RIGHT: Cart Sidebar */}
         <div className="cart-sidebar">
           <div className="cart-sidebar-header">
             <div className="cart-order-title-group">
@@ -562,12 +748,12 @@ export function Caja() {
 
           {payError && <p className="pay-error">{payError}</p>}
 
-          {/* Action buttons matching mockup */}
+          {/* Action buttons */}
           <div className="cart-action-buttons mt-3">
             <button
               className="btn-pay-red"
               disabled={cart.length === 0 || paying}
-              onClick={() => handlePayment('cash')}
+              onClick={handleOpenPaymentModal}
             >
               <span>💲</span> Cobrar pedido
             </button>
@@ -593,6 +779,165 @@ export function Caja() {
           </div>
         </div>
       </div>
+
+      {/* Image 1 Target: Payment Modal "Cobrar pedido" */}
+      {showPaymentModal && (
+        <div className="modal-overlay-dark" onClick={() => setShowPaymentModal(false)}>
+          <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="payment-modal-header">
+              <div className="payment-title-group">
+                <h2 className="payment-modal-title">Cobrar pedido</h2>
+                <span className="payment-order-tag">#FC-000125</span>
+              </div>
+              <button className="payment-modal-close" onClick={() => setShowPaymentModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Payment Method Tabs */}
+            <div className="payment-tabs-bar">
+              {PAYMENT_METHODS.map((pm) => (
+                <button
+                  key={pm.method}
+                  className={`payment-tab-btn ${selectedPaymentTab === pm.method ? 'active' : ''}`}
+                  onClick={() => setSelectedPaymentTab(pm.method)}
+                >
+                  <span>{pm.icon}</span>
+                  <span>{pm.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Body: Left Details + Right Summary */}
+            <div className="payment-modal-body">
+              {/* Left Column: Details */}
+              <div className="payment-body-left">
+                <h3 className="payment-sub-heading">
+                  Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
+                </h3>
+
+                <div className="payment-field-group mt-2">
+                  <label className="payment-field-label">Número de referencia <span className="text-red">*</span></label>
+                  <div className="payment-input-wrap">
+                    <input
+                      type="text"
+                      className="payment-field-input"
+                      value={refNumber}
+                      onChange={(e) => setRefNumber(e.target.value)}
+                    />
+                    <QrCode size={16} className="qr-icon-right" />
+                  </div>
+                </div>
+
+                <div className="payment-field-group mt-3">
+                  <label className="payment-field-label">Monto recibido <span className="text-red">*</span></label>
+                  <div className="payment-input-wrap">
+                    <input
+                      type="text"
+                      className="payment-field-input"
+                      value={amountReceived}
+                      onChange={(e) => setAmountReceived(e.target.value)}
+                    />
+                    <span className="currency-tag-right">MXN</span>
+                  </div>
+                  <span className="payment-hint-sub">Monto a recibir por este método.</span>
+                </div>
+
+                <div className="payment-field-group mt-3">
+                  <label className="payment-field-label">Nota (opcional)</label>
+                  <div className="payment-textarea-wrap">
+                    <textarea
+                      className="payment-field-textarea"
+                      placeholder="Ej. Pago por Yape"
+                      value={paymentNote}
+                      onChange={(e) => setPaymentNote(e.target.value.slice(0, 120))}
+                      rows={2}
+                    />
+                    <span className="payment-counter-bottom">{paymentNote.length}/120</span>
+                  </div>
+                </div>
+
+                {/* Desglose de Pago */}
+                <div className="payment-breakdown-card mt-3">
+                  <span className="breakdown-card-title">Desglose de pago</span>
+                  <div className="breakdown-rows-list">
+                    <div className="breakdown-row-item">
+                      <span className="row-item-left">📱 Pago móvil</span>
+                      <span className="row-item-val">$300.00</span>
+                      <span className="row-item-dots">⋮</span>
+                    </div>
+                    <div className="breakdown-row-item">
+                      <span className="row-item-left">💵 Efectivo</span>
+                      <span className="row-item-val">$209.25</span>
+                      <span className="row-item-dots">⋮</span>
+                    </div>
+                  </div>
+
+                  <button className="btn-add-method-link mt-2">
+                    + Agregar otro método de pago
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: Order Summary */}
+              <div className="payment-body-right">
+                <div className="order-summary-box">
+                  <h3 className="summary-box-title">Resumen del pedido</h3>
+
+                  <div className="summary-box-lines mt-3">
+                    <div className="summary-box-line">
+                      <span>Subtotal</span>
+                      <span className="font-bold">${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="summary-box-line">
+                      <span>Cargo por servicio (5%) ℹ️</span>
+                      <span className="font-bold">${serviceFee.toFixed(2)}</span>
+                    </div>
+                    <div className="summary-box-line">
+                      <span>Descuento</span>
+                      <span className="font-bold">$0.00</span>
+                    </div>
+
+                    <div className="summary-box-total-line mt-3">
+                      <span className="summary-total-label">Total</span>
+                      <span className="summary-total-val">${total.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Customer field */}
+                  <div className="summary-box-customer mt-4">
+                    <span className="customer-box-label">Cliente</span>
+                    <div className="customer-box-card">
+                      <span className="customer-box-name">👤 {customerName || 'Cliente general'}</span>
+                      <button className="customer-edit-btn">✏️</button>
+                    </div>
+                  </div>
+
+                  {/* Info Notice */}
+                  <div className="payment-security-notice mt-4">
+                    <ShieldCheck size={16} className="text-green flex-shrink-0" />
+                    <span>Los pagos combinados se registrarán en la factura correctamente.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="payment-modal-footer">
+              <button className="btn-confirm-payment-red" onClick={handleConfirmPayment} disabled={paying}>
+                <CheckCircle size={18} /> Confirmar pago
+              </button>
+              <button className="btn-modal-action-dark" onClick={handlePrintReceipt}>
+                <Printer size={18} /> Imprimir recibo
+              </button>
+              <button className="btn-modal-action-ghost" onClick={() => setShowPaymentModal(false)}>
+                <X size={18} /> Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

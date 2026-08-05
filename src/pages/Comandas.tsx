@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { getOrdersWithItems, type FullOrder } from '../lib/dataService'
 import {
   Search,
   Plus,
@@ -246,6 +247,53 @@ export function Comandas() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
 
+  // Fetch real orders from Supabase / dataService
+  useEffect(() => {
+    let active = true
+    const loadRealOrders = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0]
+        const realOrders: FullOrder[] = await getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59')
+        if (realOrders && realOrders.length > 0 && active) {
+          const mapped: ComandaOrder[] = realOrders.map((o) => {
+            const date = new Date(o.createdAt)
+            const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
+            let status: ComandaOrder['status'] = 'new'
+            if (o.status === 'preparing') status = 'preparing'
+            else if (o.status === 'ready') status = 'ready'
+            else if (o.status === 'paid' || o.status === 'delivered') status = 'delivered'
+
+            return {
+              id: o.id,
+              orderNumber: `#FC-${String(o.orderNumber).padStart(6, '0')}`,
+              time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+              isRetraso: elapsed > 15 && status !== 'delivered',
+              customerName: o.customerName || 'Cliente general',
+              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : 'Mostrador',
+              items: o.items.map((item) => ({
+                id: item.id,
+                name: item.productName,
+                quantity: item.quantity,
+              })),
+              paymentMethod: o.status === 'paid' ? 'Pago: Efectivo' : 'Pago: Tarjeta',
+              paymentType: o.status === 'paid' ? 'cash' : 'card',
+              elapsedMins: elapsed < 0 ? 1 : elapsed,
+              status,
+              deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+            }
+          })
+          setComandas(mapped)
+        }
+      } catch (e) {
+        console.error('Error cargando comandas reales:', e)
+      }
+    }
+
+    loadRealOrders()
+    const interval = setInterval(loadRealOrders, 10000)
+    return () => { active = false; clearInterval(interval) }
+  }, [])
+
   // Simulation timer for elapsed mins
   useEffect(() => {
     const timer = setInterval(() => {
@@ -477,7 +525,7 @@ export function Comandas() {
 
                       {/* Footer Row */}
                       <div className="card-footer-line">
-                        <span className={`payment-type-badge ${order.paymentType}`}>
+                        <span className={`payment-type-badge pay-${order.paymentType}`}>
                           {order.paymentMethod}
                         </span>
 
