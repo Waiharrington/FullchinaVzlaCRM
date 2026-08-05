@@ -1267,7 +1267,7 @@ body:has(.login-page) {
     overflow: visible;
   }
 
-  .desktop-layer-image {
+  .desktop-carousel-img {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -1279,7 +1279,7 @@ body:has(.login-page) {
     transition: opacity 1.5s cubic-bezier(0.4, 0, 0.2, 1), translate 1.5s cubic-bezier(0.4, 0, 0.2, 1), filter 1.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .desktop-layer-image.active {
+  .desktop-carousel-img.active {
     opacity: 1;
     translate: 0 0;
     filter: blur(0);
