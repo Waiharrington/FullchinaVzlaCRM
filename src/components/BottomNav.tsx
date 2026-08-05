@@ -29,8 +29,8 @@ export function BottomNav() {
 
   // En la barra inferior (BottomNav) mostramos solo los primeros 4 elementos principales
   const bottomItems = allowedItems.slice(0, 4)
-  // En el menú "Más" mostramos TODOS los elementos para tener una navegación completa
-  const menuItems = allowedItems
+  // En el menú "Más" mostramos el RESTO de los elementos (los que no cupieron)
+  const menuItems = allowedItems.slice(4)
 
   return (
     <>
