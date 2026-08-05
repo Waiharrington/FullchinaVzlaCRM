@@ -158,6 +158,42 @@
   box-shadow: 0 6px 20px rgba(220, 38, 38, 0.45);
 }
 
+/* ─── EXCHANGE RATES (inline) ─── */
+.db-greeting-sub-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.db-greeting-sub {
+  font-size: 0.82rem;
+  color: #71717a;
+  margin: 0;
+}
+
+.db-greeting-rates {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  color: #52525b;
+}
+
+.db-greeting-rates svg {
+  color: #10b981;
+}
+
+.db-greeting-rates strong {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.db-rate-sep {
+  color: #3f3f46;
+  margin: 0 0.1rem;
+}
+
 /* ─── SECTION LABEL ─── */
 .db-section-label {
   display: flex;
@@ -193,7 +229,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: 35%;
+  width: 45%;
   z-index: 1;
   pointer-events: none;
 }
@@ -202,8 +238,9 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: 100% center;
   display: block;
+  opacity: 0.85;
 }
 
 .kpi-banner-gradient {
@@ -212,10 +249,10 @@
   background: linear-gradient(
     to right,
     #141416 0%,
-    rgba(20, 20, 22, 0.95) 15%,
-    rgba(20, 20, 22, 0.7) 40%,
-    rgba(20, 20, 22, 0.3) 70%,
-    rgba(20, 20, 22, 0.05) 100%
+    rgba(20, 20, 22, 0.85) 10%,
+    rgba(20, 20, 22, 0.4) 35%,
+    rgba(20, 20, 22, 0.1) 60%,
+    rgba(20, 20, 22, 0.0) 100%
   );
 }
 
@@ -569,18 +606,139 @@
 @keyframes dbFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ─── RESPONSIVE ─── */
-@media (max-width: 1200px) {
+
+/* Tablet (769px – 1200px) */
+@media (min-width: 769px) and (max-width: 1200px) {
   .db-grid-4 { grid-template-columns: 1fr 1fr; }
   .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi-banner-content { width: 38%; padding: 1rem; }
+  .kpi-banner-img-wrap { width: 62%; display: block; }
+  .kpi-banner-img { object-position: 100% center; opacity: 1; }
+  .kpi-banner-gradient {
+    background: linear-gradient(
+      to right,
+      #141416 0%,
+      rgba(20, 20, 22, 0.9) 20%,
+      rgba(20, 20, 22, 0.4) 50%,
+      rgba(20, 20, 22, 0.0) 100%
+    );
+  }
+  .db-footer-strip { grid-template-columns: repeat(2, 1fr); }
 }
 
-@media (max-width: 768px) {
-  .db-header { flex-direction: column; align-items: flex-start; }
-  .db-header-right { flex-wrap: wrap; }
+/* Mobile large (≤ 767px) */
+@media (max-width: 767px) {
+  .db-page { gap: 1rem; }
+
+  /* Header */
+  .db-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .db-header-left { flex: 1; }
+  .db-greeting { font-size: 1.25rem; }
+  .db-greeting-sub { font-size: 0.75rem; }
+  .db-header-right {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .db-header-pill { height: 34px; font-size: 0.72rem; padding: 0 0.65rem; }
+  .db-header-search { flex: 1; min-width: 0; width: auto; height: 34px; }
+  .db-header-icon-btn { width: 34px; height: 34px; }
+  .db-primary-btn { height: 34px; font-size: 0.78rem; padding: 0 0.85rem; flex: 1; justify-content: center; }
+  .db-exchange-rates { height: 34px; padding: 0 0.5rem; gap: 0.5rem; }
+  .db-rate-label { font-size: 0.55rem; }
+  .db-rate-value { font-size: 0.68rem; }
+
+  /* KPI Banner */
+  .kpi-banner { min-height: auto; }
+  .kpi-banner-content { width: 100%; padding: 1rem; }
+  .kpi-banner-img-wrap { display: none; }
+  .kpi-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .kpi-card { padding: 0.85rem 0.75rem; gap: 0.65rem; border-radius: 12px; }
+  .kpi-icon-circle { width: 36px; height: 36px; }
+  .kpi-icon-circle svg { width: 16px; height: 16px; }
+  .kpi-label { font-size: 0.58rem; }
+  .kpi-value { font-size: 1.2rem; }
+  .kpi-trend { font-size: 0.6rem; }
+
+  /* Grids */
   .db-grid-4 { grid-template-columns: 1fr; }
   .db-grid-3 { grid-template-columns: 1fr; }
+  .db-chart-box { height: 160px; }
+
+  /* Cards compact */
+  .db-card { padding: 0.9rem; }
+  .db-card-head h3 { font-size: 0.65rem; }
+
+  /* Payment doughnut mobile */
+  .db-pago-layout { flex-direction: row; align-items: center; }
+  .db-donut-wrap { width: 100px; height: 100px; }
+  .db-pago-legend { gap: 0.25rem; }
+  .pago-legend-row { font-size: 0.68rem; }
+
+  /* Orders list compact */
+  .db-order-row { grid-template-columns: auto 1fr auto auto; gap: 0.35rem; padding: 0.45rem 0.35rem; }
+  .ord-time { font-size: 0.65rem; }
+  .ord-folio { font-size: 0.7rem; }
+  .ord-badge { font-size: 0.55rem; padding: 0.1rem 0.35rem; }
+  .ord-total { font-size: 0.7rem; }
+
+  /* Sellers compact */
+  .seller-row-v2 { gap: 0.45rem; padding: 0.35rem 0.25rem; }
+  .seller-thumb { width: 30px; height: 30px; }
+  .seller-name-v2 { font-size: 0.7rem; }
+  .seller-rev { font-size: 0.7rem; }
+
+  /* Production layout */
+  .db-prod-layout { flex-direction: column; align-items: center; text-align: center; }
+
+  /* Cobrar */
+  .cobrar-big-value { font-size: 1.1rem; }
+
+  /* Quick actions */
+  .db-quick-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  .qa-btn { padding: 0.75rem 0.35rem; min-width: 0; }
+  .qa-icon-wrap { width: 38px; height: 38px; }
+  .qa-icon-wrap svg { width: 18px; height: 18px; }
+  .qa-btn span { font-size: 0.62rem; }
+
+  /* Footer strip */
+  .db-footer-strip { grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+  .db-footer-metric { padding: 0.75rem; gap: 0.5rem; border-radius: 10px; }
+  .fm-icon { width: 30px; height: 30px; border-radius: 6px; }
+  .fm-icon svg { width: 14px; height: 14px; }
+  .fm-label { font-size: 0.5rem; }
+  .fm-val { font-size: 0.95rem; }
+  .fm-sub { font-size: 0.52rem; }
+}
+
+/* Mobile small (≤ 480px) */
+@media (max-width: 480px) {
+  .db-greeting { font-size: 1.1rem; }
+  .db-greeting-sub { font-size: 0.7rem; }
+
+  /* Header row: bell + button only, hide date pill on very small */
+  .db-header-pill { display: none; }
+  .db-header-search { display: none; }
+  .db-exchange-rates { display: none; }
+  .db-greeting-rates { display: none; }
+
+  /* KPI single column on very small */
   .kpi-row { grid-template-columns: 1fr; }
-  .db-footer-strip { grid-template-columns: repeat(2, 1fr); }
-  .db-quick-actions { flex-wrap: wrap; }
-  .qa-btn { min-width: calc(33% - 0.5rem); }
+  .kpi-card { padding: 0.75rem 0.65rem; }
+  .kpi-value { font-size: 1.1rem; }
+
+  /* Footer single column */
+  .db-footer-strip { grid-template-columns: 1fr; }
 }

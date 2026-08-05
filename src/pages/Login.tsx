@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/auth-context'
-import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Grid3X3, Truck } from 'lucide-react'
+import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Grid3X3 } from 'lucide-react'
 import './Login.css'
 
 const CAROUSEL_IMAGES = [
@@ -9,8 +9,16 @@ const CAROUSEL_IMAGES = [
   '/login-carousel/slide3.png',
   '/login-carousel/slide4.png',
   '/login-carousel/slide5.png',
-  '/login-carousel/slide6.png',
   '/login-carousel/slide7.jpg'
+];
+
+const CAROUSEL_SETTINGS = [
+  { posY: 80, zoom: 1.25 },
+  { posY: 80, zoom: 1.15 },
+  { posY: 85, zoom: 1.10 },
+  { posY: 80, zoom: 1.00 },
+  { posY: 85, zoom: 1.10 },
+  { posY: 75, zoom: 1.15 },
 ];
 
 export function Login() {
@@ -20,6 +28,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [rememberMe, setRememberMe] = useState(true)
 
   const [isPinMode, setIsPinMode] = useState(false)
   const [pin, setPin] = useState('')
@@ -29,7 +38,7 @@ export function Login() {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % CAROUSEL_IMAGES.length)
-    }, 2000)
+    }, 10000)
     return () => clearInterval(interval)
   }, [])
 
@@ -112,6 +121,10 @@ export function Login() {
             src={src} 
             alt="Full China Food"
             className={`carousel-img ${index === currentSlide ? 'active' : ''}`}
+            style={{
+              objectPosition: `50% ${CAROUSEL_SETTINGS[index]?.posY ?? 25}%`,
+              transform: `scale(${CAROUSEL_SETTINGS[index]?.zoom ?? 1})`
+            }}
           />
         ))}
         <div className="carousel-overlay"></div>
@@ -121,65 +134,36 @@ export function Login() {
         
         {/* LEFT COLUMN: Branding */}
         <div className="login-left">
-          <img src="/logo.png" alt="Full China" className="login-main-logo" />
-          
-          <div className="login-hero-text">
-            <h2>Sabor que</h2>
-            <h2><span className="text-highlight">enciende</span> tu día</h2>
+          <div className="login-left-top">
+            <img src="/logo.png" alt="Full China" className="login-main-logo" />
           </div>
           
-          <p className="login-description">
-            Gestiona tu food truck con el control y<br />la pasión que nos caracteriza.
-          </p>
-
-          <div className="login-features">
-            <div className="feature-item">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" strokeWidth="1.5">
-                <path d="M3 20h18" stroke="#d12c2c" strokeLinecap="round" className="sales-floor"/>
-                <path d="M6 20v-5m6 5v-8m6 8v-11" stroke="#facc15" strokeLinecap="round" className="sales-bar"/>
-                <path d="M3 13l5-5 4 4 8-8" stroke="#facc15" strokeLinecap="round" strokeLinejoin="round" className="sales-line"/>
-                <path d="M16 4h4v4" stroke="#facc15" strokeLinecap="round" strokeLinejoin="round" className="sales-arrow"/>
-              </svg>
-              <span>Ventas</span>
+          <div className="login-left-bottom">
+            <div className="login-hero-text">
+              <h2>Sabor que</h2>
+              <h2><span className="text-highlight">enciende</span></h2>
+              <h2>tu día</h2>
             </div>
-            <div className="feature-item">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="1.5">
-                <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z" strokeLinecap="round" strokeLinejoin="round" className="ticket-body"/>
-                <path d="M8 8h8M8 12h8M8 16h8" strokeLinecap="round" className="ticket-lines"/>
-              </svg>
-              <span>Comandas</span>
-            </div>
-            <div className="feature-item">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="1.5">
-                <path d="M12 2.5l8 4.5-8 4.5-8-4.5 8-4.5z" strokeLinecap="round" strokeLinejoin="round" className="box-lid"/>
-                <path d="M20 7v9l-8 4.5V11.5M4 7v9l8 4.5V11.5" strokeLinecap="round" strokeLinejoin="round" className="box-sides"/>
-                <path d="M8 4.5l8 4.5" strokeLinecap="round" strokeLinejoin="round" className="box-tape"/>
-              </svg>
-              <span>Inventario</span>
-            </div>
-            <div className="feature-item">
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" strokeWidth="1.5">
-                <path d="M12 11c-2 0-4-1.5-4-4 0-1.5 1.5-3 2.5-4.5C10.5 2.5 10 4 11 5c1-1 3-2 3-2-1.5 2-2 3-2 4 0 1.5 1 2.5 2 2.5z" fill="#d12c2c" stroke="#d12c2c" strokeLinecap="round" strokeLinejoin="round" className="flame-big"/>
-                <path d="M14.5 9c1 0 2-1 2-2 0-1-1-2-1-2 0 1-1 1.5-1 1.5s1 .5 1 1c0 .5-.5 1-1 1z" fill="#d12c2c" stroke="#d12c2c" strokeLinecap="round" strokeLinejoin="round" className="flame-mid"/>
-                <path d="M8.5 9c-1 0-2-1-2-2 0-1 1-2 1-2 0 1 1 1.5 1 1.5s-1 .5-1 1c0 .5.5 1 1 1z" fill="#d12c2c" stroke="#d12c2c" strokeLinecap="round" strokeLinejoin="round" className="flame-small"/>
-                <path d="M3 13c0 4.5 4 8 9 8s9-3.5 9-8" stroke="#facc15" strokeLinecap="round" strokeLinejoin="round" className="svg-wok-pan"/>
-                <path d="M1 13h22" stroke="#facc15" strokeLinecap="round" strokeLinejoin="round" className="svg-wok-rim"/>
-                <path d="M21 13l2-2" stroke="#facc15" strokeLinecap="round" strokeLinejoin="round" className="svg-wok-handle"/>
-              </svg>
-              <span>Producción</span>
-            </div>
+            
+            <p className="login-description">
+              Gestiona tu negocio, controla<br />
+              tus ventas y haz crecer<br />
+              Full China cada día.
+            </p>
           </div>
         </div>
 
         {/* RIGHT COLUMN: Login Card */}
         <div className="login-right">
           <div className="login-card animate-fade-in">
+            {/* Logo */}
+            <div className="card-logo-wrapper">
+              <img src="/logo.png" alt="Full China" className="card-logo-img" />
+            </div>
+
             <div className="login-header">
-              <h1 className="login-title">Iniciar sesión</h1>
-              <div className="secure-badge">
-                <ShieldCheck size={16} />
-                <span>Acceso seguro</span>
-              </div>
+              <h1 className="login-title">¡Bienvenido!</h1>
+              <p className="login-subtitle">Inicia sesión para continuar</p>
             </div>
 
             <form onSubmit={handleSubmit} className="login-form">
@@ -211,7 +195,7 @@ export function Login() {
                 {/* EMAIL MODE SECTION */}
                 <div className={`form-section ${!isPinMode ? 'active' : 'inactive-right'}`}>
                   <div className="field-group">
-                    <label htmlFor="email">Correo o usuario</label>
+                    <label htmlFor="email">Correo electrónico</label>
                     <div className="input-wrapper">
                       <User className="input-icon" size={18} />
                       <input
@@ -252,12 +236,31 @@ export function Login() {
                 </div>
               </div>
 
+              <div className="form-options">
+                <label className="checkbox-wrapper">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                  <span className="checkbox-custom"></span>
+                  <span className="checkbox-label">Recordar sesión</span>
+                </label>
+                <a href="#" className="forgot-password" onClick={(e) => e.preventDefault()}>¿Olvidaste tu contraseña?</a>
+              </div>
+
               {error && <p className="error-message">{error}</p>}
 
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Ingresando...' : 'Entrar al sistema'}
+                {loading ? 'Ingresando...' : 'Iniciar sesión'}
                 <ArrowRight size={18} />
               </button>
+
+              <div className="divider-row">
+                <span className="divider-line"></span>
+                <span className="divider-text">o</span>
+                <span className="divider-line"></span>
+              </div>
 
               <button 
                 type="button" 
@@ -283,8 +286,8 @@ export function Login() {
             </form>
 
             <div className="login-footer">
-              <Truck size={16} className="footer-icon" />
-              <span>Sistema operativo para food truck</span>
+              <ShieldCheck size={16} className="footer-icon" />
+              <span>Sistema seguro para Full China</span>
             </div>
           </div>
         </div>

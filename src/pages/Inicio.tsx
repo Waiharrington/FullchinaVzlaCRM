@@ -31,25 +31,25 @@ export function Inicio() {
   const { todayStats } = useDemoData()
   const navigate = useNavigate()
 
-  const totalSales = todayStats.totalSales > 0 ? todayStats.totalSales : 25780
-  const ordersCount = todayStats.ordersCount > 0 ? todayStats.ordersCount : 146
-  const platosVendidos = 312
+  const totalSales = todayStats.totalSales > 0 ? todayStats.totalSales : 1840
+  const ordersCount = todayStats.ordersCount > 0 ? todayStats.ordersCount : 48
+  const platosVendidos = 127
   const utilidadNeta = totalSales * 0.347
 
   const recentOrders = useMemo(() => {
     const mock = [
-      { id: '#1467', time: '22:15', status: 'Pagada', total: 78.00 },
-      { id: '#1466', time: '22:37', status: 'Pago mixto', total: 64.00 },
-      { id: '#1465', time: '22:32', status: 'Pagada', total: 112.00 },
-      { id: '#1464', time: '21:55', status: 'Por cobrar', total: 98.00 },
-      { id: '#1463', time: '21:50', status: 'Pagada', total: 54.00 },
+      { id: '#1467', time: '22:15', status: 'Pagada', total: 42.00 },
+      { id: '#1466', time: '22:37', status: 'Pago mixto', total: 35.00 },
+      { id: '#1465', time: '22:32', status: 'Pagada', total: 67.50 },
+      { id: '#1464', time: '21:55', status: 'Por cobrar', total: 54.00 },
+      { id: '#1463', time: '21:50', status: 'Pagada', total: 28.00 },
     ]
     return mock
   }, [])
 
   const chartData = useMemo(() => {
     const labels = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
-    const data = [800, 1200, 2100, 3200, 3980, 3500, 2800, 1900]
+    const data = [120, 180, 340, 420, 380, 260, 190, 90]
     return {
       labels,
       datasets: [{
@@ -122,7 +122,14 @@ export function Inicio() {
       <header className="db-header">
         <div className="db-header-left">
           <h1 className="db-greeting">¡Buen día, Chef! <Flame size={24} className="greeting-flame" /></h1>
-          <p className="db-greeting-sub">Aquí tienes el resumen de tu food truck.</p>
+          <div className="db-greeting-sub-row">
+            <p className="db-greeting-sub">Aquí tienes el resumen de tu food truck.</p>
+            <span className="db-greeting-rates">
+              <DollarSign size={12} /> BCV <strong>Bs. 36,50</strong>
+              <span className="db-rate-sep">·</span>
+              EUR <strong>Bs. 40,20</strong>
+            </span>
+          </div>
         </div>
         <div className="db-header-right">
           <button className="db-header-pill">
@@ -210,10 +217,10 @@ export function Inicio() {
             </div>
             <div className="db-pago-legend">
               {[
-                { c: '#ef4444', n: 'Efectivo', p: '58%', v: '$14,936' },
-                { c: '#f59e0b', n: 'Tarjeta', p: '28%', v: '$7,218' },
-                { c: '#fbbf24', n: 'Yape / Plin', p: '10%', v: '$2,578' },
-                { c: '#52525b', n: 'Mixto', p: '4%', v: '$1,048' },
+                { c: '#ef4444', n: 'Efectivo', p: '58%', v: '$1,067' },
+                { c: '#f59e0b', n: 'Tarjeta', p: '28%', v: '$515' },
+                { c: '#fbbf24', n: 'Yape / Plin', p: '10%', v: '$184' },
+                { c: '#52525b', n: 'Mixto', p: '4%', v: '$74' },
               ].map((r, i) => (
                 <div key={i} className="pago-legend-row">
                   <span className="pago-dot" style={{ background: r.c }}></span>
@@ -250,11 +257,11 @@ export function Inicio() {
           </div>
           <div className="db-sellers-list">
             {[
-              { rank: 1, name: 'Arroz Chaufa Full', sold: 86, total: 1160, img: '/login-carousel/slide1.webp' },
-              { rank: 2, name: 'Chow Mein Especial', sold: 72, total: 1008, img: '/login-carousel/slide2.webp' },
-              { rank: 3, name: 'Lumpias (6 und)', sold: 54, total: 972, img: '/login-carousel/slide3.png' },
-              { rank: 4, name: 'Pollo Agridulce', sold: 42, total: 714, img: '/logo.png' },
-              { rank: 5, name: 'Arroz con Pollo', sold: 38, total: 570, img: '/logo.png' },
+              { rank: 1, name: 'Arroz Chaufa Full', sold: 24, total: 600, img: '/login-carousel/slide1.webp' },
+              { rank: 2, name: 'Chow Mein Especial', sold: 19, total: 475, img: '/login-carousel/slide2.webp' },
+              { rank: 3, name: 'Lumpias (6 und)', sold: 16, total: 368, img: '/login-carousel/slide3.png' },
+              { rank: 4, name: 'Pollo Agridulce', sold: 14, total: 238, img: '/logo.png' },
+              { rank: 5, name: 'Arroz con Pollo', sold: 12, total: 180, img: '/logo.png' },
             ].map((d, i) => (
               <div key={i} className="seller-row-v2">
                 <span className={`seller-rank r${d.rank}`}>{d.rank}</span>
@@ -336,15 +343,15 @@ export function Inicio() {
             <div className="cobrar-icon-wrap"><CreditCard size={22} /></div>
             <div className="cobrar-data">
               <span className="cobrar-label">Total por cobrar</span>
-              <span className="cobrar-big-value">$2,156</span>
-              <span className="cobrar-sub">6 comandas pendientes</span>
+              <span className="cobrar-big-value">$340</span>
+              <span className="cobrar-sub">3 comandas pendientes</span>
             </div>
           </div>
           <div className="db-cobrar-list">
             {[
-              { id: '#1458', total: 78.00 },
-              { id: '#1451', total: 64.00 },
-              { id: '#1442', total: 112.00 },
+              { id: '#1458', total: 54.00 },
+              { id: '#1451', total: 135.00 },
+              { id: '#1442', total: 151.00 },
             ].map((c, i) => (
               <div key={i} className="cobrar-row">
                 <span className="cobrar-row-id">Coma. {c.id}</span>
@@ -372,19 +379,19 @@ export function Inicio() {
       <div className="db-footer-strip">
         <div className="db-footer-metric">
           <div className="fm-icon"><Package size={16} /></div>
-          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><span className="fm-val">$18,750</span><span className="fm-sub">Valor actual</span></div>
+          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><span className="fm-val">$2,450</span><span className="fm-sub">Valor actual</span></div>
         </div>
         <div className="db-footer-metric">
           <div className="fm-icon"><ChefHat size={16} /></div>
-          <div className="fm-text"><span className="fm-label">COSTO DE INSUMOS USADOS</span><span className="fm-val">$7,840</span><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">COSTO DE INSUMOS USADOS</span><span className="fm-val">$640</span><span className="fm-sub">Hoy</span></div>
         </div>
         <div className="db-footer-metric">
           <div className="fm-icon"><Receipt size={16} /></div>
-          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><span className="fm-val">$3,970</span><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><span className="fm-val">$320</span><span className="fm-sub">Hoy</span></div>
         </div>
         <div className="db-footer-metric highlight-green">
           <div className="fm-icon green-glow"><TrendingUp size={16} /></div>
-          <div className="fm-text"><span className="fm-label">UTILIDAD NETA ESTIMADA</span><span className="fm-val green-text">$8,940</span><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">UTILIDAD NETA ESTIMADA</span><span className="fm-val green-text">$880</span><span className="fm-sub">Hoy</span></div>
         </div>
       </div>
 

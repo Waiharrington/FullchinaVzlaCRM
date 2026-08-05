@@ -6,13 +6,12 @@ import './Layout.css'
 
 export function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
     <div className="app-layout">
-      {/* Sidebar - hidden on mobile unless open */}
-      <div className={`sidebar-container ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-        <Sidebar />
-        {/* Overlay to close sidebar on mobile */}
+      <div className={`sidebar-container ${mobileMenuOpen ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         {mobileMenuOpen && (
           <div 
             className="sidebar-overlay" 
@@ -21,7 +20,7 @@ export function Layout() {
         )}
       </div>
 
-      <div className="main-content-wrapper">
+      <div className={`main-content-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <main className="app-main">
           <Outlet />
         </main>
@@ -30,4 +29,3 @@ export function Layout() {
     </div>
   )
 }
-

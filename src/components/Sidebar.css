@@ -9,6 +9,12 @@
   top: 0;
   left: 0;
   z-index: 20;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+  width: 72px;
+  overflow: visible;
 }
 
 .sidebar-brand {
@@ -18,12 +24,53 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem 2rem 0.5rem;
+  position: relative;
+  transition: padding 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-brand {
+  padding: 1.5rem 0.5rem 0.5rem;
 }
 
 .sidebar-logo-img {
   max-width: 140px;
   height: auto;
   object-fit: contain;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-logo-img {
+  max-width: 48px;
+}
+
+.sidebar-logo-collapsed {
+  max-width: 50px;
+  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
+}
+
+.sidebar-toggle {
+  position: absolute;
+  right: -14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1c1c1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #71717a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 30;
+}
+
+.sidebar-toggle:hover {
+  background: #27272a;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .sidebar-nav {
@@ -33,6 +80,11 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.sidebar.collapsed .sidebar-nav {
+  padding: 1rem 0.5rem;
+  align-items: center;
 }
 
 .sidebar-link {
@@ -47,6 +99,15 @@
   font-weight: 500;
   letter-spacing: -0.1px;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 0.75rem;
+  width: 44px;
+  height: 44px;
 }
 
 .sidebar-icon {
@@ -54,6 +115,15 @@
   align-items: center;
   justify-content: center;
   color: inherit;
+  flex-shrink: 0;
+}
+
+.sidebar-label {
+  transition: opacity 0.2s ease;
+}
+
+.sidebar.collapsed .sidebar-label {
+  display: none;
 }
 
 .sidebar-link:hover {
@@ -68,7 +138,32 @@
   box-shadow: 0 4px 15px rgba(163, 29, 29, 0.25);
 }
 
-/* Cerrar Sesión Button inside main list */
+/* Tooltip for collapsed state */
+.sidebar-tooltip {
+  background: linear-gradient(135deg, #a31d1d, #7c1313);
+  color: #ffffff;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(163, 29, 29, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.02em;
+  position: relative;
+}
+
+.sidebar-tooltip::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 5px solid transparent;
+  border-right-color: #a31d1d;
+}
+
+/* Cerrar Sesión Button */
 .sidebar-logout-btn-item {
   background: transparent;
   border: none;
@@ -77,6 +172,13 @@
   font-family: inherit;
   cursor: pointer;
   color: #ef4444;
+}
+
+.sidebar.collapsed .sidebar-logout-btn-item {
+  width: 44px;
+  height: 44px;
+  padding: 0.75rem;
+  justify-content: center;
 }
 
 .sidebar-logout-btn-item:hover {
@@ -187,13 +289,14 @@
   color: #71717a;
 }
 
-.sidebar-user-chevron {
-  color: #71717a;
-}
-
 @media (max-width: 1024px) {
   .sidebar {
     width: 80px;
+    overflow: visible;
+  }
+  
+  .sidebar:not(.collapsed) {
+    width: 250px;
   }
   
   .sidebar-brand {
@@ -202,17 +305,31 @@
   }
   
   .sidebar-logo-img {
-    max-width: 50px;
-    content: url('/favicon.ico');
+    max-width: 48px;
+  }
+
+  .sidebar:not(.collapsed) .sidebar-logo-img {
+    max-width: 120px;
   }
 
   .sidebar-label {
     display: none;
   }
   
+  .sidebar:not(.collapsed) .sidebar-label {
+    display: block;
+  }
+  
   .sidebar-link {
     justify-content: center;
     padding: 0.75rem;
+  }
+  
+  .sidebar:not(.collapsed) .sidebar-link {
+    justify-content: flex-start;
+    padding: 0.8rem 1.25rem;
+    width: auto;
+    height: auto;
   }
   
   .sidebar-icon {
@@ -223,9 +340,19 @@
   .sidebar-user-profile {
     display: none;
   }
+  
+  .sidebar:not(.collapsed) .sidebar-active-orders-card,
+  .sidebar:not(.collapsed) .sidebar-user-profile {
+    display: flex;
+  }
+  
+  .sidebar:not(.collapsed) .sidebar-nav {
+    padding: 1rem 0.75rem;
+    align-items: stretch;
+  }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .sidebar {
     display: none;
   }
