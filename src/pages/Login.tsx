@@ -249,10 +249,7 @@ export function Login() {
         <div className="desktop-carousel-gradient"></div>
         <div className="desktop-carousel-bottom-gradient"></div>
 
-        {/* Bottom food image */}
-        <div className="desktop-bottom-layer">
-          <img src="/foto-comida.png" alt="Platos Full China" className="desktop-food-img" />
-        </div>
+
       </div>
 
       <div className="login-layout">
