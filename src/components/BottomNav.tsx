@@ -5,6 +5,7 @@ import './BottomNav.css'
 const allNavItems = [
   { path: '/', label: 'Inicio', icon: '🏠', roles: ['owner', 'manager', 'cashier'] },
   { path: '/caja', label: 'Caja', icon: '💰', roles: ['owner', 'manager', 'cashier'] },
+  { path: '/comandas', label: 'Comandas', icon: '📋', roles: ['owner', 'manager', 'cashier'] },
   { path: '/clientes', label: 'Clientes', icon: '👥', roles: ['owner', 'manager', 'cashier'] },
   { path: '/inventario', label: 'Inventario', icon: '📦', roles: ['owner', 'manager', 'cashier'] },
   { path: '/mas', label: 'Más', icon: '⚙️', roles: ['owner', 'manager'] }

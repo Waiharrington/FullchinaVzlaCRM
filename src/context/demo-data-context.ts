@@ -33,6 +33,7 @@ export interface DemoDataContextType {
   createOrder: (items: OrderItem[]) => Order
   completeOrder: (orderId: string, paymentMethod: 'cash' | 'card' | 'transfer') => void
   cancelOrder: (orderId: string) => void
+  updateOrderStatus: (orderId: string, status: 'pending' | 'paid' | 'cancelled') => void
   addCreditPayment: (creditId: string, amount: number) => void
   addCredit: (client: string, amount: number, phone?: string) => Credit
   adjustStock: (ingredientId: string, amount: number, reason: string) => void

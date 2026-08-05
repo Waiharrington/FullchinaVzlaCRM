@@ -42,6 +42,14 @@ export function DemoDataProvider({ children }: { children: ReactNode }) {
     ))
   }, [])
 
+  const updateOrderStatus = useCallback((orderId: string, status: 'pending' | 'paid' | 'cancelled') => {
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
+        ? { ...order, status }
+        : order
+    ))
+  }, [])
+
   const addCreditPayment = useCallback((creditId: string, amount: number) => {
     const payment: CreditPayment = {
       id: `cp-${Date.now()}`,
@@ -204,6 +212,7 @@ export function DemoDataProvider({ children }: { children: ReactNode }) {
       createOrder,
       completeOrder,
       cancelOrder,
+      updateOrderStatus,
       addCreditPayment,
       addCredit,
       adjustStock,

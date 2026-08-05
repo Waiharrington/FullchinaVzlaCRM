@@ -1,0 +1,15 @@
+.text-right {
+  text-align: right;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+.bg-surface-light {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.text-lg {
+  font-size: 16px;
+}

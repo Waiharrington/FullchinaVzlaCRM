@@ -1,0 +1,244 @@
+.kds-page {
+  padding: 16px;
+  background: #0d0d0f;
+  min-height: calc(100vh - 60px);
+  color: #fff;
+}
+
+.kds-header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 900px) {
+  .kds-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.kds-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.kds-header-title h1 {
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.kds-live-badge {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  animation: pulse-red 1.5s infinite;
+}
+
+.kds-header-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.station-filters {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.kds-btn-station {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #aeaeb2;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.kds-btn-station.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
+}
+
+.kds-btn-sound {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #aeaeb2;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.kds-btn-sound.active {
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.kds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.kds-empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 16px;
+  border: 2px dashed rgba(255, 255, 255, 0.08);
+}
+
+.kds-empty-icon {
+  font-size: 48px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.kds-card {
+  background: #1c1c1e;
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.kds-card.new-order {
+  border-color: #3b82f6;
+}
+
+.kds-card.in-prep {
+  border-color: #f59e0b;
+}
+
+.kds-card-header {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 14px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.kds-order-id {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+.kds-order-time {
+  font-size: 13px;
+  color: #9ca3af;
+  margin-left: 8px;
+}
+
+.kds-timer {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.kds-timer-normal {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.kds-timer-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.kds-timer-urgent {
+  background: #ef4444;
+  color: #fff;
+  animation: pulse-red 1s infinite;
+}
+
+.kds-card-body {
+  padding: 16px;
+  flex: 1;
+}
+
+.kds-items-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.kds-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+
+}
+
+.kds-item-qty {
+  background: var(--color-accent);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.kds-item-name {
+  color: #fff;
+}
+
+.kds-card-footer {
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.kds-btn-action {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.1s ease, filter 0.2s ease;
+}
+
+.kds-btn-action:active {
+  transform: scale(0.98);
+}
+
+.kds-btn-start {
+  background: #f59e0b;
+  color: #000;
+}
+
+.kds-btn-finish {
+  background: #10b981;
+  color: #fff;
+}

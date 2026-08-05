@@ -6,8 +6,16 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Inicio } from './pages/Inicio'
 import { Caja } from './pages/Caja'
+import { Comandas } from './pages/Comandas'
+import { Cocina } from './pages/Cocina'
 import { Clientes } from './pages/Clientes'
 import { Inventario } from './pages/Inventario'
+import { Produccion } from './pages/Produccion'
+import { Recetas } from './pages/Recetas'
+import { Compras } from './pages/Compras'
+import { Finanzas } from './pages/Finanzas'
+import { Nomina } from './pages/Nomina'
+import { Auditoria } from './pages/Auditoria'
 import { Mas } from './pages/Mas'
 import { Reportes } from './pages/Reportes'
 
@@ -37,8 +45,16 @@ function AppRoutes() {
       >
         <Route path="/" element={<Inicio />} />
         <Route path="/caja" element={<Caja />} />
+        <Route path="/comandas" element={<Comandas />} />
+        <Route path="/cocina" element={<Cocina />} />
         <Route path="/clientes" element={<Clientes />} />
         <Route path="/inventario" element={<Inventario />} />
+        <Route path="/produccion" element={<Produccion />} />
+        <Route path="/recetas" element={<Recetas />} />
+        <Route path="/compras" element={<Compras />} />
+        <Route path="/finanzas" element={<Finanzas />} />
+        <Route path="/nomina" element={<Nomina />} />
+        <Route path="/auditoria" element={<Auditoria />} />
         <Route path="/mas" element={<Mas />} />
         <Route path="/reportes" element={<Reportes />} />
       </Route>

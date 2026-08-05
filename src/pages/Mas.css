@@ -15,6 +15,54 @@
   margin: 0.25rem 0 0;
 }
 
+.mb-6 {
+  margin-bottom: 24px;
+}
+
+.module-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.shortcut-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  padding: 14px;
+}
+
+.shortcut-card:hover {
+  border-color: var(--accent-primary);
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.shortcut-icon {
+  font-size: 28px;
+}
+
+.shortcut-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.shortcut-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.shortcut-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
 .tabs {
   display: flex;
   gap: 0.5rem;

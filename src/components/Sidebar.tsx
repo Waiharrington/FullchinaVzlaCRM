@@ -4,9 +4,17 @@ import './Sidebar.css'
 
 const allNavItems = [
   { path: '/', label: 'Inicio', icon: '🏠', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/caja', label: 'Caja', icon: '💰', roles: ['owner', 'manager', 'cashier'] },
-  { path: '/clientes', label: 'Clientes CRM', icon: '👥', roles: ['owner', 'manager', 'cashier'] },
+  { path: '/caja', label: 'Caja POS', icon: '💰', roles: ['owner', 'manager', 'cashier'] },
+  { path: '/comandas', label: 'Comandas', icon: '📋', roles: ['owner', 'manager', 'cashier'] },
+  { path: '/cocina', label: 'Cocina KDS', icon: '🍳', roles: ['owner', 'manager', 'cashier'] },
   { path: '/inventario', label: 'Inventario', icon: '📦', roles: ['owner', 'manager', 'cashier'] },
+  { path: '/produccion', label: 'Producción', icon: '🥩', roles: ['owner', 'manager'] },
+  { path: '/recetas', label: 'Recetas', icon: '📖', roles: ['owner', 'manager'] },
+  { path: '/compras', label: 'Compras', icon: '🛍️', roles: ['owner', 'manager'] },
+  { path: '/finanzas', label: 'Finanzas P&L', icon: '📈', roles: ['owner'] },
+  { path: '/clientes', label: 'Clientes CRM', icon: '👥', roles: ['owner', 'manager', 'cashier'] },
+  { path: '/nomina', label: 'Nómina', icon: '💸', roles: ['owner'] },
+  { path: '/auditoria', label: 'Auditoría', icon: '🛡️', roles: ['owner'] },
   { path: '/reportes', label: 'Reportes', icon: '📊', roles: ['owner', 'manager'] },
   { path: '/mas', label: 'Más', icon: '⚙️', roles: ['owner', 'manager'] }
 ]
