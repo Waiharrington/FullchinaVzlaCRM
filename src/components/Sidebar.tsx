@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
-import { useDemoData } from '../context/demo-data-context'
 import {
   Home,
   Wallet,
@@ -17,7 +16,6 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  Truck,
   ChevronLeft
 } from 'lucide-react'
 import './Sidebar.css'
@@ -52,7 +50,6 @@ interface TooltipState {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const { user, signOut } = useAuth()
-  const { todayStats } = useDemoData()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -126,20 +123,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </button>
       </div>
 
-      {!collapsed && (
-        <div className="sidebar-active-orders-card">
-          <div className="orders-card-icon-wrapper">
-            <Truck size={20} className="orders-card-icon" />
-          </div>
-          <div className="orders-card-content">
-            <span className="orders-card-title">Pedidos hoy</span>
-            <div className="orders-card-data">
-              <span className="orders-card-value">{todayStats?.ordersCount || 0}</span>
-              <span className="orders-card-pct">+12% vs ayer</span>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {!collapsed && (
         <div className="sidebar-user-profile">
