@@ -1,3 +1,45 @@
+-- #############################################################################
+-- ##                                                                         ##
+-- ##   ⛔  ESTE ARCHIVO ESTÁ DESACTUALIZADO — NO EJECUTAR TAL CUAL  ⛔        ##
+-- ##                                                                         ##
+-- #############################################################################
+--
+-- EL NOMBRE DEL SCHEMA QUE USA ESTE ARCHIVO ES INCORRECTO.
+--
+--     ❌ Dice:        foodtruck
+--     ✅ El real es:  fullchinavzla
+--
+-- El schema fue renombrado el 2026-08-05 a `fullchinavzla` (el negocio es de
+-- comida china venezolana, no un food truck). El schema `foodtruck` YA NO EXISTE
+-- en el servidor.
+--
+-- Este archivo menciona `foodtruck` cientos de veces: en los CREATE TABLE, en los
+-- cuerpos de las 21 funciones, en su `SET search_path`, en las 72 políticas RLS y
+-- en todos los GRANT.
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SI NECESITAS RE-EJECUTARLO, PRIMERO RENOMBRA TODO:
+--
+--     sed 's/foodtruck/fullchinavzla/g' 20260803000000_initial_foodtruck_schema.sql \
+--       > 20260803000000_initial_fullchinavzla_schema.sql
+--
+-- Ejecutarlo sin ese paso CREARÍA UN SCHEMA `foodtruck` NUEVO Y VACÍO, paralelo
+-- al real, y la app seguiría sin funcionar mientras tú crees que sí se aplicó.
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- ESTADO ACTUAL DEL SERVIDOR (verificado el 2026-08-05):
+--   · El schema `fullchinavzla` YA EXISTE y está aplicado: 27 tablas,
+--     21 funciones, 72 políticas RLS. No hace falta correr esta migración.
+--   · Los GRANT para anon/authenticated/service_role ya están puestos.
+--   · `PGRST_DB_SCHEMAS` en el VPS ya incluye `fullchinavzla`.
+--   · La app apunta correctamente: `src/lib/supabase.ts` usa
+--     `db: { schema: 'fullchinavzla' }`.
+--
+-- Ver `C:\Users\Waiha\supabase\RUNBOOK-VPS.md` (Trampa 4) para el procedimiento
+-- completo de renombrado de schemas.
+--
+-- #############################################################################
+
 -- =============================================================================
 -- Migración inicial: esquema foodtruck para Supabase self-hosted
 -- =============================================================================

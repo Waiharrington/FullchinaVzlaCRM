@@ -1,66 +1,128 @@
-import { useState, useMemo } from 'react'
-import { useDemoData } from '../context/demo-data-context'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useAuth } from '../context/auth-context'
 import { downloadReceipt } from '../lib/receipt'
-import type { Product, OrderItem, Order } from '../lib/demoData'
+import { getExchangeRates } from '../lib/rates'
+import {
+  getProducts,
+  getTodayOrders,
+  checkout,
+  type Product,
+  type CartItem,
+  type OrderResult,
+  type TodayOrder,
+  type PaymentMethod,
+} from '../lib/dataService'
 import './Caja.css'
 
 type View = 'products' | 'cart' | 'payment' | 'confirmation'
 
+const CATEGORY_LABELS: Record<string, string> = {
+  arroz: '🍚 Arroces',
+  plato: '🍖 Platos',
+  wok: '🍜 Chop Suey / Tallarín',
+  pollo_camaron: '🍗 Pollo y Camarón',
+  racion: '🥟 Raciones',
+  bebida: '🥤 Bebidas',
+  extra: '➕ Extras',
+}
+const CATEGORY_ORDER = ['arroz', 'plato', 'wok', 'pollo_camaron', 'racion', 'bebida', 'extra']
+
+const fmtBs = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 export function Caja() {
-  const { products, orders, createOrder, completeOrder } = useDemoData()
+  const { user } = useAuth()
   const [view, setView] = useState<View>('products')
-  const [cart, setCart] = useState<OrderItem[]>([])
-  const [currentOrder, setCurrentOrder] = useState<Order | null>(null)
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('all')
 
+  const [products, setProducts] = useState<Product[]>([])
+  const [todayOrders, setTodayOrders] = useState<TodayOrder[]>([])
+  const [bcvRate, setBcvRate] = useState<number | null>(null)
+  const [rateStale, setRateStale] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [paying, setPaying] = useState(false)
+  const [payError, setPayError] = useState('')
+
+  const refreshTodayOrders = useCallback(async () => {
+    try {
+      setTodayOrders(await getTodayOrders())
+    } catch (e) {
+      console.error('Error cargando ventas de hoy:', e)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setLoading(true)
+      setLoadError('')
+      try {
+        const [prods, orders, rates] = await Promise.all([
+          getProducts(),
+          getTodayOrders(),
+          getExchangeRates(),
+        ])
+        if (cancelled) return
+        setProducts(prods)
+        setTodayOrders(orders)
+        setBcvRate(rates.bcv > 0 ? rates.bcv : null)
+        setRateStale(!!rates.error || rates.bcv <= 0)
+      } catch (e) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Error cargando datos')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const categories = useMemo(() => {
+    const present = new Set(products.map((p) => p.category))
+    return CATEGORY_ORDER.filter((c) => present.has(c))
+  }, [products])
+
   const filteredProducts = useMemo(() => {
-    return products.filter(p => {
+    return products.filter((p) => {
       const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
       const matchesCategory = activeCategory === 'all' || p.category === activeCategory
       return matchesSearch && matchesCategory && p.active
     })
   }, [products, searchTerm, activeCategory])
 
-  const todayOrders = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    return orders
-      .filter(o => o.createdAt.startsWith(today) && o.status === 'paid')
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [orders])
-
   const todayTotal = todayOrders.reduce((sum, o) => sum + o.total, 0)
 
   const addToCart = (product: Product) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.productId === product.id)
+    setCart((prev) => {
+      const existing = prev.find((item) => item.productId === product.id)
       if (existing) {
-        return prev.map(item =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+        return prev.map((item) =>
+          item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item,
         )
       }
-      return [...prev, {
-        productId: product.id,
-        productName: product.name,
-        price: product.price,
-        quantity: 1
-      }]
+      return [...prev, { productId: product.id, productName: product.name, price: product.price, quantity: 1 }]
     })
   }
 
   const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.productId !== productId))
+    setCart((prev) => prev.filter((item) => item.productId !== productId))
   }
 
   const updateQuantity = (productId: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.productId !== productId) return item
-      const newQty = item.quantity + delta
-      return newQty > 0 ? { ...item, quantity: newQty } : item
-    }).filter(item => item.quantity > 0))
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          if (item.productId !== productId) return item
+          const newQty = item.quantity + delta
+          return newQty > 0 ? { ...item, quantity: newQty } : item
+        })
+        .filter((item) => item.quantity > 0),
+    )
   }
 
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -68,27 +130,34 @@ export function Caja() {
 
   const handleCheckout = () => {
     if (cart.length === 0) return
-    const order = createOrder(cart)
-    setCurrentOrder(order)
+    setPayError('')
     setView('payment')
   }
 
-  const handlePayment = (method: 'cash' | 'card' | 'transfer') => {
-    if (currentOrder) {
-      completeOrder(currentOrder.id, method)
-      const completedOrder = { ...currentOrder, status: 'paid' as const, paymentMethod: method }
-      setCurrentOrder(completedOrder)
+  const handlePayment = async (method: PaymentMethod) => {
+    if (cart.length === 0 || !user) return
+    setPaying(true)
+    setPayError('')
+    try {
+      const order = await checkout({ items: cart, method, bcvRate, userId: user.id })
+      setCurrentOrder(order)
+      setCart([])
       setView('confirmation')
+      refreshTodayOrders()
+    } catch (e) {
+      setPayError(e instanceof Error ? e.message : 'No se pudo registrar el pago')
+    } finally {
+      setPaying(false)
     }
   }
 
   const handlePrintReceipt = () => {
     if (currentOrder) {
       downloadReceipt({
-        orderId: currentOrder.id,
+        orderId: `FC-${String(currentOrder.orderNumber).padStart(4, '0')}`,
         items: currentOrder.items,
         total: currentOrder.total,
-        paymentMethod: currentOrder.paymentMethod || 'cash',
+        paymentMethod: currentOrder.paymentMethod,
         createdAt: currentOrder.createdAt,
       })
     }
@@ -98,6 +167,31 @@ export function Caja() {
     setCart([])
     setCurrentOrder(null)
     setView('products')
+  }
+
+  if (loading) {
+    return (
+      <div className="page animate-fade-in">
+        <header className="page-header">
+          <h1 className="page-title text-gradient">Caja</h1>
+          <p className="page-subtitle">Cargando productos…</p>
+        </header>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="page animate-fade-in">
+        <header className="page-header">
+          <h1 className="page-title text-gradient">Caja</h1>
+          <p className="page-subtitle">No se pudo cargar</p>
+        </header>
+        <div className="card">
+          <p className="login-error">{loadError}</p>
+        </div>
+      </div>
+    )
   }
 
   if (view === 'confirmation') {
@@ -112,7 +206,10 @@ export function Caja() {
           <div className="confirmation-icon">✅</div>
           <h2 className="confirmation-title">¡Pago recibido!</h2>
           <p className="confirmation-amount">${currentOrder?.total.toFixed(2)}</p>
-          <p className="confirmation-id">Orden: {currentOrder?.id}</p>
+          {bcvRate && currentOrder && (
+            <p className="confirmation-id">Bs {fmtBs(currentOrder.total * bcvRate)} · tasa {fmtBs(bcvRate)}</p>
+          )}
+          <p className="confirmation-id">Orden: FC-{String(currentOrder?.orderNumber).padStart(4, '0')}</p>
           <div className="confirmation-actions">
             <button className="btn-ghost" onClick={handlePrintReceipt}>
               🖨️ Imprimir recibo
@@ -136,10 +233,15 @@ export function Caja() {
 
         <div className="payment-card">
           <p className="payment-total-label">Total a cobrar</p>
-          <p className="payment-total">${currentOrder?.total.toFixed(2)}</p>
+          <p className="payment-total">${cartTotal.toFixed(2)}</p>
+          {bcvRate ? (
+            <p className="payment-total-label">Bs {fmtBs(cartTotal * bcvRate)} · tasa BCV {fmtBs(bcvRate)}</p>
+          ) : (
+            <p className="payment-total-label">⚠️ Sin tasa BCV (cobro solo en $)</p>
+          )}
 
           <div className="payment-items-summary">
-            {currentOrder?.items.map(item => (
+            {cart.map((item) => (
               <div key={item.productId} className="payment-summary-item">
                 <span>{item.quantity}x {item.productName}</span>
                 <span>${(item.price * item.quantity).toFixed(2)}</span>
@@ -147,23 +249,25 @@ export function Caja() {
             ))}
           </div>
 
+          {payError && <p className="login-error">{payError}</p>}
+
           <div className="payment-methods">
-            <button className="payment-btn" onClick={() => handlePayment('cash')}>
+            <button className="payment-btn" disabled={paying} onClick={() => handlePayment('cash')}>
               <span className="payment-icon">💵</span>
               <span className="payment-label">Efectivo</span>
             </button>
-            <button className="payment-btn" onClick={() => handlePayment('card')}>
+            <button className="payment-btn" disabled={paying} onClick={() => handlePayment('card')}>
               <span className="payment-icon">💳</span>
               <span className="payment-label">Tarjeta</span>
             </button>
-            <button className="payment-btn" onClick={() => handlePayment('transfer')}>
+            <button className="payment-btn" disabled={paying} onClick={() => handlePayment('transfer')}>
               <span className="payment-icon">📱</span>
               <span className="payment-label">Transferencia</span>
             </button>
           </div>
 
-          <button className="btn-ghost btn-block" onClick={() => setView('cart')}>
-            Volver al carrito
+          <button className="btn-ghost btn-block" disabled={paying} onClick={() => setView('products')}>
+            {paying ? 'Procesando…' : 'Volver'}
           </button>
         </div>
       </div>
@@ -175,7 +279,10 @@ export function Caja() {
       <header className="page-header">
         <div>
           <h1 className="page-title text-gradient">Caja</h1>
-          <p className="page-subtitle">Punto de venta · Hoy: ${todayTotal.toFixed(2)}</p>
+          <p className="page-subtitle">
+            Punto de venta · Hoy: ${todayTotal.toFixed(2)}
+            {bcvRate ? ` · BCV ${fmtBs(bcvRate)}` : rateStale ? ' · ⚠️ sin tasa' : ''}
+          </p>
         </div>
         <button className="btn-ghost btn-sm" onClick={() => setShowHistory(!showHistory)}>
           {showHistory ? 'Cerrar' : `📋 Historial (${todayOrders.length})`}
@@ -189,10 +296,10 @@ export function Caja() {
             {todayOrders.length === 0 ? (
               <p className="empty-message">No hay ventas hoy</p>
             ) : (
-              todayOrders.map(order => (
+              todayOrders.map((order) => (
                 <div key={order.id} className="history-item">
                   <div className="history-info">
-                    <span className="history-id">{order.id}</span>
+                    <span className="history-id">FC-{String(order.orderNumber).padStart(4, '0')}</span>
                     <span className="history-time">
                       {new Date(order.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -225,30 +332,27 @@ export function Caja() {
               className="search-input"
             />
             <div className="category-filters">
-              {[
-                { key: 'all', label: 'Todos' },
-                { key: 'food', label: '🍔 Comida' },
-                { key: 'drink', label: '🥤 Bebidas' },
-                { key: 'dessert', label: '🍰 Postres' },
-              ].map(cat => (
+              <button
+                className={`category-btn ${activeCategory === 'all' ? 'active' : ''}`}
+                onClick={() => setActiveCategory('all')}
+              >
+                Todos
+              </button>
+              {categories.map((cat) => (
                 <button
-                  key={cat.key}
-                  className={`category-btn ${activeCategory === cat.key ? 'active' : ''}`}
-                  onClick={() => setActiveCategory(cat.key)}
+                  key={cat}
+                  className={`category-btn ${activeCategory === cat ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(cat)}
                 >
-                  {cat.label}
+                  {CATEGORY_LABELS[cat] ?? cat}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="products-grid">
-            {filteredProducts.map(product => (
-              <button
-                key={product.id}
-                className="product-card"
-                onClick={() => addToCart(product)}
-              >
+            {filteredProducts.map((product) => (
+              <button key={product.id} className="product-card" onClick={() => addToCart(product)}>
                 <span className="product-emoji">{product.emoji}</span>
                 <span className="product-name">{product.name}</span>
                 <span className="product-price">${product.price.toFixed(2)}</span>
@@ -261,39 +365,28 @@ export function Caja() {
           <div className="cart-card">
             <div className="cart-header">
               <h2 className="section-title">Carrito</h2>
-              {cart.length > 0 && (
-                <span className="cart-count">{cartItemCount} items</span>
-              )}
+              {cart.length > 0 && <span className="cart-count">{cartItemCount} items</span>}
             </div>
             {cart.length === 0 ? (
               <p className="empty-cart">Selecciona productos</p>
             ) : (
               <>
                 <div className="cart-items">
-                  {cart.map(item => (
+                  {cart.map((item) => (
                     <div key={item.productId} className="cart-item">
                       <div className="cart-item-info">
                         <span className="cart-item-name">{item.productName}</span>
                         <span className="cart-item-price">${(item.price * item.quantity).toFixed(2)}</span>
                       </div>
                       <div className="cart-item-controls">
-                        <button
-                          className="qty-btn"
-                          onClick={() => updateQuantity(item.productId, -1)}
-                        >
+                        <button className="qty-btn" onClick={() => updateQuantity(item.productId, -1)}>
                           -
                         </button>
                         <span className="qty-value">{item.quantity}</span>
-                        <button
-                          className="qty-btn"
-                          onClick={() => updateQuantity(item.productId, 1)}
-                        >
+                        <button className="qty-btn" onClick={() => updateQuantity(item.productId, 1)}>
                           +
                         </button>
-                        <button
-                          className="remove-btn"
-                          onClick={() => removeFromCart(item.productId)}
-                        >
+                        <button className="remove-btn" onClick={() => removeFromCart(item.productId)}>
                           ×
                         </button>
                       </div>
@@ -305,6 +398,12 @@ export function Caja() {
                     <span>Total</span>
                     <span className="text-gradient">${cartTotal.toFixed(2)}</span>
                   </div>
+                  {bcvRate && (
+                    <div className="cart-total" style={{ fontSize: '0.85em', opacity: 0.8 }}>
+                      <span>En bolívares</span>
+                      <span>Bs {fmtBs(cartTotal * bcvRate)}</span>
+                    </div>
+                  )}
                   <button className="btn-accent btn-block" onClick={handleCheckout}>
                     Cobrar ${cartTotal.toFixed(2)}
                   </button>

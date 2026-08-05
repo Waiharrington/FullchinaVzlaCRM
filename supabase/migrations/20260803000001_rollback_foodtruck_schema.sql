@@ -1,3 +1,50 @@
+-- #############################################################################
+-- ##                                                                         ##
+-- ##   ⛔⛔  PELIGRO — ESTE ARCHIVO ESTÁ DESACTUALIZADO Y BORRA DATOS  ⛔⛔    ##
+-- ##                                                                         ##
+-- #############################################################################
+--
+-- EL NOMBRE DEL SCHEMA QUE USA ESTE ARCHIVO ES INCORRECTO.
+--
+--     ❌ Dice:        foodtruck
+--     ✅ El real es:  fullchinavzla
+--
+-- El schema fue renombrado el 2026-08-05 a `fullchinavzla` (el negocio es de
+-- comida china venezolana, no un food truck).
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ⚠️  POR QUÉ ESTE ARCHIVO ES MÁS PELIGROSO QUE EL OTRO
+--
+-- Termina en:   DROP SCHEMA IF EXISTS foodtruck CASCADE;
+--
+-- HOY, tal como está, ese DROP no encuentra `foodtruck` y no hace nada
+-- (o borraría `foodtruck_old`, que es solo un respaldo). Es inofensivo por
+-- accidente, no por diseño.
+--
+-- 🔴 PERO si alguien le hace `sed s/foodtruck/fullchinavzla/g` para "actualizarlo",
+--    ese DROP pasa a apuntar al schema REAL y BORRA FULLCHINAVZLA COMPLETO:
+--    las 27 tablas, las 21 funciones, las 72 políticas y todos los datos.
+--
+--    La guardia de datos del BLOQUE 0 aborta si hay filas — pero solo protege
+--    mientras el schema esté vacío. En cuanto el negocio empiece a cargar pedidos,
+--    esa guardia es lo único entre este archivo y la pérdida total.
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- ANTES DE EJECUTAR ESTE ARCHIVO, SIEMPRE:
+--   1. Preguntarte si de verdad quieres BORRAR el schema entero.
+--   2. Backup:  docker exec supabase-db pg_dump -U supabase_admin -d postgres \
+--                 -n fullchinavzla > /root/backup_$(date +%Y%m%d_%H%M%S).sql
+--   3. Confirmación explícita del dueño del proyecto.
+--   4. Revisar a mano CADA `DROP` para ver a qué schema apunta.
+--
+-- ESTADO ACTUAL (verificado el 2026-08-05): `fullchinavzla` está aplicado y
+-- funcionando (27 tablas / 21 funciones / 72 políticas, 0 filas por ahora).
+-- No hay ninguna razón para ejecutar este rollback.
+--
+-- Ver `C:\Users\Waiha\supabase\RUNBOOK-VPS.md` para el contexto completo.
+--
+-- #############################################################################
+
 -- =============================================================================
 -- ROLLBACK: Migración inicial foodtruck (MANUAL)
 -- =============================================================================
