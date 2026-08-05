@@ -33,7 +33,8 @@ export interface ComandaOrder {
   deliveryProvider?: string
   items: ComandaItem[]
   paymentMethod: string
-  paymentType: 'card' | 'cash' | 'app'
+  paymentType: 'card' | 'cash' | 'app' | 'pending'
+  isPaid: boolean
   elapsedMins: number
   status: 'new' | 'preparing' | 'ready' | 'delivered'
   deliveredTime?: string
@@ -54,6 +55,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Tarjeta',
     paymentType: 'card',
+    isPaid: true,
     elapsedMins: 32,
     status: 'new',
   },
@@ -69,6 +71,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Efectivo',
     paymentType: 'cash',
+    isPaid: true,
     elapsedMins: 18,
     status: 'new',
   },
@@ -84,6 +87,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: En app',
     paymentType: 'app',
+    isPaid: true,
     elapsedMins: 15,
     status: 'new',
   },
@@ -102,6 +106,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: En app',
     paymentType: 'app',
+    isPaid: true,
     elapsedMins: 36,
     status: 'preparing',
   },
@@ -117,6 +122,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Efectivo',
     paymentType: 'cash',
+    isPaid: true,
     elapsedMins: 28,
     status: 'preparing',
   },
@@ -132,6 +138,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: En app',
     paymentType: 'app',
+    isPaid: true,
     elapsedMins: 22,
     status: 'preparing',
   },
@@ -149,6 +156,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Efectivo',
     paymentType: 'cash',
+    isPaid: true,
     elapsedMins: 8,
     status: 'ready',
   },
@@ -164,6 +172,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: En app',
     paymentType: 'app',
+    isPaid: true,
     elapsedMins: 6,
     status: 'ready',
   },
@@ -179,6 +188,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Efectivo',
     paymentType: 'cash',
+    isPaid: true,
     elapsedMins: 12,
     status: 'ready',
   },
@@ -196,6 +206,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Tarjeta',
     paymentType: 'card',
+    isPaid: true,
     elapsedMins: 0,
     status: 'delivered',
     deliveredTime: '12:15 PM',
@@ -212,6 +223,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: En app',
     paymentType: 'app',
+    isPaid: true,
     elapsedMins: 0,
     status: 'delivered',
     deliveredTime: '11:58 AM',
@@ -228,6 +240,7 @@ const MOCK_COMANDAS: ComandaOrder[] = [
     ],
     paymentMethod: 'Pago: Efectivo',
     paymentType: 'cash',
+    isPaid: true,
     elapsedMins: 0,
     status: 'delivered',
     deliveredTime: '11:42 AM',
@@ -261,7 +274,11 @@ export function Comandas() {
             let status: ComandaOrder['status'] = 'new'
             if (o.status === 'preparing') status = 'preparing'
             else if (o.status === 'ready') status = 'ready'
-            else if (o.status === 'paid' || o.status === 'delivered') status = 'delivered'
+            else if (o.status === 'delivered' || o.status === 'completed') status = 'delivered'
+            else if (o.status === 'paid') status = 'delivered'
+            // 'new' and 'pending' stay as 'new'
+
+            const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
 
             return {
               id: o.id,
@@ -269,14 +286,15 @@ export function Comandas() {
               time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
               isRetraso: elapsed > 15 && status !== 'delivered',
               customerName: o.customerName || 'Cliente general',
-              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : 'Mostrador',
+              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mostrador' : 'Para llevar',
               items: o.items.map((item) => ({
                 id: item.id,
                 name: item.productName,
                 quantity: item.quantity,
               })),
-              paymentMethod: o.status === 'paid' ? 'Pago: Efectivo' : 'Pago: Tarjeta',
-              paymentType: o.status === 'paid' ? 'cash' : 'card',
+              paymentMethod: hasPaid ? 'Pago: Efectivo' : '⚠️ Sin pagar',
+              paymentType: hasPaid ? 'cash' : 'pending' as const,
+              isPaid: hasPaid,
               elapsedMins: elapsed < 0 ? 1 : elapsed,
               status,
               deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
@@ -495,6 +513,10 @@ export function Comandas() {
                         <span className={`payment-type-badge pay-${order.paymentType}`}>
                           {order.paymentMethod}
                         </span>
+
+                        {!order.isPaid && order.status !== 'delivered' && (
+                          <span className="badge-sin-pagar">💰 Pendiente de pago</span>
+                        )}
 
                         {order.status === 'ready' ? (
                           <div className="status-ready-group">

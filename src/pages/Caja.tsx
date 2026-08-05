@@ -7,6 +7,7 @@ import {
   getProducts,
   getTodayOrders,
   checkout,
+  sendToKitchen,
   type Product,
   type CartItem,
   type OrderResult,
@@ -22,7 +23,8 @@ import {
   Share2,
   ListOrdered,
   ChefHat,
-  BellRing
+  BellRing,
+  Phone
 } from 'lucide-react'
 import './Caja.css'
 
@@ -91,6 +93,25 @@ let cajaCache: {
   bcvRate: number | null
 } | null = null
 
+interface CustomerOption {
+  id: string
+  name: string
+  initials: string
+  phone: string
+}
+
+const MOCK_CUSTOMERS_LIST: CustomerOption[] = [
+  { id: 'c0', name: 'Wai Harrington', initials: 'WH', phone: '0412-8001234' },
+  { id: 'c1', name: 'Juan Pérez', initials: 'JP', phone: '0412-9206984' },
+  { id: 'c2', name: 'María González', initials: 'MG', phone: '0414-1234567' },
+  { id: 'c3', name: 'Pedro Ramírez', initials: 'PR', phone: '0424-7654321' },
+  { id: 'c4', name: 'Sofía Lima', initials: 'SL', phone: '0416-5558899' },
+  { id: 'c5', name: 'Camila Rojas', initials: 'CR', phone: '0412-3334455' },
+  { id: 'c6', name: 'Diego Herrera', initials: 'DH', phone: '0424-9990011' },
+  { id: 'c7', name: 'Valeria Torres', initials: 'VT', phone: '0414-8882233' },
+  { id: 'c8', name: 'Ricardo Méndez', initials: 'RM', phone: '0416-7771122' },
+]
+
 export function Caja() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -110,6 +131,52 @@ export function Caja() {
   const [customerName, setCustomerName] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
   const [discount, setDiscount] = useState(0)
+
+  // Customer Search & Auto-complete state
+  const [customerList, setCustomerList] = useState<CustomerOption[]>(MOCK_CUSTOMERS_LIST)
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+
+  // New Client Modal state
+  const [showNewClientModal, setShowNewClientModal] = useState(false)
+  const [newClientName, setNewClientName] = useState('')
+  const [newClientLastName, setNewClientLastName] = useState('')
+  const [newClientPhone, setNewClientPhone] = useState('')
+  const [birthMonth, setBirthMonth] = useState('')
+  const [birthDay, setBirthDay] = useState('')
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerName.trim()) return customerList
+    return customerList.filter(c =>
+      c.name.toLowerCase().includes(customerName.toLowerCase()) ||
+      c.phone.includes(customerName)
+    )
+  }, [customerList, customerName])
+
+  const handleCreateNewClientFromCaja = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newClientName.trim()) return
+
+    const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
+    const initials = (newClientName[0] + (newClientLastName[0] || '')).toUpperCase()
+    const phone = newClientPhone.trim() || '0412-9206984'
+
+    const newCust: CustomerOption = {
+      id: `c_${Date.now()}`,
+      name: fullName,
+      initials,
+      phone,
+    }
+
+    setCustomerList(prev => [newCust, ...prev])
+    setCustomerName(fullName)
+    setShowCustomerDropdown(false)
+    setShowNewClientModal(false)
+    setNewClientName('')
+    setNewClientLastName('')
+    setNewClientPhone('')
+    setBirthMonth('')
+    setBirthDay('')
+  }
 
   // Payment Modal State (Matching Image 1)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -193,15 +260,14 @@ export function Caja() {
   const serviceFee = subtotal * SERVICE_FEE_RATE
   const total = subtotal + serviceFee - discount
 
-  // Action 1: Enviar a Cocina -> Saves order to Supabase and navigates to /comandas
+  // Action 1: Enviar a Cocina -> Saves order WITHOUT payment and navigates to /comandas
   const handleSendToKitchen = async () => {
     if (cart.length === 0) return
     setPaying(true)
     setPayError('')
     try {
-      const order = await checkout({
+      const order = await sendToKitchen({
         items: cart,
-        method: 'cash',
         bcvRate,
         userId: user?.id || 'demo-user',
         notes: orderNotes || null,
@@ -210,8 +276,11 @@ export function Caja() {
       })
       setCurrentOrder(order)
       setCart([])
+      setCustomerName('')
+      setOrderNotes('')
+      setDiscount(0)
       refreshTodayOrders()
-      // Navigate directly to Comandas page as requested!
+      // Navigate directly to Comandas page
       navigate('/comandas')
     } catch (e) {
       setPayError(e instanceof Error ? e.message : 'Error al enviar a cocina')
@@ -618,7 +687,7 @@ export function Caja() {
 
           {/* Customer + Order Type */}
           <div className="cart-section-group mt-3">
-            <div className="cart-field-col">
+            <div className="cart-field-col customer-input-col">
               <label className="cart-label">Cliente</label>
               <div className="customer-input-wrap">
                 <span className="input-search-icon">🔍</span>
@@ -626,11 +695,44 @@ export function Caja() {
                   type="text"
                   placeholder="Buscar cliente (opcional)"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerName(e.target.value)
+                    setShowCustomerDropdown(true)
+                  }}
+                  onFocus={() => setShowCustomerDropdown(true)}
                   className="customer-input"
                 />
-                <button className="customer-add-btn">+</button>
+                <button
+                  type="button"
+                  className="customer-add-btn"
+                  onClick={() => setShowNewClientModal(true)}
+                  title="Nuevo cliente"
+                >
+                  +
+                </button>
               </div>
+
+              {/* Autocomplete Dropdown List */}
+              {showCustomerDropdown && filteredCustomers.length > 0 && (
+                <div className="customer-dropdown-menu">
+                  {filteredCustomers.map((cust) => (
+                    <div
+                      key={cust.id}
+                      className="customer-dropdown-item"
+                      onClick={() => {
+                        setCustomerName(cust.name)
+                        setShowCustomerDropdown(false)
+                      }}
+                    >
+                      <div className="customer-item-avatar">{cust.initials}</div>
+                      <div className="customer-item-info">
+                        <span className="customer-item-name">{cust.name}</span>
+                        <span className="customer-item-phone">{cust.phone}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="cart-field-col mt-2">
@@ -716,10 +818,9 @@ export function Caja() {
           <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="payment-modal-header">
-              <div className="payment-title-group">
-                <h2 className="payment-modal-title">Cobrar pedido</h2>
-                <span className="payment-order-tag">#FC-000125</span>
-              </div>
+              <h2 className="payment-modal-title">
+                Cobrar pedido <span className="payment-order-tag">#FC-000125</span>
+              </h2>
               <button className="payment-modal-close" onClick={() => setShowPaymentModal(false)}>
                 <X size={18} />
               </button>
@@ -748,7 +849,7 @@ export function Caja() {
                 </h3>
 
                 <div className="payment-field-group mt-2">
-                  <label className="payment-field-label">Número de referencia <span className="text-red">*</span></label>
+                  <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -761,7 +862,7 @@ export function Caja() {
                 </div>
 
                 <div className="payment-field-group mt-3">
-                  <label className="payment-field-label">Monto recibido <span className="text-red">*</span></label>
+                  <label className="payment-field-label">MONTO RECIBIDO <span className="text-red">*</span></label>
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -775,7 +876,7 @@ export function Caja() {
                 </div>
 
                 <div className="payment-field-group mt-3">
-                  <label className="payment-field-label">Nota (opcional)</label>
+                  <label className="payment-field-label">NOTA (OPCIONAL)</label>
                   <div className="payment-textarea-wrap">
                     <textarea
                       className="payment-field-textarea"
@@ -865,6 +966,104 @@ export function Caja() {
                 <X size={18} /> Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nuevo Cliente desde Caja */}
+      {showNewClientModal && (
+        <div className="modal-overlay-dark" onClick={() => setShowNewClientModal(false)}>
+          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line">
+              <div>
+                <h3 className="modal-title">Nuevo cliente</h3>
+                <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowNewClientModal(false)}><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleCreateNewClientFromCaja} className="crm-form mt-3">
+              <div className="field">
+                <label className="field-label-white">Nombre *</label>
+                <input
+                  type="text"
+                  placeholder="Ingresa el nombre del cliente"
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  className="modal-input-dark"
+                  required
+                />
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Apellido</label>
+                <input
+                  type="text"
+                  placeholder="Ingresa el apellido del cliente"
+                  value={newClientLastName}
+                  onChange={(e) => setNewClientLastName(e.target.value)}
+                  className="modal-input-dark"
+                />
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Teléfono</label>
+                <div className="input-with-icon-wrap">
+                  <Phone size={16} className="input-left-icon" />
+                  <input
+                    type="tel"
+                    placeholder="04129206984"
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(e.target.value)}
+                    className="modal-input-dark with-left-icon"
+                  />
+                </div>
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Cumpleaños</label>
+                <div className="birthday-selects-row">
+                  <div className="select-col">
+                    <span className="select-sub-label">Mes</span>
+                    <select
+                      className="modal-select-dark"
+                      value={birthMonth}
+                      onChange={(e) => setBirthMonth(e.target.value)}
+                    >
+                      <option value="">Mes</option>
+                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m) => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="select-col">
+                    <span className="select-sub-label">Día</span>
+                    <select
+                      className="modal-select-dark"
+                      value={birthDay}
+                      onChange={(e) => setBirthDay(e.target.value)}
+                    >
+                      <option value="">Día</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <span className="birthday-hint mt-1">
+                  ℹ️ Solo para promociones y recordatorios
+                </span>
+              </div>
+
+              <div className="modal-actions-row-right mt-4">
+                <button type="button" className="btn-modal-cancel" onClick={() => setShowNewClientModal(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-modal-submit-red">
+                  Guardar cliente
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
