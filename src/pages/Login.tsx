@@ -63,10 +63,10 @@ export function Login() {
 
   // Auto-envía al completar 4 dígitos (largo de los PIN configurados en .env y demo).
   useEffect(() => {
-    if (isPinMode && isTabletViewport && pin.length === 4 && !loading) {
+    if (isPinMode && pin.length === 4 && !loading) {
       formRef.current?.requestSubmit()
     }
-  }, [pin, isPinMode, isTabletViewport, loading])
+  }, [pin, isPinMode, loading])
 
   const triggerExit = (action: () => void) => {
     setIsExiting(true)
@@ -156,6 +156,33 @@ export function Login() {
         <div className="carousel-overlay"></div>
       </div>
 
+      {/* Desktop Premium Layers */}
+      <div className="desktop-layers">
+        <div className="desktop-bg-layer" style={{ backgroundImage: 'url(/fondo-login.png)' }}></div>
+        
+        {/* Left Carousel for Desktop */}
+        <div className="desktop-carousel-layer">
+          {CAROUSEL_IMAGES.map((src, index) => (
+            <img 
+              key={src}
+              src={src} 
+              alt="Full China Food"
+              className={`desktop-carousel-img ${index === currentSlide ? 'active' : ''}`}
+              style={{
+                objectPosition: `50% ${CAROUSEL_SETTINGS[index]?.posY ?? 25}%`,
+                transform: `scale(${CAROUSEL_SETTINGS[index]?.zoom ?? 1})`
+              }}
+            />
+          ))}
+          <div className="desktop-carousel-gradient"></div>
+        </div>
+
+        {/* Bottom food image */}
+        <div className="desktop-bottom-layer">
+          <img src="/foto-comida.png" alt="Platos Full China" className="desktop-food-img" />
+        </div>
+      </div>
+
       <div className="login-layout">
         
         {/* LEFT COLUMN: Branding */}
@@ -166,9 +193,8 @@ export function Login() {
           
           <div className="login-left-bottom">
             <div className="login-hero-text">
-              <h2>Sabor que</h2>{' '}
-              <h2><span className="text-highlight">enciende</span></h2>{' '}
-              <h2>tu día</h2>
+              <h2>El auténtico sabor</h2>
+              <h2><span className="text-highlight">chino</span> sobre ruedas</h2>
             </div>
             
             <p className="login-description">

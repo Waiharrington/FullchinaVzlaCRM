@@ -24,6 +24,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const [splashDone, setSplashDone] = useState(false)
+
   useEffect(() => {
     if (isDemoMode) {
       const savedUser = localStorage.getItem('demo_user')
@@ -77,10 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isDemoMode) {
       setUser(DEMO_USERS.owner)
       localStorage.setItem('demo_user', JSON.stringify(DEMO_USERS.owner))
+      setSplashDone(false) // Trigger splash on next render
       return {}
     }
 
     const { error } = await supabase!.auth.signInWithPassword({ email, password })
+    if (!error) {
+      setSplashDone(false) // Trigger splash on next render
+    }
     if (error) return { error: error.message }
     return {}
   }
@@ -89,6 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isDemoMode) {
       setUser(DEMO_USERS[role])
       localStorage.setItem('demo_user', JSON.stringify(DEMO_USERS[role]))
+      setSplashDone(false) // Trigger splash on next render
     }
   }
 
@@ -103,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, demoMode: isDemoMode, signIn, signInAsDemo, signOut }}>
+    <AuthContext.Provider value={{ session, user, loading, demoMode: isDemoMode, signIn, signInAsDemo, signOut, splashDone, setSplashDone }}>
       {children}
     </AuthContext.Provider>
   )

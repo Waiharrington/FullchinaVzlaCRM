@@ -23,12 +23,11 @@ import { Mas } from './pages/Mas'
 import { Reportes } from './pages/Reportes'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-  const [splashDone, setSplashDone] = useState(false)
+  const { user, loading, splashDone, setSplashDone } = useAuth()
 
   const handleSplashDone = useCallback(() => {
     setSplashDone(true)
-  }, [])
+  }, [setSplashDone])
 
   if (!splashDone || loading) return <SplashScreen onDone={handleSplashDone} minDuration={2800} />
   if (!user) return <Navigate to="/login" replace />

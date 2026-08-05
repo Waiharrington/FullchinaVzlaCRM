@@ -56,7 +56,7 @@ body:has(.login-page) {
   flex-direction: column;
   gap: 1.25rem;
   color: white;
-  padding: 1.5rem;
+  padding: 3rem;
   padding-left: 6rem;
   transform: translateY(-80px);
 }
@@ -67,11 +67,20 @@ body:has(.login-page) {
 }
 
 .login-hero-text h2 {
-  font-size: 3.25rem;
+  font-size: 2.85rem;
   font-weight: 800;
   line-height: 1.1;
   margin: 0;
-  color: white;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 15px rgba(0, 0, 0, 1), 0 2px 6px rgba(0, 0, 0, 1);
+}
+
+.text-highlight {
+  color: #ff3b3b;
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(255, 59, 59, 0.5); /* bright red glow instead of black shadow */
 }
 
 .login-hero-text {
@@ -95,17 +104,17 @@ body:has(.login-page) {
 
 .login-hero-text .text-highlight {
   font-family: 'Kaushan Script', cursive;
-  font-size: 4.5rem; 
+  font-size: 3.25rem; /* Smaller to fit on the same line */
   font-weight: 400; 
-  background: linear-gradient(to right, #ef4444, #ea580c, #eab308, #ef4444, #ea580c);
+  background: linear-gradient(to right, #ff0000, #ffcc00, #ffffff, #ff0000, #ffcc00);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.8));
-  display: inline-block;
+  filter: drop-shadow(0 0 8px rgba(255, 77, 77, 0.6)); /* Bright red glow instead of black shadow */
+  text-shadow: none !important; /* Stop the black shadow from leaking through the transparent text */
+  display: inline-block; /* Revert back to inline-block so padding applies properly to the clipping box, but without margin-top */
   position: relative;
-  padding-right: 0.5rem;
-  margin-top: -0.5rem; 
+  padding-right: 0.8rem; /* Extra padding so the cursive 'o' doesn't get clipped */
   animation: fireGradient 3s linear infinite;
 }
 
@@ -251,6 +260,7 @@ body:has(.login-page) {
 .login-right {
   display: flex;
   justify-content: flex-end;
+  grid-column: 2;
 }
 
 .login-card {
@@ -320,6 +330,8 @@ body:has(.login-page) {
   opacity: 0;
   pointer-events: none;
   visibility: hidden;
+  position: absolute; /* Don't take up space when inactive */
+  width: 100%;
 }
 
 .form-section.active {
@@ -327,6 +339,7 @@ body:has(.login-page) {
   transform: translateX(0);
   pointer-events: auto;
   visibility: visible;
+  position: relative; /* Define container height when active */
 }
 
 .form-section.inactive-left {
@@ -598,6 +611,7 @@ body:has(.login-page) {
 }
 
 /* ═══ FORM OPTIONS (checkbox + forgot) ═══ */
+
 .form-options {
   display: flex;
   justify-content: space-between;
@@ -687,8 +701,38 @@ body:has(.login-page) {
   gap: 0.75rem;
 }
 
-/* .pin-keypad solo vive en el breakpoint tablet; oculto en desktop y mobile */
+/* ── Teclado numérico táctil (PIN) ── */
 .pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.5rem;
+}
+
+.keypad-btn {
+  height: 58px;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.keypad-btn:hover, .keypad-btn:active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+.keypad-clear, .keypad-back {
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.pin-active .form-options {
   display: none;
 }
 
@@ -922,40 +966,7 @@ body:has(.login-page) {
     border-top-color: rgba(255,255,255,0.06);
   }
 
-  /* ── Teclado numérico táctil (PIN como modo por defecto en tablet) ── */
-  .pin-keypad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.65rem;
-    margin-top: 0.5rem;
-  }
 
-  .keypad-btn {
-    height: 58px;
-    font-size: 1.3rem;
-    font-weight: 600;
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .keypad-btn:hover, .keypad-btn:active {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: #ef4444;
-    transform: translateY(-1px);
-  }
-
-  .keypad-clear, .keypad-back {
-    font-size: 0.9rem;
-    color: #9ca3af;
-  }
-
-  .pin-active .form-options {
-    display: none;
-  }
 }
 
 /* ═══ MOBILE (≤ 679px): Carrusel + tarjeta ═══ */
@@ -966,8 +977,7 @@ body:has(.login-page) {
     padding: 0;
     display: flex;
     flex-direction: column;
-    overflow-x: hidden;
-    overflow-y: auto;
+    overflow: hidden; /* No scroll ever */
     background: #000;
   }
   
@@ -977,7 +987,7 @@ body:has(.login-page) {
     top: 0;
     left: 0;
     width: 100%;
-    height: 40vh;
+    height: 30vh;
     overflow: hidden;
     z-index: 0;
   }
@@ -1013,11 +1023,11 @@ body:has(.login-page) {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    margin-top: 33vh;
+    margin-top: 25vh;
     background: rgb(15, 15, 15);
     border-radius: 32px 32px 0 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1.5rem 1.5rem 1.25rem 1.5rem;
+    padding: 1.2rem 1.2rem 1rem 1.2rem;
     box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.9);
     flex: 1 0 auto;
     gap: 0;
@@ -1193,7 +1203,122 @@ body:has(.login-page) {
 
   .footer-icon {
     color: #d12c2c;
-    width: 14px;
     height: 14px;
+  }
+}
+
+/* ==========================================================================
+   DESKTOP PREMIUM LAYERS (min-width: 1024px)
+   ========================================================================== */
+.desktop-layers {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  /* Override login-page background to allow desktop layers */
+  .login-page {
+    background-image: none !important;
+    background-color: #000;
+  }
+
+  .desktop-layers {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 0; /* Base level */
+    overflow: hidden;
+    border-radius: 15px; /* Match login-page radius */
+  }
+
+  /* 1. Base Layer (Fondo) */
+  .desktop-bg-layer {
+    position: absolute;
+    inset: 0;
+    background-image: url('/fondo-login.png');
+    background-size: cover;
+    background-position: right center;
+    background-repeat: no-repeat;
+    z-index: 1;
+  }
+
+  /* 2. Left Carousel Layer */
+  .desktop-carousel-layer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 60%;
+    z-index: 2;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, black 40%, transparent 100%);
+    mask-image: linear-gradient(to right, black 40%, transparent 100%);
+  }
+
+  .desktop-carousel-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+  }
+  
+  .desktop-carousel-img.active {
+    opacity: 1;
+  }
+
+  .desktop-carousel-gradient {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.45); /* Dark overlay to dim the images */
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* 3. Bottom Food Image and Wave Layer */
+  .desktop-bottom-layer {
+    position: absolute;
+    bottom: -20px; /* Slight offset */
+    left: 0;
+    width: 100%;
+    height: 350px; /* Base height for the wave */
+    z-index: 3;
+    pointer-events: none;
+  }
+
+  .desktop-wave {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+  }
+
+  .desktop-food-img {
+    position: absolute;
+    bottom: -5%;
+    left: -5%;
+    width: 110%;
+    max-width: none;
+    z-index: 2;
+    object-fit: contain;
+    filter: drop-shadow(0 20px 30px rgba(0,0,0,0.7));
+  }
+
+  /* 4. Adjust layout layer to sit above desktop layers */
+  .login-layout {
+    position: relative;
+    z-index: 10; 
+  }
+
+  /* Adjust form position slightly to right */
+  .login-right {
+    /* Removed transform to prevent cut off on smaller screens */
   }
 }

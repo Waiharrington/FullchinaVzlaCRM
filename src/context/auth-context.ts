@@ -12,6 +12,8 @@ export interface AuthContextType {
   user: User | null
   loading: boolean
   demoMode: boolean
+  splashDone: boolean
+  setSplashDone: (val: boolean) => void
   signIn: (email: string, password: string) => Promise<{ error?: string }>
   signInAsDemo: (role: 'owner' | 'manager' | 'cashier') => void
   signOut: () => Promise<void>
