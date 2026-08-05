@@ -8,17 +8,40 @@ const CAROUSEL_IMAGES = [
   '/login-carousel/slide2.webp',
   '/login-carousel/slide3.png',
   '/login-carousel/slide4.png',
-  '/login-carousel/slide5.png',
-  '/login-carousel/slide7.jpg'
+  '/login-carousel/slide5.png'
 ];
 
 const CAROUSEL_SETTINGS = [
-  { posY: 80, zoom: 1.25 },
-  { posY: 80, zoom: 1.15 },
-  { posY: 85, zoom: 1.10 },
-  { posY: 80, zoom: 1.00 },
-  { posY: 85, zoom: 1.10 },
-  { posY: 75, zoom: 1.15 },
+  {
+    "posY": 38,
+    "posX": 51,
+    "zoom": 1.09,
+    "maskRight": 83
+  },
+  {
+    "posY": 25,
+    "posX": 48,
+    "zoom": 2.35,
+    "maskRight": 61
+  },
+  {
+    "posY": 6,
+    "posX": 47,
+    "zoom": 3.17,
+    "maskRight": 56
+  },
+  {
+    "posY": 49,
+    "posX": 48,
+    "zoom": 3.06,
+    "maskRight": 86
+  },
+  {
+    "posY": 0,
+    "posX": 41,
+    "zoom": 2.62,
+    "maskRight": 56
+  }
 ];
 
 export function Login() {
@@ -33,17 +56,18 @@ export function Login() {
   const [isPinMode, setIsPinMode] = useState(false)
   const [pin, setPin] = useState('')
   const [isExiting, setIsExiting] = useState(false)
+  const [carouselSettings, setCarouselSettings] = useState(CAROUSEL_SETTINGS)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTabletViewport, setIsTabletViewport] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const didSetTabletDefault = useRef(false)
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % CAROUSEL_IMAGES.length)
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [])
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
+    }, 6000); // 6 seconds per slide
+    return () => clearInterval(timer);
+  }, []);
 
   // Tablets en el mostrador funcionan como terminal de caja: PIN es el modo por defecto.
   useEffect(() => {
@@ -148,8 +172,10 @@ export function Login() {
             alt="Full China Food"
             className={`carousel-img ${index === currentSlide ? 'active' : ''}`}
             style={{
-              objectPosition: `50% ${CAROUSEL_SETTINGS[index]?.posY ?? 25}%`,
-              transform: `scale(${CAROUSEL_SETTINGS[index]?.zoom ?? 1})`
+              objectPosition: 'center',
+              transform: `translate(${(carouselSettings[index]?.posX ?? 50) - 50}%, ${(carouselSettings[index]?.posY ?? 50) - 50}%) scale(${carouselSettings[index]?.zoom ?? 1})`,
+              WebkitMaskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`,
+              maskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`
             }}
           />
         ))}
@@ -169,13 +195,18 @@ export function Login() {
               alt="Full China Food"
               className={`desktop-carousel-img ${index === currentSlide ? 'active' : ''}`}
               style={{
-                objectPosition: `50% ${CAROUSEL_SETTINGS[index]?.posY ?? 25}%`,
-                transform: `scale(${CAROUSEL_SETTINGS[index]?.zoom ?? 1})`
+                objectPosition: 'center',
+                transform: `translate(${(carouselSettings[index]?.posX ?? 50) - 50}%, ${(carouselSettings[index]?.posY ?? 50) - 50}%) scale(${carouselSettings[index]?.zoom ?? 1})`,
+                WebkitMaskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`,
+                maskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`
               }}
             />
           ))}
-          <div className="desktop-carousel-gradient"></div>
         </div>
+
+        {/* Screen-wide gradients */}
+        <div className="desktop-carousel-gradient"></div>
+        <div className="desktop-carousel-bottom-gradient"></div>
 
         {/* Bottom food image */}
         <div className="desktop-bottom-layer">
@@ -379,7 +410,8 @@ export function Login() {
         </div>
 
       </div>
+
+
     </div>
   )
 }
-
