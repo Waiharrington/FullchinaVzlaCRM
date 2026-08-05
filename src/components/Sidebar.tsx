@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useDemoData } from '../context/demo-data-context'
@@ -23,19 +23,19 @@ import {
 import './Sidebar.css'
 
 const allNavItems = [
-  { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager', 'cashier'] },
-  { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'] },
-  { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'] },
-  { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager', 'cashier'] },
-  { path: '/inventario', label: 'Inventario', icon: Package, roles: ['owner', 'manager', 'cashier'] },
-  { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'] },
-  { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'] },
-  { path: '/compras', label: 'Compras', icon: ShoppingCart, roles: ['owner', 'manager'] },
-  { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'] },
-  { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'] },
-  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, roles: ['owner'] },
-  { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'] },
-  { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'] }
+  { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
+  { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
+  { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
+  { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
+  { path: '/inventario', label: 'Inventario', icon: Package, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
+  { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/compras', label: 'Compras', icon: ShoppingCart, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Gestión' },
+  { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Gestión' },
+  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, roles: ['owner'], group: 'Gestión' },
+  { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Gestión' },
+  { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Gestión' }
 ]
 
 interface SidebarProps {
@@ -89,20 +89,26 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="sidebar-nav">
-        {navItems.map((item) => {
+        {navItems.map((item, index) => {
           const Icon = item.icon
           const isActive = isActiveItem(item.path, location.pathname)
+          const showGroup = index === 0 || item.group !== navItems[index - 1].group
+
           return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={`sidebar-link ${isActive ? 'active' : ''}`}
-              onMouseEnter={(e) => collapsed && showTooltip(item.label, e)}
-              onMouseLeave={hideTooltip}
-            >
-              <Icon size={18} strokeWidth={1.8} className="sidebar-icon" />
-              <span className="sidebar-label">{item.label}</span>
-            </NavLink>
+            <React.Fragment key={item.path}>
+              {showGroup && !collapsed && (
+                <div className="sidebar-group-title">{item.group.toUpperCase()}</div>
+              )}
+              <NavLink
+                to={item.path}
+                className={`sidebar-link ${isActive ? 'active' : ''}`}
+                onMouseEnter={(e) => collapsed && showTooltip(item.label, e)}
+                onMouseLeave={hideTooltip}
+              >
+                <Icon size={18} strokeWidth={1.8} className="sidebar-icon" />
+                <span className="sidebar-label">{item.label}</span>
+              </NavLink>
+            </React.Fragment>
           )
         })}
 
