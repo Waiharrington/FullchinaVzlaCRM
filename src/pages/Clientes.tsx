@@ -136,7 +136,6 @@ const CUSTOMER_ORDERS_HISTORY = [
 export function Clientes() {
   const { user } = useAuth()
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
-  const [loading, setLoading] = useState(!creditsCache)
 
   // Selected customer for Profile View matching target screenshot
   const [selectedClient, setSelectedClient] = useState<CustomerRow | null>(MOCK_CUSTOMERS[0])
@@ -164,8 +163,6 @@ export function Clientes() {
       creditsCache = data
     } catch (e) {
       console.error('Error cargando créditos:', e)
-    } finally {
-      setLoading(false)
     }
   }, [])
 
@@ -263,14 +260,6 @@ export function Clientes() {
     return 24680.00
   }, [credits])
 
-
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <div style={{ padding: '40px', color: '#9ca3af' }}>Cargando clientes...</div>
-      </div>
-    )
-  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FICHA DE CLIENTE / PERFIL DEL CLIENTE VIEW (Matching Target Screenshot)

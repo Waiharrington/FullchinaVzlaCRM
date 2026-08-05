@@ -1302,10 +1302,10 @@ body:has(.login-page) {
 
   .desktop-food-img {
     position: absolute;
-    bottom: -5%;
-    left: -5%;
-    width: 110%;
-    max-width: none;
+    bottom: -8%;
+    left: -2%;
+    width: 55%;
+    max-width: 750px;
     z-index: 2;
     object-fit: contain;
     filter: drop-shadow(0 20px 30px rgba(0,0,0,0.7));
