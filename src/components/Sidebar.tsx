@@ -112,6 +112,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           )
         })}
 
+      </nav>
+
+      <div className="sidebar-bottom-actions">
         <button 
           className="sidebar-link sidebar-logout-btn-item" 
           onClick={signOut}
@@ -121,7 +124,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <LogOut size={18} strokeWidth={1.8} className="sidebar-icon" />
           <span className="sidebar-label">Cerrar sesión</span>
         </button>
-      </nav>
+      </div>
 
       {!collapsed && (
         <div className="sidebar-active-orders-card">

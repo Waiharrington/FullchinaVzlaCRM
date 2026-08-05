@@ -239,6 +239,15 @@
   border-right-color: #a31d1d;
 }
 
+.sidebar-bottom-actions {
+  padding: 0.5rem 1rem 0;
+  margin-top: auto;
+}
+
+.sidebar.collapsed .sidebar-bottom-actions {
+  padding: 0.5rem;
+}
+
 /* Cerrar Sesión Button */
 .sidebar-logout-btn-item {
   background: transparent;
