@@ -84,8 +84,8 @@ export function Login() {
   const [isPinMode, setIsPinMode] = useState(false)
   const [pin, setPin] = useState('')
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [carouselSettings, setCarouselSettings] = useState(CAROUSEL_SETTINGS)
-  const [mobileSettings, setMobileSettings] = useState(MOBILE_CAROUSEL_SETTINGS)
+  const carouselSettings = CAROUSEL_SETTINGS
+  const mobileSettings = MOBILE_CAROUSEL_SETTINGS
   const [isExiting, setIsExiting] = useState(false)
   const [isTabletViewport, setIsTabletViewport] = useState(false)
   const [isMobileViewport, setIsMobileViewport] = useState(window.innerWidth <= 679)
