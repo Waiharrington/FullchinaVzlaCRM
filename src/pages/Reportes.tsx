@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
-import { useDemoData } from '../context/demo-data-context'
+import { getDailySales, getProductRanking, getCategorySales, getPaymentMethodSales, type DailySales, type ProductRanking, type CategorySales, type PaymentMethodSales } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import './Reportes.css'
@@ -9,31 +9,41 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 
 export function Reportes() {
   const { user } = useAuth()
-  const { orders, products, getDailySales, getProductRanking } = useDemoData()
+  const [dailySales, setDailySales] = useState<DailySales[]>([])
+  const [productRanking, setProductRanking] = useState<ProductRanking[]>([])
+  const [categorySales, setCategorySales] = useState<CategorySales[]>([])
+  const [paymentMethodSales, setPaymentMethodSales] = useState<PaymentMethodSales[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const dailySales = useMemo(() => getDailySales(30), [getDailySales])
-  const productRanking = useMemo(() => getProductRanking(), [getProductRanking])
+  const fetchData = useCallback(async () => {
+    try {
+      const [daily, ranking, categories, payments] = await Promise.all([
+        getDailySales(30),
+        getProductRanking(),
+        getCategorySales(),
+        getPaymentMethodSales(),
+      ])
+      setDailySales(daily)
+      setProductRanking(ranking)
+      setCategorySales(categories)
+      setPaymentMethodSales(payments)
+    } catch (e) {
+      console.error('Error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const paidOrders = useMemo(() => orders.filter(o => o.status === 'paid'), [orders])
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-  const weeklySales = useMemo(() => getDailySales(7), [getDailySales])
-  const monthlySales = useMemo(() => getDailySales(30), [getDailySales])
+  const weeklySales = useMemo(() => dailySales.slice(-7), [dailySales])
+  const monthlySales = dailySales
 
   const totalWeek = weeklySales.reduce((s, d) => s + d.total, 0)
   const totalMonth = monthlySales.reduce((s, d) => s + d.total, 0)
   const avgDaily = monthlySales.length > 0 ? totalMonth / monthlySales.length : 0
-
-  const categorySales = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const order of paidOrders) {
-      for (const item of order.items) {
-        const product = products.find(p => p.id === item.productId)
-        const cat = product?.category || 'food'
-        map.set(cat, (map.get(cat) || 0) + item.price * item.quantity)
-      }
-    }
-    return map
-  }, [paidOrders, products])
 
   const revenueChartData = useMemo(() => ({
     labels: dailySales.map(d => {
@@ -68,38 +78,40 @@ export function Reportes() {
     }]
   }), [dailySales])
 
-  const categoryChartData = useMemo(() => ({
-    labels: ['Comida', 'Bebidas', 'Postres'],
-    datasets: [{
-      data: [
-        categorySales.get('food') || 0,
-        categorySales.get('drink') || 0,
-        categorySales.get('dessert') || 0,
-      ],
-      backgroundColor: [
-        'rgba(249, 115, 22, 0.8)',
-        'rgba(59, 130, 246, 0.8)',
-        'rgba(168, 85, 247, 0.8)',
-      ],
-      borderColor: ['#f97316', '#3b82f6', '#a855f7'],
-      borderWidth: 2,
-    }]
-  }), [categorySales])
-
-  const paymentChartData = useMemo(() => {
-    const cash = paidOrders.filter(o => o.paymentMethod === 'cash').reduce((s, o) => s + o.total, 0)
-    const card = paidOrders.filter(o => o.paymentMethod === 'card').reduce((s, o) => s + o.total, 0)
-    const transfer = paidOrders.filter(o => o.paymentMethod === 'transfer').reduce((s, o) => s + o.total, 0)
+  const categoryChartData = useMemo(() => {
+    const catMap: Record<string, number> = {}
+    categorySales.forEach(c => { catMap[c.category] = c.total })
     return {
-      labels: ['Efectivo', 'Tarjeta', 'Transferencia'],
+      labels: Object.keys(catMap).map(k => k.charAt(0).toUpperCase() + k.slice(1)),
       datasets: [{
-        data: [cash, card, transfer],
-        backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(168, 85, 247, 0.8)'],
-        borderColor: ['#22c55e', '#3b82f6', '#a855f7'],
+        data: Object.values(catMap),
+        backgroundColor: [
+          'rgba(249, 115, 22, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(168, 85, 247, 0.8)',
+          'rgba(16, 185, 129, 0.8)',
+          'rgba(245, 158, 11, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+        ],
         borderWidth: 2,
       }]
     }
-  }, [paidOrders])
+  }, [categorySales])
+
+  const paymentChartData = useMemo(() => {
+    const methodMap: Record<string, number> = {}
+    paymentMethodSales.forEach(p => { methodMap[p.method] = p.total })
+    return {
+      labels: Object.keys(methodMap).map(k =>
+        k === 'cash' ? 'Efectivo' : k === 'card' ? 'Tarjeta' : k === 'transfer' ? 'Transferencia' : k
+      ),
+      datasets: [{
+        data: Object.values(methodMap),
+        backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(168, 85, 247, 0.8)', 'rgba(245, 158, 11, 0.8)'],
+        borderWidth: 2,
+      }]
+    }
+  }, [paymentMethodSales])
 
   const lineOptions = useMemo(() => ({
     responsive: true,
@@ -142,6 +154,17 @@ export function Reportes() {
     )
   }
 
+  if (loading) {
+    return (
+      <div className="page animate-fade-in">
+        <header className="page-header">
+          <h1 className="page-title text-gradient">Reportes</h1>
+          <p className="page-subtitle">Cargando...</p>
+        </header>
+      </div>
+    )
+  }
+
   return (
     <div className="page animate-fade-in">
       <header className="page-header">
@@ -164,7 +187,7 @@ export function Reportes() {
         </div>
         <div className="stat-card">
           <span className="stat-label">Total órdenes</span>
-          <span className="stat-value">{paidOrders.length}</span>
+          <span className="stat-value">{dailySales.reduce((s, d) => s + d.count, 0)}</span>
         </div>
       </div>
 
@@ -206,7 +229,7 @@ export function Reportes() {
               <div key={p.name} className="ranking-item">
                 <span className="ranking-pos">{i + 1}</span>
                 <div className="ranking-info">
-                  <span className="ranking-name">{p.name}</span>
+                  <span className="ranking-name">{p.emoji} {p.name}</span>
                   <span className="ranking-stat">{p.count} und · ${p.revenue.toFixed(2)}</span>
                 </div>
                 <div className="ranking-bar-container">

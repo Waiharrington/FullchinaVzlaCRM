@@ -1,89 +1,143 @@
-import { useState, useMemo } from 'react'
-import { useDemoData } from '../context/demo-data-context'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useAuth } from '../context/auth-context'
 import jsPDF from 'jspdf'
-import type { Credit } from '../context/demo-data-context'
+import {
+  getCredits,
+  addCreditPayment,
+  createCredit,
+  getTodayStats,
+  getOrdersWithItems,
+  createDailyClose,
+  getDailyCloses,
+  type Credit as CreditType,
+  type DailyCloseSummary,
+  type TodayStats,
+  type FullOrder,
+} from '../lib/dataService'
 import './Mas.css'
 
 type Tab = 'credits' | 'close'
 
 export function Mas() {
-  const { credits, orders, todayStats, creditPayments, addCredit, addCreditPayment } = useDemoData()
+  const { user } = useAuth()
+  const [credits, setCredits] = useState<CreditType[]>([])
+  const [closes, setCloses] = useState<DailyCloseSummary[]>([])
+  const [todayStats, setTodayStats] = useState<TodayStats | null>(null)
+  const [todayOrders, setTodayOrders] = useState<FullOrder[]>([])
+  const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('credits')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
-  const [newPhone, setNewPhone] = useState('')
   const [newAmount, setNewAmount] = useState('')
-  const [paymentModal, setPaymentModal] = useState<Credit | null>(null)
+  const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
-  const [selectedCredit, setSelectedCredit] = useState<Credit | null>(null)
+  const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
+  const [closing, setClosing] = useState(false)
 
-  const handleCreateCredit = () => {
-    if (newClient && newAmount) {
-      addCredit(newClient, parseFloat(newAmount), newPhone || undefined)
+  const fetchAll = useCallback(async () => {
+    try {
+      const [creditsData, stats, ordersData, closesData] = await Promise.all([
+        getCredits(),
+        getTodayStats(),
+        getOrdersWithItems(),
+        getDailyCloses(),
+      ])
+      setCredits(creditsData)
+      setTodayStats(stats)
+      setTodayOrders(ordersData.filter(o => o.status === 'paid'))
+      setCloses(closesData)
+    } catch (e) {
+      console.error('Error cargando datos:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
+
+  const handleCreateCredit = async () => {
+    if (!newClient || !newAmount || !user) return
+    try {
+      const orders = await getOrdersWithItems()
+      const orderId = orders[0]?.id
+      if (!orderId) {
+        alert('No hay órdenes disponibles')
+        return
+      }
+      await createCredit({
+        orderId,
+        customerName: newClient,
+        totalAmount: parseFloat(newAmount),
+        userId: user.id,
+      })
       setNewClient('')
-      setNewPhone('')
       setNewAmount('')
       setShowNewCredit(false)
+      fetchAll()
+    } catch (e) {
+      console.error('Error:', e)
     }
   }
 
-  const handlePayment = () => {
-    if (paymentModal && paymentAmount) {
-      addCreditPayment(paymentModal.id, parseFloat(paymentAmount))
+  const handlePayment = async () => {
+    if (!paymentModal || !paymentAmount || !user) return
+    try {
+      await addCreditPayment({
+        creditId: paymentModal.id,
+        amount: parseFloat(paymentAmount),
+        userId: user.id,
+      })
       setPaymentModal(null)
       setPaymentAmount('')
+      fetchAll()
+    } catch (e) {
+      console.error('Error:', e)
+    }
+  }
+
+  const handleDailyClose = async () => {
+    if (!user) return
+    setClosing(true)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      await createDailyClose(today)
+      fetchAll()
+    } catch (e) {
+      console.error('Error:', e)
+      alert('Error al crear cierre: ' + (e instanceof Error ? e.message : 'Error desconocido'))
+    } finally {
+      setClosing(false)
     }
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const todayOrders = useMemo(() =>
-    orders.filter(o => o.createdAt.startsWith(today) && o.status === 'paid'),
-    [orders, today]
+
+  const paidOrdersToday = useMemo(() =>
+    todayOrders.filter(o => o.createdAt.startsWith(today)),
+    [todayOrders, today]
   )
-
-  const cashSales = todayOrders.filter(o => o.paymentMethod === 'cash').reduce((s, o) => s + o.total, 0)
-  const cardSales = todayOrders.filter(o => o.paymentMethod === 'card').reduce((s, o) => s + o.total, 0)
-  const transferSales = todayOrders.filter(o => o.paymentMethod === 'transfer').reduce((s, o) => s + o.total, 0)
-
-  const hourlyBreakdown = useMemo(() => {
-    const hours: Record<number, { count: number; total: number }> = {}
-    for (let h = 8; h <= 20; h++) hours[h] = { count: 0, total: 0 }
-    for (const order of todayOrders) {
-      const hour = new Date(order.createdAt).getHours()
-      if (hours[hour]) {
-        hours[hour].count++
-        hours[hour].total += order.total
-      }
-    }
-    return Object.entries(hours)
-      .map(([h, data]) => ({ hour: parseInt(h), ...data }))
-      .filter(h => h.count > 0)
-  }, [todayOrders])
 
   const topProductsToday = useMemo(() => {
     const map = new Map<string, { name: string; count: number; total: number }>()
-    for (const order of todayOrders) {
+    for (const order of paidOrdersToday) {
       for (const item of order.items) {
-        const existing = map.get(item.productId)
+        const existing = map.get(item.sellableProductId)
         if (existing) {
           existing.count += item.quantity
-          existing.total += item.price * item.quantity
+          existing.total += item.unitPrice * item.quantity
         } else {
-          map.set(item.productId, {
+          map.set(item.sellableProductId, {
             name: item.productName,
             count: item.quantity,
-            total: item.price * item.quantity,
+            total: item.unitPrice * item.quantity,
           })
         }
       }
     }
     return Array.from(map.values()).sort((a, b) => b.total - a.total).slice(0, 5)
-  }, [todayOrders])
-
-  const selectedCreditPayments = useMemo(() => {
-    if (!selectedCredit) return []
-    return creditPayments.filter(p => p.creditId === selectedCredit.id)
-  }, [selectedCredit, creditPayments])
+  }, [paidOrdersToday])
 
   const exportDailyClose = () => {
     const doc = new jsPDF()
@@ -92,7 +146,7 @@ export function Mas() {
 
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(18)
-    doc.text('Clienta Foodtruck', pageWidth / 2, y, { align: 'center' })
+    doc.text('Full China Vzla', pageWidth / 2, y, { align: 'center' })
     y += 8
 
     doc.setFont('helvetica', 'normal')
@@ -112,14 +166,9 @@ export function Mas() {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(10)
     const summaryLines = [
-      `Total ventas: $${todayStats.totalSales.toFixed(2)}`,
-      `Ordenes cobradas: ${todayStats.ordersCount}`,
-      `Ticket promedio: $${todayStats.avgTicket.toFixed(2)}`,
-      '',
-      'Metodo de pago:',
-      `  Efectivo: $${cashSales.toFixed(2)}`,
-      `  Tarjeta: $${cardSales.toFixed(2)}`,
-      `  Transferencia: $${transferSales.toFixed(2)}`,
+      `Total ventas: $${(todayStats?.totalSales ?? 0).toFixed(2)}`,
+      `Ordenes cobradas: ${todayStats?.ordersCount ?? 0}`,
+      `Ticket promedio: $${(todayStats?.avgTicket ?? 0).toFixed(2)}`,
     ]
     for (const line of summaryLines) {
       doc.text(line, 15, y)
@@ -148,9 +197,20 @@ export function Mas() {
     doc.save(`cierre-caja-${today}.pdf`)
   }
 
-  const activeCredits = credits.filter(c => c.status === 'active')
-  const settledCredits = credits.filter(c => c.status === 'settled')
-  const totalPending = activeCredits.reduce((s, c) => s + c.remaining, 0)
+  const activeCredits = credits.filter(c => c.status === 'pending' || c.status === 'partial')
+  const settledCredits = credits.filter(c => c.status === 'paid')
+  const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
+
+  if (loading) {
+    return (
+      <div className="page animate-fade-in">
+        <header className="page-header">
+          <h1 className="page-title text-gradient">Más Módulos y Administración</h1>
+          <p className="page-subtitle">Cargando...</p>
+        </header>
+      </div>
+    )
+  }
 
   return (
     <div className="page animate-fade-in">
@@ -234,12 +294,6 @@ export function Mas() {
                   value={newClient}
                   onChange={(e) => setNewClient(e.target.value)}
                 />
-                <input
-                  type="tel"
-                  placeholder="Telefono (opcional)"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                />
               </div>
               <div className="form-row">
                 <input
@@ -266,18 +320,18 @@ export function Mas() {
                   <div className="credits-section">
                     <span className="credits-section-title">Activos</span>
                     {activeCredits.map(credit => {
-                      const percentPaid = credit.amount > 0 ? Math.min(100, (credit.paid / credit.amount) * 100) : 100
-                      const daysSince = Math.floor((Date.now() - new Date(credit.date).getTime()) / 86400000)
-                      const isOverdue = daysSince > 7 && credit.remaining > 0
+                      const percentPaid = credit.totalAmount > 0 ? Math.min(100, (credit.totalPaid / credit.totalAmount) * 100) : 100
+                      const daysSince = Math.floor((Date.now() - new Date(credit.createdAt).getTime()) / 86400000)
+                      const isOverdue = daysSince > 7 && credit.balancePending > 0
 
                       return (
                         <div key={credit.id} className={`credit-item ${isOverdue ? 'overdue' : ''}`}>
                           <div className="credit-header">
-                            <div className="credit-avatar">{credit.client.charAt(0).toUpperCase()}</div>
+                            <div className="credit-avatar">{credit.customerName.charAt(0).toUpperCase()}</div>
                             <div className="credit-info">
-                              <span className="credit-client">{credit.client}</span>
+                              <span className="credit-client">{credit.customerName}</span>
                               <span className="credit-date">
-                                {credit.date} · {daysSince}d
+                                {new Date(credit.createdAt).toLocaleDateString('es')} · {daysSince}d
                                 {isOverdue && <span className="overdue-badge">Vencido</span>}
                               </span>
                             </div>
@@ -286,15 +340,15 @@ export function Mas() {
                           <div className="credit-amounts-row">
                             <div className="credit-amount-col">
                               <span className="credit-amount-label">Total</span>
-                              <span className="credit-amount-value">${credit.amount.toFixed(2)}</span>
+                              <span className="credit-amount-value">${credit.totalAmount.toFixed(2)}</span>
                             </div>
                             <div className="credit-amount-col">
                               <span className="credit-amount-label">Pagado</span>
-                              <span className="credit-amount-value text-success">${credit.paid.toFixed(2)}</span>
+                              <span className="credit-amount-value text-success">${credit.totalPaid.toFixed(2)}</span>
                             </div>
                             <div className="credit-amount-col">
                               <span className="credit-amount-label">Pendiente</span>
-                              <span className="credit-amount-value text-danger">${credit.remaining.toFixed(2)}</span>
+                              <span className="credit-amount-value text-danger">${credit.balancePending.toFixed(2)}</span>
                             </div>
                           </div>
 
@@ -310,23 +364,6 @@ export function Mas() {
                               Historial
                             </button>
                           </div>
-
-                          {selectedCredit?.id === credit.id && (
-                            <div className="credit-history animate-slide-up">
-                              {selectedCreditPayments.length === 0 ? (
-                                <p className="empty-message">Sin abonos registrados</p>
-                              ) : (
-                                selectedCreditPayments.map(payment => (
-                                  <div key={payment.id} className="payment-history-item">
-                                    <span className="payment-date">
-                                      {new Date(payment.createdAt).toLocaleDateString('es', { day: '2-digit', month: 'short' })}
-                                    </span>
-                                    <span className="payment-amount">+${payment.amount.toFixed(2)}</span>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          )}
                         </div>
                       )
                     })}
@@ -339,10 +376,10 @@ export function Mas() {
                     {settledCredits.map(credit => (
                       <div key={credit.id} className="credit-item settled">
                         <div className="credit-header">
-                          <div className="credit-avatar settled-avatar">{credit.client.charAt(0).toUpperCase()}</div>
+                          <div className="credit-avatar settled-avatar">{credit.customerName.charAt(0).toUpperCase()}</div>
                           <div className="credit-info">
-                            <span className="credit-client">{credit.client}</span>
-                            <span className="credit-date">{credit.date} · Saldado</span>
+                            <span className="credit-client">{credit.customerName}</span>
+                            <span className="credit-date">{new Date(credit.createdAt).toLocaleDateString('es')} · Saldado</span>
                           </div>
                           <span className="settled-badge">Saldado</span>
                         </div>
@@ -360,82 +397,29 @@ export function Mas() {
         <div className="card close-card">
           <div className="card-header-row">
             <h2 className="card-title">Cierre del dia</h2>
-            <button className="btn-ghost btn-sm" onClick={exportDailyClose}>
-              📄 Exportar PDF
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button className="btn-accent btn-sm" onClick={handleDailyClose} disabled={closing}>
+                {closing ? '⏳ Cerrando...' : '🔒 Cerrar caja'}
+              </button>
+              <button className="btn-ghost btn-sm" onClick={exportDailyClose}>
+                📄 Exportar PDF
+              </button>
+            </div>
           </div>
 
           <div className="close-summary">
             <div className="close-row total">
               <span className="close-label">Total ventas</span>
-              <span className="close-value">${todayStats.totalSales.toFixed(2)}</span>
+              <span className="close-value">${(todayStats?.totalSales ?? 0).toFixed(2)}</span>
             </div>
             <div className="close-row">
               <span className="close-label">Ordenes cobradas</span>
-              <span className="close-value">{todayStats.ordersCount}</span>
+              <span className="close-value">{todayStats?.ordersCount ?? 0}</span>
             </div>
             <div className="close-row">
               <span className="close-label">Ticket promedio</span>
-              <span className="close-value">${todayStats.avgTicket.toFixed(2)}</span>
+              <span className="close-value">${(todayStats?.avgTicket ?? 0).toFixed(2)}</span>
             </div>
-
-            <div className="close-divider" />
-            <span className="close-section-title">Por metodo de pago</span>
-
-            <div className="payment-breakdown">
-              <div className="payment-breakdown-item cash">
-                <span className="payment-breakdown-icon">💵</span>
-                <div className="payment-breakdown-info">
-                  <span className="payment-breakdown-label">Efectivo</span>
-                  <span className="payment-breakdown-value">${cashSales.toFixed(2)}</span>
-                </div>
-                <div className="payment-breakdown-bar">
-                  <div className="bar-fill cash-fill" style={{ width: `${todayStats.totalSales > 0 ? (cashSales / todayStats.totalSales * 100) : 0}%` }} />
-                </div>
-              </div>
-              <div className="payment-breakdown-item card">
-                <span className="payment-breakdown-icon">💳</span>
-                <div className="payment-breakdown-info">
-                  <span className="payment-breakdown-label">Tarjeta</span>
-                  <span className="payment-breakdown-value">${cardSales.toFixed(2)}</span>
-                </div>
-                <div className="payment-breakdown-bar">
-                  <div className="bar-fill card-fill" style={{ width: `${todayStats.totalSales > 0 ? (cardSales / todayStats.totalSales * 100) : 0}%` }} />
-                </div>
-              </div>
-              <div className="payment-breakdown-item transfer">
-                <span className="payment-breakdown-icon">📱</span>
-                <div className="payment-breakdown-info">
-                  <span className="payment-breakdown-label">Transferencia</span>
-                  <span className="payment-breakdown-value">${transferSales.toFixed(2)}</span>
-                </div>
-                <div className="payment-breakdown-bar">
-                  <div className="bar-fill transfer-fill" style={{ width: `${todayStats.totalSales > 0 ? (transferSales / todayStats.totalSales * 100) : 0}%` }} />
-                </div>
-              </div>
-            </div>
-
-            {hourlyBreakdown.length > 0 && (
-              <>
-                <div className="close-divider" />
-                <span className="close-section-title">Ventas por hora</span>
-                <div className="hourly-list">
-                  {hourlyBreakdown.map(h => (
-                    <div key={h.hour} className="hourly-item">
-                      <span className="hourly-time">{h.hour}:00</span>
-                      <div className="hourly-bar-container">
-                        <div
-                          className="hourly-bar"
-                          style={{ width: `${Math.max(4, (h.total / Math.max(...hourlyBreakdown.map(x => x.total))) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="hourly-count">{h.count} ord</span>
-                      <span className="hourly-total">${h.total.toFixed(2)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
 
             {topProductsToday.length > 0 && (
               <>
@@ -453,6 +437,22 @@ export function Mas() {
                 </div>
               </>
             )}
+
+            {closes.length > 0 && (
+              <>
+                <div className="close-divider" />
+                <span className="close-section-title">Últimos cierres</span>
+                <div className="top-products-list">
+                  {closes.slice(0, 5).map((c) => (
+                    <div key={c.id} className="top-product-item">
+                      <span className="top-product-rank">{c.closeDate}</span>
+                      <span className="top-product-name">Ventas: ${c.totalSales.toFixed(2)}</span>
+                      <span className="top-product-revenue">Balance: ${c.balance.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -461,13 +461,13 @@ export function Mas() {
         <div className="modal-overlay" onClick={() => setPaymentModal(null)}>
           <div className="modal animate-slide-up" onClick={(e) => e.stopPropagation()}>
             <h3 className="modal-title">Abonar a credito</h3>
-            <p className="modal-subtitle">{paymentModal.client}</p>
-            <p className="modal-remaining">Pendiente: <span className="text-danger">${paymentModal.remaining.toFixed(2)}</span></p>
+            <p className="modal-subtitle">{paymentModal.customerName}</p>
+            <p className="modal-remaining">Pendiente: <span className="text-danger">${paymentModal.balancePending.toFixed(2)}</span></p>
             <input
               type="number"
               step="0.01"
-              max={paymentModal.remaining}
-              placeholder={`Monto (max $${paymentModal.remaining.toFixed(2)})`}
+              max={paymentModal.balancePending}
+              placeholder={`Monto (max $${paymentModal.balancePending.toFixed(2)})`}
               value={paymentAmount}
               onChange={(e) => setPaymentAmount(e.target.value)}
             />

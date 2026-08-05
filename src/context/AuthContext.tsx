@@ -9,6 +9,16 @@ const DEMO_USERS: Record<string, User> = {
   cashier: { id: 'demo-cashier', email: 'cajera@clienta.app', role: 'cashier' }
 }
 
+async function fetchUserRole(userId: string): Promise<'owner' | 'manager' | 'cashier'> {
+  if (!supabase) return 'owner'
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single()
+  return (data?.role as 'owner' | 'manager' | 'cashier') ?? 'cashier'
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<import('@supabase/supabase-js').Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
@@ -31,26 +41,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    supabase!.auth.getSession().then(({ data: { session: currentSession } }) => {
+    supabase!.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       setSession(currentSession)
       if (currentSession?.user) {
+        const role = await fetchUserRole(currentSession.user.id)
         setUser({
           id: currentSession.user.id,
           email: currentSession.user.email || '',
-          role: 'owner'
+          role
         })
       }
       setLoading(false)
     })
 
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(
-      (_event, currentSession) => {
+      async (_event, currentSession) => {
         setSession(currentSession)
         if (currentSession?.user) {
+          const role = await fetchUserRole(currentSession.user.id)
           setUser({
             id: currentSession.user.id,
             email: currentSession.user.email || '',
-            role: 'owner'
+            role
           })
         } else {
           setUser(null)

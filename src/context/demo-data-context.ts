@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { Product, Ingredient, Order, OrderItem, Staff, StockMovement, CreditPayment } from '../lib/demoData'
+import type { Product, Ingredient, Order, OrderItem, Staff, StockMovement, CreditPayment, DemoProductionBatch, DemoProductionBonus } from '../lib/demoData'
 
 export interface Credit {
   id: string
@@ -30,6 +30,8 @@ export interface DemoDataContextType {
   stockMovements: StockMovement[]
   creditPayments: CreditPayment[]
   todayStats: TodayStats
+  productionBatches: DemoProductionBatch[]
+  productionBonuses: DemoProductionBonus[]
   createOrder: (items: OrderItem[]) => Order
   completeOrder: (orderId: string, paymentMethod: 'cash' | 'card' | 'transfer') => void
   cancelOrder: (orderId: string) => void
@@ -40,6 +42,7 @@ export interface DemoDataContextType {
   addIngredient: (ingredient: Omit<Ingredient, 'id'>) => void
   updateIngredient: (id: string, updates: Partial<Ingredient>) => void
   deleteIngredient: (id: string) => void
+  createProductionBatch: (batch: Omit<DemoProductionBatch, 'id' | 'batchNumber' | 'createdAt'>) => DemoProductionBatch
   getOrdersByDateRange: (start: Date, end: Date) => Order[]
   getDailySales: (days: number) => Array<{ date: string; total: number; count: number }>
   getProductRanking: () => Array<{ name: string; count: number; revenue: number }>

@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { useDemoData } from '../context/demo-data-context'
+import { useState, useMemo, useEffect, useCallback } from 'react'
+import { getOrdersWithItems, updateOrderStatus, type FullOrder } from '../lib/dataService'
 import './Cocina.css'
 
 type StationFilter = 'all' | 'wok' | 'fryer' | 'prep'
@@ -12,12 +12,32 @@ const STATIONS = [
 ]
 
 export function Cocina() {
-  const { orders, updateOrderStatus } = useDemoData()
+  const [orders, setOrders] = useState<FullOrder[]>([])
+  const [loading, setLoading] = useState(true)
   const [stationFilter, setStationFilter] = useState<StationFilter>('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const data = await getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59')
+      setOrders(data.filter(o => ['open', 'confirmed', 'preparing', 'ready'].includes(o.status)))
+    } catch (e) {
+      console.error('Error cargando órdenes:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchOrders()
+    const interval = setInterval(fetchOrders, 15000)
+    return () => clearInterval(interval)
+  }, [fetchOrders])
 
   const activeOrders = useMemo(() => {
-    return orders.filter(o => o.status === 'pending' || o.status === 'paid')
+    return orders.filter(o => o.status === 'open' || o.status === 'confirmed' || o.status === 'preparing')
   }, [orders])
 
   const getElapsedTime = (createdAt: string) => {
@@ -29,6 +49,38 @@ export function Cocina() {
     if (minutes >= 15) return { text: `${minutes} MIN - RETRASADO`, class: 'kds-timer-urgent' }
     if (minutes >= 10) return { text: `${minutes} MIN - ALERTA`, class: 'kds-timer-warning' }
     return { text: `${minutes} MIN`, class: 'kds-timer-normal' }
+  }
+
+  const handleStatusChange = async (orderId: string, newStatus: string) => {
+    setUpdatingId(orderId)
+    try {
+      await updateOrderStatus(orderId, newStatus)
+      setOrders(prev => prev.map(o =>
+        o.id === orderId ? { ...o, status: newStatus } : o
+      ))
+    } catch (e) {
+      console.error('Error actualizando estado:', e)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="kds-page animate-fade-in">
+        <header className="kds-header">
+          <div className="kds-header-title">
+            <h1>🍳 KDS - Pantalla de Cocina</h1>
+          </div>
+        </header>
+        <main className="kds-grid">
+          <div className="kds-empty-state">
+            <span className="kds-empty-icon">⏳</span>
+            <h2>Cargando órdenes...</h2>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -75,10 +127,10 @@ export function Cocina() {
             const timerInfo = getTimerBadge(elapsedMins)
 
             return (
-              <div key={order.id} className={`kds-card ${order.status === 'paid' ? 'in-prep' : 'new-order'}`}>
+              <div key={order.id} className={`kds-card ${order.status === 'preparing' ? 'in-prep' : 'new-order'}`}>
                 <div className="kds-card-header">
                   <div className="kds-order-info">
-                    <span className="kds-order-id">{order.id}</span>
+                    <span className="kds-order-id">#{String(order.orderNumber).padStart(4, '0')}</span>
                     <span className="kds-order-time">
                       {new Date(order.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -88,31 +140,33 @@ export function Cocina() {
 
                 <div className="kds-card-body">
                   <ul className="kds-items-list">
-                    {order.items.map((item, idx) => (
-                      <li key={`${item.productId}-${idx}`} className="kds-item">
+                    {order.items.map((item) => (
+                      <li key={item.id} className="kds-item">
                         <span className="kds-item-qty">{item.quantity}</span>
-                        <span className="kds-item-name">{item.productName}</span>
+                        <span className="kds-item-name">{item.emoji} {item.productName}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 <div className="kds-card-footer">
-                  {order.status === 'pending' ? (
+                  {order.status === 'open' || order.status === 'confirmed' ? (
                     <button
                       className="kds-btn-action kds-btn-start"
-                      onClick={() => updateOrderStatus(order.id, 'paid')}
+                      onClick={() => handleStatusChange(order.id, 'preparing')}
+                      disabled={updatingId === order.id}
                     >
-                      👨‍🍳 EMPEZAR A PREPARAR
+                      {updatingId === order.id ? '⏳...' : '👨‍🍳 EMPEZAR A PREPARAR'}
                     </button>
-                  ) : (
+                  ) : order.status === 'preparing' ? (
                     <button
                       className="kds-btn-action kds-btn-finish"
-                      onClick={() => updateOrderStatus(order.id, 'paid')}
+                      onClick={() => handleStatusChange(order.id, 'ready')}
+                      disabled={updatingId === order.id}
                     >
-                      ✅ LISTO PARA ENTREGAR
+                      {updatingId === order.id ? '⏳...' : '✅ LISTO PARA ENTREGAR'}
                     </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
             )

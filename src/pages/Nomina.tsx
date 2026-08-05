@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useDemoData } from '../context/demo-data-context'
 import './Nomina.css'
 
 interface PayrollRecord {
@@ -13,40 +12,11 @@ interface PayrollRecord {
   status: 'paid' | 'pending'
 }
 
+const PLACEHOLDER_STAFF_COUNT = 0
+
 export function Nomina() {
-  const { staff } = useDemoData()
-  const [payrollList] = useState<PayrollRecord[]>([
-    {
-      id: 'PAY-001',
-      employeeName: 'Ana García',
-      role: 'Cajera Principal',
-      baseSalary: 150.0,
-      productionBonus: 25.0,
-      advances: 10.0,
-      netPay: 165.0,
-      status: 'paid',
-    },
-    {
-      id: 'PAY-002',
-      employeeName: 'Carlos Ruiz',
-      role: 'Cocinero de Wok',
-      baseSalary: 180.0,
-      productionBonus: 45.0,
-      advances: 20.0,
-      netPay: 205.0,
-      status: 'paid',
-    },
-    {
-      id: 'PAY-003',
-      employeeName: 'María López',
-      role: 'Asistente de Producción (Lumpias)',
-      baseSalary: 140.0,
-      productionBonus: 60.0,
-      advances: 0.0,
-      netPay: 200.0,
-      status: 'pending',
-    },
-  ])
+  const staffCount = PLACEHOLDER_STAFF_COUNT
+  const [payrollList] = useState<PayrollRecord[]>([])
 
   return (
     <div className="page animate-fade-in">
@@ -61,7 +31,7 @@ export function Nomina() {
         <div className="stat-card">
           <div className="stat-icon">👥</div>
           <div className="stat-info">
-            <span className="stat-value">{staff.length}</span>
+            <span className="stat-value">{staffCount}</span>
             <span className="stat-label">Empleados activos</span>
           </div>
         </div>

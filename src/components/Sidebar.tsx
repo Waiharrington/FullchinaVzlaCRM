@@ -1,19 +1,18 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
-import { useDemoData } from '../context/demo-data-context'
-import { 
-  Home, 
+import {
+  Home,
   Wallet,
-  ClipboardList, 
-  Package, 
+  ClipboardList,
+  Package,
   Beef,
   BookOpen,
-  ShoppingCart, 
-  PiggyBank, 
-  Users, 
+  ShoppingCart,
+  PiggyBank,
+  Users,
   DollarSign,
   ShieldCheck,
-  BarChart3, 
+  BarChart3,
   Settings,
   LogOut,
   Truck,
@@ -40,7 +39,6 @@ const allNavItems = [
 export function Sidebar() {
   const location = useLocation()
   const { user, signOut } = useAuth()
-  const { todayStats } = useDemoData()
 
   const navItems = allNavItems.filter(item =>
     user?.role ? item.roles.includes(user.role) : true
@@ -51,7 +49,7 @@ export function Sidebar() {
       <div className="sidebar-brand">
         <img src="/logo.png" alt="Full China" className="sidebar-logo-img" />
       </div>
-      
+
       <nav className="sidebar-nav">
         {navItems.map((item) => {
           const Icon = item.icon
@@ -68,37 +66,33 @@ export function Sidebar() {
             </NavLink>
           )
         })}
-        
-        {/* Cerrar Sesión directamente en el menú de navegación */}
+
         <button className="sidebar-link sidebar-logout-btn-item" onClick={signOut}>
           <LogOut size={18} strokeWidth={1.8} className="sidebar-icon" />
           <span className="sidebar-label">Cerrar sesión</span>
         </button>
       </nav>
 
-      {/* Active Orders Card */}
       <div className="sidebar-active-orders-card">
         <div className="orders-card-icon-wrapper">
           <Truck size={20} className="orders-card-icon" />
         </div>
         <div className="orders-card-content">
-          <span className="orders-card-title">Pedidos hoy</span>
+          <span className="orders-card-title">Full China Vzla</span>
           <div className="orders-card-data">
-            <span className="orders-card-value">{todayStats?.ordersCount || 0}</span>
-            <span className="orders-card-pct">+12% vs ayer</span>
+            <span className="orders-card-value">{user?.role === 'owner' ? 'Admin' : user?.role === 'manager' ? 'Manager' : 'Cajero'}</span>
           </div>
         </div>
       </div>
 
-      {/* Profile Footer */}
       <div className="sidebar-user-profile">
-        <img 
-          src="/login-carousel/slide7.jpg" 
-          alt="Avatar" 
-          className="sidebar-user-avatar" 
+        <img
+          src="/login-carousel/slide7.jpg"
+          alt="Avatar"
+          className="sidebar-user-avatar"
         />
         <div className="sidebar-user-info">
-          <span className="sidebar-user-name">Administrador</span>
+          <span className="sidebar-user-name">{user?.email || 'Usuario'}</span>
           <span className="sidebar-user-sub">Full China</span>
         </div>
         <ChevronDown size={14} className="sidebar-user-chevron" />

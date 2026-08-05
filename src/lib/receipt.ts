@@ -1,9 +1,9 @@
 import jsPDF from 'jspdf'
-import type { OrderItem } from './demoData'
+import type { CartItem } from './dataService'
 
 interface ReceiptData {
   orderId: string
-  items: OrderItem[]
+  items: CartItem[]
   total: number
   paymentMethod: string
   createdAt: string

@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useDemoData } from '../context/demo-data-context'
 import './Recetas.css'
 
 interface RecipeItem {
@@ -19,24 +18,29 @@ interface Recipe {
   targetMarginPct: number
 }
 
-export function Recetas() {
-  const { ingredients, products } = useDemoData()
+interface Ingredient {
+  id: string
+  name: string
+  costPerUnit: number
+  unit: string
+}
 
-  const [recipes, setRecipes] = useState<Recipe[]>([
-    {
-      id: 'REC-001',
-      productName: 'Full Kilo Especial',
-      category: 'Combos Especiales',
-      suggestedPrice: 15.0,
-      targetMarginPct: 60,
-      items: [
-        { ingredientId: 'i1', ingredientName: 'Porción de Pollo', quantity: 2, unit: 'porciones', costPerUnit: 0.85 },
-        { ingredientId: 'i2', ingredientName: 'Porción de Camarón', quantity: 2, unit: 'porciones', costPerUnit: 1.2 },
-        { ingredientId: 'i3', ingredientName: 'Arroz Frito Especial', quantity: 1, unit: 'porción', costPerUnit: 0.9 },
-        { ingredientId: 'i4', ingredientName: 'Empaque Full China', quantity: 1, unit: 'und', costPerUnit: 0.4 },
-      ],
-    },
-  ])
+interface Product {
+  id: string
+  name: string
+  emoji: string
+  price: number
+  category: string
+}
+
+const PLACEHOLDER_INGREDIENTS: Ingredient[] = []
+const PLACEHOLDER_PRODUCTS: Product[] = []
+
+export function Recetas() {
+  const ingredients = PLACEHOLDER_INGREDIENTS
+  const products = PLACEHOLDER_PRODUCTS
+
+  const [recipes, setRecipes] = useState<Recipe[]>([])
 
   const [showModal, setShowModal] = useState(false)
   const [selectedProductId, setSelectedProductId] = useState('')

@@ -1,414 +1,417 @@
-import { useState, useMemo } from 'react'
-import { useDemoData } from '../context/demo-data-context'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
-import type { Ingredient } from '../lib/demoData'
+import {
+  getIngredients,
+  getStockMovements,
+  type Ingredient,
+  type StockMovement,
+} from '../lib/dataService'
+import {
+  Package,
+  Search,
+  SlidersHorizontal,
+  Eye,
+  Pencil,
+  TrendingUp,
+  AlertTriangle,
+  ShoppingBag,
+  Bell,
+  ArrowDown,
+  ArrowUp,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ShoppingCart,
+} from 'lucide-react'
 import './Inventario.css'
 
-type Tab = 'ingredients' | 'products' | 'movements'
+const ITEMS_PER_PAGE = 8
 
 export function Inventario() {
-  const { ingredients, products, stockMovements, adjustStock, addIngredient, updateIngredient, deleteIngredient } = useDemoData()
   const { user } = useAuth()
-  const [tab, setTab] = useState<Tab>('ingredients')
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [editingItem, setEditingItem] = useState<Ingredient | null>(null)
-  const [adjustModal, setAdjustModal] = useState<Ingredient | null>(null)
-  const [adjustAmount, setAdjustAmount] = useState('')
-  const [adjustReason, setAdjustReason] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
 
   const showCosts = user?.role === 'owner' || user?.role === 'manager'
 
-  const [newItem, setNewItem] = useState({
-    name: '', stock: 0, unit: 'und', minStock: 5, costPerUnit: 0
-  })
+  const fetchAll = useCallback(async () => {
+    try {
+      const [ingData, movData] = await Promise.all([
+        getIngredients(),
+        getStockMovements(),
+      ])
+      setIngredients(ingData)
+      setStockMovements(movData)
+    } catch (e) {
+      console.error('Error:', e)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const filteredIngredients = useMemo(() =>
-    ingredients.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase())),
-    [ingredients, searchTerm]
-  )
+  useEffect(() => {
+    fetchAll()
+  }, [fetchAll])
 
-  const filteredProducts = useMemo(() =>
-    products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())),
-    [products, searchTerm]
-  )
+  const filteredIngredients = useMemo(() => {
+    return ingredients.filter(ing =>
+      ing.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [ingredients, searchTerm])
 
-  const recentMovements = useMemo(() =>
-    stockMovements.slice(0, 20),
-    [stockMovements]
-  )
+  const totalPages = Math.ceil(filteredIngredients.length / ITEMS_PER_PAGE)
+  const paginatedIngredients = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredIngredients.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredIngredients, currentPage])
 
-  const lowStockCount = ingredients.filter(i => i.stock <= i.minStock).length
+  const totalInventoryValue = useMemo(() => {
+    return ingredients.reduce((sum, ing) => sum + (ing.stockValue ?? 0), 0)
+  }, [ingredients])
 
-  const handleAddItem = () => {
-    if (!newItem.name.trim()) return
-    addIngredient(newItem)
-    setNewItem({ name: '', stock: 0, unit: 'und', minStock: 5, costPerUnit: 0 })
-    setShowAddForm(false)
+  const lowStockCount = useMemo(() => {
+    return ingredients.filter(i => i.currentStock <= 10).length
+  }, [ingredients])
+
+  const totalPortions = useMemo(() => {
+    return ingredients.reduce((sum, ing) => sum + ing.currentStock, 0)
+  }, [ingredients])
+
+  const criticalCount = useMemo(() => {
+    return ingredients.filter(i => i.currentStock <= 5).length
+  }, [ingredients])
+
+  const recentMovements = useMemo(() => {
+    return stockMovements.slice(0, 5)
+  }, [stockMovements])
+
+  const alerts = useMemo(() => {
+    return ingredients
+      .filter(i => i.currentStock <= 10)
+      .sort((a, b) => a.currentStock - b.currentStock)
+      .slice(0, 4)
+  }, [ingredients])
+
+  const getStockStatus = (ing: Ingredient): 'ok' | 'low' | 'critical' => {
+    if (ing.currentStock <= 5) return 'critical'
+    if (ing.currentStock <= 10) return 'low'
+    return 'ok'
   }
 
-  const handleUpdateItem = () => {
-    if (!editingItem) return
-    updateIngredient(editingItem.id, editingItem)
-    setEditingItem(null)
-  }
-
-  const handleDeleteItem = (id: string) => {
-    if (confirm('¿Eliminar este ingrediente?')) {
-      deleteIngredient(id)
+  const getStockStatusLabel = (status: 'ok' | 'low' | 'critical') => {
+    switch (status) {
+      case 'ok': return 'En stock'
+      case 'low': return 'Bajo'
+      case 'critical': return 'Crítico'
     }
   }
 
-  const handleAdjust = () => {
-    if (!adjustModal || !adjustAmount || !adjustReason) return
-    adjustStock(adjustModal.id, parseInt(adjustAmount), adjustReason)
-    setAdjustModal(null)
-    setAdjustAmount('')
-    setAdjustReason('')
+  const getMovementIcon = (type: string) => {
+    switch (type) {
+      case 'purchase': return <ArrowDown size={16} />
+      case 'consumption': return <ArrowUp size={16} />
+      default: return <RefreshCw size={16} />
+    }
+  }
+
+  const getMovementLabel = (type: string) => {
+    switch (type) {
+      case 'purchase': return 'Entrada'
+      case 'consumption': return 'Salida'
+      case 'adjustment': return 'Ajuste'
+      default: return type
+    }
+  }
+
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+
+    if (diffHours < 1) return 'Ahora'
+    if (diffHours < 24) return `${diffHours}h atrás`
+    if (diffDays === 1) return 'Ayer'
+    return `${diffDays}d atrás`
+  }
+
+  if (loading) {
+    return (
+      <div className="inv-page">
+        <div className="inv-loading">
+          <RefreshCw size={24} className="spin" />
+          <p>Cargando inventario...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="page animate-fade-in">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title text-gradient">Inventario</h1>
-          <p className="page-subtitle">
-            Ingredientes, productos y movimientos
-            {lowStockCount > 0 && <span className="low-stock-badge">⚠️ {lowStockCount} bajo stock</span>}
-          </p>
+    <div className="inv-page">
+      {/* Header */}
+      <header className="inv-header">
+        <div className="inv-header-icon">
+          <Package size={24} />
+        </div>
+        <div className="inv-header-text">
+          <h1>Inventario</h1>
+          <p>Gestiona tu inventario en tiempo real y controla tus existencias.</p>
         </div>
       </header>
 
-      <div className="tabs">
-        <button className={`tab ${tab === 'ingredients' ? 'active' : ''}`} onClick={() => setTab('ingredients')}>
-          🧄 Ingredientes ({ingredients.length})
-        </button>
-        <button className={`tab ${tab === 'products' ? 'active' : ''}`} onClick={() => setTab('products')}>
-          🍔 Productos ({products.length})
-        </button>
-        <button className={`tab ${tab === 'movements' ? 'active' : ''}`} onClick={() => setTab('movements')}>
-          📦 Movimientos ({stockMovements.length})
-        </button>
+      {/* KPI Cards */}
+      <div className="inv-kpi-row">
+        <div className="inv-kpi-card">
+          <div className="inv-kpi-icon red">
+            <ShoppingBag size={22} />
+          </div>
+          <div className="inv-kpi-info">
+            <span className="inv-kpi-label">Valor total del inventario</span>
+            <span className="inv-kpi-value">${totalInventoryValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            <span className="inv-kpi-sub green">+8.2% vs. ayer</span>
+          </div>
+        </div>
+        <div className="inv-kpi-card">
+          <div className="inv-kpi-icon amber">
+            <AlertTriangle size={22} />
+          </div>
+          <div className="inv-kpi-info">
+            <span className="inv-kpi-label">Productos con stock bajo</span>
+            <span className="inv-kpi-value">{lowStockCount}</span>
+            <span className="inv-kpi-sub amber">Requieren atención</span>
+          </div>
+        </div>
+        <div className="inv-kpi-card">
+          <div className="inv-kpi-icon green">
+            <TrendingUp size={22} />
+          </div>
+          <div className="inv-kpi-info">
+            <span className="inv-kpi-label">Porciones disponibles</span>
+            <span className="inv-kpi-value">{Math.round(totalPortions)}</span>
+            <span className="inv-kpi-sub">Porciones listas</span>
+          </div>
+        </div>
+        <div className="inv-kpi-card">
+          <div className="inv-kpi-icon orange">
+            <Bell size={22} />
+          </div>
+          <div className="inv-kpi-info">
+            <span className="inv-kpi-label">Alertas activas</span>
+            <span className="inv-kpi-value">{criticalCount}</span>
+            <span className="inv-kpi-link">Ver detalles {'>'}</span>
+          </div>
+        </div>
       </div>
 
-      {tab === 'ingredients' && (
-        <div className="card">
-          <div className="inventory-toolbar">
+      {/* Filters Row */}
+      <div className="inv-filters-row">
+        <div className="inv-filter-pills">
+          <button className="inv-filter-pill active">Todos</button>
+          <button className="inv-filter-pill">Materia prima</button>
+          <button className="inv-filter-pill">Porciones</button>
+          <button className="inv-filter-pill">Empaques</button>
+          <button className="inv-filter-pill">Bebidas</button>
+        </div>
+        <div className="inv-search-and-filters">
+          <div className="inv-search-box">
+            <Search size={16} className="search-icon" />
             <input
               type="text"
-              placeholder="Buscar ingrediente..."
+              placeholder="Buscar producto..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
             />
-            {showCosts && (
-              <button className="btn-accent btn-sm" onClick={() => setShowAddForm(true)}>
-                + Nuevo
-              </button>
-            )}
           </div>
+          <button className="inv-filter-btn">
+            <SlidersHorizontal size={16} />
+            Filtros
+          </button>
+        </div>
+      </div>
 
-          {showAddForm && (
-            <div className="add-form animate-slide-up">
-              <h3 className="form-title">Nuevo ingrediente</h3>
-              <div className="form-grid">
-                <input
-                  type="text"
-                  placeholder="Nombre"
-                  value={newItem.name}
-                  onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                />
-                <input
-                  type="number"
-                  placeholder="Stock inicial"
-                  value={newItem.stock || ''}
-                  onChange={(e) => setNewItem({ ...newItem, stock: parseInt(e.target.value) || 0 })}
-                />
-                <select value={newItem.unit} onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}>
-                  <option value="und">Unidad</option>
-                  <option value="lb">Libra</option>
-                  <option value="litro">Litro</option>
-                  <option value="botella">Botella</option>
-                  <option value="kg">Kilogramo</option>
-                </select>
-                <input
-                  type="number"
-                  placeholder="Stock mínimo"
-                  value={newItem.minStock || ''}
-                  onChange={(e) => setNewItem({ ...newItem, minStock: parseInt(e.target.value) || 0 })}
-                />
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Costo unitario"
-                  value={newItem.costPerUnit || ''}
-                  onChange={(e) => setNewItem({ ...newItem, costPerUnit: parseFloat(e.target.value) || 0 })}
-                />
-              </div>
-              <div className="form-actions">
-                <button className="btn-ghost" onClick={() => setShowAddForm(false)}>Cancelar</button>
-                <button className="btn-accent" onClick={handleAddItem}>Guardar</button>
-              </div>
-            </div>
-          )}
-
-          <div className="table-container">
-            <table className="inventory-table">
+      {/* Main Content Grid */}
+      <div className="inv-content-grid">
+        {/* Table */}
+        <div className="inv-table-card">
+          <div className="inv-table-wrapper">
+            <table className="inv-table">
               <thead>
                 <tr>
-                  <th>Ingrediente</th>
-                  <th>Stock</th>
+                  <th>Producto</th>
+                  <th>Stock actual</th>
                   <th>Unidad</th>
-                  <th>Mínimo</th>
-                  {showCosts && <th>Costo/u</th>}
-                  {showCosts && <th>Valor</th>}
+                  {showCosts && <th>Costo promedio</th>}
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredIngredients.map(ingredient => {
-                  const isLow = ingredient.stock <= ingredient.minStock
-                  return (
-                    <tr key={ingredient.id} className={isLow ? 'low-stock' : ''}>
-                      <td className="name-cell">{ingredient.name}</td>
-                      <td className="stock-cell">{ingredient.stock}</td>
-                      <td>{ingredient.unit}</td>
-                      <td>{ingredient.minStock}</td>
-                      {showCosts && <td className="cost-cell">${ingredient.costPerUnit.toFixed(2)}</td>}
-                      {showCosts && <td className="cost-cell">${(ingredient.stock * ingredient.costPerUnit).toFixed(2)}</td>}
-                      <td>
-                        {isLow ? (
-                          <span className="badge badge-danger">Bajo</span>
-                        ) : (
-                          <span className="badge badge-ok">OK</span>
-                        )}
-                      </td>
-                      <td className="actions-cell">
-                        <button
-                          className="action-btn adjust"
-                          onClick={() => setAdjustModal(ingredient)}
-                          title="Ajustar stock"
-                        >
-                          ±
-                        </button>
-                        {showCosts && (
-                          <>
-                            <button
-                              className="action-btn edit"
-                              onClick={() => setEditingItem(ingredient)}
-                              title="Editar"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              className="action-btn delete"
-                              onClick={() => handleDeleteItem(ingredient.id)}
-                              title="Eliminar"
-                            >
-                              🗑️
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tab === 'products' && (
-        <div className="card">
-          <div className="inventory-toolbar">
-            <input
-              type="text"
-              placeholder="Buscar producto..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="table-container">
-            <table className="inventory-table">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Categoría</th>
-                  <th>Precio</th>
-                  {showCosts && <th>Costo</th>}
-                  {showCosts && <th>Margen</th>}
-                  {showCosts && <th>Ganancia</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map(product => {
-                  const margin = ((product.price - product.cost) / product.price * 100)
-                  return (
-                    <tr key={product.id}>
-                      <td className="name-cell">
-                        <span className="product-emoji-cell">{product.emoji}</span>
-                        {product.name}
-                      </td>
-                      <td>
-                        <span className={`badge badge-${product.category}`}>
-                          {product.category === 'food' ? 'Comida' :
-                           product.category === 'drink' ? 'Bebida' : 'Postre'}
-                        </span>
-                      </td>
-                      <td className="price-cell">${product.price.toFixed(2)}</td>
-                      {showCosts && <td className="cost-cell">${product.cost.toFixed(2)}</td>}
-                      {showCosts && <td className="margin-cell">{margin.toFixed(0)}%</td>}
-                      {showCosts && <td className="profit-cell">${(product.price - product.cost).toFixed(2)}</td>}
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {tab === 'movements' && (
-        <div className="card">
-          <h2 className="card-title">Historial de movimientos</h2>
-          {recentMovements.length === 0 ? (
-            <p className="empty-message">No hay movimientos registrados</p>
-          ) : (
-            <div className="table-container">
-              <table className="inventory-table">
-                <thead>
+                {paginatedIngredients.length === 0 ? (
                   <tr>
-                    <th>Fecha</th>
-                    <th>Ingrediente</th>
-                    <th>Tipo</th>
-                    <th>Cantidad</th>
-                    <th>Motivo</th>
+                    <td colSpan={showCosts ? 6 : 5}>
+                      <div className="inv-empty-state">
+                        <p>No se encontraron productos</p>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {recentMovements.map(movement => {
-                    const ingredient = ingredients.find(i => i.id === movement.ingredientId)
+                ) : (
+                  paginatedIngredients.map(ing => {
+                    const status = getStockStatus(ing)
                     return (
-                      <tr key={movement.id}>
-                        <td className="date-cell">
-                          {new Date(movement.createdAt).toLocaleString('es', {
-                            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
-                          })}
-                        </td>
-                        <td className="name-cell">{ingredient?.name || '-'}</td>
+                      <tr key={ing.id}>
                         <td>
-                          <span className={`movement-type type-${movement.type}`}>
-                            {movement.type === 'entry' ? '📥 Entrada' :
-                             movement.type === 'exit' ? '📤 Salida' : '🔄 Ajuste'}
+                          <div className="inv-product-cell">
+                            <div className="inv-product-img">📦</div>
+                            {ing.name}
+                          </div>
+                        </td>
+                        <td>
+                          <span className="inv-stock-value">{ing.currentStock}</span>
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{ing.unitSymbol}</td>
+                        {showCosts && (
+                          <td style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                            {ing.pricePerUnit !== null ? `$${ing.pricePerUnit.toFixed(2)}` : '-'}
+                          </td>
+                        )}
+                        <td>
+                          <span className={`inv-status-badge ${status}`}>
+                            <span className="status-dot" />
+                            {getStockStatusLabel(status)}
                           </span>
                         </td>
-                        <td className={`amount-cell ${movement.type === 'entry' ? 'positive' : 'negative'}`}>
-                          {movement.type === 'entry' ? '+' : '-'}{movement.amount}
+                        <td>
+                          <div className="inv-actions">
+                            <button className="inv-action-btn" title="Ver detalle">
+                              <Eye size={14} />
+                            </button>
+                            {showCosts && (
+                              <button className="inv-action-btn" title="Editar">
+                                <Pencil size={14} />
+                              </button>
+                            )}
+                          </div>
                         </td>
-                        <td className="reason-cell">{movement.reason}</td>
                       </tr>
                     )
-                  })}
-                </tbody>
-              </table>
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {filteredIngredients.length > 0 && (
+            <div className="inv-pagination">
+              <span className="inv-pagination-info">
+                Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} a {Math.min(currentPage * ITEMS_PER_PAGE, filteredIngredients.length)} de {filteredIngredients.length} productos
+              </span>
+              <div className="inv-pagination-btns">
+                <button
+                  className="inv-page-btn"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => p - 1)}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    className={`inv-page-btn ${currentPage === page ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(page)}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  className="inv-page-btn"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => p + 1)}
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           )}
         </div>
-      )}
 
-      {adjustModal && (
-        <div className="modal-overlay" onClick={() => setAdjustModal(null)}>
-          <div className="modal animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Ajustar stock</h3>
-            <p className="modal-subtitle">{adjustModal.name} · Actual: {adjustModal.stock} {adjustModal.unit}</p>
-            <div className="adjust-quick-btns">
-              {[-5, -3, -1, 1, 3, 5, 10].map(val => (
-                <button
-                  key={val}
-                  className={`adjust-quick-btn ${val > 0 ? 'positive' : 'negative'}`}
-                  onClick={() => setAdjustAmount(String(val))}
-                >
-                  {val > 0 ? '+' : ''}{val}
-                </button>
-              ))}
+        {/* Right Sidebar */}
+        <div className="inv-sidebar">
+          {/* Movements Card */}
+          <div className="inv-sidebar-card">
+            <div className="inv-sidebar-header">
+              <h3 className="inv-sidebar-title">Movimientos recientes</h3>
+              <button className="inv-sidebar-link">Ver todos</button>
             </div>
-            <input
-              type="number"
-              placeholder="Cantidad (+ entrada, - salida)"
-              value={adjustAmount}
-              onChange={(e) => setAdjustAmount(e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Motivo (ej: Compra proveedor)"
-              value={adjustReason}
-              onChange={(e) => setAdjustReason(e.target.value)}
-            />
-            <div className="modal-actions">
-              <button className="btn-ghost" onClick={() => setAdjustModal(null)}>Cancelar</button>
-              <button
-                className="btn-accent"
-                onClick={handleAdjust}
-                disabled={!adjustAmount || !adjustReason}
-              >
-                Confirmar
-              </button>
+            {recentMovements.length === 0 ? (
+              <div className="inv-empty-state">
+                <p>No hay movimientos</p>
+              </div>
+            ) : (
+              recentMovements.map(mov => (
+                <div key={mov.id} className="inv-movement-item">
+                  <div className={`inv-movement-icon ${mov.movementType === 'purchase' ? 'entry' : mov.movementType === 'consumption' ? 'exit' : 'adjustment'}`}>
+                    {getMovementIcon(mov.movementType)}
+                  </div>
+                  <div className="inv-movement-info">
+                    <div className="inv-movement-name">
+                      {getMovementLabel(mov.movementType)} de {mov.ingredientName}
+                    </div>
+                    <div className="inv-movement-detail">{mov.notes || mov.referenceType || '-'}</div>
+                  </div>
+                  <div className="inv-movement-meta">
+                    <div className="inv-movement-time">{formatTime(mov.createdAt)}</div>
+                    <div className={`inv-movement-amount ${mov.quantity > 0 ? 'positive' : 'negative'}`}>
+                      {mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Alerts Card */}
+          <div className="inv-sidebar-card">
+            <div className="inv-sidebar-header">
+              <h3 className="inv-sidebar-title">Alertas de inventario</h3>
+              <button className="inv-sidebar-link">Ver todas</button>
             </div>
+            {alerts.length === 0 ? (
+              <div className="inv-empty-state">
+                <p>Sin alertas activas</p>
+              </div>
+            ) : (
+              alerts.map(ing => {
+                const status = getStockStatus(ing)
+                return (
+                  <div key={ing.id} className="inv-alert-item">
+                    <div className={`inv-alert-icon ${status}`}>
+                      📦
+                    </div>
+                    <div className="inv-alert-info">
+                      <div className="inv-alert-name">{ing.name}</div>
+                      <div className="inv-alert-detail">
+                        {status === 'critical' ? 'Stock crítico' : 'Stock bajo'} ({ing.currentStock} {ing.unitSymbol} disponibles)
+                      </div>
+                    </div>
+                    <span className={`inv-alert-badge ${status}`}>
+                      {status === 'critical' ? 'Crítico' : 'Bajo'}
+                    </span>
+                  </div>
+                )
+              })
+            )}
+            <button className="inv-generate-order-btn">
+              <ShoppingCart size={18} />
+              Generar orden de compra
+            </button>
           </div>
         </div>
-      )}
-
-      {editingItem && (
-        <div className="modal-overlay" onClick={() => setEditingItem(null)}>
-          <div className="modal animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Editar ingrediente</h3>
-            <div className="form-grid">
-              <input
-                type="text"
-                placeholder="Nombre"
-                value={editingItem.name}
-                onChange={(e) => setEditingItem({ ...editingItem, name: e.target.value })}
-              />
-              <input
-                type="number"
-                placeholder="Stock"
-                value={editingItem.stock}
-                onChange={(e) => setEditingItem({ ...editingItem, stock: parseInt(e.target.value) || 0 })}
-              />
-              <select
-                value={editingItem.unit}
-                onChange={(e) => setEditingItem({ ...editingItem, unit: e.target.value })}
-              >
-                <option value="und">Unidad</option>
-                <option value="lb">Libra</option>
-                <option value="litro">Litro</option>
-                <option value="botella">Botella</option>
-                <option value="kg">Kilogramo</option>
-              </select>
-              <input
-                type="number"
-                placeholder="Stock mínimo"
-                value={editingItem.minStock}
-                onChange={(e) => setEditingItem({ ...editingItem, minStock: parseInt(e.target.value) || 0 })}
-              />
-              <input
-                type="number"
-                step="0.01"
-                placeholder="Costo unitario"
-                value={editingItem.costPerUnit}
-                onChange={(e) => setEditingItem({ ...editingItem, costPerUnit: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-            <div className="modal-actions">
-              <button className="btn-ghost" onClick={() => setEditingItem(null)}>Cancelar</button>
-              <button className="btn-accent" onClick={handleUpdateItem}>Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

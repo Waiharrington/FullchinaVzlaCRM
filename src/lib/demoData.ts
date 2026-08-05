@@ -186,3 +186,122 @@ export const DEMO_CREDIT_PAYMENTS: CreditPayment[] = [
   { id: 'cp-003', creditId: 'cr-003', amount: 10.00, createdAt: '2026-08-03T16:00:00' },
   { id: 'cp-004', creditId: 'cr-005', amount: 15.00, createdAt: '2026-08-01T11:00:00' },
 ]
+
+// --- Producción demo --------------------------------------------------------
+
+export interface DemoBatchItem {
+  ingredientId: string
+  ingredientName: string
+  quantityUsed: number
+  unitSymbol: string
+  costPerUnit: number
+}
+
+export interface DemoProductionBatch {
+  id: string
+  batchNumber: number
+  name: string
+  productName: string
+  productionDate: string
+  quantityProduced: number
+  unitProduced: string
+  wasteQuantity: number
+  wastePercentage: number
+  totalCost: number
+  costPerPortion: number
+  operator: string
+  status: string
+  items: DemoBatchItem[]
+  createdAt: string
+}
+
+export interface DemoProductionBonus {
+  employeeId: string
+  employeeName: string
+  initials: string
+  piecesCount: number
+  bonusAmount: number
+  percentage: number
+}
+
+export const DEMO_SELLABLE_PRODUCTS = [
+  { id: 'sp1', name: 'Porcionado de pollo', description: 'Convierte pollo crudo en porciones listas para servir.', emoji: '🍗', category: 'pollo_camaron' },
+  { id: 'sp2', name: 'Lumpias (carne)', description: 'Lumpias rellenas de carne preparadas para freír.', emoji: '🥟', category: 'plato' },
+  { id: 'sp3', name: 'Camarones empanizados', description: 'Camarones empanizados listos para freír.', emoji: '🦐', category: 'pollo_camaron' },
+  { id: 'sp4', name: 'Lumpias (pollo)', description: 'Lumpias rellenas de pollo preparadas para freír.', emoji: '🥟', category: 'plato' },
+  { id: 'sp5', name: 'Arroz preparado', description: 'Arroz blanco cocido listo para servir.', emoji: '🍚', category: 'arroz' },
+]
+
+const now = new Date()
+const d = (offset: number, h: number, m: number) => {
+  const date = new Date(now)
+  date.setDate(date.getDate() + offset)
+  date.setHours(h, m, 0, 0)
+  return date.toISOString()
+}
+
+export const DEMO_PRODUCTION_BATCHES: DemoProductionBatch[] = [
+  {
+    id: 'pb-001', batchNumber: 8, name: 'Porcionado de pollo', productName: 'Porcionado de pollo',
+    productionDate: now.toISOString().split('T')[0], quantityProduced: 40, unitProduced: 'porción',
+    wasteQuantity: 0.5, wastePercentage: 5.0, totalCost: 120.00, costPerPortion: 3.00,
+    operator: 'María Chávez', status: 'Completado', createdAt: d(0, 12, 45),
+    items: [
+      { ingredientId: 'i2', ingredientName: 'Pechuga de pollo', quantityUsed: 10, unitSymbol: 'kg', costPerUnit: 11.00 },
+      { ingredientId: 'i9', ingredientName: 'Sal', quantityUsed: 0.10, unitSymbol: 'kg', costPerUnit: 1.00 },
+      { ingredientId: 'i15', ingredientName: 'Aceite vegetal', quantityUsed: 0.10, unitSymbol: 'L', costPerUnit: 4.00 },
+    ],
+  },
+  {
+    id: 'pb-002', batchNumber: 7, name: 'Lumpias (carne)', productName: 'Lumpias (carne)',
+    productionDate: now.toISOString().split('T')[0], quantityProduced: 60, unitProduced: 'pieza',
+    wasteQuantity: 0.3, wastePercentage: 4.8, totalCost: 90.00, costPerPortion: 1.50,
+    operator: 'Juan Pérez', status: 'Completado', createdAt: d(0, 11, 20),
+    items: [
+      { ingredientId: 'i2', ingredientName: 'Carne molida', quantityUsed: 5, unitSymbol: 'lb', costPerUnit: 3.50 },
+      { ingredientId: 'i1', ingredientName: 'Pan hamburguesa', quantityUsed: 30, unitSymbol: 'und', costPerUnit: 0.40 },
+    ],
+  },
+  {
+    id: 'pb-003', batchNumber: 6, name: 'Camarones empanizados', productName: 'Camarones empanizados',
+    productionDate: now.toISOString().split('T')[0], quantityProduced: 25, unitProduced: 'pieza',
+    wasteQuantity: 0.4, wastePercentage: 6.0, totalCost: 75.00, costPerPortion: 3.00,
+    operator: 'Ana López', status: 'Completado', createdAt: d(0, 9, 35),
+    items: [
+      { ingredientId: 'i3', ingredientName: 'Camarones', quantityUsed: 3, unitSymbol: 'lb', costPerUnit: 8.00 },
+    ],
+  },
+  {
+    id: 'pb-004', batchNumber: 5, name: 'Porcionado de pollo', productName: 'Porcionado de pollo',
+    productionDate: d(-1, 0, 0).split('T')[0], quantityProduced: 35, unitProduced: 'porción',
+    wasteQuantity: 0.7, wastePercentage: 8.9, totalCost: 105.00, costPerPortion: 3.00,
+    operator: 'Roberto Vargas', status: 'Parcial', createdAt: d(-1, 17, 10),
+    items: [
+      { ingredientId: 'i2', ingredientName: 'Pechuga de pollo', quantityUsed: 9, unitSymbol: 'kg', costPerUnit: 11.00 },
+    ],
+  },
+  {
+    id: 'pb-005', batchNumber: 4, name: 'Lumpias (pollo)', productName: 'Lumpias (pollo)',
+    productionDate: d(-1, 0, 0).split('T')[0], quantityProduced: 50, unitProduced: 'pieza',
+    wasteQuantity: 0.3, wastePercentage: 5.7, totalCost: 60.00, costPerPortion: 1.20,
+    operator: 'María Chávez', status: 'Completado', createdAt: d(-1, 15, 15),
+    items: [
+      { ingredientId: 'i2', ingredientName: 'Pollo molido', quantityUsed: 4, unitSymbol: 'lb', costPerUnit: 3.00 },
+      { ingredientId: 'i1', ingredientName: 'Pan hamburguesa', quantityUsed: 25, unitSymbol: 'und', costPerUnit: 0.40 },
+    ],
+  },
+]
+
+export const DEMO_EMPLOYEES = [
+  { id: 'e1', name: 'María Chávez', role: 'cook' },
+  { id: 'e2', name: 'Juan Pérez', role: 'cook' },
+  { id: 'e3', name: 'Ana López', role: 'assistant' },
+  { id: 'e4', name: 'Roberto Vargas', role: 'assistant' },
+]
+
+export const DEMO_PRODUCTION_BONUSES: DemoProductionBonus[] = [
+  { employeeId: 'e1', employeeName: 'María Chávez', initials: 'MC', piecesCount: 120, bonusAmount: 18.00, percentage: 38 },
+  { employeeId: 'e2', employeeName: 'Juan Pérez', initials: 'JP', piecesCount: 90, bonusAmount: 13.50, percentage: 28 },
+  { employeeId: 'e3', employeeName: 'Ana López', initials: 'AL', piecesCount: 70, bonusAmount: 10.50, percentage: 22 },
+  { employeeId: 'e4', employeeName: 'Roberto Vargas', initials: 'RV', piecesCount: 40, bonusAmount: 6.00, percentage: 12 },
+]

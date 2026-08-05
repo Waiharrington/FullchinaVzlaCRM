@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, type ReactNode } from 'react'
 import { DemoDataContext } from './demo-data-context'
-import { PRODUCTS, INGREDIENTS, DEMO_ORDERS, DEMO_CREDITS, DEMO_STOCK_MOVEMENTS, DEMO_CREDIT_PAYMENTS, STAFF } from '../lib/demoData'
-import type { Product, Ingredient, Order, OrderItem, StockMovement, CreditPayment } from '../lib/demoData'
+import { PRODUCTS, INGREDIENTS, DEMO_ORDERS, DEMO_CREDITS, DEMO_STOCK_MOVEMENTS, DEMO_CREDIT_PAYMENTS, STAFF, DEMO_PRODUCTION_BATCHES, DEMO_PRODUCTION_BONUSES } from '../lib/demoData'
+import type { Product, Ingredient, Order, OrderItem, StockMovement, CreditPayment, DemoProductionBatch, DemoProductionBonus } from '../lib/demoData'
 import type { Credit, TodayStats } from './demo-data-context'
 
 export function DemoDataProvider({ children }: { children: ReactNode }) {
@@ -11,6 +11,8 @@ export function DemoDataProvider({ children }: { children: ReactNode }) {
   const [credits, setCredits] = useState<Credit[]>(DEMO_CREDITS)
   const [stockMovements, setStockMovements] = useState<StockMovement[]>(DEMO_STOCK_MOVEMENTS)
   const [creditPayments, setCreditPayments] = useState<CreditPayment[]>(DEMO_CREDIT_PAYMENTS)
+  const [productionBatches, setProductionBatches] = useState<DemoProductionBatch[]>(DEMO_PRODUCTION_BATCHES)
+  const [productionBonuses] = useState<DemoProductionBonus[]>(DEMO_PRODUCTION_BONUSES)
 
   const staff = useMemo(() => STAFF, [])
 
@@ -120,6 +122,17 @@ export function DemoDataProvider({ children }: { children: ReactNode }) {
     setIngredients(prev => prev.filter(ing => ing.id !== id))
   }, [])
 
+  const createProductionBatch = useCallback((batch: Omit<DemoProductionBatch, 'id' | 'batchNumber' | 'createdAt'>): DemoProductionBatch => {
+    const newBatch: DemoProductionBatch = {
+      ...batch,
+      id: `pb-${Date.now()}`,
+      batchNumber: productionBatches.length + 1,
+      createdAt: new Date().toISOString(),
+    }
+    setProductionBatches(prev => [newBatch, ...prev])
+    return newBatch
+  }, [productionBatches.length])
+
   const getOrdersByDateRange = useCallback((start: Date, end: Date) => {
     return orders.filter(o => {
       const d = new Date(o.createdAt)
@@ -209,6 +222,8 @@ export function DemoDataProvider({ children }: { children: ReactNode }) {
       stockMovements,
       creditPayments,
       todayStats,
+      productionBatches,
+      productionBonuses,
       createOrder,
       completeOrder,
       cancelOrder,
@@ -219,6 +234,7 @@ export function DemoDataProvider({ children }: { children: ReactNode }) {
       addIngredient,
       updateIngredient,
       deleteIngredient,
+      createProductionBatch,
       getOrdersByDateRange,
       getDailySales,
       getProductRanking
