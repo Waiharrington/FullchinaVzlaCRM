@@ -44,6 +44,34 @@ const CAROUSEL_SETTINGS = [
   }
 ];
 
+const MOBILE_CAROUSEL_SETTINGS = [
+  {
+    "posX": 83,
+    "posY": 100,
+    "zoom": 1
+  },
+  {
+    "posX": 63,
+    "posY": 100,
+    "zoom": 1
+  },
+  {
+    "posX": 50,
+    "posY": 65,
+    "zoom": 1
+  },
+  {
+    "posX": 50,
+    "posY": 45,
+    "zoom": 1
+  },
+  {
+    "posX": 50,
+    "posY": 89,
+    "zoom": 1
+  }
+];
+
 export function Login() {
   const { signIn, signInAsDemo, demoMode } = useAuth()
   const [email, setEmail] = useState('')
@@ -55,12 +83,25 @@ export function Login() {
 
   const [isPinMode, setIsPinMode] = useState(false)
   const [pin, setPin] = useState('')
-  const [isExiting, setIsExiting] = useState(false)
-  const [carouselSettings, setCarouselSettings] = useState(CAROUSEL_SETTINGS)
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [carouselSettings, setCarouselSettings] = useState(CAROUSEL_SETTINGS)
+  const [mobileSettings, setMobileSettings] = useState(MOBILE_CAROUSEL_SETTINGS)
+  const [isExiting, setIsExiting] = useState(false)
   const [isTabletViewport, setIsTabletViewport] = useState(false)
+  const [isMobileViewport, setIsMobileViewport] = useState(window.innerWidth <= 679)
   const formRef = useRef<HTMLFormElement>(null)
   const didSetTabletDefault = useRef(false)
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileViewport(window.innerWidth <= 679)
+      setIsTabletViewport(window.innerWidth >= 680 && window.innerWidth <= 1200)
+    }
+    window.addEventListener('resize', handleResize)
+    // Inicializar valores al montar
+    handleResize()
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -171,11 +212,11 @@ export function Login() {
             src={src} 
             alt="Full China Food"
             className={`carousel-img ${index === currentSlide ? 'active' : ''}`}
-            style={{
-              objectPosition: 'center',
-              transform: `translate(${(carouselSettings[index]?.posX ?? 50) - 50}%, ${(carouselSettings[index]?.posY ?? 50) - 50}%) scale(${carouselSettings[index]?.zoom ?? 1})`,
-              WebkitMaskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`,
-              maskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`
+            style={isMobileViewport ? {
+              objectPosition: `${mobileSettings[index]?.posX ?? 50}% ${mobileSettings[index]?.posY ?? 50}%`,
+              transform: `scale(${mobileSettings[index]?.zoom ?? 1})`
+            } : {
+              objectPosition: 'center'
             }}
           />
         ))}
