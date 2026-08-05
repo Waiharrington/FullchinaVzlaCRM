@@ -379,6 +379,57 @@ export async function checkout(params: {
   }
 }
 
+// --- Enviar a cocina (sin pago) ----------------------------------------------
+
+export async function sendToKitchen(params: {
+  items: CartItem[]
+  bcvRate: number | null
+  userId: string
+  notes?: string | null
+  orderType?: string
+  customerName?: string
+}): Promise<OrderResult> {
+  const sb = client()
+  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+
+  const { data: order, error: orderErr } = await sb
+    .from('orders')
+    .insert({
+      created_by: params.userId,
+      bcv_rate: params.bcvRate,
+      notes: params.notes ?? null,
+      order_type: params.orderType ?? 'takeaway',
+      customer_name: params.customerName ?? 'Cliente',
+      status: 'new',
+    })
+    .select('id, order_number, created_at')
+    .single()
+  if (orderErr) throw orderErr
+
+  const { error: itemsErr } = await sb.from('order_items').insert(
+    params.items.map((i) => ({
+      order_id: order.id,
+      sellable_product_id: i.productId,
+      quantity: i.quantity,
+      unit_price: i.price,
+    })),
+  )
+  if (itemsErr) throw itemsErr
+
+  // NO payment inserted — the order stays unpaid until cobro
+
+  return {
+    id: order.id as string,
+    orderNumber: order.order_number as number,
+    status: 'new',
+    total,
+    bcvRate: params.bcvRate,
+    createdAt: order.created_at as string,
+    paymentMethod: 'cash',
+    items: params.items,
+  }
+}
+
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {
