@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import './Sidebar.css'
 
-const allNavItems = [
+export const allNavItems = [
   { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
