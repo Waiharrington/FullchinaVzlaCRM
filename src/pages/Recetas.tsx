@@ -1,8 +1,6 @@
 import { useState, useMemo } from 'react'
 import {
   Search,
-  Bell,
-  Calendar,
   Plus,
   Edit2,
   Copy,
@@ -258,33 +256,6 @@ export function Recetas() {
 
   return (
     <div className="page animate-fade-in">
-      {/* Global Topbar */}
-      <header className="global-topbar">
-        <div className="topbar-search">
-          <Search size={16} className="topbar-search-icon" />
-          <input type="text" placeholder="Buscar recetas, ingredientes, categorías..." className="topbar-search-input" />
-          <kbd className="topbar-kbd">Ctrl + K</kbd>
-        </div>
-
-        <div className="topbar-actions">
-          <div className="topbar-date">
-            <Calendar size={14} />
-            <span>24 de mayo de 2025</span>
-            <span className="topbar-day-name">Sábado</span>
-          </div>
-          <button className="topbar-icon-btn">
-            <Bell size={18} />
-            <span className="topbar-badge red-badge">5</span>
-          </button>
-          <div className="topbar-user">
-            <div className="user-avatar-circle font-bold">AD</div>
-            <div className="user-text">
-              <span className="user-name">Admin Full China</span>
-              <span className="user-role">Administrador</span>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Page Header */}
       <div className="recetas-page-header">
