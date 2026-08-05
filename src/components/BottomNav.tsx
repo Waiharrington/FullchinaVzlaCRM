@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { Menu, X, LogOut } from 'lucide-react'
@@ -9,6 +9,18 @@ export function BottomNav() {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  // Deshabilita el scroll del fondo cuando el menú está abierto
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMenuOpen])
 
   // Filtramos las rutas permitidas para el usuario actual
   const allowedItems = allNavItems.filter(item =>
