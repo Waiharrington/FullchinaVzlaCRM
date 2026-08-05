@@ -1031,13 +1031,14 @@ body:has(.login-page) {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    margin-top: 25vh;
+    margin: 25vh 0 0 0;
     background: rgb(15, 15, 15);
     border-radius: 32px 32px 0 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 1.2rem 1.2rem 1rem 1.2rem;
+    padding: 1.2rem 1.2rem calc(1.5rem + env(safe-area-inset-bottom, 0px)) 1.2rem;
     box-shadow: 0 -10px 50px rgba(0, 0, 0, 0.9);
     flex: 1 0 auto;
+    min-height: calc(75vh + env(safe-area-inset-bottom, 0px));
     gap: 0;
     z-index: 2;
     position: relative;
