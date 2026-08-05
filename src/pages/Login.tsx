@@ -234,7 +234,7 @@ export function Login() {
               key={src}
               src={src} 
               alt="Full China Food"
-              className={`desktop-layer-image ${index === currentSlide ? 'active' : ''}`}
+              className={`desktop-carousel-img ${index === currentSlide ? 'active' : ''}`}
               style={{
                 objectPosition: 'center',
                 transform: `translate(${(carouselSettings[index]?.posX ?? 50) - 50}%, ${(carouselSettings[index]?.posY ?? 50) - 50}%) scale(${carouselSettings[index]?.zoom ?? 1})`,
