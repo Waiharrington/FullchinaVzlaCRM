@@ -974,6 +974,10 @@ body:has(.login-page) {
 
 /* ═══ MOBILE (≤ 679px): Carrusel + tarjeta ═══ */
 @media (max-width: 679px) {
+  body:has(.login-page) {
+    background-color: rgb(15, 15, 15);
+  }
+  
   .login-page {
     top: 0; left: 0; right: 0; bottom: 0;
     border: none; border-radius: 0;
@@ -982,7 +986,7 @@ body:has(.login-page) {
     flex-direction: column;
     overflow-y: auto; /* Enable scroll if card is too tall */
     overflow-x: hidden;
-    background: #000;
+    background: rgb(15, 15, 15);
   }
   
   .login-carousel {
