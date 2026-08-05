@@ -56,8 +56,7 @@ body:has(.login-page) {
   flex-direction: column;
   gap: 1.25rem;
   color: white;
-  padding: 3rem;
-  padding-left: 6rem;
+  padding: 3rem 2rem 3rem 5rem;
   transform: translateY(-80px);
 }
 
@@ -137,7 +136,7 @@ body:has(.login-page) {
 }
 
 .login-description {
-  font-size: 1.05rem;
+  font-size: 1rem;
   color: #d1d5db;
   line-height: 1.5;
   margin: 0.25rem 0 1rem 0;
@@ -1304,8 +1303,8 @@ body:has(.login-page) {
     position: absolute;
     bottom: -8%;
     left: -2%;
-    width: 55%;
-    max-width: 750px;
+    width: 65%;
+    max-width: 850px;
     z-index: 2;
     object-fit: contain;
     filter: drop-shadow(0 20px 30px rgba(0,0,0,0.7));
