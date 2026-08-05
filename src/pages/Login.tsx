@@ -308,7 +308,6 @@ export function Login() {
                         style={{ fontSize: '1.5rem', letterSpacing: '0.5rem', textAlign: 'center' }}
                         required={isPinMode}
                         disabled={!isPinMode}
-                        autoFocus={isPinMode}
                         readOnly={isTabletViewport}
                       />
                     </div>
@@ -364,7 +363,6 @@ export function Login() {
                         onChange={(e) => setEmail(e.target.value)}
                         required={!isPinMode}
                         disabled={isPinMode}
-                        autoFocus={!isPinMode}
                       />
                     </div>
                   </div>

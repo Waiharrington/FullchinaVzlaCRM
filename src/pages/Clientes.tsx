@@ -967,7 +967,6 @@ export function Clientes() {
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   className="modal-input-dark"
                   required
-                  autoFocus
                 />
               </div>
 
