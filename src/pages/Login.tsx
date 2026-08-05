@@ -79,7 +79,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [rememberMe, setRememberMe] = useState(true)
+
 
   const [isPinMode, setIsPinMode] = useState(false)
   const [pin, setPin] = useState('')
@@ -389,18 +389,6 @@ export function Login() {
                 </div>
               </div>
 
-              <div className="form-options">
-                <label className="checkbox-wrapper">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                  />
-                  <span className="checkbox-custom"></span>
-                  <span className="checkbox-label">Recordar sesión</span>
-                </label>
-                <a href="#" className="forgot-password" onClick={(e) => e.preventDefault()}>¿Olvidaste tu contraseña?</a>
-              </div>
 
               {error && <p className="error-message">{error}</p>}
 
