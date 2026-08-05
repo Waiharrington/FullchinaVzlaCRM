@@ -2,7 +2,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 2rem;
+  padding: calc(1.25rem + env(safe-area-inset-top, 0px)) 2rem 1.25rem 2rem;
   background-color: #0b0b0c;
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   position: sticky;
@@ -158,7 +158,7 @@
 
 @media (max-width: 768px) {
   .topbar {
-    padding: 1rem;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem 1rem 1rem;
   }
   
   .mobile-only {
