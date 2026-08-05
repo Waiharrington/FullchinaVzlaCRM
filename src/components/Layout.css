@@ -11,12 +11,13 @@
   display: flex;
   flex-direction: column;
   width: 100%;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .app-main {
   flex: 1;
   padding: 1.5rem;
-  padding-bottom: 5rem; /* Space for BottomNav on mobile */
+  padding-bottom: 5rem;
   width: 100%;
   overflow-y: auto;
 }
@@ -30,24 +31,29 @@
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
-  z-index: 15; /* Below sidebar, above everything else */
+  z-index: 15;
   display: none;
 }
 
-@media (max-width: 1024px) {
-  .app-main {
-    padding-bottom: 5rem;
-  }
-}
-
+/* ═══ DESKTOP (≥ 1025px) ═══ */
 @media (min-width: 1025px) {
   .sidebar-container {
     width: 260px;
     flex-shrink: 0;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: visible;
+  }
+
+  .sidebar-container.collapsed {
+    width: 84px;
   }
   
   .main-content-wrapper {
-    width: calc(100% - 260px); /* Fill remaining space */
+    width: calc(100% - 260px);
+  }
+
+  .main-content-wrapper.sidebar-collapsed {
+    width: calc(100% - 84px);
   }
 
   .app-main {
@@ -56,21 +62,45 @@
   }
 }
 
-/* Tablet */
-@media (min-width: 769px) and (max-width: 1024px) {
+/* ═══ TABLET (768px – 1024px) ═══ */
+@media (min-width: 768px) and (max-width: 1024px) {
   .sidebar-container {
     width: 80px;
     flex-shrink: 0;
+    overflow: visible;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  .sidebar-container.collapsed {
+    width: 80px;
+  }
+
+  .sidebar-container:not(.collapsed) {
+    width: 260px;
+  }
+
   .main-content-wrapper {
     width: calc(100% - 80px);
   }
+
+  .main-content-wrapper.sidebar-collapsed {
+    width: calc(100% - 80px);
+  }
+
+  .main-content-wrapper:not(.sidebar-collapsed) {
+    width: calc(100% - 260px);
+  }
+
+  .app-main {
+    padding: 1.5rem;
+    padding-bottom: 5rem;
+  }
 }
 
-/* Mobile overrides */
-@media (max-width: 768px) {
+/* ═══ MOBILE (≤ 767px) ═══ */
+@media (max-width: 767px) {
   .sidebar-container {
-    display: none; /* Handled by BottomNav */
+    display: none;
   }
   
   .sidebar-container.mobile-open {
@@ -83,13 +113,17 @@
   }
   
   .sidebar-container.mobile-open .sidebar {
-    display: flex; /* Override sidebar hidden on mobile */
+    display: flex;
     width: 260px;
     box-shadow: 4px 0 24px rgba(0,0,0,0.5);
   }
 
   .sidebar-container.mobile-open .sidebar-overlay {
     display: block;
+  }
+
+  .app-main {
+    padding-bottom: 5rem;
   }
 }
 
