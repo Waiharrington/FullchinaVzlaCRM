@@ -83,8 +83,8 @@ export function Login() {
       if (targetEmail && targetPassword) {
         try {
           await signIn(targetEmail, targetPassword)
-        } catch (err: any) {
-          setError(err.message || 'Error al conectar con Supabase')
+        } catch (err: unknown) {
+          setError(err instanceof Error ? err.message : 'Error al conectar con Supabase')
         } finally {
           setLoading(false)
         }

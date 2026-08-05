@@ -1,0 +1,146 @@
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #0a0a0a;
+  background-image: url('/splash-bg-desktop.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.splash-exit {
+  opacity: 0;
+  transform: scale(1.05);
+  pointer-events: none;
+}
+
+.splash-logo {
+  width: clamp(220px, 40vw, 420px);
+  height: auto;
+  opacity: 0;
+  transform: scale(0.7) translateY(30px);
+  animation: splashLogoIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.4));
+}
+
+@keyframes splashLogoIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.splash-tagline {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.45em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 1.5rem;
+  opacity: 0;
+  animation: splashFadeIn 0.8s ease 1s forwards;
+}
+
+.splash-tagline-desktop {
+  font-size: clamp(11px, 1.4vw, 16px);
+}
+
+.splash-tagline-mobile {
+  display: none;
+  font-size: 11px;
+}
+
+@keyframes splashFadeIn {
+  to { opacity: 1; }
+}
+
+.splash-bar-wrap {
+  width: clamp(240px, 30vw, 380px);
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+  margin-top: 2rem;
+  overflow: hidden;
+  opacity: 0;
+  animation: splashFadeIn 0.5s ease 1.4s forwards;
+}
+
+.splash-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 40%, #f97316 100%);
+  animation: splashBarFill 2.2s cubic-bezier(0.4, 0, 0.2, 1) 1.6s forwards;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+}
+
+@keyframes splashBarFill {
+  0% { width: 0%; }
+  30% { width: 35%; }
+  60% { width: 65%; }
+  100% { width: 100%; }
+}
+
+.splash-loading-text {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: clamp(10px, 1.1vw, 13px);
+  font-weight: 500;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 1rem;
+  opacity: 0;
+  animation: splashFadeIn 0.5s ease 1.6s forwards;
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .splash-logo {
+    width: clamp(200px, 50vw, 340px);
+  }
+  .splash-bar-wrap {
+    width: clamp(220px, 50vw, 320px);
+  }
+}
+
+/* Tablet vertical / Teléfono */
+@media (max-width: 1024px) and (orientation: portrait) {
+  .splash-screen {
+    background-image: url('/splash-bg-mobile.png');
+  }
+}
+
+/* Teléfono */
+@media (max-width: 640px) {
+  .splash-logo {
+    width: clamp(180px, 55vw, 280px);
+  }
+
+  .splash-tagline-desktop {
+    display: none;
+  }
+
+  .splash-tagline-mobile {
+    display: block;
+  }
+
+  .splash-bar-wrap {
+    width: clamp(200px, 70vw, 300px);
+    height: 6px;
+  }
+
+  .splash-loading-text {
+    font-size: 10px;
+  }
+}

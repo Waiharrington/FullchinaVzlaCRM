@@ -1,7 +1,9 @@
+import { useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { useAuth } from './context/auth-context'
 import { DemoDataProvider } from './context/DemoDataProvider'
+import { SplashScreen } from './components/SplashScreen'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { Inicio } from './pages/Inicio'
@@ -21,9 +23,15 @@ import { Reportes } from './pages/Reportes'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
+  const [splashDone, setSplashDone] = useState(false)
+
+  const handleSplashDone = useCallback(() => {
+    setSplashDone(true)
+  }, [])
 
   if (loading) return <div className="login-page"><p>Cargando...</p></div>
   if (!user) return <Navigate to="/login" replace />
+  if (!splashDone) return <SplashScreen onDone={handleSplashDone} minDuration={2800} />
   return <>{children}</>
 }
 

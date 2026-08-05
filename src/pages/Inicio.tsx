@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDemoData } from '../context/demo-data-context'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
@@ -30,12 +30,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 export function Inicio() {
   const { todayStats } = useDemoData()
   const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    const loadTimer = setTimeout(() => setIsLoading(false), 1200)
-    return () => clearTimeout(loadTimer)
-  }, [])
 
   const totalSales = todayStats.totalSales > 0 ? todayStats.totalSales : 25780
   const ordersCount = todayStats.ordersCount > 0 ? todayStats.ordersCount : 146
@@ -62,7 +56,7 @@ export function Inicio() {
         label: 'Ventas ($)',
         data,
         borderColor: '#ef4444',
-        backgroundColor: (context: any) => {
+        backgroundColor: (context: { chart: { ctx: CanvasRenderingContext2D } }) => {
           const ctx = context.chart.ctx
           const gradient = ctx.createLinearGradient(0, 0, 0, 200)
           gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)')
@@ -94,14 +88,14 @@ export function Inicio() {
         borderWidth: 1,
         padding: 8,
         displayColors: false,
-        callbacks: { label: (ctx: any) => `$${ctx.parsed.y.toLocaleString()}` }
+        callbacks: { label: (ctx: { parsed: { y: number | null } }) => `$${(ctx.parsed.y ?? 0).toLocaleString()}` }
       }
     },
     scales: {
       x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 9 } } },
       y: { 
         grid: { color: 'rgba(255,255,255,0.03)' }, 
-        ticks: { color: '#52525b', font: { size: 9 }, callback: (v: any) => `$${v >= 1000 ? (v/1000)+'K' : v}` },
+        ticks: { color: '#52525b', font: { size: 9 }, callback: (v: number | string) => `$${Number(v) >= 1000 ? (Number(v)/1000)+'K' : v}` },
         beginAtZero: true 
       }
     }
@@ -120,26 +114,6 @@ export function Inicio() {
   }), [])
 
   const productionDoughnutOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '75%' }
-
-  if (isLoading) {
-    return (
-      <div className="cooking-loader-container">
-        <div className="wok-animation-wrapper">
-          <div className="steam-container">
-            <span className="steam-line"></span><span className="steam-line"></span><span className="steam-line"></span>
-          </div>
-          <div className="wok-pan"><ChefHat size={48} className="wok-icon-inner" />
-            <div className="rice-grains"><span className="grain"></span><span className="grain"></span><span className="grain"></span><span className="grain"></span></div>
-          </div>
-          <div className="wok-handle"></div>
-        </div>
-        <div className="loading-stage-text">
-          <div className="loader-stage-content"><Flame size={18} className="loader-stage-icon-svg" /><span>Encendiendo los fogones de Full China...</span></div>
-        </div>
-        <div className="cooking-progress-track"><div className="cooking-progress-fill-loader" style={{ width: '80%' }}></div></div>
-      </div>
-    )
-  }
 
   return (
     <div className="db-page animate-fade-in">
