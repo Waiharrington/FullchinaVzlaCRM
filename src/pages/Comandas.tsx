@@ -415,7 +415,7 @@ export function Comandas() {
               attendedBy: o.createdBy || 'Admin',
             }
           })
-          setComandas(mapped)
+          setComandas([...mapped, ...MOCK_COMANDAS])
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
@@ -696,7 +696,11 @@ export function Comandas() {
                   {selectedOrder.status === 'ready' && 'Lista'}
                   {selectedOrder.status === 'delivered' && 'Entregada'}
                 </div>
-                {selectedOrder.isPaid && <div className="cmd-badge paid">Pagado</div>}
+                {selectedOrder.isPaid ? (
+                  <div className="cmd-badge paid">Pagado</div>
+                ) : (
+                  <div className="cmd-badge sin-pagar">⚠️ Sin cobrar</div>
+                )}
                 <div className="cmd-badge delivery">{selectedOrder.orderType}</div>
               </div>
               <button className="cmd-close-btn" onClick={() => setSelectedOrder(null)}><X size={20} /></button>
@@ -841,7 +845,7 @@ export function Comandas() {
 
                   <div className="cmd-payment-method-row">
                     <span className="cmd-method-label">Método de pago</span>
-                    <span className="cmd-method-badge">{selectedOrder.paymentMethod}</span>
+                    <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : '⚠️ Sin cobrar'}</span>
                   </div>
 
                   <div className="cmd-breakdown-section">
@@ -853,19 +857,19 @@ export function Comandas() {
                       </div>
                     ) : (
                       <div className="cmd-summary-row cmd-breakdown-item">
-                        <span className="cmd-paid-yellow">Pendiente</span>
-                        <span>${selectedOrder.totalAmount?.toFixed(2)}</span>
+                        <span className="cmd-paid-yellow">⚠️ Pendiente de cobro</span>
+                        <span className="cmd-paid-yellow">${selectedOrder.totalAmount?.toFixed(2)}</span>
                       </div>
                     )}
                   </div>
 
                   <div className="cmd-summary-row cmd-total-paid">
                     <span>Total pagado</span>
-                    <span className="cmd-paid-green">${selectedOrder.isPaid ? selectedOrder.totalAmount?.toFixed(2) : '0.00'}</span>
+                    <span className={selectedOrder.isPaid ? 'cmd-paid-green' : ''}>${selectedOrder.isPaid ? selectedOrder.totalAmount?.toFixed(2) : '0.00'}</span>
                   </div>
                   <div className="cmd-summary-row cmd-balance">
                     <span>Saldo restante</span>
-                    <span className="cmd-paid-green">${selectedOrder.isPaid ? '0.00' : selectedOrder.totalAmount?.toFixed(2)}</span>
+                    <span className={!selectedOrder.isPaid ? 'cmd-paid-yellow' : 'cmd-paid-green'}>${selectedOrder.isPaid ? '0.00' : selectedOrder.totalAmount?.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -916,7 +920,26 @@ export function Comandas() {
                 <button className="cmd-btn-outline" onClick={() => window.print()}><Printer size={16} /> Imprimir comanda</button>
               </div>
               <div className="cmd-footer-right">
-                <button className="cmd-btn-primary"><CheckCircle size={16} /> Marcar como lista</button>
+                {!selectedOrder.isPaid && (
+                  <button
+                    className="cmd-btn-cobrar"
+                    onClick={() => {
+                      setSelectedOrder(null)
+                      navigate('/caja')
+                    }}
+                  >
+                    💲 Cobrar pedido
+                  </button>
+                )}
+                <button
+                  className="cmd-btn-primary"
+                  onClick={() => {
+                    handleAdvanceStatus(selectedOrder.id, selectedOrder.status)
+                    setSelectedOrder(null)
+                  }}
+                >
+                  <CheckCircle size={16} /> Marcar como {selectedOrder.status === 'new' ? 'preparación' : selectedOrder.status === 'preparing' ? 'lista' : 'entregada'}
+                </button>
                 <button className="cmd-btn-secondary" onClick={() => setSelectedOrder(null)}>Cerrar</button>
               </div>
             </footer>

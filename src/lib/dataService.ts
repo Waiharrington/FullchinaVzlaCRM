@@ -1,4 +1,24 @@
-import { supabase } from './supabase'
+import { supabase, isDemoMode } from './supabase'
+
+const DEMO_ORDERS_KEY = 'foodtruck_demo_orders'
+
+function getLocalDemoOrders(): FullOrder[] {
+  try {
+    const raw = localStorage.getItem(DEMO_ORDERS_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveLocalDemoOrder(order: FullOrder): void {
+  try {
+    const existing = getLocalDemoOrders()
+    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify([order, ...existing]))
+  } catch (e) {
+    console.error('Error guardando orden demo:', e)
+  }
+}
 
 export interface Product {
   id: string
@@ -333,9 +353,48 @@ export async function checkout(params: {
   orderType?: string
   customerName?: string
 }): Promise<OrderResult> {
-  const sb = client()
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const now = new Date().toISOString()
+  const orderNumber = Math.floor(1000 + Math.random() * 9000)
 
+  if (isDemoMode || !supabase) {
+    const demoId = `demo-${Date.now()}`
+    const fullOrder: FullOrder = {
+      id: demoId,
+      orderNumber,
+      status: 'paid',
+      notes: params.notes ?? null,
+      orderType: params.orderType ?? 'takeaway',
+      customerName: params.customerName ?? 'Cliente',
+      bcvRate: params.bcvRate,
+      createdBy: params.userId,
+      createdAt: now,
+      updatedAt: now,
+      items: params.items.map((i, idx) => ({
+        id: `item-${demoId}-${idx}`,
+        sellableProductId: i.productId,
+        productName: i.productName,
+        emoji: i.emoji || '🍽️',
+        category: 'Plato',
+        quantity: i.quantity,
+        unitPrice: i.price,
+      })),
+      totalAmount: total,
+    }
+    saveLocalDemoOrder(fullOrder)
+    return {
+      id: demoId,
+      orderNumber,
+      status: 'paid',
+      total,
+      bcvRate: params.bcvRate,
+      createdAt: now,
+      paymentMethod: params.method,
+      items: params.items,
+    }
+  }
+
+  const sb = client()
   const { data: order, error: orderErr } = await sb
     .from('orders')
     .insert({
@@ -389,8 +448,48 @@ export async function sendToKitchen(params: {
   orderType?: string
   customerName?: string
 }): Promise<OrderResult> {
-  const sb = client()
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const now = new Date().toISOString()
+  const orderNumber = Math.floor(1000 + Math.random() * 9000)
+
+  if (isDemoMode || !supabase) {
+    const demoId = `demo-${Date.now()}`
+    const fullOrder: FullOrder = {
+      id: demoId,
+      orderNumber,
+      status: 'open',
+      notes: params.notes ?? null,
+      orderType: params.orderType ?? 'takeaway',
+      customerName: params.customerName ?? 'Cliente',
+      bcvRate: params.bcvRate,
+      createdBy: params.userId,
+      createdAt: now,
+      updatedAt: now,
+      items: params.items.map((i, idx) => ({
+        id: `item-${demoId}-${idx}`,
+        sellableProductId: i.productId,
+        productName: i.productName,
+        emoji: i.emoji || '🍽️',
+        category: 'Plato',
+        quantity: i.quantity,
+        unitPrice: i.price,
+      })),
+      totalAmount: total,
+    }
+    saveLocalDemoOrder(fullOrder)
+    return {
+      id: demoId,
+      orderNumber,
+      status: 'open',
+      total,
+      bcvRate: params.bcvRate,
+      createdAt: now,
+      paymentMethod: 'cash',
+      items: params.items,
+    }
+  }
+
+  const sb = client()
 
   const { data: order, error: orderErr } = await sb
     .from('orders')
@@ -400,7 +499,7 @@ export async function sendToKitchen(params: {
       notes: params.notes ?? null,
       order_type: params.orderType ?? 'takeaway',
       customer_name: params.customerName ?? 'Cliente',
-      status: 'new',
+      status: 'open',
     })
     .select('id, order_number, created_at')
     .single()
@@ -421,7 +520,7 @@ export async function sendToKitchen(params: {
   return {
     id: order.id as string,
     orderNumber: order.order_number as number,
-    status: 'new',
+    status: 'open',
     total,
     bcvRate: params.bcvRate,
     createdAt: order.created_at as string,
@@ -462,41 +561,61 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
 // --- Órdenes completas (para Comandas/Cocina) --------------------------------
 
 export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): Promise<FullOrder[]> {
-  let query = client().from('v_orders_with_items').select('*')
-  if (dateStart) query = query.gte('created_at', dateStart)
-  if (dateEnd) query = query.lte('created_at', dateEnd)
-  query = query.order('created_at', { ascending: false })
+  const localOrders = getLocalDemoOrders()
 
-  const { data, error } = await query
-  if (error) throw error
+  if (isDemoMode || !supabase) {
+    return localOrders
+  }
 
-  return (data ?? []).map((o) => ({
-    id: o.id as string,
-    orderNumber: o.order_number as number,
-    status: o.status as string,
-    notes: (o.notes as string) ?? null,
-    orderType: (o.order_type as string) ?? 'takeaway',
-    customerName: (o.customer_name as string) ?? 'Cliente',
-    bcvRate: o.bcv_rate ? Number(o.bcv_rate) : null,
-    createdBy: o.created_by as string,
-    createdAt: o.created_at as string,
-    updatedAt: o.updated_at as string,
-    items: Array.isArray(o.items) ? o.items.map((i: Record<string, unknown>) => ({
-      id: i.id as string,
-      sellableProductId: i.sellable_product_id as string,
-      productName: i.product_name as string,
-      emoji: (i.emoji as string) ?? '🍽️',
-      category: (i.category as string) ?? 'plato',
-      quantity: Number(i.quantity),
-      unitPrice: Number(i.unit_price),
-    })) : [],
-    totalAmount: Number(o.total_amount),
-  }))
+  try {
+    let query = client().from('v_orders_with_items').select('*')
+    if (dateStart) query = query.gte('created_at', dateStart)
+    if (dateEnd) query = query.lte('created_at', dateEnd)
+    query = query.order('created_at', { ascending: false })
+
+    const { data, error } = await query
+    if (error) throw error
+
+    const dbOrders: FullOrder[] = (data ?? []).map((o) => ({
+      id: o.id as string,
+      orderNumber: o.order_number as number,
+      status: o.status as string,
+      notes: (o.notes as string) ?? null,
+      orderType: (o.order_type as string) ?? 'takeaway',
+      customerName: (o.customer_name as string) ?? 'Cliente',
+      bcvRate: o.bcv_rate ? Number(o.bcv_rate) : null,
+      createdBy: o.created_by as string,
+      createdAt: o.created_at as string,
+      updatedAt: o.updated_at as string,
+      items: Array.isArray(o.items) ? o.items.map((i: Record<string, unknown>) => ({
+        id: i.id as string,
+        sellableProductId: i.sellable_product_id as string,
+        productName: i.product_name as string,
+        emoji: (i.emoji as string) ?? '🍽️',
+        category: (i.category as string) ?? 'plato',
+        quantity: Number(i.quantity),
+        unitPrice: Number(i.unit_price),
+      })) : [],
+      totalAmount: Number(o.total_amount),
+    }))
+
+    return [...localOrders, ...dbOrders]
+  } catch (e) {
+    console.warn('Fallo Supabase al obtener órdenes, usando locales:', e)
+    return localOrders
+  }
 }
 
 // --- Actualizar estado de orden (para Cocina) --------------------------------
 
 export async function updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
+  if (isDemoMode || !supabase) {
+    const localOrders = getLocalDemoOrders()
+    const updated = localOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
+    return
+  }
+
   const { error } = await client()
     .from('orders')
     .update({ status: newStatus })

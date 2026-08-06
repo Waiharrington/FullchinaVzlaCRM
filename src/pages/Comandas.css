@@ -844,3 +844,18 @@
 .cmd-btn-secondary:hover { background: #333; }
 .cmd-btn-primary { background: #f97316; color: #fff; }
 .cmd-btn-primary:hover { background: #ea580c; }
+.cmd-badge.sin-pagar {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.cmd-btn-cobrar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-radius: 6px;
+  font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s;
+  background: #10b981; color: #fff;
+}
+.cmd-btn-cobrar:hover {
+  background: #059669;
+}
