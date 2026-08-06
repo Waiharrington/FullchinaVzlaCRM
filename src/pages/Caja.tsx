@@ -870,7 +870,7 @@ export function Caja() {
                       value={amountReceived}
                       onChange={(e) => setAmountReceived(e.target.value)}
                     />
-                    <span className="currency-tag-right">MXN</span>
+                    <span className="currency-tag-right">USD</span>
                   </div>
                   <span className="payment-hint-sub">Monto a recibir por este método.</span>
                 </div>

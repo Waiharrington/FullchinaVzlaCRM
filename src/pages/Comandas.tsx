@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getOrdersWithItems, type FullOrder } from '../lib/dataService'
+import { getOrdersWithItems, updateOrderStatus, type FullOrder } from '../lib/dataService'
 import {
   Search,
   Calendar,
@@ -21,9 +21,19 @@ import {
   Hash,
   Phone,
   FileText,
-  X
+  X,
+  QrCode,
+  ShieldCheck
 } from 'lucide-react'
 import './Comandas.css'
+
+const PAYMENT_METHODS = [
+  { method: 'cash', label: 'Efectivo', icon: '💵' },
+  { method: 'mobile', label: 'Pago móvil', icon: '📱' },
+  { method: 'card', label: 'Punto', icon: '💳' },
+  { method: 'transfer', label: 'Transferencia', icon: '🏦' },
+  { method: 'split', label: 'Pago combinado', icon: '🔀' },
+] as const
 
 export interface ComandaItem {
   id: string
@@ -361,6 +371,70 @@ export function Comandas() {
   const [comandas, setComandas] = useState<ComandaOrder[]>(MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
+
+  // Modal de cobro directo desde Comandas
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentOrder, setPaymentOrder] = useState<ComandaOrder | null>(null)
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<'cash' | 'mobile' | 'card' | 'transfer' | 'split'>('cash')
+  const [refNumber, setRefNumber] = useState('')
+  const [amountReceived, setAmountReceived] = useState('')
+  const [paymentNote, setPaymentNote] = useState('')
+  const [paying, setPaying] = useState(false)
+
+  const handleOpenPaymentForOrder = (order: ComandaOrder) => {
+    setPaymentOrder(order)
+    setSelectedPaymentTab('cash')
+    setRefNumber('')
+    setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
+    setPaymentNote('')
+    setShowPaymentModal(true)
+  }
+
+  const handleConfirmOrderPayment = async () => {
+    if (!paymentOrder) return
+    setPaying(true)
+    try {
+      const methodLabels: Record<string, string> = {
+        cash: 'Pago: Efectivo',
+        mobile: 'Pago: Pago móvil',
+        card: 'Pago: Punto',
+        transfer: 'Pago: Transferencia',
+        split: 'Pago combinado',
+      }
+      const methodLabel = methodLabels[selectedPaymentTab] || 'Pago: Efectivo'
+      const payType: ComandaOrder['paymentType'] = selectedPaymentTab === 'split' ? 'card' : (selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer' ? 'app' : selectedPaymentTab)
+
+      setComandas(prev =>
+        prev.map(c =>
+          c.id === paymentOrder.id
+            ? {
+                ...c,
+                isPaid: true,
+                paymentMethod: methodLabel,
+                paymentType: payType,
+              }
+            : c
+        )
+      )
+
+      if (selectedOrder?.id === paymentOrder.id) {
+        setSelectedOrder(prev => prev ? {
+          ...prev,
+          isPaid: true,
+          paymentMethod: methodLabel,
+          paymentType: payType,
+        } : null)
+      }
+
+      await updateOrderStatus(paymentOrder.id, paymentOrder.status)
+      setShowPaymentModal(false)
+      setPaymentOrder(null)
+    } catch (e) {
+      console.error('Error al confirmar pago:', e)
+    } finally {
+      setPaying(false)
+    }
+  }
 
   // Fetch real orders from Supabase / dataService
   useEffect(() => {
@@ -923,10 +997,7 @@ export function Comandas() {
                 {!selectedOrder.isPaid && (
                   <button
                     className="cmd-btn-cobrar"
-                    onClick={() => {
-                      setSelectedOrder(null)
-                      navigate('/caja')
-                    }}
+                    onClick={() => handleOpenPaymentForOrder(selectedOrder)}
                   >
                     💲 Cobrar pedido
                   </button>
@@ -943,6 +1014,145 @@ export function Comandas() {
                 <button className="cmd-btn-secondary" onClick={() => setSelectedOrder(null)}>Cerrar</button>
               </div>
             </footer>
+          </div>
+        </div>
+      )}
+      {/* Modal Cobrar Pedido Directo desde Comandas */}
+      {showPaymentModal && paymentOrder && (
+        <div className="modal-overlay-dark" onClick={() => setShowPaymentModal(false)}>
+          <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="payment-modal-header">
+              <h2 className="payment-modal-title">
+                Cobrar pedido <span className="payment-order-tag">{paymentOrder.orderNumber}</span>
+              </h2>
+              <button className="payment-modal-close" onClick={() => setShowPaymentModal(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Payment Method Tabs */}
+            <div className="payment-tabs-bar">
+              {PAYMENT_METHODS.map((pm) => (
+                <button
+                  key={pm.method}
+                  className={`payment-tab-btn ${selectedPaymentTab === pm.method ? 'active' : ''}`}
+                  onClick={() => setSelectedPaymentTab(pm.method)}
+                >
+                  <span>{pm.icon}</span>
+                  <span>{pm.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Body */}
+            <div className="payment-modal-body">
+              {/* Left Column: Details */}
+              <div className="payment-body-left">
+                <h3 className="payment-sub-heading">
+                  Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
+                </h3>
+
+                <div className="payment-field-group mt-2">
+                  <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
+                  <div className="payment-input-wrap">
+                    <input
+                      type="text"
+                      className="payment-field-input"
+                      value={refNumber}
+                      onChange={(e) => setRefNumber(e.target.value)}
+                      placeholder="Ej. 876543210"
+                    />
+                    <QrCode size={16} className="qr-icon-right" />
+                  </div>
+                </div>
+
+                <div className="payment-field-group mt-3">
+                  <label className="payment-field-label">MONTO RECIBIDO <span className="text-red">*</span></label>
+                  <div className="payment-input-wrap">
+                    <input
+                      type="text"
+                      className="payment-field-input"
+                      value={amountReceived}
+                      onChange={(e) => setAmountReceived(e.target.value)}
+                    />
+                    <span className="currency-tag-right">USD</span>
+                  </div>
+                  <span className="payment-hint-sub">Monto a recibir por este método.</span>
+                </div>
+
+                <div className="payment-field-group mt-3">
+                  <label className="payment-field-label">NOTA (OPCIONAL)</label>
+                  <div className="payment-textarea-wrap">
+                    <textarea
+                      className="payment-field-textarea"
+                      placeholder="Ej. Pago por Yape / Pago Móvil"
+                      value={paymentNote}
+                      onChange={(e) => setPaymentNote(e.target.value.slice(0, 120))}
+                      rows={2}
+                    />
+                    <span className="payment-counter-bottom">{paymentNote.length}/120</span>
+                  </div>
+                </div>
+
+                {/* Desglose de Pago */}
+                <div className="payment-breakdown-card mt-3">
+                  <span className="breakdown-card-title">Desglose de pago</span>
+                  <div className="breakdown-rows-list">
+                    <div className="breakdown-row-item">
+                      <span className="row-item-left">{PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.icon} {PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label}</span>
+                      <span className="row-item-val">${paymentOrder.totalAmount?.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Order Summary */}
+              <div className="payment-body-right">
+                <div className="order-summary-box">
+                  <h3 className="summary-box-title">Resumen del pedido</h3>
+
+                  <div className="summary-box-lines mt-3">
+                    <div className="summary-box-line">
+                      <span>Subtotal</span>
+                      <span className="font-bold">${paymentOrder.totalAmount?.toFixed(2)}</span>
+                    </div>
+
+                    <div className="summary-box-total-line mt-3">
+                      <span className="summary-total-label">Total</span>
+                      <span className="summary-total-val">${paymentOrder.totalAmount?.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {/* Customer field */}
+                  <div className="summary-box-customer mt-4">
+                    <span className="customer-box-label">Cliente</span>
+                    <div className="customer-box-card">
+                      <span className="customer-box-name">👤 {paymentOrder.customerName || 'Cliente general'}</span>
+                    </div>
+                  </div>
+
+                  {/* Info Notice */}
+                  <div className="payment-security-notice mt-4">
+                    <ShieldCheck size={16} className="text-green flex-shrink-0" />
+                    <span>El cobro se actualizará automáticamente en la comanda.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="payment-modal-footer">
+              <button className="btn-confirm-payment-red" onClick={handleConfirmOrderPayment} disabled={paying}>
+                <CheckCircle size={18} /> Confirmar pago
+              </button>
+              <button className="btn-modal-action-dark" onClick={() => window.print()}>
+                <Printer size={18} /> Imprimir recibo
+              </button>
+              <button className="btn-modal-action-ghost" onClick={() => setShowPaymentModal(false)}>
+                <X size={18} /> Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
