@@ -978,10 +978,15 @@ body:has(.login-page) {
   body:has(.login-page) {
     background-color: rgb(15, 15, 15) !important;
     overscroll-behavior: none;
+    overflow: hidden; /* prevent the document itself from scrolling behind the fixed login page */
+    height: 100%;
   }
-  
+
   .login-page {
+    position: fixed; /* anchor to the real visual viewport instead of the layout viewport, which desyncs from the address bar show/hide on iOS */
     top: 0; left: 0; right: 0; bottom: 0;
+    height: 100vh;
+    height: 100dvh;
     border: none; border-radius: 0;
     padding: 0;
     display: block;
@@ -1219,6 +1224,113 @@ body:has(.login-page) {
   .footer-icon {
     color: #d12c2c;
     height: 14px;
+  }
+
+  /* ── Modo PIN compacto: el teclado numérico ocupa mucho alto, así que
+     achicamos logo/encabezado/teclado para que quepa sin scroll ── */
+  .login-card.pin-active .card-logo-wrapper {
+    margin-bottom: -1.3rem;
+  }
+
+  .login-card.pin-active .card-logo-img {
+    width: 56px;
+    height: 56px;
+  }
+
+  .login-card.pin-active .login-header {
+    margin-bottom: 0.1rem;
+  }
+
+  .login-card.pin-active .login-title {
+    font-size: 1.15rem;
+  }
+
+  .login-card.pin-active .login-subtitle {
+    font-size: 0.72rem;
+  }
+
+  .login-card.pin-active .login-form {
+    gap: 0.45rem;
+  }
+
+  .login-card.pin-active .form-section.active {
+    gap: 0.75rem;
+  }
+
+  .login-card.pin-active .pin-keypad {
+    gap: 0.35rem;
+    margin-top: 0.2rem;
+  }
+
+  .login-card.pin-active .keypad-btn {
+    height: 40px;
+    font-size: 1.05rem;
+  }
+
+  .login-card.pin-active .btn-primary,
+  .login-card.pin-active .btn-secondary {
+    padding: 0.55rem;
+  }
+
+  .login-card.pin-active .divider-row {
+    margin: -0.3rem 0;
+  }
+
+  .login-card.pin-active .login-footer {
+    margin-top: 0.05rem;
+    padding-top: 0.35rem;
+  }
+}
+
+/* ── Pantallas muy cortas (iPhone SE y similares, ~667px de alto).
+   Los iPhones estándar/Plus/Pro/Pro Max miden 812px+ de alto, así que
+   este bloque no les afecta. ── */
+@media (max-width: 679px) and (max-height: 700px) {
+  .login-card.pin-active .card-logo-wrapper {
+    display: none;
+  }
+
+  .login-card.pin-active .login-header {
+    margin-bottom: 0;
+  }
+
+  .login-card.pin-active .login-subtitle {
+    display: none;
+  }
+
+  .login-card.pin-active .login-form {
+    gap: 0.3rem;
+  }
+
+  .login-card.pin-active .form-section.active {
+    gap: 0.5rem;
+  }
+
+  .login-card.pin-active .input-wrapper {
+    height: 38px;
+  }
+
+  .login-card.pin-active .pin-keypad {
+    gap: 0.25rem;
+    margin-top: 0.1rem;
+  }
+
+  .login-card.pin-active .keypad-btn {
+    height: 34px;
+    font-size: 0.95rem;
+  }
+
+  .login-card.pin-active .btn-primary,
+  .login-card.pin-active .btn-secondary {
+    padding: 0.4rem;
+  }
+
+  .login-card.pin-active .divider-row {
+    margin: -0.4rem 0;
+  }
+
+  .login-card.pin-active .login-footer {
+    display: none;
   }
 }
 
