@@ -625,12 +625,12 @@ export function Comandas() {
 
                       {/* Footer Row */}
                       <div className="card-footer-line">
-                        <span className={`payment-type-badge pay-${order.paymentType}`}>
-                          {order.paymentMethod}
-                        </span>
-
-                        {!order.isPaid && order.status !== 'delivered' && (
-                          <span className="badge-sin-pagar">💰 Pendiente de pago</span>
+                        {order.isPaid ? (
+                          <span className={`payment-type-badge pay-${order.paymentType}`}>
+                            {order.paymentMethod}
+                          </span>
+                        ) : (
+                          <span className="badge-sin-pagar">⚠️ Sin cobrar</span>
                         )}
 
                         {order.status === 'ready' ? (
