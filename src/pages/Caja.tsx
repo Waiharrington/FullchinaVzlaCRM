@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { downloadReceipt } from '../lib/receipt'
 import { getExchangeRates } from '../lib/rates'
+import { PRODUCTS } from '../lib/demoData'
 import {
   getProducts,
   getTodayOrders,
@@ -123,7 +124,7 @@ export function Caja() {
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string>('arroz')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [sortBy, setSortBy] = useState<'popular' | 'price' | 'name'>('popular')
 
@@ -207,10 +208,10 @@ export function Caja() {
           getProducts().catch((e) => { console.error('getProducts error:', e); return [] as Product[] }),
           getTodayOrders().catch((e) => { console.error('getTodayOrders error:', e); return [] as TodayOrder[] }),
         ])
-        if (cancelled) return
-        setProducts(prods)
+        const finalProds = prods.length > 0 ? prods : (PRODUCTS as unknown as Product[])
+        setProducts(finalProds)
         setTodayOrders(orders)
-        cajaCache = { products: prods, todayOrders: orders, bcvRate: cajaCache?.bcvRate ?? null }
+        cajaCache = { products: finalProds, todayOrders: orders, bcvRate: cajaCache?.bcvRate ?? null }
         getExchangeRates().then((rates) => {
           if (cancelled) return
           const bcv = rates.bcv > 0 ? rates.bcv : null

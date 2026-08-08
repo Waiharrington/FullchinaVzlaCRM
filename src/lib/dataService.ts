@@ -1,4 +1,5 @@
 import { supabase, isDemoMode } from './supabase'
+import { PRODUCTS } from './demoData'
 
 const DEMO_ORDERS_KEY = 'foodtruck_demo_orders'
 
@@ -322,24 +323,33 @@ function client() {
 // --- Productos ---------------------------------------------------------------
 
 export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await client()
-    .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active')
-    .eq('is_active', true)
-    .order('category', { ascending: true })
-    .order('name', { ascending: true })
+  if (isDemoMode || !supabase) {
+    return PRODUCTS as unknown as Product[]
+  }
+  try {
+    const { data, error } = await supabase
+      .from('sellable_products')
+      .select('id,name,description,price,cost,category,emoji')
+      .order('category', { ascending: true })
+      .order('name', { ascending: true })
 
-  if (error) throw error
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    name: r.name as string,
-    description: (r.description as string) ?? null,
-    price: Number(r.price),
-    cost: r.cost === null ? null : Number(r.cost),
-    category: r.category as string,
-    emoji: r.emoji as string,
-    active: r.is_active as boolean,
-  }))
+    if (error || !data || data.length === 0) {
+      return PRODUCTS as unknown as Product[]
+    }
+    return data.map((r) => ({
+      id: r.id as string,
+      name: r.name as string,
+      description: (r.description as string) ?? null,
+      price: Number(r.price),
+      cost: r.cost === null ? null : Number(r.cost),
+      category: r.category as string,
+      emoji: r.emoji as string,
+      active: true,
+    }))
+  } catch (err) {
+    console.error('Error cargando productos de Supabase, usando menú de respaldo:', err)
+    return PRODUCTS as unknown as Product[]
+  }
 }
 
 // --- Cobro (checkout) --------------------------------------------------------
