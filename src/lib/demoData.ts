@@ -1,9 +1,11 @@
+import { REAL_FULL_CHINA_MENU } from './realMenuData'
+
 export interface Product {
   id: string
   name: string
   price: number
   cost: number
-  category: 'food' | 'drink' | 'dessert'
+  category: 'combo' | 'plato' | 'arroz' | 'noodles' | 'wok' | 'racion' | 'extra' | string
   emoji: string
   active: boolean
 }
@@ -64,20 +66,7 @@ export const STAFF: Staff[] = [
   { id: 's3', name: 'María López', role: 'assistant', commissionPct: 3, active: true },
 ]
 
-export const PRODUCTS: Product[] = [
-  { id: 'p1', name: 'Hamburguesa Clásica', price: 8.00, cost: 3.20, category: 'food', emoji: '🍔', active: true },
-  { id: 'p2', name: 'Hamburguesa Doble', price: 10.00, cost: 4.50, category: 'food', emoji: '🍔', active: true },
-  { id: 'p3', name: 'Papas Fritas', price: 4.00, cost: 1.20, category: 'food', emoji: '🍟', active: true },
-  { id: 'p4', name: 'Hot Dog', price: 5.00, cost: 1.80, category: 'food', emoji: '🌭', active: true },
-  { id: 'p5', name: 'Tacos (3 und)', price: 6.00, cost: 2.10, category: 'food', emoji: '🌮', active: true },
-  { id: 'p6', name: 'Refresco', price: 2.00, cost: 0.60, category: 'drink', emoji: '🥤', active: true },
-  { id: 'p7', name: 'Agua', price: 1.50, cost: 0.30, category: 'drink', emoji: '💧', active: true },
-  { id: 'p8', name: 'Postre del día', price: 3.50, cost: 1.40, category: 'dessert', emoji: '🍰', active: true },
-  { id: 'p9', name: 'Combo Burguer + Papas', price: 11.00, cost: 4.80, category: 'food', emoji: '🎯', active: true },
-  { id: 'p10', name: 'Nachos con Queso', price: 5.50, cost: 2.00, category: 'food', emoji: '🧀', active: true },
-  { id: 'p11', name: 'Jugo Natural', price: 3.00, cost: 0.90, category: 'drink', emoji: '🧃', active: true },
-  { id: 'p12', name: 'Helado', price: 2.50, cost: 0.80, category: 'dessert', emoji: '🍦', active: true },
-]
+export const PRODUCTS: Product[] = REAL_FULL_CHINA_MENU as unknown as Product[]
 
 export const INGREDIENTS: Ingredient[] = [
   { id: 'i1', name: 'Pan hamburguesa', stock: 50, unit: 'und', minStock: 10, costPerUnit: 0.40 },
@@ -305,3 +294,153 @@ export const DEMO_PRODUCTION_BONUSES: DemoProductionBonus[] = [
   { employeeId: 'e3', employeeName: 'Ana López', initials: 'AL', piecesCount: 70, bonusAmount: 10.50, percentage: 22 },
   { employeeId: 'e4', employeeName: 'Roberto Vargas', initials: 'RV', piecesCount: 40, bonusAmount: 6.00, percentage: 12 },
 ]
+
+// --- Almacén Principal ------------------------------------------------------
+export interface WarehouseItem {
+  id: string
+  name: string
+  quantity: number
+  unit: string
+  minStock: number
+  category: string
+  costPerUnit: number
+}
+
+export interface WarehouseTransfer {
+  id: string
+  itemName: string
+  quantityTransferred: number
+  unit: string
+  date: string
+  operator: string
+  destination: string
+  status: 'completed' | 'pending'
+}
+
+export const DEMO_WAREHOUSE_ITEMS: WarehouseItem[] = [
+  { id: 'w1', name: 'Pollo Crudo Entero', quantity: 150, unit: 'kg', minStock: 30, category: 'Carnes', costPerUnit: 4.50 },
+  { id: 'w2', name: 'Camarones Frescos', quantity: 45, unit: 'kg', minStock: 10, category: 'Mariscos', costPerUnit: 9.00 },
+  { id: 'w3', name: 'Carne Molida Especial', quantity: 60, unit: 'kg', minStock: 15, category: 'Carnes', costPerUnit: 6.00 },
+  { id: 'w4', name: 'Salsa de Soya (Garrafón 5L)', quantity: 20, unit: 'und', minStock: 5, category: 'Insumos', costPerUnit: 12.00 },
+  { id: 'w5', name: 'Aceite Vegetal (Caja 12L)', quantity: 15, unit: 'caja', minStock: 4, category: 'Aceites', costPerUnit: 32.00 },
+  { id: 'w6', name: 'Harina de Trigo (Saco 25kg)', quantity: 10, unit: 'saco', minStock: 2, category: 'Granos/Harinas', costPerUnit: 22.00 },
+]
+
+export const DEMO_WAREHOUSE_TRANSFERS: WarehouseTransfer[] = [
+  { id: 'wt-01', itemName: 'Porcionado de Pollo (40 porciones)', quantityTransferred: 40, unit: 'porción', date: new Date().toISOString().split('T')[0], operator: 'María Chávez', destination: 'Food Truck Inventario', status: 'completed' },
+  { id: 'wt-02', itemName: 'Lumpias de Carne', quantityTransferred: 60, unit: 'pieza', date: new Date().toISOString().split('T')[0], operator: 'Juan Pérez', destination: 'Food Truck Inventario', status: 'completed' },
+  { id: 'wt-03', itemName: 'Camarones Empanizados', quantityTransferred: 25, unit: 'pieza', date: new Date().toISOString().split('T')[0], operator: 'Ana López', destination: 'Food Truck Inventario', status: 'completed' },
+]
+
+// --- Caja Física -------------------------------------------------------------
+export interface CashSession {
+  id: string
+  sessionNumber: number
+  openedAt: string
+  closedAt?: string
+  openedBy: string
+  initialCashUsd: number
+  initialCashBs: number
+  finalCashUsd?: number
+  finalCashBs?: number
+  digitalPaymentsBs?: number
+  cardPaymentsUsd?: number
+  status: 'open' | 'closed'
+}
+
+export const DEMO_CASH_SESSIONS: CashSession[] = [
+  {
+    id: 'cs-101',
+    sessionNumber: 142,
+    openedAt: `${new Date().toISOString().split('T')[0]}T09:00:00`,
+    openedBy: 'Ana García (Cajera)',
+    initialCashUsd: 50.00,
+    initialCashBs: 1800.00,
+    digitalPaymentsBs: 8400.00,
+    cardPaymentsUsd: 120.00,
+    status: 'open'
+  }
+]
+
+// --- Clientes & Fidelización -------------------------------------------------
+export interface Customer {
+  id: string
+  name: string
+  phone: string
+  cedula?: string
+  birthday?: string
+  totalVisits: number
+  lastVisit: string
+  totalSpent: number
+  favoriteProduct: string
+  rewardsUnlocked: number
+  creditLimit: number
+  creditUsed: number
+}
+
+export const DEMO_CUSTOMERS: Customer[] = [
+  { id: 'c1', name: 'Waiharrington González', phone: '0424-3334186', cedula: 'V-30102609', birthday: '1998-08-15', totalVisits: 14, lastVisit: '2026-08-06', totalSpent: 184.00, favoriteProduct: 'Chow Mein Especial', rewardsUnlocked: 2, creditLimit: 50.00, creditUsed: 0 },
+  { id: 'c2', name: 'Laura Rodríguez', phone: '0412-5551234', cedula: 'V-18452109', birthday: new Date().toISOString().split('T')[0], totalVisits: 9, lastVisit: new Date().toISOString().split('T')[0], totalSpent: 110.00, favoriteProduct: 'Arroz Frito Cantonés', rewardsUnlocked: 1, creditLimit: 30.00, creditUsed: 15.00 },
+  { id: 'c3', name: 'Ricardo Mendoza', phone: '0414-7778899', cedula: 'V-15200344', birthday: '1985-11-20', totalVisits: 22, lastVisit: '2026-08-04', totalSpent: 340.00, favoriteProduct: 'Pollo Agridulce', rewardsUnlocked: 4, creditLimit: 100.00, creditUsed: 0 },
+  { id: 'c4', name: 'Kelita de Hispano', phone: '0416-9990011', cedula: 'V-12888444', birthday: '1979-05-12', totalVisits: 18, lastVisit: '2026-08-05', totalSpent: 260.00, favoriteProduct: 'Lumpias de Carne', rewardsUnlocked: 3, creditLimit: 40.00, creditUsed: 0 },
+  { id: 'c5', name: 'José Alvarado (Inactivo)', phone: '0424-1112233', cedula: 'V-20111222', birthday: '1992-03-08', totalVisits: 4, lastVisit: '2026-07-10', totalSpent: 48.00, favoriteProduct: 'Costillas Sal y Pimienta', rewardsUnlocked: 0, creditLimit: 0, creditUsed: 0 }
+]
+
+// --- Platos de la Semana ----------------------------------------------------
+export interface WeeklyDish {
+  id: string
+  name: string
+  description: string
+  price: number
+  cost: number
+  emoji: string
+  status: 'active' | 'inactive' | 'scheduled'
+  weekTag: string
+}
+
+export const DEMO_WEEKLY_DISHES: WeeklyDish[] = [
+  { id: 'wd-1', name: 'Papas Especiales Szechuan', description: 'Papas fritas crujientes con especias chinas y topping de carne picante.', price: 6.50, cost: 2.10, emoji: '🍟', status: 'active', weekTag: 'Semana 1 - Agosto' },
+  { id: 'wd-2', name: 'Tallarines Singapur con Curri', description: 'Vermicelli salteados con camarones, vegetales y curri aromático.', price: 9.50, cost: 3.40, emoji: '🍜', status: 'active', weekTag: 'Semana 1 - Agosto' },
+  { id: 'wd-3', name: 'Cerdo Char Siu BBQ', description: 'Lomito de cerdo marinado al estilo barbacoa china tradicional.', price: 11.00, cost: 4.20, emoji: '🥩', status: 'scheduled', weekTag: 'Semana 2 - Agosto' },
+  { id: 'wd-4', name: 'Won Ton Frito con Salsa Camarón', description: 'Empanaditas crujientes rellenas bañadas en crema de mariscos.', price: 7.00, cost: 2.30, emoji: '🥟', status: 'inactive', weekTag: 'Semana Anterior' }
+]
+
+// --- Gastos & Categorías ----------------------------------------------------
+export interface Expense {
+  id: string
+  description: string
+  type: 'fixed' | 'variable'
+  category: 'supermarket' | 'payroll' | 'delivery' | 'maintenance' | 'pos_commission' | 'cleaning' | 'utilities' | 'other'
+  vendor: string
+  amountUsd: number
+  amountBs: number
+  date: string
+  paymentMethod: 'efectivo_usd' | 'efectivo_bs' | 'pago_movil' | 'transferencia'
+  reference?: string
+}
+
+export const DEMO_EXPENSES: Expense[] = [
+  { id: 'ex-01', description: 'Compras de verduras y charcutería', type: 'variable', category: 'supermarket', vendor: 'Aradito Supermercado', amountUsd: 30.00, amountBs: 1080.00, date: new Date().toISOString().split('T')[0], paymentMethod: 'pago_movil', reference: '984521' },
+  { id: 'ex-02', description: 'Mantenimiento preventivo punto de venta', type: 'fixed', category: 'maintenance', vendor: 'Credicard Service', amountUsd: 15.00, amountBs: 540.00, date: new Date().toISOString().split('T')[0], paymentMethod: 'pago_movil', reference: '112049' },
+  { id: 'ex-03', description: 'Insumos de limpieza y desinfección', type: 'fixed', category: 'cleaning', vendor: 'Euro-Mercado', amountUsd: 22.00, amountBs: 792.00, date: new Date().toISOString().split('T')[0], paymentMethod: 'efectivo_usd' },
+  { id: 'ex-04', description: 'Comisiones de Pago Móvil bancario', type: 'fixed', category: 'pos_commission', vendor: 'Banesco / BDV', amountUsd: 8.50, amountBs: 306.00, date: new Date().toISOString().split('T')[0], paymentMethod: 'transferencia', reference: 'TRF-9081' },
+  { id: 'ex-05', description: 'Pago de motorizados Delivery turno', type: 'fixed', category: 'delivery', vendor: 'Equipo Delivery', amountUsd: 25.00, amountBs: 900.00, date: new Date().toISOString().split('T')[0], paymentMethod: 'efectivo_usd' },
+]
+
+// --- WhatsApp Automatizaciones ----------------------------------------------
+export interface WhatsAppMessage {
+  id: string
+  templateType: 'birthday' | 'thanks' | 'reactivation' | 'promo'
+  customerName: string
+  phone: string
+  message: string
+  sentAt: string
+  status: 'sent' | 'scheduled'
+}
+
+export const DEMO_WHATSAPP_MESSAGES: WhatsAppMessage[] = [
+  { id: 'wm-01', templateType: 'birthday', customerName: 'Laura Rodríguez', phone: '0412-5551234', message: '¡Feliz Cumpleaños Laura! 🎉 En Full China te regalamos una ración de lumpias gratis hoy en tu compra.', sentAt: `${new Date().toISOString().split('T')[0]} 08:30`, status: 'sent' },
+  { id: 'wm-02', templateType: 'reactivation', customerName: 'José Alvarado', phone: '0424-1112233', message: '¡Hola José! Te extrañamos en Full China. 🍜 Muestra este mensaje y recibe un 15% de descuento en tu plato favorito esta semana.', sentAt: `${new Date().toISOString().split('T')[0]} 10:15`, status: 'sent' },
+  { id: 'wm-03', templateType: 'thanks', customerName: 'Waiharrington González', phone: '0424-3334186', message: '¡Muchas gracias por tu compra en Full China! 🥡 Esperamos que disfrutes tu pedido. ¡Vuelve pronto!', sentAt: '2026-08-06 20:40', status: 'sent' }
+]
+

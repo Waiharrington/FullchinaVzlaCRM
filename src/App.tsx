@@ -21,6 +21,12 @@ import { Nomina } from './pages/Nomina'
 import { Auditoria } from './pages/Auditoria'
 import { Mas } from './pages/Mas'
 import { Reportes } from './pages/Reportes'
+import { Almacen } from './pages/Almacen'
+import { MarketingWhatsApp } from './pages/MarketingWhatsApp'
+import { Fidelizacion } from './pages/Fidelizacion'
+import { MenuSemanal } from './pages/MenuSemanal'
+import { Gastos } from './pages/Gastos'
+import { Equipo } from './pages/Equipo'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
@@ -55,11 +61,17 @@ function AppRoutes() {
         <Route path="/comandas" element={<Comandas />} />
         <Route path="/cocina" element={<Cocina />} />
         <Route path="/clientes" element={<Clientes />} />
+        <Route path="/almacen" element={<Almacen />} />
         <Route path="/inventario" element={<Inventario />} />
         <Route path="/produccion" element={<Produccion />} />
         <Route path="/recetas" element={<Recetas />} />
+        <Route path="/menu-semanal" element={<MenuSemanal />} />
         <Route path="/compras" element={<Compras />} />
+        <Route path="/gastos" element={<Gastos />} />
         <Route path="/finanzas" element={<Finanzas />} />
+        <Route path="/equipo" element={<Equipo />} />
+        <Route path="/fidelizacion" element={<Fidelizacion />} />
+        <Route path="/marketing" element={<MarketingWhatsApp />} />
         <Route path="/nomina" element={<Nomina />} />
         <Route path="/auditoria" element={<Auditoria />} />
         <Route path="/mas" element={<Mas />} />

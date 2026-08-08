@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { Menu, X, LogOut } from 'lucide-react'
-import { allNavItems } from './Sidebar'
+import { allNavItems } from './navItems'
 import './BottomNav.css'
 
 export function BottomNav() {

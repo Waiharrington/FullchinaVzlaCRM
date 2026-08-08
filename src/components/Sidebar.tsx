@@ -1,40 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
-import {
-  Home,
-  Wallet,
-  ClipboardList,
-  Package,
-  Beef,
-  BookOpen,
-  ShoppingCart,
-  PiggyBank,
-  Users,
-  DollarSign,
-  ShieldCheck,
-  BarChart3,
-  Settings,
-  LogOut,
-  ChevronLeft
-} from 'lucide-react'
+import { LogOut, ChevronLeft } from 'lucide-react'
+import { allNavItems } from './navItems'
 import './Sidebar.css'
-
-export const allNavItems = [
-  { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
-  { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
-  { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
-  { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
-  { path: '/inventario', label: 'Inventario', icon: Package, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
-  { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'], group: 'Operación' },
-  { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'], group: 'Operación' },
-  { path: '/compras', label: 'Compras', icon: ShoppingCart, roles: ['owner', 'manager'], group: 'Operación' },
-  { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Gestión' },
-  { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Gestión' },
-  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, roles: ['owner'], group: 'Gestión' },
-  { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Gestión' }
-]
 
 interface SidebarProps {
   collapsed: boolean

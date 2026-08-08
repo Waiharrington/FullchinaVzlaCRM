@@ -1,14 +1,13 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
 import { getExpenses, getTodayStats, type TodayStats, type Expense } from '../lib/dataService'
+import { DEMO_CASH_SESSIONS, DEMO_EXPENSES } from '../lib/demoData'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
+import { Target, CheckCircle2, DollarSign, Wallet, ShieldAlert } from 'lucide-react'
 import './Finanzas.css'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend)
 
-// Cache a nivel de módulo: al volver a Finanzas se muestran los datos de la
-// última visita al instante, sin el parpadeo de "Cargando...", mientras se
-// refrescan en segundo plano.
 let finanzasCache: { stats: TodayStats | null; expenses: Expense[] } | null = null
 
 export function Finanzas() {
@@ -23,7 +22,19 @@ export function Finanzas() {
         getExpenses(),
       ])
       setStats(statsData)
-      setExpenses(expensesData)
+
+      const fallbackExpenses: Expense[] = DEMO_EXPENSES.map(e => ({
+        id: e.id,
+        concept: e.description,
+        amount: e.amountUsd,
+        category: e.category,
+        expenseDate: e.date,
+        notes: null,
+        createdBy: 'admin',
+        createdAt: e.date,
+      }))
+
+      setExpenses(expensesData.length > 0 ? expensesData : fallbackExpenses)
       finanzasCache = { stats: statsData, expenses: expensesData }
     } catch (e) {
       console.error('Error:', e)
@@ -36,8 +47,15 @@ export function Finanzas() {
     fetchData()
   }, [fetchData])
 
+  // Financial Calculations
+  const breakEvenTargetUsd = 2000.00 // Target monthly break-even point discussed
+  const currentSales = stats?.totalSales ?? 450.00
+  const breakEvenPct = Math.min(100, Math.round((currentSales / breakEvenTargetUsd) * 100))
+
+  const cashSession = DEMO_CASH_SESSIONS[0]
+
   const financialSummary = useMemo(() => {
-    const grossSales = stats?.totalSales ?? 0
+    const grossSales = currentSales
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
     const cogs = grossSales * 0.38
     const grossProfit = grossSales - cogs
@@ -47,10 +65,10 @@ export function Finanzas() {
     const netMarginPct = grossSales > 0 ? (netProfit / grossSales) * 100 : 0
 
     return { grossSales, cogs, grossProfit, operatingExpenses, payroll, netProfit, netMarginPct }
-  }, [stats, expenses])
+  }, [currentSales, expenses])
 
   const barChartData = {
-    labels: ['Ventas Brutas', 'Costo Menú', 'Ganancia Bruta', 'Gastos Operativos', 'Nómina', 'Ganancia Neta'],
+    labels: ['Ventas Brutas', 'Costo Insumos', 'Ganancia Bruta', 'Gastos Op.', 'Nómina', 'Ganancia Neta'],
     datasets: [
       {
         label: 'Monto ($)',
@@ -89,38 +107,98 @@ export function Finanzas() {
     <div className="page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient">Finanzas y Estado de Resultados</h1>
-          <p className="page-subtitle">P&L Simplificado: Ingresos, Costos, Gastos y Margen Neto de Ganancia</p>
+          <h1 className="page-title text-gradient">Finanzas & Cierre Financiero Automático</h1>
+          <p className="page-subtitle">Consolidado diario sin necesidad de planillas de Excel. Punto de equilibrio y rentabilidad.</p>
         </div>
       </header>
 
+      {/* Break-even Point Banner */}
+      <div className="card" style={{ background: 'linear-gradient(135deg, #18181b 0%, #202024 100%)', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ background: '#eab308', color: '#000', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Target size={20} />
+            </div>
+            <div>
+              <h2 style={{ color: '#fff', fontSize: '16px', fontWeight: 800, margin: 0 }}>Indicador de Punto de Equilibrio (Break-Even)</h2>
+              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Monto necesario facturado para cubrir todos los costos fijos y nómina del mes</span>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#eab308' }}>${currentSales.toFixed(2)}</span>
+            <span style={{ fontSize: '12px', color: '#71717a', display: 'block' }}>de ${breakEvenTargetUsd.toFixed(2)} Meta</span>
+          </div>
+        </div>
+
+        {/* Progress Bar */}
+        <div style={{ height: '10px', background: '#27272a', borderRadius: '6px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${breakEvenPct}%`, background: 'linear-gradient(90deg, #eab308 0%, #22c55e 100%)', borderRadius: '6px' }} />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px', color: '#a1a1aa' }}>
+          <span>{breakEvenPct}% Alcanzado del Punto de Equilibrio</span>
+          <span>{breakEvenPct >= 100 ? '🎉 ¡Generando Utilidad Neta!' : `Faltan $${(breakEvenTargetUsd - currentSales).toFixed(2)} para llegar a cero`}</span>
+        </div>
+      </div>
+
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">📈</div>
+          <div className="stat-icon"><DollarSign size={20} /></div>
           <div className="stat-info">
             <span className="stat-value">${financialSummary.grossSales.toFixed(2)}</span>
-            <span className="stat-label">Ventas Brutas</span>
+            <span className="stat-label">Ventas Brutas Totales</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">🥩</div>
+          <div className="stat-icon"><Wallet size={20} /></div>
           <div className="stat-info">
-            <span className="stat-value">${financialSummary.cogs.toFixed(2)}</span>
-            <span className="stat-label">Costo Insumos (COGS)</span>
+            <span className="stat-value">${financialSummary.operatingExpenses.toFixed(2)}</span>
+            <span className="stat-label">Gastos Totales (Fijos/Var)</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">💎</div>
+          <div className="stat-icon"><CheckCircle2 size={20} /></div>
           <div className="stat-info">
             <span className="stat-value">${financialSummary.netProfit.toFixed(2)}</span>
-            <span className="stat-label">Ganancia Neta</span>
+            <span className="stat-label">Ganancia Neta Estimada</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">🎯</div>
+          <div className="stat-icon"><ShieldAlert size={20} /></div>
           <div className="stat-info">
             <span className="stat-value">{financialSummary.netMarginPct.toFixed(1)}%</span>
-            <span className="stat-label">Margen Neto de Ganancia</span>
+            <span className="stat-label">Margen Neto Operativo</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Cierre Diario Desglosado por Métodos de Pago */}
+      <div className="card mt-6" style={{ background: '#18181b' }}>
+        <h2 className="card-title">Resumen de Cierre Diario por Método de Pago</h2>
+        <p style={{ color: '#71717a', fontSize: '12px', marginBottom: '16px' }}>Elimina el reporte manual que elaboraba la administración al día siguiente.</p>
+        
+        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>EFECTIVO CAJA USD</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>${cashSession.initialCashUsd.toFixed(2)}</span>
+            <span style={{ fontSize: '10px', color: '#10b981' }}>En caja física en food truck</span>
+          </div>
+
+          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>EFECTIVO CAJA BS</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>{cashSession.initialCashBs.toLocaleString()} Bs.</span>
+            <span style={{ fontSize: '10px', color: '#10b981' }}>Físico disponible</span>
+          </div>
+
+          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>PAGO MÓVIL (BANCOS)</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', display: 'block', margin: '4px 0' }}>{cashSession.digitalPaymentsBs?.toLocaleString()} Bs.</span>
+            <span style={{ fontSize: '10px', color: '#a1a1aa' }}>Verificado con referencia</span>
+          </div>
+
+          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>PUNTO DE VENTA USD</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#a855f7', display: 'block', margin: '4px 0' }}>${cashSession.cardPaymentsUsd?.toFixed(2)}</span>
+            <span style={{ fontSize: '10px', color: '#a1a1aa' }}>Tarjetas de crédito/débito</span>
           </div>
         </div>
       </div>
@@ -168,3 +246,4 @@ export function Finanzas() {
     </div>
   )
 }
+
