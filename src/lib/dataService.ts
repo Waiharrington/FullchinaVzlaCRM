@@ -626,11 +626,41 @@ export async function updateOrderStatus(orderId: string, newStatus: string): Pro
     return
   }
 
-  const { error } = await client()
-    .from('orders')
-    .update({ status: newStatus })
-    .eq('id', orderId)
-  if (error) throw error
+  try {
+    const { error } = await supabase
+      .from('orders')
+      .update({ status: newStatus })
+      .eq('id', orderId)
+
+    if (error) {
+      console.warn('Fallo Supabase al actualizar estado de orden, guardando en local:', error)
+      const localOrders = getLocalDemoOrders()
+      const updated = localOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+      localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
+    }
+  } catch (e) {
+    console.warn('Excepción actualizando estado de orden:', e)
+    const localOrders = getLocalDemoOrders()
+    const updated = localOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
+  }
+}
+
+export async function updateOrderPaymentStatus(orderId: string, isPaid: boolean): Promise<void> {
+  const localOrders = getLocalDemoOrders()
+  const updated = localOrders.map(o => o.id === orderId ? { ...o, status: isPaid ? 'paid' : o.status } : o)
+  localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
+
+  if (!isDemoMode && supabase) {
+    try {
+      await supabase
+        .from('orders')
+        .update({ status: isPaid ? 'paid' : 'pending' })
+        .eq('id', orderId)
+    } catch (e) {
+      console.warn('Error actualizando pago en Supabase:', e)
+    }
+  }
 }
 
 // --- Créditos ----------------------------------------------------------------

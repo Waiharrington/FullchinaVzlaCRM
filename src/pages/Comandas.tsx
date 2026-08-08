@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getOrdersWithItems, updateOrderStatus, type FullOrder } from '../lib/dataService'
+import { getOrdersWithItems, updateOrderStatus, updateOrderPaymentStatus, type FullOrder } from '../lib/dataService'
 import {
   Search,
   Calendar,
@@ -140,7 +140,7 @@ export function Comandas() {
         } : null)
       }
 
-      await updateOrderStatus(paymentOrder.id, paymentOrder.status)
+      await updateOrderPaymentStatus(paymentOrder.id, true)
       setShowPaymentModal(false)
       setPaymentOrder(null)
     } catch (e) {
@@ -165,8 +165,7 @@ export function Comandas() {
             if (o.status === 'preparing') status = 'preparing'
             else if (o.status === 'ready') status = 'ready'
             else if (o.status === 'delivered' || o.status === 'completed') status = 'delivered'
-            else if (o.status === 'paid') status = 'delivered'
-            // 'new' and 'pending' stay as 'new'
+            else status = 'new'
 
             const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
 
@@ -177,7 +176,7 @@ export function Comandas() {
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
               isRetraso: elapsed > 15 && status !== 'delivered',
               customerName: o.customerName || 'Cliente general',
-              customerPhone: '0412-1234567', // Dummy until DB adds this
+              customerPhone: '0412-1234567',
               address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
               reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
               orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mostrador' : 'Para llevar',
@@ -239,7 +238,7 @@ export function Comandas() {
     return filteredComandas.filter(c => c.status === statusKey)
   }
 
-  const handleAdvanceStatus = (orderId: string, currentStatus: string) => {
+  const handleAdvanceStatus = async (orderId: string, currentStatus: string) => {
     let nextStatus: ComandaOrder['status'] = 'preparing'
     if (currentStatus === 'new') nextStatus = 'preparing'
     else if (currentStatus === 'preparing') nextStatus = 'ready'
@@ -252,11 +251,17 @@ export function Comandas() {
               ...c,
               status: nextStatus,
               isRetraso: false,
-              deliveredTime: nextStatus === 'delivered' ? new Date().toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : c.deliveredTime
+              deliveredTime: nextStatus === 'delivered' ? new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : c.deliveredTime
             }
           : c
       )
     )
+
+    try {
+      await updateOrderStatus(orderId, nextStatus)
+    } catch (e) {
+      console.error('Error actualizando estado en servidor:', e)
+    }
   }
 
   const totalComandasCount = comandas.length
