@@ -188,12 +188,19 @@
   display: flex;
   align-items: center;
   background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   padding: 8px 14px;
   gap: 8px;
-  flex: 0 1 260px;
-  min-width: 200px;
+  flex: 1 1 320px;
+  min-width: 240px;
+  color: #a1a1aa;
+  transition: all 0.2s ease;
+}
+
+.filter-search-inline:focus-within {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
 }
 
 .filter-search-inline input {
@@ -203,6 +210,10 @@
   outline: none;
   font-size: 13px;
   width: 100%;
+}
+
+.filter-search-inline input::placeholder {
+  color: #71717a;
 }
 
 /* Tablet: una sola fila con scroll horizontal, nada queda huérfano al envolver */
@@ -219,8 +230,8 @@
   }
 
   .filter-search-inline {
-    flex: 0 1 220px;
-    min-width: 180px;
+    flex: 1 1 260px;
+    min-width: 200px;
   }
 }
 

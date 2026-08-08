@@ -71,293 +71,7 @@ export interface ComandaOrder {
   attendedBy?: string
 }
 
-const MOCK_COMANDAS: ComandaOrder[] = [
-  // Nuevas
-  {
-    id: 'c-1',
-    orderNumber: '#FC-000126',
-    time: '12:48 PM',
-    date: '24/05/2025',
-    isRetraso: true,
-    customerName: 'Juan Pérez',
-    customerPhone: '987 654 321',
-    address: 'Av. Los Próceres 1234, Dpto. 501',
-    reference: 'Frente al parque',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i1', name: 'Arroz chaufa especial', quantity: 1, unitPrice: 28, subtotal: 28, observations: 'Sin cebollín' },
-      { id: 'i2', name: 'Chow mein mixto', quantity: 1, unitPrice: 26, subtotal: 26, observations: 'Extra salsa' },
-    ],
-    notes: 'Por favor, llamar antes de salir.\nTimbre no funciona, llamar al celular.',
-    paymentMethod: 'Pago: Tarjeta',
-    paymentType: 'card',
-    isPaid: true,
-    totalAmount: 54,
-    serviceCharge: 5.4,
-    discount: 5,
-    bcvRate: 36.5,
-    elapsedMins: 32,
-    status: 'new',
-    attendedBy: 'Admin',
-  },
-  {
-    id: 'c-2',
-    orderNumber: '#FC-000127',
-    time: '12:52 PM',
-    date: '24/05/2025',
-    customerName: 'María González',
-    customerPhone: '987 123 456',
-    orderType: 'Para llevar',
-    items: [
-      { id: 'i3', name: 'Lumpias (3 pzs)', quantity: 1, unitPrice: 15, subtotal: 15 },
-      { id: 'i4', name: 'Pollo agridulce', quantity: 1, unitPrice: 25, subtotal: 25 },
-    ],
-    paymentMethod: 'Pago: Efectivo',
-    paymentType: 'cash',
-    isPaid: true,
-    totalAmount: 40,
-    serviceCharge: 0,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 18,
-    status: 'new',
-  },
-  {
-    id: 'c-3',
-    orderNumber: '#FC-000128',
-    time: '12:55 PM',
-    date: '24/05/2025',
-    customerName: 'Uber Eats',
-    customerPhone: '-',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i5', name: 'Camarones saltados', quantity: 1, unitPrice: 35, subtotal: 35 },
-      { id: 'i6', name: 'Arroz chaufa especial', quantity: 1, unitPrice: 28, subtotal: 28 },
-    ],
-    paymentMethod: 'Pago: En app',
-    paymentType: 'app',
-    isPaid: true,
-    totalAmount: 63,
-    serviceCharge: 6.3,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 15,
-    status: 'new',
-  },
-
-  // En preparación
-  {
-    id: 'c-4',
-    orderNumber: '#FC-000123',
-    time: '12:30 PM',
-    date: '24/05/2025',
-    isRetraso: true,
-    customerName: 'Pedro Ramírez',
-    customerPhone: '987 654 321',
-    address: 'Av. Los Próceres 1234, Dpto. 501\nUrb. Los Sauces, Lima 15038',
-    reference: 'Frente al parque',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i7', name: 'Chow mein mixto', quantity: 1, unitPrice: 28, subtotal: 28, observations: 'sin cebollín' },
-      { id: 'i8', name: 'Pollo agridulce', quantity: 1, unitPrice: 26, subtotal: 26, observations: 'extra salsa' },
-      { id: 'i9', name: 'Refresco (1.5 L)', quantity: 2, unitPrice: 6, subtotal: 12, observations: '—' }
-    ],
-    notes: 'Por favor, llamar antes de salir.\nTimbre no funciona, llamar al celular.',
-    paymentMethod: 'Pago combinado',
-    paymentType: 'app',
-    isPaid: true,
-    totalAmount: 66,
-    serviceCharge: 6.6,
-    discount: 5,
-    bcvRate: 36.5,
-    elapsedMins: 36,
-    status: 'preparing',
-    attendedBy: 'Admin',
-  },
-  {
-    id: 'c-5',
-    orderNumber: '#FC-000124',
-    time: '12:35 PM',
-    date: '24/05/2025',
-    customerName: 'Ana Torres',
-    customerPhone: '912 345 678',
-    orderType: 'Para llevar',
-    items: [
-      { id: 'i9', name: 'Lumpias (3 pzs)', quantity: 2, unitPrice: 15, subtotal: 30 },
-      { id: 'i10', name: 'Arroz chaufa especial', quantity: 1, unitPrice: 28, subtotal: 28 },
-    ],
-    paymentMethod: 'Pago: Efectivo',
-    paymentType: 'cash',
-    isPaid: true,
-    totalAmount: 58,
-    serviceCharge: 0,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 28,
-    status: 'preparing',
-  },
-  {
-    id: 'c-6',
-    orderNumber: '#FC-000125',
-    time: '12:45 PM',
-    date: '24/05/2025',
-    customerName: 'Rappi',
-    customerPhone: '-',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i11', name: 'Camarones saltados', quantity: 1, unitPrice: 35, subtotal: 35 },
-      { id: 'i12', name: 'Chow mein mixto', quantity: 1, unitPrice: 26, subtotal: 26 },
-    ],
-    paymentMethod: 'Pago: En app',
-    paymentType: 'app',
-    isPaid: true,
-    totalAmount: 61,
-    serviceCharge: 6.1,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 22,
-    status: 'preparing',
-  },
-
-  // Listas
-  {
-    id: 'c-7',
-    orderNumber: '#FC-000121',
-    time: '12:15 PM',
-    date: '24/05/2025',
-    customerName: 'Sofía Lima',
-    customerPhone: '988 777 666',
-    orderType: 'Para llevar',
-    items: [
-      { id: 'i13', name: 'Pollo agridulce', quantity: 1, unitPrice: 25, subtotal: 25 },
-      { id: 'i14', name: 'Lumpias (3 pzs)', quantity: 1, unitPrice: 15, subtotal: 15 },
-    ],
-    paymentMethod: 'Pago: Efectivo',
-    paymentType: 'cash',
-    isPaid: true,
-    totalAmount: 40,
-    serviceCharge: 0,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 8,
-    status: 'ready',
-  },
-  {
-    id: 'c-8',
-    orderNumber: '#FC-000122',
-    time: '12:18 PM',
-    date: '24/05/2025',
-    customerName: 'Uber Eats',
-    customerPhone: '-',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i15', name: 'Arroz chaufa especial', quantity: 1, unitPrice: 28, subtotal: 28 },
-      { id: 'i16', name: 'Camarones saltados', quantity: 1, unitPrice: 35, subtotal: 35 },
-    ],
-    paymentMethod: 'Pago: En app',
-    paymentType: 'app',
-    isPaid: true,
-    totalAmount: 63,
-    serviceCharge: 6.3,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 6,
-    status: 'ready',
-  },
-  {
-    id: 'c-9',
-    orderNumber: '#FC-000120',
-    time: '12:10 PM',
-    date: '24/05/2025',
-    customerName: 'Marco Huamán',
-    customerPhone: '999 888 777',
-    orderType: 'Para llevar',
-    items: [
-      { id: 'i17', name: 'Chow mein mixto', quantity: 1, unitPrice: 26, subtotal: 26 },
-      { id: 'i18', name: 'Pollo agridulce', quantity: 1, unitPrice: 25, subtotal: 25 },
-    ],
-    paymentMethod: 'Pago: Efectivo',
-    paymentType: 'cash',
-    isPaid: true,
-    totalAmount: 51,
-    serviceCharge: 0,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 12,
-    status: 'ready',
-  },
-
-  // Entregadas
-  {
-    id: 'c-10',
-    orderNumber: '#FC-000119',
-    time: '12:00 PM',
-    date: '24/05/2025',
-    customerName: 'Camila Rojas',
-    customerPhone: '911 222 333',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i19', name: 'Lumpias (3 pzs)', quantity: 1, unitPrice: 15, subtotal: 15 },
-      { id: 'i20', name: 'Arroz chaufa especial', quantity: 1, unitPrice: 28, subtotal: 28 },
-    ],
-    paymentMethod: 'Pago: Tarjeta',
-    paymentType: 'card',
-    isPaid: true,
-    totalAmount: 43,
-    serviceCharge: 4.3,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 0,
-    status: 'delivered',
-    deliveredTime: '12:15 PM',
-  },
-  {
-    id: 'c-11',
-    orderNumber: '#FC-000118',
-    time: '11:45 AM',
-    date: '24/05/2025',
-    customerName: 'Glovo',
-    customerPhone: '-',
-    orderType: 'Delivery',
-    items: [
-      { id: 'i21', name: 'Pollo agridulce', quantity: 1, unitPrice: 25, subtotal: 25 },
-      { id: 'i22', name: 'Chow mein mixto', quantity: 1, unitPrice: 26, subtotal: 26 },
-    ],
-    paymentMethod: 'Pago: En app',
-    paymentType: 'app',
-    isPaid: true,
-    totalAmount: 51,
-    serviceCharge: 5.1,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 0,
-    status: 'delivered',
-    deliveredTime: '11:58 AM',
-  },
-  {
-    id: 'c-12',
-    orderNumber: '#FC-000117',
-    time: '11:30 AM',
-    date: '24/05/2025',
-    customerName: 'Luis Fernández',
-    customerPhone: '922 333 444',
-    orderType: 'Para llevar',
-    items: [
-      { id: 'i23', name: 'Camarones saltados', quantity: 1, unitPrice: 35, subtotal: 35 },
-      { id: 'i24', name: 'Arroz chaufa especial', quantity: 1, unitPrice: 28, subtotal: 28 },
-    ],
-    paymentMethod: 'Pago: Efectivo',
-    paymentType: 'cash',
-    isPaid: true,
-    totalAmount: 63,
-    serviceCharge: 0,
-    discount: 0,
-    bcvRate: 36.5,
-    elapsedMins: 0,
-    status: 'delivered',
-    deliveredTime: '11:42 AM',
-  },
-]
+const MOCK_COMANDAS: ComandaOrder[] = []
 
 const COLUMNS = [
   { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8', totalCount: 5 },
@@ -489,7 +203,7 @@ export function Comandas() {
               attendedBy: o.createdBy || 'Admin',
             }
           })
-          setComandas([...mapped, ...MOCK_COMANDAS])
+          setComandas(mapped)
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
@@ -545,6 +259,11 @@ export function Comandas() {
     )
   }
 
+  const totalComandasCount = comandas.length
+  const pendientesCount = comandas.filter(c => c.status === 'new' || c.status === 'preparing').length
+  const listasCount = comandas.filter(c => c.status === 'ready').length
+  const avgMins = comandas.length > 0 ? Math.round(comandas.reduce((s, c) => s + c.elapsedMins, 0) / comandas.length) : 0
+
   return (
     <div className="comandas-page animate-fade-in">
       {/* Comandas Header + Stat Cards Row */}
@@ -560,7 +279,7 @@ export function Comandas() {
         <div className="comandas-header-right">
           <div className="comandas-stats-row">
             <div className="stat-card-mini">
-              <span className="stat-number text-red">34</span>
+              <span className="stat-number text-red">{totalComandasCount}</span>
               <div className="stat-info">
                 <span className="stat-title">Total comandas</span>
                 <span className="stat-sub">Hoy</span>
@@ -568,7 +287,7 @@ export function Comandas() {
             </div>
 
             <div className="stat-card-mini">
-              <span className="stat-number text-orange">12</span>
+              <span className="stat-number text-orange">{pendientesCount}</span>
               <div className="stat-info">
                 <span className="stat-title">Pendientes</span>
                 <span className="stat-sub">Nuevas + En preparación</span>
@@ -576,7 +295,7 @@ export function Comandas() {
             </div>
 
             <div className="stat-card-mini">
-              <span className="stat-number text-green">15</span>
+              <span className="stat-number text-green">{listasCount}</span>
               <div className="stat-info">
                 <span className="stat-title">Listas</span>
                 <span className="stat-sub">Para entrega</span>
@@ -586,7 +305,7 @@ export function Comandas() {
             <div className="stat-card-mini">
               <div className="stat-time-group">
                 <Clock size={16} className="text-blue" />
-                <span className="stat-number text-white">28 min</span>
+                <span className="stat-number text-white">{avgMins > 0 ? `${avgMins} min` : '--'}</span>
               </div>
               <div className="stat-info">
                 <span className="stat-title">Tiempo promedio</span>
@@ -651,7 +370,7 @@ export function Comandas() {
                   <span className="col-icon" style={{ color: col.color }}>{col.icon}</span>
                   <h3 className="col-title">{col.label}</h3>
                 </div>
-                <span className="col-count-badge">{col.totalCount}</span>
+                <span className="col-count-badge">{colOrders.length}</span>
               </div>
 
               {/* Column Body / Order Cards */}
