@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Full China',
         short_name: 'Full China',
-        description: 'PWA para administrar la operacion diaria de un food truck',
+        description: 'PWA para administrar la operación diaria de FullChinaVzla',
         theme_color: '#1a1a2e',
         background_color: '#ffffff',
         display: 'standalone',
@@ -34,6 +34,22 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('jspdf')) return 'jspdf-vendor'
+          if (id.includes('html2canvas')) return 'canvas-vendor'
+          if (id.includes('dompurify')) return 'sanitize-vendor'
+          if (id.includes('chart.js') || id.includes('react-chartjs-2')) return 'charts-vendor'
+          if (id.includes('@supabase')) return 'supabase-vendor'
+          if (id.includes('react-router') || id.includes('react-dom') || id.includes('scheduler') || /node_modules[\\/]react[\\/]/.test(id)) return 'react-vendor'
+          return undefined
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

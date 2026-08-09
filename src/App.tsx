@@ -1,32 +1,45 @@
-import { useCallback } from 'react'
+import { lazy, Suspense, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
-import { DemoDataProvider } from './context/DemoDataProvider'
+import { RatesProvider } from './context/RatesProvider'
 
 import { useAuth } from './context/auth-context'
 import { SplashScreen } from './components/SplashScreen'
 import { Layout } from './components/Layout'
-import { Login } from './pages/Login'
-import { Inicio } from './pages/Inicio'
-import { Caja } from './pages/Caja'
-import { Comandas } from './pages/Comandas'
-import { Cocina } from './pages/Cocina'
-import { Clientes } from './pages/Clientes'
-import { Inventario } from './pages/Inventario'
-import { Produccion } from './pages/Produccion'
-import { Recetas } from './pages/Recetas'
-import { Compras } from './pages/Compras'
-import { Finanzas } from './pages/Finanzas'
-import { Nomina } from './pages/Nomina'
-import { Auditoria } from './pages/Auditoria'
-import { Mas } from './pages/Mas'
-import { Reportes } from './pages/Reportes'
-import { Almacen } from './pages/Almacen'
-import { MarketingWhatsApp } from './pages/MarketingWhatsApp'
-import { Fidelizacion } from './pages/Fidelizacion'
-import { MenuSemanal } from './pages/MenuSemanal'
-import { Gastos } from './pages/Gastos'
-import { Equipo } from './pages/Equipo'
+const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })))
+const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
+const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))
+const CajaOperativa = lazy(() => import('./pages/CajaOperativa').then(module => ({ default: module.CajaOperativa })))
+const Comandas = lazy(() => import('./pages/Comandas').then(module => ({ default: module.Comandas })))
+const Cocina = lazy(() => import('./pages/Cocina').then(module => ({ default: module.Cocina })))
+const Clientes = lazy(() => import('./pages/Clientes').then(module => ({ default: module.Clientes })))
+const Inventario = lazy(() => import('./pages/Inventario').then(module => ({ default: module.Inventario })))
+const Produccion = lazy(() => import('./pages/ProduccionReal').then(module => ({ default: module.ProduccionReal })))
+const Recetas = lazy(() => import('./pages/RecetasReal').then(module => ({ default: module.RecetasReal })))
+const Compras = lazy(() => import('./pages/ComprasReal').then(module => ({ default: module.ComprasReal })))
+const Finanzas = lazy(() => import('./pages/Finanzas').then(module => ({ default: module.Finanzas })))
+const Nomina = lazy(() => import('./pages/Nomina').then(module => ({ default: module.Nomina })))
+const Auditoria = lazy(() => import('./pages/Auditoria').then(module => ({ default: module.Auditoria })))
+const Mas = lazy(() => import('./pages/Mas').then(module => ({ default: module.Mas })))
+const Reportes = lazy(() => import('./pages/Reportes').then(module => ({ default: module.Reportes })))
+const Almacen = lazy(() => import('./pages/Almacen').then(module => ({ default: module.Almacen })))
+const MarketingWhatsApp = lazy(() => import('./pages/MarketingWhatsApp').then(module => ({ default: module.MarketingWhatsApp })))
+const Fidelizacion = lazy(() => import('./pages/Fidelizacion').then(module => ({ default: module.Fidelizacion })))
+const MenuSemanal = lazy(() => import('./pages/MenuSemanal').then(module => ({ default: module.MenuSemanal })))
+const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
+const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
+
+type Role = 'owner' | 'manager' | 'cashier'
+
+function RoleRoute({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
+  const { user } = useAuth()
+  if (!user || !roles.includes(user.role)) return <Navigate to="/" replace />
+  return <>{children}</>
+}
+
+const forRoles = (roles: Role[], element: React.ReactNode) => (
+  <RoleRoute roles={roles}>{element}</RoleRoute>
+)
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
@@ -44,6 +57,7 @@ function AppRoutes() {
   const { user } = useAuth()
 
   return (
+    <Suspense fallback={<div className="page" role="status">Cargando módulo…</div>}>
     <Routes>
       <Route
         path="/login"
@@ -58,38 +72,40 @@ function AppRoutes() {
       >
         <Route path="/" element={<Inicio />} />
         <Route path="/caja" element={<Caja />} />
+        <Route path="/caja-operativa" element={<CajaOperativa />} />
         <Route path="/comandas" element={<Comandas />} />
         <Route path="/cocina" element={<Cocina />} />
         <Route path="/clientes" element={<Clientes />} />
-        <Route path="/almacen" element={<Almacen />} />
+        <Route path="/almacen" element={forRoles(['owner', 'manager'], <Almacen />)} />
         <Route path="/inventario" element={<Inventario />} />
-        <Route path="/produccion" element={<Produccion />} />
-        <Route path="/recetas" element={<Recetas />} />
-        <Route path="/menu-semanal" element={<MenuSemanal />} />
-        <Route path="/compras" element={<Compras />} />
-        <Route path="/gastos" element={<Gastos />} />
-        <Route path="/finanzas" element={<Finanzas />} />
-        <Route path="/equipo" element={<Equipo />} />
-        <Route path="/fidelizacion" element={<Fidelizacion />} />
-        <Route path="/marketing" element={<MarketingWhatsApp />} />
-        <Route path="/nomina" element={<Nomina />} />
-        <Route path="/auditoria" element={<Auditoria />} />
-        <Route path="/mas" element={<Mas />} />
-        <Route path="/reportes" element={<Reportes />} />
+        <Route path="/produccion" element={forRoles(['owner', 'manager'], <Produccion />)} />
+        <Route path="/recetas" element={forRoles(['owner', 'manager'], <Recetas />)} />
+        <Route path="/menu-semanal" element={forRoles(['owner', 'manager'], <MenuSemanal />)} />
+        <Route path="/compras" element={forRoles(['owner', 'manager'], <Compras />)} />
+        <Route path="/gastos" element={forRoles(['owner', 'manager'], <Gastos />)} />
+        <Route path="/finanzas" element={forRoles(['owner'], <Finanzas />)} />
+        <Route path="/equipo" element={forRoles(['owner', 'manager'], <Equipo />)} />
+        <Route path="/fidelizacion" element={forRoles(['owner', 'manager'], <Fidelizacion />)} />
+        <Route path="/marketing" element={forRoles(['owner', 'manager'], <MarketingWhatsApp />)} />
+        <Route path="/nomina" element={forRoles(['owner'], <Nomina />)} />
+        <Route path="/auditoria" element={forRoles(['owner'], <Auditoria />)} />
+        <Route path="/mas" element={forRoles(['owner', 'manager'], <Mas />)} />
+        <Route path="/reportes" element={forRoles(['owner', 'manager'], <Reportes />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    </Suspense>
   )
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <DemoDataProvider>
+      <RatesProvider>
+        <AuthProvider>
           <AppRoutes />
-        </DemoDataProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </RatesProvider>
     </BrowserRouter>
   )
 }

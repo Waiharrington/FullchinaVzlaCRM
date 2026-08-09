@@ -1,61 +1,32 @@
-# AI_START_HERE.md — Punto de Entrada
+# Punto de entrada para otra IA
 
-**Si eres una IA leyendo esto, empieza aquí.**
+Lee en este orden:
 
-## Orden de Lectura
+1. `AGENTS.md`
+2. `docs/HANDOFF.md`
+3. `docs/REQUIREMENTS_REUNION_1.md`
+4. `docs/PHASE_0_SECURITY_PAYMENTS.md`
+5. `docs/PHASE_1_CASH_ROLES.md`
+6. `docs/DATABASE.md` solo si tocarás backend
 
-1. **`AGENTS.md`** — Reglas obligatorias, stack, comandos, definición de terminado
-2. **`docs/HANDOFF.md`** — Estado actual, qué existe, qué falta, pendientes P0/P1/P2
-3. **`docs/DEMO_WEDNESDAY.md`** — Plan de demo, cronograma, dataset, criterios
-4. **`PROJECT_BRIEF.md`** — Requisitos completos del proyecto
-5. **`docs/DATABASE.md`** — Modelo de datos (solo si vas a tocar SQL o backend)
-6. **`src/`** — Código fuente del frontend
+Estado rápido:
 
-## Estado Rápido
+- Caja y Comandas tienen persistencia real de órdenes y pagos.
+- La mayoría de los demás módulos todavía mezclan interfaz avanzada con datos
+  demo/locales; inspecciona cada servicio antes de llamarlo “terminado”.
+- El VPS ya recibió las migraciones de seguridad, pagos, caja operativa y PIN
+  seguro del 2026-08-08.
+- El acceso por PIN usa `supabase/functions/pin-login/index.ts`, hashes bcrypt y
+  tokens magic-link de un solo uso. No sustituirlo por contraseñas `VITE_*`.
+- Build, lint y 3 pruebas automatizadas pasan.
+- Producción está publicada en `https://fullchina-vzla-crm.vercel.app` y el PIN
+  de Dueña fue probado allí. No hubo commit ni push en esta fase.
 
-| Aspecto | Estado |
-|---------|--------|
-| Frontend | Scaffold funcional, páginas son placeholders |
-| Backend | SQL completo, no aplicado al VPS |
-| Demo mode | Funcional (VITE_DEMO_MODE=true) |
-| Build/Lint/Test | Pasan todos |
-| Conexión real | No hay (todo es demo) |
+Reglas obligatorias:
 
-## Primera Tarea Recomendada
-
-**Implementar el selector de rol demo en el Login.**
-
-Por qué:
-- Es rápido (30 min)
-- Mejora inmediatamente la demo
-- Permite mostrar diferencias por rol
-- No requiere backend
-
-### Cómo hacerlo
-
-1. Abrir `src/pages/Login.tsx`
-2. En modo demo, mostrar 3 botones: "Entrar como Dueña", "Entrar como Encargada", "Entrar como Cajera"
-3. Abrir `src/context/AuthContext.tsx`
-4. Modificar `DEMO_USER` para aceptar el rol seleccionado
-5. Actualizar `App.tsx` para leer el rol del contexto
-6. Ejecutar `npm run build`, `npm run lint`, `npm test`
-7. Verificar que funciona en mobile (390x844) y desktop (1280px)
-
-### Criterio de éxito
-
-- Al hacer clic en cada botón, se accede al dashboard
-- El nombre del rol aparece en algún lugar visible
-- El sidebar/bottomnav muestra las secciones según el rol (ver §Selector de Rol Demo en AGENTS.md)
-
-> **Nota**: El selector de rol es un mecanismo DEMO local. No es autenticación real
-> ni prueba de seguridad RLS. En producción, los roles se controlarán desde
-> Supabase con RLS y `get_current_user_role()`.
-
-## Reglas Críticas
-
-1. **NO tocar el VPS** — Sin autorización explícita y backup
-2. **NO hacer deploy** — Sin autorización
-3. **NO hacer commit** — Sin autorización explícita
-4. **NO exponer secretos** — Nunca en archivos
-5. **Schema `foodtruck`** — Nunca en `public`
-6. **Siempre ejecutar** `npm run build && npm run lint && npm test` antes de entregar
+- No tocar el VPS sin autorización explícita, backup y verificación.
+- No hacer deploy, commit o push sin autorización explícita.
+- Usar únicamente el esquema remoto `fullchinavzla`, nunca `public`.
+- No ejecutar directamente los SQL iniciales que todavía contienen el nombre
+  histórico `foodtruck`.
+- No exponer secretos ni convertir datos demo en afirmaciones de funcionalidad.

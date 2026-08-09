@@ -1,6 +1,5 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
-import { getExpenses, getTodayStats, type TodayStats, type Expense } from '../lib/dataService'
-import { DEMO_CASH_SESSIONS, DEMO_EXPENSES } from '../lib/demoData'
+import { getActiveCashSession, getExpenses, getTodayStats, type TodayStats, type Expense, type CashSessionSnapshot } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import { Target, CheckCircle2, DollarSign, Wallet, ShieldAlert } from 'lucide-react'
@@ -13,28 +12,19 @@ let finanzasCache: { stats: TodayStats | null; expenses: Expense[] } | null = nu
 export function Finanzas() {
   const [stats, setStats] = useState<TodayStats | null>(finanzasCache?.stats ?? null)
   const [expenses, setExpenses] = useState<Expense[]>(finanzasCache?.expenses ?? [])
+  const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
   const [, setLoading] = useState(!finanzasCache)
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsData, expensesData] = await Promise.all([
+      const [statsData, expensesData, cashData] = await Promise.all([
         getTodayStats(),
         getExpenses(),
+        getActiveCashSession(),
       ])
       setStats(statsData)
-
-      const fallbackExpenses: Expense[] = DEMO_EXPENSES.map(e => ({
-        id: e.id,
-        concept: e.description,
-        amount: e.amountUsd,
-        category: e.category,
-        expenseDate: e.date,
-        notes: null,
-        createdBy: 'admin',
-        createdAt: e.date,
-      }))
-
-      setExpenses(expensesData.length > 0 ? expensesData : fallbackExpenses)
+      setCashSession(cashData)
+      setExpenses(expensesData)
       finanzasCache = { stats: statsData, expenses: expensesData }
     } catch (e) {
       console.error('Error:', e)
@@ -48,19 +38,17 @@ export function Finanzas() {
   }, [fetchData])
 
   // Financial Calculations
-  const breakEvenTargetUsd = 2000.00 // Target monthly break-even point discussed
-  const currentSales = stats?.totalSales ?? 450.00
-  const breakEvenPct = Math.min(100, Math.round((currentSales / breakEvenTargetUsd) * 100))
-
-  const cashSession = DEMO_CASH_SESSIONS[0]
+  const currentSales = stats?.totalSales ?? 0
+  const breakEvenTargetUsd = expenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const breakEvenPct = breakEvenTargetUsd > 0 ? Math.min(100, Math.round((currentSales / breakEvenTargetUsd) * 100)) : 0
 
   const financialSummary = useMemo(() => {
     const grossSales = currentSales
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
-    const cogs = grossSales * 0.38
+    const cogs = 0
     const grossProfit = grossSales - cogs
-    const operatingExpenses = totalExpenses > 0 ? totalExpenses : grossSales * 0.18
-    const payroll = grossSales * 0.15
+    const operatingExpenses = totalExpenses
+    const payroll = 0
     const netProfit = grossProfit - operatingExpenses - payroll
     const netMarginPct = grossSales > 0 ? (netProfit / grossSales) * 100 : 0
 
@@ -179,25 +167,25 @@ export function Finanzas() {
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>EFECTIVO CAJA USD</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>${cashSession.initialCashUsd.toFixed(2)}</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>${(cashSession?.openingCashUsd ?? 0).toFixed(2)}</span>
             <span style={{ fontSize: '10px', color: '#10b981' }}>En caja física en food truck</span>
           </div>
 
           <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>EFECTIVO CAJA BS</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>{cashSession.initialCashBs.toLocaleString()} Bs.</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>{(cashSession?.openingCashVes ?? 0).toLocaleString()} Bs.</span>
             <span style={{ fontSize: '10px', color: '#10b981' }}>Físico disponible</span>
           </div>
 
           <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>PAGO MÓVIL (BANCOS)</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', display: 'block', margin: '4px 0' }}>{cashSession.digitalPaymentsBs?.toLocaleString()} Bs.</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', display: 'block', margin: '4px 0' }}>{(cashSession?.paymentBreakdown.mobile ?? 0).toLocaleString()} Bs.</span>
             <span style={{ fontSize: '10px', color: '#a1a1aa' }}>Verificado con referencia</span>
           </div>
 
           <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
             <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>PUNTO DE VENTA USD</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#a855f7', display: 'block', margin: '4px 0' }}>${cashSession.cardPaymentsUsd?.toFixed(2)}</span>
+            <span style={{ fontSize: '20px', fontWeight: 900, color: '#a855f7', display: 'block', margin: '4px 0' }}>${(cashSession?.paymentBreakdown.card ?? 0).toFixed(2)}</span>
             <span style={{ fontSize: '10px', color: '#a1a1aa' }}>Tarjetas de crédito/débito</span>
           </div>
         </div>

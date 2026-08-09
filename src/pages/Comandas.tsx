@@ -1,6 +1,14 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getOrdersWithItems, updateOrderStatus, updateOrderPaymentStatus, type FullOrder } from '../lib/dataService'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import {
+  getOrdersWithItems,
+  getActiveCashSession,
+  recordOrderPayments,
+  updateOrderStatus,
+  type FullOrder,
+  type PaymentMethod,
+} from '../lib/dataService'
 import {
   Search,
   Calendar,
@@ -54,6 +62,7 @@ export interface ComandaOrder {
   customerPhone?: string
   address?: string
   reference?: string
+  paymentReference?: string
   orderType: string
   deliveryProvider?: string
   items: ComandaItem[]
@@ -92,22 +101,108 @@ export function Comandas() {
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<'cash' | 'mobile' | 'card' | 'transfer' | 'split'>('cash')
   const [refNumber, setRefNumber] = useState('')
   const [amountReceived, setAmountReceived] = useState('')
+  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<'mobile' | 'card' | 'transfer'>('mobile')
   const [paymentNote, setPaymentNote] = useState('')
+  const [paymentError, setPaymentError] = useState('')
   const [paying, setPaying] = useState(false)
 
-  const handleOpenPaymentForOrder = (order: ComandaOrder) => {
+  const handleOpenPaymentForOrder = async (order: ComandaOrder) => {
+    try {
+      const activeSession = await getActiveCashSession()
+      if (!activeSession) {
+        setPaymentOrder(order)
+        setPaymentError('Debes abrir la caja antes de cobrar esta comanda.')
+        setShowPaymentModal(true)
+        return
+      }
+    } catch (cause) {
+      setPaymentOrder(order)
+      setPaymentError(cause instanceof Error ? cause.message : 'No se pudo verificar la caja activa')
+      setShowPaymentModal(true)
+      return
+    }
     setPaymentOrder(order)
     setSelectedPaymentTab('cash')
     setRefNumber('')
     setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
+    setSplitSecondaryMethod('mobile')
     setPaymentNote('')
+    setPaymentError('')
     setShowPaymentModal(true)
+  }
+
+  const handleSelectPaymentTab = (method: typeof selectedPaymentTab) => {
+    setSelectedPaymentTab(method)
+    setPaymentError('')
+    setRefNumber('')
+    if (method === 'split' && paymentOrder?.totalAmount) {
+      setAmountReceived((paymentOrder.totalAmount / 2).toFixed(2))
+    } else {
+      setAmountReceived(paymentOrder?.totalAmount?.toFixed(2) || '0.00')
+    }
   }
 
   const handleConfirmOrderPayment = async () => {
     if (!paymentOrder) return
     setPaying(true)
+    setPaymentError('')
     try {
+      const total = Number(paymentOrder.totalAmount ?? 0)
+      const enteredAmount = Number(amountReceived)
+      if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
+      if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
+        throw new Error('Ingresa un monto válido')
+      }
+
+      const requiresReference = selectedPaymentTab === 'mobile'
+        || selectedPaymentTab === 'transfer'
+        || (selectedPaymentTab === 'split' && splitSecondaryMethod !== 'card')
+      if (requiresReference && !refNumber.trim()) {
+        throw new Error('La referencia es obligatoria para este método')
+      }
+
+      let payments: Array<{
+        method: PaymentMethod
+        amount: number
+        referenceNumber?: string
+        receivedAmount?: number
+        notes?: string
+      }>
+
+      if (selectedPaymentTab === 'split') {
+        const cashAmount = Math.round(enteredAmount * 100) / 100
+        const secondaryAmount = Math.round((total - cashAmount) * 100) / 100
+        if (cashAmount <= 0 || secondaryAmount <= 0) {
+          throw new Error('El pago combinado necesita dos montos mayores a cero')
+        }
+        payments = [
+          { method: 'cash', amount: cashAmount, receivedAmount: cashAmount, notes: paymentNote || undefined },
+          {
+            method: splitSecondaryMethod,
+            amount: secondaryAmount,
+            referenceNumber: refNumber.trim() || undefined,
+            notes: paymentNote || undefined,
+          },
+        ]
+      } else {
+        if (selectedPaymentTab === 'cash' && enteredAmount < total) {
+          throw new Error('El efectivo recibido no cubre el total')
+        }
+        payments = [{
+          method: selectedPaymentTab,
+          amount: total,
+          referenceNumber: refNumber.trim() || undefined,
+          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
+          notes: paymentNote || undefined,
+        }]
+      }
+
+      await recordOrderPayments({
+        orderId: paymentOrder.id,
+        payments,
+        notes: paymentNote || null,
+      })
+
       const methodLabels: Record<string, string> = {
         cash: 'Pago: Efectivo',
         mobile: 'Pago: Pago móvil',
@@ -126,6 +221,7 @@ export function Comandas() {
                 isPaid: true,
                 paymentMethod: methodLabel,
                 paymentType: payType,
+                paymentReference: refNumber.trim() || undefined,
               }
             : c
         )
@@ -137,14 +233,15 @@ export function Comandas() {
           isPaid: true,
           paymentMethod: methodLabel,
           paymentType: payType,
+          paymentReference: refNumber.trim() || undefined,
         } : null)
       }
 
-      await updateOrderPaymentStatus(paymentOrder.id, true)
       setShowPaymentModal(false)
       setPaymentOrder(null)
     } catch (e) {
       console.error('Error al confirmar pago:', e)
+      setPaymentError(e instanceof Error ? e.message : 'No se pudo registrar el pago')
     } finally {
       setPaying(false)
     }
@@ -168,6 +265,22 @@ export function Comandas() {
             else status = 'new'
 
             const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
+            const paymentMethods = [...new Set(o.payments.map((payment) => payment.method))]
+            const paymentLabels: Record<PaymentMethod, string> = {
+              cash: 'Efectivo',
+              mobile: 'Pago móvil',
+              card: 'Punto',
+              transfer: 'Transferencia',
+              other: 'Otro',
+            }
+            const persistedPaymentLabel = paymentMethods.length > 1
+              ? 'Pago combinado'
+              : paymentMethods.length === 1
+                ? `Pago: ${paymentLabels[paymentMethods[0]]}`
+                : 'Pago registrado'
+            const persistedReference = o.payments
+              .map((payment) => payment.referenceNumber)
+              .find((reference): reference is string => Boolean(reference))
 
             return {
               id: o.id,
@@ -179,6 +292,7 @@ export function Comandas() {
               customerPhone: '0412-1234567',
               address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
               reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
+              paymentReference: persistedReference,
               orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mostrador' : 'Para llevar',
               items: o.items.map((item) => ({
                 id: item.id,
@@ -189,13 +303,19 @@ export function Comandas() {
                 observations: '',
               })),
               notes: o.notes || '',
-              paymentMethod: hasPaid ? 'Pago: Efectivo' : '⚠️ Sin pagar',
-              paymentType: hasPaid ? 'cash' : 'pending' as const,
+              paymentMethod: hasPaid ? persistedPaymentLabel : '⚠️ Sin pagar',
+              paymentType: hasPaid
+                ? paymentMethods.includes('cash')
+                  ? 'cash'
+                  : paymentMethods.includes('mobile') || paymentMethods.includes('transfer')
+                    ? 'app'
+                    : 'card'
+                : 'pending' as const,
               isPaid: hasPaid,
               totalAmount: o.totalAmount || 0,
               serviceCharge: 0,
               discount: 0,
-              bcvRate: o.bcvRate || 36.5,
+              bcvRate: o.bcvRate || undefined,
               elapsedMins: elapsed < 0 ? 1 : elapsed,
               status,
               deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
@@ -564,7 +684,8 @@ export function Comandas() {
                     <div className="cmd-address-content">
                       <div className="cmd-address-text">
                         <p>{selectedOrder.address || 'Sin dirección registrada'}</p>
-                        {selectedOrder.reference && <p className="cmd-reference">Referencia: {selectedOrder.reference}</p>}
+                        {selectedOrder.reference && <p className="cmd-reference">Referencia de entrega: {selectedOrder.reference}</p>}
+                        {selectedOrder.paymentReference && <p className="cmd-reference">Referencia de pago: {selectedOrder.paymentReference}</p>}
                       </div>
                       <div className="cmd-map-placeholder">
                         <MapPin size={24} className="cmd-map-icon" />
@@ -596,8 +717,8 @@ export function Comandas() {
                           </td>
                           <td className="cmd-obs">{item.observations || '—'}</td>
                           <td>x{item.quantity}</td>
-                          <td>${(item.unitPrice || 0).toFixed(2)}</td>
-                          <td>${(item.subtotal || 0).toFixed(2)}</td>
+                          <td><MoneyWithBcv usd={item.unitPrice || 0} rate={selectedOrder.bcvRate} compact /></td>
+                          <td><MoneyWithBcv usd={item.subtotal || 0} rate={selectedOrder.bcvRate} compact /></td>
                         </tr>
                       ))}
                     </tbody>
@@ -618,27 +739,24 @@ export function Comandas() {
                   
                   <div className="cmd-summary-row">
                     <span>Subtotal</span>
-                    <span>${(selectedOrder.totalAmount! - (selectedOrder.serviceCharge || 0) + (selectedOrder.discount || 0)).toFixed(2)}</span>
+                    <MoneyWithBcv usd={selectedOrder.totalAmount! - (selectedOrder.serviceCharge || 0) + (selectedOrder.discount || 0)} rate={selectedOrder.bcvRate} compact />
                   </div>
                   {(selectedOrder.serviceCharge || 0) > 0 && (
                     <div className="cmd-summary-row">
                       <span>Cargo por servicio (10%)</span>
-                      <span>${selectedOrder.serviceCharge?.toFixed(2)}</span>
+                      <MoneyWithBcv usd={selectedOrder.serviceCharge || 0} rate={selectedOrder.bcvRate} compact />
                     </div>
                   )}
                   {(selectedOrder.discount || 0) > 0 && (
                     <div className="cmd-summary-row cmd-discount">
                       <span>Descuento</span>
-                      <span>- ${selectedOrder.discount?.toFixed(2)}</span>
+                      <MoneyWithBcv usd={-(selectedOrder.discount || 0)} rate={selectedOrder.bcvRate} compact />
                     </div>
                   )}
                   
                   <div className="cmd-summary-total">
                     <span>TOTAL</span>
-                    <div className="cmd-total-amounts">
-                      <span className="cmd-total-usd">${selectedOrder.totalAmount?.toFixed(2) || '0.00'}</span>
-                      <span className="cmd-total-bs">(Bs. {((selectedOrder.totalAmount || 0) * (selectedOrder.bcvRate || 36.5)).toFixed(2)})</span>
-                    </div>
+                    <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className="cmd-total-amounts" usdClassName="cmd-total-usd" />
                   </div>
 
                   <div className="cmd-payment-method-row">
@@ -651,23 +769,23 @@ export function Comandas() {
                     {selectedOrder.isPaid ? (
                       <div className="cmd-summary-row cmd-breakdown-item">
                         <span className="cmd-paid-green">Pagado ({selectedOrder.paymentMethod})</span>
-                        <span>${selectedOrder.totalAmount?.toFixed(2)}</span>
+                        <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} compact />
                       </div>
                     ) : (
                       <div className="cmd-summary-row cmd-breakdown-item">
                         <span className="cmd-paid-yellow">⚠️ Pendiente de cobro</span>
-                        <span className="cmd-paid-yellow">${selectedOrder.totalAmount?.toFixed(2)}</span>
+                        <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className="cmd-paid-yellow" compact />
                       </div>
                     )}
                   </div>
 
                   <div className="cmd-summary-row cmd-total-paid">
                     <span>Total pagado</span>
-                    <span className={selectedOrder.isPaid ? 'cmd-paid-green' : ''}>${selectedOrder.isPaid ? selectedOrder.totalAmount?.toFixed(2) : '0.00'}</span>
+                    <MoneyWithBcv usd={selectedOrder.isPaid ? selectedOrder.totalAmount || 0 : 0} rate={selectedOrder.bcvRate} className={selectedOrder.isPaid ? 'cmd-paid-green' : ''} compact />
                   </div>
                   <div className="cmd-summary-row cmd-balance">
                     <span>Saldo restante</span>
-                    <span className={!selectedOrder.isPaid ? 'cmd-paid-yellow' : 'cmd-paid-green'}>${selectedOrder.isPaid ? '0.00' : selectedOrder.totalAmount?.toFixed(2)}</span>
+                    <MoneyWithBcv usd={selectedOrder.isPaid ? 0 : selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className={!selectedOrder.isPaid ? 'cmd-paid-yellow' : 'cmd-paid-green'} compact />
                   </div>
                 </div>
               </div>
@@ -761,7 +879,7 @@ export function Comandas() {
                 <button
                   key={pm.method}
                   className={`payment-tab-btn ${selectedPaymentTab === pm.method ? 'active' : ''}`}
-                  onClick={() => setSelectedPaymentTab(pm.method)}
+                  onClick={() => handleSelectPaymentTab(pm.method)}
                 >
                   <span>{pm.icon}</span>
                   <span>{pm.label}</span>
@@ -777,8 +895,12 @@ export function Comandas() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
+                {(selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer' || selectedPaymentTab === 'split') && (
                 <div className="payment-field-group mt-2">
-                  <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
+                  <label className="payment-field-label">
+                    NÚMERO DE REFERENCIA
+                    {(selectedPaymentTab !== 'split' || splitSecondaryMethod !== 'card') && <span className="text-red"> *</span>}
+                  </label>
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -790,9 +912,31 @@ export function Comandas() {
                     <QrCode size={16} className="qr-icon-right" />
                   </div>
                 </div>
+                )}
+
+                {selectedPaymentTab === 'split' && (
+                  <div className="payment-field-group mt-3">
+                    <label className="payment-field-label">SEGUNDO MÉTODO</label>
+                    <select
+                      className="payment-field-input"
+                      value={splitSecondaryMethod}
+                      onChange={(event) => {
+                        setSplitSecondaryMethod(event.target.value as typeof splitSecondaryMethod)
+                        setPaymentError('')
+                      }}
+                    >
+                      <option value="mobile">Pago móvil</option>
+                      <option value="card">Punto</option>
+                      <option value="transfer">Transferencia</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="payment-field-group mt-3">
-                  <label className="payment-field-label">MONTO RECIBIDO <span className="text-red">*</span></label>
+                  <label className="payment-field-label">
+                    {selectedPaymentTab === 'split' ? 'MONTO EN EFECTIVO' : selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'}
+                    <span className="text-red"> *</span>
+                  </label>
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -802,8 +946,14 @@ export function Comandas() {
                     />
                     <span className="currency-tag-right">USD</span>
                   </div>
-                  <span className="payment-hint-sub">Monto a recibir por este método.</span>
+                  <span className="payment-hint-sub">
+                    {selectedPaymentTab === 'split'
+                      ? <>El segundo método cubrirá <MoneyWithBcv usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - (Number(amountReceived) || 0))} rate={paymentOrder.bcvRate} compact />.</>
+                      : 'Monto a recibir por este método.'}
+                  </span>
                 </div>
+
+                {paymentError && <div className="payment-error-message" role="alert">{paymentError}</div>}
 
                 <div className="payment-field-group mt-3">
                   <label className="payment-field-label">NOTA (OPCIONAL)</label>
@@ -823,10 +973,26 @@ export function Comandas() {
                 <div className="payment-breakdown-card mt-3">
                   <span className="breakdown-card-title">Desglose de pago</span>
                   <div className="breakdown-rows-list">
-                    <div className="breakdown-row-item">
-                      <span className="row-item-left">{PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.icon} {PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label}</span>
-                      <span className="row-item-val">${paymentOrder.totalAmount?.toFixed(2)}</span>
-                    </div>
+                    {selectedPaymentTab === 'split' ? (
+                      <>
+                        <div className="breakdown-row-item">
+                          <span className="row-item-left">💵 Efectivo</span>
+                          <MoneyWithBcv usd={Number(amountReceived) || 0} rate={paymentOrder.bcvRate} className="row-item-val" compact />
+                        </div>
+                        <div className="breakdown-row-item">
+                          <span className="row-item-left">
+                            {PAYMENT_METHODS.find(p => p.method === splitSecondaryMethod)?.icon}{' '}
+                            {PAYMENT_METHODS.find(p => p.method === splitSecondaryMethod)?.label}
+                          </span>
+                          <MoneyWithBcv usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - (Number(amountReceived) || 0))} rate={paymentOrder.bcvRate} className="row-item-val" compact />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="breakdown-row-item">
+                        <span className="row-item-left">{PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.icon} {PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label}</span>
+                        <MoneyWithBcv usd={paymentOrder.totalAmount || 0} rate={paymentOrder.bcvRate} className="row-item-val" compact />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -839,12 +1005,12 @@ export function Comandas() {
                   <div className="summary-box-lines mt-3">
                     <div className="summary-box-line">
                       <span>Subtotal</span>
-                      <span className="font-bold">${paymentOrder.totalAmount?.toFixed(2)}</span>
+                      <MoneyWithBcv usd={paymentOrder.totalAmount || 0} rate={paymentOrder.bcvRate} usdClassName="font-bold" compact />
                     </div>
 
                     <div className="summary-box-total-line mt-3">
                       <span className="summary-total-label">Total</span>
-                      <span className="summary-total-val">${paymentOrder.totalAmount?.toFixed(2)}</span>
+                      <MoneyWithBcv usd={paymentOrder.totalAmount || 0} rate={paymentOrder.bcvRate} className="summary-total-val" />
                     </div>
                   </div>
 
@@ -867,7 +1033,7 @@ export function Comandas() {
 
             {/* Modal Footer Actions */}
             <div className="payment-modal-footer">
-              <button className="btn-confirm-payment-red" onClick={handleConfirmOrderPayment} disabled={paying}>
+              <button className="btn-confirm-payment-red" onClick={handleConfirmOrderPayment} disabled={paying || paymentError.includes('abrir la caja')}>
                 <CheckCircle size={18} /> Confirmar pago
               </button>
               <button className="btn-modal-action-dark" onClick={() => window.print()}>

@@ -15,6 +15,7 @@ export interface AuthContextType {
   splashDone: boolean
   setSplashDone: (val: boolean) => void
   signIn: (email: string, password: string) => Promise<{ error?: string }>
+  signInWithPin: (pin: string) => Promise<{ error?: string }>
   signInAsDemo: (role: 'owner' | 'manager' | 'cashier') => void
   signOut: () => Promise<void>
 }

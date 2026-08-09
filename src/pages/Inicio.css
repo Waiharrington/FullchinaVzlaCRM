@@ -178,7 +178,16 @@
   gap: 0.35rem;
   font-size: 0.68rem;
   color: #52525b;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
 }
+
+.db-greeting-rates:disabled { cursor: wait; opacity: 0.75; }
+.db-greeting-rates.stale strong, .db-greeting-rates.stale svg { color: #f59e0b; }
+.db-rate-date { color: #71717a; font-size: 0.62rem; }
 
 .db-greeting-rates svg {
   color: #10b981;

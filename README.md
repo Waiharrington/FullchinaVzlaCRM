@@ -1,4 +1,4 @@
-# Clienta Food Truck — PWA
+# FullChinaVzla — PWA
 
 ## Comandos
 
@@ -25,8 +25,7 @@ npm test
 ## Backend
 
 La aplicación utilizará el Supabase self-hosted existente en el VPS. Sus tablas
-vivirán en un esquema aislado por negocio; provisionalmente se utilizará
-`foodtruck` hasta confirmar el nombre comercial.
+viven en el esquema aislado `fullchinavzla`.
 
 No se deben aplicar migraciones ni modificar la configuración de PostgREST del
 VPS sin revisar primero el SQL y obtener autorización.
@@ -50,17 +49,19 @@ src/
   components/   Layout, Sidebar, BottomNav
   context/      AuthContext (Supabase + modo demo)
   lib/          Cliente Supabase
-  pages/        Login, Inicio, Caja, Inventario, Más
+  pages/        Operación, administración, clientes y reportes
   test/         Setup de testing
 ```
 
-## Continuidad y demo
+## Continuidad y documentación
 
 Documentación para que cualquier IA pueda retomar el repositorio:
 
 - [`AGENTS.md`](AGENTS.md) — Instrucciones operativas obligatorias
 - [`docs/AI_START_HERE.md`](docs/AI_START_HERE.md) — Punto de entrada (lee esto primero)
 - [`docs/HANDOFF.md`](docs/HANDOFF.md) — Estado actual, pendientes, verificaciones
-- [`docs/DEMO_WEDNESDAY.md`](docs/DEMO_WEDNESDAY.md) — Plan ejecutable para la demo del miércoles
 - [`PROJECT_BRIEF.md`](PROJECT_BRIEF.md) — Requisitos y decisiones de diseño
 - [`docs/DATABASE.md`](docs/DATABASE.md) — Modelo de datos completo
+- [`docs/REQUIREMENTS_REUNION_1.md`](docs/REQUIREMENTS_REUNION_1.md) — Requisitos reunión inicial
+- [`docs/PHASE_0_SECURITY_PAYMENTS.md`](docs/PHASE_0_SECURITY_PAYMENTS.md) — Seguridad y pagos aplicados
+- [`docs/PHASE_1_CASH_ROLES.md`](docs/PHASE_1_CASH_ROLES.md) — Roles reales y caja operativa

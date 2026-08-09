@@ -1,21 +1,23 @@
 import { useState, useEffect } from 'react'
-import { DEMO_EXPENSES } from '../lib/demoData'
-import type { Expense } from '../lib/demoData'
+import { createExpense, getExpenses } from '../lib/dataService'
+import { useAuth } from '../context/auth-context'
 import { getExchangeRates } from '../lib/rates'
 import { Receipt, DollarSign, Store, ShoppingBag, Plus, CheckCircle2, TrendingDown } from 'lucide-react'
 import './Gastos.css'
 
 export function Gastos() {
-  const [expenses, setExpenses] = useState<Expense[]>(DEMO_EXPENSES)
+  type ExpenseView = { id: string; description: string; type: 'fixed' | 'variable'; category: string; vendor: string; amountUsd: number; amountBs: number; date: string; paymentMethod: string; reference?: string }
+  const { user } = useAuth()
+  const [expenses, setExpenses] = useState<ExpenseView[]>([])
   const [exchangeRate, setExchangeRate] = useState<number>(36.5)
 
   // Form State
   const [description, setDescription] = useState('')
   const [type, setType] = useState<'fixed' | 'variable'>('variable')
-  const [category, setCategory] = useState<Expense['category']>('supermarket')
+  const [category, setCategory] = useState('supermarket')
   const [vendor, setVendor] = useState('Aradito Supermercado')
   const [amountUsd, setAmountUsd] = useState(30)
-  const [paymentMethod, setPaymentMethod] = useState<Expense['paymentMethod']>('pago_movil')
+  const [paymentMethod, setPaymentMethod] = useState('pago_movil')
   const [reference, setReference] = useState('')
   const [successNotice, setSuccessNotice] = useState('')
 
@@ -25,6 +27,11 @@ export function Gastos() {
         setExchangeRate(rates.bcv)
       }
     }).catch(() => {})
+    getExpenses().then(data => setExpenses(data.map(item => {
+      let meta: Record<string, string> = {}
+      try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
+      return { id: item.id, description: item.concept, type: item.category === 'fixed' ? 'fixed' : 'variable', category: meta.category || item.category, vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, amountBs: 0, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined }
+    }))).catch(error => setSuccessNotice(error instanceof Error ? error.message : 'No se pudieron cargar los gastos'))
   }, [])
 
   const totalUsd = expenses.reduce((s, e) => s + e.amountUsd, 0)
@@ -32,22 +39,13 @@ export function Gastos() {
   const totalVariableUsd = expenses.filter(e => e.type === 'variable').reduce((s, e) => s + e.amountUsd, 0)
   const totalAraditoUsd = expenses.filter(e => e.vendor.includes('Aradito')).reduce((s, e) => s + e.amountUsd, 0)
 
-  const handleAddExpense = (e: React.FormEvent) => {
+  const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!description.trim() || amountUsd <= 0) return
 
-    const newExpense: Expense = {
-      id: `ex-${Date.now()}`,
-      description,
-      type,
-      category,
-      vendor,
-      amountUsd,
-      amountBs: amountUsd * exchangeRate,
-      date: new Date().toISOString().split('T')[0],
-      paymentMethod,
-      reference: reference.trim() || undefined
-    }
+    if (!user) return
+    const saved = await createExpense({ concept: description, amount: amountUsd, category: type, expenseDate: new Date().toISOString().split('T')[0], userId: user.id, notes: JSON.stringify({ category, vendor, paymentMethod, reference: reference.trim() }) })
+    const newExpense: ExpenseView = { id: saved.id, description, type, category, vendor, amountUsd, amountBs: amountUsd * exchangeRate, date: saved.expenseDate, paymentMethod, reference: reference.trim() || undefined }
 
     setExpenses(prev => [newExpense, ...prev])
     setSuccessNotice(`¡Gasto de $${amountUsd.toFixed(2)} registrado en ${vendor}!`)
@@ -145,7 +143,7 @@ export function Gastos() {
                     </td>
                     <td style={{ fontWeight: 600 }}>{ex.vendor}</td>
                     <td style={{ fontWeight: 800, color: '#ef4444' }}>-${ex.amountUsd.toFixed(2)}</td>
-                    <td style={{ color: '#a1a1aa' }}>-{ex.amountBs.toLocaleString()} Bs</td>
+                    <td style={{ color: '#a1a1aa' }}>-{(ex.amountUsd * exchangeRate).toLocaleString()} Bs</td>
                     <td style={{ fontSize: '11px', color: '#71717a', textTransform: 'capitalize' }}>
                       {ex.paymentMethod.replace('_', ' ')} {ex.reference ? `(${ex.reference})` : ''}
                     </td>
@@ -201,7 +199,7 @@ export function Gastos() {
 
               <div className="select-field-group flex-1">
                 <label className="field-label">Categoría</label>
-                <select className="field-select" value={category} onChange={e => setCategory(e.target.value as Expense['category'])}>
+                <select className="field-select" value={category} onChange={e => setCategory(e.target.value)}>
                   <option value="supermarket">Supermercado</option>
                   <option value="payroll">Nómina</option>
                   <option value="delivery">Delivery</option>
@@ -240,7 +238,7 @@ export function Gastos() {
 
               <div className="select-field-group flex-1">
                 <label className="field-label">Método de Pago</label>
-                <select className="field-select" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as Expense['paymentMethod'])}>
+                <select className="field-select" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
                   <option value="pago_movil">Pago Móvil</option>
                   <option value="efectivo_usd">Efectivo USD</option>
                   <option value="efectivo_bs">Efectivo Bs</option>

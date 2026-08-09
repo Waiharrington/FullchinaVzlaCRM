@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/auth-context'
-import { DEMO_WEEKLY_DISHES } from '../lib/demoData'
-import type { WeeklyDish } from '../lib/demoData'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { createWeeklyDish, getWeeklyDishes, setWeeklyDishActive, type WeeklyDish } from '../lib/dataService'
 import { Utensils, Plus, CheckCircle2, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react'
 import './MenuSemanal.css'
 
 export function MenuSemanal() {
   const { user } = useAuth()
-  const [dishes, setDishes] = useState<WeeklyDish[]>(DEMO_WEEKLY_DISHES)
+  const [dishes, setDishes] = useState<WeeklyDish[]>([])
   
   // New Dish Form State
   const [name, setName] = useState('')
@@ -18,30 +18,24 @@ export function MenuSemanal() {
   const [weekTag, setWeekTag] = useState('Semana 2 - Agosto')
   const [createdNotice, setCreatedNotice] = useState('')
 
-  const toggleStatus = (id: string) => {
-    setDishes(prev => prev.map(d => {
-      if (d.id === id) {
-        const nextStatus: WeeklyDish['status'] = d.status === 'active' ? 'inactive' : 'active'
-        return { ...d, status: nextStatus }
-      }
-      return d
-    }))
+  useEffect(() => {
+    getWeeklyDishes().then(setDishes).catch(error => setCreatedNotice(error instanceof Error ? error.message : 'No se pudo cargar el menú semanal'))
+  }, [])
+
+  const toggleStatus = async (id: string) => {
+    const current = dishes.find(d => d.id === id)
+    if (!current) return
+    const nextStatus: WeeklyDish['status'] = current.status === 'active' ? 'inactive' : 'active'
+    await setWeeklyDishActive(id, nextStatus === 'active')
+    setDishes(prev => prev.map(d => d.id === id ? { ...d, status: nextStatus } : d))
   }
 
-  const handleCreateDish = (e: React.FormEvent) => {
+  const handleCreateDish = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
 
-    const newDish: WeeklyDish = {
-      id: `wd-${Date.now()}`,
-      name,
-      description,
-      price,
-      cost,
-      emoji,
-      status: 'active',
-      weekTag
-    }
+    if (!user) return
+    const newDish = await createWeeklyDish({ name, description, price, cost, emoji, weekTag }, user.id)
 
     setDishes(prev => [newDish, ...prev])
     setCreatedNotice(`¡Plato de la semana "${name}" creado e incorporado al menú activo!`)
@@ -67,7 +61,7 @@ export function MenuSemanal() {
             </div>
           </div>
           <span className="whatsapp-badge-green" style={{ background: 'rgba(220, 38, 38, 0.15)', color: '#ef4444', borderColor: 'rgba(220, 38, 38, 0.3)' }}>
-            4 Platos Activos
+            {dishes.filter(dish => dish.status === 'active').length} Platos Activos
           </span>
         </div>
       </div>
@@ -98,12 +92,12 @@ export function MenuSemanal() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <div>
                 <span style={{ fontSize: '10px', color: '#71717a', display: 'block' }}>Precio Venta</span>
-                <span style={{ color: '#fff', fontWeight: 900, fontSize: '16px' }}>${dish.price.toFixed(2)}</span>
+                <MoneyWithBcv usd={dish.price} align="start" compact usdClassName="weekly-menu-price" />
               </div>
               {user?.role !== 'cashier' && (
                 <div>
                   <span style={{ fontSize: '10px', color: '#71717a', display: 'block' }}>Costo / Margen</span>
-                  <span style={{ color: '#10b981', fontWeight: 800, fontSize: '13px' }}>+${(dish.price - dish.cost).toFixed(2)}</span>
+                  <MoneyWithBcv usd={dish.price - dish.cost} align="start" compact usdClassName="weekly-menu-margin" />
                 </div>
               )}
               <span className={`badge-stock ${dish.status === 'active' ? 'normal' : 'low'}`} style={{ textTransform: 'capitalize' }}>

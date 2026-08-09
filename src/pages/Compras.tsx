@@ -36,24 +36,22 @@ const MOCK_ITEMS: PurchaseRow[] = [
   { id: '3', productName: 'Arroz', photoUrl: INGREDIENT_PHOTOS.arroz, quantity: 25, unit: 'kg', unitPrice: 1.2 },
   { id: '4', productName: 'Vegetales mixtos', photoUrl: INGREDIENT_PHOTOS.vegetales, quantity: 8, unit: 'kg', unitPrice: 2.25 },
 ]
+void MOCK_ITEMS
 
 export function Compras() {
   const navigate = useNavigate()
 
-  const [supplier, setSupplier] = useState('Distribuidora del Mar S.A.')
-  const [purchaseDate, setPurchaseDate] = useState('2025-05-24')
-  const [invoiceNumber, setInvoiceNumber] = useState('FAC-0004587')
+  const [supplier, setSupplier] = useState('')
+  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10))
+  const [invoiceNumber, setInvoiceNumber] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('Transferencia bancaria')
   const [paymentStatus, setPaymentStatus] = useState('Pagado')
-  const [notes, setNotes] = useState('Entrega en bodega. Mercadería en buen estado.')
+  const [notes, setNotes] = useState('')
 
-  const [items, setItems] = useState<PurchaseRow[]>(MOCK_ITEMS)
+  const [items, setItems] = useState<PurchaseRow[]>([])
   const [discount, setDiscount] = useState('0.00')
-  const [transportCost] = useState(10.0)
-  const [attachedFile, setAttachedFile] = useState<{ name: string; size: string } | null>({
-    name: 'FAC-0004587.pdf',
-    size: '1.2 MB',
-  })
+  const [transportCost] = useState(0)
+  const [attachedFile, setAttachedFile] = useState<{ name: string; size: string } | null>(null)
 
   const subtotal = useMemo(() => {
     return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)

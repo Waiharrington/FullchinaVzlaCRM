@@ -1,23 +1,32 @@
-import { useState } from 'react'
-import { DEMO_WAREHOUSE_ITEMS, DEMO_WAREHOUSE_TRANSFERS } from '../lib/demoData'
-import type { WarehouseItem, WarehouseTransfer } from '../lib/demoData'
+import { useEffect, useState } from 'react'
+import { adjustStock, getIngredients, getStockMovements } from '../lib/dataService'
 import { Package, ArrowRightLeft, AlertTriangle, DollarSign, Plus, CheckCircle2 } from 'lucide-react'
 import './Almacen.css'
 
 export function Almacen() {
-  const [items, setItems] = useState<WarehouseItem[]>(DEMO_WAREHOUSE_ITEMS)
-  const [transfers, setTransfers] = useState<WarehouseTransfer[]>(DEMO_WAREHOUSE_TRANSFERS)
+  type WarehouseItem = { id: string; unitId: string; name: string; category: string; quantity: number; costPerUnit: number; minStock: number; unit: string }
+  type WarehouseTransfer = { id: string; itemName: string; quantityTransferred: number; unit: string; date: string; operator: string; destination: string; status: 'completed' }
+  const [items, setItems] = useState<WarehouseItem[]>([])
+  const [transfers, setTransfers] = useState<WarehouseTransfer[]>([])
   
   // Transfer Form State
   const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '')
   const [transferQty, setTransferQty] = useState<number>(10)
-  const [operator, setOperator] = useState('María Chávez')
+  const [operator, setOperator] = useState('Usuario del sistema')
   const [successMsg, setSuccessMsg] = useState('')
 
   const totalValuation = items.reduce((sum, item) => sum + item.quantity * item.costPerUnit, 0)
   const criticalItems = items.filter(item => item.quantity <= item.minStock).length
 
-  const handleTransfer = (e: React.FormEvent) => {
+  useEffect(() => {
+    Promise.all([getIngredients(), getStockMovements()]).then(([ingredients, movements]) => {
+      setItems(ingredients.map(item => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol })))
+      setSelectedItemId(current => current || ingredients[0]?.id || '')
+      setTransfers(movements.filter(item => item.notes?.startsWith('Transferencia a operación')).map(item => ({ id: item.id, itemName: item.ingredientName, quantityTransferred: Math.abs(item.quantity), unit: item.unitSymbol, date: item.createdAt.slice(0, 10), operator: 'Usuario del sistema', destination: 'Operación', status: 'completed' })))
+    }).catch(error => setSuccessMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
+  }, [])
+
+  const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault()
     const targetItem = items.find(i => i.id === selectedItemId)
     if (!targetItem || transferQty <= 0) return
@@ -27,7 +36,7 @@ export function Almacen() {
       return
     }
 
-    // Deduct stock from warehouse
+    await adjustStock({ ingredientId: targetItem.id, quantity: -transferQty, unitId: targetItem.unitId, movementType: 'adjustment', notes: 'Transferencia a operación' })
     setItems(prev => prev.map(i => i.id === selectedItemId ? { ...i, quantity: i.quantity - transferQty } : i))
 
     // Create transfer log
@@ -204,9 +213,7 @@ export function Almacen() {
                     value={operator}
                     onChange={e => setOperator(e.target.value)}
                   >
-                    <option value="María Chávez">María Chávez</option>
-                    <option value="Juan Pérez">Juan Pérez</option>
-                    <option value="Ana López">Ana López</option>
+                    <option value="Usuario del sistema">Usuario del sistema</option>
                   </select>
                 </div>
               </div>

@@ -1,0 +1,24 @@
+.money-with-bcv {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.12;
+  vertical-align: middle;
+}
+
+.money-with-bcv.align-start { align-items: flex-start; text-align: left; }
+.money-with-bcv.align-center { align-items: center; text-align: center; }
+.money-with-bcv.align-end { align-items: flex-end; text-align: right; }
+.money-with-bcv .money-usd { white-space: nowrap; }
+
+.money-with-bcv .money-ves {
+  color: #9ca3af;
+  font-size: 0.68em;
+  font-weight: 650;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.money-with-bcv.compact .money-ves { font-size: 0.62em; }
+.money-with-bcv .money-ves.unavailable { color: #f59e0b; }

@@ -1,7 +1,7 @@
 import { supabase, isDemoMode } from './supabase'
-import { PRODUCTS } from './demoData'
 
-const DEMO_ORDERS_KEY = 'foodtruck_demo_orders'
+const DEMO_ORDERS_KEY = 'fullchinavzla_demo_orders'
+const DEMO_CASH_SESSIONS_KEY = 'fullchinavzla_demo_cash_sessions'
 
 function getLocalDemoOrders(): FullOrder[] {
   try {
@@ -40,7 +40,20 @@ export interface CartItem {
   emoji?: string
 }
 
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'other'
+export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'other'
+
+export interface OrderPaymentComponent {
+  method: PaymentMethod
+  amount: number
+  referenceNumber?: string | null
+  receivedAmount?: number | null
+  notes?: string | null
+}
+
+export interface RecordedOrderPayment extends OrderPaymentComponent {
+  id: string
+  createdAt: string
+}
 
 export interface OrderResult {
   id: string
@@ -74,6 +87,7 @@ export interface FullOrder {
   createdAt: string
   updatedAt: string
   items: OrderItem[]
+  payments: RecordedOrderPayment[]
   totalAmount: number
 }
 
@@ -323,19 +337,15 @@ function client() {
 // --- Productos ---------------------------------------------------------------
 
 export async function getProducts(): Promise<Product[]> {
-  if (isDemoMode || !supabase) {
-    return PRODUCTS as unknown as Product[]
-  }
+  if (!supabase) throw new Error('Supabase no está configurado')
   try {
     const { data, error } = await supabase
       .from('sellable_products')
-      .select('id,name,description,price,cost,category,emoji')
+      .select('id,name,description,price,cost,category,emoji,is_active')
       .order('category', { ascending: true })
       .order('name', { ascending: true })
 
-    if (error || !data || data.length === 0) {
-      return PRODUCTS as unknown as Product[]
-    }
+    if (error) throw error
     return data.map((r) => ({
       id: r.id as string,
       name: r.name as string,
@@ -344,11 +354,11 @@ export async function getProducts(): Promise<Product[]> {
       cost: r.cost === null ? null : Number(r.cost),
       category: r.category as string,
       emoji: r.emoji as string,
-      active: true,
+      active: Boolean(r.is_active),
     }))
   } catch (err) {
-    console.error('Error cargando productos de Supabase, usando menú de respaldo:', err)
-    return PRODUCTS as unknown as Product[]
+    console.error('Error cargando productos de Supabase:', err)
+    throw err
   }
 }
 
@@ -362,6 +372,9 @@ export async function checkout(params: {
   notes?: string | null
   orderType?: string
   customerName?: string
+  referenceNumber?: string | null
+  receivedAmount?: number | null
+  payments?: OrderPaymentComponent[]
 }): Promise<OrderResult> {
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
   const now = new Date().toISOString()
@@ -389,6 +402,17 @@ export async function checkout(params: {
         quantity: i.quantity,
         unitPrice: i.price,
       })),
+      payments: (params.payments ?? [{
+        method: params.method,
+        amount: total,
+        referenceNumber: params.referenceNumber,
+        receivedAmount: params.receivedAmount,
+        notes: params.notes,
+      }]).map((payment, idx) => ({
+        ...payment,
+        id: `payment-${demoId}-${idx}`,
+        createdAt: now,
+      })),
       totalAmount: total,
     }
     saveLocalDemoOrder(fullOrder)
@@ -404,45 +428,42 @@ export async function checkout(params: {
     }
   }
 
-  const sb = client()
-  const { data: order, error: orderErr } = await sb
-    .from('orders')
-    .insert({
-      created_by: params.userId,
-      bcv_rate: params.bcvRate,
-      notes: params.notes ?? null,
-      order_type: params.orderType ?? 'takeaway',
-      customer_name: params.customerName ?? 'Cliente',
-    })
-    .select('id, order_number, created_at')
-    .single()
-  if (orderErr) throw orderErr
-
-  const { error: itemsErr } = await sb.from('order_items').insert(
-    params.items.map((i) => ({
-      order_id: order.id,
-      sellable_product_id: i.productId,
-      quantity: i.quantity,
-      unit_price: i.price,
-    })),
-  )
-  if (itemsErr) throw itemsErr
-
-  const { error: payErr } = await sb.from('payments').insert({
-    order_id: order.id,
+  const paymentComponents = params.payments ?? [{
     method: params.method,
     amount: total,
-    created_by: params.userId,
+    referenceNumber: params.referenceNumber,
+    receivedAmount: params.receivedAmount,
+    notes: params.notes,
+  }]
+
+  const { data: order, error: checkoutErr } = await client().rpc('fn_checkout_order', {
+    p_items: params.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    })),
+    p_payments: paymentComponents,
+    p_bcv_rate: params.bcvRate,
+    p_notes: params.notes ?? null,
+    p_order_type: params.orderType ?? 'takeaway',
+    p_customer_name: params.customerName ?? 'Cliente',
   })
-  if (payErr) throw payErr
+  if (checkoutErr) throw checkoutErr
+
+  const checkoutResult = order as {
+    id: string
+    orderNumber: number
+    status: string
+    total: number
+    createdAt: string
+  }
 
   return {
-    id: order.id as string,
-    orderNumber: order.order_number as number,
-    status: 'paid',
-    total,
+    id: checkoutResult.id,
+    orderNumber: checkoutResult.orderNumber,
+    status: checkoutResult.status,
+    total: Number(checkoutResult.total),
     bcvRate: params.bcvRate,
-    createdAt: order.created_at as string,
+    createdAt: checkoutResult.createdAt,
     paymentMethod: params.method,
     items: params.items,
   }
@@ -484,6 +505,7 @@ export async function sendToKitchen(params: {
         quantity: i.quantity,
         unitPrice: i.price,
       })),
+      payments: [],
       totalAmount: total,
     }
     saveLocalDemoOrder(fullOrder)
@@ -606,6 +628,15 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
         quantity: Number(i.quantity),
         unitPrice: Number(i.unit_price),
       })) : [],
+      payments: Array.isArray(o.payments) ? o.payments.map((p: Record<string, unknown>) => ({
+        id: p.id as string,
+        method: p.method as PaymentMethod,
+        amount: Number(p.amount),
+        referenceNumber: (p.reference_number as string) ?? null,
+        receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
+        notes: (p.notes as string) ?? null,
+        createdAt: p.created_at as string,
+      })) : [],
       totalAmount: Number(o.total_amount),
     }))
 
@@ -646,21 +677,121 @@ export async function updateOrderStatus(orderId: string, newStatus: string): Pro
   }
 }
 
-export async function updateOrderPaymentStatus(orderId: string, isPaid: boolean): Promise<void> {
-  const localOrders = getLocalDemoOrders()
-  const updated = localOrders.map(o => o.id === orderId ? { ...o, status: isPaid ? 'paid' : o.status } : o)
-  localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
+export async function recordOrderPayments(params: {
+  orderId: string
+  payments: OrderPaymentComponent[]
+  notes?: string | null
+}): Promise<void> {
+  if (params.payments.length === 0) throw new Error('Debe registrar al menos un pago')
 
-  if (!isDemoMode && supabase) {
-    try {
-      await supabase
-        .from('orders')
-        .update({ status: isPaid ? 'paid' : 'pending' })
-        .eq('id', orderId)
-    } catch (e) {
-      console.warn('Error actualizando pago en Supabase:', e)
-    }
+  if (isDemoMode || !supabase) {
+    const now = new Date().toISOString()
+    const localOrders = getLocalDemoOrders()
+    const updated = localOrders.map((order) => order.id === params.orderId
+      ? {
+          ...order,
+          status: 'paid',
+          updatedAt: now,
+          payments: params.payments.map((payment, idx) => ({
+            ...payment,
+            id: `payment-${params.orderId}-${Date.now()}-${idx}`,
+            createdAt: now,
+          })),
+        }
+      : order)
+    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
+    return
   }
+
+  const { error } = await supabase.rpc('fn_record_order_payments', {
+    p_order_id: params.orderId,
+    p_payments: params.payments,
+    p_notes: params.notes ?? null,
+  })
+  if (error) throw error
+}
+
+export interface Customer {
+  id: string
+  name: string
+  phone: string
+  email: string
+  totalVisits: number
+  rewardsUnlocked: number
+  lastVisit: string
+  favoriteProduct: string
+  birthday: string
+  isActive: boolean
+}
+
+export interface WeeklyDish {
+  id: string
+  name: string
+  description: string
+  price: number
+  cost: number
+  emoji: string
+  status: 'active' | 'inactive'
+  weekTag: string
+}
+
+export interface WhatsAppMessage {
+  id: string
+  templateType: string
+  customerName: string
+  phone: string
+  message: string
+  sentAt: string
+  status: 'queued' | 'sent' | 'failed' | 'cancelled'
+}
+
+export interface LegacyPurchaseOrder {
+  id: string
+  code: string
+  supplier: string
+  date: string
+  total: number
+  invoiceNumber: string
+  status: string
+}
+
+export interface CashMovement {
+  id: string
+  direction: 'in' | 'out'
+  movementType: 'cash_in' | 'cash_out' | 'withdrawal' | 'expense' | 'adjustment'
+  currency: 'USD' | 'VES'
+  amount: number
+  description: string
+  referenceNumber: string | null
+  createdAt: string
+}
+
+export interface CashSessionSnapshot {
+  id: string
+  sessionNumber: number
+  registerId: string
+  registerCode: string
+  registerName: string
+  status: 'open' | 'closed'
+  openedAt: string
+  openedBy: string
+  openingCashUsd: number
+  openingCashVes: number
+  cashSalesUsd: number
+  paymentTotal: number
+  paymentBreakdown: Record<string, number>
+  movementInUsd: number
+  movementOutUsd: number
+  movementInVes: number
+  movementOutVes: number
+  expectedCashUsd: number
+  expectedCashVes: number
+  countedCashUsd: number | null
+  countedCashVes: number | null
+  differenceUsd: number | null
+  differenceVes: number | null
+  closedAt: string | null
+  movements: CashMovement[]
 }
 
 // --- Créditos ----------------------------------------------------------------
@@ -812,7 +943,207 @@ export async function getPaymentMethodSales(): Promise<PaymentMethodSales[]> {
 
 // --- Cierre de caja ----------------------------------------------------------
 
+function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
+  const numberValue = (key: string): number => Number(value[key] ?? 0)
+  const nullableNumber = (key: string): number | null => value[key] == null ? null : Number(value[key])
+  const breakdown = (value.paymentBreakdown ?? {}) as Record<string, unknown>
+  return {
+    id: String(value.id),
+    sessionNumber: numberValue('sessionNumber'),
+    registerId: String(value.registerId),
+    registerCode: String(value.registerCode),
+    registerName: String(value.registerName),
+    status: value.status as 'open' | 'closed',
+    openedAt: String(value.openedAt),
+    openedBy: String(value.openedBy),
+    openingCashUsd: numberValue('openingCashUsd'),
+    openingCashVes: numberValue('openingCashVes'),
+    cashSalesUsd: numberValue('cashSalesUsd'),
+    paymentTotal: numberValue('paymentTotal'),
+    paymentBreakdown: Object.fromEntries(Object.entries(breakdown).map(([key, amount]) => [key, Number(amount)])),
+    movementInUsd: numberValue('movementInUsd'),
+    movementOutUsd: numberValue('movementOutUsd'),
+    movementInVes: numberValue('movementInVes'),
+    movementOutVes: numberValue('movementOutVes'),
+    expectedCashUsd: numberValue('expectedCashUsd'),
+    expectedCashVes: numberValue('expectedCashVes'),
+    countedCashUsd: nullableNumber('countedCashUsd'),
+    countedCashVes: nullableNumber('countedCashVes'),
+    differenceUsd: nullableNumber('differenceUsd'),
+    differenceVes: nullableNumber('differenceVes'),
+    closedAt: value.closedAt == null ? null : String(value.closedAt),
+    movements: Array.isArray(value.movements)
+      ? value.movements.map((movement: Record<string, unknown>) => ({
+          id: String(movement.id),
+          direction: movement.direction as 'in' | 'out',
+          movementType: movement.movementType as CashMovement['movementType'],
+          currency: movement.currency as 'USD' | 'VES',
+          amount: Number(movement.amount),
+          description: String(movement.description),
+          referenceNumber: movement.referenceNumber == null ? null : String(movement.referenceNumber),
+          createdAt: String(movement.createdAt),
+        }))
+      : [],
+  }
+}
+
+function getDemoCashSessions(): CashSessionSnapshot[] {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_CASH_SESSIONS_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveDemoCashSessions(sessions: CashSessionSnapshot[]): void {
+  localStorage.setItem(DEMO_CASH_SESSIONS_KEY, JSON.stringify(sessions))
+}
+
+function refreshDemoCashSnapshot(session: CashSessionSnapshot): CashSessionSnapshot {
+  const cashSalesUsd = getLocalDemoOrders()
+    .filter(order => order.status === 'paid' && order.createdAt >= session.openedAt)
+    .flatMap(order => order.payments)
+    .filter(payment => payment.method === 'cash')
+    .reduce((sum, payment) => sum + Number(payment.amount), 0)
+  const totals = session.movements.reduce((result, movement) => {
+    const key = `${movement.direction}${movement.currency}` as 'inUSD' | 'outUSD' | 'inVES' | 'outVES'
+    result[key] += movement.amount
+    return result
+  }, { inUSD: 0, outUSD: 0, inVES: 0, outVES: 0 })
+  return {
+    ...session,
+    cashSalesUsd,
+    paymentTotal: cashSalesUsd,
+    paymentBreakdown: { cash: cashSalesUsd },
+    movementInUsd: totals.inUSD,
+    movementOutUsd: totals.outUSD,
+    movementInVes: totals.inVES,
+    movementOutVes: totals.outVES,
+    expectedCashUsd: session.openingCashUsd + cashSalesUsd + totals.inUSD - totals.outUSD,
+    expectedCashVes: session.openingCashVes + totals.inVES - totals.outVES,
+  }
+}
+
+export async function getActiveCashSession(): Promise<CashSessionSnapshot | null> {
+  if (isDemoMode || !supabase) {
+    const session = getDemoCashSessions().find(item => item.status === 'open')
+    return session ? refreshDemoCashSnapshot(session) : null
+  }
+  const { data, error } = await client().rpc('fn_get_active_cash_session', { p_register_code: 'caja-principal' })
+  if (error) throw error
+  return data ? mapCashSession(data as Record<string, unknown>) : null
+}
+
+export async function openCashSession(params: {
+  openingCashUsd: number
+  openingCashVes: number
+  notes?: string | null
+  userId: string
+}): Promise<string> {
+  if (isDemoMode || !supabase) {
+    const sessions = getDemoCashSessions()
+    if (sessions.some(item => item.status === 'open')) throw new Error('Esta caja ya tiene un turno abierto')
+    const now = new Date().toISOString()
+    const id = `cash-session-${Date.now()}`
+    sessions.unshift({
+      id, sessionNumber: sessions.length + 1, registerId: 'demo-register', registerCode: 'caja-principal',
+      registerName: 'Caja principal', status: 'open', openedAt: now, openedBy: params.userId,
+      openingCashUsd: params.openingCashUsd, openingCashVes: params.openingCashVes,
+      cashSalesUsd: 0, paymentTotal: 0, paymentBreakdown: {}, movementInUsd: 0, movementOutUsd: 0,
+      movementInVes: 0, movementOutVes: 0, expectedCashUsd: params.openingCashUsd,
+      expectedCashVes: params.openingCashVes, countedCashUsd: null, countedCashVes: null,
+      differenceUsd: null, differenceVes: null, closedAt: null, movements: [],
+    })
+    saveDemoCashSessions(sessions)
+    return id
+  }
+  const { data, error } = await client().rpc('fn_open_cash_session', {
+    p_register_code: 'caja-principal',
+    p_opening_cash_usd: params.openingCashUsd,
+    p_opening_cash_ves: params.openingCashVes,
+    p_notes: params.notes ?? null,
+  })
+  if (error) throw error
+  return data as string
+}
+
+export async function addCashMovement(params: {
+  sessionId: string
+  direction: 'in' | 'out'
+  movementType: CashMovement['movementType']
+  currency: 'USD' | 'VES'
+  amount: number
+  description: string
+  referenceNumber?: string | null
+  userId: string
+}): Promise<string> {
+  if (isDemoMode || !supabase) {
+    const sessions = getDemoCashSessions()
+    const index = sessions.findIndex(item => item.id === params.sessionId && item.status === 'open')
+    if (index < 0) throw new Error('La sesión de caja no está abierta')
+    const id = `cash-movement-${Date.now()}`
+    sessions[index].movements.unshift({
+      id, direction: params.direction, movementType: params.movementType, currency: params.currency,
+      amount: params.amount, description: params.description, referenceNumber: params.referenceNumber ?? null,
+      createdAt: new Date().toISOString(),
+    })
+    saveDemoCashSessions(sessions)
+    return id
+  }
+  const { data, error } = await client().rpc('fn_add_cash_movement', {
+    p_session_id: params.sessionId,
+    p_direction: params.direction,
+    p_movement_type: params.movementType,
+    p_currency: params.currency,
+    p_amount: params.amount,
+    p_description: params.description,
+    p_reference_number: params.referenceNumber ?? null,
+  })
+  if (error) throw error
+  return data as string
+}
+
+export async function closeCashSession(params: {
+  sessionId: string
+  countedCashUsd: number
+  countedCashVes: number
+  notes?: string | null
+}): Promise<CashSessionSnapshot> {
+  if (isDemoMode || !supabase) {
+    const sessions = getDemoCashSessions()
+    const index = sessions.findIndex(item => item.id === params.sessionId && item.status === 'open')
+    if (index < 0) throw new Error('La sesión de caja no está abierta')
+    const snapshot = refreshDemoCashSnapshot(sessions[index])
+    sessions[index] = {
+      ...snapshot, status: 'closed', closedAt: new Date().toISOString(),
+      countedCashUsd: params.countedCashUsd, countedCashVes: params.countedCashVes,
+      differenceUsd: params.countedCashUsd - snapshot.expectedCashUsd,
+      differenceVes: params.countedCashVes - snapshot.expectedCashVes,
+    }
+    saveDemoCashSessions(sessions)
+    return sessions[index]
+  }
+  const { data, error } = await client().rpc('fn_close_cash_session', {
+    p_session_id: params.sessionId,
+    p_counted_cash_usd: params.countedCashUsd,
+    p_counted_cash_ves: params.countedCashVes,
+    p_notes: params.notes ?? null,
+  })
+  if (error) throw error
+  return mapCashSession(data as Record<string, unknown>)
+}
+
+export async function getCashSessionHistory(limit = 20): Promise<CashSessionSnapshot[]> {
+  if (isDemoMode || !supabase) {
+    return getDemoCashSessions().filter(item => item.status === 'closed').map(refreshDemoCashSnapshot).slice(0, limit)
+  }
+  const { data, error } = await client().rpc('fn_get_cash_session_history', { p_limit: limit })
+  if (error) throw error
+  return (data ?? []).map((item: Record<string, unknown>) => mapCashSession(item))
+}
+
 export async function createDailyClose(date: string, notes?: string): Promise<string> {
+  if (isDemoMode || !supabase) return `demo-close-${date}`
   const { data, error } = await client().rpc('fn_create_daily_close', {
     p_close_date: date,
     p_notes: notes ?? null,
@@ -822,14 +1153,12 @@ export async function createDailyClose(date: string, notes?: string): Promise<st
 }
 
 export async function getDailyCloses(): Promise<DailyCloseSummary[]> {
-  const { data, error } = await client()
-    .from('v_daily_close_summary')
-    .select('*')
-    .order('close_date', { ascending: false })
+  if (isDemoMode || !supabase) return []
+  const { data, error } = await client().rpc('fn_get_daily_close_summary')
 
   if (error) throw error
 
-  return (data ?? []).map((d) => ({
+  return (data ?? []).map((d: Record<string, unknown>) => ({
     id: d.id as string,
     closeDate: d.close_date as string,
     totalSales: Number(d.total_sales),
@@ -862,6 +1191,147 @@ export async function getExpenses(dateStart?: string, dateEnd?: string): Promise
     notes: (e.notes as string) ?? null,
     createdBy: e.created_by as string,
     createdAt: e.created_at as string,
+  }))
+}
+
+export async function createExpense(params: {
+  concept: string
+  amount: number
+  category: 'fixed' | 'variable' | 'other'
+  expenseDate: string
+  notes?: string | null
+  userId: string
+}): Promise<Expense> {
+  const { data, error } = await client().from('expenses').insert({
+    concept: params.concept,
+    amount: params.amount,
+    category: params.category,
+    expense_date: params.expenseDate,
+    notes: params.notes ?? null,
+    created_by: params.userId,
+  }).select('*').single()
+  if (error) throw error
+  return {
+    id: data.id as string,
+    concept: data.concept as string,
+    amount: Number(data.amount),
+    category: data.category as string,
+    expenseDate: data.expense_date as string,
+    notes: (data.notes as string) ?? null,
+    createdBy: data.created_by as string,
+    createdAt: data.created_at as string,
+  }
+}
+
+// --- Clientes y fidelización ------------------------------------------------
+
+export async function getCustomers(): Promise<Customer[]> {
+  const { data, error } = await client().from('customers')
+    .select('id,full_name,phone,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,is_active')
+    .order('full_name')
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.full_name as string,
+    phone: (row.phone as string) ?? '',
+    email: (row.email as string) ?? '',
+    totalVisits: Number(row.total_visits ?? 0),
+    rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
+    lastVisit: (row.last_visit as string) ?? '',
+    favoriteProduct: (row.favorite_product as string) ?? '',
+    birthday: (row.birth_date as string) ?? '',
+    isActive: Boolean(row.is_active),
+  }))
+}
+
+export async function createCustomer(params: { name: string; phone?: string; birthDate?: string }): Promise<Customer> {
+  const { data, error } = await client().from('customers').insert({
+    full_name: params.name, phone: params.phone || null, birth_date: params.birthDate || null,
+    source_system: 'fullchina', source_key: `app:${crypto.randomUUID()}`, is_active: true,
+  }).select('*').single()
+  if (error) throw error
+  return {
+    id: data.id as string, name: data.full_name as string, phone: (data.phone as string) ?? '',
+    email: (data.email as string) ?? '', totalVisits: Number(data.total_visits ?? 0),
+    rewardsUnlocked: Number(data.rewards_unlocked ?? 0), lastVisit: (data.last_visit as string) ?? '',
+    favoriteProduct: (data.favorite_product as string) ?? '', birthday: (data.birth_date as string) ?? '',
+    isActive: Boolean(data.is_active),
+  }
+}
+
+export async function registerCustomerVisit(customerId: string): Promise<Customer> {
+  const { data, error } = await client().rpc('fn_register_customer_visit', { p_customer_id: customerId })
+  if (error) throw error
+  const row = data as Record<string, unknown>
+  return {
+    id: row.id as string, name: row.full_name as string,
+    phone: (row.phone as string) ?? '', email: (row.email as string) ?? '',
+    totalVisits: Number(row.total_visits ?? 0), rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
+    lastVisit: (row.last_visit as string) ?? '', favoriteProduct: (row.favorite_product as string) ?? '',
+    birthday: (row.birth_date as string) ?? '', isActive: Boolean(row.is_active),
+  }
+}
+
+// --- Menú semanal -----------------------------------------------------------
+
+export async function getWeeklyDishes(): Promise<WeeklyDish[]> {
+  const { data, error } = await client().from('weekly_menu_items').select('*').order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    id: row.id as string, name: row.name as string, description: (row.description as string) ?? '',
+    price: Number(row.price), cost: Number(row.cost ?? 0), emoji: row.emoji as string,
+    status: row.is_active ? 'active' : 'inactive', weekTag: (row.week_tag as string) ?? '',
+  }))
+}
+
+export async function createWeeklyDish(dish: Omit<WeeklyDish, 'id' | 'status'>, userId: string): Promise<WeeklyDish> {
+  const { data, error } = await client().from('weekly_menu_items').insert({
+    name: dish.name, description: dish.description, price: dish.price, cost: dish.cost,
+    emoji: dish.emoji, week_tag: dish.weekTag, is_active: true, created_by: userId,
+  }).select('*').single()
+  if (error) throw error
+  return { id: data.id as string, name: data.name as string, description: (data.description as string) ?? '',
+    price: Number(data.price), cost: Number(data.cost ?? 0), emoji: data.emoji as string,
+    status: data.is_active ? 'active' : 'inactive', weekTag: (data.week_tag as string) ?? '' }
+}
+
+export async function setWeeklyDishActive(id: string, active: boolean): Promise<void> {
+  const { error } = await client().from('weekly_menu_items').update({ is_active: active }).eq('id', id)
+  if (error) throw error
+}
+
+// --- Cola de WhatsApp -------------------------------------------------------
+
+export async function getWhatsAppMessages(): Promise<WhatsAppMessage[]> {
+  const { data, error } = await client().from('whatsapp_messages')
+    .select('id,template_type,phone,message,status,sent_at,created_at,customers(full_name)')
+    .order('created_at', { ascending: false }).limit(200)
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    id: row.id as string, templateType: row.template_type as string,
+    customerName: ((row.customers as Array<{ full_name?: string }> | null)?.[0]?.full_name) ?? 'Cliente',
+    phone: row.phone as string, message: row.message as string,
+    sentAt: ((row.sent_at ?? row.created_at) as string), status: row.status as WhatsAppMessage['status'],
+  }))
+}
+
+export async function queueWhatsAppMessage(params: { customerId: string; phone: string; message: string; userId: string }): Promise<void> {
+  const { error } = await client().from('whatsapp_messages').insert({
+    customer_id: params.customerId, phone: params.phone, message: params.message,
+    template_type: 'custom', status: 'queued', created_by: params.userId,
+  })
+  if (error) throw error
+}
+
+export async function getLegacyPurchaseOrders(): Promise<LegacyPurchaseOrder[]> {
+  const { data, error } = await client().from('legacy_purchase_orders')
+    .select('id,po_code,supplier_text,po_date,creation_date,total,invoice_number,status')
+    .order('po_date', { ascending: false }).limit(1000)
+  if (error) throw error
+  return (data ?? []).map(row => ({
+    id: row.id as string, code: (row.po_code as string) ?? '', supplier: (row.supplier_text as string) ?? '',
+    date: ((row.po_date ?? row.creation_date) as string) ?? '', total: Number(row.total ?? 0),
+    invoiceNumber: (row.invoice_number as string) ?? '', status: (row.status as string) ?? '',
   }))
 }
 
@@ -1376,6 +1846,15 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
       category: (i.category as string) ?? 'plato',
       quantity: Number(i.quantity),
       unitPrice: Number(i.unit_price),
+    })) : [],
+    payments: Array.isArray(data.payments) ? data.payments.map((p: Record<string, unknown>) => ({
+      id: p.id as string,
+      method: p.method as PaymentMethod,
+      amount: Number(p.amount),
+      referenceNumber: (p.reference_number as string) ?? null,
+      receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
+      notes: (p.notes as string) ?? null,
+      createdAt: p.created_at as string,
     })) : [],
     totalAmount: Number(data.total_amount),
   }

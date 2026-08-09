@@ -1,7 +1,9 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useDemoData } from '../context/demo-data-context'
-import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit } from '../lib/dataService'
+import { useRates } from '../context/rates-context'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { formatRateDate, formatVes } from '../lib/money'
+import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
@@ -37,33 +39,41 @@ let inicioCache: {
   dailySales: DailySales[]
   productRanking: ProductRanking[]
   credits: Credit[]
+  paymentMethods: PaymentMethodSales[]
+  productionStats: ProductionStats | null
 } | null = null
 
 export function Inicio() {
   const navigate = useNavigate()
-  const { todayStats } = useDemoData()
+  const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const [stats, setStats] = useState<TodayStats | null>(inicioCache?.stats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(inicioCache?.todayOrders ?? [])
   const [dailySales, setDailySales] = useState<DailySales[]>(inicioCache?.dailySales ?? [])
   const [productRanking, setProductRanking] = useState<ProductRanking[]>(inicioCache?.productRanking ?? [])
   const [credits, setCredits] = useState<Credit[]>(inicioCache?.credits ?? [])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(inicioCache?.paymentMethods ?? [])
+  const [productionStats, setProductionStats] = useState<ProductionStats | null>(inicioCache?.productionStats ?? null)
   const [, setLoading] = useState(!inicioCache)
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsData, ordersData, salesData, rankingData, creditsData] = await Promise.all([
+      const [statsData, ordersData, salesData, rankingData, creditsData, paymentData, productionData] = await Promise.all([
         getTodayStats(),
         getOrdersWithItems(),
         getDailySales(7),
         getProductRanking(),
         getCredits(),
+        getPaymentMethodSales(),
+        getProductionStats(),
       ])
       setStats(statsData)
       setTodayOrders(ordersData)
       setDailySales(salesData)
       setProductRanking(rankingData)
       setCredits(creditsData)
-      inicioCache = { stats: statsData, todayOrders: ordersData, dailySales: salesData, productRanking: rankingData, credits: creditsData }
+      setPaymentMethods(paymentData)
+      setProductionStats(productionData)
+      inicioCache = { stats: statsData, todayOrders: ordersData, dailySales: salesData, productRanking: rankingData, credits: creditsData, paymentMethods: paymentData, productionStats: productionData }
     } catch (e) {
       console.error('Error:', e)
     } finally {
@@ -75,10 +85,10 @@ export function Inicio() {
     fetchData()
   }, [fetchData])
 
-  const totalSales = (stats?.totalSales && stats.totalSales > 0) ? stats.totalSales : (todayStats.totalSales > 0 ? todayStats.totalSales : 1840)
-  const ordersCount = (stats?.ordersCount && stats.ordersCount > 0) ? stats.ordersCount : (todayStats.ordersCount > 0 ? todayStats.ordersCount : 48)
+  const totalSales = stats?.totalSales ?? 0
+  const ordersCount = stats?.ordersCount ?? 0
   const pendingCredits = credits.filter(c => c.status !== 'paid')
-  const totalPendingCredits = pendingCredits.length > 0 ? pendingCredits.reduce((s, c) => s + c.balancePending, 0) : 340
+  const totalPendingCredits = pendingCredits.reduce((s, c) => s + c.balancePending, 0)
 
   const paidOrdersToday = useMemo(() =>
     todayOrders.filter(o => o.status === 'paid'),
@@ -86,23 +96,12 @@ export function Inicio() {
   )
 
   const recentOrders = useMemo(() => {
-    if (paidOrdersToday.length > 0) return paidOrdersToday.slice(0, 5)
-    return [
-      { id: '1467', createdAt: new Date().toISOString(), orderNumber: 1467, status: 'paid', totalAmount: 42.00 },
-      { id: '1466', createdAt: new Date().toISOString(), orderNumber: 1466, status: 'paid', totalAmount: 35.00 },
-      { id: '1465', createdAt: new Date().toISOString(), orderNumber: 1465, status: 'paid', totalAmount: 67.50 },
-      { id: '1464', createdAt: new Date().toISOString(), orderNumber: 1464, status: 'paid', totalAmount: 54.00 },
-      { id: '1463', createdAt: new Date().toISOString(), orderNumber: 1463, status: 'paid', totalAmount: 28.00 },
-    ]
+    return paidOrdersToday.slice(0, 5)
   }, [paidOrdersToday])
 
   const chartData = useMemo(() => {
-    const labels = dailySales.length > 0
-      ? dailySales.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
-      : ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00']
-    const data = dailySales.length > 0
-      ? dailySales.map(d => d.total)
-      : [120, 180, 340, 420, 380, 260, 190, 90]
+    const labels = dailySales.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
+    const data = dailySales.map(d => d.total)
 
     return {
       labels,
@@ -142,7 +141,13 @@ export function Inicio() {
         borderWidth: 1,
         padding: 8,
         displayColors: false,
-        callbacks: { label: (ctx: { parsed: { y: number | null } }) => `$${(ctx.parsed.y ?? 0).toLocaleString()}` }
+        callbacks: {
+          label: (ctx: { parsed: { y: number | null } }) => {
+            const usd = ctx.parsed.y ?? 0
+            const reference = bcvRate ? `Ref. ${formatVes(usd * bcvRate)}` : 'Ref. BCV no disponible'
+            return [`$${usd.toLocaleString('es-VE')}`, reference]
+          }
+        }
       }
     },
     scales: {
@@ -157,17 +162,17 @@ export function Inicio() {
 
   const paymentData = useMemo(() => {
     return {
-      labels: ['Efectivo', 'Tarjeta', 'Transferencia'],
-      datasets: [{ data: [58, 28, 14], backgroundColor: ['#ef4444', '#f59e0b', '#fbbf24'], borderWidth: 0 }]
+      labels: paymentMethods.map(item => item.method),
+      datasets: [{ data: paymentMethods.map(item => item.total), backgroundColor: ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7'], borderWidth: 0 }]
     }
-  }, [])
+  }, [paymentMethods])
 
   const productionData = useMemo(() => {
     return {
       labels: ['Completado', 'Pendiente'],
-      datasets: [{ data: [68, 32], backgroundColor: ['#10b981', '#27272a'], borderWidth: 0 }]
+      datasets: [{ data: [productionStats?.batchesToday ?? 0, 0], backgroundColor: ['#10b981', '#27272a'], borderWidth: 0 }]
     }
-  }, [])
+  }, [productionStats])
 
   const doughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '72%' }
 
@@ -178,11 +183,11 @@ export function Inicio() {
           <h1 className="db-greeting">¡Buen día, Chef! <Flame size={24} className="greeting-flame" /></h1>
           <div className="db-greeting-sub-row">
             <p className="db-greeting-sub">Aquí tienes el resumen de tu food truck.</p>
-            <span className="db-greeting-rates">
-              <DollarSign size={12} /> BCV <strong>Bs. 36,50</strong>
-              <span className="db-rate-sep">·</span>
-              EUR <strong>Bs. 40,20</strong>
-            </span>
+            <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">
+              <DollarSign size={12} /> BCV
+              <strong>{bcvRate ? `$1 = ${formatVes(bcvRate)}` : bcvLoading ? 'Consultando…' : 'No disponible'}</strong>
+              {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : formatRateDate(bcvUpdatedAt)}</span>}
+            </button>
           </div>
         </div>
         <div className="db-header-right">
@@ -213,7 +218,7 @@ export function Inicio() {
               <div className="kpi-icon-circle red"><DollarSign size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">VENTAS DE HOY</span>
-                <span className="kpi-value">${totalSales.toLocaleString('es-VE')}</span>
+                <MoneyWithBcv usd={totalSales} className="kpi-value" align="start" />
               </div>
             </div>
             <div className="kpi-card">
@@ -227,14 +232,14 @@ export function Inicio() {
               <div className="kpi-icon-circle green"><TrendingUp size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">TICKET PROMEDIO</span>
-                <span className="kpi-value">${(stats?.avgTicket && stats.avgTicket > 0 ? stats.avgTicket : 38.33).toFixed(2)}</span>
+                <MoneyWithBcv usd={stats?.avgTicket && stats.avgTicket > 0 ? stats.avgTicket : 38.33} className="kpi-value" align="start" />
               </div>
             </div>
             <div className="kpi-card">
               <div className="kpi-icon-circle red"><CreditCard size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">CUENTAS POR COBRAR</span>
-                <span className="kpi-value">${totalPendingCredits.toLocaleString('es-VE')}</span>
+                <MoneyWithBcv usd={totalPendingCredits} className="kpi-value" align="start" />
                 <span className="kpi-sub">{pendingCredits.length > 0 ? pendingCredits.length : 3} clientes</span>
               </div>
             </div>
@@ -263,15 +268,16 @@ export function Inicio() {
             </div>
             <div className="db-pago-legend">
               {[
-                { c: '#ef4444', n: 'Efectivo', p: '58%', v: '$1,067' },
-                { c: '#f59e0b', n: 'Tarjeta', p: '28%', v: '$515' },
-                { c: '#fbbf24', n: 'Yape / Plin', p: '10%', v: '$184' },
-                { c: '#52525b', n: 'Mixto', p: '4%', v: '$74' },
+                { c: '#ef4444', n: 'Efectivo', p: '58%', v: 1067 },
+                { c: '#f59e0b', n: 'Tarjeta', p: '28%', v: 515 },
+                { c: '#fbbf24', n: 'Yape / Plin', p: '10%', v: 184 },
+                { c: '#52525b', n: 'Mixto', p: '4%', v: 74 },
               ].map((r, i) => (
                 <div key={i} className="pago-legend-row">
                   <span className="pago-dot" style={{ background: r.c }}></span>
                   <span className="pago-name">{r.n}</span>
                   <span className="pago-pct">{r.p}</span>
+                  <MoneyWithBcv usd={r.v} compact />
                 </div>
               ))}
             </div>
@@ -289,7 +295,7 @@ export function Inicio() {
                 <span className="ord-time">{new Date(o.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
                 <span className="ord-folio">#{String(o.orderNumber).padStart(4, '0')}</span>
                 <span className="ord-badge paid">Pagada</span>
-                <span className="ord-total">${(o.totalAmount || 0).toFixed(2)}</span>
+                <MoneyWithBcv usd={o.totalAmount || 0} rate={'bcvRate' in o ? o.bcvRate : bcvRate} className="ord-total" compact />
               </div>
             ))}
           </div>
@@ -300,20 +306,14 @@ export function Inicio() {
             <h3>PLATOS MÁS VENDIDOS</h3>
           </div>
           <div className="db-sellers-list">
-            {(productRanking.length > 0 ? productRanking.slice(0, 5) : [
-              { name: 'Arroz Chaufa Full', count: 24, revenue: 600, emoji: '🍚' },
-              { name: 'Chow Mein Especial', count: 19, revenue: 475, emoji: '🍜' },
-              { name: 'Lumpias (6 und)', count: 16, revenue: 368, emoji: '🥢' },
-              { name: 'Pollo Agridulce', count: 14, revenue: 238, emoji: '🍗' },
-              { name: 'Arroz con Pollo', count: 12, revenue: 180, emoji: '🍚' },
-            ]).map((d, i) => (
+            {productRanking.slice(0, 5).map((d, i) => (
               <div key={d.name} className="seller-row-v2">
                 <span className={`seller-rank r${i + 1}`}>{i + 1}</span>
                 <div className="seller-meta">
                   <span className="seller-name-v2">{'emoji' in d ? d.emoji : '🥢'} {d.name}</span>
                   <span className="seller-sub">{d.count} platos</span>
                 </div>
-                <span className="seller-rev">$ {d.revenue.toLocaleString()}</span>
+                <MoneyWithBcv usd={d.revenue} className="seller-rev" compact />
               </div>
             ))}
           </div>
@@ -380,7 +380,7 @@ export function Inicio() {
             <div className="cobrar-icon-wrap"><CreditCard size={22} /></div>
             <div className="cobrar-data">
               <span className="cobrar-label">Total por cobrar</span>
-              <span className="cobrar-big-value">$340</span>
+              <MoneyWithBcv usd={totalPendingCredits} className="cobrar-big-value" align="start" />
               <span className="cobrar-sub">3 comandas pendientes</span>
             </div>
           </div>
@@ -392,7 +392,7 @@ export function Inicio() {
             ].map((c, i) => (
               <div key={i} className="cobrar-row">
                 <span className="cobrar-row-id">Coma. {c.id}</span>
-                <span className="cobrar-row-val">${c.total.toFixed(2)}</span>
+                <MoneyWithBcv usd={c.total} className="cobrar-row-val" compact />
               </div>
             ))}
           </div>
@@ -414,19 +414,19 @@ export function Inicio() {
       <div className="db-footer-strip">
         <div className="db-footer-metric">
           <div className="fm-icon"><Package size={16} /></div>
-          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><span className="fm-val">$2,450</span><span className="fm-sub">Valor actual</span></div>
+          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><MoneyWithBcv usd={2450} className="fm-val" align="start" compact /><span className="fm-sub">Valor actual</span></div>
         </div>
         <div className="db-footer-metric">
           <div className="fm-icon"><ChefHat size={16} /></div>
-          <div className="fm-text"><span className="fm-label">COSTO DE INSUMOS USADOS</span><span className="fm-val">$640</span><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">COSTO DE INSUMOS USADOS</span><MoneyWithBcv usd={640} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
         </div>
         <div className="db-footer-metric">
           <div className="fm-icon"><Receipt size={16} /></div>
-          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><span className="fm-val">$320</span><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><MoneyWithBcv usd={320} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
         </div>
         <div className="db-footer-metric highlight-green">
           <div className="fm-icon green-glow"><TrendingUp size={16} /></div>
-          <div className="fm-text"><span className="fm-label">UTILIDAD NETA ESTIMADA</span><span className="fm-val green-text">$880</span><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">UTILIDAD NETA ESTIMADA</span><MoneyWithBcv usd={880} className="fm-val green-text" align="start" compact /><span className="fm-sub">Hoy</span></div>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '../context/auth-context'
-import { getCredits, addCreditPayment, type Credit as CreditType } from '../lib/dataService'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { getCredits, addCreditPayment, createCustomer, getCustomers, type Credit as CreditType, type Customer } from '../lib/dataService'
 import {
   Search,
   Users,
@@ -47,98 +48,19 @@ interface CustomerRow {
   status: 'Crédito' | 'Frecuente' | 'Activo'
 }
 
-const MOCK_CUSTOMERS: CustomerRow[] = [
-  {
-    id: 'c1',
-    initials: 'JP',
-    avatarBg: '#dc2626',
-    name: 'Juan Pérez',
-    phone: '987 654 321',
-    type: 'Minorista',
-    lastPurchase: '22/05/2025',
-    totalPurchased: 3859.40,
-    pendingBalance: 120.00,
-    status: 'Crédito',
-  },
-  {
-    id: 'c2',
-    initials: 'MG',
-    avatarBg: '#d97706',
-    name: 'María González',
-    phone: '987 654 322',
-    type: 'Mayorista',
-    lastPurchase: '23/05/2025',
-    totalPurchased: 28760.00,
-    pendingBalance: 0.00,
-    status: 'Frecuente',
-  },
-  {
-    id: 'c3',
-    initials: 'PR',
-    avatarBg: '#ea580c',
-    name: 'Pedro Ramírez',
-    phone: '987 654 323',
-    type: 'Minorista',
-    lastPurchase: '20/05/2025',
-    totalPurchased: 6890.00,
-    pendingBalance: 1890.00,
-    status: 'Crédito',
-  },
-  {
-    id: 'c4',
-    initials: 'SL',
-    avatarBg: '#ca8a04',
-    name: 'Sofía Lima',
-    phone: '987 654 324',
-    type: 'Minorista',
-    lastPurchase: '19/05/2025',
-    totalPurchased: 4560.00,
-    pendingBalance: 0.00,
-    status: 'Activo',
-  },
-  {
-    id: 'c5',
-    initials: 'CR',
-    avatarBg: '#dc2626',
-    name: 'Camila Rojas',
-    phone: '987 654 325',
-    type: 'Mayorista',
-    lastPurchase: '24/05/2025',
-    totalPurchased: 15230.00,
-    pendingBalance: 2730.00,
-    status: 'Crédito',
-  },
-]
+const RECENT_CUSTOMERS: Array<{ initials: string; avatarBg: string; name: string; date: string; amount: number }> = []
 
-const RECENT_CUSTOMERS = [
-  { initials: 'DH', avatarBg: '#d97706', name: 'Diego Herrera', date: '24/05/2025', amount: 1250.00 },
-  { initials: 'VT', avatarBg: '#b45309', name: 'Valeria Torres', date: '24/05/2025', amount: 980.00 },
-  { initials: 'RM', avatarBg: '#991b1b', name: 'Ricardo Méndez', date: '23/05/2025', amount: 3450.00 },
-  { initials: 'NC', avatarBg: '#d97706', name: 'Natalia Castro', date: '23/05/2025', amount: 760.00 },
-  { initials: 'JS', avatarBg: '#b45309', name: 'Jorge Suárez', date: '23/05/2025', amount: 1890.00 },
-]
+const FOOD_FAVORITES: Array<{ rank: string; name: string; orders: string; img: string }> = []
 
-const FOOD_FAVORITES = [
-  { rank: '#1', name: 'Arroz chaufa', orders: '12 pedidos', img: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=400&q=80' },
-  { rank: '#2', name: 'Chow mein', orders: '9 pedidos', img: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=400&q=80' },
-  { rank: '#3', name: 'Lumpias', orders: '8 pedidos', img: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=80' },
-  { rank: '#4', name: 'Pollo agridulce', orders: '7 pedidos', img: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=400&q=80' },
-]
-
-const CUSTOMER_ORDERS_HISTORY = [
-  { id: 'PED-001254', date: '24/05/2025 7:45 p. m.', type: 'Delivery', products: 'Arroz chaufa, Pollo agridulce + 1 bebida', total: 125.00, status: 'Entregado', payment: 'Yape' },
-  { id: 'PED-001198', date: '17/05/2025 8:10 p. m.', type: 'Para llevar', products: 'Chow mein, Lumpias (4)', total: 98.00, status: 'Entregado', payment: 'Efectivo' },
-  { id: 'PED-001145', date: '10/05/2025 7:32 p. m.', type: 'Delivery', products: 'Pollo agridulce, Arroz chaufa', total: 135.00, status: 'Entregado', payment: 'Yape' },
-  { id: 'PED-001083', date: '03/05/2025 8:05 p. m.', type: 'Para llevar', products: 'Chow mein, Wantán frito (6)', total: 92.00, status: 'Entregado', payment: 'Efectivo' },
-  { id: 'PED-001022', date: '26/04/2025 7:50 p. m.', type: 'Delivery', products: 'Arroz chaufa, Pollo broaster + 1 bebida', total: 128.00, status: 'En preparación', payment: 'Yape' },
-]
+const CUSTOMER_ORDERS_HISTORY: Array<{ id: string; date: string; type: string; products: string; total: number; status: string; payment: string }> = []
 
 export function Clientes() {
   const { user } = useAuth()
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
 
   // Selected customer for Profile View matching target screenshot
-  const [selectedClient, setSelectedClient] = useState<CustomerRow | null>(MOCK_CUSTOMERS[0])
+  const [selectedClient, setSelectedClient] = useState<CustomerRow | null>(null)
+  const [customers, setCustomers] = useState<Customer[]>([])
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('')
@@ -158,9 +80,10 @@ export function Clientes() {
 
   const fetchCredits = useCallback(async () => {
     try {
-      const data = await getCredits()
-      setCredits(data)
-      creditsCache = data
+      const [creditData, customerData] = await Promise.all([getCredits(), getCustomers()])
+      setCredits(creditData)
+      setCustomers(customerData)
+      creditsCache = creditData
     } catch (e) {
       console.error('Error cargando créditos:', e)
     }
@@ -170,19 +93,19 @@ export function Clientes() {
     fetchCredits()
   }, [fetchCredits])
 
-  const [customClientList, setCustomClientList] = useState<CustomerRow[]>([])
-
-  const handleSaveClient = (e: React.FormEvent) => {
+  const handleSaveClient = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newClientName.trim()) return
 
     const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
+    const birthDate = birthMonth && birthDay ? `2000-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : undefined
+    const saved = await createCustomer({ name: fullName, phone: newClientPhone.trim(), birthDate })
     const newClientObj: CustomerRow = {
-      id: `c_${Date.now()}`,
+      id: saved.id,
       initials: (newClientName[0] + (newClientLastName[0] || '')).toUpperCase(),
       avatarBg: '#dc2626',
       name: fullName,
-      phone: newClientPhone.trim() || '987 654 000',
+      phone: saved.phone,
       type: 'Minorista',
       lastPurchase: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       totalPurchased: 0.00,
@@ -190,7 +113,7 @@ export function Clientes() {
       status: 'Activo',
     }
 
-    setCustomClientList((prev) => [newClientObj, ...prev])
+    setCustomers(prev => [saved, ...prev])
     setNewClientName('')
     setNewClientLastName('')
     setNewClientPhone('')
@@ -219,31 +142,20 @@ export function Clientes() {
     }
   }
 
-  // Combined data table rows: DB credits mapped + Mock fallback
+  // Clientes reales importados, enriquecidos con saldos de crédito actuales.
   const displayRows = useMemo(() => {
-    let rows: CustomerRow[] = [...customClientList, ...MOCK_CUSTOMERS]
-
-    if (credits.length > 0) {
-      const dbRows: CustomerRow[] = credits.map((c, i) => {
-        const parts = c.customerName.split(' ')
-        const initials = (parts[0]?.[0] || 'C') + (parts[1]?.[0] || '')
-        const isSettled = c.balancePending === 0
-
-        return {
-          id: c.id,
-          initials: initials.toUpperCase(),
-          avatarBg: i % 2 === 0 ? '#dc2626' : '#d97706',
-          name: c.customerName,
-          phone: '987 654 3' + (20 + i),
-          type: i % 3 === 0 ? 'Mayorista' : 'Minorista',
-          lastPurchase: new Date(c.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-          totalPurchased: c.totalAmount,
-          pendingBalance: c.balancePending,
-          status: isSettled ? 'Activo' : 'Crédito',
-        }
-      })
-      rows = [...customClientList, ...dbRows, ...MOCK_CUSTOMERS.filter(m => !dbRows.some(d => d.name === m.name))]
-    }
+    const rows: CustomerRow[] = customers.map((customer, index) => {
+      const credit = credits.find(item => item.customerName.toLocaleLowerCase() === customer.name.toLocaleLowerCase())
+      const parts = customer.name.split(' ')
+      return {
+        id: customer.id, initials: `${parts[0]?.[0] || 'C'}${parts[1]?.[0] || ''}`.toUpperCase(),
+        avatarBg: index % 2 === 0 ? '#dc2626' : '#d97706', name: customer.name,
+        phone: customer.phone, type: 'Minorista',
+        lastPurchase: customer.lastVisit ? new Date(`${customer.lastVisit}T12:00:00`).toLocaleDateString('es-VE') : 'Sin compras enlazadas',
+        totalPurchased: credit?.totalAmount ?? 0, pendingBalance: credit?.balancePending ?? 0,
+        status: credit && credit.balancePending > 0 ? 'Crédito' : customer.totalVisits >= 5 ? 'Frecuente' : 'Activo',
+      }
+    })
 
     return rows.filter((r) => {
       const matchSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || r.phone.includes(searchTerm)
@@ -251,13 +163,10 @@ export function Clientes() {
       const matchType = typeFilter === 'all' || r.type.toLowerCase() === typeFilter.toLowerCase()
       return matchSearch && matchStatus && matchType
     })
-  }, [credits, searchTerm, statusFilter, typeFilter, customClientList])
+  }, [credits, customers, searchTerm, statusFilter, typeFilter])
 
   const totalOutstanding = useMemo(() => {
-    if (credits.length > 0) {
-      return credits.reduce((acc, c) => acc + c.balancePending, 0)
-    }
-    return 24680.00
+    return credits.reduce((acc, c) => acc + c.balancePending, 0)
   }, [credits])
 
 
@@ -333,7 +242,7 @@ export function Clientes() {
             <div className="kpi-banner-icon red"><DollarSign size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Total comprado</span>
-              <span className="kpi-banner-val">$ {selectedClient.totalPurchased.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+              <MoneyWithBcv usd={selectedClient.totalPurchased} className="kpi-banner-val" align="start" compact />
               <span className="kpi-banner-sub green">↑ +18.6% vs. último mes</span>
             </div>
           </div>
@@ -353,7 +262,7 @@ export function Clientes() {
             <div className="kpi-banner-icon gold"><Ticket size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Ticket promedio</span>
-              <span className="kpi-banner-val">$ 137.84</span>
+              <MoneyWithBcv usd={selectedClient.totalPurchased / 28} className="kpi-banner-val" align="start" compact />
               <span className="kpi-banner-sub">Promedio por pedido</span>
             </div>
           </div>
@@ -363,7 +272,7 @@ export function Clientes() {
             <div className="kpi-banner-icon dark-red"><CreditCard size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Saldo pendiente</span>
-              <span className="kpi-banner-val">$ {selectedClient.pendingBalance.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+              <MoneyWithBcv usd={selectedClient.pendingBalance} className="kpi-banner-val" align="start" compact />
               <span className="kpi-banner-sub gold">1 crédito activo</span>
             </div>
           </div>
@@ -413,7 +322,7 @@ export function Clientes() {
                         </span>
                       </td>
                       <td className="products-cell">{ord.products}</td>
-                      <td className="font-bold">${ord.total.toFixed(2)}</td>
+                      <td><MoneyWithBcv usd={ord.total} usdClassName="font-bold" compact /></td>
                       <td>
                         <span className={`status-pill-sub ${ord.status === 'Entregado' ? 'green' : 'gold'}`}>
                           {ord.status}
@@ -446,7 +355,7 @@ export function Clientes() {
               <div className="credit-metrics-grid mt-2">
                 <div className="credit-metric-box">
                   <span className="credit-label">Saldo actual</span>
-                  <span className="credit-val-big text-red">$ 120.00</span>
+                  <MoneyWithBcv usd={selectedClient.pendingBalance} className="credit-val-big text-red" align="start" compact />
                 </div>
                 <div className="credit-metric-box">
                   <span className="credit-label">Créditos activos</span>
@@ -457,12 +366,12 @@ export function Clientes() {
               <div className="credit-due-breakdown mt-3">
                 <div className="due-box">
                   <span className="due-label">Vencido</span>
-                  <span className="due-val text-red">$ 0.00</span>
+                  <MoneyWithBcv usd={0} className="due-val text-red" align="start" compact />
                   <span className="due-sub">0 días</span>
                 </div>
                 <div className="due-box">
                   <span className="due-label">Por vencer</span>
-                  <span className="due-val text-orange">$ 120.00</span>
+                  <MoneyWithBcv usd={selectedClient.pendingBalance} className="due-val text-orange" align="start" compact />
                   <span className="due-sub">vence el 07/06/2025</span>
                 </div>
               </div>
@@ -473,7 +382,7 @@ export function Clientes() {
                   <span className="lp-date">17/05/2025</span>
                 </div>
                 <div className="lp-right">
-                  <span className="lp-amount text-green font-bold">$ 98.00</span>
+                  <MoneyWithBcv usd={98} className="lp-amount text-green font-bold" compact />
                   <span className="lp-badge">Yape</span>
                 </div>
               </div>
@@ -639,7 +548,7 @@ export function Clientes() {
           </div>
           <div className="kpi-content-box">
             <span className="kpi-label-sm">Pendientes por cobrar</span>
-            <span className="kpi-value-lg">$ {totalOutstanding.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+            <MoneyWithBcv usd={totalOutstanding} className="kpi-value-lg" align="start" compact />
             <span className="kpi-sub-tag red-text">De 18 clientes</span>
           </div>
         </div>
@@ -730,10 +639,8 @@ export function Clientes() {
                         </span>
                       </td>
                       <td className="date-td">{row.lastPurchase}</td>
-                      <td className="amount-td font-bold">${row.totalPurchased.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
-                      <td className={`amount-td font-bold ${row.pendingBalance > 0 ? 'text-red' : 'text-green'}`}>
-                        ${row.pendingBalance.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                      </td>
+                      <td className="amount-td"><MoneyWithBcv usd={row.totalPurchased} usdClassName="font-bold" compact /></td>
+                      <td className="amount-td"><MoneyWithBcv usd={row.pendingBalance} className={row.pendingBalance > 0 ? 'text-red' : 'text-green'} usdClassName="font-bold" compact /></td>
                       <td>
                         <span className={`status-badge-pill ${row.status.toLowerCase()}`}>
                           {row.status}
@@ -794,7 +701,7 @@ export function Clientes() {
                     <span className="rc-name">{rc.name}</span>
                     <span className="rc-date">{rc.date}</span>
                   </div>
-                  <span className="rc-amount-green">${rc.amount.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                  <MoneyWithBcv usd={rc.amount} className="rc-amount-green" compact />
                 </div>
               ))}
             </div>
@@ -810,7 +717,7 @@ export function Clientes() {
             </div>
 
             <div className="cobrar-total-area mt-2">
-              <span className="cobrar-total-val">$24,680.00</span>
+              <MoneyWithBcv usd={totalOutstanding} className="cobrar-total-val" align="center" />
               <span className="cobrar-total-sub">Total pendiente</span>
             </div>
 
@@ -827,14 +734,14 @@ export function Clientes() {
                   <span className="dot-color red" />
                   <span>Vencido (7)</span>
                 </div>
-                <span className="legend-val font-bold">$12,150.00</span>
+                <MoneyWithBcv usd={12150} className="legend-val font-bold" compact />
               </div>
               <div className="legend-item-row">
                 <div className="legend-left">
                   <span className="dot-color orange" />
                   <span>Por vencer (11)</span>
                 </div>
-                <span className="legend-val font-bold">$12,530.00</span>
+                <MoneyWithBcv usd={12530} className="legend-val font-bold" compact />
               </div>
             </div>
 
@@ -953,7 +860,7 @@ export function Clientes() {
               <button className="modal-close-btn" onClick={() => setPaymentModal(null)}><X size={18} /></button>
             </div>
             <p className="modal-sub-desc mt-2">Cliente: <strong className="text-white">{paymentModal.customerName}</strong></p>
-            <p className="birthday-hint">Deuda restante: <span className="text-red font-bold">${paymentModal.balancePending.toFixed(2)}</span></p>
+            <p className="birthday-hint">Deuda restante: <MoneyWithBcv usd={paymentModal.balancePending} className="text-red" usdClassName="font-bold" compact /></p>
 
             <form onSubmit={handlePayment} className="crm-form mt-3">
               <div className="field">

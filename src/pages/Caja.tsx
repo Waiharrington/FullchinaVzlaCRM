@@ -1,19 +1,25 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
+import { useRates } from '../context/rates-context'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { downloadReceipt } from '../lib/receipt'
-import { getExchangeRates } from '../lib/rates'
-import { PRODUCTS } from '../lib/demoData'
+import { formatRateDate, formatVes } from '../lib/money'
+import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import {
   getProducts,
   getTodayOrders,
+  getActiveCashSession,
   checkout,
   sendToKitchen,
+  getCustomers,
+  createCustomer,
   type Product,
   type CartItem,
   type OrderResult,
   type TodayOrder,
   type PaymentMethod,
+  type CashSessionSnapshot,
 } from '../lib/dataService'
 import {
   X,
@@ -55,13 +61,11 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: string }> = {
 
 const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: string }> = [
   { method: 'cash', label: 'Efectivo', icon: '💵' },
-  { method: 'card', label: 'Pago móvil', icon: '📱' },
-  { method: 'other', label: 'Punto', icon: '💳' },
+  { method: 'mobile', label: 'Pago móvil', icon: '📱' },
+  { method: 'card', label: 'Punto', icon: '💳' },
   { method: 'transfer', label: 'Transferencia', icon: '🏦' },
   { method: 'split', label: 'Pago combinado', icon: '🔀' },
 ]
-
-const SERVICE_FEE_RATE = 0.05
 
 const FOOD_IMAGES: Record<string, string> = {
   arroz: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
@@ -91,7 +95,6 @@ function getProductImage(product: Product): string {
 let cajaCache: {
   products: Product[]
   todayOrders: TodayOrder[]
-  bcvRate: number | null
 } | null = null
 
 interface CustomerOption {
@@ -101,25 +104,13 @@ interface CustomerOption {
   phone: string
 }
 
-const MOCK_CUSTOMERS_LIST: CustomerOption[] = [
-  { id: 'c0', name: 'Wai Harrington', initials: 'WH', phone: '0412-8001234' },
-  { id: 'c1', name: 'Juan Pérez', initials: 'JP', phone: '0412-9206984' },
-  { id: 'c2', name: 'María González', initials: 'MG', phone: '0414-1234567' },
-  { id: 'c3', name: 'Pedro Ramírez', initials: 'PR', phone: '0424-7654321' },
-  { id: 'c4', name: 'Sofía Lima', initials: 'SL', phone: '0416-5558899' },
-  { id: 'c5', name: 'Camila Rojas', initials: 'CR', phone: '0412-3334455' },
-  { id: 'c6', name: 'Diego Herrera', initials: 'DH', phone: '0424-9990011' },
-  { id: 'c7', name: 'Valeria Torres', initials: 'VT', phone: '0414-8882233' },
-  { id: 'c8', name: 'Ricardo Méndez', initials: 'RM', phone: '0416-7771122' },
-]
-
 export function Caja() {
   const { user } = useAuth()
+  const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, error: bcvError, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const navigate = useNavigate()
 
   const [products, setProducts] = useState<Product[]>(cajaCache?.products ?? [])
   const [todayOrders, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
-  const [bcvRate, setBcvRate] = useState<number | null>(cajaCache?.bcvRate ?? null)
   const [, setLoading] = useState(!cajaCache)
 
   const [cart, setCart] = useState<CartItem[]>([])
@@ -127,14 +118,14 @@ export function Caja() {
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [sortBy, setSortBy] = useState<'popular' | 'price' | 'name'>('popular')
+  const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
 
   const [orderType, setOrderType] = useState<OrderType>('dine-in')
   const [customerName, setCustomerName] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
-  const [discount, setDiscount] = useState(0)
 
   // Customer Search & Auto-complete state
-  const [customerList, setCustomerList] = useState<CustomerOption[]>(MOCK_CUSTOMERS_LIST)
+  const [customerList, setCustomerList] = useState<CustomerOption[]>([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
 
   // New Client Modal state
@@ -153,17 +144,28 @@ export function Caja() {
     )
   }, [customerList, customerName])
 
-  const handleCreateNewClientFromCaja = (e: React.FormEvent) => {
+  useEffect(() => {
+    getCustomers().then(customers => setCustomerList(customers.map(customer => ({
+      id: customer.id,
+      name: customer.name,
+      initials: customer.name.split(' ').slice(0, 2).map(part => part[0] || '').join('').toUpperCase(),
+      phone: customer.phone,
+    })))).catch(error => console.error('getCustomers error:', error))
+  }, [])
+
+  const handleCreateNewClientFromCaja = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newClientName.trim()) return
 
     const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
     const initials = (newClientName[0] + (newClientLastName[0] || '')).toUpperCase()
-    const phone = newClientPhone.trim() || '0412-9206984'
+    const phone = newClientPhone.trim()
+    const birthDate = birthMonth && birthDay ? `2000-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : undefined
+    const saved = await createCustomer({ name: fullName, phone, birthDate })
 
     const newCust: CustomerOption = {
-      id: `c_${Date.now()}`,
-      name: fullName,
+      id: saved.id,
+      name: saved.name,
       initials,
       phone,
     }
@@ -181,13 +183,15 @@ export function Caja() {
 
   // Payment Modal State (Matching Image 1)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>('card')
-  const [refNumber, setRefNumber] = useState('876543210')
-  const [amountReceived, setAmountReceived] = useState('300.00')
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>('cash')
+  const [refNumber, setRefNumber] = useState('')
+  const [amountReceived, setAmountReceived] = useState('0.00')
+  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<'mobile' | 'card' | 'transfer'>('mobile')
   const [paymentNote, setPaymentNote] = useState('')
 
   const [paying, setPaying] = useState(false)
   const [payError, setPayError] = useState('')
+  const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
   const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
 
@@ -208,16 +212,9 @@ export function Caja() {
           getProducts().catch((e) => { console.error('getProducts error:', e); return [] as Product[] }),
           getTodayOrders().catch((e) => { console.error('getTodayOrders error:', e); return [] as TodayOrder[] }),
         ])
-        const finalProds = prods.length > 0 ? prods : (PRODUCTS as unknown as Product[])
-        setProducts(finalProds)
+        setProducts(prods)
         setTodayOrders(orders)
-        cajaCache = { products: finalProds, todayOrders: orders, bcvRate: cajaCache?.bcvRate ?? null }
-        getExchangeRates().then((rates) => {
-          if (cancelled) return
-          const bcv = rates.bcv > 0 ? rates.bcv : null
-          setBcvRate(bcv)
-          if (cajaCache) cajaCache.bcvRate = bcv
-        }).catch(() => {})
+        cajaCache = { products: prods, todayOrders: orders }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -225,18 +222,35 @@ export function Caja() {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    getActiveCashSession()
+      .then(setCashSession)
+      .catch(() => setCashSession(null))
+  }, [])
+
   const categories = useMemo(() => {
     const present = new Set(products.map((p) => p.category))
     return CATEGORY_ORDER.filter((c) => present.has(c))
   }, [products])
 
-  const filteredProducts = useMemo(() => {
-    let result = products.filter((p) => {
-      const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase())
-      const matchCat = activeCategory === 'all' || p.category === activeCategory
-      return matchSearch && matchCat && p.active
+  const filteredProductGroups = useMemo(() => {
+    const categoryProducts = products.filter((product) => {
+      const matchCat = activeCategory === 'all' || product.category === activeCategory
+      return matchCat && product.active
     })
-    if (sortBy === 'price') result = [...result].sort((a, b) => a.price - b.price)
+    let result = groupMenuProducts(categoryProducts)
+    const query = searchTerm.trim().toLowerCase()
+    if (query) {
+      result = result.filter(group =>
+        group.name.toLowerCase().includes(query) ||
+        group.variants.some(({ product, label }) =>
+          label.toLowerCase().includes(query) ||
+          product.name.toLowerCase().includes(query) ||
+          product.description?.toLowerCase().includes(query)
+        )
+      )
+    }
+    if (sortBy === 'price') result = [...result].sort((a, b) => a.minPrice - b.minPrice)
     else if (sortBy === 'name') result = [...result].sort((a, b) => a.name.localeCompare(b.name))
     return result
   }, [products, searchTerm, activeCategory, sortBy])
@@ -258,8 +272,7 @@ export function Caja() {
   }
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
-  const serviceFee = subtotal * SERVICE_FEE_RATE
-  const total = subtotal + serviceFee - discount
+  const total = subtotal
 
   // Action 1: Enviar a Cocina -> Saves order WITHOUT payment and navigates to /comandas
   const handleSendToKitchen = async () => {
@@ -270,7 +283,7 @@ export function Caja() {
       const order = await sendToKitchen({
         items: cart,
         bcvRate,
-        userId: user?.id || 'demo-user',
+        userId: user!.id,
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
@@ -279,7 +292,6 @@ export function Caja() {
       setCart([])
       setCustomerName('')
       setOrderNotes('')
-      setDiscount(0)
       refreshTodayOrders()
       // Navigate directly to Comandas page
       navigate('/comandas')
@@ -291,9 +303,43 @@ export function Caja() {
   }
 
   // Open Payment Modal (Image 1)
-  const handleOpenPaymentModal = () => {
+  const handleOpenPaymentModal = async () => {
     if (cart.length === 0) return
+    try {
+      const active = await getActiveCashSession()
+      setCashSession(active)
+      if (!active) {
+        setPayError('Debes abrir la caja antes de registrar un cobro.')
+        return
+      }
+    } catch (cause) {
+      setPayError(cause instanceof Error ? cause.message : 'No se pudo verificar la caja activa')
+      return
+    }
+    setSelectedPaymentTab('cash')
+    setRefNumber('')
+    setAmountReceived(total.toFixed(2))
+    setSplitSecondaryMethod('mobile')
+    setPaymentNote('')
+    setPayError('')
     setShowPaymentModal(true)
+  }
+
+  const selectMenuGroup = (group: MenuProductGroup) => {
+    if (group.isGrouped) setSelectedProductGroup(group)
+    else addToCart(group.variants[0].product)
+  }
+
+  const addVariantToCart = (product: Product) => {
+    addToCart(product)
+    setSelectedProductGroup(null)
+  }
+
+  const handleSelectPaymentTab = (method: PaymentMethod | 'split') => {
+    setSelectedPaymentTab(method)
+    setRefNumber('')
+    setPayError('')
+    setAmountReceived(method === 'split' ? (total / 2).toFixed(2) : total.toFixed(2))
   }
 
   // Confirm Payment in Modal -> Triggers Confirmation Screen (Image 2)
@@ -301,15 +347,61 @@ export function Caja() {
     setPaying(true)
     setPayError('')
     try {
-      const finalMethod: PaymentMethod = selectedPaymentTab === 'split' ? 'card' : selectedPaymentTab
+      const enteredAmount = Number(amountReceived)
+      if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
+        throw new Error('Ingresa un monto válido')
+      }
+
+      const requiresReference = selectedPaymentTab === 'mobile'
+        || selectedPaymentTab === 'transfer'
+        || (selectedPaymentTab === 'split' && splitSecondaryMethod !== 'card')
+      if (requiresReference && !refNumber.trim()) {
+        throw new Error('La referencia es obligatoria para este método')
+      }
+
+      let paymentComponents
+      let finalMethod: PaymentMethod
+      if (selectedPaymentTab === 'split') {
+        const cashAmount = Math.round(enteredAmount * 100) / 100
+        const secondaryAmount = Math.round((total - cashAmount) * 100) / 100
+        if (cashAmount <= 0 || secondaryAmount <= 0) {
+          throw new Error('El pago combinado necesita dos montos mayores a cero')
+        }
+        finalMethod = 'other'
+        paymentComponents = [
+          { method: 'cash' as const, amount: cashAmount, receivedAmount: cashAmount, notes: paymentNote || undefined },
+          {
+            method: splitSecondaryMethod,
+            amount: secondaryAmount,
+            referenceNumber: refNumber.trim() || undefined,
+            notes: paymentNote || undefined,
+          },
+        ]
+      } else {
+        if (selectedPaymentTab === 'cash' && enteredAmount < total) {
+          throw new Error('El efectivo recibido no cubre el total')
+        }
+        finalMethod = selectedPaymentTab
+        paymentComponents = [{
+          method: selectedPaymentTab,
+          amount: total,
+          referenceNumber: refNumber.trim() || undefined,
+          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
+          notes: paymentNote || undefined,
+        }]
+      }
+
       const order = await checkout({
         items: cart,
         method: finalMethod,
         bcvRate,
-        userId: user?.id || 'demo-user',
+        userId: user!.id,
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
+        referenceNumber: refNumber.trim() || null,
+        receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : null,
+        payments: paymentComponents,
       })
       setCurrentOrder(order)
       setShowPaymentModal(false)
@@ -330,6 +422,7 @@ export function Caja() {
         total: currentOrder.total,
         paymentMethod: currentOrder.paymentMethod,
         createdAt: currentOrder.createdAt,
+        bcvRate: currentOrder.bcvRate || bcvRate,
       })
     }
   }
@@ -339,6 +432,15 @@ export function Caja() {
     const orderNo = `#FC-${String(currentOrder.orderNumber).padStart(6, '0')}`
     const formattedDate = new Date(currentOrder.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
     const formattedTime = new Date(currentOrder.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+    const paymentLabel = currentOrder.paymentMethod === 'cash'
+      ? 'Efectivo'
+      : currentOrder.paymentMethod === 'mobile'
+        ? 'Pago móvil'
+        : currentOrder.paymentMethod === 'card'
+          ? 'Punto'
+          : currentOrder.paymentMethod === 'transfer'
+            ? 'Transferencia'
+            : 'Pago combinado'
 
     return (
       <div className="page animate-fade-in">
@@ -362,11 +464,11 @@ export function Caja() {
                 </div>
                 <div className="metric-box">
                   <span className="metric-box-label">Total</span>
-                  <span className="metric-box-val">${currentOrder.total.toFixed(2)}</span>
+                  <MoneyWithBcv usd={currentOrder.total} rate={currentOrder.bcvRate || bcvRate} className="metric-box-val" align="center" />
                 </div>
                 <div className="metric-box">
                   <span className="metric-box-label">Método de pago</span>
-                  <span className="metric-box-val font-bold">Pago combinado</span>
+                  <span className="metric-box-val font-bold">{paymentLabel}</span>
                 </div>
               </div>
 
@@ -455,7 +557,7 @@ export function Caja() {
                 <span>{formattedDate} {formattedTime}</span>
               </div>
               <div className="ticket-meta-row">
-                <span>Mesa: Mostrador</span>
+                <span>{ORDER_TYPE_LABELS[orderType].label}</span>
                 <span>Atendido por: Admin</span>
               </div>
 
@@ -471,9 +573,8 @@ export function Caja() {
                       <img src={imgUrl} alt={item.productName} className="ticket-item-thumb" />
                       <div className="ticket-item-info">
                         <span className="ticket-item-name">{item.productName}</span>
-                        <span className="ticket-item-sub">Sin cebollín</span>
                       </div>
-                      <span className="ticket-item-price">${(item.price * item.quantity).toFixed(2)}</span>
+                      <MoneyWithBcv usd={item.price * item.quantity} rate={currentOrder.bcvRate || bcvRate} className="ticket-item-price" compact />
                     </div>
                   )
                 })}
@@ -484,26 +585,22 @@ export function Caja() {
               <div className="ticket-totals-list">
                 <div className="ticket-total-line">
                   <span>Subtotal</span>
-                  <span>${subtotal.toFixed(2)}</span>
-                </div>
-                <div className="ticket-total-line">
-                  <span>Cargo por servicio (5%) ℹ️</span>
-                  <span>${serviceFee.toFixed(2)}</span>
+                  <MoneyWithBcv usd={currentOrder.total} rate={currentOrder.bcvRate || bcvRate} compact />
                 </div>
                 <div className="ticket-total-line">
                   <span>Descuento</span>
-                  <span>$0.00</span>
+                  <MoneyWithBcv usd={0} rate={currentOrder.bcvRate || bcvRate} compact />
                 </div>
               </div>
 
               <div className="ticket-total-final-row">
                 <span className="ticket-final-label">Total</span>
-                <span className="ticket-final-val">${currentOrder.total.toFixed(2)}</span>
+                <MoneyWithBcv usd={currentOrder.total} rate={currentOrder.bcvRate || bcvRate} className="ticket-final-val" />
               </div>
 
               <div className="ticket-payment-method">
                 <span>Método de pago:</span>
-                <span className="font-bold">💳 Pago combinado</span>
+                <span className="font-bold">{paymentLabel}</span>
               </div>
 
               <div className="ticket-footer-text">
@@ -518,6 +615,22 @@ export function Caja() {
 
   return (
     <div className="page animate-fade-in">
+      <div className={`cash-session-strip ${cashSession ? 'open' : 'closed'}`}>
+        <div className="cash-session-info">
+          <span>{cashSession ? `Caja abierta · Turno #${cashSession.sessionNumber}` : 'Caja operativa sin verificar'}</span>
+          <small className={bcvStale || bcvError ? 'bcv-warning' : ''}>
+            {bcvLoading && !bcvRate
+              ? 'Consultando tasa BCV…'
+              : bcvRate
+                ? `BCV: $1 = ${formatVes(bcvRate)} · ${bcvStale ? 'referencia guardada' : `actualizada ${formatRateDate(bcvUpdatedAt)}`}`
+                : 'Tasa BCV no disponible'}
+          </small>
+        </div>
+        <div className="cash-session-actions">
+          <button type="button" className="bcv-refresh-btn" onClick={() => void refreshBcv()} disabled={bcvLoading}>Actualizar BCV</button>
+          <button onClick={() => navigate('/caja-operativa')}>{cashSession ? 'Ver turno' : 'Abrir caja'}</button>
+        </div>
+      </div>
       <div className="caja-layout">
         {/* LEFT: Products */}
         <div className="products-section">
@@ -587,33 +700,43 @@ export function Caja() {
 
           {/* Products Grid */}
           <div className={`products-container ${viewMode}`}>
-            {filteredProducts.length === 0 ? (
+            {filteredProductGroups.length === 0 ? (
               <p className="empty-message">No hay productos en esta categoría</p>
             ) : (
-              filteredProducts.map((product, index) => {
+              filteredProductGroups.map((group, index) => {
+                const product = group.variants[0].product
                 const imgUrl = getProductImage(product)
-                const isPopular = index === 0 || product.name.toLowerCase().includes('chaufa') || product.name.toLowerCase().includes('especial')
-                const isLowStock = product.name.toLowerCase().includes('camaron') || product.name.toLowerCase().includes('camarón')
+                const groupName = group.name.toLowerCase()
+                const isPopular = index === 0 || groupName.includes('chaufa') || groupName.includes('especial')
+                const isLowStock = group.variants.some(({ product: variant }) => /camaron|camarón/i.test(variant.name))
 
                 return (
-                  <div key={product.id} className={`product-card ${viewMode}`} onClick={() => addToCart(product)}>
+                  <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''} ${viewMode}`} onClick={() => selectMenuGroup(group)}>
                     <div className="product-image-area" style={{ backgroundImage: `url(${imgUrl})` }}>
                       {isPopular && <span className="product-badge badge-popular">🔥 Más vendido</span>}
-                      {isLowStock && <span className="product-badge badge-low-stock">⚠️ Pocas piezas</span>}
+                      {group.isGrouped && <span className="product-badge badge-variants">{group.variants.length} opciones</span>}
                       <button
                         className="product-quick-add-btn"
-                        onClick={(e) => { e.stopPropagation(); addToCart(product) }}
-                        title="Agregar al pedido"
+                        onClick={(e) => { e.stopPropagation(); selectMenuGroup(group) }}
+                        title={group.isGrouped ? 'Elegir presentación' : 'Agregar al pedido'}
                       >
-                        +
+                        {group.isGrouped ? '›' : '+'}
                       </button>
                     </div>
                     <div className="product-card-body">
-                      <h3 className="product-card-title">{product.name}</h3>
+                      <h3 className="product-card-title">{group.name}</h3>
+                      {group.isGrouped && (
+                        <span className="product-variant-preview">
+                          {group.variants.map(variant => variant.label).join(' · ')}
+                        </span>
+                      )}
                       <div className="product-card-meta">
-                        <span className="product-card-price">${product.price.toFixed(2)}</span>
+                        <div className="product-family-price">
+                          {group.isGrouped && group.minPrice !== group.maxPrice && <small>Desde</small>}
+                          <MoneyWithBcv usd={group.minPrice} className="product-card-price" align="start" compact />
+                        </div>
                         <span className={`product-stock-status ${isLowStock ? 'low-stock' : 'in-stock'}`}>
-                          <span className="stock-dot" /> {isLowStock ? 'Pocas piezas' : 'En stock'}
+                          <span className="stock-dot" /> {group.isGrouped ? 'Elegir opción' : isLowStock ? 'Pocas piezas' : 'En stock'}
                         </span>
                       </div>
                     </div>
@@ -623,6 +746,35 @@ export function Caja() {
             )}
           </div>
         </div>
+
+        {selectedProductGroup && (
+          <div className="modal-overlay-dark" onClick={() => setSelectedProductGroup(null)}>
+            <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="variant-selector-title" onClick={(event) => event.stopPropagation()}>
+              <div className="variant-selector-header">
+                <div>
+                  <span className="variant-selector-eyebrow">Selecciona una presentación</span>
+                  <h2 id="variant-selector-title">{selectedProductGroup.name}</h2>
+                </div>
+                <button type="button" className="payment-modal-close" onClick={() => setSelectedProductGroup(null)} aria-label="Cerrar selector">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="variant-selector-list">
+                {selectedProductGroup.variants.map(({ product, label }) => (
+                  <button key={product.id} type="button" className="variant-option-card" onClick={() => addVariantToCart(product)}>
+                    <span className="variant-option-emoji">{product.emoji || '🍽️'}</span>
+                    <span className="variant-option-copy">
+                      <strong>{label}</strong>
+                      {product.description && <small>{product.description}</small>}
+                    </span>
+                    <MoneyWithBcv usd={product.price} className="variant-option-price" compact />
+                    <span className="variant-option-add">Agregar</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          </div>
+        )}
 
         {/* RIGHT: Cart Sidebar */}
         <div className="cart-sidebar">
@@ -663,7 +815,7 @@ export function Caja() {
                       <span className="qty-display">{item.quantity}</span>
                       <button className="qty-btn-sm" onClick={() => updateQty(item.productId, 1)}>+</button>
                     </div>
-                    <span className="cart-item-price">${(item.price * item.quantity).toFixed(2)}</span>
+                    <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
                     <button className="cart-item-remove" onClick={() => removeFromCart(item.productId)}>✕</button>
                   </div>
                 )
@@ -757,25 +909,18 @@ export function Caja() {
           <div className="cart-totals-card mt-3">
             <div className="cart-total-row">
               <span className="total-label">Subtotal</span>
-              <span className="total-val">${subtotal.toFixed(2)}</span>
-            </div>
-            <div className="cart-total-row">
-              <span className="total-label">Cargo por servicio (5%) ℹ️</span>
-              <span className="total-val">${serviceFee.toFixed(2)}</span>
+              <MoneyWithBcv usd={subtotal} className="total-val" compact />
             </div>
             <div className="cart-total-row">
               <span className="total-label">Descuento</span>
-              <button className="discount-link" onClick={() => setDiscount(prompt('Descuento ($):') ? Number(prompt('Descuento ($):')) || 0 : 0)}>
-                Aplicar descuento
-              </button>
-              <span className="total-val">{discount > 0 ? `-$${discount.toFixed(2)}` : '$0.00'}</span>
+              <MoneyWithBcv usd={0} className="total-val" compact />
             </div>
             <div className="cart-divide-row">
               <button className="divide-payment-link">🔀 Dividir pago</button>
             </div>
             <div className="cart-total-row total-final-row">
               <span className="final-label">Total</span>
-              <span className="final-amount">${total.toFixed(2)}</span>
+              <MoneyWithBcv usd={total} className="final-amount" />
             </div>
           </div>
 
@@ -820,7 +965,7 @@ export function Caja() {
             {/* Modal Header */}
             <div className="payment-modal-header">
               <h2 className="payment-modal-title">
-                Cobrar pedido <span className="payment-order-tag">#FC-000125</span>
+                Cobrar pedido <span className="payment-order-tag">Nueva venta</span>
               </h2>
               <button className="payment-modal-close" onClick={() => setShowPaymentModal(false)}>
                 <X size={18} />
@@ -833,7 +978,7 @@ export function Caja() {
                 <button
                   key={pm.method}
                   className={`payment-tab-btn ${selectedPaymentTab === pm.method ? 'active' : ''}`}
-                  onClick={() => setSelectedPaymentTab(pm.method)}
+                  onClick={() => handleSelectPaymentTab(pm.method)}
                 >
                   <span>{pm.icon}</span>
                   <span>{pm.label}</span>
@@ -849,21 +994,47 @@ export function Caja() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                <div className="payment-field-group mt-2">
-                  <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
-                  <div className="payment-input-wrap">
-                    <input
-                      type="text"
-                      className="payment-field-input"
-                      value={refNumber}
-                      onChange={(e) => setRefNumber(e.target.value)}
-                    />
-                    <QrCode size={16} className="qr-icon-right" />
+                {(selectedPaymentTab === 'mobile'
+                  || selectedPaymentTab === 'transfer'
+                  || (selectedPaymentTab === 'split' && splitSecondaryMethod !== 'card')) && (
+                  <div className="payment-field-group mt-2">
+                    <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
+                    <div className="payment-input-wrap">
+                      <input
+                        type="text"
+                        className="payment-field-input"
+                        value={refNumber}
+                        onChange={(e) => setRefNumber(e.target.value)}
+                        placeholder="Ej. 458921"
+                      />
+                      <QrCode size={16} className="qr-icon-right" />
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {selectedPaymentTab === 'split' && (
+                  <div className="payment-field-group mt-3">
+                    <label className="payment-field-label">SEGUNDO MÉTODO</label>
+                    <select
+                      className="payment-field-input"
+                      value={splitSecondaryMethod}
+                      onChange={(e) => {
+                        setSplitSecondaryMethod(e.target.value as 'mobile' | 'card' | 'transfer')
+                        setRefNumber('')
+                        setPayError('')
+                      }}
+                    >
+                      <option value="mobile">Pago móvil</option>
+                      <option value="card">Punto</option>
+                      <option value="transfer">Transferencia</option>
+                    </select>
+                  </div>
+                )}
 
                 <div className="payment-field-group mt-3">
-                  <label className="payment-field-label">MONTO RECIBIDO <span className="text-red">*</span></label>
+                  <label className="payment-field-label">
+                    {selectedPaymentTab === 'split' ? 'MONTO EN EFECTIVO' : 'MONTO RECIBIDO'} <span className="text-red">*</span>
+                  </label>
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -873,7 +1044,11 @@ export function Caja() {
                     />
                     <span className="currency-tag-right">USD</span>
                   </div>
-                  <span className="payment-hint-sub">Monto a recibir por este método.</span>
+                  <span className="payment-hint-sub">
+                    {selectedPaymentTab === 'split'
+                      ? <>El segundo método cubrirá <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} compact />.</>
+                      : 'Monto a recibir por este método.'}
+                  </span>
                 </div>
 
                 <div className="payment-field-group mt-3">
@@ -890,26 +1065,25 @@ export function Caja() {
                   </div>
                 </div>
 
-                {/* Desglose de Pago */}
-                <div className="payment-breakdown-card mt-3">
-                  <span className="breakdown-card-title">Desglose de pago</span>
-                  <div className="breakdown-rows-list">
-                    <div className="breakdown-row-item">
-                      <span className="row-item-left">📱 Pago móvil</span>
-                      <span className="row-item-val">$300.00</span>
-                      <span className="row-item-dots">⋮</span>
-                    </div>
-                    <div className="breakdown-row-item">
-                      <span className="row-item-left">💵 Efectivo</span>
-                      <span className="row-item-val">$209.25</span>
-                      <span className="row-item-dots">⋮</span>
+                {selectedPaymentTab === 'split' && (
+                  <div className="payment-breakdown-card mt-3">
+                    <span className="breakdown-card-title">Desglose de pago</span>
+                    <div className="breakdown-rows-list">
+                      <div className="breakdown-row-item">
+                        <span className="row-item-left">💵 Efectivo</span>
+                        <MoneyWithBcv usd={Number(amountReceived) || 0} className="row-item-val" compact />
+                      </div>
+                      <div className="breakdown-row-item">
+                        <span className="row-item-left">
+                          {splitSecondaryMethod === 'mobile' ? '📱 Pago móvil' : splitSecondaryMethod === 'card' ? '💳 Punto' : '🏦 Transferencia'}
+                        </span>
+                        <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} className="row-item-val" compact />
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <button className="btn-add-method-link mt-2">
-                    + Agregar otro método de pago
-                  </button>
-                </div>
+                {payError && <p className="pay-error" role="alert">{payError}</p>}
               </div>
 
               {/* Right Column: Order Summary */}
@@ -920,20 +1094,16 @@ export function Caja() {
                   <div className="summary-box-lines mt-3">
                     <div className="summary-box-line">
                       <span>Subtotal</span>
-                      <span className="font-bold">${subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="summary-box-line">
-                      <span>Cargo por servicio (5%) ℹ️</span>
-                      <span className="font-bold">${serviceFee.toFixed(2)}</span>
+                      <MoneyWithBcv usd={subtotal} usdClassName="font-bold" compact />
                     </div>
                     <div className="summary-box-line">
                       <span>Descuento</span>
-                      <span className="font-bold">$0.00</span>
+                      <MoneyWithBcv usd={0} usdClassName="font-bold" compact />
                     </div>
 
                     <div className="summary-box-total-line mt-3">
                       <span className="summary-total-label">Total</span>
-                      <span className="summary-total-val">${total.toFixed(2)}</span>
+                      <MoneyWithBcv usd={total} className="summary-total-val" />
                     </div>
                   </div>
 

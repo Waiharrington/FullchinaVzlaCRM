@@ -1,7 +1,10 @@
-# DEMO_WEDNESDAY.md — Plan Ejecutable Demo Miércoles
+# DEMO_WEDNESDAY.md — Plan de Demostración
 
-**Fecha objetivo**: Miércoles 5 de agosto de 2026
-**Precio**: USD 500
+> **⚠️ ARCHIVO HISTÓRICO OBSOLETO**
+> Este archivo fue creado para la demo del miércoles 5 de agosto de 2026.
+> **La fecha ya pasó. Este plan NO está activo.**
+> El contenido se conserva únicamente como referencia histórica.
+> Ver `docs/REQUIREMENTS_REUNION_1.md` para los requisitos actuales.
 
 ## Vertical Slice — Flujo Completo
 

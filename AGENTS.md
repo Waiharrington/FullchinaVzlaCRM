@@ -2,9 +2,9 @@
 
 ## Objetivo
 
-Construir una PWA responsive para administrar la operación diaria de un food
-truck. **Fecha límite: miércoles 5 de agosto de 2026.**
-Precio objetivo: **USD 500**.
+Construir una PWA responsive para administrar la operación diaria de
+FullChinaVzla. **Acuerdo inicial: USD 450**, aceptado y con contrato listo.
+El proyecto completo por fases supera **USD 1000**.
 
 ## Stack
 
@@ -24,7 +24,7 @@ src/
   pages/        Login, Inicio, Caja, Inventario, Más
   test/         Setup de testing
 supabase/
-  migrations/   SQL de esquema foodtruck (27 tablas, 21 funciones, 29 triggers, 10 vistas, 72 RLS)
+  migrations/   SQL versionado del esquema fullchinavzla
 ```
 
 ## Fuentes de Verdad
@@ -34,7 +34,7 @@ supabase/
 | `PROJECT_BRIEF.md` | Requisitos, stack, decisiones de diseño |
 | `docs/DATABASE.md` | Modelo de datos completo, migraciones, verificación |
 | `docs/HANDOFF.md` | Estado actual, pendientes, verificaciones |
-| `docs/DEMO_WEDNESDAY.md` | Plan ejecutable para la demo del miércoles |
+| `docs/REQUIREMENTS_REUNION_1.md` | Requisitos confirmados en reunión inicial (2026-08-08) |
 | `docs/AI_START_HERE.md` | Punto de entrada para nuevas IAs |
 
 ## Reglas de Seguridad
@@ -43,16 +43,15 @@ supabase/
 2. **NO hacer deploy** — No desplegar a Vercel ni ningún hosting sin autorización.
 3. **NO hacer commit** — No hacer git commit, push ni crear PRs sin autorización explícita.
 4. **NO exponer secretos** — Nunca incluir API keys, contraseñas ni credenciales en archivos.
-5. **Schema `foodtruck`** — Todas las tablas y objetos viven en el esquema `foodtruck`, nunca en `public`.
+5. **Schema `fullchinavzla`** — Todas las tablas y objetos viven en el esquema `fullchinavzla`, nunca en `public`.
 6. **Preservar trabajo** — Cada cambio importante debe ser verificable localmente antes de integrar.
+7. **Operaciones VPS** — Toda operación futura en VPS exige backup previo y verificación.
 
 ## Estado del Repositorio
 
-- **Sin commits confirmados** — El repositorio puede estar completamente sin commits.
-- **Archivos untracked** — Todo el código puede estar untracked. Verificar `git status` antes de cada sesión.
-- **Sin remoto confirmado** — No asumir que existe un remote configurado.
-- **Respaldo de demo**: Conservar `dist/` generado y crear una copia local etiquetada o ZIP
-  **solo si el usuario lo autoriza**. No afirmar que existen respaldos previos.
+- Verificar `git status` antes de cada sesión.
+- **2026-08-08**: Se realizó backup del VPS antes de cambios de seguridad.
+- **2026-08-08**: Se revocó acceso anónimo y se agregaron migraciones atomicas de pagos.
 
 ## Antes de Editar Cualquier Archivo
 
@@ -82,17 +81,16 @@ npm run lint
 npm test
 ```
 
-## Definición de "Terminado" para Demo
+## Definición de "Terminado"
 
-Una funcionalidad está lista para la demo cuando:
+Una funcionalidad está lista cuando:
 
 1. `npm run build` pasa sin errores
 2. `npm run lint` pasa sin warnings
 3. `npm test` pasa todos los tests
-4. Funciona en modo demo (`VITE_DEMO_MODE=true`)
-5. Es responsive en mobile (390x844) y desktop (1280px)
-6. No rompe funcionalidad existente
-7. No hay datos reales de la clienta en el código
+4. Es responsive en mobile (390x844) y desktop (1280px)
+5. No rompe funcionalidad existente
+6. No hay datos reales de la clienta en el código
 
 ## Modo Demo
 
@@ -100,13 +98,12 @@ La aplicación soporta modo demo sin conexión a Supabase:
 
 - Variable `VITE_DEMO_MODE=true` en `.env`
 - Login automático con usuario demo
-- Datos hardcodeados para la demo
-- **No requiere backend para la demo del miércoles**
+- Datos hardcodeados para demostración
 
 ## Selector de Rol Demo (P0)
 
 El login en modo demo muestra 3 botones para elegir rol: **Owner**, **Manager**, **Cashier**.
-Esto es un selector **DEMO local** para la presentación del 2026-08-05:
+Esto es un selector **DEMO local**:
 
 - **NO es autenticación real** — No valida credenciales contra Supabase.
 - **NO es prueba de seguridad RLS** — La seguridad real se implementa con
@@ -135,13 +132,13 @@ Esto es un selector **DEMO local** para la presentación del 2026-08-05:
 | `manager` | Operación: producción, inventario, compras, gastos |
 | `cashier` | Ventas: comandas, cobros, cierres básicos |
 
-> **Nota**: Los roles en la UI son un mecanismo DEMO. La seguridad real se
-> implementa en Supabase con RLS y `get_current_user_role()` (post-demo).
+> **Nota**: El selector demo solo controla la UI. En modo real, Supabase aplica
+> RLS y `get_current_user_role()`; no confundir ambos mecanismos.
 
 ## Stack de Persistencia
 
 - **PostgreSQL 15+** en Supabase self-hosted
-- **Esquema aislado**: `foodtruck` (provisional hasta confirmar nombre comercial)
+- **Esquema aislado**: `fullchinavzla`
 - **RLS habilitado** en todas las tablas
 - **Funciones SECURITY DEFINER** para acceso a vistas financieras
 - **Pagos inmutables** (solo INSERT)

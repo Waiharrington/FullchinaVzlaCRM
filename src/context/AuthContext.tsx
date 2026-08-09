@@ -4,19 +4,20 @@ import type { User } from './auth-context'
 import { supabase, isDemoMode } from '../lib/supabase'
 
 const DEMO_USERS: Record<string, User> = {
-  owner: { id: 'demo-owner', email: 'dueña@clienta.app', role: 'owner' },
-  manager: { id: 'demo-manager', email: 'encargado@clienta.app', role: 'manager' },
-  cashier: { id: 'demo-cashier', email: 'cajera@clienta.app', role: 'cashier' }
+  owner: { id: 'demo-owner', email: 'duena@fullchinavzla.com', role: 'owner' },
+  manager: { id: 'demo-manager', email: 'gerencia@fullchinavzla.com', role: 'manager' },
+  cashier: { id: 'demo-cashier', email: 'caja@fullchinavzla.com', role: 'cashier' }
 }
 
-async function fetchUserRole(userId: string): Promise<'owner' | 'manager' | 'cashier'> {
-  if (!supabase) return 'owner'
-  const { data } = await supabase
+async function fetchUserRole(userId: string): Promise<'owner' | 'manager' | 'cashier' | null> {
+  if (!supabase) return null
+  const { data, error } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role,is_active')
     .eq('id', userId)
-    .single()
-  return (data?.role as 'owner' | 'manager' | 'cashier') ?? 'cashier'
+    .maybeSingle()
+  if (error || !data?.is_active || !['owner', 'manager', 'cashier'].includes(data.role)) return null
+  return data.role as 'owner' | 'manager' | 'cashier'
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -47,11 +48,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(currentSession)
       if (currentSession?.user) {
         const role = await fetchUserRole(currentSession.user.id)
-        setUser({
-          id: currentSession.user.id,
-          email: currentSession.user.email || '',
-          role
-        })
+        if (role) {
+          setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role })
+        } else {
+          setSession(null)
+          setUser(null)
+          void supabase!.auth.signOut({ scope: 'local' })
+        }
       }
       setLoading(false)
     })
@@ -61,11 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(currentSession)
         if (currentSession?.user) {
           const role = await fetchUserRole(currentSession.user.id)
-          setUser({
-            id: currentSession.user.id,
-            email: currentSession.user.email || '',
-            role
-          })
+          if (role) {
+            setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role })
+          } else {
+            setSession(null)
+            setUser(null)
+            void supabase!.auth.signOut({ scope: 'local' })
+          }
         } else {
           setUser(null)
         }
@@ -83,11 +88,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return {}
     }
 
-    const { error } = await supabase!.auth.signInWithPassword({ email, password })
-    if (!error) {
-      setSplashDone(false) // Trigger splash on next render
-    }
+    const { data, error } = await supabase!.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
+    const role = data.user ? await fetchUserRole(data.user.id) : null
+    if (!role) {
+      await supabase!.auth.signOut({ scope: 'local' })
+      return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
+    }
+    setUser({ id: data.user.id, email: data.user.email || email, role })
+    setSplashDone(false) // Trigger splash on next render
+    return {}
+  }
+
+  const signInWithPin = async (pin: string) => {
+    if (isDemoMode) return { error: 'Usa los PIN de demostración.' }
+
+    const { data: pinData, error: pinError } = await supabase!.functions.invoke('pin-login', {
+      body: { pin },
+    })
+
+    if (pinError || !pinData?.token_hash || !pinData?.email) {
+      const context = await pinError?.context?.json?.().catch(() => null)
+      if (context?.error === 'temporarily_locked') {
+        return { error: 'Demasiados intentos. Espera 15 minutos antes de volver a intentar.' }
+      }
+      if (context?.error === 'login_unavailable') {
+        return { error: 'El acceso por PIN no está disponible en este momento.' }
+      }
+      return { error: 'PIN incorrecto.' }
+    }
+
+    const { data, error } = await supabase!.auth.verifyOtp({
+      token_hash: pinData.token_hash,
+      type: 'magiclink',
+    })
+    if (error || !data.user) return { error: 'No se pudo iniciar sesión con el PIN.' }
+
+    const role = await fetchUserRole(data.user.id)
+    if (!role) {
+      await supabase!.auth.signOut({ scope: 'local' })
+      return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
+    }
+
+    setUser({ id: data.user.id, email: data.user.email || pinData.email, role })
+    setSplashDone(false)
     return {}
   }
 
@@ -110,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, demoMode: isDemoMode, signIn, signInAsDemo, signOut, splashDone, setSplashDone }}>
+    <AuthContext.Provider value={{ session, user, loading, demoMode: isDemoMode, signIn, signInWithPin, signInAsDemo, signOut, splashDone, setSplashDone }}>
       {children}
     </AuthContext.Provider>
   )

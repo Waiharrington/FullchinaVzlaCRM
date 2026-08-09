@@ -1,35 +1,33 @@
-import { useState } from 'react'
-import { DEMO_CUSTOMERS } from '../lib/demoData'
-import type { Customer } from '../lib/demoData'
+import { useEffect, useState } from 'react'
+import { getCustomers, registerCustomerVisit, type Customer } from '../lib/dataService'
 import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame } from 'lucide-react'
 import './Fidelizacion.css'
 
 export function Fidelizacion() {
-  const [customers, setCustomers] = useState<Customer[]>(DEMO_CUSTOMERS)
-  const [selectedCustomerId, setSelectedCustomerId] = useState(customers[0]?.id || '')
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [visitNotice, setVisitNotice] = useState('')
 
   // Sort customers by totalVisits descending ("Mejor Cliente" by visits)
   const topVisitsCustomers = [...customers].sort((a, b) => b.totalVisits - a.totalVisits)
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || customers[0]
 
-  const handleAddVisit = (customerId: string) => {
-    setCustomers(prev => prev.map(c => {
-      if (c.id === customerId) {
-        const newVisits = c.totalVisits + 1
-        const newRewards = Math.floor(newVisits / 5)
-        return {
-          ...c,
-          totalVisits: newVisits,
-          lastVisit: new Date().toISOString().split('T')[0],
-          rewardsUnlocked: newRewards
-        }
-      }
-      return c
-    }))
+  useEffect(() => {
+    getCustomers().then(data => {
+      setCustomers(data)
+      setSelectedCustomerId(current => current || data[0]?.id || '')
+    }).catch(error => setVisitNotice(error instanceof Error ? error.message : 'No se pudieron cargar los clientes'))
+  }, [])
 
-    setVisitNotice(`¡Nueva visita registrada para ${selectedCustomer.name}! (${selectedCustomer.totalVisits + 1} visitas en total)`)
+  const handleAddVisit = async (customerId: string) => {
+    const updated = await registerCustomerVisit(customerId)
+    setCustomers(prev => prev.map(c => c.id === customerId ? updated : c))
+    setVisitNotice(`¡Nueva visita registrada para ${updated.name}! (${updated.totalVisits} visitas en total)`)
     setTimeout(() => setVisitNotice(''), 4000)
+  }
+
+  if (!selectedCustomer) {
+    return <div className="fidelizacion-page"><div className="fidel-card">No hay clientes disponibles.</div></div>
   }
 
   return (

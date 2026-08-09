@@ -10,4 +10,5 @@ export const supabase =
       })
     : null
 
-export const isDemoMode = import.meta.env.VITE_DEMO_MODE === 'true' || !supabase
+// Producción real: si faltan credenciales, la app muestra un error; nunca inventa datos.
+export const isDemoMode = false

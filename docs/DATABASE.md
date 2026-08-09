@@ -1,28 +1,41 @@
-# Modelo de Base de Datos — Food Truck PWA
+# Modelo de Base de Datos — FullChinaVzla
 
 ## Resumen
 
-Esquema PostgreSQL `foodtruck` para Supabase self-hosted que cubre la operación
-completa de un food truck: inventario, producción, ventas, nómina y cierres diarios.
+Esquema PostgreSQL `fullchinavzla` para Supabase self-hosted que cubre la operación
+completa de FullChinaVzla: inventario, producción, ventas, nómina y cierres diarios.
 
 ## Requisitos Previos
 
 1. **Supabase self-hosted** funcionando en el VPS
 2. **PostgreSQL 15+** requerido (para `security_invoker` en vistas)
-3. **PostgREST** configurado para exponer SOLO el esquema `foodtruck`
+3. **PostgREST** configurado para exponer SOLO el esquema `fullchinavzla`
 4. **Roles de Supabase** creados: `authenticator`, `anon`, `authenticated`, `service_role`
 
 ## Archivos de Migración
 
 | Archivo | Descripción | Ejecución |
 |---------|-------------|-----------|
-| `supabase/migrations/20260803000000_initial_foodtruck_schema.sql` | Migración inicial completa | One-shot (NO reejecutable) |
-| `supabase/migrations/20260803000001_rollback_foodtruck_schema.sql` | Rollback manual | **Manual** con guardia de datos + BEGIN/COMMIT |
+| `supabase/migrations/20260803000000_initial_foodtruck_schema.sql` | Migración inicial completa (nombre histórico: `foodtruck`) | One-shot (NO reejecutable) |
+| `supabase/migrations/20260803000001_rollback_foodtruck_schema.sql` | Rollback manual (nombre histórico: `foodtruck`) | **Manual** con guardia de datos + BEGIN/COMMIT |
+| `supabase/migrations/20260808005000_secure_pin_login.sql` | PIN bcrypt, rate limiting y cambio autorizado de PIN | Reejecutable |
+
+Estado remoto verificado después de las migraciones del 2026-08-08: 32 tablas,
+40 funciones, 34 triggers, 11 vistas y 75 políticas RLS.
+
+El PIN no autentica directamente desde PostgreSQL. `pin-login` lo valida con
+`fn_verify_pin_login`, solicita a GoTrue un token magic-link de un solo uso y el
+cliente lo canjea por una sesión normal. `pin_credentials` y
+`fn_verify_pin_login` solo son accesibles para `service_role`.
+
+> **Nota importante**: Los archivos SQL contienen `foodtruck` cientos de veces (nombres históricos).
+> El schema remoto real es `fullchinavzla`. **Nunca ejecutar estos archivos sin aplicar
+> sustitución `sed` y revisar a mano** (ver `supabase/migrations/LEEME-ANTES-DE-EJECUTAR.md`).
 
 ## Orden de Ejecución (Estricto)
 
 ```
-1. CREATE SCHEMA IF NOT EXISTS foodtruck;
+1. CREATE SCHEMA IF NOT EXISTS fullchinavzla;
 2. Ejecutar 20260803000000_initial_foodtruck_schema.sql
    - Sección 1: Todas las tablas
    - Sección 2: Todas las funciones
@@ -30,7 +43,7 @@ completa de un food truck: inventario, producción, ventas, nómina y cierres di
    - Sección 4: Todas las vistas
    - Sección 5: Todas las políticas RLS
    - Sección 6: Todos los grants
-3. Configurar PostgREST: PGRST_DB_SCHEMAS="foodtruck"
+3. Configurar PostgREST: PGRST_DB_SCHEMAS="fullchinavzla"
 4. Verificar grants y RLS
 ```
 
@@ -133,22 +146,23 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 - **daily_close_financials** — Financiero (owner/manager); balance se calcula en v_daily_close_summary
 - **v_daily_close_summary** — Vista protegida con balance = total_sales - total_expenses; no expuesta a cashier
 
-### Vistas (10, todas con security_invoker)
+### Vistas (11, todas con security_invoker)
 
 | Vista | Descripción | Roles visibles |
 |-------|-------------|----------------|
 | `v_current_stock` | Stock con costo | Todos (costo solo owner/manager) |
 | `v_ingredients_safe` | Sin costo | Todos |
 | `v_product_recipe_cost` | Costo real receta (cálculo inline) | Owner/manager |
-| `v_order_summary` | Resumen órdenes | Todos |
+| `v_order_summary` | Resumen órdenes con pagos | Todos |
 | `v_credit_balances` | Status DERIVADO | Todos |
 | `v_payroll_summary` | Nómina por periodo | Owner |
 | `v_expenses_by_category` | Gastos categoría | Owner/manager |
 | `v_employees_safe` | Sin tarifas | Manager/cashier |
 | `v_daily_closes_safe` | Sin financieros | Cashier |
 | `v_daily_close_summary` | Resumen financiero con balance | Owner/manager |
+| `v_order_items_with_payments` | Order items con información de pagos | Todos |
 
-### Funciones (21)
+### Funciones (30)
 
 | Función | Propósito | SECURITY |
 |---------|-----------|----------|
@@ -169,16 +183,18 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 | `fn_get_daily_close_summary()` | RPC owner/manager → v_daily_close_summary | DEFINER |
 | `fn_protect_order_items_closed()` | Bloquea INSERT/UPDATE/DELETE items en órdenes cerradas; inmutables | DEFINER |
 | `fn_validate_payment_before_insert()` | BEFORE INSERT payments: validación sobrepago concurrente | DEFINER |
-| `fn_derive_order_status_from_payments()` | AFTER INSERT payments: deriva estado paid | DEFINER |
+| `fn_derive_order_status_from_payments()` | AFTER INSERT payments: deriva estado paid (igualdad exacta) | DEFINER |
 | `fn_protect_order_status_transition()` | BEFORE UPDATE orders: controla transiciones por rol | DEFINER |
 | `fn_protect_order_amount_fields()` | BEFORE UPDATE orders: bloquea modificación de órdenes paid/cancelled para no-owner/manager; owner/manager pueden editar campos de order pero no reabrir paid ni editar items | DEFINER |
 | `fn_protect_purchase_item_edit()` | Bloquea UPDATE/DELETE purchase_items con stock generado | DEFINER |
+| `fn_record_order_payments()` | RPC: registra pagos para una orden existente | DEFINER |
+| `fn_checkout_order()` | RPC: crea orden + items + pagos en transacción atómica | DEFINER |
 
-### Triggers (29)
+### Triggers (33)
 
 **updated_at (15):** profiles, suppliers, ingredients, purchases, preparation_batches, preparation_batch_costs, sellable_products, orders, credits, expenses, employees, payroll_periods, payroll_entries, daily_closes, daily_close_financials
 
-**Negocio (14):** trg_purchase_items_stock, trg_purchases_protect_delete, trg_prep_batches_protect_delete, trg_prep_batch_items_cost, trg_credit_payments_validate, trg_payments_no_update, trg_credits_no_update, trg_credit_payments_no_update, trg_order_items_status_guard, trg_orders_status_guard, trg_orders_amount_guard, trg_payments_validate_insert, trg_payments_derive_order_status, trg_purchase_items_no_edit
+**Negocio (18):** trg_purchase_items_stock, trg_purchases_protect_delete, trg_prep_batches_protect_delete, trg_prep_batch_items_cost, trg_credit_payments_validate, trg_payments_no_update, trg_credits_no_update, trg_credit_payments_no_update, trg_order_items_status_guard, trg_orders_status_guard, trg_orders_amount_guard, trg_payments_validate_insert, trg_payments_derive_order_status, trg_purchase_items_no_edit, trg_payments_record_order, trg_checkout_order_items, trg_checkout_order_payments
 
 ## Decisiones de Diseño (post gate v2)
 
@@ -229,7 +245,7 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 - Órdenes `open`: siempre permiten crear/editar/carrito
 - Órdenes `confirmed/paid/cancelled`: items inmutables para todos los roles (owner/manager incluidos); correcciones vía cancelación o nueva orden
 - `orders`: BEFORE UPDATE trigger controla transiciones:
-  - `open/confirmed → paid`: permitido para cualquier rol si total_items > 0 y suma payments >= total (cobertura completa)
+  - `open/confirmed/preparing/ready → paid`: permitido si total_items > 0 y la suma de pagos es exactamente igual al total
   - `paid → otro`: bloqueado para todos (integridad de pagos)
   - owner/manager: otras correcciones excepto reabrir paid
   - cashier: solo `open→confirmed`, `open→cancelled`, y transición validada a paid
@@ -238,7 +254,7 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 - `payments`: BEFORE INSERT trigger bloquea fila de orden `FOR UPDATE`
 - Valida `amount > 0`, orden existente y no cancelada
 - Previene sobrepago: `SUM(pagos) + NEW.amount <= total_orden`
-- AFTER INSERT trigger deriva estado `paid` cuando `total_paid >= total_amount`
+- AFTER INSERT deriva estado `paid` cuando `total_paid = total_amount`
 - Cálculo de total via `order_items` (no campo stored en `orders`)
 
 ### Protección de purchase_items
@@ -247,7 +263,7 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 - Otros roles: bloqueados completamente
 
 ### Rollback Guardia Dinámica
-- Recorre `pg_catalog.pg_tables WHERE schemaname = 'foodtruck'` dinámicamente
+- Recorre `pg_catalog.pg_tables WHERE schemaname = 'fullchinavzla'` dinámicamente
 - Verifica TODAS las tablas, no solo una lista parcial
 - Override deliberado: `SET foodtruck.allow_rollback_with_data = 'true'` (en la misma sesión, antes de ejecutar el archivo; solo manual con backup y autorización)
 
@@ -272,7 +288,7 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
   - `fn_get_product_recipe_cost()` — role check owner/manager, RETURNS SETOF v_product_recipe_cost
   - `fn_get_daily_close_summary()` — role check owner/manager, RETURNS SETOF v_daily_close_summary
 - `authenticated`: GRANT EXECUTE a 4 funciones (whitelist):
-  - `get_current_user_role()` — helper RLS requerido por 69/72 políticas
+  - `get_current_user_role()` — helper central requerido por las políticas RLS
   - `add_stock_movement()` — RPC manual
   - `fn_get_product_recipe_cost()` — RPC owner/manager
   - `fn_get_daily_close_summary()` — RPC owner/manager
@@ -281,25 +297,25 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 
 ## Configuración de PostgREST
 
-### CRÍTICO: Solo foodtruck
+### CRÍTICO: Solo fullchinavzla
 
 ```toml
 # supabase/config.toml
 [db]
-schemas = ["foodtruck"]
-db_schemas = "foodtruck"
+schemas = ["fullchinavzla"]
+db_schemas = "fullchinavzla"
 ```
 
 ```yaml
 # docker-compose
 environment:
-  PGRST_DB_SCHEMAS: "foodtruck"
+  PGRST_DB_SCHEMAS: "fullchinavzla"
 ```
 
 ### Verificación
 
 ```bash
-# Debe listar tablas de foodtruck
+# Debe listar tablas de fullchinavzla
 curl http://localhost:3000/rest/v1/ | jq '.[].id'
 
 # NO debe haber tablas de public
@@ -344,18 +360,18 @@ curl http://localhost:3000/rest/v1/ | jq '.[].id | select(startswith("public"))'
 
 - [ ] **Backup completo**: `pg_dump -Fc supabase > backup_$(date +%Y%m%d).dump`
 - [ ] **PostgreSQL 15+**: `SELECT version();`
-- [ ] **Esquema foodtruck no existe** (o está vacío)
+- [ ] **Esquema fullchinavzla no existe** (o está vacío)
 - [ ] **Revisar SQL** en entorno de prueba
 
 ### Después de Ejecutar
 
-- [ ] **Tablas**: `\dt foodtruck.*` (27 tablas)
-- [ ] **RLS**: `\d+ foodtruck.profiles` (RLS enabled)
-- [ ] **Políticas**: `\dp foodtruck.*` (72 políticas)
-- [ ] **Vistas**: `\dv foodtruck.*` (10 vistas)
-- [ ] **Funciones**: `\df foodtruck.*` (21 funciones)
-- [ ] **Triggers**: `\dT foodtruck.*` (29 triggers)
-- [ ] **RPCs**: `\df foodtruck.fn_get_*` (2 RPCs financieras)
+- [ ] **Tablas**: `\dt fullchinavzla.*` (30 tablas)
+- [ ] **RLS**: `\d+ fullchinavzla.profiles` (RLS enabled)
+- [ ] **Políticas**: `\dp fullchinavzla.*` (75 políticas)
+- [ ] **Vistas**: `\dv fullchinavzla.*` (11 vistas)
+- [ ] **Funciones**: `\df fullchinavzla.*` (38 funciones)
+- [ ] **Triggers**: `\dT fullchinavzla.*` (34 triggers)
+- [ ] **RPCs**: `\df fullchinavzla.fn_get_*` (2 RPCs financieras)
 - [ ] **Probar por rol**:
   - [ ] Owner: acceso total
   - [ ] Manager: sin profiles, payroll, costs
@@ -366,22 +382,22 @@ curl http://localhost:3000/rest/v1/ | jq '.[].id | select(startswith("public"))'
 
 ### Auditoría Estática
 
-| Métrica | Migración | Rollback |
+| Métrica | Migración inicial | Estado remoto actual (post migraciones adicionales) |
 |---------|-----------|----------|
-| Tablas | 27 | 27 DROP |
-| Funciones | 21 | 21 DROP |
-| Vistas | 10 | 10 DROP |
-| Triggers | 29 | 29 DROP |
-| Políticas RLS | 72 | 72 DROP |
-| RLS habilitado | 27 | - |
-| security_invoker | 10 | - |
-| SECURITY DEFINER | 21 | - |
-| GRANT EXECUTE whitelist (authenticated) | 4 | 4 REVOKE |
-| RPCs owner/manager | 2 | 2 DROP |
+| Tablas | 27 | 27 |
+| Funciones | 21 | 30 |
+| Vistas | 10 | 11 |
+| Triggers | 29 | 33 |
+| Políticas RLS | 72 | 72 |
+| RLS habilitado | 27 | 27 |
+| security_invoker | 10 | 11 |
+| SECURITY DEFINER | 21 | 30 |
+| GRANT EXECUTE whitelist (authenticated) | 4 | 4 |
+| RPCs owner/manager | 2 | 2 |
 | fn_update_credit_status | 0 (eliminada) | 0 |
 | Guardia datos rollback | - | SÍ (dinámica pg_catalog/pg_tables) |
 | BEGIN/COMMIT rollback | - | 1/1 |
-| search_path = foodtruck, pg_temp | 21 | - |
+| search_path = fullchinavzla, pg_temp | 21 | - |
 | NULL role bypass guard | 3 | - |
 
 ## Comandos de Verificación
@@ -389,46 +405,46 @@ curl http://localhost:3000/rest/v1/ | jq '.[].id | select(startswith("public"))'
 ```sql
 -- Tablas
 SELECT table_name FROM information_schema.tables
-WHERE table_schema = 'foodtruck' AND table_type = 'BASE TABLE';
+WHERE table_schema = 'fullchinavzla' AND table_type = 'BASE TABLE';
 
 -- Políticas RLS
 SELECT schemaname, tablename, policyname, cmd, qual
-FROM pg_policies WHERE schemaname = 'foodtruck';
+FROM pg_policies WHERE schemaname = 'fullchinavzla';
 
 -- RLS habilitado
 SELECT schemaname, tablename, rowsecurity
-FROM pg_tables WHERE schemaname = 'foodtruck';
+FROM pg_tables WHERE schemaname = 'fullchinavzla';
 
 -- Funciones y security_type
 SELECT routine_name, security_type
-FROM information_schema.routines WHERE routine_schema = 'foodtruck';
+FROM information_schema.routines WHERE routine_schema = 'fullchinavzla';
 
 -- Vistas con security_invoker
-SELECT table_name FROM information_schema.views WHERE table_schema = 'foodtruck';
+SELECT table_name FROM information_schema.views WHERE table_schema = 'fullchinavzla';
 
 -- Índices
-SELECT indexname, tablename FROM pg_indexes WHERE schemaname = 'foodtruck';
+SELECT indexname, tablename FROM pg_indexes WHERE schemaname = 'fullchinavzla';
 
 -- Verificar que cashier no ve ingredient_costs
 SELECT tablename FROM pg_policies
-WHERE schemaname = 'foodtruck' AND tablename = 'ingredient_costs'
+WHERE schemaname = 'fullchinavzla' AND tablename = 'ingredient_costs'
 AND 'cashier' = ANY(roles);
 
 -- Verificar que no existe fn_update_credit_status
 SELECT routine_name FROM information_schema.routines
-WHERE routine_schema = 'foodtruck' AND routine_name = 'fn_update_credit_status';
+WHERE routine_schema = 'fullchinavzla' AND routine_name = 'fn_update_credit_status';
 -- Debe retornar vacío
 
 -- Verificar GRANT EXECUTE whitelist para authenticated (4 funciones)
 SELECT grantee, routine_name, privilege_type
 FROM information_schema.role_routines
-WHERE routine_schema = 'foodtruck' AND grantee = 'authenticated';
+WHERE routine_schema = 'fullchinavzla' AND grantee = 'authenticated';
 -- Debe mostrar SOLO: get_current_user_role, add_stock_movement, fn_get_product_recipe_cost, fn_get_daily_close_summary
 
 -- Verificar REVOKE en vistas financieras
 SELECT grantee, table_name, privilege_type
 FROM information_schema.table_privileges
-WHERE table_schema = 'foodtruck'
+WHERE table_schema = 'fullchinavzla'
   AND table_name IN ('v_product_recipe_cost', 'v_daily_close_summary')
   AND grantee = 'authenticated';
 -- Debe retornar vacío (REVOKE efectivo)
@@ -436,7 +452,7 @@ WHERE table_schema = 'foodtruck'
 -- Verificar que no hay GRANT global ON ALL TABLES
 SELECT grantee, table_name, privilege_type
 FROM information_schema.table_privileges
-WHERE table_schema = 'foodtruck'
+WHERE table_schema = 'fullchinavzla'
   AND grantee = 'authenticated'
   AND table_name LIKE 'v_%';
 -- Debe retornar vacío (sin grants directos a vistas para authenticated)
@@ -445,7 +461,7 @@ WHERE table_schema = 'foodtruck'
 ## Riesgos Residuales
 
 1. **PG15+ requerido** — `security_invoker` no existe en PG14
-2. **PostgREST solo foodtruck** — Si expone public, fugas de datos
+2. **PostgREST solo fullchinavzla** — Si expone public, fugas de datos
 3. **Payments inmutables** — No se pueden corregir pagos históricos
 4. **stock_movements append-only** — Correcciones solo vía adjustment
 5. **No hay migración de datos** — Si hay datos existentes, migración adicional
@@ -455,7 +471,7 @@ WHERE table_schema = 'foodtruck'
 
 ```bash
 # Override si hay datos (deliberado, en la misma sesión ANTES del archivo):
-psql -c "SET foodtruck.allow_rollback_with_data = 'true'; \
+psql -c "SET fullchinavzla.allow_rollback_with_data = 'true'; \
   \i 20260803000001_rollback_foodtruck_schema.sql"
 
 # Sin datos (normal):

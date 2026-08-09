@@ -1,180 +1,140 @@
-# HANDOFF.md — Estado del Proyecto
+# Estado y continuidad de FullChinaVzla
 
-**Última actualización**: 2026-08-03
+Última actualización: 2026-08-08.
 
-> **Nota sobre el repositorio**: Al 2026-08-03, el repositorio **no tiene commits
-> confirmados** y todo el código puede estar **untracked**. No hay remoto confirmado.
-> Verificar `git status` antes de cada sesión porque el estado puede cambiar.
+## Resumen
 
-## Resumen Ejecutivo
+FullChinaVzla es una PWA React/Vite con Supabase self-hosted. El acuerdo inicial
+de USD 450 fue aceptado y el contrato está listo; el alcance completo se
+entregará por fases y superará USD 1000.
 
-Proyecto en fase **scaffold/demo**. El frontend es funcional con navegación,
-login demo y responsive layout. Las páginas son placeholders listos para
-recibir lógica. El esquema SQL está completo y probado localmente en
-PostgreSQL 15 efímero. **No está conectado al VPS**.
+El repositorio contiene una interfaz amplia, pero no todos los módulos tienen
+persistencia real. Caja y Comandas sí registran órdenes y pagos contra el
+esquema remoto `fullchinavzla`. Almacén, Fidelización, Gastos, Marketing,
+Menú semanal y partes de otros módulos todavía usan datos locales o de muestra.
 
-## Estado Actual
+## Estado verificado
 
-### Frontend — Funcional
+- Producción: `https://fullchina-vzla-crm.vercel.app` en el proyecto Vercel
+  `fullchina-vzla-crm`.
+- Inicio de sesión por PIN de Dueña verificado directamente en producción el
+  2026-08-08. La configuración alojada contiene solo URL, anon key y modo real;
+  no contiene contraseñas ni PIN.
+- Esquema remoto: `fullchinavzla`.
+- Inventario al 2026-08-08 después de caja y PIN seguro: 32 tablas, 40 funciones,
+  34 triggers, 11 vistas y 75 políticas RLS.
+- Acceso `anon`: sin `USAGE` del esquema y sin privilegios sobre tablas.
+- Acceso autenticado: Caja y Comandas usan RPC protegidas por rol.
+- Build, lint y 3 pruebas automatizadas pasan. También se probó el flujo real
+  de caja y los permisos de los tres roles en navegador.
+- PWA generada correctamente con carga diferida por módulo. El archivo inicial
+  bajó de aproximadamente 1.37 MB a alrededor de 59 KB; las dependencias
+  pesadas se cargan en chunks separados.
 
-| Componente | Estado | Notas |
-|------------|--------|-------|
-| `src/App.tsx` | Listo | Rutas protegidas, demo mode |
-| `src/context/AuthContext.tsx` | Listo | Demo user hardcodeado, Supabase listo |
-| `src/components/Layout.tsx` | Listo | Sidebar + BottomNav responsive |
-| `src/components/Sidebar.tsx` | Listo | Desktop, 4 secciones |
-| `src/components/BottomNav.tsx` | Listo | Mobile, 4 secciones |
-| `src/pages/Login.tsx` | Listo | Formulario real + demo mode |
-| `src/pages/Inicio.tsx` | Placeholder | Card con 3 boxes estáticos |
-| `src/pages/Caja.tsx` | Placeholder | Card con 3 boxes estáticos |
-| `src/pages/Inventario.tsx` | Placeholder | Card con 3 boxes estáticos |
-| `src/pages/Mas.tsx` | Placeholder | Card con 3 boxes estáticos |
-| `src/lib/supabase.ts` | Listo | Cliente configurable, demo mode |
+## Cambios de la fase 0 aplicados al VPS
 
-### Verificaciones
+Se creó y verificó un backup antes de los cambios. Después se aplicaron:
 
-| Comando | Resultado |
-|---------|-----------|
-| `npm run build` | Pass (2.89s, 241.48 kB JS gzipped 76.11 kB) |
-| `npm run lint` | Pass (0 warnings) |
-| `npm test` | Pass (1 test, 179ms) |
-| PWA | Generada (sw.js + workbox) |
+1. `20260808000000_harden_anon_access.sql`: elimina acceso anónimo.
+2. `20260808001000_atomic_order_payments.sql`: pagos simples/combinados,
+   referencias obligatorias y cierre exacto de la orden.
+3. `20260808002000_order_payment_view.sql`: vista de órdenes con pagos y
+   `security_invoker=true`.
+4. `20260808003000_atomic_checkout.sql`: crea orden, items y pagos en una sola
+   transacción y toma el precio vigente del catálogo.
+5. `20260808004000_cash_register_sessions.sql`: apertura, movimientos, arqueo,
+   cierre operativo y asociación obligatoria de pagos a un turno.
+6. `20260808005000_secure_pin_login.sql`: PIN bcrypt por usuario, límite de
+   intentos y cambio de PIN autorizado. La Edge Function `pin-login` canjea un
+   PIN válido por un token Supabase de un solo uso; no expone contraseñas.
 
-### Backend — SQL Listo (No aplicado al VPS)
+Los tres roles reales fueron probados también mediante PIN. Tras cinco intentos
+fallidos, el mismo cliente queda bloqueado durante quince minutos.
 
-| Archivo | Estado | Verificación |
-|---------|--------|--------------|
-| `supabase/migrations/20260803000000_initial_foodtruck_schema.sql` | Completo | 27 tablas, 21 funciones, 29 triggers, 10 vistas, 72 RLS |
-| `supabase/migrations/20260803000001_rollback_foodtruck_schema.sql` | Completo | Rollback con guardia dinámica |
-| `docs/DATABASE.md` | Completo | Documentación exhaustiva del esquema |
+No se confirmó una fuga de filas antes del endurecimiento: RLS devolvía cero
+filas en las pruebas anónimas. El problema corregido fue el exceso de grants y
+la dependencia innecesaria de una sola capa de defensa.
 
-**Verificación local**: Migración y rollback probados en PostgreSQL 15 efímero.
-No aplicados al VPS sin autorización y backup.
+Pruebas SQL locales realizadas:
 
-## Archivos Clave
+- pago móvil con referencia;
+- pago combinado efectivo + segundo método;
+- rechazo sin referencia;
+- rechazo por pago incompleto;
+- rollback completo: una falla no deja órdenes huérfanas.
 
-```
-AGENTS.md                    — Instrucciones para IAs (obligatorio leer)
-PROJECT_BRIEF.md             — Requisitos y decisiones de diseño
-docs/DATABASE.md             — Modelo de datos completo
-docs/HANDOFF.md              — Este archivo
-docs/DEMO_WEDNESDAY.md       — Plan de demo
-docs/AI_START_HERE.md        — Punto de entrada
-src/                         — Código frontend
-supabase/migrations/         — SQL de esquema
-```
+## Flujos reales hoy
 
-## Decisiones Tomadas
+### Caja
 
-1. **Schema aislado `foodtruck`** — Provisional hasta confirmar nombre comercial
-2. **Supabase self-hosted en VPS** — No crear proyecto Cloud separado
-3. **Modo demo sin backend** — Login automático, datos hardcodeados
-4. **Mobile-first** — Responsive en 390x844 (mobile) y 1280px (desktop)
-5. **Roles**: owner (total), manager (operación), cashier (ventas)
-6. **Vistas financieras vía RPC SECURITY DEFINER** — Cashier no ve costos
-7. **Pagos inmutables, stock append-only** — Integridad de datos
+- Selecciona productos desde `sellable_products`.
+- Agrupa visualmente las presentaciones de una misma familia (por ejemplo,
+  Arroz Frito Especial y Arroz Cantonés) en una sola tarjeta con selector de
+  variantes. Cada variante conserva el ID y precio real del catálogo.
+- Los productos sin familia continúan como tarjetas directas independientes.
+- En tablet (768–1366 px) el catálogo permanece a la izquierda y el pedido a
+  la derecha: dos tarjetas por fila, o una entre 768–900 px.
+- Admite efectivo, pago móvil, punto, transferencia y pago combinado.
+- Pago móvil/transferencia exige referencia.
+- Efectivo conserva monto recibido.
+- No aplica cargo de servicio automático.
+- El checkout real usa `fn_checkout_order`.
 
-## Qué es Real vs Mock/Demo
+### Comandas
 
-| Funcionalidad | Estado |
-|---------------|--------|
-| Navegación entre páginas | Real |
-| Login/logout demo | Real |
-| Responsive sidebar/bottomnav | Real |
-| PWA instalable | Real |
-| Datos en páginas | **Mock** — placeholders estáticos |
-| Conexión a Supabase | **Mock** — demo mode sin backend |
-| Lógica de negocio | **No implementada** |
-| CRUD de inventario | **No implementada** |
-| Flujo de caja/ventas | **No implementado** |
-| Cierres diarios | **No implementado** |
+- Lista órdenes desde `v_orders_with_items`.
+- Conserva pagos y referencias registrados.
+- Cobra una orden abierta mediante `fn_record_order_payments`.
+- El backend evita sobrepago y solo marca `paid` con cobertura exacta.
 
-## Pendientes (ordenados por prioridad)
+### Referencia BCV
 
-### P0 — Crítico para demo miércoles
+- Los importes principales en USD muestran debajo su referencia en bolívares
+  en Caja, cobro, recibo, Comandas, Menú semanal, Inicio y Clientes.
+- Toda la aplicación consume una sola tasa compartida desde
+  `https://ve.dolarapi.com/v1/dolares/oficial` y valida que corresponda a la
+  fuente `oficial`.
+- La tasa se conserva durante 30 minutos y las consultas simultáneas se
+  unifican para evitar llamadas duplicadas.
+- Si la consulta falla, se usa la última tasa válida guardada y la interfaz la
+  identifica como `referencia guardada`. Si no existe una tasa válida, no se
+  inventa una conversión.
+- El recibo PDF conserva la tasa usada para calcular su referencia en Bs.
+- Verificación del 2026-08-08: `756.7083 Bs/USD`, fecha informada por el
+  proveedor `2026-08-07T00:00:00-04:00`.
 
-- [ ] Selector de rol demo en login (owner/manager/cashier) — controla visibilidad UI
-- [ ] Dashboard con resumen del día (ventas, inventario bajo, órdenes activas)
-- [ ] Caja: crear orden → agregar productos → cobrar → estado paid
-- [ ] Caja: selector de productos con precios
-- [ ] Caja: método de pago (efectivo, tarjeta, transferencia)
-- [ ] Caja: recibo/confirmación visual
-- [ ] Inventario: lista de ingredientes con stock actual
-- [ ] Inventario: lista de productos vendibles
-- [ ] Crédito: crear crédito + abono
-- [ ] Cierre de caja: resumen del día
-- [ ] Responsive: mobile (390x844) y desktop (1280px)
+## Pendientes prioritarios
 
-### P1 — Importante post-demo
+1. Completar múltiples comandas abiertas por mesa y permitir agregar consumos.
+2. Implementar regla delivery: pago móvil confirmado antes de cocina; efectivo
+   puede llegar a cocina pendiente de pago.
+3. Capturar moneda física y tasa en pagos en efectivo USD/VES.
+4. Sustituir datos demo por persistencia real módulo por módulo.
+5. Recibir menú, variantes, extras, producción en Excel, categorías de gastos,
+   proveedores, reglas de fidelización y permisos finales.
+6. Implementar Almacén separado del inventario operativo, producción, compras,
+   gastos, finanzas, nómina, clientes/crédito, fidelización y WhatsApp.
 
-- [ ] Producción: lotes de preparación
-- [ ] Compras: registrar compras con proveedor
-- [ ] Gastos operativos
-- [ ] Nómina básica
-- [ ] Reportes semanales
+Los requisitos completos están en `docs/REQUIREMENTS_REUNION_1.md`.
 
-### P2 — Futuro
+## Reglas para continuar
 
-- [ ] Conexión real a Supabase VPS
-- [ ] Autenticación real con roles
-- [ ] Offline sync
-- [ ] Notificaciones
-- [ ] Exportación PDF
+- Leer `AGENTS.md` antes de editar.
+- No hacer commit, push o deploy sin autorización explícita.
+- Antes de cualquier operación futura en VPS: autorización, backup, aplicación
+  transaccional y verificación posterior.
+- Los dos SQL iniciales conservan `foodtruck` en sus nombres y contenido por
+  razones históricas. No ejecutarlos directamente contra producción.
+- No incluir secretos, credenciales, IP ni datos reales de la clienta en docs.
 
-## Riesgos
-
-1. **Tiempo limitado** — 2 días hasta la demo (miércoles 5 agosto)
-2. **Sin backend real** — Todo es demo, no se puede mostrar persistencia
-3. **Funcionalidad incompleta** — Solo scaffold, lógica de negocio pendiente
-4. **Una persona desarrollando** — Dependencia crítica
-
-## Cómo Iniciar Localmente
+## Validación local
 
 ```powershell
-# 1. Instalar dependencias
-npm install
-
-# 2. Configurar .env (copiar de ejemplo en PowerShell)
-Copy-Item .env.example .env
-# Editar .env si es necesario (para demo, VITE_DEMO_MODE=true es suficiente)
-
-# 3. Ejecutar
-npm run dev
-
-# 4. Abrir en navegador
-# http://localhost:5173
+npm run build
+npm test
+npm run lint
 ```
 
-## Variables `.env` (sin secretos)
-
-```bash
-VITE_SUPABASE_URL=https://your-project.supabase.co  # Opcional para demo
-VITE_SUPABASE_ANON_KEY=your-anon-key                  # Opcional para demo
-VITE_DEMO_MODE=true                                   # true para demo sin backend
-```
-
-## Checklist Antes de Enseñar a la Clienta
-
-- [ ] `npm run build` pasa
-- [ ] `npm run lint` pasa
-- [ ] `npm test` pasa
-- [ ] Login demo funciona (acceso directo sin credenciales)
-- [ ] Navegación funciona en mobile y desktop
-- [ ] Dashboard muestra datos demo (no vacío)
-- [ ] Caja permite crear orden y "cobrar"
-- [ ] Inventario muestra ingredientes y productos
-- [ ] Crédito permite crear y abonar
-- [ ] Cierre muestra resumen del día
-- [ ] No hay datos reales de la clienta en el código
-- [ ] No hay secretos expuestos
-
-## Preguntas Pendientes para la Clienta
-
-1. ¿Nombre comercial del negocio? (afecta schema `foodtruck`)
-2. ¿Lista inicial de productos y precios?
-3. ¿Lista de ingredientes y unidades?
-4. ¿Proveedores habituales?
-5. ¿Métodos de pago aceptados?
-6. ¿Nombres de usuarios reales (o genéricos para demo)?
-7. ¿Horario de operación del food truck?
-8. ¿Ubicación fija o itinerante?
+Para modo demo, `VITE_DEMO_MODE=true`. Para probar persistencia real debe usarse
+una sesión autenticada y la configuración local ya autorizada, sin copiar
+secretos a la documentación.

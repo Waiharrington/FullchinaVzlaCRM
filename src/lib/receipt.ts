@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import type { CartItem } from './dataService'
+import { formatVes, usdToVes } from './money'
 
 interface ReceiptData {
   orderId: string
@@ -7,6 +8,7 @@ interface ReceiptData {
   total: number
   paymentMethod: string
   createdAt: string
+  bcvRate?: number | null
 }
 
 export function generateReceipt(data: ReceiptData): jsPDF {
@@ -17,7 +19,7 @@ export function generateReceipt(data: ReceiptData): jsPDF {
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
-  doc.text('Clienta Foodtruck', pageWidth / 2, y, { align: 'center' })
+  doc.text('FULL CHINA VZLA', pageWidth / 2, y, { align: 'center' })
   y += 6
 
   doc.setFont('helvetica', 'normal')
@@ -37,7 +39,16 @@ export function generateReceipt(data: ReceiptData): jsPDF {
   y += 4
   doc.text(`Hora: ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`, margin, y)
   y += 4
-  doc.text(`Pago: ${data.paymentMethod === 'cash' ? 'Efectivo' : data.paymentMethod === 'card' ? 'Tarjeta' : 'Transferencia'}`, margin, y)
+  const paymentLabel = data.paymentMethod === 'cash'
+    ? 'Efectivo'
+    : data.paymentMethod === 'mobile'
+      ? 'Pago movil'
+      : data.paymentMethod === 'card'
+        ? 'Punto'
+        : data.paymentMethod === 'transfer'
+          ? 'Transferencia'
+          : 'Pago combinado'
+  doc.text(`Pago: ${paymentLabel}`, margin, y)
   y += 7
 
   doc.line(margin, y, pageWidth - margin, y)
@@ -68,7 +79,16 @@ export function generateReceipt(data: ReceiptData): jsPDF {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.text(`TOTAL: $${data.total.toFixed(2)}`, margin, y)
-  y += 7
+  y += 4
+  const totalVes = usdToVes(data.total, data.bcvRate)
+  if (totalVes !== null) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.text(`REF. BCV: ${formatVes(totalVes)}`, margin, y)
+    y += 5
+  } else {
+    y += 3
+  }
 
   doc.line(margin, y, pageWidth - margin, y)
   y += 6

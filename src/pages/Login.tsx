@@ -73,7 +73,7 @@ const MOBILE_CAROUSEL_SETTINGS = [
 ];
 
 export function Login() {
-  const { signIn, signInAsDemo, demoMode } = useAuth()
+  const { signIn, signInWithPin, signInAsDemo, demoMode } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -126,7 +126,7 @@ export function Login() {
     }
   }, [isTabletViewport])
 
-  // Auto-envía al completar 4 dígitos (largo de los PIN configurados en .env y demo).
+  // Autoenvía al completar los cuatro dígitos del PIN.
   useEffect(() => {
     if (isPinMode && pin.length === 4 && !loading) {
       formRef.current?.requestSubmit()
@@ -160,40 +160,14 @@ export function Login() {
       return
     }
 
-    // Real Supabase login with PIN mapping
     if (isPinMode) {
-      const pinCashier = import.meta.env.VITE_CASHIER_PIN || '1234'
-      const pinManager = import.meta.env.VITE_MANAGER_PIN || '4321'
-      const pinOwner = import.meta.env.VITE_OWNER_PIN || '9999'
-
-      let targetEmail = ''
-      let targetPassword = ''
-
-      if (pin === pinCashier) {
-        targetEmail = import.meta.env.VITE_CASHIER_EMAIL
-        targetPassword = import.meta.env.VITE_CASHIER_PASSWORD
-      } else if (pin === pinManager) {
-        targetEmail = import.meta.env.VITE_MANAGER_EMAIL
-        targetPassword = import.meta.env.VITE_MANAGER_PASSWORD
-      } else if (pin === pinOwner) {
-        targetEmail = import.meta.env.VITE_OWNER_EMAIL
-        targetPassword = import.meta.env.VITE_OWNER_PASSWORD
+      const result = await signInWithPin(pin)
+      if (result.error) {
+        setError(result.error)
+        setPin('')
       }
-
-      if (targetEmail && targetPassword) {
-        try {
-          await signIn(targetEmail, targetPassword)
-        } catch (err: unknown) {
-          setError(err instanceof Error ? err.message : 'Error al conectar con Supabase')
-        } finally {
-          setLoading(false)
-        }
-        return
-      } else {
-        setError('PIN no configurado en el servidor. Configure las credenciales de correo en el archivo .env.')
-        setLoading(false)
-        return
-      }
+      setLoading(false)
+      return
     }
 
     const result = await signIn(email, password)
@@ -304,7 +278,7 @@ export function Login() {
                         placeholder="••••"
                         value={pin}
                         onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                        maxLength={6}
+                        maxLength={4}
                         style={{ fontSize: '1.5rem', letterSpacing: '0.5rem', textAlign: 'center' }}
                         required={isPinMode}
                         disabled={!isPinMode}
@@ -319,7 +293,7 @@ export function Login() {
                         type="button"
                         key={digit}
                         className="keypad-btn"
-                        onClick={() => setPin((p) => (p.length < 6 ? p + digit : p))}
+                        onClick={() => setPin((p) => (p.length < 4 ? p + digit : p))}
                       >
                         {digit}
                       </button>
@@ -334,7 +308,7 @@ export function Login() {
                     <button
                       type="button"
                       className="keypad-btn"
-                      onClick={() => setPin((p) => (p.length < 6 ? p + '0' : p))}
+                      onClick={() => setPin((p) => (p.length < 4 ? p + '0' : p))}
                     >
                       0
                     </button>

@@ -1,16 +1,18 @@
-# Clienta Food Truck — PWA
+# FullChinaVzla — PWA
 
 ## Objetivo
 
-Construir una PWA responsive para administrar la operación diaria de un food
-truck desde computadora, tablet y teléfono.
+Construir una PWA responsive para administrar la operación diaria de FullChinaVzla
+desde computadora, tablet y teléfono.
+
+**Acuerdo inicial: USD 450**, aceptado y con contrato listo. El proyecto completo
+por fases supera **USD 1000**.
 
 ## Stack
 
 - React + Vite + TypeScript.
 - Supabase self-hosted existente en el VPS para autenticación y PostgreSQL.
-- Esquema PostgreSQL aislado por negocio. Nombre provisional: `foodtruck`
-  hasta confirmar el nombre comercial.
+- Esquema PostgreSQL aislado: `fullchinavzla`.
 - Vercel para hosting.
 - PWA instalable mediante `vite-plugin-pwa`.
 
@@ -41,12 +43,11 @@ truck desde computadora, tablet y teléfono.
 - Sin facturación fiscal, delivery externo, conexión directa con puntos de
   venta ni contabilidad tributaria.
 - No se creará un proyecto independiente en Supabase Cloud.
-- Sin despliegues ni modificaciones remotas del Supabase del VPS hasta revisar
-  primero las migraciones en modo local/dry-run y recibir autorización.
+- Sin despliegues ni nuevas modificaciones remotas del Supabase del VPS hasta
+  revisar la migración, crear backup y recibir autorización.
 - El esquema SQL debe quedar versionado en migraciones y protegido con RLS.
-- Antes de conectar la aplicación, el esquema deberá estar expuesto de forma
-  explícita en PostgREST y recibir únicamente los grants necesarios para
-  `anon`, `authenticated` y `service_role`.
+- El esquema está expuesto explícitamente en PostgREST. `anon` no posee acceso;
+  `authenticated` y `service_role` reciben únicamente los permisos necesarios.
 
 ## Reglas de calidad
 

@@ -1,28 +1,38 @@
-import { useState } from 'react'
-import { DEMO_CUSTOMERS, DEMO_WHATSAPP_MESSAGES } from '../lib/demoData'
-import type { Customer, WhatsAppMessage } from '../lib/demoData'
+import { useEffect, useState } from 'react'
+import { getCustomers, getWhatsAppMessages, queueWhatsAppMessage, type Customer, type WhatsAppMessage } from '../lib/dataService'
+import { useAuth } from '../context/auth-context'
 import { MessageSquare, Cake, Sparkles, Send, Users, CheckCircle2, Clock } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
 export function MarketingWhatsApp() {
-  const [customers] = useState<Customer[]>(DEMO_CUSTOMERS)
-  const [messages, setMessages] = useState<WhatsAppMessage[]>(DEMO_WHATSAPP_MESSAGES)
+  const { user } = useAuth()
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [messages, setMessages] = useState<WhatsAppMessage[]>([])
   const [selectedSegment, setSelectedSegment] = useState<'all' | 'loyal' | 'inactive' | 'birthday'>('birthday')
   
   // Custom message state
-  const [targetCustomer, setTargetCustomer] = useState(customers[0]?.id || '')
+  const [targetCustomer, setTargetCustomer] = useState('')
   const [customMsg, setCustomMsg] = useState('¡Hola! En Full China tenemos promociones especiales en tallarines y arroz frito hoy. ¡Pide tu delivery!')
   const [sentNotice, setSentNotice] = useState('')
 
   const todayStr = new Date().toISOString().split('T')[0]
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
-  const inactiveCustomers = customers.filter(c => c.lastVisit < '2026-07-20')
+  const inactiveThreshold = new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0]
+  const inactiveCustomers = customers.filter(c => c.lastVisit && c.lastVisit < inactiveThreshold)
   const loyalCustomers = customers.filter(c => c.totalVisits >= 10)
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  useEffect(() => {
+    Promise.all([getCustomers(), getWhatsAppMessages()]).then(([customerData, messageData]) => {
+      setCustomers(customerData)
+      setMessages(messageData)
+      setTargetCustomer(customerData[0]?.id || '')
+    }).catch(error => setSentNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos'))
+  }, [])
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
     const target = customers.find(c => c.id === targetCustomer)
-    if (!target) return
+    if (!target || !user || !target.phone) return
 
     const newMsg: WhatsAppMessage = {
       id: `wm-${Date.now()}`,
@@ -31,11 +41,11 @@ export function MarketingWhatsApp() {
       phone: target.phone,
       message: customMsg,
       sentAt: `${new Date().toISOString().split('T')[0]} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      status: 'sent'
+      status: 'queued'
     }
-
+    await queueWhatsAppMessage({ customerId: target.id, phone: target.phone, message: customMsg, userId: user.id })
     setMessages(prev => [newMsg, ...prev])
-    setSentNotice(`Mensaje enviado con éxito por WhatsApp a ${target.name} (${target.phone})`)
+    setSentNotice(`Mensaje guardado en la cola para ${target.name}. Falta conectar el proveedor de WhatsApp para enviarlo.`)
     setTimeout(() => setSentNotice(''), 4000)
   }
 
@@ -48,7 +58,7 @@ export function MarketingWhatsApp() {
             <MessageSquare size={24} />
           </div>
           <div className="metric-info-group">
-            <span className="metric-label">Mensajes Enviados</span>
+            <span className="metric-label">Mensajes en historial</span>
             <span className="metric-large-val">{messages.length} Mensajes</span>
             <span className="metric-sub-text">Campañas de WhatsApp</span>
           </div>
@@ -102,7 +112,7 @@ export function MarketingWhatsApp() {
                   <span className="metric-sub-text">Mensajes predefinidos configurables para la clienta</span>
                 </div>
               </div>
-              <span className="whatsapp-badge-green">WhatsApp Business Conectado</span>
+              <span className="whatsapp-badge-green">Proveedor pendiente de conexión</span>
             </div>
 
             {/* Template 1: Cumpleaños */}
@@ -175,7 +185,7 @@ export function MarketingWhatsApp() {
                       <td>{msg.sentAt}</td>
                       <td>
                         <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle2 size={12} /> Enviado
+                          <CheckCircle2 size={12} /> {msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}
                         </span>
                       </td>
                     </tr>

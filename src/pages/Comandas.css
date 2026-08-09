@@ -260,6 +260,17 @@
   }
 }
 
+.payment-error-message {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fecaca;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .kanban-column {
   background: #141416;
   border: 1px solid rgba(255, 255, 255, 0.06);
