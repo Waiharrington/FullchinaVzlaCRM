@@ -6,9 +6,9 @@ import {
   getActiveCashSession,
   recordOrderPayments,
   updateOrderStatus,
-  type FullOrder,
   type PaymentMethod,
 } from '../lib/dataService'
+import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import {
   Search,
   Calendar,
@@ -78,6 +78,8 @@ export interface ComandaOrder {
   status: 'new' | 'preparing' | 'ready' | 'delivered'
   deliveredTime?: string
   attendedBy?: string
+  source?: 'pos' | 'web'
+  webRequestId?: string
 }
 
 const MOCK_COMANDAS: ComandaOrder[] = []
@@ -105,6 +107,8 @@ export function Comandas() {
   const [paymentNote, setPaymentNote] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [paying, setPaying] = useState(false)
+  const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
+  const [reloadToken, setReloadToken] = useState(0)
 
   const handleOpenPaymentForOrder = async (order: ComandaOrder) => {
     try {
@@ -253,8 +257,11 @@ export function Comandas() {
     const loadRealOrders = async () => {
       try {
         const today = new Date().toISOString().split('T')[0]
-        const realOrders: FullOrder[] = await getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59')
-        if (realOrders && realOrders.length > 0 && active) {
+        const [realOrders, webOrders] = await Promise.all([
+          getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59'),
+          getPendingWebOrders(),
+        ])
+        if (active) {
           const mapped: ComandaOrder[] = realOrders.map((o) => {
             const date = new Date(o.createdAt)
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
@@ -320,9 +327,39 @@ export function Comandas() {
               status,
               deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
               attendedBy: o.createdBy || 'Admin',
+              source: 'pos',
             }
           })
-          setComandas(mapped)
+          const pendingWeb: ComandaOrder[] = webOrders.map((order) => {
+            const date = new Date(order.createdAt)
+            const elapsed = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000))
+            return {
+              id: `web:${order.id}`,
+              webRequestId: order.id,
+              source: 'web',
+              orderNumber: order.code,
+              time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+              date: date.toLocaleDateString('es-VE'),
+              isRetraso: elapsed > 10,
+              customerName: order.customerName,
+              customerPhone: order.customerPhone,
+              address: order.deliveryAddress || '',
+              orderType: order.orderType === 'delivery' ? 'Delivery' : 'Para llevar',
+              items: order.items.map(item => ({ id: item.id, name: item.productName, quantity: item.quantity, unitPrice: item.price, subtotal: item.price * item.quantity })),
+              notes: order.notes || '',
+              paymentMethod: 'Pendiente de confirmar',
+              paymentType: 'pending',
+              isPaid: false,
+              totalAmount: order.subtotal,
+              serviceCharge: 0,
+              discount: 0,
+              bcvRate: order.bcvRate || undefined,
+              elapsedMins: elapsed,
+              status: 'new',
+              attendedBy: 'Pedido desde la web',
+            }
+          })
+          setComandas([...pendingWeb, ...mapped])
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
@@ -332,7 +369,22 @@ export function Comandas() {
     loadRealOrders()
     const interval = setInterval(loadRealOrders, 10000)
     return () => { active = false; clearInterval(interval) }
-  }, [])
+  }, [reloadToken])
+
+  const handleConfirmWebOrder = async (order: ComandaOrder) => {
+    if (!order.webRequestId) return
+    setConfirmingWebId(order.webRequestId)
+    try {
+      await confirmWebOrder(order.webRequestId)
+      setSelectedOrder(null)
+      setReloadToken(value => value + 1)
+    } catch (cause) {
+      console.error('Error confirmando pedido web:', cause)
+      window.alert(cause instanceof Error ? cause.message : 'No se pudo confirmar el pedido web')
+    } finally {
+      setConfirmingWebId(null)
+    }
+  }
 
   // Simulation timer for elapsed mins
   useEffect(() => {
@@ -543,7 +595,9 @@ export function Comandas() {
 
                       {/* Footer Row */}
                       <div className="card-footer-line">
-                        {order.isPaid ? (
+                        {order.source === 'web' ? (
+                          <span className="badge-sin-pagar">🌐 Web · Por confirmar</span>
+                        ) : order.isPaid ? (
                           <span className={`payment-type-badge pay-${order.paymentType}`}>
                             {order.paymentMethod}
                           </span>
@@ -568,7 +622,15 @@ export function Comandas() {
                       </div>
 
                       {/* Quick Advance Status Action */}
-                      {order.status !== 'delivered' && (
+                      {order.source === 'web' ? (
+                        <button
+                          className="quick-advance-btn"
+                          disabled={confirmingWebId === order.webRequestId}
+                          onClick={e => { e.stopPropagation(); handleConfirmWebOrder(order) }}
+                        >
+                          {confirmingWebId === order.webRequestId ? 'Confirmando…' : '✅ Confirmar pedido de WhatsApp'}
+                        </button>
+                      ) : order.status !== 'delivered' && (
                         <button
                           className="quick-advance-btn"
                           onClick={e => {
@@ -836,7 +898,11 @@ export function Comandas() {
                 <button className="cmd-btn-outline" onClick={() => window.print()}><Printer size={16} /> Imprimir comanda</button>
               </div>
               <div className="cmd-footer-right">
-                {!selectedOrder.isPaid && (
+                {selectedOrder.source === 'web' ? (
+                  <button className="cmd-btn-primary" disabled={confirmingWebId === selectedOrder.webRequestId} onClick={() => handleConfirmWebOrder(selectedOrder)}>
+                    <CheckCircle size={16} /> {confirmingWebId === selectedOrder.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
+                  </button>
+                ) : !selectedOrder.isPaid && (
                   <button
                     className="cmd-btn-cobrar"
                     onClick={() => handleOpenPaymentForOrder(selectedOrder)}
@@ -844,7 +910,7 @@ export function Comandas() {
                     💲 Cobrar pedido
                   </button>
                 )}
-                <button
+                {selectedOrder.source !== 'web' && <button
                   className="cmd-btn-primary"
                   onClick={() => {
                     handleAdvanceStatus(selectedOrder.id, selectedOrder.status)
@@ -852,7 +918,7 @@ export function Comandas() {
                   }}
                 >
                   <CheckCircle size={16} /> Marcar como {selectedOrder.status === 'new' ? 'preparación' : selectedOrder.status === 'preparing' ? 'lista' : 'entregada'}
-                </button>
+                </button>}
                 <button className="cmd-btn-secondary" onClick={() => setSelectedOrder(null)}>Cerrar</button>
               </div>
             </footer>

@@ -28,6 +28,7 @@ const Fidelizacion = lazy(() => import('./pages/Fidelizacion').then(module => ({
 const MenuSemanal = lazy(() => import('./pages/MenuSemanal').then(module => ({ default: module.MenuSemanal })))
 const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
 const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
+const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
 
 type Role = 'owner' | 'manager' | 'cashier'
 
@@ -59,6 +60,7 @@ function AppRoutes() {
   return (
     <Suspense fallback={<div className="page" role="status">Cargando módulo…</div>}>
     <Routes>
+      <Route path="/pedir" element={<PublicMenu />} />
       <Route
         path="/login"
         element={user ? <Navigate to="/" replace /> : <Login />}

@@ -1,0 +1,111 @@
+import { supabase } from './supabase'
+import type { Product } from './dataService'
+
+export interface WebOrderCartItem {
+  productId: string
+  productName: string
+  price: number
+  quantity: number
+}
+
+export interface WebOrderResult {
+  id: string
+  code: string
+  total: number
+}
+
+export interface PendingWebOrder {
+  id: string
+  code: string
+  customerName: string
+  customerPhone: string
+  orderType: 'takeaway' | 'delivery'
+  deliveryAddress: string | null
+  notes: string | null
+  subtotal: number
+  bcvRate: number | null
+  createdAt: string
+  items: Array<WebOrderCartItem & { id: string }>
+}
+
+function db() {
+  if (!supabase) throw new Error('El menú no está disponible en este momento')
+  return supabase
+}
+
+export async function getPublicCatalog(): Promise<Product[]> {
+  const { data, error } = await db().rpc('fn_get_public_catalog')
+  if (error) throw error
+  const rows = Array.isArray(data) ? data : []
+  return rows.map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    name: String(row.name),
+    description: row.description ? String(row.description) : null,
+    price: Number(row.price),
+    cost: null,
+    category: String(row.category || 'plato'),
+    emoji: String(row.emoji || '🥡'),
+    active: true,
+  }))
+}
+
+export async function createWebOrder(params: {
+  customerName: string
+  customerPhone: string
+  orderType: 'takeaway' | 'delivery'
+  deliveryAddress: string
+  notes: string
+  items: WebOrderCartItem[]
+  bcvRate: number | null
+  idempotencyKey: string
+}): Promise<WebOrderResult> {
+  const { data, error } = await db().rpc('fn_create_web_order', {
+    p_customer_name: params.customerName,
+    p_customer_phone: params.customerPhone,
+    p_order_type: params.orderType,
+    p_delivery_address: params.deliveryAddress || null,
+    p_notes: params.notes || null,
+    p_items: params.items.map(item => ({ productId: item.productId, quantity: item.quantity })),
+    p_bcv_rate: params.bcvRate,
+    p_idempotency_key: params.idempotencyKey,
+  })
+  if (error) throw error
+  const result = data as Record<string, unknown>
+  return { id: String(result.id), code: String(result.code), total: Number(result.total) }
+}
+
+export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
+  const { data, error } = await db()
+    .from('web_order_requests')
+    .select('id,request_number,customer_name,customer_phone,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price)')
+    .eq('status', 'pending_confirmation')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    code: `WEB-${String(row.request_number).padStart(6, '0')}`,
+    customerName: String(row.customer_name),
+    customerPhone: String(row.customer_phone),
+    orderType: row.order_type as 'takeaway' | 'delivery',
+    deliveryAddress: row.delivery_address ? String(row.delivery_address) : null,
+    notes: row.notes ? String(row.notes) : null,
+    subtotal: Number(row.subtotal),
+    bcvRate: row.bcv_rate ? Number(row.bcv_rate) : null,
+    createdAt: String(row.created_at),
+    items: ((row.web_order_items as Array<Record<string, unknown>>) ?? []).map(item => ({
+      id: String(item.id),
+      productId: String(item.sellable_product_id),
+      productName: String(item.product_name),
+      quantity: Number(item.quantity),
+      price: Number(item.unit_price),
+    })),
+  }))
+}
+
+export async function confirmWebOrder(requestId: string): Promise<{ id: string; orderNumber: number }> {
+  const { data, error } = await db().rpc('fn_confirm_web_order', { p_request_id: requestId })
+  if (error) throw error
+  const result = data as Record<string, unknown>
+  return { id: String(result.id), orderNumber: Number(result.orderNumber) }
+}
