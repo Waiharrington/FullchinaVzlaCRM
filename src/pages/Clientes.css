@@ -361,6 +361,45 @@
   color: #a1a1aa;
 }
 
+.identity-cell {
+  display: grid;
+  gap: 5px;
+  min-width: 130px;
+}
+
+.identity-cell > span {
+  font-weight: 700;
+  color: #e4e4e7;
+}
+
+.identity-badge {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.identity-badge.verified_format {
+  color: #34d399;
+  background: rgba(16, 185, 129, .12);
+  border: 1px solid rgba(52, 211, 153, .25);
+}
+
+.identity-badge.legacy_review {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, .12);
+  border: 1px solid rgba(251, 191, 36, .25);
+}
+
+.identity-badge.missing {
+  color: #a1a1aa;
+  background: rgba(161, 161, 170, .1);
+  border: 1px solid rgba(161, 161, 170, .2);
+}
+
 .type-badge {
   font-size: 11px;
   font-weight: 700;

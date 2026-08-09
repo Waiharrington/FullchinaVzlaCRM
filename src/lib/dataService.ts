@@ -714,6 +714,7 @@ export async function recordOrderPayments(params: {
 export interface Customer {
   id: string
   name: string
+  identification: string
   phone: string
   email: string
   totalVisits: number
@@ -1227,12 +1228,13 @@ export async function createExpense(params: {
 
 export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await client().from('customers')
-    .select('id,full_name,phone,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,is_active')
+    .select('id,full_name,identification,phone,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,is_active')
     .order('full_name')
   if (error) throw error
   return (data ?? []).map((row) => ({
     id: row.id as string,
     name: row.full_name as string,
+    identification: (row.identification as string) ?? '',
     phone: (row.phone as string) ?? '',
     email: (row.email as string) ?? '',
     totalVisits: Number(row.total_visits ?? 0),
@@ -1251,7 +1253,7 @@ export async function createCustomer(params: { name: string; phone?: string; bir
   }).select('*').single()
   if (error) throw error
   return {
-    id: data.id as string, name: data.full_name as string, phone: (data.phone as string) ?? '',
+    id: data.id as string, name: data.full_name as string, identification: (data.identification as string) ?? '', phone: (data.phone as string) ?? '',
     email: (data.email as string) ?? '', totalVisits: Number(data.total_visits ?? 0),
     rewardsUnlocked: Number(data.rewards_unlocked ?? 0), lastVisit: (data.last_visit as string) ?? '',
     favoriteProduct: (data.favorite_product as string) ?? '', birthday: (data.birth_date as string) ?? '',
@@ -1264,7 +1266,7 @@ export async function registerCustomerVisit(customerId: string): Promise<Custome
   if (error) throw error
   const row = data as Record<string, unknown>
   return {
-    id: row.id as string, name: row.full_name as string,
+    id: row.id as string, name: row.full_name as string, identification: (row.identification as string) ?? '',
     phone: (row.phone as string) ?? '', email: (row.email as string) ?? '',
     totalVisits: Number(row.total_visits ?? 0), rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
     lastVisit: (row.last_visit as string) ?? '', favoriteProduct: (row.favorite_product as string) ?? '',

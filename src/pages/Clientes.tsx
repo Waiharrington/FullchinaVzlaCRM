@@ -41,6 +41,8 @@ interface CustomerRow {
   avatarBg: string
   name: string
   phone: string
+  identification: string
+  identificationStatus: 'verified_format' | 'legacy_review' | 'missing'
   type: 'Minorista' | 'Mayorista'
   lastPurchase: string
   totalPurchased: number
@@ -54,6 +56,15 @@ const FOOD_FAVORITES: Array<{ rank: string; name: string; orders: string; img: s
 
 const CUSTOMER_ORDERS_HISTORY: Array<{ id: string; date: string; type: string; products: string; total: number; status: string; payment: string }> = []
 
+function classifyIdentification(value: string): CustomerRow['identificationStatus'] {
+  const normalized = value.trim()
+  if (!normalized) return 'missing'
+  const digits = normalized.replace(/\D/g, '')
+  const acceptedFormat = /^(?:[VE]-?)?\d{6,10}$/i.test(normalized)
+  const repeatedPlaceholder = /^(\d)\1+$/.test(digits)
+  return acceptedFormat && !repeatedPlaceholder ? 'verified_format' : 'legacy_review'
+}
+
 export function Clientes() {
   const { user } = useAuth()
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
@@ -66,6 +77,7 @@ export function Clientes() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [identityFilter, setIdentityFilter] = useState('all')
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false)
@@ -106,6 +118,8 @@ export function Clientes() {
       avatarBg: '#dc2626',
       name: fullName,
       phone: saved.phone,
+      identification: saved.identification,
+      identificationStatus: classifyIdentification(saved.identification),
       type: 'Minorista',
       lastPurchase: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       totalPurchased: 0.00,
@@ -150,7 +164,8 @@ export function Clientes() {
       return {
         id: customer.id, initials: `${parts[0]?.[0] || 'C'}${parts[1]?.[0] || ''}`.toUpperCase(),
         avatarBg: index % 2 === 0 ? '#dc2626' : '#d97706', name: customer.name,
-        phone: customer.phone, type: 'Minorista',
+        phone: customer.phone, identification: customer.identification,
+        identificationStatus: classifyIdentification(customer.identification), type: 'Minorista',
         lastPurchase: customer.lastVisit ? new Date(`${customer.lastVisit}T12:00:00`).toLocaleDateString('es-VE') : 'Sin compras enlazadas',
         totalPurchased: credit?.totalAmount ?? 0, pendingBalance: credit?.balancePending ?? 0,
         status: credit && credit.balancePending > 0 ? 'Crédito' : customer.totalVisits >= 5 ? 'Frecuente' : 'Activo',
@@ -158,12 +173,13 @@ export function Clientes() {
     })
 
     return rows.filter((r) => {
-      const matchSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || r.phone.includes(searchTerm)
+      const matchSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || r.phone.includes(searchTerm) || r.identification.toLowerCase().includes(searchTerm.toLowerCase())
       const matchStatus = statusFilter === 'all' || r.status.toLowerCase() === statusFilter.toLowerCase()
       const matchType = typeFilter === 'all' || r.type.toLowerCase() === typeFilter.toLowerCase()
-      return matchSearch && matchStatus && matchType
+      const matchIdentity = identityFilter === 'all' || r.identificationStatus === identityFilter
+      return matchSearch && matchStatus && matchType && matchIdentity
     })
-  }, [credits, customers, searchTerm, statusFilter, typeFilter])
+  }, [credits, customers, searchTerm, statusFilter, typeFilter, identityFilter])
 
   const totalOutstanding = useMemo(() => {
     return credits.reduce((acc, c) => acc + c.balancePending, 0)
@@ -202,6 +218,11 @@ export function Clientes() {
                 <span className="hero-phone-wrap">
                   <Phone size={13} /> {selectedClient.phone}
                   <button className="btn-wsap-icon-inline" title="Enviar WhatsApp"><MessageCircle size={12} /></button>
+                </span>
+                <span className="meta-divider">|</span>
+                <span className={`identity-badge ${selectedClient.identificationStatus}`}>
+                  {selectedClient.identificationStatus === 'verified_format' ? 'Cédula' : selectedClient.identificationStatus === 'legacy_review' ? 'Identificación por revisar' : 'Sin identificación'}
+                  {selectedClient.identification && `: ${selectedClient.identification}`}
                 </span>
                 <span className="meta-divider">|</span>
                 <span className="badge-tag-purple">🏷️ Cliente Frecuente</span>
@@ -597,6 +618,20 @@ export function Clientes() {
               </select>
             </div>
 
+            <div className="filter-dropdown-wrap">
+              <span className="dropdown-label">Identificación</span>
+              <select
+                className="filter-select"
+                value={identityFilter}
+                onChange={(e) => setIdentityFilter(e.target.value)}
+              >
+                <option value="all">Todas</option>
+                <option value="verified_format">Cédula</option>
+                <option value="legacy_review">Por revisar</option>
+                <option value="missing">Sin identificación</option>
+              </select>
+            </div>
+
             <button className="btn-export-dark">
               <Download size={15} /> Exportar
             </button>
@@ -608,6 +643,7 @@ export function Clientes() {
                 <tr>
                   <th>Cliente</th>
                   <th>Teléfono</th>
+                  <th>Identificación</th>
                   <th>Tipo</th>
                   <th>Última compra</th>
                   <th>Total comprado</th>
@@ -619,7 +655,7 @@ export function Clientes() {
               <tbody>
                 {displayRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="empty-td-row">No se encontraron clientes que coincidan con los filtros.</td>
+                    <td colSpan={9} className="empty-td-row">No se encontraron clientes que coincidan con los filtros.</td>
                   </tr>
                 ) : (
                   displayRows.map((row) => (
@@ -633,6 +669,14 @@ export function Clientes() {
                         </div>
                       </td>
                       <td className="phone-td">{row.phone}</td>
+                      <td>
+                        <div className="identity-cell">
+                          <span>{row.identification || '—'}</span>
+                          <small className={`identity-badge ${row.identificationStatus}`}>
+                            {row.identificationStatus === 'verified_format' ? 'Cédula' : row.identificationStatus === 'legacy_review' ? 'Revisar' : 'Sin dato'}
+                          </small>
+                        </div>
+                      </td>
                       <td>
                         <span className={`type-badge ${row.type.toLowerCase()}`}>
                           {row.type}
@@ -667,7 +711,7 @@ export function Clientes() {
           </div>
 
           <div className="table-pagination-footer">
-            <span className="pagination-info">Mostrando 1 a 8 de 128 clientes</span>
+            <span className="pagination-info">Mostrando {displayRows.length} de {customers.length} clientes</span>
             <div className="pagination-controls">
               <button className="pag-btn prev"><ChevronLeft size={16} /></button>
               <button className="pag-btn active">1</button>
