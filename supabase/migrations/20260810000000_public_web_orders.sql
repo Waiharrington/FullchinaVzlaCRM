@@ -63,12 +63,12 @@ AS $$
     'id', p.id,
     'name', p.name,
     'description', p.description,
-    'price', p.sale_price,
+    'price', p.price,
     'category', p.category,
     'emoji', p.emoji
   ) ORDER BY p.category, p.name), '[]'::jsonb)
   FROM fullchinavzla.sellable_products p
-  WHERE p.is_active = true AND p.sale_price > 0;
+  WHERE p.is_active = true AND p.price > 0;
 $$;
 
 CREATE OR REPLACE FUNCTION fullchinavzla.fn_create_web_order(
@@ -118,9 +118,9 @@ BEGIN
     v_quantity := (v_item->>'quantity')::INTEGER;
     IF v_quantity NOT BETWEEN 1 AND 30 THEN RAISE EXCEPTION 'Cantidad invalida'; END IF;
     SELECT * INTO v_product FROM fullchinavzla.sellable_products
-      WHERE id = (v_item->>'productId')::UUID AND is_active = true AND sale_price > 0;
+      WHERE id = (v_item->>'productId')::UUID AND is_active = true AND price > 0;
     IF NOT FOUND THEN RAISE EXCEPTION 'Producto no disponible'; END IF;
-    v_subtotal := v_subtotal + (v_product.sale_price * v_quantity);
+    v_subtotal := v_subtotal + (v_product.price * v_quantity);
   END LOOP;
 
   INSERT INTO fullchinavzla.web_order_requests (
@@ -141,7 +141,7 @@ BEGIN
       WHERE id = (v_item->>'productId')::UUID AND is_active = true;
     INSERT INTO fullchinavzla.web_order_items (
       request_id, sellable_product_id, product_name, quantity, unit_price
-    ) VALUES (v_request.id, v_product.id, v_product.name, v_quantity, v_product.sale_price);
+    ) VALUES (v_request.id, v_product.id, v_product.name, v_quantity, v_product.price);
   END LOOP;
 
   RETURN jsonb_build_object(
