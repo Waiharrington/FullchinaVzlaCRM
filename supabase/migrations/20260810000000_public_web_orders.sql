@@ -68,7 +68,9 @@ AS $$
     'emoji', p.emoji
   ) ORDER BY p.category, p.name), '[]'::jsonb)
   FROM fullchinavzla.sellable_products p
-  WHERE p.is_active = true AND p.price > 0;
+  -- Invu usa $0.01 para insumos operativos (envases, cubiertos, salsas, etc.).
+  -- Permanecen en el POS, pero no son productos comprables por el cliente.
+  WHERE p.is_active = true AND p.price >= 0.50;
 $$;
 
 CREATE OR REPLACE FUNCTION fullchinavzla.fn_create_web_order(
@@ -118,7 +120,7 @@ BEGIN
     v_quantity := (v_item->>'quantity')::INTEGER;
     IF v_quantity NOT BETWEEN 1 AND 30 THEN RAISE EXCEPTION 'Cantidad invalida'; END IF;
     SELECT * INTO v_product FROM fullchinavzla.sellable_products
-      WHERE id = (v_item->>'productId')::UUID AND is_active = true AND price > 0;
+      WHERE id = (v_item->>'productId')::UUID AND is_active = true AND price >= 0.50;
     IF NOT FOUND THEN RAISE EXCEPTION 'Producto no disponible'; END IF;
     v_subtotal := v_subtotal + (v_product.price * v_quantity);
   END LOOP;
