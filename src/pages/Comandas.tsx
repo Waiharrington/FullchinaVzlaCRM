@@ -9,6 +9,7 @@ import {
   type PaymentMethod,
 } from '../lib/dataService'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
+import { supabase } from '../lib/supabase'
 import {
   Search,
   Calendar,
@@ -261,6 +262,24 @@ export function Comandas() {
           getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59'),
           getPendingWebOrders(),
         ])
+
+        const creatorNames = new Map<string, string>()
+        const creatorIds = [...new Set(realOrders.map(order => order.createdBy).filter(Boolean))]
+        if (supabase && creatorIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id,full_name')
+            .in('id', creatorIds)
+
+          if (profilesError) {
+            console.warn('No se pudieron cargar los nombres de quienes atendieron:', profilesError)
+          } else {
+            for (const profile of profiles ?? []) {
+              creatorNames.set(String(profile.id), String(profile.full_name || 'Usuario del sistema'))
+            }
+          }
+        }
+
         if (active) {
           const mapped: ComandaOrder[] = realOrders.map((o) => {
             const date = new Date(o.createdAt)
@@ -326,7 +345,7 @@ export function Comandas() {
               elapsedMins: elapsed < 0 ? 1 : elapsed,
               status,
               deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
-              attendedBy: o.createdBy || 'Admin',
+              attendedBy: creatorNames.get(o.createdBy) || 'Usuario del sistema',
               source: 'pos',
             }
           })
