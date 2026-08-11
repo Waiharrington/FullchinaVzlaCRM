@@ -111,28 +111,28 @@ export function Comandas() {
   const [reloadToken, setReloadToken] = useState(0)
 
   const handleOpenPaymentForOrder = async (order: ComandaOrder) => {
-    try {
-      const activeSession = await getActiveCashSession()
-      if (!activeSession) {
-        setPaymentOrder(order)
-        setPaymentError('Debes abrir la caja antes de cobrar esta comanda.')
-        setShowPaymentModal(true)
-        return
-      }
-    } catch (cause) {
-      setPaymentOrder(order)
-      setPaymentError(cause instanceof Error ? cause.message : 'No se pudo verificar la caja activa')
-      setShowPaymentModal(true)
-      return
-    }
+    // Abrir primero el modal para que el clic siempre tenga respuesta visual,
+    // incluso si la validación de caja tarda o el backend devuelve un error.
     setPaymentOrder(order)
     setSelectedPaymentTab('cash')
     setRefNumber('')
     setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
     setSplitSecondaryMethod('mobile')
     setPaymentNote('')
-    setPaymentError('')
+    setPaymentError('Verificando la caja activa…')
     setShowPaymentModal(true)
+
+    try {
+      const activeSession = await getActiveCashSession()
+      if (!activeSession) {
+        setPaymentError('Debes abrir la caja antes de cobrar esta comanda.')
+        return
+      }
+    } catch (cause) {
+      setPaymentError(cause instanceof Error ? cause.message : 'No se pudo verificar la caja activa')
+      return
+    }
+    setPaymentError('')
   }
 
   const handleSelectPaymentTab = (method: typeof selectedPaymentTab) => {
