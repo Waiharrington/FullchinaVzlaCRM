@@ -44,6 +44,11 @@ const PAYMENT_METHODS = [
   { method: 'split', label: 'Pago combinado', icon: '🔀' },
 ] as const
 
+type SplitPaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer'
+const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
+  (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split',
+)
+
 export interface ComandaItem {
   id: string
   name: string
@@ -104,7 +109,10 @@ export function Comandas() {
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<'cash' | 'mobile' | 'card' | 'transfer' | 'split'>('cash')
   const [refNumber, setRefNumber] = useState('')
   const [amountReceived, setAmountReceived] = useState('')
-  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<'mobile' | 'card' | 'transfer'>('mobile')
+  const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
+  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
+  const [splitPrimaryReference, setSplitPrimaryReference] = useState('')
+  const [splitSecondaryReference, setSplitSecondaryReference] = useState('')
   const [paymentNote, setPaymentNote] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [paying, setPaying] = useState(false)
@@ -118,7 +126,10 @@ export function Comandas() {
     setSelectedPaymentTab('cash')
     setRefNumber('')
     setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
+    setSplitPrimaryMethod('cash')
     setSplitSecondaryMethod('mobile')
+    setSplitPrimaryReference('')
+    setSplitSecondaryReference('')
     setPaymentNote('')
     setPaymentError('Verificando la caja activa…')
     setShowPaymentModal(true)
@@ -140,6 +151,8 @@ export function Comandas() {
     setSelectedPaymentTab(method)
     setPaymentError('')
     setRefNumber('')
+    setSplitPrimaryReference('')
+    setSplitSecondaryReference('')
     if (method === 'split' && paymentOrder?.totalAmount) {
       setAmountReceived((paymentOrder.totalAmount / 2).toFixed(2))
     } else {
@@ -161,7 +174,6 @@ export function Comandas() {
 
       const requiresReference = selectedPaymentTab === 'mobile'
         || selectedPaymentTab === 'transfer'
-        || (selectedPaymentTab === 'split' && splitSecondaryMethod !== 'card')
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
@@ -175,17 +187,33 @@ export function Comandas() {
       }>
 
       if (selectedPaymentTab === 'split') {
-        const cashAmount = Math.round(enteredAmount * 100) / 100
-        const secondaryAmount = Math.round((total - cashAmount) * 100) / 100
-        if (cashAmount <= 0 || secondaryAmount <= 0) {
+        const primaryAmount = Math.round(enteredAmount * 100) / 100
+        const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
+        if (primaryAmount <= 0 || secondaryAmount <= 0) {
           throw new Error('El pago combinado necesita dos montos mayores a cero')
         }
+        if (splitPrimaryMethod === splitSecondaryMethod) {
+          throw new Error('Selecciona dos métodos de pago diferentes')
+        }
+        if ((splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && !splitPrimaryReference.trim()) {
+          throw new Error('Ingresa la referencia del primer método')
+        }
+        if ((splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && !splitSecondaryReference.trim()) {
+          throw new Error('Ingresa la referencia del segundo método')
+        }
         payments = [
-          { method: 'cash', amount: cashAmount, receivedAmount: cashAmount, notes: paymentNote || undefined },
+          {
+            method: splitPrimaryMethod,
+            amount: primaryAmount,
+            referenceNumber: splitPrimaryReference.trim() || undefined,
+            receivedAmount: splitPrimaryMethod === 'cash' ? primaryAmount : undefined,
+            notes: paymentNote || undefined,
+          },
           {
             method: splitSecondaryMethod,
             amount: secondaryAmount,
-            referenceNumber: refNumber.trim() || undefined,
+            referenceNumber: splitSecondaryReference.trim() || undefined,
+            receivedAmount: splitSecondaryMethod === 'cash' ? secondaryAmount : undefined,
             notes: paymentNote || undefined,
           },
         ]
@@ -217,6 +245,9 @@ export function Comandas() {
       }
       const methodLabel = methodLabels[selectedPaymentTab] || 'Pago: Efectivo'
       const payType: ComandaOrder['paymentType'] = selectedPaymentTab === 'split' ? 'card' : (selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer' ? 'app' : selectedPaymentTab)
+      const paymentReference = selectedPaymentTab === 'split'
+        ? [splitPrimaryReference.trim() && `Método 1: ${splitPrimaryReference.trim()}`, splitSecondaryReference.trim() && `Método 2: ${splitSecondaryReference.trim()}`].filter(Boolean).join(' · ')
+        : refNumber.trim()
 
       setComandas(prev =>
         prev.map(c =>
@@ -226,7 +257,7 @@ export function Comandas() {
                 isPaid: true,
                 paymentMethod: methodLabel,
                 paymentType: payType,
-                paymentReference: refNumber.trim() || undefined,
+                paymentReference: paymentReference || undefined,
               }
             : c
         )
@@ -238,7 +269,7 @@ export function Comandas() {
           isPaid: true,
           paymentMethod: methodLabel,
           paymentType: payType,
-          paymentReference: refNumber.trim() || undefined,
+          paymentReference: paymentReference || undefined,
         } : null)
       }
 
@@ -980,11 +1011,10 @@ export function Comandas() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                {(selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer' || selectedPaymentTab === 'split') && (
+                {(selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer') && (
                 <div className="payment-field-group mt-2">
                   <label className="payment-field-label">
-                    NÚMERO DE REFERENCIA
-                    {(selectedPaymentTab !== 'split' || splitSecondaryMethod !== 'card') && <span className="text-red"> *</span>}
+                    NÚMERO DE REFERENCIA <span className="text-red"> *</span>
                   </label>
                   <div className="payment-input-wrap">
                     <input
@@ -1000,26 +1030,59 @@ export function Comandas() {
                 )}
 
                 {selectedPaymentTab === 'split' && (
-                  <div className="payment-field-group mt-3">
-                    <label className="payment-field-label">SEGUNDO MÉTODO</label>
-                    <select
-                      className="payment-field-input"
-                      value={splitSecondaryMethod}
-                      onChange={(event) => {
-                        setSplitSecondaryMethod(event.target.value as typeof splitSecondaryMethod)
+                  <div className="split-payment-grid mt-2">
+                    <section className="split-method-card">
+                      <div className="split-method-heading"><span className="split-method-number">1</span><span>Primer método</span></div>
+                      <select className="payment-field-input" value={splitPrimaryMethod} onChange={(event) => {
+                        setSplitPrimaryMethod(event.target.value as SplitPaymentMethod)
+                        setSplitPrimaryReference('')
                         setPaymentError('')
-                      }}
-                    >
-                      <option value="mobile">Pago móvil</option>
-                      <option value="card">Punto</option>
-                      <option value="transfer">Transferencia</option>
-                    </select>
+                      }}>
+                        {SPLIT_PAYMENT_METHODS.map(method => (
+                          <option key={method.method} value={method.method} disabled={method.method === splitSecondaryMethod}>{method.label}</option>
+                        ))}
+                      </select>
+                      <label className="payment-field-label">Monto del primer método</label>
+                      <div className="payment-input-wrap">
+                        <input type="number" min="0.01" step="0.01" className="payment-field-input" value={amountReceived} onChange={(event) => setAmountReceived(event.target.value)} />
+                        <span className="currency-tag-right">USD</span>
+                      </div>
+                      {(splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && (
+                        <>
+                          <label className="payment-field-label">Referencia del primer método *</label>
+                          <input type="text" className="payment-field-input" value={splitPrimaryReference} onChange={(event) => setSplitPrimaryReference(event.target.value)} placeholder="Ej. 876543210" />
+                        </>
+                      )}
+                    </section>
+
+                    <section className="split-method-card">
+                      <div className="split-method-heading"><span className="split-method-number">2</span><span>Segundo método</span></div>
+                      <select className="payment-field-input" value={splitSecondaryMethod} onChange={(event) => {
+                        setSplitSecondaryMethod(event.target.value as SplitPaymentMethod)
+                        setSplitSecondaryReference('')
+                        setPaymentError('')
+                      }}>
+                        {SPLIT_PAYMENT_METHODS.map(method => (
+                          <option key={method.method} value={method.method} disabled={method.method === splitPrimaryMethod}>{method.label}</option>
+                        ))}
+                      </select>
+                      <label className="payment-field-label">Monto del segundo método</label>
+                      <div className="split-readonly-amount">
+                        <MoneyWithBcv usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - (Number(amountReceived) || 0))} rate={paymentOrder.bcvRate} compact />
+                      </div>
+                      {(splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && (
+                        <>
+                          <label className="payment-field-label">Referencia del segundo método *</label>
+                          <input type="text" className="payment-field-input" value={splitSecondaryReference} onChange={(event) => setSplitSecondaryReference(event.target.value)} placeholder="Ej. 876543210" />
+                        </>
+                      )}
+                    </section>
                   </div>
                 )}
 
-                <div className="payment-field-group mt-3">
+                {selectedPaymentTab !== 'split' && <div className="payment-field-group mt-3">
                   <label className="payment-field-label">
-                    {selectedPaymentTab === 'split' ? 'MONTO EN EFECTIVO' : selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'}
+                    {selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'}
                     <span className="text-red"> *</span>
                   </label>
                   <div className="payment-input-wrap">
@@ -1032,11 +1095,9 @@ export function Comandas() {
                     <span className="currency-tag-right">USD</span>
                   </div>
                   <span className="payment-hint-sub">
-                    {selectedPaymentTab === 'split'
-                      ? <>El segundo método cubrirá <MoneyWithBcv usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - (Number(amountReceived) || 0))} rate={paymentOrder.bcvRate} compact />.</>
-                      : 'Monto a recibir por este método.'}
+                    Monto a recibir por este método.
                   </span>
-                </div>
+                </div>}
 
                 {paymentError && <div className="payment-error-message" role="alert">{paymentError}</div>}
 
@@ -1061,13 +1122,16 @@ export function Comandas() {
                     {selectedPaymentTab === 'split' ? (
                       <>
                         <div className="breakdown-row-item">
-                          <span className="row-item-left">💵 Efectivo</span>
+                          <span className="row-item-left">
+                            1. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.icon}{' '}
+                            {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.label}
+                          </span>
                           <MoneyWithBcv usd={Number(amountReceived) || 0} rate={paymentOrder.bcvRate} className="row-item-val" compact />
                         </div>
                         <div className="breakdown-row-item">
                           <span className="row-item-left">
-                            {PAYMENT_METHODS.find(p => p.method === splitSecondaryMethod)?.icon}{' '}
-                            {PAYMENT_METHODS.find(p => p.method === splitSecondaryMethod)?.label}
+                            2. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.icon}{' '}
+                            {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.label}
                           </span>
                           <MoneyWithBcv usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - (Number(amountReceived) || 0))} rate={paymentOrder.bcvRate} className="row-item-val" compact />
                         </div>

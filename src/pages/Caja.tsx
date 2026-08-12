@@ -67,6 +67,11 @@ const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; i
   { method: 'split', label: 'Pago combinado', icon: '🔀' },
 ]
 
+type SplitPaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer'
+const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
+  (item): item is { method: SplitPaymentMethod; label: string; icon: string } => item.method !== 'split' && item.method !== 'other',
+)
+
 const FOOD_IMAGES: Record<string, string> = {
   arroz: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
   noodles: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80',
@@ -186,7 +191,10 @@ export function Caja() {
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>('cash')
   const [refNumber, setRefNumber] = useState('')
   const [amountReceived, setAmountReceived] = useState('0.00')
-  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<'mobile' | 'card' | 'transfer'>('mobile')
+  const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
+  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
+  const [splitPrimaryReference, setSplitPrimaryReference] = useState('')
+  const [splitSecondaryReference, setSplitSecondaryReference] = useState('')
   const [paymentNote, setPaymentNote] = useState('')
 
   const [paying, setPaying] = useState(false)
@@ -319,7 +327,10 @@ export function Caja() {
     setSelectedPaymentTab('cash')
     setRefNumber('')
     setAmountReceived(total.toFixed(2))
+    setSplitPrimaryMethod('cash')
     setSplitSecondaryMethod('mobile')
+    setSplitPrimaryReference('')
+    setSplitSecondaryReference('')
     setPaymentNote('')
     setPayError('')
     setShowPaymentModal(true)
@@ -338,6 +349,8 @@ export function Caja() {
   const handleSelectPaymentTab = (method: PaymentMethod | 'split') => {
     setSelectedPaymentTab(method)
     setRefNumber('')
+    setSplitPrimaryReference('')
+    setSplitSecondaryReference('')
     setPayError('')
     setAmountReceived(method === 'split' ? (total / 2).toFixed(2) : total.toFixed(2))
   }
@@ -354,7 +367,6 @@ export function Caja() {
 
       const requiresReference = selectedPaymentTab === 'mobile'
         || selectedPaymentTab === 'transfer'
-        || (selectedPaymentTab === 'split' && splitSecondaryMethod !== 'card')
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
@@ -362,18 +374,34 @@ export function Caja() {
       let paymentComponents
       let finalMethod: PaymentMethod
       if (selectedPaymentTab === 'split') {
-        const cashAmount = Math.round(enteredAmount * 100) / 100
-        const secondaryAmount = Math.round((total - cashAmount) * 100) / 100
-        if (cashAmount <= 0 || secondaryAmount <= 0) {
+        const primaryAmount = Math.round(enteredAmount * 100) / 100
+        const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
+        if (primaryAmount <= 0 || secondaryAmount <= 0) {
           throw new Error('El pago combinado necesita dos montos mayores a cero')
+        }
+        if (splitPrimaryMethod === splitSecondaryMethod) {
+          throw new Error('Selecciona dos métodos de pago diferentes')
+        }
+        if ((splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && !splitPrimaryReference.trim()) {
+          throw new Error('Ingresa la referencia del primer método')
+        }
+        if ((splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && !splitSecondaryReference.trim()) {
+          throw new Error('Ingresa la referencia del segundo método')
         }
         finalMethod = 'other'
         paymentComponents = [
-          { method: 'cash' as const, amount: cashAmount, receivedAmount: cashAmount, notes: paymentNote || undefined },
+          {
+            method: splitPrimaryMethod,
+            amount: primaryAmount,
+            referenceNumber: splitPrimaryReference.trim() || undefined,
+            receivedAmount: splitPrimaryMethod === 'cash' ? primaryAmount : undefined,
+            notes: paymentNote || undefined,
+          },
           {
             method: splitSecondaryMethod,
             amount: secondaryAmount,
-            referenceNumber: refNumber.trim() || undefined,
+            referenceNumber: splitSecondaryReference.trim() || undefined,
+            receivedAmount: splitSecondaryMethod === 'cash' ? secondaryAmount : undefined,
             notes: paymentNote || undefined,
           },
         ]
@@ -399,7 +427,9 @@ export function Caja() {
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
-        referenceNumber: refNumber.trim() || null,
+        referenceNumber: selectedPaymentTab === 'split'
+          ? (splitPrimaryReference.trim() || splitSecondaryReference.trim() || null)
+          : (refNumber.trim() || null),
         receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : null,
         payments: paymentComponents,
       })
@@ -994,9 +1024,7 @@ export function Caja() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                {(selectedPaymentTab === 'mobile'
-                  || selectedPaymentTab === 'transfer'
-                  || (selectedPaymentTab === 'split' && splitSecondaryMethod !== 'card')) && (
+                {(selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer') && (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
                     <div className="payment-input-wrap">
@@ -1013,27 +1041,96 @@ export function Caja() {
                 )}
 
                 {selectedPaymentTab === 'split' && (
-                  <div className="payment-field-group mt-3">
-                    <label className="payment-field-label">SEGUNDO MÉTODO</label>
-                    <select
-                      className="payment-field-input"
-                      value={splitSecondaryMethod}
-                      onChange={(e) => {
-                        setSplitSecondaryMethod(e.target.value as 'mobile' | 'card' | 'transfer')
-                        setRefNumber('')
-                        setPayError('')
-                      }}
-                    >
-                      <option value="mobile">Pago móvil</option>
-                      <option value="card">Punto</option>
-                      <option value="transfer">Transferencia</option>
-                    </select>
+                  <div className="split-payment-grid mt-2">
+                    <section className="split-method-card">
+                      <div className="split-method-heading">
+                        <span className="split-method-number">1</span>
+                        <span>Primer método</span>
+                      </div>
+                      <select
+                        className="payment-field-input"
+                        value={splitPrimaryMethod}
+                        onChange={(e) => {
+                          setSplitPrimaryMethod(e.target.value as SplitPaymentMethod)
+                          setSplitPrimaryReference('')
+                          setPayError('')
+                        }}
+                      >
+                        {SPLIT_PAYMENT_METHODS.map(method => (
+                          <option key={method.method} value={method.method} disabled={method.method === splitSecondaryMethod}>
+                            {method.label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="payment-field-label">Monto del primer método</label>
+                      <div className="payment-input-wrap">
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          className="payment-field-input"
+                          value={amountReceived}
+                          onChange={(e) => setAmountReceived(e.target.value)}
+                        />
+                        <span className="currency-tag-right">USD</span>
+                      </div>
+                      {(splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && (
+                        <>
+                          <label className="payment-field-label">Referencia del primer método *</label>
+                          <input
+                            type="text"
+                            className="payment-field-input"
+                            value={splitPrimaryReference}
+                            onChange={(e) => setSplitPrimaryReference(e.target.value)}
+                            placeholder="Ej. 458921"
+                          />
+                        </>
+                      )}
+                    </section>
+
+                    <section className="split-method-card">
+                      <div className="split-method-heading">
+                        <span className="split-method-number">2</span>
+                        <span>Segundo método</span>
+                      </div>
+                      <select
+                        className="payment-field-input"
+                        value={splitSecondaryMethod}
+                        onChange={(e) => {
+                          setSplitSecondaryMethod(e.target.value as SplitPaymentMethod)
+                          setSplitSecondaryReference('')
+                          setPayError('')
+                        }}
+                      >
+                        {SPLIT_PAYMENT_METHODS.map(method => (
+                          <option key={method.method} value={method.method} disabled={method.method === splitPrimaryMethod}>
+                            {method.label}
+                          </option>
+                        ))}
+                      </select>
+                      <label className="payment-field-label">Monto del segundo método</label>
+                      <div className="split-readonly-amount">
+                        <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} compact />
+                      </div>
+                      {(splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && (
+                        <>
+                          <label className="payment-field-label">Referencia del segundo método *</label>
+                          <input
+                            type="text"
+                            className="payment-field-input"
+                            value={splitSecondaryReference}
+                            onChange={(e) => setSplitSecondaryReference(e.target.value)}
+                            placeholder="Ej. 458921"
+                          />
+                        </>
+                      )}
+                    </section>
                   </div>
                 )}
 
-                <div className="payment-field-group mt-3">
+                {selectedPaymentTab !== 'split' && <div className="payment-field-group mt-3">
                   <label className="payment-field-label">
-                    {selectedPaymentTab === 'split' ? 'MONTO EN EFECTIVO' : 'MONTO RECIBIDO'} <span className="text-red">*</span>
+                    MONTO RECIBIDO <span className="text-red">*</span>
                   </label>
                   <div className="payment-input-wrap">
                     <input
@@ -1045,11 +1142,9 @@ export function Caja() {
                     <span className="currency-tag-right">USD</span>
                   </div>
                   <span className="payment-hint-sub">
-                    {selectedPaymentTab === 'split'
-                      ? <>El segundo método cubrirá <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} compact />.</>
-                      : 'Monto a recibir por este método.'}
+                    Monto a recibir por este método.
                   </span>
-                </div>
+                </div>}
 
                 <div className="payment-field-group mt-3">
                   <label className="payment-field-label">NOTA (OPCIONAL)</label>
@@ -1070,12 +1165,16 @@ export function Caja() {
                     <span className="breakdown-card-title">Desglose de pago</span>
                     <div className="breakdown-rows-list">
                       <div className="breakdown-row-item">
-                        <span className="row-item-left">💵 Efectivo</span>
+                        <span className="row-item-left">
+                          1. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.icon}{' '}
+                          {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.label}
+                        </span>
                         <MoneyWithBcv usd={Number(amountReceived) || 0} className="row-item-val" compact />
                       </div>
                       <div className="breakdown-row-item">
                         <span className="row-item-left">
-                          {splitSecondaryMethod === 'mobile' ? '📱 Pago móvil' : splitSecondaryMethod === 'card' ? '💳 Punto' : '🏦 Transferencia'}
+                          2. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.icon}{' '}
+                          {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.label}
                         </span>
                         <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} className="row-item-val" compact />
                       </div>

@@ -584,9 +584,9 @@
 
 .payment-modal-box {
   width: 100%;
-  max-width: 840px;
+  max-width: 960px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   background: #18181b;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
@@ -608,6 +608,7 @@
 .payment-modal-header {
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .payment-modal-title {
@@ -640,6 +641,7 @@
   gap: 10px;
   overflow-x: auto;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
 }
 
 .payment-tab-btn {
@@ -666,6 +668,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .payment-sub-heading,
@@ -732,6 +736,58 @@
   flex-wrap: wrap;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   background: #141416;
+  flex-shrink: 0;
+}
+
+.split-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.split-method-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.split-method-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.split-method-number {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #dc2626;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+
+.split-readonly-amount {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: #151518;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .split-payment-grid { grid-template-columns: 1fr; }
 }
 
 .btn-confirm-payment-red,
