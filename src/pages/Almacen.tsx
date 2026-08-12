@@ -1,124 +1,181 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { AlertTriangle, ArrowRightLeft, CheckCircle2, DollarSign, Package, Plus, Warehouse } from 'lucide-react'
 import { adjustStock, getIngredients, getStockMovements } from '../lib/dataService'
-import { Package, ArrowRightLeft, AlertTriangle, DollarSign, Plus, CheckCircle2 } from 'lucide-react'
 import './Almacen.css'
 
+type WarehouseItem = {
+  id: string
+  unitId: string
+  name: string
+  category: string
+  quantity: number
+  costPerUnit: number
+  minStock: number
+  unit: string
+}
+
+type WarehouseTransfer = {
+  id: string
+  itemName: string
+  quantityTransferred: number
+  unit: string
+  date: string
+  operator: string
+  destination: string
+  status: 'completed'
+}
+
 export function Almacen() {
-  type WarehouseItem = { id: string; unitId: string; name: string; category: string; quantity: number; costPerUnit: number; minStock: number; unit: string }
-  type WarehouseTransfer = { id: string; itemName: string; quantityTransferred: number; unit: string; date: string; operator: string; destination: string; status: 'completed' }
   const [items, setItems] = useState<WarehouseItem[]>([])
   const [transfers, setTransfers] = useState<WarehouseTransfer[]>([])
-  
-  // Transfer Form State
-  const [selectedItemId, setSelectedItemId] = useState(items[0]?.id || '')
-  const [transferQty, setTransferQty] = useState<number>(10)
+  const [selectedItemId, setSelectedItemId] = useState('')
+  const [transferQty, setTransferQty] = useState(10)
   const [operator, setOperator] = useState('Usuario del sistema')
   const [successMsg, setSuccessMsg] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
 
   const totalValuation = items.reduce((sum, item) => sum + item.quantity * item.costPerUnit, 0)
   const criticalItems = items.filter(item => item.quantity <= item.minStock).length
 
   useEffect(() => {
     Promise.all([getIngredients(), getStockMovements()]).then(([ingredients, movements]) => {
-      setItems(ingredients.map(item => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol })))
+      setItems(ingredients.map(item => ({
+        id: item.id,
+        unitId: item.unitId,
+        name: item.name,
+        category: 'Insumo',
+        quantity: item.currentStock,
+        costPerUnit: item.pricePerUnit ?? 0,
+        minStock: 0,
+        unit: item.unitSymbol
+      })))
       setSelectedItemId(current => current || ingredients[0]?.id || '')
-      setTransfers(movements.filter(item => item.notes?.startsWith('Transferencia a operación')).map(item => ({ id: item.id, itemName: item.ingredientName, quantityTransferred: Math.abs(item.quantity), unit: item.unitSymbol, date: item.createdAt.slice(0, 10), operator: 'Usuario del sistema', destination: 'Operación', status: 'completed' })))
-    }).catch(error => setSuccessMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
+      setTransfers(movements
+        .filter(item => item.notes?.startsWith('Transferencia a operación'))
+        .map(item => ({
+          id: item.id,
+          itemName: item.ingredientName,
+          quantityTransferred: Math.abs(item.quantity),
+          unit: item.unitSymbol,
+          date: item.createdAt.slice(0, 10),
+          operator: 'Usuario del sistema',
+          destination: 'Operación',
+          status: 'completed'
+        })))
+    }).catch(error => setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
   }, [])
 
-  const handleTransfer = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const targetItem = items.find(i => i.id === selectedItemId)
+  const handleTransfer = async (event: FormEvent) => {
+    event.preventDefault()
+    const targetItem = items.find(item => item.id === selectedItemId)
     if (!targetItem || transferQty <= 0) return
 
     if (transferQty > targetItem.quantity) {
-      alert('La cantidad a transferir excede el stock disponible en Almacén.')
+      setSuccessMsg('')
+      setErrorMsg('La cantidad a transferir excede el stock disponible en almacén.')
       return
     }
 
-    await adjustStock({ ingredientId: targetItem.id, quantity: -transferQty, unitId: targetItem.unitId, movementType: 'adjustment', notes: 'Transferencia a operación' })
-    setItems(prev => prev.map(i => i.id === selectedItemId ? { ...i, quantity: i.quantity - transferQty } : i))
+    try {
+      await adjustStock({
+        ingredientId: targetItem.id,
+        quantity: -transferQty,
+        unitId: targetItem.unitId,
+        movementType: 'adjustment',
+        notes: 'Transferencia a operación'
+      })
 
-    // Create transfer log
-    const newTransfer: WarehouseTransfer = {
-      id: `wt-${Date.now()}`,
-      itemName: `${targetItem.name} (${transferQty} ${targetItem.unit})`,
-      quantityTransferred: transferQty,
-      unit: targetItem.unit,
-      date: new Date().toISOString().split('T')[0],
-      operator,
-      destination: 'Food Truck Inventario Operativo',
-      status: 'completed'
+      setItems(previous => previous.map(item => item.id === selectedItemId
+        ? { ...item, quantity: item.quantity - transferQty }
+        : item
+      ))
+
+      setTransfers(previous => [{
+        id: `wt-${Date.now()}`,
+        itemName: targetItem.name,
+        quantityTransferred: transferQty,
+        unit: targetItem.unit,
+        date: new Date().toISOString().split('T')[0],
+        operator,
+        destination: 'Food Truck Inventario Operativo',
+        status: 'completed'
+      }, ...previous])
+
+      setErrorMsg('')
+      setSuccessMsg(`Transferencia de ${transferQty} ${targetItem.unit} registrada correctamente.`)
+      setTimeout(() => setSuccessMsg(''), 4000)
+    } catch (error) {
+      setSuccessMsg('')
+      setErrorMsg(error instanceof Error ? error.message : 'No se pudo registrar la transferencia')
     }
-
-    setTransfers(prev => [newTransfer, ...prev])
-    setSuccessMsg(`¡Transferencia de ${transferQty} ${targetItem.unit} a Food Truck registrada con éxito!`)
-    setTimeout(() => setSuccessMsg(''), 4000)
   }
 
   return (
     <div className="almacen-page">
-      {/* 4 Metric Cards */}
-      <div className="almacen-metrics-grid">
-        <div className="almacen-metric-card">
-          <div className="metric-icon-box red">
-            <Package size={24} />
+      <header className="almacen-page-header">
+        <div className="almacen-page-title-wrap">
+          <div className="almacen-page-icon"><Warehouse size={24} /></div>
+          <div>
+            <p className="almacen-eyebrow">OPERACIÓN · ABASTECIMIENTO</p>
+            <h1>Almacén principal</h1>
+            <p>Controla la materia prima antes de enviarla al Food Truck.</p>
           </div>
+        </div>
+        <div className="almacen-header-note">
+          <span className="almacen-live-dot" />
+          Inventario actualizado
+        </div>
+      </header>
+
+      <section className="almacen-metrics-grid" aria-label="Resumen del almacén">
+        <div className="almacen-metric-card accent-red">
+          <div className="metric-icon-box"><Package size={22} /></div>
           <div className="metric-info-group">
-            <span className="metric-label">Insumos en Almacén</span>
-            <span className="metric-large-val">{items.length} Tipos</span>
-            <span className="metric-sub-text">Materia prima almacenada</span>
+            <span className="metric-label">Insumos en almacén</span>
+            <strong className="metric-large-val">{items.length}</strong>
+            <span className="metric-sub-text">Tipos de materia prima</span>
           </div>
         </div>
 
-        <div className="almacen-metric-card">
-          <div className="metric-icon-box green">
-            <DollarSign size={24} />
-          </div>
+        <div className="almacen-metric-card accent-green">
+          <div className="metric-icon-box"><DollarSign size={22} /></div>
           <div className="metric-info-group">
-            <span className="metric-label">Valorización Almacén</span>
-            <span className="metric-large-val">${totalValuation.toFixed(2)}</span>
+            <span className="metric-label">Valorización</span>
+            <strong className="metric-large-val">${totalValuation.toFixed(2)}</strong>
             <span className="metric-sub-text">Valor total a costo</span>
           </div>
         </div>
 
-        <div className="almacen-metric-card">
-          <div className="metric-icon-box purple">
-            <ArrowRightLeft size={24} />
-          </div>
+        <div className="almacen-metric-card accent-purple">
+          <div className="metric-icon-box"><ArrowRightLeft size={22} /></div>
           <div className="metric-info-group">
-            <span className="metric-label">Transferencias Hoy</span>
-            <span className="metric-large-val">{transfers.length} Envío(s)</span>
-            <span className="metric-sub-text">Al Food Truck</span>
+            <span className="metric-label">Transferencias hoy</span>
+            <strong className="metric-large-val">{transfers.length}</strong>
+            <span className="metric-sub-text">Envíos al Food Truck</span>
           </div>
         </div>
 
-        <div className="almacen-metric-card">
-          <div className="metric-icon-box orange">
-            <AlertTriangle size={24} />
-          </div>
+        <div className="almacen-metric-card accent-orange">
+          <div className="metric-icon-box"><AlertTriangle size={22} /></div>
           <div className="metric-info-group">
-            <span className="metric-label">Stock Crítico</span>
-            <span className="metric-large-val">{criticalItems} Insumo(s)</span>
+            <span className="metric-label">Stock crítico</span>
+            <strong className="metric-large-val">{criticalItems}</strong>
             <span className="metric-sub-text">Por debajo de mínimo</span>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Main 2 Column Section */}
       <div className="almacen-main-grid">
-        {/* Left Column: Warehouse Inventory List */}
-        <div className="almacen-card">
-          <div className="prod-card-header-bar">
+        <section className="almacen-card inventory-card">
+          <div className="almacen-card-header">
             <div className="header-title-group">
-              <div className="card-header-icon-red">
-                <Package size={18} />
-              </div>
+              <div className="card-header-icon"><Package size={18} /></div>
               <div>
-                <h2 className="prod-card-title">Inventario Almacén Principal</h2>
-                <span className="metric-sub-text">Insumos y materia prima antes de trasvasar al Food Truck</span>
+                <h2 className="almacen-card-title">Inventario disponible</h2>
+                <p className="almacen-card-description">Insumos listos para transferir a la operación.</p>
               </div>
             </div>
+            <span className="almacen-count-pill">{items.length} insumos</span>
           </div>
 
           <div className="table-responsive-wrapper">
@@ -127,24 +184,27 @@ export function Almacen() {
                 <tr>
                   <th>Insumo</th>
                   <th>Categoría</th>
-                  <th>Stock Almacén</th>
-                  <th>Costo/Unid</th>
-                  <th>Valor Total</th>
+                  <th>Stock</th>
+                  <th>Costo / unidad</th>
+                  <th>Valor total</th>
                   <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => {
+                {items.length === 0 ? (
+                  <tr><td colSpan={6} className="almacen-empty-cell">No hay insumos registrados en el almacén.</td></tr>
+                ) : items.map(item => {
                   const isLow = item.quantity <= item.minStock
                   return (
                     <tr key={item.id}>
-                      <td style={{ fontWeight: 700, color: '#fff' }}>{item.name}</td>
-                      <td>{item.category}</td>
-                      <td style={{ fontWeight: 800 }}>{item.quantity} {item.unit}</td>
+                      <td className="almacen-item-name">{item.name}</td>
+                      <td><span className="almacen-category">{item.category}</span></td>
+                      <td className="almacen-stock-value">{item.quantity} <small>{item.unit}</small></td>
                       <td>${item.costPerUnit.toFixed(2)}</td>
-                      <td>${(item.quantity * item.costPerUnit).toFixed(2)}</td>
+                      <td className="almacen-total-value">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
                       <td>
                         <span className={`badge-stock ${isLow ? 'low' : 'normal'}`}>
+                          <span className="status-dot" />
                           {isLow ? 'Crítico' : 'Suficiente'}
                         </span>
                       </td>
@@ -154,93 +214,74 @@ export function Almacen() {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
 
-        {/* Right Column: Transfer to Food Truck Form & Logs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="almacen-card">
-            <div className="prod-card-header-bar">
+        <aside className="almacen-side-column">
+          <section className="almacen-card">
+            <div className="almacen-card-header">
               <div className="header-title-group">
-                <div className="card-header-icon-red" style={{ background: '#7c3aed' }}>
-                  <ArrowRightLeft size={18} />
-                </div>
+                <div className="card-header-icon purple-icon"><ArrowRightLeft size={18} /></div>
                 <div>
-                  <h3 className="prod-card-title">Transferir al Food Truck</h3>
-                  <span className="metric-sub-text">Despachar porciones o insumos a la operación</span>
+                  <h2 className="almacen-card-title">Nueva transferencia</h2>
+                  <p className="almacen-card-description">Despacha insumos al inventario operativo.</p>
                 </div>
               </div>
             </div>
 
-            {successMsg && (
-              <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle2 size={16} />
-                <span>{successMsg}</span>
-              </div>
-            )}
+            {successMsg && <div className="almacen-feedback success" role="status"><CheckCircle2 size={16} /><span>{successMsg}</span></div>}
+            {errorMsg && <div className="almacen-feedback error" role="alert">{errorMsg}</div>}
 
             <form onSubmit={handleTransfer} className="transfer-form-box">
               <div className="select-field-group">
-                <label className="field-label">Seleccionar Insumo de Almacén</label>
-                <select 
-                  className="field-select"
-                  value={selectedItemId}
-                  onChange={e => setSelectedItemId(e.target.value)}
-                >
-                  {items.map(i => (
-                    <option key={i.id} value={i.id}>
-                      {i.name} (Stock: {i.quantity} {i.unit})
-                    </option>
-                  ))}
+                <label className="field-label" htmlFor="warehouse-item">Insumo de almacén</label>
+                <select id="warehouse-item" className="field-select" value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>
+                  {items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}
                 </select>
               </div>
 
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div className="select-field-group flex-1">
-                  <label className="field-label">Cantidad a Transferir</label>
-                  <input 
-                    type="number"
-                    min="1"
-                    className="field-select"
-                    value={transferQty}
-                    onChange={e => setTransferQty(Number(e.target.value))}
-                  />
+              <div className="transfer-fields-grid">
+                <div className="select-field-group">
+                  <label className="field-label" htmlFor="transfer-quantity">Cantidad</label>
+                  <input id="transfer-quantity" type="number" min="1" className="field-select" value={transferQty} onChange={event => setTransferQty(Number(event.target.value))} />
                 </div>
-
-                <div className="select-field-group flex-1">
-                  <label className="field-label">Operador Responsable</label>
-                  <select 
-                    className="field-select"
-                    value={operator}
-                    onChange={e => setOperator(e.target.value)}
-                  >
+                <div className="select-field-group">
+                  <label className="field-label" htmlFor="transfer-operator">Operador responsable</label>
+                  <select id="transfer-operator" className="field-select" value={operator} onChange={event => setOperator(event.target.value)}>
                     <option value="Usuario del sistema">Usuario del sistema</option>
                   </select>
                 </div>
               </div>
 
-              <button type="submit" className="btn-primary-red" style={{ marginTop: '8px' }}>
-                <Plus size={16} />
-                <span>Transferir al Food Truck</span>
+              <button type="submit" className="btn-primary-red" disabled={!selectedItemId}>
+                <Plus size={17} />
+                Transferir al Food Truck
               </button>
             </form>
-          </div>
+          </section>
 
-          {/* Transfers History */}
-          <div className="almacen-card">
-            <h3 className="prod-card-title" style={{ fontSize: '14px' }}>Historial de Transferencias</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {transfers.map(tr => (
-                <div key={tr.id} style={{ background: '#141416', padding: '10px 12px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)', fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <section className="almacen-card">
+            <div className="history-header">
+              <div>
+                <h2 className="almacen-card-title">Historial de transferencias</h2>
+                <p className="almacen-card-description">Últimos movimientos hacia la operación.</p>
+              </div>
+              <ArrowRightLeft size={18} className="history-header-icon" />
+            </div>
+            <div className="transfer-history-list">
+              {transfers.length === 0 ? (
+                <div className="history-empty">Aún no hay transferencias registradas.</div>
+              ) : transfers.map(transfer => (
+                <div key={transfer.id} className="transfer-history-item">
                   <div>
-                    <span style={{ color: '#fff', fontWeight: 700, display: 'block' }}>{tr.itemName}</span>
-                    <span style={{ color: '#71717a', fontSize: '11px' }}>Operador: {tr.operator} • {tr.date}</span>
+                    <span className="history-item-name">{transfer.itemName}</span>
+                    <span className="history-item-meta">{transfer.quantityTransferred} {transfer.unit} · {transfer.operator} · {transfer.date}</span>
                   </div>
-                  <span style={{ color: '#10b981', fontWeight: 700, fontSize: '11px', background: 'rgba(16, 185, 129, 0.12)', padding: '2px 8px', borderRadius: '6px' }}>Enviado</span>
+                  <span className="history-status">Enviado</span>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+          </section>
+        </aside>
       </div>
     </div>
   )
