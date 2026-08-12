@@ -34,7 +34,7 @@ type Role = 'owner' | 'manager' | 'cashier'
 
 function RoleRoute({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
   const { user } = useAuth()
-  if (!user || !roles.includes(user.role)) return <Navigate to="/" replace />
+  if (!user || !roles.includes(user.role)) return <Navigate to="/caja" replace />
   return <>{children}</>
 }
 
@@ -72,14 +72,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={<Inicio />} />
+        <Route path="/" element={forRoles(['owner', 'manager'], <Inicio />)} />
         <Route path="/caja" element={<Caja />} />
-        <Route path="/caja-operativa" element={<CajaOperativa />} />
+        <Route path="/caja-operativa" element={forRoles(['owner', 'manager'], <CajaOperativa />)} />
         <Route path="/comandas" element={<Comandas />} />
-        <Route path="/cocina" element={<Cocina />} />
-        <Route path="/clientes" element={<Clientes />} />
+        <Route path="/cocina" element={forRoles(['owner', 'manager'], <Cocina />)} />
+        <Route path="/clientes" element={forRoles(['owner', 'manager'], <Clientes />)} />
         <Route path="/almacen" element={forRoles(['owner', 'manager'], <Almacen />)} />
-        <Route path="/inventario" element={<Inventario />} />
+        <Route path="/inventario" element={forRoles(['owner', 'manager'], <Inventario />)} />
         <Route path="/produccion" element={forRoles(['owner', 'manager'], <Produccion />)} />
         <Route path="/recetas" element={forRoles(['owner', 'manager'], <Recetas />)} />
         <Route path="/menu-semanal" element={forRoles(['owner', 'manager'], <MenuSemanal />)} />
