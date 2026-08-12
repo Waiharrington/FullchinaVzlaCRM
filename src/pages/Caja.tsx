@@ -51,6 +51,7 @@ import {
   Landmark,
   Hexagon,
   BadgeDollarSign,
+  IdCard,
 } from 'lucide-react'
 import './Caja.css'
 
@@ -179,6 +180,7 @@ export function Caja() {
   const [showNewClientModal, setShowNewClientModal] = useState(false)
   const [newClientName, setNewClientName] = useState('')
   const [newClientLastName, setNewClientLastName] = useState('')
+  const [newClientIdentification, setNewClientIdentification] = useState('')
   const [newClientPhone, setNewClientPhone] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
   const [birthDay, setBirthDay] = useState('')
@@ -219,9 +221,10 @@ export function Caja() {
     try {
       const fullName = `${firstName} ${newClientLastName.trim()}`.trim()
       const initials = (firstName[0] + (newClientLastName.trim()[0] || '')).toUpperCase()
+      const identification = newClientIdentification.trim()
       const phone = newClientPhone.trim()
       const birthDate = birthMonth && birthDay ? `2000-${birthMonth}-${birthDay.padStart(2, '0')}` : undefined
-      const saved = await createCustomer({ name: fullName, phone, birthDate })
+      const saved = await createCustomer({ name: fullName, identification, phone, birthDate })
 
       const newCust: CustomerOption = {
         id: saved.id,
@@ -236,6 +239,7 @@ export function Caja() {
       setShowNewClientModal(false)
       setNewClientName('')
       setNewClientLastName('')
+      setNewClientIdentification('')
       setNewClientPhone('')
       setBirthMonth('')
       setBirthDay('')
@@ -1380,6 +1384,23 @@ export function Caja() {
                   onChange={(e) => setNewClientLastName(e.target.value)}
                   className="modal-input-dark"
                 />
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Cédula / RIF <span className="field-optional">Opcional</span></label>
+                <div className="input-with-icon-wrap">
+                  <IdCard size={16} className="input-left-icon" />
+                  <input
+                    type="text"
+                    inputMode="text"
+                    autoComplete="off"
+                    placeholder="Ej. V-12345678"
+                    value={newClientIdentification}
+                    onChange={(e) => setNewClientIdentification(e.target.value)}
+                    className="modal-input-dark with-left-icon"
+                    maxLength={24}
+                  />
+                </div>
               </div>
 
               <div className="field mt-3">

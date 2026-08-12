@@ -1250,9 +1250,10 @@ export async function getCustomers(): Promise<Customer[]> {
   }))
 }
 
-export async function createCustomer(params: { name: string; phone?: string; birthDate?: string }): Promise<Customer> {
+export async function createCustomer(params: { name: string; identification?: string; phone?: string; birthDate?: string }): Promise<Customer> {
   const { data, error } = await client().rpc('fn_create_customer', {
     p_full_name: params.name,
+    p_identification: params.identification || null,
     p_phone: params.phone || null,
     p_birth_date: params.birthDate || null,
   }).single()
