@@ -13,7 +13,7 @@ import {
 import './CajaOperativa.css'
 
 const PAYMENT_LABELS: Record<string, string> = {
-  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', other: 'Combinado',
+  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Combinado',
 }
 
 function money(value: number, currency: 'USD' | 'VES' = 'USD') {

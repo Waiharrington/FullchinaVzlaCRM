@@ -114,7 +114,7 @@ export function Reportes() {
     paymentMethodSales.forEach(p => { methodMap[p.method] = p.total })
     return {
       labels: Object.keys(methodMap).map(k =>
-        k === 'cash' ? 'Efectivo' : k === 'card' ? 'Tarjeta' : k === 'transfer' ? 'Transferencia' : k
+        k === 'cash' ? 'Efectivo' : k === 'mobile' ? 'Pago móvil' : k === 'card' ? 'Punto' : k === 'transfer' ? 'Transferencia' : k === 'binance' ? 'Binance' : k === 'zelle' ? 'Zelle' : k
       ),
       datasets: [{
         data: Object.values(methodMap),

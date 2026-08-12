@@ -40,7 +40,7 @@ export interface CartItem {
   emoji?: string
 }
 
-export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'other'
+export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle' | 'other'
 
 export interface OrderPaymentComponent {
   method: PaymentMethod

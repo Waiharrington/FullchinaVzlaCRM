@@ -35,25 +35,38 @@ import {
   FileText,
   X,
   QrCode,
-  ShieldCheck
+  ShieldCheck,
+  Banknote,
+  Smartphone,
+  Landmark,
+  Hexagon,
+  BadgeDollarSign,
+  Split,
 } from 'lucide-react'
 import './Comandas.css'
 
 const PAYMENT_METHODS = [
-  { method: 'cash', label: 'Efectivo', icon: '💵' },
-  { method: 'mobile', label: 'Pago móvil', icon: '📱' },
-  { method: 'card', label: 'Punto', icon: '💳' },
-  { method: 'transfer', label: 'Transferencia', icon: '🏦' },
-  { method: 'split', label: 'Pago combinado', icon: '🔀' },
+  { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
+  { method: 'mobile', label: 'Pago móvil', icon: <Smartphone size={16} strokeWidth={1.8} /> },
+  { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
+  { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
+  { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
+  { method: 'zelle', label: 'Zelle', icon: <BadgeDollarSign size={16} strokeWidth={1.8} /> },
+  { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ] as const
 
-type SplitPaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer'
+type SplitPaymentMethod = Exclude<PaymentMethod, 'other'>
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split',
 )
-const usesBolivares = (method: SplitPaymentMethod) => method !== 'cash'
-const requiresPaymentReference = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
-const paymentReferenceLabel = (method: SplitPaymentMethod) => method === 'card' ? 'Referencia del voucher del punto *' : 'Número de referencia *'
+const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
+const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
+const paymentReferenceLabel = (method: SplitPaymentMethod) => {
+  if (method === 'card') return 'Referencia del voucher del punto *'
+  if (method === 'binance') return 'ID de transacción de Binance *'
+  if (method === 'zelle') return 'Confirmación de Zelle *'
+  return 'Número de referencia *'
+}
 const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return 0
@@ -120,7 +133,7 @@ export function Comandas() {
   // Modal de cobro directo desde Comandas
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<ComandaOrder | null>(null)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<'cash' | 'mobile' | 'card' | 'transfer' | 'split'>('cash')
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<SplitPaymentMethod | 'split'>('cash')
   const [refNumber, setRefNumber] = useState('')
   const [amountReceived, setAmountReceived] = useState('')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
@@ -258,10 +271,16 @@ export function Comandas() {
         mobile: 'Pago: Pago móvil',
         card: 'Pago: Punto',
         transfer: 'Pago: Transferencia',
+        binance: 'Pago: Binance',
+        zelle: 'Pago: Zelle',
         split: 'Pago combinado',
       }
       const methodLabel = methodLabels[selectedPaymentTab] || 'Pago: Efectivo'
-      const payType: ComandaOrder['paymentType'] = selectedPaymentTab === 'split' ? 'card' : (selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer' ? 'app' : selectedPaymentTab)
+      const payType: ComandaOrder['paymentType'] = selectedPaymentTab === 'cash'
+        ? 'cash'
+        : selectedPaymentTab === 'card' || selectedPaymentTab === 'split'
+          ? 'card'
+          : 'app'
       const paymentReference = selectedPaymentTab === 'split'
         ? [splitPrimaryReference.trim() && `Método 1: ${splitPrimaryReference.trim()}`, splitSecondaryReference.trim() && `Método 2: ${splitSecondaryReference.trim()}`].filter(Boolean).join(' · ')
         : refNumber.trim()
@@ -341,6 +360,8 @@ export function Comandas() {
               mobile: 'Pago móvil',
               card: 'Punto',
               transfer: 'Transferencia',
+              binance: 'Binance',
+              zelle: 'Zelle',
               other: 'Otro',
             }
             const persistedPaymentLabel = paymentMethods.length > 1

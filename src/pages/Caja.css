@@ -1717,6 +1717,15 @@
 .payment-accepted-section { gap: 8px; padding-top: 2px; }
 .accepted-title { color: #66666e; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
 .payment-badge-pill { padding: 4px 7px; border-radius: 999px; background: rgba(255,255,255,.025); }
+.order-type-icon,
+.payment-badge-pill,
+.payment-tab-btn > span:first-child { color: #fff; }
+.order-type-icon,
+.payment-tab-btn > span:first-child { display: inline-grid; place-items: center; }
+.payment-badge-pill { display: inline-flex; align-items: center; gap: 5px; }
+.payment-badge-pill svg,
+.payment-tab-btn svg,
+.order-type-icon svg { flex: 0 0 auto; stroke: currentColor; }
 
 @media (max-width: 1100px) {
   .cart-action-buttons { flex-direction: column; }

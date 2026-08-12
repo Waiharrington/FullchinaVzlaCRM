@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
@@ -41,7 +41,16 @@ import {
   Plus,
   Minus,
   Trash2,
-  Search
+  Search,
+  UtensilsCrossed,
+  ShoppingBag as TakeawayBag,
+  Bike,
+  Banknote,
+  Smartphone,
+  CreditCard,
+  Landmark,
+  Hexagon,
+  BadgeDollarSign,
 } from 'lucide-react'
 import './Caja.css'
 
@@ -63,28 +72,35 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 const CATEGORY_ORDER = ['arroz', 'noodles', 'lumpia', 'combo', 'proteina', 'bebida', 'extra', 'plato', 'wok', 'pollo_camaron', 'racion']
 
-const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: string }> = {
-  'dine-in': { label: 'Mesa', icon: '🪑' },
-  takeaway: { label: 'Para llevar', icon: '🛍️' },
-  delivery: { label: 'Delivery', icon: '🛵' },
+const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> = {
+  'dine-in': { label: 'Mesa', icon: <UtensilsCrossed size={18} strokeWidth={1.8} /> },
+  takeaway: { label: 'Para llevar', icon: <TakeawayBag size={18} strokeWidth={1.8} /> },
+  delivery: { label: 'Delivery', icon: <Bike size={18} strokeWidth={1.8} /> },
 }
 
-const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: string }> = [
-  { method: 'cash', label: 'Efectivo', icon: '💵' },
-  { method: 'mobile', label: 'Pago móvil', icon: '📱' },
-  { method: 'card', label: 'Punto', icon: '💳' },
-  { method: 'transfer', label: 'Transferencia', icon: '🏦' },
-  { method: 'split', label: 'Pago combinado', icon: '🔀' },
+const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: ReactNode }> = [
+  { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
+  { method: 'mobile', label: 'Pago móvil', icon: <Smartphone size={16} strokeWidth={1.8} /> },
+  { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
+  { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
+  { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
+  { method: 'zelle', label: 'Zelle', icon: <BadgeDollarSign size={16} strokeWidth={1.8} /> },
+  { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ]
 
-type SplitPaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer'
+type SplitPaymentMethod = Exclude<PaymentMethod, 'other'>
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
-  (item): item is { method: SplitPaymentMethod; label: string; icon: string } => item.method !== 'split' && item.method !== 'other',
+  (item): item is { method: SplitPaymentMethod; label: string; icon: ReactNode } => item.method !== 'split' && item.method !== 'other',
 )
 
-const usesBolivares = (method: SplitPaymentMethod) => method !== 'cash'
-const requiresPaymentReference = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
-const paymentReferenceLabel = (method: SplitPaymentMethod) => method === 'card' ? 'Referencia del voucher del punto *' : 'Número de referencia *'
+const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
+const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
+const paymentReferenceLabel = (method: SplitPaymentMethod) => {
+  if (method === 'card') return 'Referencia del voucher del punto *'
+  if (method === 'binance') return 'ID de transacción de Binance *'
+  if (method === 'zelle') return 'Confirmación de Zelle *'
+  return 'Número de referencia *'
+}
 const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return 0
@@ -494,7 +510,11 @@ export function Caja() {
           ? 'Punto'
           : currentOrder.paymentMethod === 'transfer'
             ? 'Transferencia'
-            : 'Pago combinado'
+            : currentOrder.paymentMethod === 'binance'
+              ? 'Binance'
+              : currentOrder.paymentMethod === 'zelle'
+                ? 'Zelle'
+                : 'Pago combinado'
 
     return (
       <div className="page animate-fade-in">
@@ -947,7 +967,7 @@ export function Caja() {
             <div className="cart-field-col mt-2">
               <label className="cart-label">Tipo de pedido</label>
               <div className="order-type-buttons">
-                {(Object.entries(ORDER_TYPE_LABELS) as Array<[OrderType, { label: string; icon: string }]>).map(([key, val]) => (
+                {(Object.entries(ORDER_TYPE_LABELS) as Array<[OrderType, { label: string; icon: ReactNode }]>).map(([key, val]) => (
                   <button
                     key={key}
                     className={`order-type-card ${orderType === key ? 'active' : ''}`}

@@ -47,7 +47,11 @@ export function generateReceipt(data: ReceiptData): jsPDF {
         ? 'Punto'
         : data.paymentMethod === 'transfer'
           ? 'Transferencia'
-          : 'Pago combinado'
+          : data.paymentMethod === 'binance'
+            ? 'Binance'
+            : data.paymentMethod === 'zelle'
+              ? 'Zelle'
+              : 'Pago combinado'
   doc.text(`Pago: ${paymentLabel}`, margin, y)
   y += 7
 

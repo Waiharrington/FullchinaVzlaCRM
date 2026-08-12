@@ -1304,3 +1304,9 @@
 .cmd-btn-cobrar:hover {
   background: #059669;
 }
+
+.payment-tab-btn > span:first-child,
+.payment-method-row .row-item-left { color: #fff; }
+.payment-tab-btn > span:first-child { display: inline-grid; place-items: center; }
+.payment-tab-btn svg,
+.payment-method-row svg { flex: 0 0 auto; stroke: currentColor; }

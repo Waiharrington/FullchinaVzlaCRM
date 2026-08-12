@@ -55,6 +55,13 @@
   gap: 9px;
 }
 
+.payment-method-select-value > span[aria-hidden='true'] {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #fff;
+}
+
 .payment-method-select-menu {
   position: absolute;
   top: calc(100% + 6px);
