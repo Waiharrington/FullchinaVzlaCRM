@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
@@ -157,6 +157,7 @@ export function Caja() {
   const { user } = useAuth()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, error: bcvError, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [products, setProducts] = useState<Product[]>(cajaCache?.products ?? [])
   const [todayOrders, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
@@ -204,6 +205,17 @@ export function Caja() {
       initials: customer.name.split(' ').slice(0, 2).map(part => part[0] || '').join('').toUpperCase(),
       phone: customer.phone,
     })))).catch(error => console.error('getCustomers error:', error))
+  }, [])
+
+  // Cliente pre-seleccionado al venir desde el perfil de un cliente ("Nuevo pedido").
+  useEffect(() => {
+    const incoming = (location.state as { customerName?: string } | null)?.customerName
+    if (incoming) {
+      setCustomerName(incoming)
+      // Limpiar el state para que no reaparezca al refrescar o volver.
+      navigate(location.pathname, { replace: true, state: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleCreateNewClientFromCaja = async (e: React.FormEvent) => {

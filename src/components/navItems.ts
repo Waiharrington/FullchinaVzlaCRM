@@ -9,7 +9,6 @@ import {
   PiggyBank,
   Users,
   DollarSign,
-  ShieldCheck,
   BarChart3,
   Settings,
   Building2,
@@ -46,7 +45,6 @@ export const allNavItems: NavItem[] = [
   { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Gestión' },
   { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/auditoria', label: 'Auditoría', icon: ShieldCheck, roles: ['owner'], group: 'Gestión' },
   { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Gestión' }
 ]

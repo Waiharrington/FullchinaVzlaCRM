@@ -256,13 +256,6 @@ export function Mas() {
             <span className="shortcut-desc">Sueldos base, adelantos y comisiones</span>
           </div>
         </a>
-        <a href="/auditoria" className="card shortcut-card">
-          <span className="shortcut-icon">🛡️</span>
-          <div className="shortcut-info">
-            <span className="shortcut-title">Auditoría y Registro</span>
-            <span className="shortcut-desc">Bitácora de anulaciones y precios</span>
-          </div>
-        </a>
       </div>
 
       <div className="tabs">

@@ -1,7 +1,21 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
-import { getCredits, addCreditPayment, createCustomer, getCustomers, type Credit as CreditType, type Customer } from '../lib/dataService'
+import {
+  getCredits,
+  getCreditPayments,
+  addCreditPayment,
+  createCustomer,
+  getCustomers,
+  getCustomerOrders,
+  getCustomerPurchaseMetrics,
+  type Credit as CreditType,
+  type CreditPayment,
+  type Customer,
+  type CustomerOrderSummary,
+  type CustomerPurchaseMetric,
+} from '../lib/dataService'
 import {
   Search,
   Users,
@@ -15,9 +29,6 @@ import {
   Eye,
   Edit2,
   MoreVertical,
-  ChevronLeft,
-  ChevronRight,
-  TrendingUp,
   X,
   Phone,
   Gift,
@@ -25,8 +36,6 @@ import {
   ShoppingBag,
   Ticket,
   MapPin,
-  Copy,
-  Star
 } from 'lucide-react'
 import './Clientes.css'
 
@@ -43,16 +52,50 @@ interface CustomerRow {
   phone: string
   identification: string
   identificationStatus: 'verified_format' | 'legacy_review' | 'missing'
-  type: 'Minorista' | 'Mayorista'
   lastPurchase: string
   totalPurchased: number
   pendingBalance: number
-  status: 'Crédito' | 'Frecuente' | 'Activo'
+  status: 'Crédito' | 'Frecuente' | 'Activo' | 'Inactivo'
 }
 
-const FOOD_FAVORITES: Array<{ rank: string; name: string; orders: string; img: string }> = []
+function formatDate(value: string): string {
+  if (!value) return '—'
+  const d = new Date(value.length <= 10 ? `${value}T12:00:00` : value)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
 
-const CUSTOMER_ORDERS_HISTORY: Array<{ id: string; date: string; type: string; products: string; total: number; status: string; payment: string }> = []
+function formatDateTime(value: string): string {
+  if (!value) return '—'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatUsdText(value: number): string {
+  return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(value)
+}
+
+const normalizeCustomerName = (value: string) => value.trim().toLocaleLowerCase('es-VE')
+
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  'dine-in': 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery',
+}
+
+const FULFILLMENT_LABELS: Record<string, string> = {
+  new: 'Nueva', preparing: 'En preparación', ready: 'Lista', delivered: 'Entregada', cancelled: 'Cancelada',
+}
+
+function formatBirthday(value: string): string {
+  if (!value) return ''
+  const d = new Date(`${value.slice(0, 10)}T12:00:00`)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })
+}
+
+const PAYMENT_LABELS: Record<string, string> = {
+  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto',
+  transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+}
 
 function classifyIdentification(value: string): CustomerRow['identificationStatus'] {
   const normalized = value.trim()
@@ -65,16 +108,17 @@ function classifyIdentification(value: string): CustomerRow['identificationStatu
 
 export function Clientes() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
 
   // Selected customer for Profile View matching target screenshot
   const [selectedClient, setSelectedClient] = useState<CustomerRow | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [purchaseMetrics, setPurchaseMetrics] = useState<CustomerPurchaseMetric[]>([])
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [typeFilter, setTypeFilter] = useState('all')
   const [identityFilter, setIdentityFilter] = useState('all')
 
   // Modals
@@ -89,12 +133,56 @@ export function Clientes() {
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [showCobrarModal, setShowCobrarModal] = useState(false)
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrderSummary[]>([])
+  const [customerCreditPayments, setCustomerCreditPayments] = useState<CreditPayment[]>([])
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileError, setProfileError] = useState('')
+
+  useEffect(() => {
+    if (!selectedClient) {
+      setCustomerOrders([])
+      setCustomerCreditPayments([])
+      setProfileError('')
+      return
+    }
+
+    let cancelled = false
+    const customerCredits = credits.filter(
+      (credit) => normalizeCustomerName(credit.customerName) === normalizeCustomerName(selectedClient.name),
+    )
+    setProfileLoading(true)
+    setProfileError('')
+    Promise.all([
+      getCustomerOrders(selectedClient.name),
+      Promise.all(customerCredits.map((credit) => getCreditPayments(credit.id))),
+    ])
+      .then(([orders, paymentGroups]) => {
+        if (cancelled) return
+        setCustomerOrders(orders)
+        setCustomerCreditPayments(paymentGroups.flat().sort((a, b) => b.createdAt.localeCompare(a.createdAt)))
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error('Error cargando la ficha real del cliente:', error)
+        setCustomerOrders([])
+        setCustomerCreditPayments([])
+        setProfileError('No se pudo cargar toda la actividad del cliente.')
+      })
+      .finally(() => { if (!cancelled) setProfileLoading(false) })
+
+    return () => { cancelled = true }
+  }, [selectedClient, credits])
 
   const fetchCredits = useCallback(async () => {
     try {
-      const [creditData, customerData] = await Promise.all([getCredits(), getCustomers()])
+      const [creditData, customerData, metricData] = await Promise.all([
+        getCredits(),
+        getCustomers(),
+        getCustomerPurchaseMetrics(),
+      ])
       setCredits(creditData)
       setCustomers(customerData)
+      setPurchaseMetrics(metricData)
       creditsCache = creditData
     } catch (e) {
       console.error('Error cargando créditos:', e)
@@ -132,7 +220,6 @@ export function Clientes() {
       phone: saved.phone,
       identification: saved.identification,
       identificationStatus: classifyIdentification(saved.identification),
-      type: 'Minorista',
       lastPurchase: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       totalPurchased: 0.00,
       pendingBalance: 0.00,
@@ -172,37 +259,88 @@ export function Clientes() {
   // Clientes reales importados, enriquecidos con saldos de crédito actuales.
   const displayRows = useMemo(() => {
     const rows: CustomerRow[] = customers.map((customer, index) => {
-      const credit = credits.find(item => item.customerName.toLocaleLowerCase() === customer.name.toLocaleLowerCase())
+      const customerCredits = credits.filter(item => normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name))
+      const metric = purchaseMetrics.find(item => normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name))
+      const pendingBalance = customerCredits.reduce((sum, credit) => sum + credit.balancePending, 0)
       const parts = customer.name.split(' ')
       return {
         id: customer.id, initials: `${parts[0]?.[0] || 'C'}${parts[1]?.[0] || ''}`.toUpperCase(),
         avatarBg: index % 2 === 0 ? '#dc2626' : '#d97706', name: customer.name,
         phone: customer.phone, identification: customer.identification,
-        identificationStatus: classifyIdentification(customer.identification), type: 'Minorista',
-        lastPurchase: customer.lastVisit ? new Date(`${customer.lastVisit}T12:00:00`).toLocaleDateString('es-VE') : 'Sin compras enlazadas',
-        totalPurchased: credit?.totalAmount ?? 0, pendingBalance: credit?.balancePending ?? 0,
-        status: credit && credit.balancePending > 0 ? 'Crédito' : customer.totalVisits >= 5 ? 'Frecuente' : 'Activo',
+        identificationStatus: classifyIdentification(customer.identification),
+        lastPurchase: metric?.lastPurchase ? formatDate(metric.lastPurchase) : customer.lastVisit ? formatDate(customer.lastVisit) : 'Sin compras enlazadas',
+        totalPurchased: metric?.totalPurchased ?? 0, pendingBalance,
+        status: !customer.isActive ? 'Inactivo' : pendingBalance > 0 ? 'Crédito' : customer.totalVisits >= 5 ? 'Frecuente' : 'Activo',
       }
     })
 
     return rows.filter((r) => {
       const matchSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || r.phone.includes(searchTerm) || r.identification.toLowerCase().includes(searchTerm.toLowerCase())
       const matchStatus = statusFilter === 'all' || r.status.toLowerCase() === statusFilter.toLowerCase()
-      const matchType = typeFilter === 'all' || r.type.toLowerCase() === typeFilter.toLowerCase()
       const matchIdentity = identityFilter === 'all' || r.identificationStatus === identityFilter
-      return matchSearch && matchStatus && matchType && matchIdentity
+      return matchSearch && matchStatus && matchIdentity
     })
-  }, [credits, customers, searchTerm, statusFilter, typeFilter, identityFilter])
+  }, [credits, customers, purchaseMetrics, searchTerm, statusFilter, identityFilter])
 
   const totalOutstanding = useMemo(() => {
     return credits.reduce((acc, c) => acc + c.balancePending, 0)
   }, [credits])
+
+  const frequentCustomers = useMemo(() => customers.filter((customer) => customer.totalVisits >= 5).length, [customers])
+  const activeCreditsCount = useMemo(() => credits.filter((credit) => credit.balancePending > 0).length, [credits])
+  const customersWithDebt = useMemo(() => new Set(
+    credits.filter((credit) => credit.balancePending > 0).map((credit) => normalizeCustomerName(credit.customerName)),
+  ).size, [credits])
 
 
   // ═══════════════════════════════════════════════════════════════════════════
   // FICHA DE CLIENTE / PERFIL DEL CLIENTE VIEW (Matching Target Screenshot)
   // ═══════════════════════════════════════════════════════════════════════════
   if (selectedClient) {
+    const fullCustomer = customers.find((c) => c.id === selectedClient.id) ?? null
+    const customerCredits = credits.filter((credit) => normalizeCustomerName(credit.customerName) === normalizeCustomerName(selectedClient.name))
+    const ordersCount = customerOrders.length
+    const totalPurchased = customerOrders.reduce((s, o) => s + o.total, 0)
+    const avgTicket = ordersCount > 0 ? totalPurchased / ordersCount : 0
+    const pendingBalance = customerCredits.reduce((sum, credit) => sum + credit.balancePending, 0)
+    const creditedTotal = customerCredits.reduce((sum, credit) => sum + credit.totalAmount, 0)
+    const paidTowardCredit = customerCredits.reduce((sum, credit) => sum + credit.totalPaid, 0)
+    const activeCredits = customerCredits.filter((credit) => credit.balancePending > 0).length
+    const lastCreditPayment = customerCreditPayments[0] ?? null
+    const isFrecuente = (fullCustomer?.totalVisits ?? 0) >= 5
+    const birthdayText = formatBirthday(fullCustomer?.birthday ?? '')
+    const favoriteProducts = [...customerOrders.reduce((products, order) => {
+      order.items.forEach((item) => {
+        const key = item.productName.trim().toLocaleLowerCase('es-VE')
+        const current = products.get(key)
+        if (current) current.quantity += item.quantity
+        else products.set(key, { name: item.productName, quantity: item.quantity })
+      })
+      return products
+    }, new Map<string, { name: string; quantity: number }>()).values()]
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 4)
+    const recentActivity = [
+      ...customerOrders.map((order) => ({
+        id: `order-${order.id}`,
+        type: 'order' as const,
+        title: `Pedido #FC-${String(order.orderNumber).padStart(6, '0')} · ${formatUsdText(order.total)}`,
+        createdAt: order.createdAt,
+      })),
+      ...customerCreditPayments.map((payment) => ({
+        id: `payment-${payment.id}`,
+        type: 'payment' as const,
+        title: `Abono a crédito · ${formatUsdText(payment.amount)}`,
+        createdAt: payment.createdAt,
+      })),
+      ...(fullCustomer?.createdAt ? [{
+        id: `created-${fullCustomer.id}`,
+        type: 'created' as const,
+        title: 'Cliente registrado en el sistema',
+        createdAt: fullCustomer.createdAt,
+      }] : []),
+    ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5)
+
     return (
       <div className="page animate-fade-in">
 
@@ -225,45 +363,44 @@ export function Clientes() {
             <div className="hero-text-details">
               <div className="hero-name-row">
                 <h2 className="hero-client-name">{selectedClient.name}</h2>
-                <Star size={16} className="star-gold-icon" />
               </div>
               <div className="hero-meta-tags-row flex-wrap">
                 <span className="hero-phone-wrap">
-                  <Phone size={13} /> {selectedClient.phone}
-                  <button className="btn-wsap-icon-inline" title="Enviar WhatsApp"><MessageCircle size={12} /></button>
+                  <Phone size={13} /> {selectedClient.phone || 'Sin teléfono'}
+                  <button
+                    className="btn-wsap-icon-inline"
+                    title={selectedClient.phone ? 'Enviar WhatsApp' : 'Cliente sin teléfono'}
+                    disabled={!selectedClient.phone}
+                    onClick={() => {
+                      const phone = selectedClient.phone.replace(/\D/g, '')
+                      if (phone) window.open(`https://wa.me/${phone.startsWith('58') ? phone : `58${phone.replace(/^0/, '')}`}`, '_blank', 'noopener,noreferrer')
+                    }}
+                  ><MessageCircle size={12} /></button>
                 </span>
                 <span className="meta-divider">|</span>
                 <span className={`identity-badge ${selectedClient.identificationStatus}`}>
-                  {selectedClient.identificationStatus === 'verified_format' ? 'Cédula' : selectedClient.identificationStatus === 'legacy_review' ? 'Identificación por revisar' : 'Sin identificación'}
-                  {selectedClient.identification && `: ${selectedClient.identification}`}
+                  {selectedClient.identificationStatus === 'verified_format'
+                    ? `Cédula: ${selectedClient.identification}`
+                    : selectedClient.identificationStatus === 'legacy_review'
+                    ? 'Identificación por revisar'
+                    : 'Sin identificación'}
+                </span>
+                {isFrecuente && <><span className="meta-divider">|</span><span className="badge-tag-purple">🏷️ Cliente Frecuente</span></>}
+                <span className="meta-divider">|</span>
+                <span className={fullCustomer?.isActive === false ? 'badge-tag-red' : 'badge-tag-green'}>
+                  {fullCustomer?.isActive === false ? 'Inactivo' : 'Activo'}
                 </span>
                 <span className="meta-divider">|</span>
-                <span className="badge-tag-purple">🏷️ Cliente Frecuente</span>
-                <span className="meta-divider">|</span>
-                <span className="badge-tag-green">🟢 Activo</span>
-                <span className="meta-divider">|</span>
-                <span className="hero-detail-tag"><Gift size={13} /> 15 de Agosto 🎁</span>
-                <span className="meta-divider">|</span>
-                <span className="hero-detail-tag"><Calendar size={13} /> Reg: 12/09/2024</span>
-              </div>
-
-              <div className="hero-bottom-info-row">
-                <div className="hero-client-id">
-                  <span>ID Cliente: CLI-000142</span>
-                  <button className="btn-icon-ghost-sm" title="Copiar ID"><Copy size={13} /></button>
-                </div>
-                <div className="hero-notes-pill">
-                  <span className="font-bold">📝 Notas:</span> Prefiere salsas aparte. No le gusta el kion.
-                </div>
+                <span className="hero-detail-tag" style={{ whiteSpace: 'nowrap' }}>
+                  <Calendar size={13} /> Reg: {formatDate(fullCustomer?.createdAt ?? '')}
+                  {birthdayText && <><Gift size={13} style={{ marginLeft: 10 }} /> {birthdayText} 🎁</>}
+                </span>
               </div>
             </div>
           </div>
 
           <div className="hero-right-actions">
-            <button className="btn-hero-dark" onClick={() => setShowNewModal(true)}>
-              <Edit2 size={16} /> Editar cliente
-            </button>
-            <button className="btn-hero-red" onClick={() => setSelectedClient(null)}>
+            <button className="btn-hero-red" onClick={() => navigate('/caja', { state: { customerName: selectedClient.name } })}>
               <Plus size={16} /> Nuevo pedido
             </button>
           </div>
@@ -276,8 +413,8 @@ export function Clientes() {
             <div className="kpi-banner-icon red"><DollarSign size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Total comprado</span>
-              <MoneyWithBcv usd={selectedClient.totalPurchased} className="kpi-banner-val" align="start" compact />
-              <span className="kpi-banner-sub green">↑ +18.6% vs. último mes</span>
+              <MoneyWithBcv usd={totalPurchased} className="kpi-banner-val" align="start" compact />
+              <span className="kpi-banner-sub">En {ordersCount} pedido{ordersCount === 1 ? '' : 's'}</span>
             </div>
           </div>
 
@@ -286,8 +423,8 @@ export function Clientes() {
             <div className="kpi-banner-icon orange"><ShoppingBag size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Pedidos realizados</span>
-              <span className="kpi-banner-val">28</span>
-              <span className="kpi-banner-sub">Últimos 12 meses</span>
+              <span className="kpi-banner-val">{ordersCount}</span>
+              <span className="kpi-banner-sub">Histórico</span>
             </div>
           </div>
 
@@ -296,7 +433,7 @@ export function Clientes() {
             <div className="kpi-banner-icon gold"><Ticket size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Ticket promedio</span>
-              <MoneyWithBcv usd={selectedClient.totalPurchased / 28} className="kpi-banner-val" align="start" compact />
+              <MoneyWithBcv usd={avgTicket} className="kpi-banner-val" align="start" compact />
               <span className="kpi-banner-sub">Promedio por pedido</span>
             </div>
           </div>
@@ -306,8 +443,8 @@ export function Clientes() {
             <div className="kpi-banner-icon dark-red"><CreditCard size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Saldo pendiente</span>
-              <MoneyWithBcv usd={selectedClient.pendingBalance} className="kpi-banner-val" align="start" compact />
-              <span className="kpi-banner-sub gold">1 crédito activo</span>
+              <MoneyWithBcv usd={pendingBalance} className="kpi-banner-val" align="start" compact />
+              <span className="kpi-banner-sub gold">{activeCredits} crédito{activeCredits === 1 ? '' : 's'} activo{activeCredits === 1 ? '' : 's'}</span>
             </div>
           </div>
 
@@ -316,8 +453,8 @@ export function Clientes() {
             <div className="kpi-banner-icon user-orange"><User size={20} /></div>
             <div className="kpi-banner-info">
               <span className="kpi-banner-label">Cliente desde</span>
-              <span className="kpi-banner-val">12/09/2024</span>
-              <span className="kpi-banner-sub">8 meses</span>
+              <span className="kpi-banner-val">{formatDate(fullCustomer?.createdAt ?? '')}</span>
+              <span className="kpi-banner-sub">Fecha de registro</span>
             </div>
           </div>
         </div>
@@ -328,8 +465,10 @@ export function Clientes() {
           <div className="profile-card-col center-col">
             <div className="profile-card-header">
               <h3 className="profile-card-title">Historial de pedidos</h3>
-              <button className="link-red-sm">Ver todos los pedidos →</button>
+              <span className="profile-data-caption">{ordersCount} registrado{ordersCount === 1 ? '' : 's'}</span>
             </div>
+
+            {profileError && <div className="profile-data-message error">{profileError}</div>}
 
             <div className="table-responsive-wrapper">
               <table className="profile-history-table">
@@ -346,29 +485,35 @@ export function Clientes() {
                   </tr>
                 </thead>
                 <tbody>
-                  {CUSTOMER_ORDERS_HISTORY.map((ord) => (
-                    <tr key={ord.id}>
-                      <td className="font-bold text-white">{ord.id}</td>
-                      <td className="date-sub-text">{ord.date}</td>
+                  {profileLoading ? (
+                    <tr><td colSpan={8} className="profile-empty-state">Cargando actividad real…</td></tr>
+                  ) : customerOrders.length === 0 ? (
+                    <tr><td colSpan={8} className="profile-empty-state">Este cliente todavía no tiene pedidos enlazados.</td></tr>
+                  ) : customerOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td className="font-bold text-white">#FC-{String(order.orderNumber).padStart(6, '0')}</td>
+                      <td className="date-sub-text">{formatDateTime(order.createdAt)}</td>
                       <td>
                         <span className="order-type-pill">
-                          {ord.type === 'Delivery' ? '🛵 Delivery' : '🛍️ Para llevar'}
+                          {(ORDER_TYPE_LABELS[order.orderType] ?? order.orderType) || 'Sin tipo'}
                         </span>
                       </td>
-                      <td className="products-cell">{ord.products}</td>
-                      <td><MoneyWithBcv usd={ord.total} usdClassName="font-bold" compact /></td>
+                      <td className="products-cell">{order.itemsText || 'Sin detalle'}</td>
+                      <td><MoneyWithBcv usd={order.total} usdClassName="font-bold" compact /></td>
                       <td>
-                        <span className={`status-pill-sub ${ord.status === 'Entregado' ? 'green' : 'gold'}`}>
-                          {ord.status}
+                        <span className={`status-pill-sub ${order.fulfillmentStatus === 'delivered' ? 'green' : 'gold'}`}>
+                          {(FULFILLMENT_LABELS[order.fulfillmentStatus] ?? order.fulfillmentStatus) || order.status}
                         </span>
                       </td>
                       <td>
                         <span className="payment-method-tag">
-                          {ord.payment === 'Yape' ? '📱 Yape' : '💵 Efectivo'}
+                          {order.paymentMethods.length > 0
+                            ? order.paymentMethods.map((method) => PAYMENT_LABELS[method] ?? method).join(' + ')
+                            : 'Sin cobrar'}
                         </span>
                       </td>
                       <td>
-                        <button className="icon-action-btn"><MoreVertical size={14} /></button>
+                        <span className="date-sub-text">{order.status === 'paid' ? 'Pagado' : 'Pendiente'}</span>
                       </td>
                     </tr>
                   ))}
@@ -383,41 +528,41 @@ export function Clientes() {
             <div className="side-credit-card">
               <div className="side-card-header">
                 <h3 className="profile-card-title">Créditos / Cuentas por cobrar</h3>
-                <button className="link-red-sm">Ver detalle →</button>
+                <span className="profile-data-caption">Datos registrados</span>
               </div>
 
               <div className="credit-metrics-grid mt-2">
                 <div className="credit-metric-box">
                   <span className="credit-label">Saldo actual</span>
-                  <MoneyWithBcv usd={selectedClient.pendingBalance} className="credit-val-big text-red" align="start" compact />
+                  <MoneyWithBcv usd={pendingBalance} className="credit-val-big text-red" align="start" compact />
                 </div>
                 <div className="credit-metric-box">
                   <span className="credit-label">Créditos activos</span>
-                  <span className="credit-val-big">1</span>
+                  <span className="credit-val-big">{activeCredits}</span>
                 </div>
               </div>
 
               <div className="credit-due-breakdown mt-3">
                 <div className="due-box">
-                  <span className="due-label">Vencido</span>
-                  <MoneyWithBcv usd={0} className="due-val text-red" align="start" compact />
-                  <span className="due-sub">0 días</span>
+                  <span className="due-label">Crédito emitido</span>
+                  <MoneyWithBcv usd={creditedTotal} className="due-val" align="start" compact />
+                  <span className="due-sub">{customerCredits.length} registro{customerCredits.length === 1 ? '' : 's'}</span>
                 </div>
                 <div className="due-box">
-                  <span className="due-label">Por vencer</span>
-                  <MoneyWithBcv usd={selectedClient.pendingBalance} className="due-val text-orange" align="start" compact />
-                  <span className="due-sub">vence el 07/06/2025</span>
+                  <span className="due-label">Total abonado</span>
+                  <MoneyWithBcv usd={paidTowardCredit} className="due-val text-green" align="start" compact />
+                  <span className="due-sub">Abonos confirmados</span>
                 </div>
               </div>
 
               <div className="last-payment-received-row mt-3">
                 <div className="lp-left">
                   <span className="lp-label">Último pago recibido</span>
-                  <span className="lp-date">17/05/2025</span>
+                  <span className="lp-date">{lastCreditPayment ? formatDateTime(lastCreditPayment.createdAt) : 'Sin abonos'}</span>
                 </div>
                 <div className="lp-right">
-                  <MoneyWithBcv usd={98} className="lp-amount text-green font-bold" compact />
-                  <span className="lp-badge">Yape</span>
+                  {lastCreditPayment && <MoneyWithBcv usd={lastCreditPayment.amount} className="lp-amount text-green font-bold" compact />}
+                  <span className="lp-badge">Registrado en el sistema</span>
                 </div>
               </div>
             </div>
@@ -426,41 +571,22 @@ export function Clientes() {
             <div className="side-activity-card mt-3">
               <div className="side-card-header">
                 <h3 className="profile-card-title">Actividad reciente</h3>
-                <button className="link-red-sm">Ver toda</button>
+                <span className="profile-data-caption">{recentActivity.length} evento{recentActivity.length === 1 ? '' : 's'}</span>
               </div>
 
               <div className="activity-timeline-vertical mt-2">
-                <div className="activity-item">
-                  <span className="act-dot green"><ShoppingBag size={12} /></span>
-                  <div className="act-info">
-                    <span className="act-title">Realizó un pedido PED-001254</span>
-                    <span className="act-time">24/05/2025 · 7:45 p. m.</span>
+                {recentActivity.length === 0 && <div className="profile-empty-state compact">Sin actividad registrada.</div>}
+                {recentActivity.map((activity) => (
+                  <div className="activity-item" key={activity.id}>
+                    <span className={`act-dot ${activity.type === 'order' ? 'green' : activity.type === 'payment' ? 'purple' : 'red'}`}>
+                      {activity.type === 'order' ? <ShoppingBag size={12} /> : activity.type === 'payment' ? <DollarSign size={12} /> : <User size={12} />}
+                    </span>
+                    <div className="act-info">
+                      <span className="act-title">{activity.title}</span>
+                      <span className="act-time">{formatDateTime(activity.createdAt)}</span>
+                    </div>
                   </div>
-                </div>
-
-                <div className="activity-item">
-                  <span className="act-dot purple"><DollarSign size={12} /></span>
-                  <div className="act-info">
-                    <span className="act-title">Se registró abono de $ 98.00</span>
-                    <span className="act-time">17/05/2025 · 8:12 p. m.</span>
-                  </div>
-                </div>
-
-                <div className="activity-item">
-                  <span className="act-dot blue"><Phone size={12} /></span>
-                  <div className="act-info">
-                    <span className="act-title">Se actualizó el teléfono del cliente</span>
-                    <span className="act-time">12/05/2025 · 6:30 p. m.</span>
-                  </div>
-                </div>
-
-                <div className="activity-item">
-                  <span className="act-dot red"><User size={12} /></span>
-                  <div className="act-info">
-                    <span className="act-title">Cliente registrado en el sistema</span>
-                    <span className="act-time">12/09/2024 · 11:22 a. m.</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
@@ -472,18 +598,20 @@ export function Clientes() {
           <div className="profile-bottom-card left-favs">
             <div className="profile-card-header">
               <h3 className="profile-card-title">Productos favoritos</h3>
-              <button className="link-red-sm">Ver más</button>
+              <span className="profile-data-caption">Según pedidos enlazados</span>
             </div>
 
             <div className="favorites-cards-grid mt-2">
-              {FOOD_FAVORITES.map((fav) => (
-                <div key={fav.name} className="favorite-food-card">
-                  <div className="fav-thumb-area" style={{ backgroundImage: `url(${fav.img})` }}>
-                    <span className="fav-rank-badge">{fav.rank}</span>
+              {favoriteProducts.length === 0 && <div className="profile-empty-state favorite-empty">Sin productos suficientes para calcular favoritos.</div>}
+              {favoriteProducts.map((favorite, index) => (
+                <div key={favorite.name} className="favorite-food-card real-favorite">
+                  <div className="fav-thumb-area real-favorite-rank">
+                    <span className="fav-rank-badge">#{index + 1}</span>
+                    <ShoppingBag size={24} />
                   </div>
                   <div className="fav-card-body">
-                    <span className="fav-food-title">{fav.name}</span>
-                    <span className="fav-orders-sub">{fav.orders}</span>
+                    <span className="fav-food-title">{favorite.name}</span>
+                    <span className="fav-orders-sub">{favorite.quantity} unidad{favorite.quantity === 1 ? '' : 'es'} pedida{favorite.quantity === 1 ? '' : 's'}</span>
                   </div>
                 </div>
               ))}
@@ -497,18 +625,13 @@ export function Clientes() {
                 <MapPin size={16} className="text-red" />
                 <span>Dirección principal</span>
               </div>
-              <button className="link-red-sm">Editar</button>
+              <span className="profile-data-caption">Dato del cliente</span>
             </div>
 
             <div className="address-content-box mt-2">
-              <span className="address-line-main">Av. Primavera 1234</span>
-              <span className="address-line-sub">Urbanización Los Jardines</span>
-              <span className="address-line-sub">Santiago de Surco, Lima</span>
-              <span className="address-ref-line">Referencia: Frente al parque</span>
-
-              <button className="btn-map-dark mt-3">
-                <MapPin size={14} /> Ver en mapa
-              </button>
+              {fullCustomer?.address
+                ? <span className="address-line-main">{fullCustomer.address}</span>
+                : <span className="profile-empty-state compact">Sin dirección registrada.</span>}
             </div>
           </div>
         </div>
@@ -547,10 +670,8 @@ export function Clientes() {
           </div>
           <div className="kpi-content-box">
             <span className="kpi-label-sm">Total clientes</span>
-            <span className="kpi-value-lg">128</span>
-            <span className="kpi-sub-tag green">
-              <TrendingUp size={12} /> 12% vs. mes anterior
-            </span>
+            <span className="kpi-value-lg">{customers.length}</span>
+            <span className="kpi-sub-tag green">Base registrada</span>
           </div>
         </div>
 
@@ -560,8 +681,8 @@ export function Clientes() {
           </div>
           <div className="kpi-content-box">
             <span className="kpi-label-sm">Clientes frecuentes</span>
-            <span className="kpi-value-lg">35</span>
-            <span className="kpi-sub-tag orange">27% del total</span>
+            <span className="kpi-value-lg">{frequentCustomers}</span>
+            <span className="kpi-sub-tag orange">5 o más visitas</span>
           </div>
         </div>
 
@@ -571,7 +692,7 @@ export function Clientes() {
           </div>
           <div className="kpi-content-box">
             <span className="kpi-label-sm">Créditos activos</span>
-            <span className="kpi-value-lg">18</span>
+            <span className="kpi-value-lg">{activeCreditsCount}</span>
             <span className="kpi-sub-tag gold-text">Con saldo pendiente</span>
           </div>
         </div>
@@ -590,7 +711,7 @@ export function Clientes() {
           <div className="kpi-content-box">
             <span className="kpi-label-sm">Pendientes por cobrar</span>
             <MoneyWithBcv usd={totalOutstanding} className="kpi-value-lg" align="start" compact />
-            <span className="kpi-sub-tag red-text">De 18 clientes</span>
+            <span className="kpi-sub-tag red-text">De {customersWithDebt} cliente{customersWithDebt === 1 ? '' : 's'}</span>
           </div>
         </div>
       </div>
@@ -622,19 +743,7 @@ export function Clientes() {
                 <option value="crédito">Crédito</option>
                 <option value="frecuente">Frecuente</option>
                 <option value="activo">Activo</option>
-              </select>
-            </div>
-
-            <div className="filter-dropdown-wrap">
-              <span className="dropdown-label">Tipo</span>
-              <select
-                className="filter-select"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-              >
-                <option value="all">Todos</option>
-                <option value="minorista">Minorista</option>
-                <option value="mayorista">Mayorista</option>
+                <option value="inactivo">Inactivo</option>
               </select>
             </div>
 
@@ -664,7 +773,6 @@ export function Clientes() {
                   <th>Cliente</th>
                   <th>Teléfono</th>
                   <th>Identificación</th>
-                  <th>Tipo</th>
                   <th>Última compra</th>
                   <th>Total comprado</th>
                   <th>Saldo pendiente</th>
@@ -675,7 +783,7 @@ export function Clientes() {
               <tbody>
                 {displayRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="empty-td-row">No se encontraron clientes que coincidan con los filtros.</td>
+                    <td colSpan={8} className="empty-td-row">No se encontraron clientes que coincidan con los filtros.</td>
                   </tr>
                 ) : (
                   displayRows.map((row) => (
@@ -702,11 +810,6 @@ export function Clientes() {
                             </>
                           )}
                         </div>
-                      </td>
-                      <td>
-                        <span className={`type-badge ${row.type.toLowerCase()}`}>
-                          {row.type}
-                        </span>
                       </td>
                       <td className="date-td">{row.lastPurchase}</td>
                       <td className="amount-td"><MoneyWithBcv usd={row.totalPurchased} usdClassName="font-bold" compact /></td>
@@ -738,15 +841,7 @@ export function Clientes() {
 
           <div className="table-pagination-footer">
             <span className="pagination-info">Mostrando {displayRows.length} de {customers.length} clientes</span>
-            <div className="pagination-controls">
-              <button className="pag-btn prev"><ChevronLeft size={16} /></button>
-              <button className="pag-btn active">1</button>
-              <button className="pag-btn">2</button>
-              <button className="pag-btn">3</button>
-              <span className="pag-dots">...</span>
-              <button className="pag-btn">16</button>
-              <button className="pag-btn next"><ChevronRight size={16} /></button>
-            </div>
+            <span className="pagination-info">Listado completo</span>
           </div>
         </div>
 

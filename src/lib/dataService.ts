@@ -606,7 +606,28 @@ export interface Customer {
   lastVisit: string
   favoriteProduct: string
   birthday: string
+  createdAt: string
   isActive: boolean
+}
+
+export interface CustomerOrderSummary {
+  id: string
+  orderNumber: number
+  createdAt: string
+  orderType: string
+  status: string
+  fulfillmentStatus: string
+  total: number
+  itemsText: string
+  items: Array<{ productName: string; quantity: number }>
+  paymentMethods: string[]
+}
+
+export interface CustomerPurchaseMetric {
+  customerName: string
+  orderCount: number
+  totalPurchased: number
+  lastPurchase: string
 }
 
 export interface WeeklyDish {
@@ -1023,7 +1044,7 @@ export async function createExpense(params: {
 
 export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await client().from('customers')
-    .select('id,full_name,identification,phone,address,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,is_active')
+    .select('id,full_name,identification,phone,address,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,created_at,is_active')
     .order('full_name')
   if (error) throw error
   return (data ?? []).map((row) => ({
@@ -1038,8 +1059,73 @@ export async function getCustomers(): Promise<Customer[]> {
     lastVisit: (row.last_visit as string) ?? '',
     favoriteProduct: (row.favorite_product as string) ?? '',
     birthday: (row.birth_date as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
     isActive: Boolean(row.is_active),
   }))
+}
+
+// Órdenes reales de un cliente (para la ficha del cliente).
+export async function getCustomerOrders(customerName: string): Promise<CustomerOrderSummary[]> {
+  if (!customerName.trim()) return []
+  const { data, error } = await client()
+    .from('v_orders_with_items')
+    .select('id, order_number, created_at, order_type, status, fulfillment_status, total_amount, items, payments')
+    .ilike('customer_name', customerName.trim())
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw error
+  return (data ?? []).map((o) => {
+    const items = Array.isArray(o.items) ? o.items as Array<Record<string, unknown>> : []
+    const mappedItems = items.map((it) => ({
+      productName: String(it.product_name ?? 'Producto'),
+      quantity: Number(it.quantity ?? 0),
+    }))
+    const itemsText = mappedItems.map((item) => `${item.quantity}× ${item.productName}`).join(', ')
+    const payments = Array.isArray(o.payments) ? o.payments as Array<Record<string, unknown>> : []
+    return {
+      id: o.id as string,
+      orderNumber: o.order_number as number,
+      createdAt: o.created_at as string,
+      orderType: (o.order_type as string) ?? '',
+      status: o.status as string,
+      fulfillmentStatus: (o.fulfillment_status as string) ?? '',
+      total: Number(o.total_amount ?? 0),
+      itemsText,
+      items: mappedItems,
+      paymentMethods: payments.map((payment) => String(payment.method ?? '')).filter(Boolean),
+    }
+  })
+}
+
+// Totales reales por nombre de cliente para la tabla principal. Las órdenes
+// todavía no tienen customer_id, por eso la agrupación conserva la clave textual.
+export async function getCustomerPurchaseMetrics(): Promise<CustomerPurchaseMetric[]> {
+  const { data, error } = await client()
+    .from('v_orders_with_items')
+    .select('customer_name,total_amount,created_at')
+    .order('created_at', { ascending: false })
+    .limit(5000)
+  if (error) throw error
+
+  const grouped = new Map<string, CustomerPurchaseMetric>()
+  for (const row of data ?? []) {
+    const customerName = String(row.customer_name ?? '').trim()
+    if (!customerName || customerName.toLocaleLowerCase('es-VE') === 'cliente general') continue
+    const key = customerName.toLocaleLowerCase('es-VE')
+    const current = grouped.get(key)
+    if (current) {
+      current.orderCount += 1
+      current.totalPurchased += Number(row.total_amount ?? 0)
+    } else {
+      grouped.set(key, {
+        customerName,
+        orderCount: 1,
+        totalPurchased: Number(row.total_amount ?? 0),
+        lastPurchase: String(row.created_at ?? ''),
+      })
+    }
+  }
+  return [...grouped.values()]
 }
 
 export async function createCustomer(params: { name: string; identification?: string; phone?: string; address?: string; birthDate?: string }): Promise<Customer> {
@@ -1057,6 +1143,7 @@ export async function createCustomer(params: { name: string; identification?: st
     email: (row.email as string) ?? '', totalVisits: Number(row.total_visits ?? 0),
     rewardsUnlocked: Number(row.rewards_unlocked ?? 0), lastVisit: (row.last_visit as string) ?? '',
     favoriteProduct: (row.favorite_product as string) ?? '', birthday: (row.birth_date as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
     isActive: Boolean(row.is_active),
   }
 }
@@ -1070,7 +1157,7 @@ export async function registerCustomerVisit(customerId: string): Promise<Custome
     phone: (row.phone as string) ?? '', address: (row.address as string) ?? '', email: (row.email as string) ?? '',
     totalVisits: Number(row.total_visits ?? 0), rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
     lastVisit: (row.last_visit as string) ?? '', favoriteProduct: (row.favorite_product as string) ?? '',
-    birthday: (row.birth_date as string) ?? '', isActive: Boolean(row.is_active),
+    birthday: (row.birth_date as string) ?? '', createdAt: (row.created_at as string) ?? '', isActive: Boolean(row.is_active),
   }
 }
 
