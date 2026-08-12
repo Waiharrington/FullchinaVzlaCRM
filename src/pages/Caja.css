@@ -870,6 +870,7 @@
 }
 
 .client-modal-box .modal-input-dark,
+.client-modal-box .modal-textarea-dark,
 .client-modal-box .modal-select-dark {
   width: 100%;
   min-height: 46px;
@@ -885,10 +886,21 @@
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
+.client-modal-box .modal-textarea-dark {
+  min-height: 78px;
+  padding-top: 13px;
+  padding-bottom: 13px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
 .client-modal-box .modal-input-dark::placeholder { color: #686872; }
+.client-modal-box .modal-textarea-dark::placeholder { color: #686872; }
 .client-modal-box .modal-input-dark:hover,
+.client-modal-box .modal-textarea-dark:hover,
 .client-modal-box .modal-select-dark:hover { border-color: rgba(255, 255, 255, 0.16); }
 .client-modal-box .modal-input-dark:focus,
+.client-modal-box .modal-textarea-dark:focus,
 .client-modal-box .modal-select-dark:focus {
   border-color: rgba(239, 43, 45, 0.7);
   background: #28282d;
@@ -896,6 +908,7 @@
 }
 
 .client-modal-box .input-with-icon-wrap { position: relative; }
+.client-modal-box .input-with-icon-textarea .input-left-icon { top: 15px; transform: none; }
 .client-modal-box .input-left-icon {
   position: absolute;
   z-index: 1;

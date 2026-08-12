@@ -52,6 +52,7 @@ import {
   Hexagon,
   BadgeDollarSign,
   IdCard,
+  MapPin,
 } from 'lucide-react'
 import './Caja.css'
 
@@ -182,6 +183,7 @@ export function Caja() {
   const [newClientLastName, setNewClientLastName] = useState('')
   const [newClientIdentification, setNewClientIdentification] = useState('')
   const [newClientPhone, setNewClientPhone] = useState('')
+  const [newClientAddress, setNewClientAddress] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
   const [birthDay, setBirthDay] = useState('')
   const [creatingCustomer, setCreatingCustomer] = useState(false)
@@ -223,8 +225,9 @@ export function Caja() {
       const initials = (firstName[0] + (newClientLastName.trim()[0] || '')).toUpperCase()
       const identification = newClientIdentification.trim()
       const phone = newClientPhone.trim()
+      const address = newClientAddress.trim()
       const birthDate = birthMonth && birthDay ? `2000-${birthMonth}-${birthDay.padStart(2, '0')}` : undefined
-      const saved = await createCustomer({ name: fullName, identification, phone, birthDate })
+      const saved = await createCustomer({ name: fullName, identification, phone, address, birthDate })
 
       const newCust: CustomerOption = {
         id: saved.id,
@@ -241,6 +244,7 @@ export function Caja() {
       setNewClientLastName('')
       setNewClientIdentification('')
       setNewClientPhone('')
+      setNewClientAddress('')
       setBirthMonth('')
       setBirthDay('')
     } catch (error) {
@@ -1413,6 +1417,21 @@ export function Caja() {
                     value={newClientPhone}
                     onChange={(e) => setNewClientPhone(e.target.value)}
                     className="modal-input-dark with-left-icon"
+                  />
+                </div>
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Dirección <span className="field-optional">Opcional</span></label>
+                <div className="input-with-icon-wrap input-with-icon-textarea">
+                  <MapPin size={16} className="input-left-icon" />
+                  <textarea
+                    placeholder="Dirección y punto de referencia"
+                    value={newClientAddress}
+                    onChange={(e) => setNewClientAddress(e.target.value)}
+                    className="modal-input-dark modal-textarea-dark with-left-icon"
+                    maxLength={300}
+                    rows={3}
                   />
                 </div>
               </div>

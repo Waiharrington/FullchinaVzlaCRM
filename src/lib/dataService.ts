@@ -720,6 +720,7 @@ export interface Customer {
   name: string
   identification: string
   phone: string
+  address?: string
   email: string
   totalVisits: number
   rewardsUnlocked: number
@@ -1232,7 +1233,7 @@ export async function createExpense(params: {
 
 export async function getCustomers(): Promise<Customer[]> {
   const { data, error } = await client().from('customers')
-    .select('id,full_name,identification,phone,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,is_active')
+    .select('id,full_name,identification,phone,address,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,is_active')
     .order('full_name')
   if (error) throw error
   return (data ?? []).map((row) => ({
@@ -1240,6 +1241,7 @@ export async function getCustomers(): Promise<Customer[]> {
     name: row.full_name as string,
     identification: (row.identification as string) ?? '',
     phone: (row.phone as string) ?? '',
+    address: (row.address as string) ?? '',
     email: (row.email as string) ?? '',
     totalVisits: Number(row.total_visits ?? 0),
     rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
@@ -1250,17 +1252,18 @@ export async function getCustomers(): Promise<Customer[]> {
   }))
 }
 
-export async function createCustomer(params: { name: string; identification?: string; phone?: string; birthDate?: string }): Promise<Customer> {
+export async function createCustomer(params: { name: string; identification?: string; phone?: string; address?: string; birthDate?: string }): Promise<Customer> {
   const { data, error } = await client().rpc('fn_create_customer', {
     p_full_name: params.name,
     p_identification: params.identification || null,
     p_phone: params.phone || null,
+    p_address: params.address || null,
     p_birth_date: params.birthDate || null,
   }).single()
   if (error) throw error
   const row = data as Record<string, unknown>
   return {
-    id: row.id as string, name: row.full_name as string, identification: (row.identification as string) ?? '', phone: (row.phone as string) ?? '',
+    id: row.id as string, name: row.full_name as string, identification: (row.identification as string) ?? '', phone: (row.phone as string) ?? '', address: (row.address as string) ?? '',
     email: (row.email as string) ?? '', totalVisits: Number(row.total_visits ?? 0),
     rewardsUnlocked: Number(row.rewards_unlocked ?? 0), lastVisit: (row.last_visit as string) ?? '',
     favoriteProduct: (row.favorite_product as string) ?? '', birthday: (row.birth_date as string) ?? '',
@@ -1274,7 +1277,7 @@ export async function registerCustomerVisit(customerId: string): Promise<Custome
   const row = data as Record<string, unknown>
   return {
     id: row.id as string, name: row.full_name as string, identification: (row.identification as string) ?? '',
-    phone: (row.phone as string) ?? '', email: (row.email as string) ?? '',
+    phone: (row.phone as string) ?? '', address: (row.address as string) ?? '', email: (row.email as string) ?? '',
     totalVisits: Number(row.total_visits ?? 0), rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
     lastVisit: (row.last_visit as string) ?? '', favoriteProduct: (row.favorite_product as string) ?? '',
     birthday: (row.birth_date as string) ?? '', isActive: Boolean(row.is_active),
