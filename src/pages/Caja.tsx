@@ -32,7 +32,16 @@ import {
   ListOrdered,
   ChefHat,
   BellRing,
-  Phone
+  Phone,
+  ShoppingCart,
+  Split,
+  Flame,
+  WalletCards,
+  PencilLine,
+  Plus,
+  Minus,
+  Trash2,
+  Search
 } from 'lucide-react'
 import './Caja.css'
 
@@ -55,7 +64,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 const CATEGORY_ORDER = ['arroz', 'noodles', 'lumpia', 'combo', 'proteina', 'bebida', 'extra', 'plato', 'wok', 'pollo_camaron', 'racion']
 
 const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: string }> = {
-  'dine-in': { label: 'Mostrador', icon: '🪑' },
+  'dine-in': { label: 'Mesa', icon: '🪑' },
   takeaway: { label: 'Para llevar', icon: '🛍️' },
   delivery: { label: 'Delivery', icon: '🛵' },
 }
@@ -324,7 +333,7 @@ export function Caja() {
   }
 
   // Open Payment Modal (Image 1)
-  const handleOpenPaymentModal = async () => {
+  const handleOpenPaymentModal = async (preferredMethod: PaymentMethod | 'split' = 'cash') => {
     if (cart.length === 0) return
     try {
       const active = await getActiveCashSession()
@@ -337,9 +346,9 @@ export function Caja() {
       setPayError(cause instanceof Error ? cause.message : 'No se pudo verificar la caja activa')
       return
     }
-    setSelectedPaymentTab('cash')
+    setSelectedPaymentTab(preferredMethod)
     setRefNumber('')
-    setAmountReceived(total.toFixed(2))
+    setAmountReceived((preferredMethod === 'split' ? total / 2 : total).toFixed(2))
     setSplitPrimaryMethod('cash')
     setSplitSecondaryMethod('mobile')
     setSplitPrimaryReference('')
@@ -825,22 +834,24 @@ export function Caja() {
         <div className="cart-sidebar">
           <div className="cart-sidebar-header">
             <div className="cart-order-title-group">
+              <span className="cart-eyebrow">Comanda activa</span>
               <h3 className="cart-order-title">
                 Pedido <span className="cart-order-number">#FC-{String(todayOrders.length + 125).padStart(6, '0')}</span>
               </h3>
               <div className="cart-header-badges">
-                <span className="cart-badge-type">Mostrador</span>
+                <span className="cart-badge-type">{ORDER_TYPE_LABELS[orderType].label}</span>
                 <span className="cart-time">12:45 PM</span>
               </div>
             </div>
-            <button className="cart-edit-btn">✏️ Editar</button>
+            <button className="cart-edit-btn" type="button"><PencilLine size={13} /> Editar</button>
           </div>
 
           {/* Cart Items */}
           {cart.length === 0 ? (
             <div className="empty-cart-sidebar">
-              <span className="empty-cart-icon">🛒</span>
-              <p>Selecciona productos del menú</p>
+              <span className="empty-cart-icon"><ShoppingCart size={28} /></span>
+              <strong>Tu pedido está vacío</strong>
+              <p>Selecciona productos del menú para comenzar.</p>
             </div>
           ) : (
             <div className="cart-items-list">
@@ -856,12 +867,12 @@ export function Caja() {
                       <span className="cart-item-sub">Sin cebollín</span>
                     </div>
                     <div className="cart-item-controls">
-                      <button className="qty-btn-sm" onClick={() => updateQty(item.productId, -1)}>−</button>
+                      <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(item.productId, -1)}><Minus size={13} /></button>
                       <span className="qty-display">{item.quantity}</span>
-                      <button className="qty-btn-sm" onClick={() => updateQty(item.productId, 1)}>+</button>
+                      <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(item.productId, 1)}><Plus size={13} /></button>
                     </div>
                     <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
-                    <button className="cart-item-remove" onClick={() => removeFromCart(item.productId)}>✕</button>
+                    <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(item.productId)}><Trash2 size={14} /></button>
                   </div>
                 )
               })}
@@ -871,7 +882,7 @@ export function Caja() {
           {/* Notes */}
           <div className="cart-field mt-3">
             <div className="notes-wrap">
-              <span className="notes-icon">📝</span>
+              <span className="notes-icon"><PencilLine size={15} /></span>
               <input
                 type="text"
                 className="cart-notes"
@@ -888,7 +899,7 @@ export function Caja() {
             <div className="cart-field-col customer-input-col">
               <label className="cart-label">Cliente</label>
               <div className="customer-input-wrap">
-                <span className="input-search-icon">🔍</span>
+                <span className="input-search-icon"><Search size={15} /></span>
                 <input
                   type="text"
                   placeholder="Buscar cliente (opcional)"
@@ -906,7 +917,7 @@ export function Caja() {
                   onClick={() => setShowNewClientModal(true)}
                   title="Nuevo cliente"
                 >
-                  +
+                  <Plus size={15} />
                 </button>
               </div>
 
@@ -961,7 +972,19 @@ export function Caja() {
               <MoneyWithBcv usd={0} className="total-val" compact />
             </div>
             <div className="cart-divide-row">
-              <button className="divide-payment-link">🔀 Dividir pago</button>
+              <button
+                type="button"
+                className="divide-payment-link"
+                disabled={cart.length === 0 || paying}
+                onClick={() => handleOpenPaymentModal('split')}
+              >
+                <span className="divide-payment-icon"><Split size={16} /></span>
+                <span className="divide-payment-copy">
+                  <strong>Pago combinado</strong>
+                  <small>Cobrar con dos métodos</small>
+                </span>
+                <span className="divide-payment-arrow">›</span>
+              </button>
             </div>
             <div className="cart-total-row total-final-row">
               <span className="final-label">Total</span>
@@ -976,16 +999,16 @@ export function Caja() {
             <button
               className="btn-pay-red"
               disabled={cart.length === 0 || paying}
-              onClick={handleOpenPaymentModal}
+              onClick={() => handleOpenPaymentModal()}
             >
-              <span>💲</span> Cobrar pedido
+              <WalletCards size={18} /> <span>Cobrar pedido</span>
             </button>
             <button
               className="btn-kitchen-red"
               disabled={cart.length === 0 || paying}
               onClick={handleSendToKitchen}
             >
-              <span>🔥</span> Enviar a cocina
+              <Flame size={18} /> <span>Enviar a cocina</span>
             </button>
           </div>
 
@@ -993,7 +1016,7 @@ export function Caja() {
           <div className="payment-accepted-section mt-3">
             <span className="accepted-title">Formas de pago aceptadas</span>
             <div className="payment-badges-row">
-              {PAYMENT_METHODS.map((pm) => (
+              {PAYMENT_METHODS.filter(pm => pm.method !== 'split').map((pm) => (
                 <span key={pm.method} className="payment-badge-pill">
                   {pm.icon} {pm.label}
                 </span>

@@ -363,7 +363,7 @@ export function Comandas() {
               address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
               reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
               paymentReference: persistedReference,
-              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mostrador' : 'Para llevar',
+              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mesa' : 'Para llevar',
               items: o.items.map((item) => ({
                 id: item.id,
                 name: item.productName,
