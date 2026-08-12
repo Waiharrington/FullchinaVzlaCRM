@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import {
   getOrdersWithItems,
   getActiveCashSession,
@@ -51,6 +52,8 @@ const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split',
 )
 const usesBolivares = (method: SplitPaymentMethod) => method !== 'cash'
+const requiresPaymentReference = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
+const paymentReferenceLabel = (method: SplitPaymentMethod) => method === 'card' ? 'Referencia del voucher del punto *' : 'Número de referencia *'
 const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return 0
@@ -127,6 +130,7 @@ export function Comandas() {
   const [paymentNote, setPaymentNote] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [paying, setPaying] = useState(false)
+  const [statusError, setStatusError] = useState('')
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
   const paymentRate = paymentOrder?.bcvRate && paymentOrder.bcvRate > 0 ? paymentOrder.bcvRate : bcvRate
@@ -186,8 +190,7 @@ export function Comandas() {
         throw new Error('Ingresa un monto válido')
       }
 
-      const requiresReference = selectedPaymentTab === 'mobile'
-        || selectedPaymentTab === 'transfer'
+      const requiresReference = selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab)
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
@@ -209,10 +212,10 @@ export function Comandas() {
         if (splitPrimaryMethod === splitSecondaryMethod) {
           throw new Error('Selecciona dos métodos de pago diferentes')
         }
-        if ((splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && !splitPrimaryReference.trim()) {
+        if (requiresPaymentReference(splitPrimaryMethod) && !splitPrimaryReference.trim()) {
           throw new Error('Ingresa la referencia del primer método')
         }
-        if ((splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && !splitSecondaryReference.trim()) {
+        if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
           throw new Error('Ingresa la referencia del segundo método')
         }
         payments = [
@@ -329,11 +332,7 @@ export function Comandas() {
           const mapped: ComandaOrder[] = realOrders.map((o) => {
             const date = new Date(o.createdAt)
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
-            let status: ComandaOrder['status'] = 'new'
-            if (o.status === 'preparing') status = 'preparing'
-            else if (o.status === 'ready') status = 'ready'
-            else if (o.status === 'delivered' || o.status === 'completed') status = 'delivered'
-            else status = 'new'
+            const status: ComandaOrder['status'] = o.fulfillmentStatus
 
             const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
             const paymentMethods = [...new Set(o.payments.map((payment) => payment.method))]
@@ -480,6 +479,7 @@ export function Comandas() {
     else if (currentStatus === 'preparing') nextStatus = 'ready'
     else if (currentStatus === 'ready') nextStatus = 'delivered'
 
+    setStatusError('')
     setComandas(prev =>
       prev.map(c =>
         c.id === orderId
@@ -497,13 +497,20 @@ export function Comandas() {
       await updateOrderStatus(orderId, nextStatus)
     } catch (e) {
       console.error('Error actualizando estado en servidor:', e)
+      setComandas(prev => prev.map(comanda => (
+        comanda.id === orderId ? { ...comanda, status: currentStatus as ComandaOrder['status'] } : comanda
+      )))
+      setStatusError('No se pudo guardar el cambio de estado. Intenta nuevamente.')
     }
   }
 
   const totalComandasCount = comandas.length
   const pendientesCount = comandas.filter(c => c.status === 'new' || c.status === 'preparing').length
   const listasCount = comandas.filter(c => c.status === 'ready').length
-  const avgMins = comandas.length > 0 ? Math.round(comandas.reduce((s, c) => s + c.elapsedMins, 0) / comandas.length) : 0
+  const activeComandas = comandas.filter(c => c.status !== 'delivered')
+  const avgMins = activeComandas.length > 0
+    ? Math.round(activeComandas.reduce((sum, comanda) => sum + comanda.elapsedMins, 0) / activeComandas.length)
+    : 0
 
   return (
     <div className="comandas-page animate-fade-in">
@@ -582,6 +589,11 @@ export function Comandas() {
           <ChevronDown size={12} />
         </div>
 
+        <button className="filter-group-item filter-btn-dark">
+          <Filter size={14} />
+          <span>Filtros</span>
+        </button>
+
         <div className="filter-search-inline">
           <Search size={14} />
           <input
@@ -591,12 +603,9 @@ export function Comandas() {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-
-        <button className="filter-group-item filter-btn-dark">
-          <Filter size={14} />
-          <span>Filtros</span>
-        </button>
       </div>
+
+      {statusError && <div className="command-status-error" role="alert">{statusError}</div>}
 
       {/* 4 Kanban Columns matching Target Mockup */}
       <div className="kanban-board-grid">
@@ -1025,10 +1034,10 @@ export function Comandas() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                {(selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer') && (
+                {selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab) && (
                 <div className="payment-field-group mt-2">
                   <label className="payment-field-label">
-                    NÚMERO DE REFERENCIA <span className="text-red"> *</span>
+                    {paymentReferenceLabel(selectedPaymentTab)}
                   </label>
                   <div className="payment-input-wrap">
                     <input
@@ -1047,18 +1056,13 @@ export function Comandas() {
                   <div className="split-payment-grid mt-2">
                     <section className="split-method-card">
                       <div className="split-method-heading"><span className="split-method-number">1</span><span>Primer método</span></div>
-                      <select className="payment-field-input" value={splitPrimaryMethod} onChange={(event) => {
-                        const nextMethod = event.target.value as SplitPaymentMethod
+                      <PaymentMethodSelect ariaLabel="Primer método de pago" value={splitPrimaryMethod} options={SPLIT_PAYMENT_METHODS} disabledMethod={splitSecondaryMethod} onChange={(nextMethod) => {
                         const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
                         setSplitPrimaryMethod(nextMethod)
                         setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, paymentRate))
                         setSplitPrimaryReference('')
                         setPaymentError('')
-                      }}>
-                        {SPLIT_PAYMENT_METHODS.map(method => (
-                          <option key={method.method} value={method.method} disabled={method.method === splitSecondaryMethod}>{method.label}</option>
-                        ))}
-                      </select>
+                      }} />
                       <label className="payment-field-label">Monto del primer método</label>
                       <div className="payment-input-wrap">
                         <input type="text" inputMode="decimal" className="payment-field-input" value={amountReceived} onChange={(event) => setAmountReceived(event.target.value)} />
@@ -1069,9 +1073,9 @@ export function Comandas() {
                           ? `Ref. ${formatUsd(splitPrimaryAmountUsd)}`
                           : paymentRate ? `Ref. ${formatVes(splitPrimaryAmountUsd * paymentRate)}` : 'Referencia BCV no disponible'}
                       </span>
-                      {(splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && (
+                      {requiresPaymentReference(splitPrimaryMethod) && (
                         <>
-                          <label className="payment-field-label">Referencia del primer método *</label>
+                          <label className="payment-field-label">{paymentReferenceLabel(splitPrimaryMethod)}</label>
                           <input type="text" className="payment-field-input" value={splitPrimaryReference} onChange={(event) => setSplitPrimaryReference(event.target.value)} placeholder="Ej. 876543210" />
                         </>
                       )}
@@ -1079,15 +1083,11 @@ export function Comandas() {
 
                     <section className="split-method-card">
                       <div className="split-method-heading"><span className="split-method-number">2</span><span>Segundo método</span></div>
-                      <select className="payment-field-input" value={splitSecondaryMethod} onChange={(event) => {
-                        setSplitSecondaryMethod(event.target.value as SplitPaymentMethod)
+                      <PaymentMethodSelect ariaLabel="Segundo método de pago" value={splitSecondaryMethod} options={SPLIT_PAYMENT_METHODS} disabledMethod={splitPrimaryMethod} onChange={(nextMethod) => {
+                        setSplitSecondaryMethod(nextMethod)
                         setSplitSecondaryReference('')
                         setPaymentError('')
-                      }}>
-                        {SPLIT_PAYMENT_METHODS.map(method => (
-                          <option key={method.method} value={method.method} disabled={method.method === splitPrimaryMethod}>{method.label}</option>
-                        ))}
-                      </select>
+                      }} />
                       <label className="payment-field-label">Monto del segundo método</label>
                       <div className="split-readonly-amount">
                         <MoneyWithBcv
@@ -1097,9 +1097,9 @@ export function Comandas() {
                           compact
                         />
                       </div>
-                      {(splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && (
+                      {requiresPaymentReference(splitSecondaryMethod) && (
                         <>
-                          <label className="payment-field-label">Referencia del segundo método *</label>
+                          <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
                           <input type="text" className="payment-field-input" value={splitSecondaryReference} onChange={(event) => setSplitSecondaryReference(event.target.value)} placeholder="Ej. 876543210" />
                         </>
                       )}

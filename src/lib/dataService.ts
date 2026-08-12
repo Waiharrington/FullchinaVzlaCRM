@@ -79,6 +79,7 @@ export interface FullOrder {
   id: string
   orderNumber: number
   status: string
+  fulfillmentStatus: 'new' | 'preparing' | 'ready' | 'delivered'
   notes: string | null
   orderType: string
   customerName: string
@@ -386,6 +387,7 @@ export async function checkout(params: {
       id: demoId,
       orderNumber,
       status: 'paid',
+      fulfillmentStatus: 'new',
       notes: params.notes ?? null,
       orderType: params.orderType ?? 'takeaway',
       customerName: params.customerName ?? 'Cliente',
@@ -489,6 +491,7 @@ export async function sendToKitchen(params: {
       id: demoId,
       orderNumber,
       status: 'open',
+      fulfillmentStatus: 'new',
       notes: params.notes ?? null,
       orderType: params.orderType ?? 'takeaway',
       customerName: params.customerName ?? 'Cliente',
@@ -612,6 +615,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
       id: o.id as string,
       orderNumber: o.order_number as number,
       status: o.status as string,
+      fulfillmentStatus: (o.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
       notes: (o.notes as string) ?? null,
       orderType: (o.order_type as string) ?? 'takeaway',
       customerName: (o.customer_name as string) ?? 'Cliente',
@@ -652,7 +656,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
 export async function updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
   if (isDemoMode || !supabase) {
     const localOrders = getLocalDemoOrders()
-    const updated = localOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+    const updated = localOrders.map(o => o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o)
     localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
     return
   }
@@ -660,19 +664,19 @@ export async function updateOrderStatus(orderId: string, newStatus: string): Pro
   try {
     const { error } = await supabase
       .from('orders')
-      .update({ status: newStatus })
+      .update({ fulfillment_status: newStatus })
       .eq('id', orderId)
 
     if (error) {
       console.warn('Fallo Supabase al actualizar estado de orden, guardando en local:', error)
       const localOrders = getLocalDemoOrders()
-      const updated = localOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+      const updated = localOrders.map(o => o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o)
       localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
     }
   } catch (e) {
     console.warn('Excepción actualizando estado de orden:', e)
     const localOrders = getLocalDemoOrders()
-    const updated = localOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o)
+    const updated = localOrders.map(o => o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o)
     localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
   }
 }
@@ -1833,6 +1837,7 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
     id: data.id as string,
     orderNumber: data.order_number as number,
     status: data.status as string,
+    fulfillmentStatus: (data.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
     notes: (data.notes as string) ?? null,
     orderType: (data.order_type as string) ?? 'takeaway',
     customerName: (data.customer_name as string) ?? 'Cliente',

@@ -240,6 +240,140 @@
   color: #fff;
 }
 
+.command-status-error {
+  padding: 10px 12px;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 9px;
+  background: rgba(127, 29, 29, 0.3);
+  color: #fecaca;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 679px) {
+  .comandas-page {
+    gap: 12px;
+  }
+
+  .comandas-header-row,
+  .comandas-header-right {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .comandas-header-left {
+    gap: 10px;
+  }
+
+  .header-icon-box {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+
+  .comandas-title {
+    font-size: 19px;
+  }
+
+  .comandas-subtitle {
+    font-size: 11px;
+  }
+
+  .comandas-header-right {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .comandas-stats-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .stat-card-mini {
+    min-width: 0;
+    min-height: 58px;
+    box-sizing: border-box;
+    padding: 9px 10px;
+    gap: 8px;
+    border-radius: 10px;
+  }
+
+  .stat-number {
+    font-size: 19px;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .stat-title {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .stat-sub {
+    display: none;
+  }
+
+  .stat-time-group {
+    gap: 4px;
+  }
+
+  .stat-time-group svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .btn-nueva-comanda {
+    width: 100%;
+    min-height: 38px;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 9px;
+    font-size: 12px;
+    box-shadow: none;
+  }
+
+  .comandas-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .filter-group-item {
+    min-width: 0;
+    min-height: 36px;
+    box-sizing: border-box;
+    justify-content: center;
+    padding: 7px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .filter-group-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .filter-search-inline {
+    grid-column: 1 / -1;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 11px;
+    border-radius: 9px;
+  }
+
+  .filter-search-inline input {
+    font-size: 12px;
+  }
+
+  .kanban-board-grid {
+    gap: 10px;
+  }
+}
+
 /* ─── Kanban Board Grid matching Target Mockup ───────────────────────────── */
 
 .kanban-board-grid {

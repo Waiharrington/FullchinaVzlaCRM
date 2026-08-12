@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { downloadReceipt } from '../lib/receipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -73,6 +74,8 @@ const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
 )
 
 const usesBolivares = (method: SplitPaymentMethod) => method !== 'cash'
+const requiresPaymentReference = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
+const paymentReferenceLabel = (method: SplitPaymentMethod) => method === 'card' ? 'Referencia del voucher del punto *' : 'Número de referencia *'
 const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
   const amount = Number(value)
   if (!Number.isFinite(amount)) return 0
@@ -376,8 +379,9 @@ export function Caja() {
         throw new Error('Ingresa un monto válido')
       }
 
-      const requiresReference = selectedPaymentTab === 'mobile'
-        || selectedPaymentTab === 'transfer'
+      const requiresReference = selectedPaymentTab !== 'split'
+        && selectedPaymentTab !== 'other'
+        && requiresPaymentReference(selectedPaymentTab)
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
@@ -393,10 +397,10 @@ export function Caja() {
         if (splitPrimaryMethod === splitSecondaryMethod) {
           throw new Error('Selecciona dos métodos de pago diferentes')
         }
-        if ((splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && !splitPrimaryReference.trim()) {
+        if (requiresPaymentReference(splitPrimaryMethod) && !splitPrimaryReference.trim()) {
           throw new Error('Ingresa la referencia del primer método')
         }
-        if ((splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && !splitSecondaryReference.trim()) {
+        if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
           throw new Error('Ingresa la referencia del segundo método')
         }
         finalMethod = 'other'
@@ -1035,9 +1039,9 @@ export function Caja() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                {(selectedPaymentTab === 'mobile' || selectedPaymentTab === 'transfer') && (
+                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && requiresPaymentReference(selectedPaymentTab) && (
                   <div className="payment-field-group mt-2">
-                    <label className="payment-field-label">NÚMERO DE REFERENCIA <span className="text-red">*</span></label>
+                    <label className="payment-field-label">{paymentReferenceLabel(selectedPaymentTab)}</label>
                     <div className="payment-input-wrap">
                       <input
                         type="text"
@@ -1058,24 +1062,19 @@ export function Caja() {
                         <span className="split-method-number">1</span>
                         <span>Primer método</span>
                       </div>
-                      <select
-                        className="payment-field-input"
+                      <PaymentMethodSelect
+                        ariaLabel="Primer método de pago"
                         value={splitPrimaryMethod}
-                        onChange={(e) => {
-                          const nextMethod = e.target.value as SplitPaymentMethod
+                        options={SPLIT_PAYMENT_METHODS}
+                        disabledMethod={splitSecondaryMethod}
+                        onChange={(nextMethod) => {
                           const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate)
                           setSplitPrimaryMethod(nextMethod)
                           setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, bcvRate))
                           setSplitPrimaryReference('')
                           setPayError('')
                         }}
-                      >
-                        {SPLIT_PAYMENT_METHODS.map(method => (
-                          <option key={method.method} value={method.method} disabled={method.method === splitSecondaryMethod}>
-                            {method.label}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       <label className="payment-field-label">Monto del primer método</label>
                       <div className="payment-input-wrap">
                         <input
@@ -1092,9 +1091,9 @@ export function Caja() {
                           ? `Ref. ${formatUsd(splitPrimaryAmountUsd)}`
                           : bcvRate ? `Ref. ${formatVes(splitPrimaryAmountUsd * bcvRate)}` : 'Referencia BCV no disponible'}
                       </span>
-                      {(splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && (
+                      {requiresPaymentReference(splitPrimaryMethod) && (
                         <>
-                          <label className="payment-field-label">Referencia del primer método *</label>
+                          <label className="payment-field-label">{paymentReferenceLabel(splitPrimaryMethod)}</label>
                           <input
                             type="text"
                             className="payment-field-input"
@@ -1111,21 +1110,17 @@ export function Caja() {
                         <span className="split-method-number">2</span>
                         <span>Segundo método</span>
                       </div>
-                      <select
-                        className="payment-field-input"
+                      <PaymentMethodSelect
+                        ariaLabel="Segundo método de pago"
                         value={splitSecondaryMethod}
-                        onChange={(e) => {
-                          setSplitSecondaryMethod(e.target.value as SplitPaymentMethod)
+                        options={SPLIT_PAYMENT_METHODS}
+                        disabledMethod={splitPrimaryMethod}
+                        onChange={(nextMethod) => {
+                          setSplitSecondaryMethod(nextMethod)
                           setSplitSecondaryReference('')
                           setPayError('')
                         }}
-                      >
-                        {SPLIT_PAYMENT_METHODS.map(method => (
-                          <option key={method.method} value={method.method} disabled={method.method === splitPrimaryMethod}>
-                            {method.label}
-                          </option>
-                        ))}
-                      </select>
+                      />
                       <label className="payment-field-label">Monto del segundo método</label>
                       <div className="split-readonly-amount">
                         <MoneyWithBcv
@@ -1135,9 +1130,9 @@ export function Caja() {
                           compact
                         />
                       </div>
-                      {(splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && (
+                      {requiresPaymentReference(splitSecondaryMethod) && (
                         <>
-                          <label className="payment-field-label">Referencia del segundo método *</label>
+                          <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
                           <input
                             type="text"
                             className="payment-field-input"
