@@ -1,6 +1,6 @@
 # Estado y continuidad de FullChinaVzla
 
-Última actualización: 2026-08-08.
+Última actualización: 2026-08-11.
 
 ## Resumen
 
@@ -9,9 +9,11 @@ de USD 450 fue aceptado y el contrato está listo; el alcance completo se
 entregará por fases y superará USD 1000.
 
 El repositorio contiene una interfaz amplia, pero no todos los módulos tienen
-persistencia real. Caja y Comandas sí registran órdenes y pagos contra el
-esquema remoto `fullchinavzla`. Almacén, Fidelización, Gastos, Marketing,
-Menú semanal y partes de otros módulos todavía usan datos locales o de muestra.
+persistencia real. Caja, Comandas, Equipo, Compras, Producción, Recetas y
+Nómina registran datos contra el esquema remoto `fullchinavzla`. La infraestructura
+de demo (datos hardcodeados, modo demo, `DemoDataProvider`) fue eliminada en
+la fase de integración. Almacén, Fidelización, Gastos, Marketing, Menú semanal
+y partes de otros módulos todavía usan datos locales o de muestra.
 
 ## Estado verificado
 
@@ -25,7 +27,7 @@ Menú semanal y partes de otros módulos todavía usan datos locales o de muestr
   34 triggers, 11 vistas y 75 políticas RLS.
 - Acceso `anon`: sin `USAGE` del esquema y sin privilegios sobre tablas.
 - Acceso autenticado: Caja y Comandas usan RPC protegidas por rol.
-- Build, lint y 3 pruebas automatizadas pasan. También se probó el flujo real
+- Build, lint y 11 pruebas automatizadas pasan. También se probó el flujo real
   de caja y los permisos de los tres roles en navegador.
 - PWA generada correctamente con carga diferida por módulo. El archivo inicial
   bajó de aproximadamente 1.37 MB a alrededor de 59 KB; las dependencias
@@ -109,11 +111,16 @@ Pruebas SQL locales realizadas:
 2. Implementar regla delivery: pago móvil confirmado antes de cocina; efectivo
    puede llegar a cocina pendiente de pago.
 3. Capturar moneda física y tasa en pagos en efectivo USD/VES.
-4. Sustituir datos demo por persistencia real módulo por módulo.
+4. ~~Sustituir datos demo por persistencia real módulo por módulo.~~
+   **Completado**: Caja, Comandas, Equipo, Compras, Producción, Recetas, Nómina
+   y Auditoría ahora usan Supabase real. Pendientes: Almacén, Fidelización,
+   Gastos, Marketing, Menú semanal.
 5. Recibir menú, variantes, extras, producción en Excel, categorías de gastos,
    proveedores, reglas de fidelización y permisos finales.
 6. Implementar Almacén separado del inventario operativo, producción, compras,
    gastos, finanzas, nómina, clientes/crédito, fidelización y WhatsApp.
+7. Ejecutar migración `20260811000000_audit_logs.sql` en VPS (requiere autorización
+   y backup previo).
 
 Los requisitos completos están en `docs/REQUIREMENTS_REUNION_1.md`.
 
@@ -135,6 +142,5 @@ npm test
 npm run lint
 ```
 
-Para modo demo, `VITE_DEMO_MODE=true`. Para probar persistencia real debe usarse
-una sesión autenticada y la configuración local ya autorizada, sin copiar
-secretos a la documentación.
+Para probar persistencia real debe usarse una sesión autenticada con PIN y la
+configuración local autorizada, sin copiar secretos a la documentación.

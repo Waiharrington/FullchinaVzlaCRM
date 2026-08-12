@@ -19,7 +19,7 @@ El proyecto completo por fases supera **USD 1000**.
 ```
 src/
   components/   Layout, Sidebar, BottomNav
-  context/      AuthContext (Supabase + modo demo)
+  context/      AuthContext (Supabase)
   lib/          Cliente Supabase (configurable con .env)
   pages/        Login, Inicio, Caja, Inventario, Más
   test/         Setup de testing
@@ -92,38 +92,6 @@ Una funcionalidad está lista cuando:
 5. No rompe funcionalidad existente
 6. No hay datos reales de la clienta en el código
 
-## Modo Demo
-
-La aplicación soporta modo demo sin conexión a Supabase:
-
-- Variable `VITE_DEMO_MODE=true` en `.env`
-- Login automático con usuario demo
-- Datos hardcodeados para demostración
-
-## Selector de Rol Demo (P0)
-
-El login en modo demo muestra 3 botones para elegir rol: **Owner**, **Manager**, **Cashier**.
-Esto es un selector **DEMO local**:
-
-- **NO es autenticación real** — No valida credenciales contra Supabase.
-- **NO es prueba de seguridad RLS** — La seguridad real se implementa con
-  `get_current_user_role()` y RLS en Supabase post-demo.
-- **Solo controla visibilidad en la UI** — Qué secciones y datos ve cada rol.
-
-### Visibilidad por rol en demo
-
-| Rol | Ve | No ve |
-|-----|----|-------|
-| `owner` | Todo: costos, rentabilidad, reportes, configuración, acciones exclusivas | Nada oculto |
-| `manager` | Operación + reportes permitidos: producción, inventario, compras, gastos, reportes | Configuración y acciones exclusivas de owner |
-| `cashier` | Caja, pedidos, clientes/créditos operativos, inventario (sin costos) | Costos, márgenes, nómina, configuración, reportes financieros |
-
-### Reglas de visibilidad
-
-- Owner ve **todo** sin restricciones.
-- Manager ve operación + reportes, pero **no** configuración ni acciones exclusivas de owner (ej: nómina, bonos, datos financieros sensibles).
-- Cashier ve solo caja, pedidos, clientes/créditos operativos e inventario **sin costos**. No ve reportes financieros ni configuración.
-
 ## Roles de Usuario
 
 | Rol | Acceso |
@@ -132,8 +100,9 @@ Esto es un selector **DEMO local**:
 | `manager` | Operación: producción, inventario, compras, gastos |
 | `cashier` | Ventas: comandas, cobros, cierres básicos |
 
-> **Nota**: El selector demo solo controla la UI. En modo real, Supabase aplica
-> RLS y `get_current_user_role()`; no confundir ambos mecanismos.
+> **Nota**: En modo real, Supabase aplica RLS y `get_current_user_role()` para
+> controlar acceso a datos. La visibilidad en UI se gestiona con condicionales
+> por rol en cada componente.
 
 ## Stack de Persistencia
 

@@ -12,9 +12,9 @@
 | # | Requisito | Estado | Notas |
 |---|-----------|--------|-------|
 | 1 | Esquema SQL `fullchinavzla` aplicado en VPS | ✅ | Tras caja operativa: 30 tablas, 38 funciones, 34 triggers, 11 vistas, 75 políticas |
-| 2 | Frontend scaffold funcional | ✅ | Login demo, navegación, responsive layout |
-| 3 | Demo mode funcional | ✅ | VITE_DEMO_MODE=true, datos hardcodeados |
-| 4 | Build/Lint/Test pasan | ✅ | Verificado el 2026-08-08; existen 3 pruebas automatizadas |
+| 2 | Frontend scaffold funcional | ✅ | Login, navegación, responsive layout |
+| 3 | Demo mode eliminada | ✅ | Infraestructura demo (datos hardcodeados, DemoDataProvider, isDemoMode) eliminada completamente |
+| 4 | Build/Lint/Test pasan | ✅ | Verificado 2026-08-11; 11 pruebas automatizadas |
 | 5 | Backup del VPS realizado | ✅ | 2026-08-08, antes de cambios de seguridad |
 | 6 | Acceso anónimo revocado | ✅ | 2026-08-08 |
 | 7 | Migraciones atomicas de pagos agregadas | ✅ | 2026-08-08, insert-only con validación |
@@ -27,8 +27,8 @@
 
 | # | Requisito | Estado | Notas |
 |---|-----------|--------|-------|
-| 1 | Selector de rol demo (owner/manager/cashier) | 🔄 | Implementado en Login, controla visibilidad UI |
-| 2 | Sustituir datos demo por persistencia real | 🔄 | Caja y Comandas persisten órdenes/pagos; varios módulos siguen usando datos locales o estáticos |
+| 1 | ~~Selector de rol demo~~ | ✅ Eliminado | Se eliminó junto con la infraestructura demo; la autenticación es real con Supabase |
+| 2 | Sustituir datos demo por persistencia real | 🔄 | Caja, Comandas, Equipo, Compras, Producción, Recetas y Nómina ahora usan Supabase real. Pendientes: Almacén, Fidelización, Gastos, Marketing, Menú semanal |
 
 ---
 

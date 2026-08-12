@@ -9,6 +9,3 @@ export const supabase =
         db: { schema: 'fullchinavzla' },
       })
     : null
-
-// Producción real: si faltan credenciales, la app muestra un error; nunca inventa datos.
-export const isDemoMode = false

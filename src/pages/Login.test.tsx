@@ -8,8 +8,6 @@ vi.mock('../context/auth-context', () => ({
   useAuth: () => ({
     signIn: vi.fn(),
     signInWithPin,
-    signInAsDemo: vi.fn(),
-    demoMode: false,
   }),
 }))
 

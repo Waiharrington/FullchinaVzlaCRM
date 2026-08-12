@@ -1,25 +1,4 @@
-import { supabase, isDemoMode } from './supabase'
-
-const DEMO_ORDERS_KEY = 'fullchinavzla_demo_orders'
-const DEMO_CASH_SESSIONS_KEY = 'fullchinavzla_demo_cash_sessions'
-
-function getLocalDemoOrders(): FullOrder[] {
-  try {
-    const raw = localStorage.getItem(DEMO_ORDERS_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveLocalDemoOrder(order: FullOrder): void {
-  try {
-    const existing = getLocalDemoOrders()
-    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify([order, ...existing]))
-  } catch (e) {
-    console.error('Error guardando orden demo:', e)
-  }
-}
+import { supabase } from './supabase'
 
 export interface Product {
   id: string
@@ -280,6 +259,49 @@ export interface Employee {
   isActive: boolean
 }
 
+export interface PayrollPeriod {
+  id: string
+  startDate: string
+  endDate: string
+  status: 'open' | 'closed' | 'paid'
+  notes: string | null
+  createdAt: string
+}
+
+export interface PayrollEntry {
+  id: string
+  payrollPeriodId: string
+  employeeId: string
+  employeeName: string
+  position: string | null
+  hoursWorked: number
+  baseSalary: number
+  deductions: number
+  netPay: number
+  notes: string | null
+}
+
+export interface Advance {
+  id: string
+  employeeId: string
+  employeeName: string
+  amount: number
+  advanceDate: string
+  isDeducted: boolean
+  notes: string | null
+  createdAt: string
+}
+
+export interface AuditLog {
+  id: string
+  occurredAt: string
+  actorName: string
+  module: string
+  action: string
+  details: string | null
+  severity: 'info' | 'warning' | 'danger'
+}
+
 export interface BatchItem {
   id: string
   ingredientId: string
@@ -378,57 +400,6 @@ export async function checkout(params: {
   payments?: OrderPaymentComponent[]
 }): Promise<OrderResult> {
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-  const now = new Date().toISOString()
-  const orderNumber = Math.floor(1000 + Math.random() * 9000)
-
-  if (isDemoMode || !supabase) {
-    const demoId = `demo-${Date.now()}`
-    const fullOrder: FullOrder = {
-      id: demoId,
-      orderNumber,
-      status: 'paid',
-      fulfillmentStatus: 'new',
-      notes: params.notes ?? null,
-      orderType: params.orderType ?? 'takeaway',
-      customerName: params.customerName ?? 'Cliente',
-      bcvRate: params.bcvRate,
-      createdBy: params.userId,
-      createdAt: now,
-      updatedAt: now,
-      items: params.items.map((i, idx) => ({
-        id: `item-${demoId}-${idx}`,
-        sellableProductId: i.productId,
-        productName: i.productName,
-        emoji: i.emoji || '🍽️',
-        category: 'Plato',
-        quantity: i.quantity,
-        unitPrice: i.price,
-      })),
-      payments: (params.payments ?? [{
-        method: params.method,
-        amount: total,
-        referenceNumber: params.referenceNumber,
-        receivedAmount: params.receivedAmount,
-        notes: params.notes,
-      }]).map((payment, idx) => ({
-        ...payment,
-        id: `payment-${demoId}-${idx}`,
-        createdAt: now,
-      })),
-      totalAmount: total,
-    }
-    saveLocalDemoOrder(fullOrder)
-    return {
-      id: demoId,
-      orderNumber,
-      status: 'paid',
-      total,
-      bcvRate: params.bcvRate,
-      createdAt: now,
-      paymentMethod: params.method,
-      items: params.items,
-    }
-  }
 
   const paymentComponents = params.payments ?? [{
     method: params.method,
@@ -482,47 +453,6 @@ export async function sendToKitchen(params: {
   customerName?: string
 }): Promise<OrderResult> {
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-  const now = new Date().toISOString()
-  const orderNumber = Math.floor(1000 + Math.random() * 9000)
-
-  if (isDemoMode || !supabase) {
-    const demoId = `demo-${Date.now()}`
-    const fullOrder: FullOrder = {
-      id: demoId,
-      orderNumber,
-      status: 'open',
-      fulfillmentStatus: 'new',
-      notes: params.notes ?? null,
-      orderType: params.orderType ?? 'takeaway',
-      customerName: params.customerName ?? 'Cliente',
-      bcvRate: params.bcvRate,
-      createdBy: params.userId,
-      createdAt: now,
-      updatedAt: now,
-      items: params.items.map((i, idx) => ({
-        id: `item-${demoId}-${idx}`,
-        sellableProductId: i.productId,
-        productName: i.productName,
-        emoji: i.emoji || '🍽️',
-        category: 'Plato',
-        quantity: i.quantity,
-        unitPrice: i.price,
-      })),
-      payments: [],
-      totalAmount: total,
-    }
-    saveLocalDemoOrder(fullOrder)
-    return {
-      id: demoId,
-      orderNumber,
-      status: 'open',
-      total,
-      bcvRate: params.bcvRate,
-      createdAt: now,
-      paymentMethod: 'cash',
-      items: params.items,
-    }
-  }
 
   const sb = client()
 
@@ -596,89 +526,57 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
 // --- Órdenes completas (para Comandas/Cocina) --------------------------------
 
 export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): Promise<FullOrder[]> {
-  const localOrders = getLocalDemoOrders()
+  let query = client().from('v_orders_with_items').select('*')
+  if (dateStart) query = query.gte('created_at', dateStart)
+  if (dateEnd) query = query.lte('created_at', dateEnd)
+  query = query.order('created_at', { ascending: false })
 
-  if (isDemoMode || !supabase) {
-    return localOrders
-  }
+  const { data, error } = await query
+  if (error) throw error
 
-  try {
-    let query = client().from('v_orders_with_items').select('*')
-    if (dateStart) query = query.gte('created_at', dateStart)
-    if (dateEnd) query = query.lte('created_at', dateEnd)
-    query = query.order('created_at', { ascending: false })
-
-    const { data, error } = await query
-    if (error) throw error
-
-    const dbOrders: FullOrder[] = (data ?? []).map((o) => ({
-      id: o.id as string,
-      orderNumber: o.order_number as number,
-      status: o.status as string,
-      fulfillmentStatus: (o.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
-      notes: (o.notes as string) ?? null,
-      orderType: (o.order_type as string) ?? 'takeaway',
-      customerName: (o.customer_name as string) ?? 'Cliente',
-      bcvRate: o.bcv_rate ? Number(o.bcv_rate) : null,
-      createdBy: o.created_by as string,
-      createdAt: o.created_at as string,
-      updatedAt: o.updated_at as string,
-      items: Array.isArray(o.items) ? o.items.map((i: Record<string, unknown>) => ({
-        id: i.id as string,
-        sellableProductId: i.sellable_product_id as string,
-        productName: i.product_name as string,
-        emoji: (i.emoji as string) ?? '🍽️',
-        category: (i.category as string) ?? 'plato',
-        quantity: Number(i.quantity),
-        unitPrice: Number(i.unit_price),
-      })) : [],
-      payments: Array.isArray(o.payments) ? o.payments.map((p: Record<string, unknown>) => ({
-        id: p.id as string,
-        method: p.method as PaymentMethod,
-        amount: Number(p.amount),
-        referenceNumber: (p.reference_number as string) ?? null,
-        receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
-        notes: (p.notes as string) ?? null,
-        createdAt: p.created_at as string,
-      })) : [],
-      totalAmount: Number(o.total_amount),
-    }))
-
-    return [...localOrders, ...dbOrders]
-  } catch (e) {
-    console.warn('Fallo Supabase al obtener órdenes, usando locales:', e)
-    return localOrders
-  }
+  return (data ?? []).map((o) => ({
+    id: o.id as string,
+    orderNumber: o.order_number as number,
+    status: o.status as string,
+    fulfillmentStatus: (o.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
+    notes: (o.notes as string) ?? null,
+    orderType: (o.order_type as string) ?? 'takeaway',
+    customerName: (o.customer_name as string) ?? 'Cliente',
+    bcvRate: o.bcv_rate ? Number(o.bcv_rate) : null,
+    createdBy: o.created_by as string,
+    createdAt: o.created_at as string,
+    updatedAt: o.updated_at as string,
+    items: Array.isArray(o.items) ? o.items.map((i: Record<string, unknown>) => ({
+      id: i.id as string,
+      sellableProductId: i.sellable_product_id as string,
+      productName: i.product_name as string,
+      emoji: (i.emoji as string) ?? '🍽️',
+      category: (i.category as string) ?? 'plato',
+      quantity: Number(i.quantity),
+      unitPrice: Number(i.unit_price),
+    })) : [],
+    payments: Array.isArray(o.payments) ? o.payments.map((p: Record<string, unknown>) => ({
+      id: p.id as string,
+      method: p.method as PaymentMethod,
+      amount: Number(p.amount),
+      referenceNumber: (p.reference_number as string) ?? null,
+      receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
+      notes: (p.notes as string) ?? null,
+      createdAt: p.created_at as string,
+    })) : [],
+    totalAmount: Number(o.total_amount),
+  }))
 }
 
 // --- Actualizar estado de orden (para Cocina) --------------------------------
 
 export async function updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
-  if (isDemoMode || !supabase) {
-    const localOrders = getLocalDemoOrders()
-    const updated = localOrders.map(o => o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o)
-    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
-    return
-  }
+  const { error } = await client()
+    .from('orders')
+    .update({ fulfillment_status: newStatus })
+    .eq('id', orderId)
 
-  try {
-    const { error } = await supabase
-      .from('orders')
-      .update({ fulfillment_status: newStatus })
-      .eq('id', orderId)
-
-    if (error) {
-      console.warn('Fallo Supabase al actualizar estado de orden, guardando en local:', error)
-      const localOrders = getLocalDemoOrders()
-      const updated = localOrders.map(o => o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o)
-      localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
-    }
-  } catch (e) {
-    console.warn('Excepción actualizando estado de orden:', e)
-    const localOrders = getLocalDemoOrders()
-    const updated = localOrders.map(o => o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o)
-    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
-  }
+  if (error) throw error
 }
 
 export async function recordOrderPayments(params: {
@@ -688,26 +586,7 @@ export async function recordOrderPayments(params: {
 }): Promise<void> {
   if (params.payments.length === 0) throw new Error('Debe registrar al menos un pago')
 
-  if (isDemoMode || !supabase) {
-    const now = new Date().toISOString()
-    const localOrders = getLocalDemoOrders()
-    const updated = localOrders.map((order) => order.id === params.orderId
-      ? {
-          ...order,
-          status: 'paid',
-          updatedAt: now,
-          payments: params.payments.map((payment, idx) => ({
-            ...payment,
-            id: `payment-${params.orderId}-${Date.now()}-${idx}`,
-            createdAt: now,
-          })),
-        }
-      : order)
-    localStorage.setItem(DEMO_ORDERS_KEY, JSON.stringify(updated))
-    return
-  }
-
-  const { error } = await supabase.rpc('fn_record_order_payments', {
+  const { error } = await client().rpc('fn_record_order_payments', {
     p_order_id: params.orderId,
     p_payments: params.payments,
     p_notes: params.notes ?? null,
@@ -739,6 +618,7 @@ export interface WeeklyDish {
   emoji: string
   status: 'active' | 'inactive'
   weekTag: string
+  sellableProductId: string | null
 }
 
 export interface WhatsAppMessage {
@@ -993,48 +873,7 @@ function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
   }
 }
 
-function getDemoCashSessions(): CashSessionSnapshot[] {
-  try {
-    return JSON.parse(localStorage.getItem(DEMO_CASH_SESSIONS_KEY) || '[]')
-  } catch {
-    return []
-  }
-}
-
-function saveDemoCashSessions(sessions: CashSessionSnapshot[]): void {
-  localStorage.setItem(DEMO_CASH_SESSIONS_KEY, JSON.stringify(sessions))
-}
-
-function refreshDemoCashSnapshot(session: CashSessionSnapshot): CashSessionSnapshot {
-  const cashSalesUsd = getLocalDemoOrders()
-    .filter(order => order.status === 'paid' && order.createdAt >= session.openedAt)
-    .flatMap(order => order.payments)
-    .filter(payment => payment.method === 'cash')
-    .reduce((sum, payment) => sum + Number(payment.amount), 0)
-  const totals = session.movements.reduce((result, movement) => {
-    const key = `${movement.direction}${movement.currency}` as 'inUSD' | 'outUSD' | 'inVES' | 'outVES'
-    result[key] += movement.amount
-    return result
-  }, { inUSD: 0, outUSD: 0, inVES: 0, outVES: 0 })
-  return {
-    ...session,
-    cashSalesUsd,
-    paymentTotal: cashSalesUsd,
-    paymentBreakdown: { cash: cashSalesUsd },
-    movementInUsd: totals.inUSD,
-    movementOutUsd: totals.outUSD,
-    movementInVes: totals.inVES,
-    movementOutVes: totals.outVES,
-    expectedCashUsd: session.openingCashUsd + cashSalesUsd + totals.inUSD - totals.outUSD,
-    expectedCashVes: session.openingCashVes + totals.inVES - totals.outVES,
-  }
-}
-
 export async function getActiveCashSession(): Promise<CashSessionSnapshot | null> {
-  if (isDemoMode || !supabase) {
-    const session = getDemoCashSessions().find(item => item.status === 'open')
-    return session ? refreshDemoCashSnapshot(session) : null
-  }
   const { data, error } = await client().rpc('fn_get_active_cash_session', { p_register_code: 'caja-principal' })
   if (error) throw error
   return data ? mapCashSession(data as Record<string, unknown>) : null
@@ -1046,23 +885,6 @@ export async function openCashSession(params: {
   notes?: string | null
   userId: string
 }): Promise<string> {
-  if (isDemoMode || !supabase) {
-    const sessions = getDemoCashSessions()
-    if (sessions.some(item => item.status === 'open')) throw new Error('Esta caja ya tiene un turno abierto')
-    const now = new Date().toISOString()
-    const id = `cash-session-${Date.now()}`
-    sessions.unshift({
-      id, sessionNumber: sessions.length + 1, registerId: 'demo-register', registerCode: 'caja-principal',
-      registerName: 'Caja principal', status: 'open', openedAt: now, openedBy: params.userId,
-      openingCashUsd: params.openingCashUsd, openingCashVes: params.openingCashVes,
-      cashSalesUsd: 0, paymentTotal: 0, paymentBreakdown: {}, movementInUsd: 0, movementOutUsd: 0,
-      movementInVes: 0, movementOutVes: 0, expectedCashUsd: params.openingCashUsd,
-      expectedCashVes: params.openingCashVes, countedCashUsd: null, countedCashVes: null,
-      differenceUsd: null, differenceVes: null, closedAt: null, movements: [],
-    })
-    saveDemoCashSessions(sessions)
-    return id
-  }
   const { data, error } = await client().rpc('fn_open_cash_session', {
     p_register_code: 'caja-principal',
     p_opening_cash_usd: params.openingCashUsd,
@@ -1083,19 +905,6 @@ export async function addCashMovement(params: {
   referenceNumber?: string | null
   userId: string
 }): Promise<string> {
-  if (isDemoMode || !supabase) {
-    const sessions = getDemoCashSessions()
-    const index = sessions.findIndex(item => item.id === params.sessionId && item.status === 'open')
-    if (index < 0) throw new Error('La sesión de caja no está abierta')
-    const id = `cash-movement-${Date.now()}`
-    sessions[index].movements.unshift({
-      id, direction: params.direction, movementType: params.movementType, currency: params.currency,
-      amount: params.amount, description: params.description, referenceNumber: params.referenceNumber ?? null,
-      createdAt: new Date().toISOString(),
-    })
-    saveDemoCashSessions(sessions)
-    return id
-  }
   const { data, error } = await client().rpc('fn_add_cash_movement', {
     p_session_id: params.sessionId,
     p_direction: params.direction,
@@ -1115,20 +924,6 @@ export async function closeCashSession(params: {
   countedCashVes: number
   notes?: string | null
 }): Promise<CashSessionSnapshot> {
-  if (isDemoMode || !supabase) {
-    const sessions = getDemoCashSessions()
-    const index = sessions.findIndex(item => item.id === params.sessionId && item.status === 'open')
-    if (index < 0) throw new Error('La sesión de caja no está abierta')
-    const snapshot = refreshDemoCashSnapshot(sessions[index])
-    sessions[index] = {
-      ...snapshot, status: 'closed', closedAt: new Date().toISOString(),
-      countedCashUsd: params.countedCashUsd, countedCashVes: params.countedCashVes,
-      differenceUsd: params.countedCashUsd - snapshot.expectedCashUsd,
-      differenceVes: params.countedCashVes - snapshot.expectedCashVes,
-    }
-    saveDemoCashSessions(sessions)
-    return sessions[index]
-  }
   const { data, error } = await client().rpc('fn_close_cash_session', {
     p_session_id: params.sessionId,
     p_counted_cash_usd: params.countedCashUsd,
@@ -1140,16 +935,12 @@ export async function closeCashSession(params: {
 }
 
 export async function getCashSessionHistory(limit = 20): Promise<CashSessionSnapshot[]> {
-  if (isDemoMode || !supabase) {
-    return getDemoCashSessions().filter(item => item.status === 'closed').map(refreshDemoCashSnapshot).slice(0, limit)
-  }
   const { data, error } = await client().rpc('fn_get_cash_session_history', { p_limit: limit })
   if (error) throw error
   return (data ?? []).map((item: Record<string, unknown>) => mapCashSession(item))
 }
 
 export async function createDailyClose(date: string, notes?: string): Promise<string> {
-  if (isDemoMode || !supabase) return `demo-close-${date}`
   const { data, error } = await client().rpc('fn_create_daily_close', {
     p_close_date: date,
     p_notes: notes ?? null,
@@ -1159,7 +950,6 @@ export async function createDailyClose(date: string, notes?: string): Promise<st
 }
 
 export async function getDailyCloses(): Promise<DailyCloseSummary[]> {
-  if (isDemoMode || !supabase) return []
   const { data, error } = await client().rpc('fn_get_daily_close_summary')
 
   if (error) throw error
@@ -1293,10 +1083,11 @@ export async function getWeeklyDishes(): Promise<WeeklyDish[]> {
     id: row.id as string, name: row.name as string, description: (row.description as string) ?? '',
     price: Number(row.price), cost: Number(row.cost ?? 0), emoji: row.emoji as string,
     status: row.is_active ? 'active' : 'inactive', weekTag: (row.week_tag as string) ?? '',
+    sellableProductId: (row.sellable_product_id as string) ?? null,
   }))
 }
 
-export async function createWeeklyDish(dish: Omit<WeeklyDish, 'id' | 'status'>, userId: string): Promise<WeeklyDish> {
+export async function createWeeklyDish(dish: Omit<WeeklyDish, 'id' | 'status' | 'sellableProductId'>, userId: string): Promise<WeeklyDish> {
   const { data, error } = await client().from('weekly_menu_items').insert({
     name: dish.name, description: dish.description, price: dish.price, cost: dish.cost,
     emoji: dish.emoji, week_tag: dish.weekTag, is_active: true, created_by: userId,
@@ -1304,12 +1095,19 @@ export async function createWeeklyDish(dish: Omit<WeeklyDish, 'id' | 'status'>, 
   if (error) throw error
   return { id: data.id as string, name: data.name as string, description: (data.description as string) ?? '',
     price: Number(data.price), cost: Number(data.cost ?? 0), emoji: data.emoji as string,
-    status: data.is_active ? 'active' : 'inactive', weekTag: (data.week_tag as string) ?? '' }
+    status: data.is_active ? 'active' : 'inactive', weekTag: (data.week_tag as string) ?? '',
+    sellableProductId: (data.sellable_product_id as string) ?? null }
 }
 
 export async function setWeeklyDishActive(id: string, active: boolean): Promise<void> {
   const { error } = await client().from('weekly_menu_items').update({ is_active: active }).eq('id', id)
   if (error) throw error
+}
+
+export async function syncWeeklyDishToCatalog(weeklyDishId: string): Promise<string> {
+  const { data, error } = await client().rpc('fn_sync_weekly_dish_to_catalog', { p_weekly_dish_id: weeklyDishId })
+  if (error) throw error
+  return data as string
 }
 
 // --- Cola de WhatsApp -------------------------------------------------------
@@ -1513,6 +1311,66 @@ export async function getEmployees(): Promise<Employee[]> {
   }))
 }
 
+export async function getAllEmployees(): Promise<Employee[]> {
+  const { data, error } = await client()
+    .from('employees')
+    .select('id,full_name,position,hourly_rate,is_active')
+    .order('is_active', { ascending: false })
+    .order('full_name', { ascending: true })
+
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    fullName: r.full_name as string,
+    position: (r.position as string) ?? null,
+    hourlyRate: Number(r.hourly_rate),
+    isActive: r.is_active as boolean,
+  }))
+}
+
+export async function createEmployee(params: {
+  fullName: string
+  position?: string | null
+  hourlyRate?: number
+}): Promise<Employee> {
+  const { data, error } = await client()
+    .from('employees')
+    .insert({
+      full_name: params.fullName,
+      position: params.position ?? null,
+      hourly_rate: params.hourlyRate ?? 0,
+      is_active: true,
+    })
+    .select('id,full_name,position,hourly_rate,is_active')
+    .single()
+  if (error) throw error
+  return {
+    id: data.id as string,
+    fullName: data.full_name as string,
+    position: (data.position as string) ?? null,
+    hourlyRate: Number(data.hourly_rate),
+    isActive: data.is_active as boolean,
+  }
+}
+
+export async function updateEmployee(id: string, updates: {
+  fullName?: string
+  position?: string | null
+  hourlyRate?: number
+  isActive?: boolean
+}): Promise<void> {
+  const patch: Record<string, unknown> = {}
+  if (updates.fullName !== undefined) patch.full_name = updates.fullName
+  if (updates.position !== undefined) patch.position = updates.position
+  if (updates.hourlyRate !== undefined) patch.hourly_rate = updates.hourlyRate
+  if (updates.isActive !== undefined) patch.is_active = updates.isActive
+  const { error } = await client()
+    .from('employees')
+    .update(patch)
+    .eq('id', id)
+  if (error) throw error
+}
+
 export async function getProductionBatches(dateStart?: string, dateEnd?: string): Promise<ProductionBatch[]> {
   let query = client()
     .from('preparation_batches')
@@ -1697,6 +1555,226 @@ export async function createProductionBatch(params: {
   if (itemsErr) throw itemsErr
 
   return batchId
+}
+
+// --- Nómina -------------------------------------------------------------------
+
+export async function getPayrollPeriods(): Promise<PayrollPeriod[]> {
+  const { data, error } = await client()
+    .from('payroll_periods')
+    .select('id,start_date,end_date,status,notes,created_at')
+    .order('start_date', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    startDate: r.start_date as string,
+    endDate: r.end_date as string,
+    status: r.status as PayrollPeriod['status'],
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+  }))
+}
+
+export async function createPayrollPeriod(params: {
+  startDate: string
+  endDate: string
+  notes?: string | null
+}): Promise<string> {
+  const { data, error } = await client()
+    .from('payroll_periods')
+    .insert({ start_date: params.startDate, end_date: params.endDate, notes: params.notes ?? null })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updatePayrollPeriodStatus(id: string, status: PayrollPeriod['status']): Promise<void> {
+  const { error } = await client()
+    .from('payroll_periods')
+    .update({ status })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[]> {
+  const { data, error } = await client()
+    .from('payroll_entries')
+    .select('id,payroll_period_id,employee_id,hours_worked,base_salary,deductions,net_pay,notes,employees(full_name,position)')
+    .eq('payroll_period_id', periodId)
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    payrollPeriodId: r.payroll_period_id as string,
+    employeeId: r.employee_id as string,
+    employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
+    position: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.position as string ?? null : null,
+    hoursWorked: Number(r.hours_worked),
+    baseSalary: Number(r.base_salary),
+    deductions: Number(r.deductions),
+    netPay: Number(r.net_pay),
+    notes: (r.notes as string) ?? null,
+  }))
+}
+
+export async function upsertPayrollEntry(params: {
+  payrollPeriodId: string
+  employeeId: string
+  hoursWorked: number
+  baseSalary: number
+  deductions: number
+  notes?: string | null
+}): Promise<void> {
+  const { error } = await client()
+    .from('payroll_entries')
+    .upsert({
+      payroll_period_id: params.payrollPeriodId,
+      employee_id: params.employeeId,
+      hours_worked: params.hoursWorked,
+      base_salary: params.baseSalary,
+      deductions: params.deductions,
+      notes: params.notes ?? null,
+    }, { onConflict: 'payroll_period_id,employee_id' })
+  if (error) throw error
+}
+
+export async function getAdvances(dateStart?: string, dateEnd?: string): Promise<Advance[]> {
+  let query = client()
+    .from('advances')
+    .select('id,employee_id,amount,advance_date,is_deducted,notes,created_at,employees(full_name)')
+    .order('advance_date', { ascending: false })
+  if (dateStart) query = query.gte('advance_date', dateStart)
+  if (dateEnd) query = query.lte('advance_date', dateEnd)
+  const { data, error } = await query
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    employeeId: r.employee_id as string,
+    employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
+    amount: Number(r.amount),
+    advanceDate: r.advance_date as string,
+    isDeducted: r.is_deducted as boolean,
+    notes: (r.notes as string) ?? null,
+    createdAt: r.created_at as string,
+  }))
+}
+
+export async function createAdvance(params: {
+  employeeId: string
+  amount: number
+  advanceDate?: string
+  notes?: string | null
+}): Promise<void> {
+  const { error } = await client().from('advances').insert({
+    employee_id: params.employeeId,
+    amount: params.amount,
+    advance_date: params.advanceDate ?? new Date().toISOString().split('T')[0],
+    notes: params.notes ?? null,
+  })
+  if (error) throw error
+}
+
+export async function setAdvanceDeducted(id: string, deducted: boolean): Promise<void> {
+  const { error } = await client()
+    .from('advances')
+    .update({ is_deducted: deducted })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function createProductionBonus(params: {
+  employeeId: string
+  amount: number
+  bonusDate?: string
+  reason?: string | null
+}): Promise<void> {
+  const { error } = await client().from('production_bonuses').insert({
+    employee_id: params.employeeId,
+    amount: params.amount,
+    bonus_date: params.bonusDate ?? new Date().toISOString().split('T')[0],
+    reason: params.reason ?? null,
+  })
+  if (error) throw error
+}
+
+export interface ProductionBonusRecord {
+  id: string
+  employeeId: string
+  employeeName: string
+  amount: number
+  bonusDate: string
+  reason: string | null
+  createdAt: string
+}
+
+export async function getProductionBonusRecords(): Promise<ProductionBonusRecord[]> {
+  const { data, error } = await client()
+    .from('production_bonuses')
+    .select('id,employee_id,amount,bonus_date,reason,created_at,employees(full_name)')
+    .order('bonus_date', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    employeeId: r.employee_id as string,
+    employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
+    amount: Number(r.amount),
+    bonusDate: r.bonus_date as string,
+    reason: (r.reason as string) ?? null,
+    createdAt: r.created_at as string,
+  }))
+}
+
+// --- Recetas ------------------------------------------------------------------
+
+export async function createRecipeComponent(params: {
+  sellableProductId: string
+  ingredientId?: string
+  preparationBatchId?: string
+  quantity: number
+  unitId: string
+}): Promise<string> {
+  const { data, error } = await client()
+    .from('recipe_components')
+    .insert({
+      sellable_product_id: params.sellableProductId,
+      ingredient_id: params.ingredientId ?? null,
+      preparation_batch_id: params.preparationBatchId ?? null,
+      quantity: params.quantity,
+      unit_id: params.unitId,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function deleteRecipeComponent(id: string): Promise<void> {
+  const { error } = await client()
+    .from('recipe_components')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
+// --- Auditoría ----------------------------------------------------------------
+
+export async function getAuditLogs(limit = 200): Promise<AuditLog[]> {
+  const { data, error } = await client()
+    .from('audit_logs')
+    .select('id,occurred_at,actor_name,module,action,details,severity')
+    .order('occurred_at', { ascending: false })
+    .limit(limit)
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string,
+    occurredAt: r.occurred_at as string,
+    actorName: r.actor_name as string,
+    module: r.module as string,
+    action: r.action as string,
+    details: (r.details as string) ?? null,
+    severity: r.severity as AuditLog['severity'],
+  }))
 }
 
 // --- Helpers -----------------------------------------------------------------

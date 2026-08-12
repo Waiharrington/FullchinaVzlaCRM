@@ -1,146 +1,92 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
-import { Users, UserPlus, Shield, CheckCircle2, XCircle, Mail, Phone, Edit3, Award } from 'lucide-react'
+import { Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3, AlertTriangle } from 'lucide-react'
+import { getAllEmployees, createEmployee, updateEmployee } from '../lib/dataService'
+import type { Employee } from '../lib/dataService'
 import './Equipo.css'
-
-export interface TeamMember {
-  id: string
-  name: string
-  email: string
-  phone: string
-  role: 'owner' | 'manager' | 'cashier' | 'cook'
-  active: boolean
-  commissionPct: number
-  createdAt: string
-}
-
-const INITIAL_TEAM: TeamMember[] = [
-  {
-    id: 'u1',
-    name: 'Andrea (Dueña)',
-    email: 'duena@fullchinavzla.com',
-    phone: '0424-3510719',
-    role: 'owner',
-    active: true,
-    commissionPct: 0,
-    createdAt: '2026-08-01'
-  },
-  {
-    id: 'u2',
-    name: 'Carlos Rodríguez (Encargado)',
-    email: 'carlos@fullchinavzla.com',
-    phone: '0412-9876543',
-    role: 'manager',
-    active: true,
-    commissionPct: 5,
-    createdAt: '2026-08-02'
-  },
-  {
-    id: 'u3',
-    name: 'María García (Cajera)',
-    email: 'maria@fullchinavzla.com',
-    phone: '0414-1234567',
-    role: 'cashier',
-    active: true,
-    commissionPct: 3,
-    createdAt: '2026-08-03'
-  },
-  {
-    id: 'u4',
-    name: 'José Martínez (Cocinero / Wok Master)',
-    email: 'jose@fullchinavzla.com',
-    phone: '0416-5554433',
-    role: 'cook',
-    active: true,
-    commissionPct: 10,
-    createdAt: '2026-08-04'
-  }
-]
 
 export function Equipo() {
   const { user } = useAuth()
-  const [team, setTeam] = useState<TeamMember[]>(INITIAL_TEAM)
-  
-  // Form State
+  const [team, setTeam] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [role, setRole] = useState<TeamMember['role']>('cashier')
-  const [commissionPct, setCommissionPct] = useState(5)
+  const [position, setPosition] = useState('')
+  const [hourlyRate, setHourlyRate] = useState(0)
   const [notice, setNotice] = useState('')
 
-  const handleOpenModal = (member?: TeamMember) => {
-    if (member) {
-      setEditingId(member.id)
-      setName(member.name)
-      setEmail(member.email)
-      setPhone(member.phone)
-      setRole(member.role)
-      setCommissionPct(member.commissionPct)
+  const load = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError('')
+      setTeam(await getAllEmployees())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error cargando empleados')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  const handleOpenModal = (emp?: Employee) => {
+    if (emp) {
+      setEditingId(emp.id)
+      setName(emp.fullName)
+      setPosition(emp.position ?? '')
+      setHourlyRate(emp.hourlyRate)
     } else {
       setEditingId(null)
       setName('')
-      setEmail('')
-      setPhone('')
-      setRole('cashier')
-      setCommissionPct(5)
+      setPosition('')
+      setHourlyRate(0)
     }
     setShowModal(true)
   }
 
-  const handleSaveMember = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !email.trim()) return
-
-    if (editingId) {
-      setTeam(prev => prev.map(m => m.id === editingId ? { ...m, name, email, phone, role, commissionPct } : m))
-      setNotice(`¡Usuario "${name}" actualizado con éxito!`)
-    } else {
-      const newMember: TeamMember = {
-        id: `u-${Date.now()}`,
-        name,
-        email,
-        phone,
-        role,
-        active: true,
-        commissionPct,
-        createdAt: new Date().toISOString().split('T')[0]
+    if (!name.trim()) return
+    try {
+      if (editingId) {
+        await updateEmployee(editingId, { fullName: name.trim(), position: position.trim() || null, hourlyRate })
+        setNotice(`"${name.trim()}" actualizado con éxito`)
+      } else {
+        await createEmployee({ fullName: name.trim(), position: position.trim() || null, hourlyRate })
+        setNotice(`"${name.trim()}" registrado correctamente`)
       }
-      setTeam(prev => [newMember, ...prev])
-      setNotice(`¡Nuevo miembro "${name}" registrado correctamente!`)
+      setShowModal(false)
+      await load()
+      setTimeout(() => setNotice(''), 4000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error guardando')
     }
-
-    setShowModal(false)
-    setTimeout(() => setNotice(''), 4000)
   }
 
-  const toggleMemberActive = (id: string) => {
-    setTeam(prev => prev.map(m => {
-      if (m.id === id) {
-        return { ...m, active: !m.active }
-      }
-      return m
-    }))
+  const toggleActive = async (emp: Employee) => {
+    try {
+      await updateEmployee(emp.id, { isActive: !emp.isActive })
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error actualizando')
+    }
   }
 
-  const getRoleBadge = (r: TeamMember['role']) => {
-    switch (r) {
-      case 'owner':
-        return <span className="team-badge owner">👑 Dueño / Owner</span>
-      case 'manager':
-        return <span className="team-badge manager">🛡️ Encargado / Manager</span>
-      case 'cashier':
-        return <span className="team-badge cashier">💵 Cajero / POS</span>
-      case 'cook':
-        return <span className="team-badge cook">👨‍🍳 Cocinero / Wok</span>
-    }
+  if (loading) {
+    return (
+      <div className="page animate-fade-in">
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
+          <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="equipo-page">
-      {/* Header Banner */}
       <div className="almacen-card" style={{ background: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)' }}>
         <div className="prod-card-header-bar">
           <div className="header-title-group">
@@ -148,9 +94,9 @@ export function Equipo() {
               <Users size={20} />
             </div>
             <div>
-              <h2 className="prod-card-title">Gestión de Equipo y Usuarios</h2>
+              <h2 className="prod-card-title">Gestión de Equipo y Personal</h2>
               <span className="metric-sub-text">
-                Crea miembros del personal, asigna roles y controla los accesos de cada empleado.
+                {team.length} empleados · {team.filter(e => e.isActive).length} activos
               </span>
             </div>
           </div>
@@ -162,59 +108,63 @@ export function Equipo() {
         </div>
       </div>
 
+      {error && (
+        <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
+          <AlertTriangle size={18} /> {error}
+          <button onClick={() => setError('')} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>✕</button>
+        </div>
+      )}
+
       {notice && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+        <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
           <CheckCircle2 size={18} /> {notice}
         </div>
       )}
 
-      {/* Team Cards Grid */}
       <div className="team-grid">
-        {team.map(member => (
-          <div key={member.id} className={`team-card ${!member.active ? 'inactive' : ''}`}>
+        {team.map(emp => (
+          <div key={emp.id} className={`team-card ${!emp.isActive ? 'inactive' : ''}`}>
             <div className="team-card-header">
               <div className="team-avatar">
-                {member.name.charAt(0).toUpperCase()}
+                {emp.fullName.charAt(0).toUpperCase()}
               </div>
               <div className="team-info-header">
-                <h3 className="team-name">{member.name}</h3>
-                {getRoleBadge(member.role)}
+                <h3 className="team-name">{emp.fullName}</h3>
+                <span className="team-badge">{emp.position || 'Sin cargo'}</span>
               </div>
             </div>
 
             <div className="team-card-details">
               <div className="detail-row">
-                <Mail size={14} className="detail-icon" />
-                <span>{member.email}</span>
-              </div>
-              <div className="detail-row">
-                <Phone size={14} className="detail-icon" />
-                <span>{member.phone || 'Sin teléfono'}</span>
-              </div>
-              <div className="detail-row">
-                <Award size={14} className="detail-icon" />
-                <span>Comisión: <strong>{member.commissionPct}%</strong> por venta</span>
+                <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Tarifa/hora:</span>
+                <span style={{ color: '#fff', fontSize: '13px' }}>${emp.hourlyRate.toFixed(2)}</span>
               </div>
             </div>
 
             <div className="team-card-actions">
-              <button 
-                className={`status-toggle-btn ${member.active ? 'active' : 'inactive'}`}
-                onClick={() => toggleMemberActive(member.id)}
+              <button
+                className={`status-toggle-btn ${emp.isActive ? 'active' : 'inactive'}`}
+                onClick={() => toggleActive(emp)}
               >
-                {member.active ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                {member.active ? 'Acceso Activo' : 'Acceso Suspendido'}
+                {emp.isActive ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                {emp.isActive ? 'Activo' : 'Suspendido'}
               </button>
-              
-              <button className="icon-action-btn" title="Editar Miembro" onClick={() => handleOpenModal(member)}>
+
+              <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
                 <Edit3 size={16} />
               </button>
             </div>
           </div>
         ))}
+
+        {team.length === 0 && (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 16px', color: '#71717a' }}>
+            <Users size={48} style={{ marginBottom: '12px', opacity: 0.3 }} />
+            <p>No hay empleados registrados. Crea el primero con el botón de arriba.</p>
+          </div>
+        )}
       </div>
 
-      {/* Role Matrix Permissions Summary */}
       <div className="almacen-card mt-6">
         <h3 style={{ color: '#fff', fontSize: '16px', fontWeight: 800, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Shield size={18} style={{ color: '#dc2626' }} /> Matriz de Permisos por Rol
@@ -223,55 +173,48 @@ export function Equipo() {
           <table className="perm-table">
             <thead>
               <tr>
-                <th>Módulo / Funcionalidad</th>
-                <th>👑 Owner</th>
-                <th>🛡️ Manager</th>
-                <th>💵 Cashier (Cajero)</th>
-                <th>👨‍🍳 Cook (Cocinero)</th>
+                <th>Módulo</th>
+                <th>Owner</th>
+                <th>Manager</th>
+                <th>Cashier</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Ventas y Caja (POS)</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Acceso Total</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Acceso Total</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Acceso Total</td>
-                <td><XCircle size={16} className="text-gray" /> No accesible</td>
+                <td>Ventas y Caja</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
               </tr>
               <tr>
-                <td>Ver Costos de Insumos y Márgenes</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Visibles</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Visibles</td>
-                <td><XCircle size={16} className="text-red" /> Ocultos estrictamente</td>
-                <td><XCircle size={16} className="text-red" /> Ocultos estrictamente</td>
+                <td>Costos y Márgenes</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Visibles</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Visibles</td>
+                <td><XCircle size={14} className="text-red" /> Ocultos</td>
               </tr>
               <tr>
-                <td>Inventario Operativo y Almacén</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Control Total</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Transferencias</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Solo lectura (stock)</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Descuento por receta</td>
+                <td>Inventario y Almacén</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Transferencias</td>
+                <td><XCircle size={14} className="text-red" /> Solo lectura</td>
               </tr>
               <tr>
-                <td>Cierres Financieros y Nómina</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Acceso Total</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Cierre operativo</td>
-                <td><XCircle size={16} className="text-red" /> Bloqueado</td>
-                <td><XCircle size={16} className="text-red" /> Bloqueado</td>
+                <td>Nómina y Finanzas</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
+                <td><XCircle size={14} className="text-red" /> Cierre operativo</td>
+                <td><XCircle size={14} className="text-red" /> Bloqueado</td>
               </tr>
               <tr>
-                <td>Gestión de Equipo y Roles</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Exclusivo Owner</td>
-                <td><CheckCircle2 size={16} className="text-green" /> Crear Empleados</td>
-                <td><XCircle size={16} className="text-red" /> Bloqueado</td>
-                <td><XCircle size={16} className="text-red" /> Bloqueado</td>
+                <td>Gestión de Equipo</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
+                <td><CheckCircle2 size={14} className="text-green" /> Crear empleados</td>
+                <td><XCircle size={14} className="text-red" /> Bloqueado</td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Create / Edit Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="modal-content-custom">
@@ -279,12 +222,12 @@ export function Equipo() {
               <h3>{editingId ? 'Editar Miembro' : 'Crear Nuevo Miembro del Equipo'}</h3>
               <button className="close-btn" onClick={() => setShowModal(false)}>✕</button>
             </div>
-            <form onSubmit={handleSaveMember} className="modal-form">
+            <form onSubmit={handleSave} className="modal-form">
               <div className="form-group">
-                <label>Nombre y Apellido</label>
-                <input 
-                  type="text" 
-                  value={name} 
+                <label>Nombre completo</label>
+                <input
+                  type="text"
+                  value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="Ej. Pedro Pérez"
                   required
@@ -292,51 +235,29 @@ export function Equipo() {
               </div>
 
               <div className="form-group">
-                <label>Correo Electrónico (Login Supabase)</label>
-                <input 
-                  type="email" 
-                  value={email} 
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="ejemplo@fullchina.com"
-                  required
+                <label>Cargo / Posición</label>
+                <input
+                  type="text"
+                  value={position}
+                  onChange={e => setPosition(e.target.value)}
+                  placeholder="Ej. Cajero, Cocinero, Encargado"
                 />
               </div>
 
               <div className="form-group">
-                <label>Teléfono de Contacto</label>
-                <input 
-                  type="text" 
-                  value={phone} 
-                  onChange={e => setPhone(e.target.value)}
-                  placeholder="0412-1234567"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Rol y Accesos</label>
-                <select value={role} onChange={e => setRole(e.target.value as TeamMember['role'])}>
-                  <option value="cashier">💵 Cajero (Solo ventas y cobros)</option>
-                  <option value="cook">👨‍🍳 Cocinero / Wok (Comandas y producción)</option>
-                  <option value="manager">🛡️ Encargado / Manager (Operaciones y compras)</option>
-                  <option value="owner">👑 Dueño / Owner (Acceso Total + Financiero)</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>Comisión por Venta (% USD)</label>
-                <input 
-                  type="number" 
+                <label>Tarifa por hora (USD)</label>
+                <input
+                  type="number"
                   min="0"
-                  max="100"
-                  step="0.5"
-                  value={commissionPct} 
-                  onChange={e => setCommissionPct(parseFloat(e.target.value) || 0)}
+                  step="0.25"
+                  value={hourlyRate}
+                  onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)}
                 />
               </div>
 
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancelar</button>
-                <button type="submit" className="btn-save">{editingId ? 'Guardar Cambios' : 'Crear Usuario'}</button>
+                <button type="submit" className="btn-save">{editingId ? 'Guardar Cambios' : 'Crear Miembro'}</button>
               </div>
             </form>
           </div>

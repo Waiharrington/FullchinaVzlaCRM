@@ -1,13 +1,7 @@
 import { useState, useEffect, type ReactNode } from 'react'
 import { AuthContext } from './auth-context'
 import type { User } from './auth-context'
-import { supabase, isDemoMode } from '../lib/supabase'
-
-const DEMO_USERS: Record<string, User> = {
-  owner: { id: 'demo-owner', email: 'duena@fullchinavzla.com', role: 'owner' },
-  manager: { id: 'demo-manager', email: 'gerencia@fullchinavzla.com', role: 'manager' },
-  cashier: { id: 'demo-cashier', email: 'caja@fullchinavzla.com', role: 'cashier' }
-}
+import { supabase } from '../lib/supabase'
 
 async function fetchUserRole(userId: string): Promise<'owner' | 'manager' | 'cashier' | null> {
   if (!supabase) return null
@@ -28,23 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [splashDone, setSplashDone] = useState(false)
 
   useEffect(() => {
-    if (isDemoMode) {
-      const savedUser = localStorage.getItem('demo_user')
-      if (savedUser) {
-        try {
-          setUser(JSON.parse(savedUser))
-        } catch {
-          setUser(null)
-        }
-      } else {
-        setUser(null)
-      }
-      setSession(null)
+    const sb = supabase
+    if (!sb) {
       setLoading(false)
       return
     }
 
-    supabase!.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+    sb.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       setSession(currentSession)
       if (currentSession?.user) {
         const role = await fetchUserRole(currentSession.user.id)
@@ -53,13 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           setSession(null)
           setUser(null)
-          void supabase!.auth.signOut({ scope: 'local' })
+          void sb.auth.signOut({ scope: 'local' })
         }
       }
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
+    const { data: { subscription } } = sb.auth.onAuthStateChange(
       async (_event, currentSession) => {
         setSession(currentSession)
         if (currentSession?.user) {
@@ -69,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else {
             setSession(null)
             setUser(null)
-            void supabase!.auth.signOut({ scope: 'local' })
+            void sb.auth.signOut({ scope: 'local' })
           }
         } else {
           setUser(null)
@@ -81,29 +65,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    if (isDemoMode) {
-      setUser(DEMO_USERS.owner)
-      localStorage.setItem('demo_user', JSON.stringify(DEMO_USERS.owner))
-      setSplashDone(false) // Trigger splash on next render
-      return {}
-    }
+    if (!supabase) return { error: 'Supabase no está configurado (revisa el .env).' }
 
-    const { data, error } = await supabase!.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
     const role = data.user ? await fetchUserRole(data.user.id) : null
     if (!role) {
-      await supabase!.auth.signOut({ scope: 'local' })
+      await supabase.auth.signOut({ scope: 'local' })
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
     setUser({ id: data.user.id, email: data.user.email || email, role })
-    setSplashDone(false) // Trigger splash on next render
+    setSplashDone(false)
     return {}
   }
 
   const signInWithPin = async (pin: string) => {
-    if (isDemoMode) return { error: 'Usa los PIN de demostración.' }
+    if (!supabase) return { error: 'Supabase no está configurado (revisa el .env).' }
 
-    const { data: pinData, error: pinError } = await supabase!.functions.invoke('pin-login', {
+    const { data: pinData, error: pinError } = await supabase.functions.invoke('pin-login', {
       body: { pin },
     })
 
@@ -118,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: 'PIN incorrecto.' }
     }
 
-    const { data, error } = await supabase!.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       token_hash: pinData.token_hash,
       type: 'magiclink',
     })
@@ -126,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const role = await fetchUserRole(data.user.id)
     if (!role) {
-      await supabase!.auth.signOut({ scope: 'local' })
+      await supabase.auth.signOut({ scope: 'local' })
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
 
@@ -135,26 +114,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {}
   }
 
-  const signInAsDemo = (role: 'owner' | 'manager' | 'cashier') => {
-    if (isDemoMode) {
-      setUser(DEMO_USERS[role])
-      localStorage.setItem('demo_user', JSON.stringify(DEMO_USERS[role]))
-      setSplashDone(false) // Trigger splash on next render
-    }
-  }
-
   const signOut = async () => {
-    if (isDemoMode) {
-      setUser(null)
-      localStorage.removeItem('demo_user')
-      return
-    }
-    await supabase!.auth.signOut()
-    localStorage.removeItem('demo_user')
+    if (!supabase) return
+    await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, loading, demoMode: isDemoMode, signIn, signInWithPin, signInAsDemo, signOut, splashDone, setSplashDone }}>
+    <AuthContext.Provider value={{ session, user, loading, signIn, signInWithPin, signOut, splashDone, setSplashDone }}>
       {children}
     </AuthContext.Provider>
   )

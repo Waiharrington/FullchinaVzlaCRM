@@ -11,14 +11,16 @@ Lee en este orden:
 
 Estado rápido:
 
-- Caja y Comandas tienen persistencia real de órdenes y pagos.
-- La mayoría de los demás módulos todavía mezclan interfaz avanzada con datos
-  demo/locales; inspecciona cada servicio antes de llamarlo “terminado”.
+- Caja, Comandas, Equipo, Compras, Producción, Recetas y Nómina tienen
+  persistencia real contra Supabase. La infraestructura de demo fue eliminada.
+- Almacén, Fidelización, Gastos, Marketing, Menú semanal y partes de otros
+  módulos todavía mezclan interfaz avanzada con datos locales o estáticos;
+  inspecciona cada servicio antes de llamarlo "terminado".
 - El VPS ya recibió las migraciones de seguridad, pagos, caja operativa y PIN
   seguro del 2026-08-08.
 - El acceso por PIN usa `supabase/functions/pin-login/index.ts`, hashes bcrypt y
   tokens magic-link de un solo uso. No sustituirlo por contraseñas `VITE_*`.
-- Build, lint y 3 pruebas automatizadas pasan.
+- Build, lint y 11 pruebas automatizadas pasan.
 - Producción está publicada en `https://fullchina-vzla-crm.vercel.app` y el PIN
   de Dueña fue probado allí. No hubo commit ni push en esta fase.
 

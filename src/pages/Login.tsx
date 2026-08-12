@@ -73,7 +73,7 @@ const MOBILE_CAROUSEL_SETTINGS = [
 ];
 
 export function Login() {
-  const { signIn, signInWithPin, signInAsDemo, demoMode } = useAuth()
+  const { signIn, signInWithPin } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -86,7 +86,6 @@ export function Login() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const carouselSettings = CAROUSEL_SETTINGS
   const mobileSettings = MOBILE_CAROUSEL_SETTINGS
-  const [isExiting, setIsExiting] = useState(false)
   const [isTabletViewport, setIsTabletViewport] = useState(false)
   const [isMobileViewport, setIsMobileViewport] = useState(window.innerWidth <= 679)
   const formRef = useRef<HTMLFormElement>(null)
@@ -133,32 +132,10 @@ export function Login() {
     }
   }, [pin, isPinMode, loading])
 
-  const triggerExit = (action: () => void) => {
-    setIsExiting(true)
-    setTimeout(action, 600)
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    
-    if (demoMode) {
-      if (isPinMode) {
-        if (pin === '1234') triggerExit(() => signInAsDemo('cashier'))
-        else if (pin === '4321') triggerExit(() => signInAsDemo('manager'))
-        else if (pin === '9999') triggerExit(() => signInAsDemo('owner'))
-        else {
-          setError('PIN incorrecto. (Usa 1234, 4321 o 9999 en demo)')
-          setLoading(false)
-        }
-      } else {
-        const role = email.toLowerCase().includes('manager') ? 'manager' : 
-                     email.toLowerCase().includes('cashier') ? 'cashier' : 'owner';
-        triggerExit(() => signInAsDemo(role))
-      }
-      return
-    }
 
     if (isPinMode) {
       const result = await signInWithPin(pin)
@@ -176,7 +153,7 @@ export function Login() {
   }
 
   return (
-    <div className={`login-page ${isExiting ? 'exiting' : ''}`}>
+    <div className="login-page">
       
       {/* Mobile/Tablet Header Carousel */}
       <div className="login-carousel">
@@ -351,7 +328,7 @@ export function Login() {
                         placeholder="••••••••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        required={!demoMode && !isPinMode}
+                        required={!isPinMode}
                         disabled={isPinMode}
                       />
                       <button 

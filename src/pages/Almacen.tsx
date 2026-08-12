@@ -29,7 +29,7 @@ export function Almacen() {
   const [items, setItems] = useState<WarehouseItem[]>([])
   const [transfers, setTransfers] = useState<WarehouseTransfer[]>([])
   const [selectedItemId, setSelectedItemId] = useState('')
-  const [transferQty, setTransferQty] = useState(10)
+  const [transferQty, setTransferQty] = useState('10')
   const [operator, setOperator] = useState('Usuario del sistema')
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
@@ -68,9 +68,14 @@ export function Almacen() {
   const handleTransfer = async (event: FormEvent) => {
     event.preventDefault()
     const targetItem = items.find(item => item.id === selectedItemId)
-    if (!targetItem || transferQty <= 0) return
+    const qty = Number(transferQty)
+    if (!targetItem || !Number.isFinite(qty) || qty <= 0) {
+      setSuccessMsg('')
+      setErrorMsg('Indica una cantidad válida mayor a cero.')
+      return
+    }
 
-    if (transferQty > targetItem.quantity) {
+    if (qty > targetItem.quantity) {
       setSuccessMsg('')
       setErrorMsg('La cantidad a transferir excede el stock disponible en almacén.')
       return
@@ -79,21 +84,21 @@ export function Almacen() {
     try {
       await adjustStock({
         ingredientId: targetItem.id,
-        quantity: -transferQty,
+        quantity: -qty,
         unitId: targetItem.unitId,
         movementType: 'adjustment',
         notes: 'Transferencia a operación'
       })
 
       setItems(previous => previous.map(item => item.id === selectedItemId
-        ? { ...item, quantity: item.quantity - transferQty }
+        ? { ...item, quantity: item.quantity - qty }
         : item
       ))
 
       setTransfers(previous => [{
         id: `wt-${Date.now()}`,
         itemName: targetItem.name,
-        quantityTransferred: transferQty,
+        quantityTransferred: qty,
         unit: targetItem.unit,
         date: new Date().toISOString().split('T')[0],
         operator,
@@ -102,7 +107,7 @@ export function Almacen() {
       }, ...previous])
 
       setErrorMsg('')
-      setSuccessMsg(`Transferencia de ${transferQty} ${targetItem.unit} registrada correctamente.`)
+      setSuccessMsg(`Transferencia de ${qty} ${targetItem.unit} registrada correctamente.`)
       setTimeout(() => setSuccessMsg(''), 4000)
     } catch (error) {
       setSuccessMsg('')
@@ -242,7 +247,7 @@ export function Almacen() {
               <div className="transfer-fields-grid">
                 <div className="select-field-group">
                   <label className="field-label" htmlFor="transfer-quantity">Cantidad</label>
-                  <input id="transfer-quantity" type="number" min="1" className="field-select" value={transferQty} onChange={event => setTransferQty(Number(event.target.value))} />
+                  <input id="transfer-quantity" type="number" min="1" inputMode="numeric" className="field-select" value={transferQty} onChange={event => setTransferQty(event.target.value)} />
                 </div>
                 <div className="select-field-group">
                   <label className="field-label" htmlFor="transfer-operator">Operador responsable</label>

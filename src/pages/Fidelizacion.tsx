@@ -168,8 +168,8 @@ export function Fidelizacion() {
               </span>
               <div className="stamps-grid">
                 {Array.from({ length: 10 }).map((_, i) => {
-                  const currentStamps = selectedCustomer.totalVisits % 10
-                  const isStamped = i < currentStamps || (selectedCustomer.totalVisits > 0 && currentStamps === 0)
+                  const stampsInCurrentCycle = selectedCustomer.totalVisits % 10
+                  const isStamped = i < stampsInCurrentCycle
                   return (
                     <div key={i} className={`stamp-slot ${isStamped ? 'stamped' : ''}`}>
                       {isStamped ? '🥟' : i + 1}
@@ -183,7 +183,7 @@ export function Fidelizacion() {
               <div>
                 <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700, display: 'block' }}>Recompensas Disponibles</span>
                 <span style={{ color: '#fff', fontWeight: 800, fontSize: '14px' }}>
-                  {selectedCustomer.rewardsUnlocked > 0 ? `🎁 ${selectedCustomer.rewardsUnlocked} Ración(es) de Lumpias Gratis` : 'Completa 5 visitas para 1 premio'}
+                  {selectedCustomer.rewardsUnlocked > 0 ? `🎁 ${selectedCustomer.rewardsUnlocked} Ración(es) de Lumpias Gratis` : `Completa ${10 - (selectedCustomer.totalVisits % 10)} visita(s) más para 1 premio`}
                 </span>
               </div>
               <button 

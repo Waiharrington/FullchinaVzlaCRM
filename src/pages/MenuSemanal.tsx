@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
-import { createWeeklyDish, getWeeklyDishes, setWeeklyDishActive, type WeeklyDish } from '../lib/dataService'
-import { Utensils, Plus, CheckCircle2, ToggleLeft, ToggleRight, Sparkles } from 'lucide-react'
+import { createWeeklyDish, getWeeklyDishes, setWeeklyDishActive, syncWeeklyDishToCatalog, type WeeklyDish } from '../lib/dataService'
+import { Utensils, Plus, CheckCircle2, ToggleLeft, ToggleRight, Sparkles, Link2, Check } from 'lucide-react'
 import './MenuSemanal.css'
 
 export function MenuSemanal() {
@@ -17,6 +17,7 @@ export function MenuSemanal() {
   const [emoji, setEmoji] = useState('🍜')
   const [weekTag, setWeekTag] = useState('Semana 2 - Agosto')
   const [createdNotice, setCreatedNotice] = useState('')
+  const [syncingId, setSyncingId] = useState<string | null>(null)
 
   useEffect(() => {
     getWeeklyDishes().then(setDishes).catch(error => setCreatedNotice(error instanceof Error ? error.message : 'No se pudo cargar el menú semanal'))
@@ -28,6 +29,21 @@ export function MenuSemanal() {
     const nextStatus: WeeklyDish['status'] = current.status === 'active' ? 'inactive' : 'active'
     await setWeeklyDishActive(id, nextStatus === 'active')
     setDishes(prev => prev.map(d => d.id === id ? { ...d, status: nextStatus } : d))
+  }
+
+  const handleSyncToCatalog = async (dish: WeeklyDish) => {
+    setSyncingId(dish.id)
+    try {
+      const productId = await syncWeeklyDishToCatalog(dish.id)
+      setDishes(prev => prev.map(d => d.id === dish.id ? { ...d, sellableProductId: productId } : d))
+      setCreatedNotice(`"${dish.name}" sincronizado al catálogo de ventas`)
+      setTimeout(() => setCreatedNotice(''), 4000)
+    } catch (err) {
+      setCreatedNotice(err instanceof Error ? err.message : 'Error al sincronizar')
+      setTimeout(() => setCreatedNotice(''), 4000)
+    } finally {
+      setSyncingId(null)
+    }
   }
 
   const handleCreateDish = async (e: React.FormEvent) => {
@@ -74,13 +90,23 @@ export function MenuSemanal() {
               <div className="dish-emoji-container">
                 {dish.emoji}
               </div>
-              <button 
-                onClick={() => toggleStatus(dish.id)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: dish.status === 'active' ? '#10b981' : '#71717a' }}
-                title="Cambiar estado Activo / Inactivo"
-              >
-                {dish.status === 'active' ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
-              </button>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  onClick={() => handleSyncToCatalog(dish)}
+                  disabled={syncingId === dish.id}
+                  style={{ background: dish.sellableProductId ? 'rgba(16, 185, 129, 0.15)' : 'transparent', border: '1px solid ' + (dish.sellableProductId ? 'rgba(16, 185, 129, 0.3)' : 'rgba(255,255,255,0.1)'), cursor: syncingId === dish.id ? 'wait' : 'pointer', color: dish.sellableProductId ? '#10b981' : '#71717a', padding: '4px', borderRadius: '6px' }}
+                  title={dish.sellableProductId ? 'Sincronizado al catálogo' : 'Sincronizar al catálogo de ventas'}
+                >
+                  {syncingId === dish.id ? <span className="spin" style={{ display: 'inline-block', width: 16, height: 16 }}>⏳</span> : dish.sellableProductId ? <Check size={16} /> : <Link2 size={16} />}
+                </button>
+                <button 
+                  onClick={() => toggleStatus(dish.id)}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: dish.status === 'active' ? '#10b981' : '#71717a' }}
+                  title="Cambiar estado Activo / Inactivo"
+                >
+                  {dish.status === 'active' ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                </button>
+              </div>
             </div>
 
             <div>
@@ -103,6 +129,11 @@ export function MenuSemanal() {
               <span className={`badge-stock ${dish.status === 'active' ? 'normal' : 'low'}`} style={{ textTransform: 'capitalize' }}>
                 {dish.status}
               </span>
+              {dish.sellableProductId && (
+                <span style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.12)', padding: '2px 6px', borderRadius: '4px' }}>
+                  En catálogo
+                </span>
+              )}
             </div>
           </div>
         ))}
