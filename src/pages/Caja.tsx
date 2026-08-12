@@ -4,7 +4,7 @@ import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { downloadReceipt } from '../lib/receipt'
-import { formatRateDate, formatVes } from '../lib/money'
+import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import {
   getProducts,
@@ -71,6 +71,15 @@ type SplitPaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer'
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is { method: SplitPaymentMethod; label: string; icon: string } => item.method !== 'split' && item.method !== 'other',
 )
+
+const usesBolivares = (method: SplitPaymentMethod) => method !== 'cash'
+const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
+  const amount = Number(value)
+  if (!Number.isFinite(amount)) return 0
+  return usesBolivares(method) ? (rate && rate > 0 ? amount / rate : 0) : amount
+}
+const usdToPaymentInput = (usd: number, method: SplitPaymentMethod, rate: number | null) =>
+  (usesBolivares(method) ? usd * (rate || 0) : usd).toFixed(2)
 
 const FOOD_IMAGES: Record<string, string> = {
   arroz: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
@@ -281,6 +290,7 @@ export function Caja() {
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
   const total = subtotal
+  const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate)
 
   // Action 1: Enviar a Cocina -> Saves order WITHOUT payment and navigates to /comandas
   const handleSendToKitchen = async () => {
@@ -352,7 +362,8 @@ export function Caja() {
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     setPayError('')
-    setAmountReceived(method === 'split' ? (total / 2).toFixed(2) : total.toFixed(2))
+    const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method === 'other' ? 'cash' : method
+    setAmountReceived(usdToPaymentInput(method === 'split' ? total / 2 : total, inputMethod, bcvRate))
   }
 
   // Confirm Payment in Modal -> Triggers Confirmation Screen (Image 2)
@@ -374,7 +385,7 @@ export function Caja() {
       let paymentComponents
       let finalMethod: PaymentMethod
       if (selectedPaymentTab === 'split') {
-        const primaryAmount = Math.round(enteredAmount * 100) / 100
+        const primaryAmount = Math.round(splitPrimaryAmountUsd * 100) / 100
         const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
         if (primaryAmount <= 0 || secondaryAmount <= 0) {
           throw new Error('El pago combinado necesita dos montos mayores a cero')
@@ -1051,7 +1062,10 @@ export function Caja() {
                         className="payment-field-input"
                         value={splitPrimaryMethod}
                         onChange={(e) => {
-                          setSplitPrimaryMethod(e.target.value as SplitPaymentMethod)
+                          const nextMethod = e.target.value as SplitPaymentMethod
+                          const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate)
+                          setSplitPrimaryMethod(nextMethod)
+                          setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, bcvRate))
                           setSplitPrimaryReference('')
                           setPayError('')
                         }}
@@ -1065,15 +1079,19 @@ export function Caja() {
                       <label className="payment-field-label">Monto del primer método</label>
                       <div className="payment-input-wrap">
                         <input
-                          type="number"
-                          min="0.01"
-                          step="0.01"
+                          type="text"
+                          inputMode="decimal"
                           className="payment-field-input"
                           value={amountReceived}
                           onChange={(e) => setAmountReceived(e.target.value)}
                         />
-                        <span className="currency-tag-right">USD</span>
+                        <span className="currency-tag-right">{usesBolivares(splitPrimaryMethod) ? 'Bs' : 'USD'}</span>
                       </div>
+                      <span className="payment-hint-sub">
+                        {usesBolivares(splitPrimaryMethod)
+                          ? `Ref. ${formatUsd(splitPrimaryAmountUsd)}`
+                          : bcvRate ? `Ref. ${formatVes(splitPrimaryAmountUsd * bcvRate)}` : 'Referencia BCV no disponible'}
+                      </span>
                       {(splitPrimaryMethod === 'mobile' || splitPrimaryMethod === 'transfer') && (
                         <>
                           <label className="payment-field-label">Referencia del primer método *</label>
@@ -1110,7 +1128,12 @@ export function Caja() {
                       </select>
                       <label className="payment-field-label">Monto del segundo método</label>
                       <div className="split-readonly-amount">
-                        <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} compact />
+                        <MoneyWithBcv
+                          usd={Math.max(total - splitPrimaryAmountUsd, 0)}
+                          rate={bcvRate}
+                          primaryCurrency={usesBolivares(splitSecondaryMethod) ? 'VES' : 'USD'}
+                          compact
+                        />
                       </div>
                       {(splitSecondaryMethod === 'mobile' || splitSecondaryMethod === 'transfer') && (
                         <>
@@ -1135,14 +1158,19 @@ export function Caja() {
                   <div className="payment-input-wrap">
                     <input
                       type="text"
+                      inputMode="decimal"
                       className="payment-field-input"
                       value={amountReceived}
                       onChange={(e) => setAmountReceived(e.target.value)}
                     />
-                    <span className="currency-tag-right">USD</span>
+                    <span className="currency-tag-right">
+                      {selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD'}
+                    </span>
                   </div>
                   <span className="payment-hint-sub">
-                    Monto a recibir por este método.
+                    {selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab)
+                      ? `Ref. ${formatUsd(total)}`
+                      : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
                   </span>
                 </div>}
 
@@ -1169,14 +1197,26 @@ export function Caja() {
                           1. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.icon}{' '}
                           {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.label}
                         </span>
-                        <MoneyWithBcv usd={Number(amountReceived) || 0} className="row-item-val" compact />
+                        <MoneyWithBcv
+                          usd={splitPrimaryAmountUsd}
+                          rate={bcvRate}
+                          primaryCurrency={usesBolivares(splitPrimaryMethod) ? 'VES' : 'USD'}
+                          className="row-item-val"
+                          compact
+                        />
                       </div>
                       <div className="breakdown-row-item">
                         <span className="row-item-left">
                           2. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.icon}{' '}
                           {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.label}
                         </span>
-                        <MoneyWithBcv usd={Math.max(total - (Number(amountReceived) || 0), 0)} className="row-item-val" compact />
+                        <MoneyWithBcv
+                          usd={Math.max(total - splitPrimaryAmountUsd, 0)}
+                          rate={bcvRate}
+                          primaryCurrency={usesBolivares(splitSecondaryMethod) ? 'VES' : 'USD'}
+                          className="row-item-val"
+                          compact
+                        />
                       </div>
                     </div>
                   </div>
