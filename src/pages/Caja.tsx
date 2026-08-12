@@ -71,6 +71,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   racion: 'Raciones',
 }
 const CATEGORY_ORDER = ['arroz', 'noodles', 'lumpia', 'combo', 'proteina', 'bebida', 'extra', 'plato', 'wok', 'pollo_camaron', 'racion']
+const BIRTH_MONTHS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+] as const
+const getDaysInBirthMonth = (month: string) => month ? new Date(2000, Number(month), 0).getDate() : 31
 
 const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> = {
   'dine-in': { label: 'Mesa', icon: <UtensilsCrossed size={18} strokeWidth={1.8} /> },
@@ -177,6 +182,8 @@ export function Caja() {
   const [newClientPhone, setNewClientPhone] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
   const [birthDay, setBirthDay] = useState('')
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
+  const [customerCreateError, setCustomerCreateError] = useState('')
 
   const filteredCustomers = useMemo(() => {
     if (!customerName.trim()) return customerList
@@ -197,30 +204,47 @@ export function Caja() {
 
   const handleCreateNewClientFromCaja = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newClientName.trim()) return
-
-    const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
-    const initials = (newClientName[0] + (newClientLastName[0] || '')).toUpperCase()
-    const phone = newClientPhone.trim()
-    const birthDate = birthMonth && birthDay ? `2000-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : undefined
-    const saved = await createCustomer({ name: fullName, phone, birthDate })
-
-    const newCust: CustomerOption = {
-      id: saved.id,
-      name: saved.name,
-      initials,
-      phone,
+    const firstName = newClientName.trim()
+    if (!firstName) {
+      setCustomerCreateError('Ingresa el nombre del cliente.')
+      return
+    }
+    if ((birthMonth && !birthDay) || (!birthMonth && birthDay)) {
+      setCustomerCreateError('Selecciona el mes y el día del cumpleaños, o deja ambos vacíos.')
+      return
     }
 
-    setCustomerList(prev => [newCust, ...prev])
-    setCustomerName(fullName)
-    setShowCustomerDropdown(false)
-    setShowNewClientModal(false)
-    setNewClientName('')
-    setNewClientLastName('')
-    setNewClientPhone('')
-    setBirthMonth('')
-    setBirthDay('')
+    setCreatingCustomer(true)
+    setCustomerCreateError('')
+    try {
+      const fullName = `${firstName} ${newClientLastName.trim()}`.trim()
+      const initials = (firstName[0] + (newClientLastName.trim()[0] || '')).toUpperCase()
+      const phone = newClientPhone.trim()
+      const birthDate = birthMonth && birthDay ? `2000-${birthMonth}-${birthDay.padStart(2, '0')}` : undefined
+      const saved = await createCustomer({ name: fullName, phone, birthDate })
+
+      const newCust: CustomerOption = {
+        id: saved.id,
+        name: saved.name,
+        initials,
+        phone: saved.phone || phone,
+      }
+
+      setCustomerList(prev => [newCust, ...prev])
+      setCustomerName(fullName)
+      setShowCustomerDropdown(false)
+      setShowNewClientModal(false)
+      setNewClientName('')
+      setNewClientLastName('')
+      setNewClientPhone('')
+      setBirthMonth('')
+      setBirthDay('')
+    } catch (error) {
+      console.error('createCustomer error:', error)
+      setCustomerCreateError(error instanceof Error ? error.message : 'No se pudo guardar el cliente. Intenta nuevamente.')
+    } finally {
+      setCreatingCustomer(false)
+    }
   }
 
   // Payment Modal State (Matching Image 1)
@@ -934,7 +958,10 @@ export function Caja() {
                 <button
                   type="button"
                   className="customer-add-btn"
-                  onClick={() => setShowNewClientModal(true)}
+                  onClick={() => {
+                    setCustomerCreateError('')
+                    setShowNewClientModal(true)
+                  }}
                   title="Nuevo cliente"
                 >
                   <Plus size={15} />
@@ -1320,14 +1347,15 @@ export function Caja() {
 
       {/* Modal Nuevo Cliente desde Caja */}
       {showNewClientModal && (
-        <div className="modal-overlay-dark" onClick={() => setShowNewClientModal(false)}>
-          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay-dark" onClick={() => !creatingCustomer && setShowNewClientModal(false)}>
+          <div className="client-modal-box animate-pop" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-line">
               <div>
-                <h3 className="modal-title">Nuevo cliente</h3>
+                <span className="client-modal-eyebrow">Directorio de clientes</span>
+                <h3 className="modal-title" id="new-client-title">Nuevo cliente</h3>
                 <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setShowNewClientModal(false)}><X size={18} /></button>
+              <button type="button" className="modal-close-btn" aria-label="Cerrar ventana" disabled={creatingCustomer} onClick={() => setShowNewClientModal(false)}><X size={18} /></button>
             </div>
 
             <form onSubmit={handleCreateNewClientFromCaja} className="crm-form mt-3">
@@ -1376,11 +1404,15 @@ export function Caja() {
                     <select
                       className="modal-select-dark"
                       value={birthMonth}
-                      onChange={(e) => setBirthMonth(e.target.value)}
+                      onChange={(e) => {
+                        const nextMonth = e.target.value
+                        setBirthMonth(nextMonth)
+                        if (birthDay && Number(birthDay) > getDaysInBirthMonth(nextMonth)) setBirthDay('')
+                      }}
                     >
                       <option value="">Mes</option>
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m) => (
-                        <option key={m} value={m}>{m}</option>
+                      {BIRTH_MONTHS.map((month, index) => (
+                        <option key={month} value={String(index + 1).padStart(2, '0')}>{month}</option>
                       ))}
                     </select>
                   </div>
@@ -1392,23 +1424,25 @@ export function Caja() {
                       onChange={(e) => setBirthDay(e.target.value)}
                     >
                       <option value="">Día</option>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      {Array.from({ length: getDaysInBirthMonth(birthMonth) }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
                     </select>
                   </div>
                 </div>
                 <span className="birthday-hint mt-1">
-                  ℹ️ Solo para promociones y recordatorios
+                  Solo para promociones y recordatorios
                 </span>
               </div>
 
+              {customerCreateError && <div className="client-modal-error" role="alert">{customerCreateError}</div>}
+
               <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowNewClientModal(false)}>
+                <button type="button" className="btn-modal-cancel" disabled={creatingCustomer} onClick={() => setShowNewClientModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-modal-submit-red">
-                  Guardar cliente
+                <button type="submit" className="btn-modal-submit-red" disabled={creatingCustomer}>
+                  {creatingCustomer ? 'Guardando…' : 'Guardar cliente'}
                 </button>
               </div>
             </form>

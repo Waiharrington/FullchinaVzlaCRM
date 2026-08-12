@@ -1251,17 +1251,19 @@ export async function getCustomers(): Promise<Customer[]> {
 }
 
 export async function createCustomer(params: { name: string; phone?: string; birthDate?: string }): Promise<Customer> {
-  const { data, error } = await client().from('customers').insert({
-    full_name: params.name, phone: params.phone || null, birth_date: params.birthDate || null,
-    source_system: 'fullchina', source_key: `app:${crypto.randomUUID()}`, is_active: true,
-  }).select('*').single()
+  const { data, error } = await client().rpc('fn_create_customer', {
+    p_full_name: params.name,
+    p_phone: params.phone || null,
+    p_birth_date: params.birthDate || null,
+  }).single()
   if (error) throw error
+  const row = data as Record<string, unknown>
   return {
-    id: data.id as string, name: data.full_name as string, identification: (data.identification as string) ?? '', phone: (data.phone as string) ?? '',
-    email: (data.email as string) ?? '', totalVisits: Number(data.total_visits ?? 0),
-    rewardsUnlocked: Number(data.rewards_unlocked ?? 0), lastVisit: (data.last_visit as string) ?? '',
-    favoriteProduct: (data.favorite_product as string) ?? '', birthday: (data.birth_date as string) ?? '',
-    isActive: Boolean(data.is_active),
+    id: row.id as string, name: row.full_name as string, identification: (row.identification as string) ?? '', phone: (row.phone as string) ?? '',
+    email: (row.email as string) ?? '', totalVisits: Number(row.total_visits ?? 0),
+    rewardsUnlocked: Number(row.rewards_unlocked ?? 0), lastVisit: (row.last_visit as string) ?? '',
+    favoriteProduct: (row.favorite_product as string) ?? '', birthday: (row.birth_date as string) ?? '',
+    isActive: Boolean(row.is_active),
   }
 }
 
