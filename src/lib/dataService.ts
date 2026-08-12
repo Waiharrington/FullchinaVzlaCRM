@@ -1274,24 +1274,26 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
 export async function getRecipeComponents(sellableProductId: string): Promise<RecipeComponent[]> {
   const { data, error } = await client()
     .from('recipe_components')
-    .select('id,sellable_product_id,ingredient_id,preparation_batch_id,quantity,unit_id,ingredients(name),units(symbol),ingredient_costs(price_per_unit)')
+    .select('id,sellable_product_id,ingredient_id,preparation_batch_id,quantity,unit_id,ingredients(name,ingredient_costs(price_per_unit)),units(symbol)')
     .eq('sellable_product_id', sellableProductId)
     .order('created_at', { ascending: true })
 
   if (error) throw error
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    sellableProductId: r.sellable_product_id as string,
-    ingredientId: (r.ingredient_id as string) ?? null,
-    preparationBatchId: (r.preparation_batch_id as string) ?? null,
-    ingredientName: Array.isArray(r.ingredients) ? (r.ingredients[0] as Record<string, unknown>)?.name as string ?? null : null,
-    quantity: Number(r.quantity),
-    unitId: r.unit_id as string,
-    unitSymbol: Array.isArray(r.units) ? (r.units[0] as Record<string, unknown>)?.symbol as string ?? '' : '',
-    costPerUnit: Array.isArray(r.ingredient_costs) && r.ingredient_costs.length > 0
-      ? Number((r.ingredient_costs[0] as Record<string, unknown>)?.price_per_unit)
-      : null,
-  }))
+  return (data ?? []).map((r) => {
+    const ingr = Array.isArray(r.ingredients) ? r.ingredients[0] as Record<string, unknown> : null
+    const costs = ingr && Array.isArray(ingr.ingredient_costs) ? ingr.ingredient_costs as Array<Record<string, unknown>> : []
+    return {
+      id: r.id as string,
+      sellableProductId: r.sellable_product_id as string,
+      ingredientId: (r.ingredient_id as string) ?? null,
+      preparationBatchId: (r.preparation_batch_id as string) ?? null,
+      ingredientName: ingr?.name as string ?? null,
+      quantity: Number(r.quantity),
+      unitId: r.unit_id as string,
+      unitSymbol: Array.isArray(r.units) ? (r.units[0] as Record<string, unknown>)?.symbol as string ?? '' : '',
+      costPerUnit: costs.length > 0 ? Number(costs[0]?.price_per_unit) : null,
+    }
+  })
 }
 
 export async function getEmployees(): Promise<Employee[]> {

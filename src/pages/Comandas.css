@@ -376,21 +376,41 @@
 
 /* ─── Kanban Board Grid matching Target Mockup ───────────────────────────── */
 
+/* Desktop (≥1200px): las 4 etapas en grilla fija. */
 .kanban-board-grid {
   display: grid;
-  grid-template-columns: repeat(1, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
-@media (min-width: 768px) {
+/* Tablet y móvil (<1200px): una sola fila horizontal deslizable tipo carrusel.
+   Las 4 etapas quedan al lado (no se envuelven a 2×2) y se pasan con swipe. */
+@media (max-width: 1199px) {
   .kanban-board-grid {
-    grid-template-columns: repeat(2, 1fr);
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    gap: 14px;
+    padding-bottom: 10px;
+    scroll-padding-left: 2px;
+    scrollbar-width: thin;
+    overscroll-behavior-x: contain;
+  }
+  .kanban-board-grid > .kanban-column {
+    flex: 0 0 auto;
+    width: 82%;
+    max-width: 340px;
+    scroll-snap-align: start;
   }
 }
 
-@media (min-width: 1200px) {
-  .kanban-board-grid {
-    grid-template-columns: repeat(4, 1fr);
+/* En tablet caben ~2 etapas a la vez; el resto se revela deslizando. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .kanban-board-grid > .kanban-column {
+    width: 46%;
+    max-width: 380px;
   }
 }
 
