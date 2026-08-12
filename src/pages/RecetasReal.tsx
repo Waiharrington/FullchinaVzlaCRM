@@ -6,6 +6,7 @@ import {
 } from '../lib/dataService'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { Plus, Trash2, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
+import './Almacen.css'
 
 export function RecetasReal() {
   const [products, setProducts] = useState<SellableProduct[]>([])

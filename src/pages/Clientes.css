@@ -219,9 +219,12 @@
 
 @media (min-width: 1150px) {
   .clientes-main-layout {
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr;
   }
 }
+
+.clickable-kpi { cursor: pointer; }
+.clickable-kpi:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
 
 /* ─── Left Table Card ─────────────────────────────────────────────────── */
 
@@ -289,7 +292,11 @@
   font-weight: 600;
   outline: none;
   cursor: pointer;
+  color-scheme: dark;
 }
+.filter-select option,
+.modal-select-dark option { background: #18181b; color: #f4f4f5; }
+.modal-select-dark { color-scheme: dark; }
 
 .btn-export-dark {
   background: #202024;

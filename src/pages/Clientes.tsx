@@ -50,8 +50,6 @@ interface CustomerRow {
   status: 'Crédito' | 'Frecuente' | 'Activo'
 }
 
-const RECENT_CUSTOMERS: Array<{ initials: string; avatarBg: string; name: string; date: string; amount: number }> = []
-
 const FOOD_FAVORITES: Array<{ rank: string; name: string; orders: string; img: string }> = []
 
 const CUSTOMER_ORDERS_HISTORY: Array<{ id: string; date: string; type: string; products: string; total: number; status: string; payment: string }> = []
@@ -84,11 +82,13 @@ export function Clientes() {
   const [newClientName, setNewClientName] = useState('')
   const [newClientLastName, setNewClientLastName] = useState('')
   const [newClientPhone, setNewClientPhone] = useState('')
+  const [newClientAddress, setNewClientAddress] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
   const [birthDay, setBirthDay] = useState('')
 
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [showCobrarModal, setShowCobrarModal] = useState(false)
 
   const fetchCredits = useCallback(async () => {
     try {
@@ -111,7 +111,19 @@ export function Clientes() {
 
     const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
     const birthDate = birthMonth && birthDay ? `2000-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : undefined
-    const saved = await createCustomer({ name: fullName, phone: newClientPhone.trim(), birthDate })
+    let saved: Customer
+    try {
+      saved = await createCustomer({
+        name: fullName,
+        phone: newClientPhone.trim(),
+        address: newClientAddress.trim() || undefined,
+        birthDate,
+      })
+    } catch (err) {
+      console.error('Error guardando cliente:', err)
+      alert('No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.')
+      return
+    }
     const newClientObj: CustomerRow = {
       id: saved.id,
       initials: (newClientName[0] + (newClientLastName[0] || '')).toUpperCase(),
@@ -131,6 +143,7 @@ export function Clientes() {
     setNewClientName('')
     setNewClientLastName('')
     setNewClientPhone('')
+    setNewClientAddress('')
     setBirthMonth('')
     setBirthDay('')
     setShowNewModal(false)
@@ -563,7 +576,14 @@ export function Clientes() {
           </div>
         </div>
 
-        <div className="kpi-card-dark">
+        <div
+          className="kpi-card-dark clickable-kpi"
+          role="button"
+          tabIndex={0}
+          title="Ver cuentas por cobrar"
+          onClick={() => setShowCobrarModal(true)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCobrarModal(true) } }}
+        >
           <div className="kpi-icon-circle-box dark-red">
             <DollarSign size={22} />
           </div>
@@ -671,10 +691,16 @@ export function Clientes() {
                       <td className="phone-td">{row.phone}</td>
                       <td>
                         <div className="identity-cell">
-                          <span>{row.identification || '—'}</span>
-                          <small className={`identity-badge ${row.identificationStatus}`}>
-                            {row.identificationStatus === 'verified_format' ? 'Cédula' : row.identificationStatus === 'legacy_review' ? 'Revisar' : 'Sin dato'}
-                          </small>
+                          {row.identificationStatus === 'legacy_review' ? (
+                            <small className="identity-badge legacy_review">Revisar</small>
+                          ) : (
+                            <>
+                              <span>{row.identification || '—'}</span>
+                              <small className={`identity-badge ${row.identificationStatus}`}>
+                                {row.identificationStatus === 'verified_format' ? 'Cédula' : 'Sin dato'}
+                              </small>
+                            </>
+                          )}
                         </div>
                       </td>
                       <td>
@@ -724,77 +750,6 @@ export function Clientes() {
           </div>
         </div>
 
-        {/* RIGHT COLUMN: Stacked Cards */}
-        <div className="clientes-right-sidebar">
-          <div className="side-card-dark">
-            <div className="side-card-header">
-              <div className="side-header-title">
-                <Users size={16} className="text-red" />
-                <span>Clientes recientes</span>
-              </div>
-              <button className="link-red-sm">Ver todos</button>
-            </div>
-
-            <div className="recent-clients-list">
-              {RECENT_CUSTOMERS.map((rc, idx) => (
-                <div key={idx} className="recent-client-row">
-                  <span className="rc-avatar-badge" style={{ backgroundColor: rc.avatarBg }}>
-                    {rc.initials}
-                  </span>
-                  <div className="rc-info">
-                    <span className="rc-name">{rc.name}</span>
-                    <span className="rc-date">{rc.date}</span>
-                  </div>
-                  <MoneyWithBcv usd={rc.amount} className="rc-amount-green" compact />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="side-card-dark">
-            <div className="side-card-header">
-              <div className="side-header-title">
-                <DollarSign size={16} className="text-red" />
-                <span>Cuentas por cobrar</span>
-              </div>
-              <button className="link-red-sm">Ver todos</button>
-            </div>
-
-            <div className="cobrar-total-area mt-2">
-              <MoneyWithBcv usd={totalOutstanding} className="cobrar-total-val" align="center" />
-              <span className="cobrar-total-sub">Total pendiente</span>
-            </div>
-
-            <div className="circular-gauge-area">
-              <div className="ring-gauge-circle">
-                <span className="ring-inner-val">18</span>
-                <span className="ring-inner-label">Clientes</span>
-              </div>
-            </div>
-
-            <div className="gauge-legend-list">
-              <div className="legend-item-row">
-                <div className="legend-left">
-                  <span className="dot-color red" />
-                  <span>Vencido (7)</span>
-                </div>
-                <MoneyWithBcv usd={12150} className="legend-val font-bold" compact />
-              </div>
-              <div className="legend-item-row">
-                <div className="legend-left">
-                  <span className="dot-color orange" />
-                  <span>Por vencer (11)</span>
-                </div>
-                <MoneyWithBcv usd={12530} className="legend-val font-bold" compact />
-              </div>
-            </div>
-
-            <div className="oldest-due-footer">
-              <span>Más antiguo vencido</span>
-              <span className="text-red font-bold">15/05/2025</span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Modal Nuevo Cliente */}
@@ -848,6 +803,20 @@ export function Clientes() {
               </div>
 
               <div className="field mt-3">
+                <label className="field-label-white">Dirección</label>
+                <div className="input-with-icon-wrap">
+                  <MapPin size={16} className="input-left-icon" />
+                  <input
+                    type="text"
+                    placeholder="Ej. Av. Bolívar, casa 12"
+                    value={newClientAddress}
+                    onChange={(e) => setNewClientAddress(e.target.value)}
+                    className="modal-input-dark with-left-icon"
+                  />
+                </div>
+              </div>
+
+              <div className="field mt-3">
                 <label className="field-label-white">Cumpleaños</label>
                 <div className="birthday-selects-row">
                   <div className="select-col">
@@ -858,8 +827,8 @@ export function Clientes() {
                       onChange={(e) => setBirthMonth(e.target.value)}
                     >
                       <option value="">Selecciona el mes</option>
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m) => (
-                        <option key={m} value={m}>{m}</option>
+                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
+                        <option key={m} value={String(i + 1)}>{m}</option>
                       ))}
                     </select>
                   </div>
@@ -930,6 +899,55 @@ export function Clientes() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cuentas por cobrar */}
+      {showCobrarModal && (
+        <div className="modal-overlay-dark" onClick={() => setShowCobrarModal(false)}>
+          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line">
+              <div className="side-header-title">
+                <DollarSign size={18} className="text-red" />
+                <h3 className="modal-title">Cuentas por cobrar</h3>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowCobrarModal(false)}><X size={18} /></button>
+            </div>
+
+            <div className="cobrar-total-area mt-3">
+              <MoneyWithBcv usd={totalOutstanding} className="cobrar-total-val" align="center" />
+              <span className="cobrar-total-sub">Total pendiente</span>
+            </div>
+
+            <div className="circular-gauge-area">
+              <div className="ring-gauge-circle">
+                <span className="ring-inner-val">18</span>
+                <span className="ring-inner-label">Clientes</span>
+              </div>
+            </div>
+
+            <div className="gauge-legend-list">
+              <div className="legend-item-row">
+                <div className="legend-left">
+                  <span className="dot-color red" />
+                  <span>Vencido (7)</span>
+                </div>
+                <MoneyWithBcv usd={12150} className="legend-val font-bold" compact />
+              </div>
+              <div className="legend-item-row">
+                <div className="legend-left">
+                  <span className="dot-color orange" />
+                  <span>Por vencer (11)</span>
+                </div>
+                <MoneyWithBcv usd={12530} className="legend-val font-bold" compact />
+              </div>
+            </div>
+
+            <div className="oldest-due-footer">
+              <span>Más antiguo vencido</span>
+              <span className="text-red font-bold">15/05/2025</span>
+            </div>
           </div>
         </div>
       )}

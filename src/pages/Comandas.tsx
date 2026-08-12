@@ -988,7 +988,9 @@ export function Comandas() {
 
             <footer className="cmd-modal-footer">
               <div className="cmd-footer-left">
-                <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
+                {selectedOrder.status !== 'delivered' && (
+                  <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
+                )}
                 <button className="cmd-btn-outline" onClick={() => window.print()}><Printer size={16} /> Imprimir comanda</button>
               </div>
               <div className="cmd-footer-right">
@@ -1004,7 +1006,7 @@ export function Comandas() {
                     💲 Cobrar pedido
                   </button>
                 )}
-                {selectedOrder.source !== 'web' && <button
+                {selectedOrder.source !== 'web' && selectedOrder.status !== 'delivered' && <button
                   className="cmd-btn-primary"
                   onClick={() => {
                     handleAdvanceStatus(selectedOrder.id, selectedOrder.status)

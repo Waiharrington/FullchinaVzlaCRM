@@ -437,7 +437,9 @@ select.field-select {
 /* Inputs/selects del formulario de producción (bare, sin .field-select).
    El :not(.field-select) evita pisar los selects estilizados del almacén. */
 .almacen-card input:not(.field-select):not([type="checkbox"]):not([type="radio"]),
-.almacen-card select:not(.field-select) {
+.almacen-card select:not(.field-select),
+.card input:not(.field-select):not([type="checkbox"]):not([type="radio"]),
+.card select:not(.field-select) {
   width: 100%;
   height: 42px;
   padding: 0 12px;
@@ -450,8 +452,10 @@ select.field-select {
   color-scheme: dark;
 }
 .almacen-card input:not(.field-select):focus,
-.almacen-card select:not(.field-select):focus { border-color: #ef4444; }
-.almacen-card option { background: #18181b; color: #f4f4f5; }
+.almacen-card select:not(.field-select):focus,
+.card input:not(.field-select):focus,
+.card select:not(.field-select):focus { border-color: #ef4444; }
+.almacen-card option, .card option { background: #18181b; color: #f4f4f5; }
 .transfer-fields-grid { display: grid; grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr); gap: 12px; }
 
 .almacen-feedback {
