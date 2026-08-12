@@ -358,6 +358,100 @@ select.field-select {
 .field-select[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .field-select[type="number"]::-webkit-outer-spin-button,
 .field-select[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* ============================================================
+   Producción: tarjetas de métricas y contenedores reutilizables
+   (la página importa este CSS; estas clases faltaban)
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  font-size: 22px;
+  line-height: 1;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.18);
+}
+.stat-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stat-value { font-size: 1.5rem; font-weight: 800; color: #fafafa; line-height: 1.15; }
+.stat-label { font-size: 0.74rem; color: #a1a1aa; font-weight: 600; }
+
+.card, .table-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.014));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 18px;
+}
+.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.card-title { color: #fafafa; font-size: 1rem; font-weight: 700; }
+.mt-6 { margin-top: 20px; }
+.mb-6 { margin-bottom: 20px; }
+
+.btn-transfer-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, #ef4444, #dc2626);
+  border: none;
+  border-radius: 11px;
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease;
+}
+.btn-transfer-submit:hover { filter: brightness(1.08); }
+.btn-transfer-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.whatsapp-notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* Inputs/selects del formulario de producción (bare, sin .field-select).
+   El :not(.field-select) evita pisar los selects estilizados del almacén. */
+.almacen-card input:not(.field-select):not([type="checkbox"]):not([type="radio"]),
+.almacen-card select:not(.field-select) {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  font-size: 0.82rem;
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  outline: none;
+  color-scheme: dark;
+}
+.almacen-card input:not(.field-select):focus,
+.almacen-card select:not(.field-select):focus { border-color: #ef4444; }
+.almacen-card option { background: #18181b; color: #f4f4f5; }
 .transfer-fields-grid { display: grid; grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr); gap: 12px; }
 
 .almacen-feedback {

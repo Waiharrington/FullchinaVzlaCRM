@@ -1379,7 +1379,7 @@ export async function getProductionBatches(dateStart?: string, dateEnd?: string)
       preparation_batch_costs(total_input_cost),
       preparation_batch_items(
         id,ingredient_id,quantity_used,unit_id,
-        ingredients(name),units(symbol),ingredient_costs(price_per_unit)
+        ingredients(name),units(symbol)
       ),
       units(symbol)
     `)
@@ -1406,9 +1406,7 @@ export async function getProductionBatches(dateStart?: string, dateEnd?: string)
           quantityUsed: Number(item.quantity_used),
           unitId: item.unit_id as string,
           unitSymbol: Array.isArray(item.units) ? (item.units[0] as Record<string, unknown>)?.symbol as string ?? '' : '',
-          costPerUnit: Array.isArray(item.ingredient_costs) && item.ingredient_costs.length > 0
-            ? Number((item.ingredient_costs[0] as Record<string, unknown>)?.price_per_unit)
-            : 0,
+          costPerUnit: 0,
         }))
       : []
 
