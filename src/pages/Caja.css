@@ -2328,3 +2328,45 @@
   .cart-sidebar { padding: 14px; border-radius: 16px; }
   .cart-action-buttons { position: sticky; bottom: 76px; z-index: 20; padding: 8px; margin-inline: -8px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(20,20,22,.92); backdrop-filter: blur(14px); }
 }
+
+/* En tablet/desktop la comanda no debe heredar la altura del catálogo.
+   Su contenido puede desplazarse, pero el total y las acciones permanecen visibles. */
+@media (min-width: 768px) {
+  .cart-sidebar {
+    position: sticky;
+    top: 12px;
+    align-self: start;
+    height: auto;
+    min-height: 0;
+    /* Reserva el alto que ocupan la tasa BCV y el inicio de la vista para que
+       el pie sea visible incluso antes de que el sticky llegue al borde. */
+    max-height: calc(100dvh - clamp(140px, 18dvh, 190px));
+    overflow: hidden;
+  }
+
+  .cart-sidebar-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 3px;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(239, 43, 45, 0.4) transparent;
+  }
+
+  .cart-sidebar-body::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .cart-sidebar-body::-webkit-scrollbar-thumb {
+    border-radius: 99px;
+    background: rgba(239, 43, 45, 0.38);
+  }
+
+  .cart-sidebar-footer {
+    flex: 0 0 auto;
+    margin-top: 10px;
+    background: linear-gradient(180deg, rgba(20, 20, 22, 0.82), #141416 18%);
+  }
+}
