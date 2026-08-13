@@ -85,6 +85,10 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> =
   delivery: { label: 'Delivery', icon: <Bike size={18} strokeWidth={1.8} /> },
 }
 
+// Método de pago sugerido por tipo de pedido: en mesa se suele pagar con punto,
+// en delivery / para llevar con pago móvil. La persona puede cambiarlo luego.
+const defaultPaymentForOrderType = (t: OrderType): PaymentMethod => (t === 'dine-in' ? 'card' : 'mobile')
+
 const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: ReactNode }> = [
   { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
   { method: 'mobile', label: 'Pago móvil', icon: <Smartphone size={16} strokeWidth={1.8} /> },
@@ -269,7 +273,7 @@ export function Caja() {
 
   // Payment Modal State (Matching Image 1)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>('cash')
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>(defaultPaymentForOrderType('dine-in'))
   const [refNumber, setRefNumber] = useState('')
   const [amountReceived, setAmountReceived] = useState('0.00')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
@@ -1018,7 +1022,7 @@ export function Caja() {
                   <button
                     key={key}
                     className={`order-type-card ${orderType === key ? 'active' : ''}`}
-                    onClick={() => setOrderType(key)}
+                    onClick={() => { setOrderType(key); setSelectedPaymentTab(defaultPaymentForOrderType(key)) }}
                   >
                     <span className="order-type-icon">{val.icon}</span>
                     <span className="order-type-text">{val.label}</span>
