@@ -160,12 +160,13 @@ export function Clientes() {
 
     let cancelled = false
     const customerCredits = credits.filter(
-      (credit) => normalizeCustomerName(credit.customerName) === normalizeCustomerName(selectedClient.name),
+      (credit) => credit.customerId === selectedClient.id
+        || (!credit.customerId && normalizeCustomerName(credit.customerName) === normalizeCustomerName(selectedClient.name)),
     )
     setProfileLoading(true)
     setProfileError('')
     Promise.all([
-      getCustomerOrders(selectedClient.name),
+      getCustomerOrders(selectedClient.id, selectedClient.name),
       Promise.all(customerCredits.map((credit) => getCreditPayments(credit.id))),
     ])
       .then(([orders, paymentGroups]) => {
@@ -320,8 +321,8 @@ export function Clientes() {
   // Clientes reales importados, enriquecidos con saldos de crédito actuales.
   const displayRows = useMemo(() => {
     const rows: CustomerRow[] = customers.map((customer, index) => {
-      const customerCredits = credits.filter(item => normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name))
-      const metric = purchaseMetrics.find(item => normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name))
+      const customerCredits = credits.filter(item => item.customerId === customer.id || (!item.customerId && normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name)))
+      const metric = purchaseMetrics.find(item => item.customerId === customer.id || (!item.customerId && normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name)))
       const pendingBalance = customerCredits.reduce((sum, credit) => sum + credit.balancePending, 0)
       const parts = customer.name.split(' ')
       return {
@@ -350,7 +351,7 @@ export function Clientes() {
   const frequentCustomers = useMemo(() => customers.filter((customer) => customer.totalVisits >= 5).length, [customers])
   const activeCreditsCount = useMemo(() => credits.filter((credit) => credit.balancePending > 0).length, [credits])
   const customersWithDebt = useMemo(() => new Set(
-    credits.filter((credit) => credit.balancePending > 0).map((credit) => normalizeCustomerName(credit.customerName)),
+    credits.filter((credit) => credit.balancePending > 0).map((credit) => credit.customerId ?? `name:${normalizeCustomerName(credit.customerName)}`),
   ).size, [credits])
 
 
@@ -359,7 +360,7 @@ export function Clientes() {
   // ═══════════════════════════════════════════════════════════════════════════
   if (selectedClient) {
     const fullCustomer = customers.find((c) => c.id === selectedClient.id) ?? null
-    const customerCredits = credits.filter((credit) => normalizeCustomerName(credit.customerName) === normalizeCustomerName(selectedClient.name))
+    const customerCredits = credits.filter((credit) => credit.customerId === selectedClient.id || (!credit.customerId && normalizeCustomerName(credit.customerName) === normalizeCustomerName(selectedClient.name)))
     const ordersCount = customerOrders.length
     const totalPurchased = customerOrders.reduce((s, o) => s + o.total, 0)
     const avgTicket = ordersCount > 0 ? totalPurchased / ordersCount : 0

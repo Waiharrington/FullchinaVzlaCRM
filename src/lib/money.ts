@@ -22,3 +22,14 @@ export function formatRateDate(value: string | null) {
   if (Number.isNaN(date.getTime())) return 'fecha no disponible'
   return date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
+
+export function dateKeyInTimeZone(date: Date = new Date(), timeZone = 'America/Caracas') {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  return `${values.year}-${values.month}-${values.day}`
+}

@@ -2,7 +2,7 @@ import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
-import { formatRateDate, formatVes } from '../lib/money'
+import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getExpenses, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type Expense } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
@@ -65,7 +65,7 @@ export function Inicio() {
 
   const fetchData = useCallback(async () => {
     try {
-      const today = new Date().toISOString().slice(0, 10)
+      const today = dateKeyInTimeZone()
       const [statsData, ordersData, salesData, rankingData, creditsData, paymentData, productionData, ingredientsData, expensesData] = await Promise.all([
         getTodayStats(),
         getOrdersWithItems(),
@@ -104,7 +104,7 @@ export function Inicio() {
   const totalPendingCredits = pendingCredits.reduce((s, c) => s + c.balancePending, 0)
   const inventoryTotal = useMemo(() => ingredients.reduce((s, i) => s + (i.stockValue ?? 0), 0), [ingredients])
   const todayExpensesTotal = useMemo(() => todayExpenses.reduce((s, e) => s + e.amount, 0), [todayExpenses])
-  const netProfitEstimate = totalSales - todayExpensesTotal
+  const operatingBalance = totalSales - todayExpensesTotal
   const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
   const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
 
@@ -338,13 +338,13 @@ export function Inicio() {
       <div className="db-grid-3">
         <div className="db-card">
           <div className="db-card-head">
-            <h3>ALERTAS DE INVENTARIO</h3>
+            <h3>EXISTENCIAS MÁS BAJAS</h3>
           </div>
           <div className="db-inv-alerts">
             {lowStockItems.length === 0 ? (
               <div className="inv-row"><span className="inv-row-name">Sin datos de inventario</span></div>
             ) : lowStockItems.map((it) => {
-              const level = it.currentStock <= 0 ? 'Crítico' : it.currentStock < 5 ? 'Bajo' : 'OK'
+              const level = it.currentStock <= 0 ? 'Agotado' : 'Disponible'
               return (
                 <div key={it.id} className="inv-row">
                   <div className="inv-row-icon">
@@ -352,7 +352,7 @@ export function Inicio() {
                   </div>
                   <span className="inv-row-name">{it.name}</span>
                   <span className="inv-row-qty">{it.currentStock.toLocaleString('es-VE', { maximumFractionDigits: 2 })} {it.unitSymbol}</span>
-                  <span className={`inv-badge inv-${level.toLowerCase()}`}>{level}</span>
+                  <span className={`inv-badge ${it.currentStock <= 0 ? 'inv-crítico' : 'inv-ok'}`}>{level}</span>
                 </div>
               )
             })}
@@ -436,7 +436,7 @@ export function Inicio() {
         </div>
         <div className="db-footer-metric highlight-green">
           <div className="fm-icon green-glow"><TrendingUp size={16} /></div>
-          <div className="fm-text"><span className="fm-label">UTILIDAD ESTIMADA</span><MoneyWithBcv usd={netProfitEstimate} className="fm-val green-text" align="start" compact /><span className="fm-sub">Ventas − gastos (hoy)</span></div>
+          <div className="fm-text"><span className="fm-label">SALDO OPERATIVO PARCIAL</span><MoneyWithBcv usd={operatingBalance} className="fm-val green-text" align="start" compact /><span className="fm-sub">Ventas − gastos; no incluye insumos</span></div>
         </div>
       </div>
     </div>

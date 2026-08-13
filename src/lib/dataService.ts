@@ -83,6 +83,7 @@ export interface OrderItem {
 
 export interface Credit {
   id: string
+  customerId: string | null
   customerName: string
   totalAmount: number
   totalPaid: number
@@ -624,6 +625,7 @@ export interface CustomerOrderSummary {
 }
 
 export interface CustomerPurchaseMetric {
+  customerId: string | null
   customerName: string
   orderCount: number
   totalPurchased: number
@@ -713,6 +715,7 @@ export async function getCredits(): Promise<Credit[]> {
 
   return (data ?? []).map((c) => ({
     id: c.credit_id as string,
+    customerId: (c.customer_id as string) ?? null,
     customerName: c.customer_name as string,
     totalAmount: Number(c.total_amount),
     totalPaid: Number(c.total_paid),
@@ -1065,15 +1068,27 @@ export async function getCustomers(): Promise<Customer[]> {
 }
 
 // Órdenes reales de un cliente (para la ficha del cliente).
-export async function getCustomerOrders(customerName: string): Promise<CustomerOrderSummary[]> {
+export async function getCustomerOrders(customerId: string, customerName: string): Promise<CustomerOrderSummary[]> {
   if (!customerName.trim()) return []
-  const { data, error } = await client()
+  const primary = await client()
     .from('v_orders_with_items')
     .select('id, order_number, created_at, order_type, status, fulfillment_status, total_amount, items, payments')
-    .ilike('customer_name', customerName.trim())
+    .eq('customer_id', customerId)
     .order('created_at', { ascending: false })
     .limit(50)
-  if (error) throw error
+  if (primary.error) throw primary.error
+  let data = primary.data
+  if ((data ?? []).length === 0) {
+    const fallback = await client()
+      .from('v_orders_with_items')
+      .select('id, order_number, created_at, order_type, status, fulfillment_status, total_amount, items, payments')
+      .is('customer_id', null)
+      .ilike('customer_name', customerName.trim())
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (fallback.error) throw fallback.error
+    data = fallback.data
+  }
   return (data ?? []).map((o) => {
     const items = Array.isArray(o.items) ? o.items as Array<Record<string, unknown>> : []
     const mappedItems = items.map((it) => ({
@@ -1102,7 +1117,7 @@ export async function getCustomerOrders(customerName: string): Promise<CustomerO
 export async function getCustomerPurchaseMetrics(): Promise<CustomerPurchaseMetric[]> {
   const { data, error } = await client()
     .from('v_orders_with_items')
-    .select('customer_name,total_amount,created_at')
+    .select('customer_id,customer_name,total_amount,created_at')
     .order('created_at', { ascending: false })
     .limit(5000)
   if (error) throw error
@@ -1111,13 +1126,15 @@ export async function getCustomerPurchaseMetrics(): Promise<CustomerPurchaseMetr
   for (const row of data ?? []) {
     const customerName = String(row.customer_name ?? '').trim()
     if (!customerName || customerName.toLocaleLowerCase('es-VE') === 'cliente general') continue
-    const key = customerName.toLocaleLowerCase('es-VE')
+    const customerId = (row.customer_id as string) ?? null
+    const key = customerId ? `id:${customerId}` : `name:${customerName.toLocaleLowerCase('es-VE')}`
     const current = grouped.get(key)
     if (current) {
       current.orderCount += 1
       current.totalPurchased += Number(row.total_amount ?? 0)
     } else {
       grouped.set(key, {
+        customerId,
         customerName,
         orderCount: 1,
         totalPurchased: Number(row.total_amount ?? 0),

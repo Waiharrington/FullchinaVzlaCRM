@@ -7,6 +7,7 @@ import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { downloadReceipt } from '../lib/receipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
+import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
 import {
   getProducts,
   getTodayOrders,
@@ -57,7 +58,6 @@ import {
 import './Caja.css'
 
 type ViewMode = 'grid' | 'list'
-type OrderType = 'dine-in' | 'takeaway' | 'delivery'
 
 const CATEGORY_LABELS: Record<string, string> = {
   arroz: 'Arroces',
@@ -84,10 +84,6 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> =
   takeaway: { label: 'Para llevar', icon: <TakeawayBag size={18} strokeWidth={1.8} /> },
   delivery: { label: 'Delivery', icon: <Bike size={18} strokeWidth={1.8} /> },
 }
-
-// Método de pago sugerido por tipo de pedido: en mesa se suele pagar con punto,
-// en delivery / para llevar con pago móvil. La persona puede cambiarlo luego.
-const defaultPaymentForOrderType = (t: OrderType): PaymentMethod => (t === 'dine-in' ? 'card' : 'mobile')
 
 const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: ReactNode }> = [
   { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
@@ -1073,7 +1069,7 @@ export function Caja() {
               <button
                 className="btn-pay-red"
                 disabled={cart.length === 0 || paying}
-                onClick={() => handleOpenPaymentModal()}
+                onClick={() => handleOpenPaymentModal(defaultPaymentForOrderType(orderType))}
               >
                 <WalletCards size={18} /> <span>Cobrar pedido</span>
               </button>
