@@ -2010,7 +2010,11 @@
 
 .ticket-final-val {
   font-size: 22px;
-  font/* POS en tablet y desktop: el pedido permanece visible a la derecha usando su largo natural con sticky */
+  font-weight: 900;
+  color: #dc2626;
+}
+
+/* POS en tablet y desktop: el pedido permanece visible a la derecha usando su largo natural con sticky */
 @media (min-width: 768px) {
   .caja-layout { grid-template-columns: minmax(0, 1fr) clamp(340px, 35vw, 420px); gap: 16px; align-items: start; }
   .products-container.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
