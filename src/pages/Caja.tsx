@@ -914,184 +914,188 @@ export function Caja() {
             <button className="cart-edit-btn" type="button"><PencilLine size={13} /> Editar</button>
           </div>
 
-          {/* Cart Items */}
-          {cart.length === 0 ? (
-            <div className="empty-cart-sidebar">
-              <span className="empty-cart-icon"><ShoppingCart size={28} /></span>
-              <strong>Tu pedido está vacío</strong>
-              <p>Selecciona productos del menú para comenzar.</p>
-            </div>
-          ) : (
-            <div className="cart-items-list">
-              {cart.map((item) => {
-                const prod = products.find(p => p.id === item.productId)
-                const imgUrl = prod ? getProductImage(prod) : FOOD_IMAGES.default
+          <div className="cart-sidebar-body">
+            {/* Cart Items */}
+            {cart.length === 0 ? (
+              <div className="empty-cart-sidebar">
+                <span className="empty-cart-icon"><ShoppingCart size={28} /></span>
+                <strong>Tu pedido está vacío</strong>
+                <p>Selecciona productos del menú para comenzar.</p>
+              </div>
+            ) : (
+              <div className="cart-items-list">
+                {cart.map((item) => {
+                  const prod = products.find(p => p.id === item.productId)
+                  const imgUrl = prod ? getProductImage(prod) : FOOD_IMAGES.default
 
-                return (
-                  <div key={item.productId} className="cart-item-row">
-                    <img src={imgUrl} alt={item.productName} className="cart-item-thumb" />
-                    <div className="cart-item-details">
-                      <span className="cart-item-name">{item.productName}</span>
-                      <span className="cart-item-sub">Sin cebollín</span>
+                  return (
+                    <div key={item.productId} className="cart-item-row">
+                      <img src={imgUrl} alt={item.productName} className="cart-item-thumb" />
+                      <div className="cart-item-details">
+                        <span className="cart-item-name">{item.productName}</span>
+                        <span className="cart-item-sub">Sin cebollín</span>
+                      </div>
+                      <div className="cart-item-controls">
+                        <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(item.productId, -1)}><Minus size={13} /></button>
+                        <span className="qty-display">{item.quantity}</span>
+                        <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(item.productId, 1)}><Plus size={13} /></button>
+                      </div>
+                      <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
+                      <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(item.productId)}><Trash2 size={14} /></button>
                     </div>
-                    <div className="cart-item-controls">
-                      <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(item.productId, -1)}><Minus size={13} /></button>
-                      <span className="qty-display">{item.quantity}</span>
-                      <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(item.productId, 1)}><Plus size={13} /></button>
-                    </div>
-                    <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
-                    <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(item.productId)}><Trash2 size={14} /></button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                  )
+                })}
+              </div>
+            )}
 
-          {/* Notes */}
-          <div className="cart-field mt-3">
-            <div className="notes-wrap">
-              <span className="notes-icon"><PencilLine size={15} /></span>
-              <input
-                type="text"
-                className="cart-notes"
-                placeholder="Notas del pedido (opcional)..."
-                value={orderNotes}
-                onChange={(e) => setOrderNotes(e.target.value.slice(0, 120))}
-              />
-              <span className="notes-counter">{orderNotes.length}/120</span>
-            </div>
-          </div>
-
-          {/* Customer + Order Type */}
-          <div className="cart-section-group mt-3">
-            <div className="cart-field-col customer-input-col">
-              <label className="cart-label">Cliente</label>
-              <div className="customer-input-wrap">
-                <span className="input-search-icon"><Search size={15} /></span>
+            {/* Notes */}
+            <div className="cart-field mt-2">
+              <div className="notes-wrap">
+                <span className="notes-icon"><PencilLine size={15} /></span>
                 <input
                   type="text"
-                  placeholder="Buscar cliente (opcional)"
-                  value={customerName}
-                  onChange={(e) => {
-                    setCustomerName(e.target.value)
-                    setShowCustomerDropdown(true)
-                  }}
-                  onFocus={() => setShowCustomerDropdown(true)}
-                  className="customer-input"
+                  className="cart-notes"
+                  placeholder="Notas del pedido (opcional)..."
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value.slice(0, 120))}
                 />
-                <button
-                  type="button"
-                  className="customer-add-btn"
-                  onClick={() => {
-                    setCustomerCreateError('')
-                    setShowNewClientModal(true)
-                  }}
-                  title="Nuevo cliente"
-                >
-                  <Plus size={15} />
-                </button>
+                <span className="notes-counter">{orderNotes.length}/120</span>
+              </div>
+            </div>
+
+            {/* Customer + Order Type */}
+            <div className="cart-section-group mt-2">
+              <div className="cart-field-col customer-input-col">
+                <label className="cart-label">Cliente</label>
+                <div className="customer-input-wrap">
+                  <span className="input-search-icon"><Search size={15} /></span>
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente (opcional)"
+                    value={customerName}
+                    onChange={(e) => {
+                      setCustomerName(e.target.value)
+                      setShowCustomerDropdown(true)
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    className="customer-input"
+                  />
+                  <button
+                    type="button"
+                    className="customer-add-btn"
+                    onClick={() => {
+                      setCustomerCreateError('')
+                      setShowNewClientModal(true)
+                    }}
+                    title="Nuevo cliente"
+                  >
+                    <Plus size={15} />
+                  </button>
+                </div>
+
+                {/* Autocomplete Dropdown List */}
+                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                  <div className="customer-dropdown-menu">
+                    {filteredCustomers.map((cust) => (
+                      <div
+                        key={cust.id}
+                        className="customer-dropdown-item"
+                        onClick={() => {
+                          setCustomerName(cust.name)
+                          setShowCustomerDropdown(false)
+                        }}
+                      >
+                        <div className="customer-item-avatar">{cust.initials}</div>
+                        <div className="customer-item-info">
+                          <span className="customer-item-name">{cust.name}</span>
+                          <span className="customer-item-phone">{cust.phone}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Autocomplete Dropdown List */}
-              {showCustomerDropdown && filteredCustomers.length > 0 && (
-                <div className="customer-dropdown-menu">
-                  {filteredCustomers.map((cust) => (
-                    <div
-                      key={cust.id}
-                      className="customer-dropdown-item"
-                      onClick={() => {
-                        setCustomerName(cust.name)
-                        setShowCustomerDropdown(false)
-                      }}
+              <div className="cart-field-col mt-2">
+                <label className="cart-label">Tipo de pedido</label>
+                <div className="order-type-buttons">
+                  {(Object.entries(ORDER_TYPE_LABELS) as Array<[OrderType, { label: string; icon: ReactNode }]>).map(([key, val]) => (
+                    <button
+                      key={key}
+                      className={`order-type-card ${orderType === key ? 'active' : ''}`}
+                      onClick={() => { setOrderType(key); setSelectedPaymentTab(defaultPaymentForOrderType(key)) }}
                     >
-                      <div className="customer-item-avatar">{cust.initials}</div>
-                      <div className="customer-item-info">
-                        <span className="customer-item-name">{cust.name}</span>
-                        <span className="customer-item-phone">{cust.phone}</span>
-                      </div>
-                    </div>
+                      <span className="order-type-icon">{val.icon}</span>
+                      <span className="order-type-text">{val.label}</span>
+                    </button>
                   ))}
                 </div>
-              )}
-            </div>
-
-            <div className="cart-field-col mt-2">
-              <label className="cart-label">Tipo de pedido</label>
-              <div className="order-type-buttons">
-                {(Object.entries(ORDER_TYPE_LABELS) as Array<[OrderType, { label: string; icon: ReactNode }]>).map(([key, val]) => (
-                  <button
-                    key={key}
-                    className={`order-type-card ${orderType === key ? 'active' : ''}`}
-                    onClick={() => { setOrderType(key); setSelectedPaymentTab(defaultPaymentForOrderType(key)) }}
-                  >
-                    <span className="order-type-icon">{val.icon}</span>
-                    <span className="order-type-text">{val.label}</span>
-                  </button>
-                ))}
               </div>
             </div>
           </div>
 
-          {/* Totals Breakdown */}
-          <div className="cart-totals-card mt-3">
-            <div className="cart-total-row">
-              <span className="total-label">Subtotal</span>
-              <MoneyWithBcv usd={subtotal} className="total-val" compact />
+          <div className="cart-sidebar-footer">
+            {/* Totals Breakdown */}
+            <div className="cart-totals-card">
+              <div className="cart-total-row">
+                <span className="total-label">Subtotal</span>
+                <MoneyWithBcv usd={subtotal} className="total-val" compact />
+              </div>
+              <div className="cart-total-row">
+                <span className="total-label">Descuento</span>
+                <MoneyWithBcv usd={0} className="total-val" compact />
+              </div>
+              <div className="cart-divide-row">
+                <button
+                  type="button"
+                  className="divide-payment-link"
+                  disabled={cart.length === 0 || paying}
+                  onClick={() => handleOpenPaymentModal('split')}
+                >
+                  <span className="divide-payment-icon"><Split size={16} /></span>
+                  <span className="divide-payment-copy">
+                    <strong>Pago combinado</strong>
+                    <small>Cobrar con dos métodos</small>
+                  </span>
+                  <span className="divide-payment-arrow">›</span>
+                </button>
+              </div>
+              <div className="cart-total-row total-final-row">
+                <span className="final-label">Total</span>
+                <MoneyWithBcv usd={total} className="final-amount" />
+              </div>
             </div>
-            <div className="cart-total-row">
-              <span className="total-label">Descuento</span>
-              <MoneyWithBcv usd={0} className="total-val" compact />
-            </div>
-            <div className="cart-divide-row">
+
+            {payError && <p className="pay-error">{payError}</p>}
+
+            {/* Action buttons */}
+            <div className="cart-action-buttons mt-2">
               <button
-                type="button"
-                className="divide-payment-link"
+                className="btn-pay-red"
                 disabled={cart.length === 0 || paying}
-                onClick={() => handleOpenPaymentModal('split')}
+                onClick={() => handleOpenPaymentModal()}
               >
-                <span className="divide-payment-icon"><Split size={16} /></span>
-                <span className="divide-payment-copy">
-                  <strong>Pago combinado</strong>
-                  <small>Cobrar con dos métodos</small>
-                </span>
-                <span className="divide-payment-arrow">›</span>
+                <WalletCards size={18} /> <span>Cobrar pedido</span>
+              </button>
+              <button
+                className="btn-kitchen-red"
+                disabled={cart.length === 0 || paying}
+                onClick={handleSendToKitchen}
+              >
+                <Flame size={18} /> <span>Enviar a cocina</span>
               </button>
             </div>
-            <div className="cart-total-row total-final-row">
-              <span className="final-label">Total</span>
-              <MoneyWithBcv usd={total} className="final-amount" />
-            </div>
-          </div>
 
-          {payError && <p className="pay-error">{payError}</p>}
-
-          {/* Action buttons */}
-          <div className="cart-action-buttons mt-3">
-            <button
-              className="btn-pay-red"
-              disabled={cart.length === 0 || paying}
-              onClick={() => handleOpenPaymentModal()}
-            >
-              <WalletCards size={18} /> <span>Cobrar pedido</span>
-            </button>
-            <button
-              className="btn-kitchen-red"
-              disabled={cart.length === 0 || paying}
-              onClick={handleSendToKitchen}
-            >
-              <Flame size={18} /> <span>Enviar a cocina</span>
-            </button>
-          </div>
-
-          {/* Accepted Payment Methods at bottom */}
-          <div className="payment-accepted-section mt-3">
-            <span className="accepted-title">Formas de pago aceptadas</span>
-            <div className="payment-badges-row">
-              {PAYMENT_METHODS.filter(pm => pm.method !== 'split').map((pm) => (
-                <span key={pm.method} className="payment-badge-pill">
-                  {pm.icon} {pm.label}
-                </span>
-              ))}
+            {/* Accepted Payment Methods at bottom */}
+            <div className="payment-accepted-section mt-2">
+              <span className="accepted-title">Formas de pago aceptadas</span>
+              <div className="payment-badges-row">
+                {PAYMENT_METHODS.filter(pm => pm.method !== 'split').map((pm) => (
+                  <span key={pm.method} className="payment-badge-pill">
+                    {pm.icon} {pm.label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </div>
