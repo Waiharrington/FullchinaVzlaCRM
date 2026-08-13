@@ -2162,30 +2162,4 @@
 @media (max-width: 680px) {
   .cart-sidebar { padding: 14px; border-radius: 16px; }
   .cart-action-buttons { position: sticky; bottom: 76px; z-index: 20; padding: 8px; margin-inline: -8px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(20,20,22,.92); backdrop-filter: blur(14px); }
-  .order-type-card { min-height: 50px; }
-}isabled), .btn-kitchen-red:hover:not(:disabled) { transform: translateY(-1px); }
-.btn-pay-red:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 14px 30px rgba(220,38,38,.32), inset 0 1px 0 rgba(255,255,255,.2); }
-.btn-kitchen-red:hover:not(:disabled) { border-color: rgba(239,43,45,.48); background: rgba(239,43,45,.1); }
-.btn-pay-red:disabled, .btn-kitchen-red:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
-.payment-accepted-section { gap: 6px; padding-top: 2px; }
-.accepted-title { color: #66666e; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
-.payment-badge-pill { padding: 3px 6px; border-radius: 999px; background: rgba(255,255,255,.025); font-size: 10px; }
-.order-type-icon,
-.payment-badge-pill,
-.payment-tab-btn > span:first-child { color: #fff; }
-.order-type-icon,
-.payment-tab-btn > span:first-child { display: inline-grid; place-items: center; }
-.payment-badge-pill { display: inline-flex; align-items: center; gap: 5px; }
-.payment-badge-pill svg,
-.payment-tab-btn svg,
-.order-type-icon svg { flex: 0 0 auto; stroke: currentColor; }
-
-@media (max-width: 1100px) {
-  .cart-action-buttons { flex-direction: column; }
-}
-
-@media (max-width: 680px) {
-  .cart-sidebar { padding: 16px; border-radius: 16px; }
-  .cart-action-buttons { position: sticky; bottom: 76px; z-index: 20; padding: 8px; margin-inline: -8px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(20,20,22,.92); backdrop-filter: blur(14px); }
-  .order-type-card { min-height: 56px; }
 }
