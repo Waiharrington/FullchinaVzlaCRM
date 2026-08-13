@@ -852,33 +852,35 @@ export function Comandas() {
 
                 <div className="cmd-section">
                   <div className="cmd-section-title"><ShoppingBag size={16} /> Producción del pedido</div>
-                  <table className="cmd-items-table">
-                    <thead>
-                      <tr>
-                        <th>Producto</th>
-                        <th>Observaciones / Extras</th>
-                        <th>Cant.</th>
-                        <th>P. Unit.</th>
-                        <th>Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedOrder.items.map(item => (
-                        <tr key={item.id}>
-                          <td>
-                            <div className="cmd-product-cell">
-                              <div className="cmd-product-img">🍔</div>
-                              <span>{item.name}</span>
-                            </div>
-                          </td>
-                          <td className="cmd-obs">{item.observations || '—'}</td>
-                          <td>x{item.quantity}</td>
-                          <td><MoneyWithBcv usd={item.unitPrice || 0} rate={selectedOrder.bcvRate} compact /></td>
-                          <td><MoneyWithBcv usd={item.subtotal || 0} rate={selectedOrder.bcvRate} compact /></td>
+                  <div className="cmd-items-table-wrap">
+                    <table className="cmd-items-table">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Observaciones / Extras</th>
+                          <th>Cant.</th>
+                          <th>P. Unit.</th>
+                          <th>Subtotal</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {selectedOrder.items.map(item => (
+                          <tr key={item.id}>
+                            <td>
+                              <div className="cmd-product-cell">
+                                <div className="cmd-product-img">🍔</div>
+                                <span>{item.name}</span>
+                              </div>
+                            </td>
+                            <td className="cmd-obs">{item.observations || '—'}</td>
+                            <td>x{item.quantity}</td>
+                            <td><MoneyWithBcv usd={item.unitPrice || 0} rate={selectedOrder.bcvRate} compact /></td>
+                            <td><MoneyWithBcv usd={item.subtotal || 0} rate={selectedOrder.bcvRate} compact /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
                 <div className="cmd-section cmd-notes-section">
