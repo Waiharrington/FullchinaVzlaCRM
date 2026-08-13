@@ -303,7 +303,7 @@
 
 .kpi-data { display: flex; flex-direction: column; }
 .kpi-label { font-size: 0.65rem; color: #71717a; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
-.kpi-value { font-size: 1.55rem; font-weight: 800; color: #fff; margin-top: 0.1rem; letter-spacing: -0.5px; }
+.kpi-value { font-size: 1.2rem; font-weight: 700; color: #fff; margin-top: 0.1rem; letter-spacing: -0.3px; }
 .kpi-trend { font-size: 0.68rem; font-weight: 600; margin-top: 0.15rem; }
 .kpi-trend.up { color: #10b981; }
 
@@ -364,7 +364,7 @@
 /* ─── MIDDLE 4-COL ─── */
 .db-grid-4 {
   display: grid;
-  grid-template-columns: 1.8fr 1fr 1fr 1fr;
+  grid-template-columns: 1.25fr 1fr 1.05fr 1fr;
   gap: 1rem;
 }
 
@@ -383,7 +383,7 @@
 .db-orders-list { display: flex; flex-direction: column; gap: 0.15rem; flex: 1; }
 .db-order-row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto auto auto 1fr;
   gap: 0.5rem;
   align-items: center;
   padding: 0.55rem 0.5rem;
@@ -405,7 +405,7 @@
 .ord-badge.paid { background: rgba(16,185,129,0.12); color: #10b981; }
 .ord-badge.pending { background: rgba(245,158,11,0.12); color: #f59e0b; }
 .ord-badge.mixed { background: rgba(139,92,246,0.12); color: #a78bfa; }
-.ord-total { font-size: 0.78rem; color: #fff; font-weight: 700; text-align: right; }
+.ord-total { font-size: 0.75rem; color: #fff; font-weight: 700; text-align: right; justify-self: end; }
 
 /* ─── SELLERS LIST ─── */
 .db-sellers-list { display: flex; flex-direction: column; gap: 0.35rem; flex: 1; }
@@ -693,7 +693,7 @@
   .pago-legend-row { font-size: 0.68rem; }
 
   /* Orders list compact */
-  .db-order-row { grid-template-columns: auto 1fr auto auto; gap: 0.35rem; padding: 0.45rem 0.35rem; }
+  .db-order-row { grid-template-columns: auto auto auto 1fr; gap: 0.35rem; padding: 0.45rem 0.35rem; }
   .ord-time { font-size: 0.65rem; }
   .ord-folio { font-size: 0.7rem; }
   .ord-badge { font-size: 0.55rem; padding: 0.1rem 0.35rem; }
