@@ -727,20 +727,21 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  padding: 12px;
+  padding: 16px;
   background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 99999;
+  box-sizing: border-box;
 }
 
 .payment-modal-box {
-  width: 100%;
-  max-width: 960px;
-  max-height: 90vh;
-  overflow: hidden;
+  width: min(920px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
   background: #18181b;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
@@ -748,6 +749,8 @@
   color: #fff;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  margin: auto;
 }
 
 .payment-modal-header,
@@ -763,6 +766,7 @@
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .payment-modal-title {
@@ -773,6 +777,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .payment-order-tag { color: #ef4444; font-size: 15px; }
