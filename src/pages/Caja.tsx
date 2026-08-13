@@ -54,6 +54,7 @@ import {
   BadgeDollarSign,
   IdCard,
   MapPin,
+  RefreshCw,
 } from 'lucide-react'
 import './Caja.css'
 
@@ -735,7 +736,10 @@ export function Caja() {
     <div className="page animate-fade-in">
       <div className={`cash-session-strip ${cashSession ? 'open' : 'closed'}`}>
         <div className="cash-session-info">
-          <span>{cashSession ? `Caja abierta · Turno #${cashSession.sessionNumber}` : 'Caja operativa sin verificar'}</span>
+          <span className="cash-session-title">
+            <i className="cash-session-status-dot" aria-hidden="true" />
+            {cashSession ? `Caja abierta · Turno #${cashSession.sessionNumber}` : 'Caja operativa sin verificar'}
+          </span>
           <small className={bcvStale || bcvError ? 'bcv-warning' : ''}>
             {bcvLoading && !bcvRate
               ? 'Consultando tasa BCV…'
@@ -745,8 +749,14 @@ export function Caja() {
           </small>
         </div>
         <div className="cash-session-actions">
-          <button type="button" className="bcv-refresh-btn" onClick={() => void refreshBcv()} disabled={bcvLoading}>Actualizar BCV</button>
-          <button onClick={() => navigate('/caja-operativa')}>{cashSession ? 'Ver turno' : 'Abrir caja'}</button>
+          <button type="button" className="bcv-refresh-btn" onClick={() => void refreshBcv()} disabled={bcvLoading}>
+            <RefreshCw size={15} className={bcvLoading ? 'is-spinning' : ''} aria-hidden="true" />
+            {bcvLoading ? 'Actualizando' : 'Actualizar BCV'}
+          </button>
+          <button type="button" className="cash-session-primary-btn" onClick={() => navigate('/caja-operativa')}>
+            <WalletCards size={15} aria-hidden="true" />
+            {cashSession ? 'Ver turno' : 'Abrir caja'}
+          </button>
         </div>
       </div>
       <div className="caja-layout">

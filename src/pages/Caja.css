@@ -20,6 +20,149 @@
   min-width: 0;
 }
 
+/* Estado operativo y referencia BCV */
+.cash-session-strip {
+  width: 100%;
+  max-width: 1600px;
+  min-height: 68px;
+  margin: 0 auto 16px;
+  padding: 12px 14px 12px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid;
+  border-radius: 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.cash-session-strip::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+.cash-session-strip.open {
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.34);
+  background: radial-gradient(circle at 0 0, rgba(34, 197, 94, 0.12), transparent 34%), linear-gradient(135deg, #102419, #101a15);
+}
+
+.cash-session-strip.closed {
+  color: #fdba74;
+  border-color: rgba(249, 115, 22, 0.38);
+  background: radial-gradient(circle at 0 0, rgba(249, 115, 22, 0.13), transparent 34%), linear-gradient(135deg, #281812, #1c1512);
+}
+
+.cash-session-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cash-session-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #f4f4f5;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.cash-session-status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 0 5px color-mix(in srgb, currentColor 13%, transparent), 0 0 16px currentColor;
+}
+
+.cash-session-info small {
+  padding-left: 17px;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.cash-session-info small.bcv-warning {
+  color: #fbbf24;
+}
+
+.cash-session-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.cash-session-actions button {
+  min-height: 40px;
+  padding: 8px 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, opacity 160ms ease;
+}
+
+.cash-session-actions button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.cash-session-actions .bcv-refresh-btn {
+  border-color: color-mix(in srgb, currentColor 48%, transparent);
+  color: inherit;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.cash-session-actions .bcv-refresh-btn:hover:not(:disabled) {
+  border-color: currentColor;
+  background: rgba(255, 255, 255, 0.075);
+}
+
+.cash-session-primary-btn {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: linear-gradient(145deg, #f97316, #e85d04);
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.cash-session-primary-btn:hover {
+  background: linear-gradient(145deg, #fb8124, #f46608);
+}
+
+.cash-session-actions button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.cash-session-actions .is-spinning {
+  animation: cash-session-spin 800ms linear infinite;
+}
+
+@keyframes cash-session-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (min-width: 960px) {
   .caja-layout {
     grid-template-columns: 1fr 370px;
@@ -784,6 +927,28 @@
   align-items: center;
   justify-content: center;
   padding: 12px;
+}
+
+@media (max-width: 680px) {
+  .cash-session-strip {
+    min-height: 0;
+    padding: 13px;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 11px;
+    border-radius: 14px;
+  }
+
+  .cash-session-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cash-session-actions button {
+    width: 100%;
+    padding-inline: 9px;
+  }
 }
 
 /* Nuevo cliente: estilos propios de Caja para no depender de Clientes.css. */
