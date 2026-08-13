@@ -7,6 +7,7 @@ import {
   getCreditPayments,
   addCreditPayment,
   createCustomer,
+  updateCustomer,
   getCustomers,
   getCustomerOrders,
   getCustomerPurchaseMetrics,
@@ -130,6 +131,17 @@ export function Clientes() {
   const [birthMonth, setBirthMonth] = useState('')
   const [birthDay, setBirthDay] = useState('')
 
+  // Edit client modal state
+  const [editClientId, setEditClientId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editIdentification, setEditIdentification] = useState('')
+  const [editAddress, setEditAddress] = useState('')
+  const [editBirthMonth, setEditBirthMonth] = useState('')
+  const [editBirthDay, setEditBirthDay] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [showCobrarModal, setShowCobrarModal] = useState(false)
@@ -235,6 +247,55 @@ export function Clientes() {
     setBirthDay('')
     setShowNewModal(false)
     setSelectedClient(newClientObj)
+  }
+
+  const openEditCustomer = (c: Customer) => {
+    setEditClientId(c.id)
+    setEditName(c.name)
+    setEditPhone(c.phone ?? '')
+    setEditIdentification(c.identification ?? '')
+    setEditAddress(c.address ?? '')
+    const bd = (c.birthday || '').slice(0, 10)
+    if (bd) {
+      const [, m, d] = bd.split('-')
+      setEditBirthMonth(String(Number(m)))
+      setEditBirthDay(String(Number(d)))
+    } else {
+      setEditBirthMonth('')
+      setEditBirthDay('')
+    }
+    setEditError('')
+  }
+
+  const handleUpdateClient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editClientId || !editName.trim()) return
+    const birthDate = editBirthMonth && editBirthDay ? `2000-${editBirthMonth.padStart(2, '0')}-${editBirthDay.padStart(2, '0')}` : undefined
+    setEditSaving(true)
+    setEditError('')
+    try {
+      const updated = await updateCustomer(editClientId, {
+        name: editName.trim(),
+        phone: editPhone.trim(),
+        identification: editIdentification.trim(),
+        address: editAddress.trim() || undefined,
+        birthDate,
+      })
+      setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))
+      setSelectedClient(prev => prev && prev.id === updated.id ? {
+        ...prev,
+        name: updated.name,
+        phone: updated.phone,
+        identification: updated.identification,
+        identificationStatus: classifyIdentification(updated.identification),
+      } : prev)
+      setEditClientId(null)
+    } catch (err) {
+      console.error('Error actualizando cliente:', err)
+      setEditError('No se pudo actualizar el cliente. Revisa los datos e intenta de nuevo.')
+    } finally {
+      setEditSaving(false)
+    }
   }
 
   const handlePayment = async (e: React.FormEvent) => {
@@ -400,6 +461,9 @@ export function Clientes() {
           </div>
 
           <div className="hero-right-actions">
+            <button className="btn-hero-dark" onClick={() => { if (fullCustomer) openEditCustomer(fullCustomer) }}>
+              <Edit2 size={16} /> Editar cliente
+            </button>
             <button className="btn-hero-red" onClick={() => navigate('/caja', { state: { customerName: selectedClient.name } })}>
               <Plus size={16} /> Nuevo pedido
             </button>
@@ -824,7 +888,7 @@ export function Clientes() {
                           <button className="icon-action-btn" title="Ver perfil del cliente" onClick={() => setSelectedClient(row)}>
                             <Eye size={15} />
                           </button>
-                          <button className="icon-action-btn" title="Editar cliente">
+                          <button className="icon-action-btn" title="Editar cliente" onClick={() => { const c = customers.find(x => x.id === row.id); if (c) openEditCustomer(c) }}>
                             <Edit2 size={15} />
                           </button>
                           <button className="icon-action-btn" title="Más opciones">
@@ -953,6 +1017,80 @@ export function Clientes() {
                 <button type="submit" className="btn-modal-submit-red">
                   Guardar cliente
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Cliente */}
+      {editClientId && (
+        <div className="modal-overlay-dark" onClick={() => setEditClientId(null)}>
+          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line">
+              <div>
+                <h3 className="modal-title">Editar cliente</h3>
+                <p className="modal-sub-desc">Actualiza los datos del cliente</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setEditClientId(null)}><X size={18} /></button>
+            </div>
+
+            <form onSubmit={handleUpdateClient} className="crm-form mt-3">
+              <div className="field">
+                <label className="field-label-white">Nombre completo</label>
+                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="modal-input-dark" required />
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Cédula / Identificación</label>
+                <input type="text" placeholder="Ej. V-12345678" value={editIdentification} onChange={(e) => setEditIdentification(e.target.value)} className="modal-input-dark" />
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Teléfono</label>
+                <div className="input-with-icon-wrap">
+                  <Phone size={16} className="input-left-icon" />
+                  <input type="text" placeholder="Ej. 0412 1234567" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="modal-input-dark with-left-icon" />
+                </div>
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Dirección</label>
+                <div className="input-with-icon-wrap">
+                  <MapPin size={16} className="input-left-icon" />
+                  <input type="text" placeholder="Ej. Av. Bolívar, casa 12" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="modal-input-dark with-left-icon" />
+                </div>
+              </div>
+
+              <div className="field mt-3">
+                <label className="field-label-white">Cumpleaños</label>
+                <div className="birthday-selects-row">
+                  <div className="select-col">
+                    <span className="select-sub-label">Mes</span>
+                    <select className="modal-select-dark" value={editBirthMonth} onChange={(e) => setEditBirthMonth(e.target.value)}>
+                      <option value="">Selecciona el mes</option>
+                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
+                        <option key={m} value={String(i + 1)}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="select-col">
+                    <span className="select-sub-label">Día</span>
+                    <select className="modal-select-dark" value={editBirthDay} onChange={(e) => setEditBirthDay(e.target.value)}>
+                      <option value="">Selecciona el día</option>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {editError && <p className="login-error mt-2">{editError}</p>}
+
+              <div className="modal-actions-row-right mt-4">
+                <button type="button" className="btn-modal-cancel" onClick={() => setEditClientId(null)}>Cancelar</button>
+                <button type="submit" className="btn-modal-submit-red" disabled={editSaving}>{editSaving ? 'Guardando…' : 'Guardar cambios'}</button>
               </div>
             </form>
           </div>

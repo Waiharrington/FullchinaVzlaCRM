@@ -1148,6 +1148,27 @@ export async function createCustomer(params: { name: string; identification?: st
   }
 }
 
+export async function updateCustomer(id: string, params: { name: string; identification?: string; phone?: string; address?: string; birthDate?: string }): Promise<Customer> {
+  const { data, error } = await client().rpc('fn_update_customer', {
+    p_id: id,
+    p_full_name: params.name,
+    p_phone: params.phone || null,
+    p_identification: params.identification || null,
+    p_address: params.address || null,
+    p_birth_date: params.birthDate || null,
+  }).single()
+  if (error) throw error
+  const row = data as Record<string, unknown>
+  return {
+    id: row.id as string, name: row.full_name as string, identification: (row.identification as string) ?? '', phone: (row.phone as string) ?? '', address: (row.address as string) ?? '',
+    email: (row.email as string) ?? '', totalVisits: Number(row.total_visits ?? 0),
+    rewardsUnlocked: Number(row.rewards_unlocked ?? 0), lastVisit: (row.last_visit as string) ?? '',
+    favoriteProduct: (row.favorite_product as string) ?? '', birthday: (row.birth_date as string) ?? '',
+    createdAt: (row.created_at as string) ?? '',
+    isActive: Boolean(row.is_active),
+  }
+}
+
 export async function registerCustomerVisit(customerId: string): Promise<Customer> {
   const { data, error } = await client().rpc('fn_register_customer_visit', { p_customer_id: customerId })
   if (error) throw error

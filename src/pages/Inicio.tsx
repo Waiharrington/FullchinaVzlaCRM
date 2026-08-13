@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { formatRateDate, formatVes } from '../lib/money'
-import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats } from '../lib/dataService'
+import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getExpenses, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type Expense } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
@@ -43,6 +43,12 @@ let inicioCache: {
   productionStats: ProductionStats | null
 } | null = null
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo', card: 'Tarjeta / Punto', mobile: 'Pago móvil',
+  transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+}
+const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '#10b981', '#8b5cf6']
+
 export function Inicio() {
   const navigate = useNavigate()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
@@ -53,11 +59,14 @@ export function Inicio() {
   const [credits, setCredits] = useState<Credit[]>(inicioCache?.credits ?? [])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(inicioCache?.paymentMethods ?? [])
   const [productionStats, setProductionStats] = useState<ProductionStats | null>(inicioCache?.productionStats ?? null)
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [todayExpenses, setTodayExpenses] = useState<Expense[]>([])
   const [, setLoading] = useState(!inicioCache)
 
   const fetchData = useCallback(async () => {
     try {
-      const [statsData, ordersData, salesData, rankingData, creditsData, paymentData, productionData] = await Promise.all([
+      const today = new Date().toISOString().slice(0, 10)
+      const [statsData, ordersData, salesData, rankingData, creditsData, paymentData, productionData, ingredientsData, expensesData] = await Promise.all([
         getTodayStats(),
         getOrdersWithItems(),
         getDailySales(7),
@@ -65,6 +74,8 @@ export function Inicio() {
         getCredits(),
         getPaymentMethodSales(),
         getProductionStats(),
+        getIngredients().catch(() => []),
+        getExpenses(today, today).catch(() => []),
       ])
       setStats(statsData)
       setTodayOrders(ordersData)
@@ -73,6 +84,8 @@ export function Inicio() {
       setCredits(creditsData)
       setPaymentMethods(paymentData)
       setProductionStats(productionData)
+      setIngredients(ingredientsData)
+      setTodayExpenses(expensesData)
       inicioCache = { stats: statsData, todayOrders: ordersData, dailySales: salesData, productRanking: rankingData, credits: creditsData, paymentMethods: paymentData, productionStats: productionData }
     } catch (e) {
       console.error('Error:', e)
@@ -89,6 +102,11 @@ export function Inicio() {
   const ordersCount = stats?.ordersCount ?? 0
   const pendingCredits = credits.filter(c => c.status !== 'paid')
   const totalPendingCredits = pendingCredits.reduce((s, c) => s + c.balancePending, 0)
+  const inventoryTotal = useMemo(() => ingredients.reduce((s, i) => s + (i.stockValue ?? 0), 0), [ingredients])
+  const todayExpensesTotal = useMemo(() => todayExpenses.reduce((s, e) => s + e.amount, 0), [todayExpenses])
+  const netProfitEstimate = totalSales - todayExpensesTotal
+  const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
+  const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
 
   const paidOrdersToday = useMemo(() =>
     todayOrders.filter(o => o.status === 'paid'),
@@ -162,8 +180,8 @@ export function Inicio() {
 
   const paymentData = useMemo(() => {
     return {
-      labels: paymentMethods.map(item => item.method),
-      datasets: [{ data: paymentMethods.map(item => item.total), backgroundColor: ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7'], borderWidth: 0 }]
+      labels: paymentMethods.map(item => PAYMENT_METHOD_LABELS[item.method] ?? item.method),
+      datasets: [{ data: paymentMethods.map(item => item.total), backgroundColor: PAYMENT_COLORS, borderWidth: 0 }]
     }
   }, [paymentMethods])
 
@@ -232,7 +250,7 @@ export function Inicio() {
               <div className="kpi-icon-circle green"><TrendingUp size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">TICKET PROMEDIO</span>
-                <MoneyWithBcv usd={stats?.avgTicket && stats.avgTicket > 0 ? stats.avgTicket : 38.33} className="kpi-value" align="start" />
+                <MoneyWithBcv usd={stats?.avgTicket ?? 0} className="kpi-value" align="start" />
               </div>
             </div>
             <div className="kpi-card">
@@ -240,7 +258,7 @@ export function Inicio() {
               <div className="kpi-data">
                 <span className="kpi-label">CUENTAS POR COBRAR</span>
                 <MoneyWithBcv usd={totalPendingCredits} className="kpi-value" align="start" />
-                <span className="kpi-sub">{pendingCredits.length > 0 ? pendingCredits.length : 3} clientes</span>
+                <span className="kpi-sub">{pendingCredits.length} cliente{pendingCredits.length === 1 ? '' : 's'}</span>
               </div>
             </div>
           </div>
@@ -267,17 +285,14 @@ export function Inicio() {
               <Doughnut data={paymentData} options={doughnutOptions} />
             </div>
             <div className="db-pago-legend">
-              {[
-                { c: '#ef4444', n: 'Efectivo', p: '58%', v: 1067 },
-                { c: '#f59e0b', n: 'Tarjeta', p: '28%', v: 515 },
-                { c: '#fbbf24', n: 'Yape / Plin', p: '10%', v: 184 },
-                { c: '#52525b', n: 'Mixto', p: '4%', v: 74 },
-              ].map((r, i) => (
-                <div key={i} className="pago-legend-row">
-                  <span className="pago-dot" style={{ background: r.c }}></span>
-                  <span className="pago-name">{r.n}</span>
-                  <span className="pago-pct">{r.p}</span>
-                  <MoneyWithBcv usd={r.v} compact />
+              {paymentMethods.length === 0 ? (
+                <div className="pago-legend-row"><span className="pago-name">Sin ventas registradas hoy</span></div>
+              ) : paymentMethods.map((m, i) => (
+                <div key={m.method} className="pago-legend-row">
+                  <span className="pago-dot" style={{ background: PAYMENT_COLORS[i % PAYMENT_COLORS.length] }}></span>
+                  <span className="pago-name">{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>
+                  <span className="pago-pct">{paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0}%</span>
+                  <MoneyWithBcv usd={m.total} compact />
                 </div>
               ))}
             </div>
@@ -326,22 +341,21 @@ export function Inicio() {
             <h3>ALERTAS DE INVENTARIO</h3>
           </div>
           <div className="db-inv-alerts">
-            {[
-              { name: 'Pollo troceado', qty: '12 porciones', level: 'Bajo' },
-              { name: 'Camarón', qty: '8 porciones', level: 'Crítico' },
-              { name: 'Salmón', qty: '6 porciones', level: 'Bajo' },
-              { name: 'Salsa agridulce', qty: '10 porciones', level: 'Bajo' },
-              { name: 'Arroz', qty: '15 porciones', level: 'OK' },
-            ].map((a, i) => (
-              <div key={i} className="inv-row">
-                <div className="inv-row-icon">
-                  <AlertTriangle size={14} />
+            {lowStockItems.length === 0 ? (
+              <div className="inv-row"><span className="inv-row-name">Sin datos de inventario</span></div>
+            ) : lowStockItems.map((it) => {
+              const level = it.currentStock <= 0 ? 'Crítico' : it.currentStock < 5 ? 'Bajo' : 'OK'
+              return (
+                <div key={it.id} className="inv-row">
+                  <div className="inv-row-icon">
+                    <AlertTriangle size={14} />
+                  </div>
+                  <span className="inv-row-name">{it.name}</span>
+                  <span className="inv-row-qty">{it.currentStock.toLocaleString('es-VE', { maximumFractionDigits: 2 })} {it.unitSymbol}</span>
+                  <span className={`inv-badge inv-${level.toLowerCase()}`}>{level}</span>
                 </div>
-                <span className="inv-row-name">{a.name}</span>
-                <span className="inv-row-qty">{a.qty}</span>
-                <span className={`inv-badge inv-${a.level.toLowerCase()}`}>{a.level}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
           <button className="db-link-btn full-w mt" onClick={() => navigate('/inventario')}>Ir a inventario</button>
         </div>
@@ -352,23 +366,21 @@ export function Inicio() {
             <div className="db-prod-donut-wrap">
               <Doughnut data={productionData} options={doughnutOptions} />
               <div className="db-prod-center">
-                <span className="prod-center-pct">68%</span>
-                <span className="prod-center-lbl">Completado</span>
+                <span className="prod-center-pct">{Math.round(productionStats?.avgYield ?? 0)}%</span>
+                <span className="prod-center-lbl">Rendimiento</span>
               </div>
             </div>
             <div className="db-prod-items">
-              {[
-                { name: 'Lumpias', qty: '120 / 180 und' },
-                { name: 'Arroz Chaufa', qty: '22 / 30 porciones' },
-                { name: 'Chow Mein', qty: '18 / 25 porciones' },
-                { name: 'Pollo Agridulce', qty: '15 / 25 porciones' },
-              ].map((p, i) => (
-                <div key={i} className="prod-item-row">
-                  <span className="prod-item-dot"></span>
-                  <span className="prod-item-name">{p.name}</span>
-                  <span className="prod-item-qty">{p.qty}</span>
-                </div>
-              ))}
+              {(productionStats?.batchesToday ?? 0) === 0 ? (
+                <div className="prod-item-row"><span className="prod-item-name">Sin lotes de producción hoy</span></div>
+              ) : (
+                <>
+                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Lotes de hoy</span><span className="prod-item-qty">{productionStats?.batchesToday ?? 0}</span></div>
+                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Rendimiento promedio</span><span className="prod-item-qty">{(productionStats?.avgYield ?? 0).toFixed(1)}%</span></div>
+                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Merma total</span><span className="prod-item-qty">{(productionStats?.totalWaste ?? 0).toFixed(2)}</span></div>
+                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Costo/porción</span><span className="prod-item-qty">${(productionStats?.avgCostPerPortion ?? 0).toFixed(2)}</span></div>
+                </>
+              )}
             </div>
           </div>
           <button className="db-link-btn full-w mt" onClick={() => navigate('/produccion')}>Ver plan de producción</button>
@@ -381,18 +393,16 @@ export function Inicio() {
             <div className="cobrar-data">
               <span className="cobrar-label">Total por cobrar</span>
               <MoneyWithBcv usd={totalPendingCredits} className="cobrar-big-value" align="start" />
-              <span className="cobrar-sub">3 comandas pendientes</span>
+              <span className="cobrar-sub">{pendingCredits.length} crédito{pendingCredits.length === 1 ? '' : 's'} pendiente{pendingCredits.length === 1 ? '' : 's'}</span>
             </div>
           </div>
           <div className="db-cobrar-list">
-            {[
-              { id: '#1458', total: 54.00 },
-              { id: '#1451', total: 135.00 },
-              { id: '#1442', total: 151.00 },
-            ].map((c, i) => (
-              <div key={i} className="cobrar-row">
-                <span className="cobrar-row-id">Coma. {c.id}</span>
-                <MoneyWithBcv usd={c.total} className="cobrar-row-val" compact />
+            {pendingCredits.length === 0 ? (
+              <div className="cobrar-row"><span className="cobrar-row-id">Sin cuentas por cobrar</span></div>
+            ) : pendingCredits.slice(0, 4).map((c) => (
+              <div key={c.id} className="cobrar-row">
+                <span className="cobrar-row-id">{c.customerName}</span>
+                <MoneyWithBcv usd={c.balancePending} className="cobrar-row-val" compact />
               </div>
             ))}
           </div>
@@ -414,19 +424,19 @@ export function Inicio() {
       <div className="db-footer-strip">
         <div className="db-footer-metric">
           <div className="fm-icon"><Package size={16} /></div>
-          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><MoneyWithBcv usd={2450} className="fm-val" align="start" compact /><span className="fm-sub">Valor actual</span></div>
+          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><MoneyWithBcv usd={inventoryTotal} className="fm-val" align="start" compact /><span className="fm-sub">Valor a costo</span></div>
         </div>
         <div className="db-footer-metric">
-          <div className="fm-icon"><ChefHat size={16} /></div>
-          <div className="fm-text"><span className="fm-label">COSTO DE INSUMOS USADOS</span><MoneyWithBcv usd={640} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
+          <div className="fm-icon"><DollarSign size={16} /></div>
+          <div className="fm-text"><span className="fm-label">VENTAS DE HOY</span><MoneyWithBcv usd={totalSales} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
         </div>
         <div className="db-footer-metric">
           <div className="fm-icon"><Receipt size={16} /></div>
-          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><MoneyWithBcv usd={320} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><MoneyWithBcv usd={todayExpensesTotal} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
         </div>
         <div className="db-footer-metric highlight-green">
           <div className="fm-icon green-glow"><TrendingUp size={16} /></div>
-          <div className="fm-text"><span className="fm-label">UTILIDAD NETA ESTIMADA</span><MoneyWithBcv usd={880} className="fm-val green-text" align="start" compact /><span className="fm-sub">Hoy</span></div>
+          <div className="fm-text"><span className="fm-label">UTILIDAD ESTIMADA</span><MoneyWithBcv usd={netProfitEstimate} className="fm-val green-text" align="start" compact /><span className="fm-sub">Ventas − gastos (hoy)</span></div>
         </div>
       </div>
     </div>
