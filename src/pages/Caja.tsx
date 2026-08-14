@@ -821,7 +821,6 @@ export function Caja() {
                 className="search-input-caja"
               />
             </div>
-            <button className="filter-btn">⚙️ Filtros</button>
             <select
               className="sort-select"
               value={sortBy}
