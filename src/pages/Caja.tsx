@@ -86,6 +86,17 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> =
   delivery: { label: 'Delivery', icon: <Bike size={18} strokeWidth={1.8} /> },
 }
 
+const PAYMENT_DETAILS: Record<PaymentMethod | 'split', { label: string; desc: string; icon: ReactNode }> = {
+  card: { label: 'Punto de venta', desc: 'Tarjeta de débito o crédito', icon: <CreditCard size={16} strokeWidth={1.8} /> },
+  mobile: { label: 'Pago móvil', desc: 'Transferencia móvil inmediata', icon: <Smartphone size={16} strokeWidth={1.8} /> },
+  cash: { label: 'Efectivo', desc: 'Dólares o bolívares en efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
+  transfer: { label: 'Transferencia', desc: 'Transferencia bancaria', icon: <Landmark size={16} strokeWidth={1.8} /> },
+  binance: { label: 'Binance Pay', desc: 'Pago en cripto USDT', icon: <Hexagon size={16} strokeWidth={1.8} /> },
+  zelle: { label: 'Zelle', desc: 'Transferencia en dólares', icon: <BadgeDollarSign size={16} strokeWidth={1.8} /> },
+  split: { label: 'Pago combinado', desc: 'Cobrar con dos métodos', icon: <Split size={16} strokeWidth={1.8} /> },
+  other: { label: 'Otro método', desc: 'Método especial', icon: <CreditCard size={16} strokeWidth={1.8} /> },
+}
+
 const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: ReactNode }> = [
   { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
   { method: 'mobile', label: 'Pago móvil', icon: <Smartphone size={16} strokeWidth={1.8} /> },
@@ -1052,19 +1063,24 @@ export function Caja() {
                 <MoneyWithBcv usd={0} className="total-val" compact />
               </div>
               <div className="cart-divide-row">
-                <button
-                  type="button"
-                  className="divide-payment-link"
-                  disabled={cart.length === 0 || paying}
-                  onClick={() => handleOpenPaymentModal('split')}
-                >
-                  <span className="divide-payment-icon"><Split size={16} /></span>
-                  <span className="divide-payment-copy">
-                    <strong>Pago combinado</strong>
-                    <small>Cobrar con dos métodos</small>
-                  </span>
-                  <span className="divide-payment-arrow">›</span>
-                </button>
+                {(() => {
+                  const currentPay = PAYMENT_DETAILS[selectedPaymentTab] || PAYMENT_DETAILS.card
+                  return (
+                    <button
+                      type="button"
+                      className="divide-payment-link"
+                      disabled={cart.length === 0 || paying}
+                      onClick={() => handleOpenPaymentModal(selectedPaymentTab)}
+                    >
+                      <span className="divide-payment-icon">{currentPay.icon}</span>
+                      <span className="divide-payment-copy">
+                        <strong>{currentPay.label}</strong>
+                        <small>{currentPay.desc}</small>
+                      </span>
+                      <span className="divide-payment-arrow">›</span>
+                    </button>
+                  )
+                })()}
               </div>
               <div className="cart-total-row total-final-row">
                 <span className="final-label">Total</span>
@@ -1079,7 +1095,7 @@ export function Caja() {
               <button
                 className="btn-pay-red"
                 disabled={cart.length === 0 || paying}
-                onClick={() => handleOpenPaymentModal(defaultPaymentForOrderType(orderType))}
+                onClick={() => handleOpenPaymentModal(selectedPaymentTab)}
               >
                 <WalletCards size={18} /> <span>Cobrar pedido</span>
               </button>
