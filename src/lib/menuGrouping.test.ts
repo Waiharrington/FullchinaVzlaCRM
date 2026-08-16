@@ -3,7 +3,7 @@ import type { Product } from './dataService'
 import { groupMenuProducts } from './menuGrouping'
 
 function product(id: string, name: string, price: number, category = 'arroz'): Product {
-  return { id, name, price, category, description: null, cost: null, emoji: '🍚', active: true }
+  return { id, name, price, category, description: null, cost: null, emoji: '🍚', active: true, imageUrl: null }
 }
 
 describe('groupMenuProducts', () => {

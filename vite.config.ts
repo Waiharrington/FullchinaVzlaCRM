@@ -9,6 +9,21 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
+      workbox: {
+        // Las fotos de productos NO van al precache (pesan ~5.5 MB); se cachean
+        // en tiempo de ejecución la primera vez que se muestran.
+        globIgnores: ['**/productos/**'],
+        runtimeCaching: [
+          {
+            urlPattern: /\/productos\/.*\.(?:png|jpg|jpeg|webp)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'product-images',
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 },
+            },
+          },
+        ],
+      },
       manifest: {
         name: 'Full China',
         short_name: 'Full China',

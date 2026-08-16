@@ -9,6 +9,7 @@ export interface Product {
   category: string
   emoji: string
   active: boolean
+  imageUrl: string | null
 }
 
 export interface SelectedModifier {
@@ -392,7 +393,7 @@ export async function getProducts(): Promise<Product[]> {
   try {
     const { data, error } = await supabase
       .from('sellable_products')
-      .select('id,name,description,price,cost,category,emoji,is_active')
+      .select('id,name,description,price,cost,category,emoji,is_active,image_url')
       .eq('is_active', true)
       .order('category', { ascending: true })
       .order('name', { ascending: true })
@@ -407,6 +408,7 @@ export async function getProducts(): Promise<Product[]> {
       category: r.category as string,
       emoji: r.emoji as string,
       active: Boolean(r.is_active),
+      imageUrl: (r.image_url as string) ?? null,
     }))
   } catch (err) {
     console.error('Error cargando productos de Supabase:', err)

@@ -144,6 +144,7 @@ const FOOD_IMAGES: Record<string, string> = {
 }
 
 function getProductImage(product: Product): string {
+  if (product.imageUrl) return product.imageUrl
   const nameLower = product.name.toLowerCase()
   if (nameLower.includes('chaufa') || nameLower.includes('arroz')) return FOOD_IMAGES.arroz
   if (nameLower.includes('chow mein') || nameLower.includes('noodle')) return FOOD_IMAGES.noodles
