@@ -11,12 +11,39 @@ export interface Product {
   active: boolean
 }
 
+export interface SelectedModifier {
+  optionId: string
+  optionName: string
+  modifierName: string
+  price: number
+  quantity: number
+}
+
 export interface CartItem {
   productId: string
   productName: string
   price: number
   quantity: number
   emoji?: string
+  /** Identificador único de la línea del carrito (necesario para modificadores). */
+  lineId?: string
+  /** Opciones de modificador elegidas para esta línea. */
+  selectedModifiers?: SelectedModifier[]
+}
+
+export interface ModifierOption {
+  id: string
+  name: string
+  price: number
+}
+
+export interface ProductModifierGroup {
+  modifierId: string
+  name: string
+  minSelections: number
+  maxSelections: number | null
+  allowRepeat: boolean
+  options: ModifierOption[]
 }
 
 export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle' | 'other'
@@ -387,6 +414,48 @@ export async function getProducts(): Promise<Product[]> {
   }
 }
 
+// --- Modificadores -----------------------------------------------------------
+
+/** Conjunto de ids de productos que tienen al menos un modificador asignado. */
+export async function getProductsWithModifiers(): Promise<Set<string>> {
+  const { data, error } = await client()
+    .from('sellable_product_modifiers')
+    .select('sellable_product_id')
+
+  if (error) throw error
+  return new Set((data ?? []).map((r) => r.sellable_product_id as string))
+}
+
+/** Grupos de modificadores (con sus opciones) de un producto. */
+export async function getProductModifiers(productId: string): Promise<ProductModifierGroup[]> {
+  const { data, error } = await client()
+    .from('sellable_product_modifiers')
+    .select('modifiers(id,name,min_selections,max_selections,allow_repeat,display_order,is_active,modifier_options(id,name,sale_price,display_order,is_active))')
+    .eq('sellable_product_id', productId)
+
+  if (error) throw error
+
+  const groups: ProductModifierGroup[] = []
+  for (const row of data ?? []) {
+    const m = (Array.isArray(row.modifiers) ? row.modifiers[0] : row.modifiers) as Record<string, unknown> | null
+    if (!m || m.is_active === false) continue
+    const rawOptions = (m.modifier_options as Array<Record<string, unknown>>) ?? []
+    const options: ModifierOption[] = rawOptions
+      .filter((o) => o.is_active !== false)
+      .sort((a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0))
+      .map((o) => ({ id: o.id as string, name: o.name as string, price: Number(o.sale_price ?? 0) }))
+    groups.push({
+      modifierId: m.id as string,
+      name: m.name as string,
+      minSelections: Number(m.min_selections ?? 0),
+      maxSelections: m.max_selections == null ? null : Number(m.max_selections),
+      allowRepeat: Boolean(m.allow_repeat),
+      options,
+    })
+  }
+  return groups.sort((a, b) => a.name.localeCompare(b.name))
+}
+
 // --- Cobro (checkout) --------------------------------------------------------
 
 export async function checkout(params: {
@@ -415,6 +484,14 @@ export async function checkout(params: {
     p_items: params.items.map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
+      ...(item.selectedModifiers && item.selectedModifiers.length > 0
+        ? {
+            modifiers: item.selectedModifiers.map((m) => ({
+              optionId: m.optionId,
+              quantity: m.quantity,
+            })),
+          }
+        : {}),
     })),
     p_payments: paymentComponents,
     p_bcv_rate: params.bcvRate,
@@ -472,15 +549,32 @@ export async function sendToKitchen(params: {
     .single()
   if (orderErr) throw orderErr
 
-  const { error: itemsErr } = await sb.from('order_items').insert(
+  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(
     params.items.map((i) => ({
       order_id: order.id,
       sellable_product_id: i.productId,
       quantity: i.quantity,
       unit_price: i.price,
     })),
-  )
+  ).select('id')
   if (itemsErr) throw itemsErr
+
+  // Persistir las opciones de modificador elegidas por renglón. Los ids se
+  // devuelven en el mismo orden en que se insertaron, así que se mapean por
+  // índice. Esto dispara el consumo de inventario por modificador.
+  const modifierRows = (insertedItems ?? []).flatMap((row, idx) => {
+    const mods = params.items[idx]?.selectedModifiers ?? []
+    return mods.map((m) => ({
+      order_item_id: row.id as string,
+      modifier_option_id: m.optionId,
+      quantity: m.quantity,
+      unit_price: m.price,
+    }))
+  })
+  if (modifierRows.length > 0) {
+    const { error: modErr } = await sb.from('order_item_modifiers').insert(modifierRows)
+    if (modErr) throw modErr
+  }
 
   // NO payment inserted — the order stays unpaid until cobro
 

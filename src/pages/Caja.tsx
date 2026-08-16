@@ -16,12 +16,16 @@ import {
   sendToKitchen,
   getCustomers,
   createCustomer,
+  getProductsWithModifiers,
+  getProductModifiers,
   type Product,
   type CartItem,
   type OrderResult,
   type TodayOrder,
   type PaymentMethod,
   type CashSessionSnapshot,
+  type ProductModifierGroup,
+  type SelectedModifier,
 } from '../lib/dataService'
 import {
   X,
@@ -176,6 +180,13 @@ export function Caja() {
   const [, setLoading] = useState(!cajaCache)
 
   const [cart, setCart] = useState<CartItem[]>([])
+  const [productsWithModifiers, setProductsWithModifiers] = useState<Set<string>>(new Set())
+  // Selector de modificadores
+  const [modifierProduct, setModifierProduct] = useState<Product | null>(null)
+  const [modifierGroups, setModifierGroups] = useState<ProductModifierGroup[]>([])
+  const [modifierSelections, setModifierSelections] = useState<Record<string, Record<string, number>>>({})
+  const [modifierLoading, setModifierLoading] = useState(false)
+  const [modifierError, setModifierError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
@@ -309,12 +320,14 @@ export function Caja() {
     ;(async () => {
       setLoading(true)
       try {
-        const [prods, orders] = await Promise.all([
+        const [prods, orders, withMods] = await Promise.all([
           getProducts().catch((e) => { console.error('getProducts error:', e); return [] as Product[] }),
           getTodayOrders().catch((e) => { console.error('getTodayOrders error:', e); return [] as TodayOrder[] }),
+          getProductsWithModifiers().catch((e) => { console.error('getProductsWithModifiers error:', e); return new Set<string>() }),
         ])
         setProducts(prods)
         setTodayOrders(orders)
+        setProductsWithModifiers(withMods)
         cajaCache = { products: prods, todayOrders: orders }
       } finally {
         if (!cancelled) setLoading(false)
@@ -356,20 +369,128 @@ export function Caja() {
     return result
   }, [products, searchTerm, activeCategory, sortBy])
 
+  const genLineId = () =>
+    (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `l_${Date.now()}_${Math.random().toString(36).slice(2)}`
+
   const addToCart = (product: Product) => {
+    if (productsWithModifiers.has(product.id)) {
+      void openModifierPicker(product)
+      return
+    }
     setCart((prev) => {
-      const existing = prev.find((i) => i.productId === product.id)
-      if (existing) return prev.map((i) => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i)
-      return [...prev, { productId: product.id, productName: product.name, price: product.price, quantity: 1, emoji: product.emoji }]
+      const existing = prev.find((i) => i.productId === product.id && (!i.selectedModifiers || i.selectedModifiers.length === 0))
+      if (existing) return prev.map((i) => i === existing ? { ...i, quantity: i.quantity + 1 } : i)
+      return [...prev, { lineId: genLineId(), productId: product.id, productName: product.name, price: product.price, quantity: 1, emoji: product.emoji }]
     })
   }
 
-  const updateQty = (productId: string, delta: number) => {
-    setCart((prev) => prev.map((i) => i.productId === productId ? { ...i, quantity: i.quantity + delta } : i).filter((i) => i.quantity > 0))
+  const updateQty = (lineId: string, delta: number) => {
+    setCart((prev) => prev.map((i) => i.lineId === lineId ? { ...i, quantity: i.quantity + delta } : i).filter((i) => i.quantity > 0))
   }
 
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => prev.filter((i) => i.productId !== productId))
+  const removeFromCart = (lineId: string) => {
+    setCart((prev) => prev.filter((i) => i.lineId !== lineId))
+  }
+
+  // --- Selector de modificadores ---
+  const openModifierPicker = async (product: Product) => {
+    setModifierProduct(product)
+    setModifierGroups([])
+    setModifierSelections({})
+    setModifierError('')
+    setModifierLoading(true)
+    try {
+      const groups = await getProductModifiers(product.id)
+      setModifierGroups(groups)
+      const init: Record<string, Record<string, number>> = {}
+      for (const g of groups) {
+        init[g.modifierId] = {}
+        // Grupo obligatorio de selección única: preselecciona la primera opción.
+        if (g.minSelections >= 1 && g.maxSelections === 1 && g.options.length > 0) {
+          init[g.modifierId][g.options[0].id] = 1
+        }
+      }
+      setModifierSelections(init)
+    } catch (e) {
+      setModifierError(e instanceof Error ? e.message : 'No se pudieron cargar los modificadores')
+    } finally {
+      setModifierLoading(false)
+    }
+  }
+
+  const closeModifierPicker = () => {
+    setModifierProduct(null)
+    setModifierGroups([])
+    setModifierSelections({})
+    setModifierError('')
+  }
+
+  const toggleModifierOption = (group: ProductModifierGroup, optionId: string) => {
+    setModifierError('')
+    setModifierSelections((prev) => {
+      const groupSel = { ...(prev[group.modifierId] ?? {}) }
+      if (group.maxSelections === 1) {
+        return { ...prev, [group.modifierId]: { [optionId]: 1 } }
+      }
+      const current = groupSel[optionId] ?? 0
+      const totalSelected = Object.values(groupSel).reduce((s, n) => s + n, 0)
+      if (current > 0 && !group.allowRepeat) {
+        delete groupSel[optionId]
+      } else {
+        if (group.maxSelections != null && totalSelected >= group.maxSelections) return prev
+        groupSel[optionId] = group.allowRepeat ? current + 1 : 1
+      }
+      return { ...prev, [group.modifierId]: groupSel }
+    })
+  }
+
+  const modifierExtraPrice = useMemo(() => {
+    let extra = 0
+    for (const g of modifierGroups) {
+      const sel = modifierSelections[g.modifierId] ?? {}
+      for (const [optId, qty] of Object.entries(sel)) {
+        const opt = g.options.find((o) => o.id === optId)
+        if (opt) extra += opt.price * qty
+      }
+    }
+    return extra
+  }, [modifierGroups, modifierSelections])
+
+  const confirmModifierSelection = () => {
+    if (!modifierProduct) return
+    for (const g of modifierGroups) {
+      const sel = modifierSelections[g.modifierId] ?? {}
+      const count = Object.values(sel).reduce((s, n) => s + n, 0)
+      if (count < g.minSelections) {
+        setModifierError(`Elige al menos ${g.minSelections} en "${g.name}"`)
+        return
+      }
+      if (g.maxSelections != null && count > g.maxSelections) {
+        setModifierError(`Máximo ${g.maxSelections} en "${g.name}"`)
+        return
+      }
+    }
+    const selected: SelectedModifier[] = []
+    for (const g of modifierGroups) {
+      const sel = modifierSelections[g.modifierId] ?? {}
+      for (const [optId, qty] of Object.entries(sel)) {
+        if (qty <= 0) continue
+        const opt = g.options.find((o) => o.id === optId)
+        if (opt) selected.push({ optionId: optId, optionName: opt.name, modifierName: g.name, price: opt.price, quantity: qty })
+      }
+    }
+    setCart((prev) => [...prev, {
+      lineId: genLineId(),
+      productId: modifierProduct.id,
+      productName: modifierProduct.name,
+      price: modifierProduct.price + modifierExtraPrice,
+      quantity: 1,
+      emoji: modifierProduct.emoji,
+      selectedModifiers: selected,
+    }])
+    closeModifierPicker()
   }
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
@@ -914,6 +1035,73 @@ export function Caja() {
           </div>
         )}
 
+        {modifierProduct && (
+          <div className="modal-overlay-dark" onClick={closeModifierPicker}>
+            <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="modifier-selector-title" onClick={(event) => event.stopPropagation()}>
+              <div className="variant-selector-header">
+                <div>
+                  <span className="variant-selector-eyebrow">Personaliza el producto</span>
+                  <h2 id="modifier-selector-title">{modifierProduct.name}</h2>
+                </div>
+                <button type="button" className="payment-modal-close" onClick={closeModifierPicker} aria-label="Cerrar selector">
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="variant-selector-list">
+                {modifierLoading && <p className="page" role="status">Cargando opciones…</p>}
+                {!modifierLoading && modifierGroups.length === 0 && (
+                  <p className="page" role="status">Este producto no tiene opciones configuradas.</p>
+                )}
+                {modifierGroups.map((group) => {
+                  const sel = modifierSelections[group.modifierId] ?? {}
+                  const rule = group.maxSelections === 1
+                    ? (group.minSelections >= 1 ? 'Elige 1' : 'Elige 1 (opcional)')
+                    : `Elige ${group.minSelections}${group.maxSelections != null ? `–${group.maxSelections}` : '+'}`
+                  return (
+                    <div key={group.modifierId} style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                        <strong>{group.name}</strong>
+                        <small style={{ opacity: 0.7 }}>{rule}</small>
+                      </div>
+                      {group.options.map((opt) => {
+                        const qty = sel[opt.id] ?? 0
+                        const selected = qty > 0
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className="variant-option-card"
+                            onClick={() => toggleModifierOption(group, opt.id)}
+                            style={selected ? { outline: '2px solid var(--accent, #f97316)', outlineOffset: -2 } : undefined}
+                          >
+                            <span className="variant-option-emoji">{selected ? '✅' : '⚪'}</span>
+                            <span className="variant-option-copy">
+                              <strong>{opt.name}{qty > 1 ? ` ×${qty}` : ''}</strong>
+                            </span>
+                            {opt.price > 0
+                              ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact />
+                              : <span className="variant-option-price" style={{ opacity: 0.6 }}>Incluido</span>}
+                            <span className="variant-option-add">{selected ? 'Quitar' : 'Elegir'}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                })}
+                {modifierError && <p style={{ color: '#dc2626', margin: '4px 0' }}>{modifierError}</p>}
+              </div>
+              {!modifierLoading && modifierGroups.length > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 4px 4px' }}>
+                  <MoneyWithBcv usd={modifierProduct.price + modifierExtraPrice} compact />
+                  <button type="button" className="btn-primary" onClick={confirmModifierSelection}>
+                    Agregar al pedido
+                  </button>
+                </div>
+              )}
+            </section>
+          </div>
+        )}
+
         {/* RIGHT: Cart Sidebar */}
         <div className="cart-sidebar">
           <div className="cart-sidebar-header">
@@ -944,20 +1132,24 @@ export function Caja() {
                   const prod = products.find(p => p.id === item.productId)
                   const imgUrl = prod ? getProductImage(prod) : FOOD_IMAGES.default
 
+                  const lineKey = item.lineId ?? item.productId
+                  const mods = item.selectedModifiers && item.selectedModifiers.length > 0
+                    ? item.selectedModifiers.map((m) => m.optionName).join(', ')
+                    : null
                   return (
-                    <div key={item.productId} className="cart-item-row">
+                    <div key={lineKey} className="cart-item-row">
                       <img src={imgUrl} alt={item.productName} className="cart-item-thumb" />
                       <div className="cart-item-details">
                         <span className="cart-item-name">{item.productName}</span>
-                        <span className="cart-item-sub">Sin cebollín</span>
+                        {mods && <span className="cart-item-sub">{mods}</span>}
                       </div>
                       <div className="cart-item-controls">
-                        <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(item.productId, -1)}><Minus size={13} /></button>
+                        <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(lineKey, -1)}><Minus size={13} /></button>
                         <span className="qty-display">{item.quantity}</span>
-                        <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(item.productId, 1)}><Plus size={13} /></button>
+                        <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(lineKey, 1)}><Plus size={13} /></button>
                       </div>
                       <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
-                      <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(item.productId)}><Trash2 size={14} /></button>
+                      <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(lineKey)}><Trash2 size={14} /></button>
                     </div>
                   )
                 })}
