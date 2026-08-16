@@ -17,6 +17,9 @@ test-results/
 .dev-server.pid
 *.pptx.inspect.ndjson
 
+# Backups de base de datos (datos de producción; no versionar)
+supabase/backups/
+
 # Sistema
 .DS_Store
 Thumbs.db

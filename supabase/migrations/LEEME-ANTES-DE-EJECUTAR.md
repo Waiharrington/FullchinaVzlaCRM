@@ -35,13 +35,16 @@ Respuesta de la API verificada: `fullchinavzla` → **HTTP 200**, `foodtruck` �
 
 ## Si alguna vez hay que re-ejecutarlos
 
-```bash
-sed 's/foodtruck/fullchinavzla/g' 20260803000000_initial_foodtruck_schema.sql \
-  > 20260803000000_initial_fullchinavzla_schema.sql
-```
+**Ya no hace falta correr el `sed` a mano.** Hay un baseline corregido y autónomo en
+[`../baseline/00_schema_fullchinavzla.sql`](../baseline/00_schema_fullchinavzla.sql) —
+es este mismo archivo con `foodtruck`→`fullchinavzla` y `CREATE SCHEMA IF NOT EXISTS`.
+El procedimiento completo de reconstrucción desde cero está en
+[`../baseline/README.md`](../baseline/README.md): aplicar el baseline y luego las
+migraciones con fecha `20260805000000` en adelante, en orden.
 
-Ejecutar el original **sin** ese paso crearía un schema `foodtruck` nuevo y vacío, paralelo al real.
-La app seguiría sin funcionar mientras tú crees que la migración sí se aplicó.
+Ejecutar el original `20260803000000_initial_foodtruck_schema.sql` **sin** corregir el schema
+crearía un schema `foodtruck` nuevo y vacío, paralelo al real. La app seguiría sin funcionar
+mientras tú crees que la migración sí se aplicó. Usa el baseline, no el original.
 
 ---
 

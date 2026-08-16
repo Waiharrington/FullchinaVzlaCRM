@@ -366,6 +366,7 @@ export async function getProducts(): Promise<Product[]> {
     const { data, error } = await supabase
       .from('sellable_products')
       .select('id,name,description,price,cost,category,emoji,is_active')
+      .eq('is_active', true)
       .order('category', { ascending: true })
       .order('name', { ascending: true })
 
