@@ -43,6 +43,10 @@ export function RecetasReal() {
   const [addQuantity, setAddQuantity] = useState('1')
   const [addUnitId, setAddUnitId] = useState('')
 
+  // Configurar una nueva receta (elegir producto)
+  const [showNewRecipe, setShowNewRecipe] = useState(false)
+  const [newRecipeProductId, setNewRecipeProductId] = useState('')
+
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -202,7 +206,7 @@ export function RecetasReal() {
         </div>
         <button
           className="rec-add-btn"
-          onClick={() => { if (sel) { setShowAdd(true); setDetailTab('ingredientes') } }}
+          onClick={() => { setNewRecipeProductId(''); setShowNewRecipe(true) }}
         >
           <Plus size={16} /> Agregar receta
         </button>
@@ -417,6 +421,50 @@ export function RecetasReal() {
           )}
         </div>
       </div>
+
+      {showNewRecipe && (
+        <div className="rec-modal-overlay" onClick={() => setShowNewRecipe(false)}>
+          <div className="rec-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Configurar nueva receta</h3>
+            <p className="rec-detail-sub" style={{ marginBottom: 14 }}>
+              Elige el producto vendible al que le vas a configurar la receta. Los que aún no tienen ingredientes aparecen primero.
+            </p>
+            <SearchSelect
+              options={[...products]
+                .sort((a, b) => {
+                  const ha = summaryOf(a.id).componentCount > 0 ? 1 : 0
+                  const hb = summaryOf(b.id).componentCount > 0 ? 1 : 0
+                  return ha - hb || a.name.localeCompare(b.name)
+                })
+                .map((p) => ({
+                  value: p.id,
+                  label: `${p.name}${summaryOf(p.id).componentCount > 0 ? ' ✓' : ' · sin receta'}`,
+                }))}
+              value={newRecipeProductId}
+              onChange={setNewRecipeProductId}
+              placeholder="Buscar producto..."
+              emptyText="Sin productos"
+            />
+            <div className="rec-modal-actions">
+              <button className="rec-modal-cancel" onClick={() => setShowNewRecipe(false)}>Cancelar</button>
+              <button
+                className="rec-add-btn"
+                disabled={!newRecipeProductId}
+                onClick={() => {
+                  const p = products.find((x) => x.id === newRecipeProductId)
+                  if (!p) return
+                  setSelected(p)
+                  setDetailTab('ingredientes')
+                  setShowAdd(true)
+                  setShowNewRecipe(false)
+                }}
+              >
+                <Plus size={16} /> Configurar receta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
