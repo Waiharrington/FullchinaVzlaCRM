@@ -37,6 +37,7 @@ import {
   ShoppingBag,
   Ticket,
   MapPin,
+  ArrowLeft,
 } from 'lucide-react'
 import './Clientes.css'
 
@@ -409,11 +410,23 @@ export function Clientes() {
         {/* Breadcrumb & Title */}
         <div className="profile-breadcrumb-wrap">
           <div className="profile-breadcrumbs">
-            <button className="breadcrumb-link" onClick={() => setSelectedClient(null)}>Clientes</button>
+            <button className="breadcrumb-link" onClick={() => setSelectedClient(null)}>
+              <ArrowLeft size={13} style={{ marginRight: 4 }} /> Clientes
+            </button>
             <span className="breadcrumb-sep">›</span>
             <span className="breadcrumb-current">Perfil del cliente</span>
           </div>
-          <h1 className="profile-page-title">Perfil del cliente</h1>
+          <div className="profile-title-with-back">
+            <button
+              className="btn-back-square"
+              onClick={() => setSelectedClient(null)}
+              title="Volver a la lista de clientes"
+              aria-label="Volver a la lista de clientes"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <h1 className="profile-page-title">Perfil del cliente</h1>
+          </div>
         </div>
 
         {/* HERO CLIENT CARD (With all client data integrated) */}
