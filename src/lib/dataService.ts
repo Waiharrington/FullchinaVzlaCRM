@@ -266,6 +266,13 @@ export interface SellableProduct {
   category: string
   emoji: string
   isActive: boolean
+  imageUrl: string | null
+}
+
+export interface RecipeSummary {
+  componentCount: number
+  recipeCost: number | null
+  marginEstimated: number | null
 }
 
 export interface RecipeComponent {
@@ -1476,7 +1483,7 @@ export async function updateIngredient(id: string, updates: { name?: string; is_
 export async function getSellableProducts(): Promise<SellableProduct[]> {
   const { data, error } = await client()
     .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active')
+    .select('id,name,description,price,cost,category,emoji,is_active,image_url')
     .eq('is_active', true)
     .order('name', { ascending: true })
 
@@ -1490,7 +1497,47 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
     category: r.category as string,
     emoji: r.emoji as string,
     isActive: r.is_active as boolean,
+    imageUrl: (r.image_url as string) ?? null,
   }))
+}
+
+/**
+ * Resumen de receta por producto: cantidad de componentes, costo y margen.
+ * El costo/margen viene del RPC (solo owner/manager); el conteo se calcula
+ * contando recipe_components. Devuelve un Map por sellable_product_id.
+ */
+export async function getRecipeSummaries(): Promise<Map<string, RecipeSummary>> {
+  const sb = client()
+  const map = new Map<string, RecipeSummary>()
+
+  // Conteo de componentes por producto (liviano: solo la FK).
+  const { data: comps, error: compErr } = await sb
+    .from('recipe_components')
+    .select('sellable_product_id')
+  if (compErr) throw compErr
+  for (const row of comps ?? []) {
+    const pid = row.sellable_product_id as string
+    const cur = map.get(pid) ?? { componentCount: 0, recipeCost: null, marginEstimated: null }
+    cur.componentCount += 1
+    map.set(pid, cur)
+  }
+
+  // Costo/margen por producto (owner/manager). Si falla por rol, se omite.
+  try {
+    const { data: costs, error: costErr } = await sb.rpc('fn_get_product_recipe_cost')
+    if (costErr) throw costErr
+    for (const row of (costs as Array<Record<string, unknown>>) ?? []) {
+      const pid = row.sellable_product_id as string
+      const cur = map.get(pid) ?? { componentCount: 0, recipeCost: null, marginEstimated: null }
+      cur.recipeCost = row.recipe_cost == null ? null : Number(row.recipe_cost)
+      cur.marginEstimated = row.margin_estimated == null ? null : Number(row.margin_estimated)
+      map.set(pid, cur)
+    }
+  } catch (err) {
+    console.warn('No se pudo obtener costo de recetas (rol sin acceso a costos):', err)
+  }
+
+  return map
 }
 
 export async function getRecipeComponents(sellableProductId: string): Promise<RecipeComponent[]> {

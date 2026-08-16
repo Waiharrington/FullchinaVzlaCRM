@@ -1,0 +1,176 @@
+/* ============================================================
+   Recetas — layout de dos columnas (lista + detalle)
+   ============================================================ */
+.rec-page { color: #fff; }
+
+/* Barra superior: búsqueda + acción */
+.rec-topbar {
+  display: flex; gap: 12px; align-items: center; justify-content: flex-end;
+  flex-wrap: wrap; margin: 4px 0 18px;
+}
+.rec-search {
+  position: relative; flex: 1 1 340px; max-width: 460px;
+}
+.rec-search input {
+  width: 100%; padding: 11px 40px 11px 40px;
+  background: #17171d; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px; color: #fff; font-size: 14px;
+}
+.rec-search .rec-search-ic { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #71717a; }
+.rec-search .rec-kbd {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  font-size: 11px; color: #a1a1aa; background: #24242c; border: 1px solid rgba(255,255,255,0.08);
+  padding: 2px 6px; border-radius: 6px;
+}
+.rec-add-btn {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  background: #e11d2a; color: #fff; border: 0; border-radius: 12px;
+  padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+  transition: filter .15s;
+}
+.rec-add-btn:hover { filter: brightness(1.08); }
+
+.rec-layout {
+  display: grid; grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.1fr);
+  gap: 18px; align-items: start;
+}
+@media (max-width: 900px) { .rec-layout { grid-template-columns: 1fr; } }
+
+.rec-panel {
+  background: #141419; border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px; padding: 14px;
+}
+
+/* Tabs (Todas / Completas / Faltan) */
+.rec-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.rec-tab {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: #1c1c22; border: 1px solid rgba(255,255,255,0.07); color: #d4d4d8;
+  border-radius: 10px; padding: 8px 13px; font-size: 13px; cursor: pointer;
+}
+.rec-tab .rec-count {
+  background: #2a2a32; color: #e4e4e7; border-radius: 20px; padding: 1px 8px; font-size: 12px; font-weight: 600;
+}
+.rec-tab.active { background: #e11d2a; border-color: #e11d2a; color: #fff; }
+.rec-tab.active .rec-count { background: rgba(0,0,0,0.25); color: #fff; }
+
+/* Filtros */
+.rec-filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.rec-filters select {
+  background: #17171d; border: 1px solid rgba(255,255,255,0.08); color: #d4d4d8;
+  border-radius: 10px; padding: 8px 10px; font-size: 13px;
+}
+.rec-view-toggle { margin-left: auto; display: flex; gap: 4px; }
+.rec-view-toggle button {
+  background: #1c1c22; border: 1px solid rgba(255,255,255,0.07); color: #a1a1aa;
+  border-radius: 8px; padding: 7px; cursor: pointer; display: inline-flex;
+}
+.rec-view-toggle button.active { background: #e11d2a; border-color: #e11d2a; color: #fff; }
+
+/* Lista de recetas */
+.rec-list { display: flex; flex-direction: column; gap: 8px; }
+.rec-card {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: #17171d; border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; padding: 10px 12px; cursor: pointer; color: #fff;
+  transition: border-color .15s, background .15s;
+}
+.rec-card:hover { background: #1c1c22; }
+.rec-card.active { border-color: #e11d2a; background: rgba(225,29,42,0.08); }
+.rec-thumb {
+  width: 46px; height: 46px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+  background: #24242c; display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.rec-card-body { flex: 1; min-width: 0; }
+.rec-card-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-card-meta { font-size: 12px; color: #a1a1aa; margin-top: 2px; }
+.rec-badge {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; margin-top: 4px;
+}
+.rec-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; }
+.rec-badge.ok { color: #22c55e; }
+.rec-badge.ok::before { background: #22c55e; }
+.rec-badge.warn { color: #f97316; }
+.rec-badge.warn::before { background: #f97316; }
+.rec-card-price { font-size: 15px; font-weight: 700; margin-left: auto; white-space: nowrap; }
+.rec-card-chev { color: #52525b; flex-shrink: 0; }
+
+.rec-empty-list { color: #71717a; text-align: center; padding: 30px 0; font-size: 13px; }
+
+/* Paginación */
+.rec-pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+.rec-pagination button {
+  min-width: 34px; height: 34px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);
+  background: #1c1c22; color: #d4d4d8; cursor: pointer; font-size: 13px;
+}
+.rec-pagination button.active { background: #e11d2a; border-color: #e11d2a; color: #fff; }
+.rec-pagination button:disabled { opacity: .4; cursor: default; }
+.rec-pagination .rec-total { margin-left: auto; color: #71717a; font-size: 12px; }
+
+/* ============ Panel de detalle ============ */
+.rec-detail-head { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+.rec-detail-thumb {
+  width: 66px; height: 66px; border-radius: 14px; object-fit: cover; flex-shrink: 0;
+  background: #24242c; display: flex; align-items: center; justify-content: center; font-size: 30px;
+}
+.rec-detail-title { flex: 1; min-width: 0; }
+.rec-detail-title h2 { font-size: 22px; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-detail-sub { color: #a1a1aa; font-size: 13px; margin-top: 4px; }
+.rec-detail-ref { color: #71717a; font-size: 12px; margin-top: 2px; }
+.rec-price-box { text-align: right; flex-shrink: 0; }
+.rec-price-box .lbl { color: #a1a1aa; font-size: 11px; }
+.rec-price-box .price { color: #e11d2a; font-size: 22px; font-weight: 800; }
+.rec-price-box .cost { color: #d4d4d8; font-size: 13px; margin-top: 6px; }
+
+.rec-pill {
+  font-size: 12px; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px;
+}
+.rec-pill.ok { color: #22c55e; background: rgba(34,197,94,0.12); }
+.rec-pill.warn { color: #f97316; background: rgba(249,115,22,0.12); }
+
+.rec-detail-tabs { display: flex; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
+.rec-detail-tab {
+  background: none; border: 0; color: #a1a1aa; cursor: pointer; padding: 8px 2px 12px;
+  font-size: 14px; display: inline-flex; align-items: center; gap: 7px; border-bottom: 2px solid transparent;
+}
+.rec-detail-tab.active { color: #fff; border-bottom-color: #e11d2a; }
+
+/* Estado vacío */
+.rec-empty {
+  text-align: center; padding: 36px 16px; background: #17171d;
+  border: 1px solid rgba(255,255,255,0.06); border-radius: 14px;
+}
+.rec-empty .ic { font-size: 44px; opacity: .5; }
+.rec-empty h4 { font-size: 16px; margin: 12px 0 6px; }
+.rec-empty p { color: #a1a1aa; font-size: 13px; max-width: 340px; margin: 0 auto 16px; }
+
+/* Lista de ingredientes del detalle */
+.rec-ing-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: #17171d; border: 1px solid rgba(255,255,255,0.06); border-radius: 10px; margin-bottom: 8px;
+}
+.rec-ing-name { flex: 1; font-size: 14px; }
+.rec-ing-qty { color: #a1a1aa; font-size: 13px; }
+.rec-ing-cost { color: #d4d4d8; font-size: 13px; min-width: 70px; text-align: right; }
+.rec-ing-del { background: none; border: 0; color: #ef4444; cursor: pointer; padding: 4px; }
+
+.rec-add-form {
+  display: grid; grid-template-columns: 1fr 90px 80px auto; gap: 8px; align-items: center;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 10px; margin-bottom: 12px;
+}
+.rec-add-form input, .rec-add-form select {
+  background: #17171d; border: 1px solid rgba(255,255,255,0.08); color: #fff;
+  border-radius: 8px; padding: 8px; font-size: 13px;
+}
+.rec-add-form .save { background: #e11d2a; border: 0; color: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 13px; }
+
+/* Fila de estadísticas */
+.rec-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 16px; }
+@media (max-width: 560px) { .rec-stats { grid-template-columns: repeat(2, 1fr); } }
+.rec-stat {
+  background: #17171d; border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px;
+}
+.rec-stat .rec-stat-lbl { color: #a1a1aa; font-size: 11px; display: flex; align-items: center; gap: 6px; }
+.rec-stat .rec-stat-val { font-size: 18px; font-weight: 700; margin: 6px 0 2px; }
+.rec-stat .rec-stat-sub { color: #71717a; font-size: 11px; }
