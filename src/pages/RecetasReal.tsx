@@ -4,6 +4,7 @@ import {
   getIngredients, getUnits,
   type RecipeComponent, type SellableProduct, type Ingredient,
 } from '../lib/dataService'
+import { SearchSelect } from '../components/SearchSelect'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { Plus, Trash2, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react'
 import './Almacen.css'
@@ -177,10 +178,13 @@ export function RecetasReal() {
           {showAdd && selected && (
             <form onSubmit={handleAddComponent} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '12px', marginBottom: '12px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 100px 100px', gap: '8px', alignItems: 'end' }}>
-                <select value={addIngredientId} onChange={e => handleAddIngredientIdChange(e.target.value)}>
-                  <option value="">Ingrediente...</option>
-                  {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unitSymbol})</option>)}
-                </select>
+                <SearchSelect
+                  options={ingredients.map(i => ({ value: i.id, label: `${i.name} (${i.unitSymbol})` }))}
+                  value={addIngredientId}
+                  onChange={handleAddIngredientIdChange}
+                  placeholder="Buscar ingrediente..."
+                  emptyText="Sin ingredientes"
+                />
                 <input type="number" step="any" min="0.01" placeholder="Cantidad" value={addQuantity} onChange={e => setAddQuantity(e.target.value)} required />
                 <select value={addUnitId} onChange={e => setAddUnitId(e.target.value)}>
                   {units.map(u => <option key={u.id} value={u.id}>{u.symbol}</option>)}

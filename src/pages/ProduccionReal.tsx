@@ -5,6 +5,7 @@ import {
   type ProductionBatch, type ProductionBonus, type ProductionStats, type Ingredient,
 } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
+import { SearchSelect } from '../components/SearchSelect'
 import {
   Flame, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ChevronUp,
 } from 'lucide-react'
@@ -234,10 +235,13 @@ export function ProduccionReal() {
               </div>
               {items.map((item, idx) => (
                 <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 100px 100px 36px', gap: '8px', alignItems: 'end', marginBottom: '8px' }}>
-                  <select value={item.ingredientId} onChange={e => handleItemChange(idx, 'ingredientId', e.target.value)}>
-                    <option value="">Ingrediente...</option>
-                    {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} ({i.unitSymbol})</option>)}
-                  </select>
+                  <SearchSelect
+                    options={ingredients.map(i => ({ value: i.id, label: `${i.name} (${i.unitSymbol})` }))}
+                    value={item.ingredientId}
+                    onChange={val => handleItemChange(idx, 'ingredientId', val)}
+                    placeholder="Buscar ingrediente..."
+                    emptyText="Sin ingredientes"
+                  />
                   <input type="number" step="any" min="0" placeholder="Cantidad" value={item.quantityUsed} onChange={e => handleItemChange(idx, 'quantityUsed', e.target.value)} />
                   <select value={item.unitId} onChange={e => handleItemChange(idx, 'unitId', e.target.value)}>
                     {units.map(u => <option key={u.id} value={u.id}>{u.symbol}</option>)}

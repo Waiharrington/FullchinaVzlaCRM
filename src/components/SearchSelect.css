@@ -1,0 +1,51 @@
+.search-select {
+  position: relative;
+  width: 100%;
+}
+
+.search-select-input {
+  width: 100%;
+}
+
+.search-select-list {
+  position: absolute;
+  z-index: 60;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #1c1c22;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.search-select-option {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #e4e4e7;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-select-option.is-highlight {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.search-select-option.is-selected {
+  color: #fff;
+  font-weight: 600;
+}
+
+.search-select-empty {
+  padding: 8px 10px;
+  color: #71717a;
+  font-size: 13px;
+}
