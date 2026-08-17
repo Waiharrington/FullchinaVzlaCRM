@@ -1,495 +1,306 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  getEmployees, getPayrollPeriods, createPayrollPeriod,
-  getPayrollEntries, upsertPayrollEntry, getAdvances, createAdvance, setAdvanceDeducted,
-  getProductionBonusRecords, createProductionBonus,
+  getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
+  getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord,
 } from '../lib/dataService'
+import { formatUsd } from '../lib/money'
 import {
-  Plus, CheckCircle2, AlertTriangle, Loader2, Clock,
+  Plus, CheckCircle2, AlertTriangle, Loader2, Users, Banknote, Gift, Hourglass,
+  HelpCircle, Save, X,
 } from 'lucide-react'
 import './Nomina.css'
+
+const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
 export function Nomina() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [periods, setPeriods] = useState<PayrollPeriod[]>([])
-  const [selectedPeriod, setSelectedPeriod] = useState<PayrollPeriod | null>(null)
-  const [entries, setEntries] = useState<PayrollEntry[]>([])
+  const [entriesByPeriod, setEntriesByPeriod] = useState<Record<string, PayrollEntry[]>>({})
   const [advances, setAdvances] = useState<Advance[]>([])
   const [bonuses, setBonuses] = useState<ProductionBonusRecord[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  // Period form
-  const [showPeriodForm, setShowPeriodForm] = useState(false)
-  const [periodStart, setPeriodStart] = useState('')
-  const [periodEnd, setPeriodEnd] = useState('')
-  const [periodNotes, setPeriodNotes] = useState('')
+  // Edición de horas/deducciones por empleado
+  const [edit, setEdit] = useState<Record<string, { hours: string; deductions: string }>>({})
 
-  // Advance form
-  const [showAdvanceForm, setShowAdvanceForm] = useState(false)
-  const [advanceEmployeeId, setAdvanceEmployeeId] = useState('')
-  const [advanceAmount, setAdvanceAmount] = useState('')
-  const [advanceDate, setAdvanceDate] = useState(new Date().toISOString().split('T')[0])
-  const [advanceNotes, setAdvanceNotes] = useState('')
-
-  // Bonus form
-  const [showBonusForm, setShowBonusForm] = useState(false)
-  const [bonusEmployeeId, setBonusEmployeeId] = useState('')
-  const [bonusAmount, setBonusAmount] = useState('')
-  const [bonusDate, setBonusDate] = useState(new Date().toISOString().split('T')[0])
-  const [bonusReason, setBonusReason] = useState('')
-
-  // Entry editing
-  const [editingEntry, setEditingEntry] = useState<Record<string, { hours: string; salary: string; deductions: string; notes: string }>>({})
+  // Modales
+  const [showPeriod, setShowPeriod] = useState(false)
+  const [pStart, setPStart] = useState(''); const [pEnd, setPEnd] = useState(''); const [pNotes, setPNotes] = useState('')
+  const [showAdvance, setShowAdvance] = useState(false)
+  const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advDate, setAdvDate] = useState(new Date().toISOString().split('T')[0]); const [advNotes, setAdvNotes] = useState('')
+  const [showBonus, setShowBonus] = useState(false)
+  const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(new Date().toISOString().split('T')[0]); const [bonReason, setBonReason] = useState('')
 
   const load = useCallback(async () => {
     try {
-      setLoading(true)
-      setError('')
-      const [emp, per, adv, bon] = await Promise.all([
-        getEmployees(),
-        getPayrollPeriods(),
-        getAdvances(),
-        getProductionBonusRecords(),
-      ])
-      setEmployees(emp)
-      setPeriods(per)
-      setAdvances(adv)
-      setBonuses(bon)
-      if (per.length > 0 && !selectedPeriod) setSelectedPeriod(per[0])
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error cargando nómina')
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedPeriod])
-
+      setLoading(true); setError('')
+      const [emp, per, adv, bon] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords()])
+      setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon)
+      const byPeriod: Record<string, PayrollEntry[]> = {}
+      await Promise.all(per.map(async (p) => { byPeriod[p.id] = await getPayrollEntries(p.id).catch(() => []) }))
+      setEntriesByPeriod(byPeriod)
+      setSelectedId((cur) => cur ?? (per[0]?.id ?? null))
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando nómina') }
+    finally { setLoading(false) }
+  }, [])
   useEffect(() => { void load() }, [load])
 
-  // Load entries when period changes
-  useEffect(() => {
-    if (!selectedPeriod) { setEntries([]); return }
-    getPayrollEntries(selectedPeriod.id)
-      .then(setEntries)
-      .catch(e => setError(e instanceof Error ? e.message : 'Error cargando liquidaciones'))
-  }, [selectedPeriod])
+  const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 
-  // Initialize entry editing state for employees not yet in the period
+  const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
+  const selected = periods.find((p) => p.id === selectedId) ?? null
+  const selectedEntries = selectedId ? entriesByPeriod[selectedId] ?? [] : []
+
+  // Bonos de un empleado dentro del período seleccionado
+  const bonusForEmp = useCallback((empId: string) => {
+    if (!selected) return 0
+    return bonuses.filter((b) => b.employeeId === empId && b.bonusDate >= selected.startDate && b.bonusDate <= selected.endDate).reduce((s, b) => s + b.amount, 0)
+  }, [bonuses, selected])
+
+  // Inicializar edición al cambiar de período
   useEffect(() => {
-    if (!selectedPeriod) return
-    const existing = new Set(entries.map(e => e.employeeId))
-    const newEditing: typeof editingEntry = {}
-    for (const emp of employees) {
-      if (existing.has(emp.id)) {
-        const entry = entries.find(e => e.employeeId === emp.id)!
-        newEditing[emp.id] = {
-          hours: String(entry.hoursWorked),
-          salary: String(entry.baseSalary),
-          deductions: String(entry.deductions),
-          notes: entry.notes ?? '',
-        }
-      } else {
-        newEditing[emp.id] = { hours: '0', salary: '0', deductions: '0', notes: '' }
+    if (!selected) return
+    const init: Record<string, { hours: string; deductions: string }> = {}
+    for (const emp of activeEmployees) {
+      const ex = selectedEntries.find((e) => e.employeeId === emp.id)
+      init[emp.id] = { hours: ex ? String(ex.hoursWorked) : '0', deductions: ex ? String(ex.deductions) : '0' }
+    }
+    setEdit(init)
+  }, [selectedId, activeEmployees, selectedEntries, selected])
+
+  const periodNet = useCallback((p: PayrollPeriod) => {
+    const ents = entriesByPeriod[p.id] ?? []
+    const base = ents.reduce((s, e) => s + e.netPay, 0)
+    const bon = bonuses.filter((b) => b.bonusDate >= p.startDate && b.bonusDate <= p.endDate).reduce((s, b) => s + b.amount, 0)
+    return base + bon
+  }, [entriesByPeriod, bonuses])
+
+  // Totales de la tabla del período seleccionado (desde la edición en vivo)
+  const rows = activeEmployees.map((emp) => {
+    const ed = edit[emp.id] ?? { hours: '0', deductions: '0' }
+    const hours = parseFloat(ed.hours) || 0
+    const bruto = emp.hourlyRate * hours
+    const ded = parseFloat(ed.deductions) || 0
+    const bon = bonusForEmp(emp.id)
+    return { emp, hours, bruto, ded, bon, neto: bruto - ded + bon }
+  })
+  const tot = rows.reduce((a, r) => ({ hours: a.hours + r.hours, bruto: a.bruto + r.bruto, ded: a.ded + r.ded, bon: a.bon + r.bon, neto: a.neto + r.neto }), { hours: 0, bruto: 0, ded: 0, bon: 0, neto: 0 })
+
+  const handleSaveAll = async () => {
+    if (!selected) return
+    setSaving(true); setError('')
+    try {
+      for (const r of rows) {
+        await upsertPayrollEntry({ payrollPeriodId: selected.id, employeeId: r.emp.id, hoursWorked: r.hours, baseSalary: r.bruto, deductions: r.ded })
       }
-    }
-    setEditingEntry(newEditing)
-  }, [entries, employees, selectedPeriod])
-
-  const handleCreatePeriod = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!periodStart || !periodEnd) return
-    try {
-      setError('')
-      await createPayrollPeriod({ startDate: periodStart, endDate: periodEnd, notes: periodNotes.trim() || undefined })
-      setNotice('Periodo creado')
-      setShowPeriodForm(false)
-      setPeriodStart('')
-      setPeriodEnd('')
-      setPeriodNotes('')
-      await load()
-      setTimeout(() => setNotice(''), 3000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error creando periodo')
-    }
+      const updated = await getPayrollEntries(selected.id)
+      setEntriesByPeriod((prev) => ({ ...prev, [selected.id]: updated }))
+      flash('Liquidación guardada')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error guardando liquidación') }
+    finally { setSaving(false) }
   }
 
-  const handleSaveEntry = async (employeeId: string) => {
-    if (!selectedPeriod) return
-    const ed = editingEntry[employeeId]
-    if (!ed) return
-    try {
-      setError('')
-      await upsertPayrollEntry({
-        payrollPeriodId: selectedPeriod.id,
-        employeeId,
-        hoursWorked: parseFloat(ed.hours) || 0,
-        baseSalary: parseFloat(ed.salary) || 0,
-        deductions: parseFloat(ed.deductions) || 0,
-        notes: ed.notes.trim() || undefined,
-      })
-      setNotice('Liquidación guardada')
-      const updated = await getPayrollEntries(selectedPeriod.id)
-      setEntries(updated)
-      setTimeout(() => setNotice(''), 2000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error guardando liquidación')
-    }
+  const submitPeriod = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!pStart || !pEnd) return
+    try { await createPayrollPeriod({ startDate: pStart, endDate: pEnd, notes: pNotes.trim() || undefined }); setShowPeriod(false); setPStart(''); setPEnd(''); setPNotes(''); await load(); flash('Período creado') }
+    catch (e) { setError(e instanceof Error ? e.message : 'Error creando período') }
+  }
+  const submitAdvance = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!advEmp || !advAmt) return
+    try { await createAdvance({ employeeId: advEmp, amount: parseFloat(advAmt) || 0, advanceDate: advDate, notes: advNotes.trim() || undefined }); setShowAdvance(false); setAdvEmp(''); setAdvAmt(''); setAdvNotes(''); await load(); flash('Adelanto registrado') }
+    catch (e) { setError(e instanceof Error ? e.message : 'Error registrando adelanto') }
+  }
+  const submitBonus = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!bonEmp || !bonAmt) return
+    try { await createProductionBonus({ employeeId: bonEmp, amount: parseFloat(bonAmt) || 0, bonusDate: bonDate, reason: bonReason.trim() || undefined }); setShowBonus(false); setBonEmp(''); setBonAmt(''); setBonReason(''); await load(); flash('Bono registrado') }
+    catch (e) { setError(e instanceof Error ? e.message : 'Error registrando bono') }
   }
 
-  const handleCreateAdvance = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!advanceEmployeeId || !advanceAmount) return
-    try {
-      setError('')
-      await createAdvance({
-        employeeId: advanceEmployeeId,
-        amount: parseFloat(advanceAmount) || 0,
-        advanceDate,
-        notes: advanceNotes.trim() || undefined,
-      })
-      setNotice('Adelanto registrado')
-      setShowAdvanceForm(false)
-      setAdvanceAmount('')
-      setAdvanceNotes('')
-      await load()
-      setTimeout(() => setNotice(''), 3000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error registrando adelanto')
-    }
-  }
+  if (loading) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
 
-  const handleMarkDeducted = async (id: string, deducted: boolean) => {
-    try {
-      setError('')
-      await setAdvanceDeducted(id, deducted)
-      await load()
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error actualizando')
-    }
-  }
-
-  const handleCreateBonus = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!bonusEmployeeId || !bonusAmount) return
-    try {
-      setError('')
-      await createProductionBonus({
-        employeeId: bonusEmployeeId,
-        amount: parseFloat(bonusAmount) || 0,
-        bonusDate,
-        reason: bonusReason.trim() || undefined,
-      })
-      setNotice('Bono registrado')
-      setShowBonusForm(false)
-      setBonusAmount('')
-      setBonusReason('')
-      await load()
-      setTimeout(() => setNotice(''), 3000)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error registrando bono')
-    }
-  }
-
-  const activeEmpCount = employees.length
-  const totalPayroll = entries.reduce((sum, e) => sum + e.netPay, 0)
-  const totalBonuses = bonuses.reduce((sum, b) => sum + b.amount, 0)
-  const pendingAdvances = advances.filter(a => !a.isDeducted).reduce((sum, a) => sum + a.amount, 0)
-
-  if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
-          <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
-        </div>
-      </div>
-    )
-  }
+  const pendingAdvances = advances.filter((a) => !a.isDeducted).reduce((s, a) => s + a.amount, 0)
+  const pendingCount = advances.filter((a) => !a.isDeducted).length
+  const periodBonuses = selected ? bonuses.filter((b) => b.bonusDate >= selected.startDate && b.bonusDate <= selected.endDate).reduce((s, b) => s + b.amount, 0) : 0
+  const statusCls = (s: string) => s === 'open' ? 'open' : s === 'paid' ? 'paid' : 'closed'
+  const statusLbl = (s: string) => s === 'open' ? 'Abierto' : s === 'paid' ? 'Pagado' : 'Cerrado'
+  const fmtRange = (p: PayrollPeriod) => `${new Date(p.startDate).toLocaleDateString('es-VE')} - ${new Date(p.endDate).toLocaleDateString('es-VE')}`
 
   return (
-    <div className="page animate-fade-in">
+    <div className="page nom-page animate-fade-in">
       <header className="page-header">
         <div>
           <h1 className="page-title text-gradient">Nómina y Personal</h1>
-          <p className="page-subtitle">Liquidaciones por periodo, adelantos y bonos de producción</p>
+          <p className="page-subtitle">Liquida sueldos por período, adelantos y bonos de producción.</p>
+        </div>
+        <div className="nom-head-actions">
+          <button className="nom-ghost" onClick={() => flash('Crea un período, ingresa las horas de cada empleado (el sueldo se calcula por su tarifa), registra bonos/adelantos y guarda la liquidación.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
+          <button className="nom-btn" onClick={() => setShowPeriod(true)}><Plus size={16} /> Nuevo Período</button>
         </div>
       </header>
 
-      {error && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-          <AlertTriangle size={18} /> {error}
-        </div>
-      )}
-      {notice && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-          <CheckCircle2 size={18} /> {notice}
-        </div>
-      )}
+      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}><AlertTriangle size={18} /> {error}</div>}
+      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={18} /> {notice}</div>}
 
-      {/* Stats */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon">👥</div>
-          <div className="stat-info">
-            <span className="stat-value">{activeEmpCount}</span>
-            <span className="stat-label">Empleados activos</span>
-          </div>
+      {/* Resumen */}
+      <div className="nom-summary">
+        <div className="nom-sum">
+          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><Users size={20} /></span>
+            <div><div className="nom-sum-lbl">Empleados activos</div><div className="nom-sum-val">{activeEmployees.length}</div><div className="nom-sum-sub">de {employees.length} registrados</div></div></div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">💵</div>
-          <div className="stat-info">
-            <span className="stat-value">${totalPayroll.toFixed(2)}</span>
-            <span className="stat-label">Liquidación periodo</span>
-          </div>
+        <div className="nom-sum">
+          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}><Banknote size={20} /></span>
+            <div><div className="nom-sum-lbl">Liquidación del período</div><div className="nom-sum-val">{formatUsd(tot.neto)}</div><div className="nom-sum-sub">{selected ? `Período actual` : 'Sin período'}</div></div></div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">🎁</div>
-          <div className="stat-info">
-            <span className="stat-value">${totalBonuses.toFixed(2)}</span>
-            <span className="stat-label">Bonos totales</span>
-          </div>
+        <div className="nom-sum">
+          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(234,179,8,0.15)', color: '#eab308' }}><Gift size={20} /></span>
+            <div><div className="nom-sum-lbl">Bonos totales</div><div className="nom-sum-val">{formatUsd(periodBonuses)}</div><div className="nom-sum-sub">Período actual</div></div></div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">⏳</div>
-          <div className="stat-info">
-            <span className="stat-value">${pendingAdvances.toFixed(2)}</span>
-            <span className="stat-label">Adelantos pendientes</span>
-          </div>
+        <div className="nom-sum">
+          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}><Hourglass size={20} /></span>
+            <div><div className="nom-sum-lbl">Adelantos pendientes</div><div className="nom-sum-val">{formatUsd(pendingAdvances)}</div><div className="nom-sum-sub">{pendingCount} adelanto{pendingCount === 1 ? '' : 's'} pendiente{pendingCount === 1 ? '' : 's'}</div></div></div>
         </div>
       </div>
 
-      {/* Periods */}
-      <div className="nomina-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h3 style={{ margin: 0 }}>Periodos de Nómina</h3>
-          <button className="btn-transfer-submit" style={{ margin: 0, padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowPeriodForm(!showPeriodForm)}>
-            <Plus size={14} /> Nuevo Periodo
-          </button>
-        </div>
-
-        {showPeriodForm && (
-          <form onSubmit={handleCreatePeriod} style={{ display: 'flex', gap: '8px', alignItems: 'end', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: '140px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '4px' }}>Inicio *</label>
-              <input type="date" className="nomina-input" value={periodStart} onChange={e => setPeriodStart(e.target.value)} required />
-            </div>
-            <div style={{ flex: 1, minWidth: '140px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '4px' }}>Fin *</label>
-              <input type="date" className="nomina-input" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} required />
-            </div>
-            <div style={{ flex: 2, minWidth: '160px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '4px' }}>Notas</label>
-              <input type="text" className="nomina-input" value={periodNotes} onChange={e => setPeriodNotes(e.target.value)} placeholder="Opcional" />
-            </div>
-            <button type="submit" className="btn-transfer-submit" style={{ margin: 0 }}>Crear</button>
-          </form>
+      {/* Períodos */}
+      <div className="nom-card">
+        <div className="nom-card-head"><div><h2>Períodos de Nómina</h2><p>Gestiona y selecciona el período que deseas liquidar.</p></div>
+          <button className="nom-btn" onClick={() => setShowPeriod(true)}><Plus size={16} /> Nuevo Período</button></div>
+        {periods.length === 0 ? <p style={{ color: '#71717a' }}>No hay períodos. Crea uno con el botón de arriba.</p> : (
+          <div className="nom-periods">
+            {periods.map((p) => (
+              <button key={p.id} className={`nom-period${selectedId === p.id ? ' active' : ''}`} onClick={() => setSelectedId(p.id)}>
+                <div className="nom-period-top"><strong>{fmtRange(p)}</strong><span className={`nom-status ${statusCls(p.status)}`}>{statusLbl(p.status)}</span></div>
+                {p.notes && <small>{p.notes}</small>}
+                <div className="liq">Liquidación: {formatUsd(periodNet(p))}</div>
+                <small>{(entriesByPeriod[p.id] ?? []).length} liquidados · {activeEmployees.length} empleados</small>
+              </button>
+            ))}
+          </div>
         )}
-
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          {periods.map(p => (
-            <button
-              key={p.id}
-              type="button"
-              className={`period-chip ${selectedPeriod?.id === p.id ? 'active' : ''}`}
-              onClick={() => setSelectedPeriod(p)}
-            >
-              <Clock size={14} />
-              {new Date(p.startDate).toLocaleDateString('es-VE')} — {new Date(p.endDate).toLocaleDateString('es-VE')}
-              <span style={{ fontSize: '11px', opacity: 0.7 }}>{p.status}</span>
-            </button>
-          ))}
-          {periods.length === 0 && <span style={{ color: '#71717a', fontSize: '13px' }}>No hay periodos. Crea uno con el botón de arriba.</span>}
-        </div>
       </div>
 
-      {/* Entries for selected period */}
-      {selectedPeriod && (
-        <div className="nomina-section">
-          <h3>
-            Liquidaciones — {new Date(selectedPeriod.startDate).toLocaleDateString('es-VE')} a {new Date(selectedPeriod.endDate).toLocaleDateString('es-VE')}
-            {selectedPeriod.status !== 'open' && (
-              <span style={{ fontSize: '12px', color: '#a1a1aa', marginLeft: '8px' }}>({selectedPeriod.status})</span>
-            )}
-          </h3>
-
-          {employees.length === 0 && <p style={{ color: '#71717a', fontSize: '13px' }}>No hay empleados activos para liquidar.</p>}
-
-          {employees.map(emp => {
-            const ed = editingEntry[emp.id]
-            if (!ed) return null
-            const netPay = (parseFloat(ed.salary) || 0) - (parseFloat(ed.deductions) || 0)
-            return (
-              <div key={emp.id} style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '12px', marginBottom: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                  <strong style={{ color: '#fff', fontSize: '14px' }}>{emp.fullName}</strong>
-                  <span style={{ color: '#10b981', fontWeight: 700, fontSize: '14px' }}>${netPay.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '8px', alignItems: 'end' }}>
-                  <div>
-                    <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Horas</label>
-                    <input type="number" step="any" min="0" className="nomina-input" value={ed.hours} onChange={e => setEditingEntry(prev => ({ ...prev, [emp.id]: { ...prev[emp.id], hours: e.target.value } }))} />
-                  </div>
-                  <div>
-                    <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Sueldo base ($)</label>
-                    <input type="number" step="any" min="0" className="nomina-input" value={ed.salary} onChange={e => setEditingEntry(prev => ({ ...prev, [emp.id]: { ...prev[emp.id], salary: e.target.value } }))} />
-                  </div>
-                  <div>
-                    <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Deducciones ($)</label>
-                    <input type="number" step="any" min="0" className="nomina-input" value={ed.deductions} onChange={e => setEditingEntry(prev => ({ ...prev, [emp.id]: { ...prev[emp.id], deductions: e.target.value } }))} />
-                  </div>
-                  <div>
-                    <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Notas</label>
-                    <input type="text" className="nomina-input" value={ed.notes} onChange={e => setEditingEntry(prev => ({ ...prev, [emp.id]: { ...prev[emp.id], notes: e.target.value } }))} placeholder="Opcional" />
-                  </div>
-                  <div>
-                    <button type="button" className="btn-transfer-submit" style={{ margin: 0, padding: '6px 12px', fontSize: '12px', width: '100%' }} onClick={() => handleSaveEntry(emp.id)}>
-                      Guardar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+      {/* Liquidación */}
+      {selected && (
+        <div className="nom-card">
+          <div className="nom-card-head">
+            <div><h2>Liquidación del Período: {fmtRange(selected)} <span className={`nom-status ${statusCls(selected.status)}`}>{statusLbl(selected.status)}</span></h2><p>Ingresa las horas; el sueldo bruto se calcula por la tarifa de cada empleado.</p></div>
+            <button className="nom-btn" onClick={handleSaveAll} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>
+          </div>
+          {activeEmployees.length === 0 ? <p style={{ color: '#71717a' }}>No hay empleados activos. Agrégalos en Equipo / Usuarios.</p> : (
+            <div className="nom-table-wrap">
+              <table className="nom-table">
+                <thead><tr><th></th><th>Empleado / Cargo</th><th>Tarifa hora</th><th>Horas</th><th>Sueldo bruto</th><th>Deducciones</th><th>Bonos</th><th>Neto a pagar</th></tr></thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.emp.id}>
+                      <td><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
+                      <td><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
+                      <td>{formatUsd(r.emp.hourlyRate)}</td>
+                      <td><input type="number" step="any" min="0" value={edit[r.emp.id]?.hours ?? '0'} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], hours: e.target.value } }))} /></td>
+                      <td><strong>{formatUsd(r.bruto)}</strong></td>
+                      <td><input type="number" step="any" min="0" value={edit[r.emp.id]?.deductions ?? '0'} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], deductions: e.target.value } }))} /></td>
+                      <td style={{ color: '#22c55e' }}>{formatUsd(r.bon)}</td>
+                      <td className="nom-net">{formatUsd(r.neto)}</td>
+                    </tr>
+                  ))}
+                  <tr className="nom-tot-row"><td></td><td>TOTALES</td><td></td><td>{tot.hours}</td><td>{formatUsd(tot.bruto)}</td><td>{formatUsd(tot.ded)}</td><td>{formatUsd(tot.bon)}</td><td className="nom-net">{formatUsd(tot.neto)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Advances */}
-      <div className="nomina-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h3 style={{ margin: 0 }}>Adelantos de Salario</h3>
-          <button className="btn-transfer-submit" style={{ margin: 0, padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowAdvanceForm(!showAdvanceForm)}>
-            <Plus size={14} /> Nuevo Adelanto
-          </button>
-        </div>
-
-        {showAdvanceForm && (
-          <form onSubmit={handleCreateAdvance} style={{ display: 'flex', gap: '8px', alignItems: 'end', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 2, minWidth: '180px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Empleado *</label>
-              <select className="nomina-select" value={advanceEmployeeId} onChange={e => setAdvanceEmployeeId(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
-              </select>
-            </div>
-            <div style={{ flex: 1, minWidth: '100px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Monto ($) *</label>
-              <input type="number" step="any" min="0.01" className="nomina-input" value={advanceAmount} onChange={e => setAdvanceAmount(e.target.value)} required />
-            </div>
-            <div style={{ flex: 1, minWidth: '130px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Fecha</label>
-              <input type="date" className="nomina-input" value={advanceDate} onChange={e => setAdvanceDate(e.target.value)} />
-            </div>
-            <div style={{ flex: 2, minWidth: '140px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Notas</label>
-              <input type="text" className="nomina-input" value={advanceNotes} onChange={e => setAdvanceNotes(e.target.value)} placeholder="Opcional" />
-            </div>
-            <button type="submit" className="btn-transfer-submit" style={{ margin: 0 }}>Registrar</button>
-          </form>
-        )}
-
-        <div className="table-responsive-wrapper">
-          <table className="almacen-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Empleado</th>
-                <th>Monto</th>
-                <th>Estado</th>
-                <th>Notas</th>
-              </tr>
-            </thead>
+      {/* Adelantos / Bonos / Resumen */}
+      <div className="nom-grid3">
+        <div className="nom-card">
+          <div className="nom-card-head"><div><h2>Adelantos de Salario</h2></div><button className="nom-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={() => setShowAdvance(true)}><Plus size={14} /> Nuevo</button></div>
+          <table className="nom-mini-table">
+            <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Estado</th></tr></thead>
             <tbody>
-              {advances.map(a => (
+              {advances.slice(0, 5).map((a) => (
                 <tr key={a.id}>
-                  <td>{new Date(a.advanceDate).toLocaleDateString('es-VE')}</td>
-                  <td>{a.employeeName}</td>
-                  <td><strong>${a.amount.toFixed(2)}</strong></td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => handleMarkDeducted(a.id, !a.isDeducted)}
-                      style={{
-                        background: a.isDeducted ? 'rgba(16,185,129,0.15)' : 'rgba(234,179,8,0.15)',
-                        color: a.isDeducted ? '#10b981' : '#eab308',
-                        border: `1px solid ${a.isDeducted ? 'rgba(16,185,129,0.3)' : 'rgba(234,179,8,0.3)'}`,
-                        borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', fontSize: '12px',
-                      }}
-                    >
-                      {a.isDeducted ? 'Deducido' : 'Pendiente'}
-                    </button>
-                  </td>
-                  <td style={{ color: '#a1a1aa', fontSize: '12px' }}>{a.notes || '—'}</td>
+                  <td style={{ color: '#a1a1aa' }}>{new Date(a.advanceDate).toLocaleDateString('es-VE')}</td>
+                  <td>{a.employeeName}</td><td><strong>{formatUsd(a.amount)}</strong></td>
+                  <td><span className={`nom-pill ${a.isDeducted ? 'done' : 'pend'}`} onClick={() => setAdvanceDeducted(a.id, !a.isDeducted).then(load)}>{a.isDeducted ? 'Deducido' : 'Pendiente'}</span></td>
                 </tr>
               ))}
-              {advances.length === 0 && (
-                <tr><td colSpan={5} style={{ textAlign: 'center', color: '#71717a' }}>No hay adelantos registrados.</td></tr>
-              )}
+              {advances.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>Sin adelantos.</td></tr>}
             </tbody>
           </table>
         </div>
-      </div>
 
-      {/* Bonuses */}
-      <div className="nomina-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h3 style={{ margin: 0 }}>Bonos de Producción</h3>
-          <button className="btn-transfer-submit" style={{ margin: 0, padding: '6px 12px', fontSize: '12px' }} onClick={() => setShowBonusForm(!showBonusForm)}>
-            <Plus size={14} /> Nuevo Bono
-          </button>
-        </div>
-
-        {showBonusForm && (
-          <form onSubmit={handleCreateBonus} style={{ display: 'flex', gap: '8px', alignItems: 'end', marginBottom: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: 2, minWidth: '180px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Empleado *</label>
-              <select className="nomina-select" value={bonusEmployeeId} onChange={e => setBonusEmployeeId(e.target.value)} required>
-                <option value="">Seleccionar...</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
-              </select>
-            </div>
-            <div style={{ flex: 1, minWidth: '100px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Monto ($) *</label>
-              <input type="number" step="any" min="0.01" className="nomina-input" value={bonusAmount} onChange={e => setBonusAmount(e.target.value)} required />
-            </div>
-            <div style={{ flex: 1, minWidth: '130px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Fecha</label>
-              <input type="date" className="nomina-input" value={bonusDate} onChange={e => setBonusDate(e.target.value)} />
-            </div>
-            <div style={{ flex: 2, minWidth: '140px' }}>
-              <label style={{ color: '#a1a1aa', fontSize: '11px', display: 'block', marginBottom: '2px' }}>Motivo</label>
-              <input type="text" className="nomina-input" value={bonusReason} onChange={e => setBonusReason(e.target.value)} placeholder="Opcional" />
-            </div>
-            <button type="submit" className="btn-transfer-submit" style={{ margin: 0 }}>Registrar</button>
-          </form>
-        )}
-
-        <div className="table-responsive-wrapper">
-          <table className="almacen-table">
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Empleado</th>
-                <th>Monto</th>
-                <th>Motivo</th>
-              </tr>
-            </thead>
+        <div className="nom-card">
+          <div className="nom-card-head"><div><h2>Bonos de Producción</h2></div><button className="nom-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={() => setShowBonus(true)}><Plus size={14} /> Nuevo</button></div>
+          <table className="nom-mini-table">
+            <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Motivo</th></tr></thead>
             <tbody>
-              {bonuses.map(b => (
-                <tr key={b.id}>
-                  <td>{new Date(b.bonusDate).toLocaleDateString('es-VE')}</td>
-                  <td>{b.employeeName}</td>
-                  <td><strong className="text-success">${b.amount.toFixed(2)}</strong></td>
-                  <td style={{ color: '#a1a1aa', fontSize: '12px' }}>{b.reason || '—'}</td>
-                </tr>
+              {bonuses.slice(0, 5).map((b) => (
+                <tr key={b.id}><td style={{ color: '#a1a1aa' }}>{new Date(b.bonusDate).toLocaleDateString('es-VE')}</td><td>{b.employeeName}</td><td style={{ color: '#22c55e' }}><strong>{formatUsd(b.amount)}</strong></td><td style={{ color: '#a1a1aa' }}>{b.reason || '—'}</td></tr>
               ))}
-              {bonuses.length === 0 && (
-                <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a' }}>No hay bonos registrados.</td></tr>
-              )}
+              {bonuses.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>Sin bonos.</td></tr>}
             </tbody>
           </table>
         </div>
+
+        <div className="nom-card">
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Resumen del Período</h2>
+          <p style={{ fontSize: 12, color: '#a1a1aa', margin: '0 0 12px' }}>{selected ? fmtRange(selected) : 'Sin período'}</p>
+          <div className="nom-res-row"><span className="k">Total Sueldos Brutos</span><span>{formatUsd(tot.bruto)}</span></div>
+          <div className="nom-res-row"><span className="k">Total Deducciones</span><span style={{ color: '#ef4444' }}>- {formatUsd(tot.ded)}</span></div>
+          <div className="nom-res-row"><span className="k">Total Bonos</span><span style={{ color: '#22c55e' }}>+ {formatUsd(tot.bon)}</span></div>
+          <div className="nom-res-row total"><span>TOTAL NETO A PAGAR</span><span className="nom-net">{formatUsd(tot.neto)}</span></div>
+          <p style={{ fontSize: 11, color: '#71717a', marginTop: 10 }}>{activeEmployees.length} empleados a liquidar</p>
+        </div>
       </div>
+
+      {/* Modales */}
+      {showPeriod && (
+        <div className="nom-modal-overlay" onClick={() => setShowPeriod(false)}>
+          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPeriod}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo período de nómina</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowPeriod(false)}><X size={16} /></button></div>
+            <div className="nom-row2">
+              <div className="nom-field"><label>Inicio *</label><input type="date" value={pStart} onChange={(e) => setPStart(e.target.value)} required /></div>
+              <div className="nom-field"><label>Fin *</label><input type="date" value={pEnd} onChange={(e) => setPEnd(e.target.value)} required /></div>
+            </div>
+            <div className="nom-field"><label>Notas</label><input value={pNotes} onChange={(e) => setPNotes(e.target.value)} placeholder="Ej: Semana 3 - Agosto" /></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPeriod(false)}>Cancelar</button><button type="submit" className="nom-btn">Crear período</button></div>
+          </form>
+        </div>
+      )}
+      {showAdvance && (
+        <div className="nom-modal-overlay" onClick={() => setShowAdvance(false)}>
+          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitAdvance}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo adelanto</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowAdvance(false)}><X size={16} /></button></div>
+            <div className="nom-field"><label>Empleado *</label><select value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</select></div>
+            <div className="nom-row2">
+              <div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={advAmt} onChange={(e) => setAdvAmt(e.target.value)} required /></div>
+              <div className="nom-field"><label>Fecha</label><input type="date" value={advDate} onChange={(e) => setAdvDate(e.target.value)} /></div>
+            </div>
+            <div className="nom-field"><label>Notas</label><input value={advNotes} onChange={(e) => setAdvNotes(e.target.value)} placeholder="Opcional" /></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowAdvance(false)}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
+          </form>
+        </div>
+      )}
+      {showBonus && (
+        <div className="nom-modal-overlay" onClick={() => setShowBonus(false)}>
+          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitBonus}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo bono de producción</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowBonus(false)}><X size={16} /></button></div>
+            <div className="nom-field"><label>Empleado *</label><select value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</select></div>
+            <div className="nom-row2">
+              <div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={bonAmt} onChange={(e) => setBonAmt(e.target.value)} required /></div>
+              <div className="nom-field"><label>Fecha</label><input type="date" value={bonDate} onChange={(e) => setBonDate(e.target.value)} /></div>
+            </div>
+            <div className="nom-field"><label>Motivo</label><input value={bonReason} onChange={(e) => setBonReason(e.target.value)} placeholder="Ej: Ventas destacadas" /></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowBonus(false)}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
