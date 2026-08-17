@@ -243,6 +243,7 @@ export interface Purchase {
   createdAt: string
   items: PurchaseItem[]
   totalAmount: number
+  isPaid: boolean
 }
 
 export interface PurchaseItem {
@@ -2168,7 +2169,7 @@ export async function getPurchases(): Promise<Purchase[]> {
   const { data, error } = await client()
     .from('purchases')
     .select(`
-      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at,
+      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid,
       suppliers(name),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
     `)
@@ -2199,8 +2200,14 @@ export async function getPurchases(): Promise<Purchase[]> {
       createdAt: p.created_at as string,
       items,
       totalAmount: items.reduce((sum, i) => sum + i.total, 0),
+      isPaid: p.is_paid !== false,
     }
   })
+}
+
+export async function setPurchasePaid(id: string, isPaid: boolean): Promise<void> {
+  const { error } = await client().from('purchases').update({ is_paid: isPaid }).eq('id', id)
+  if (error) throw error
 }
 
 export async function createPurchase(params: {
@@ -2209,6 +2216,7 @@ export async function createPurchase(params: {
   invoiceNumber?: string
   notes?: string
   userId: string
+  isPaid?: boolean
   items: Array<{
     ingredientId: string
     quantity: number
@@ -2225,6 +2233,7 @@ export async function createPurchase(params: {
       purchase_date: params.purchaseDate,
       invoice_number: params.invoiceNumber ?? null,
       notes: params.notes ?? null,
+      is_paid: params.isPaid ?? true,
       created_by: params.userId,
     })
     .select('id')

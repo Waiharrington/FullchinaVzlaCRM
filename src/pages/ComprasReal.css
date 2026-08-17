@@ -1,0 +1,87 @@
+/* ============================================================
+   Compras e Insumos — rediseño
+   ============================================================ */
+.cmp-page { color: #fff; }
+.cmp-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.cmp-new-btn {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  background: #e11d2a; color: #fff; border: 0; border-radius: 12px; padding: 11px 18px;
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: filter .15s;
+}
+.cmp-new-btn:hover { filter: brightness(1.08); }
+.cmp-new-btn:disabled { opacity: .5; cursor: default; }
+
+/* Resumen */
+.cmp-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
+@media (max-width: 860px) { .cmp-summary { grid-template-columns: repeat(2, 1fr); } }
+.cmp-sum { display: flex; align-items: center; gap: 12px; background: #141419; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px 16px; }
+.cmp-sum-ic { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.cmp-sum-lbl { font-size: 12px; color: #a1a1aa; }
+.cmp-sum-val { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 2px 0; }
+.cmp-sum-sub { font-size: 11px; color: #71717a; }
+.cmp-sum-sub.up { color: #22c55e; }
+.cmp-sum-sub.down { color: #ef4444; }
+
+/* Tarjetas */
+.cmp-card { background: #141419; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; margin-bottom: 18px; }
+.cmp-card-title { display: flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; margin: 0 0 16px; }
+
+/* Formulario nueva compra */
+.cmp-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.cmp-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
+.cmp-field input, .cmp-field select, .cmp-field textarea {
+  width: 100%; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px;
+}
+.cmp-prov-row { display: flex; gap: 8px; align-items: stretch; }
+.cmp-prov-row > :first-child { flex: 1; }
+.cmp-ghost-btn { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 10px; padding: 0 12px; font-size: 13px; cursor: pointer; }
+
+/* Tabla de ítems */
+.cmp-items-head, .cmp-item-row { display: grid; grid-template-columns: 2fr 90px 110px 130px 110px 40px; gap: 10px; align-items: center; }
+.cmp-items-head { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #71717a; padding: 0 2px 8px; }
+.cmp-item-row { margin-bottom: 8px; }
+.cmp-item-row input, .cmp-item-row select { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; color: #fff; padding: 9px; font-size: 13px; width: 100%; }
+.cmp-cost-wrap { position: relative; }
+.cmp-cost-wrap span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #71717a; font-size: 13px; }
+.cmp-cost-wrap input { padding-left: 24px; }
+.cmp-subtotal { font-weight: 700; font-size: 14px; }
+.cmp-del { background: none; border: 0; color: #ef4444; cursor: pointer; padding: 4px; justify-self: center; }
+.cmp-add-item { display: inline-flex; align-items: center; gap: 6px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+
+.cmp-form-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.07); flex-wrap: wrap; }
+.cmp-total { text-align: right; }
+.cmp-total .lbl { color: #a1a1aa; font-size: 12px; }
+.cmp-total .val { color: #e11d2a; font-size: 24px; font-weight: 800; }
+.cmp-actions { display: flex; gap: 10px; }
+.cmp-cancel { background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 12px; padding: 11px 18px; font-size: 14px; cursor: pointer; }
+
+/* Historial */
+.cmp-hist-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+.cmp-search { position: relative; flex: 1 1 200px; max-width: 300px; }
+.cmp-search input { width: 100%; padding: 9px 12px 9px 34px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-size: 13px; }
+.cmp-search .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #71717a; }
+.cmp-tool { display: inline-flex; align-items: center; gap: 7px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 10px; padding: 9px 13px; font-size: 13px; cursor: pointer; }
+
+.cmp-table-wrap { overflow-x: auto; }
+.cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cmp-table th { text-align: left; color: #71717a; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.cmp-table td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+.cmp-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+.cmp-badge.ok { color: #22c55e; background: rgba(34,197,94,0.12); }
+.cmp-badge.warn { color: #f97316; background: rgba(249,115,22,0.12); }
+.cmp-badge.fixed { cursor: default; }
+.cmp-icon-btn { background: none; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; }
+.cmp-icon-btn:hover { color: #fff; }
+
+.cmp-pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
+.cmp-pagination button { min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: #1c1c22; color: #d4d4d8; cursor: pointer; font-size: 13px; }
+.cmp-pagination button.active { background: #e11d2a; border-color: #e11d2a; color: #fff; }
+.cmp-pagination button:disabled { opacity: .4; cursor: default; }
+.cmp-pagination .cnt { margin-right: auto; color: #71717a; font-size: 12px; }
+
+/* Modal */
+.cmp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+.cmp-modal { width: 100%; max-width: 520px; background: #141419; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; }
+.cmp-modal h3 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
+.cmp-detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+.cmp-detail-row .k { color: #a1a1aa; }
