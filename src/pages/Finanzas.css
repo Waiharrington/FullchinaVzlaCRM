@@ -1,15 +1,71 @@
-.text-right {
-  text-align: right;
-}
+/* ============================================================
+   Finanzas — cierre financiero (cálculos reales)
+   ============================================================ */
+.fin-page { color: #fff; }
+.fin-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.fin-head-actions { display: flex; gap: 10px; align-items: center; }
+.fin-period { display: inline-flex; align-items: center; gap: 8px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 12px; padding: 9px 14px; font-size: 13px; }
+.fin-period select { background: transparent; border: 0; color: #fff; font-size: 13px; cursor: pointer; }
+.fin-export { display: inline-flex; align-items: center; gap: 7px; background: #e11d2a; color: #fff; border: 0; border-radius: 12px; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
 
-.font-bold {
-  font-weight: 700;
-}
+/* Break-even */
+.fin-be { background: linear-gradient(135deg, #17171d, #1c1c22); border: 1px solid rgba(234,179,8,0.3); border-radius: 16px; padding: 16px 18px; margin: 16px 0; }
+.fin-be-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.fin-be-ic { width: 38px; height: 38px; border-radius: 10px; background: #eab308; color: #000; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fin-be h2 { font-size: 15px; font-weight: 800; margin: 0; }
+.fin-be p { font-size: 11px; color: #a1a1aa; margin: 2px 0 0; }
+.fin-be-target { text-align: right; }
+.fin-be-target .v { font-size: 22px; font-weight: 900; color: #eab308; }
+.fin-be-target .l { font-size: 11px; color: #71717a; display: block; }
+.fin-be-bar { height: 10px; background: #27272a; border-radius: 6px; overflow: hidden; }
+.fin-be-bar > div { height: 100%; background: linear-gradient(90deg, #eab308, #22c55e); border-radius: 6px; }
+.fin-be-legend { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: #a1a1aa; gap: 10px; flex-wrap: wrap; }
 
-.bg-surface-light {
-  background: rgba(255, 255, 255, 0.04);
-}
+/* KPIs */
+.fin-kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+@media (max-width: 1100px) { .fin-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px) { .fin-kpis { grid-template-columns: repeat(2, 1fr); } }
+.fin-kpi { background: #141419; border: 1px solid rgba(255,255,255,0.07); border-radius: 14px; padding: 14px; }
+.fin-kpi-top { display: flex; align-items: center; gap: 10px; }
+.fin-kpi-ic { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fin-kpi-lbl { font-size: 11px; color: #a1a1aa; }
+.fin-kpi-val { font-size: 20px; font-weight: 800; }
+.fin-kpi-sub { font-size: 11px; margin-top: 8px; color: #71717a; }
+.fin-up { color: #22c55e; } .fin-down { color: #ef4444; }
 
-.text-lg {
-  font-size: 16px;
-}
+/* Grid inferior */
+.fin-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; align-items: start; }
+@media (max-width: 1050px) { .fin-grid { grid-template-columns: 1fr; } }
+.fin-card { background: #141419; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+.fin-card h2 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+.fin-card .sub { font-size: 12px; color: #a1a1aa; margin: 0 0 14px; }
+
+/* Cierre por método */
+.fin-pay-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.fin-pay-ic { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fin-pay-name { flex: 1; font-size: 14px; font-weight: 600; }
+.fin-pay-name small { display: block; color: #71717a; font-size: 11px; font-weight: 400; }
+.fin-pay-amt { font-weight: 700; text-align: right; }
+.fin-pay-pct { width: 54px; text-align: right; color: #a1a1aa; font-size: 13px; }
+.fin-pay-total { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; font-weight: 800; }
+.fin-pay-total .g { color: #22c55e; }
+
+/* Comparativo */
+.fin-comp { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fin-comp th { text-align: right; color: #71717a; font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.fin-comp th:first-child { text-align: left; }
+.fin-comp td { padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; }
+.fin-comp td:first-child { text-align: left; color: #a1a1aa; }
+
+/* P&L */
+.fin-pl-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+.fin-toggle { display: inline-flex; background: #1c1c22; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; }
+.fin-toggle button { background: none; border: 0; color: #a1a1aa; padding: 7px 14px; font-size: 13px; cursor: pointer; }
+.fin-toggle button.active { background: #e11d2a; color: #fff; }
+.fin-pl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.fin-pl-table td { padding: 11px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.fin-pl-table td:nth-child(2), .fin-pl-table td:nth-child(3) { text-align: right; font-weight: 700; }
+.fin-pl-table tr.sumline td { background: rgba(255,255,255,0.03); }
+.fin-pl-table tr.final td { font-size: 15px; }
+.fin-danger { color: #ef4444; } .fin-success { color: #22c55e; }
+.fin-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; color: #71717a; font-size: 11px; flex-wrap: wrap; }

@@ -2049,6 +2049,25 @@ export interface ProductionBonusRecord {
   createdAt: string
 }
 
+/**
+ * Resumen de nómina para Finanzas: net_pay por período (con su fecha de cierre)
+ * y bonos de producción por fecha. Permite sumar la nómina de cualquier rango
+ * en el cliente sin múltiples viajes por período.
+ */
+export async function getPayrollSummary(): Promise<{
+  periods: Array<{ endDate: string; total: number }>
+  bonuses: Array<{ date: string; amount: number }>
+}> {
+  const periods = await getPayrollPeriods()
+  const periodTotals: Array<{ endDate: string; total: number }> = []
+  for (const p of periods) {
+    const entries = await getPayrollEntries(p.id)
+    periodTotals.push({ endDate: p.endDate, total: entries.reduce((s, e) => s + e.netPay, 0) })
+  }
+  const bonuses = (await getProductionBonusRecords()).map((b) => ({ date: b.bonusDate, amount: b.amount }))
+  return { periods: periodTotals, bonuses }
+}
+
 export async function getProductionBonusRecords(): Promise<ProductionBonusRecord[]> {
   const { data, error } = await client()
     .from('production_bonuses')

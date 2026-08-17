@@ -1,237 +1,286 @@
-import { useMemo, useEffect, useState, useCallback } from 'react'
-import { getActiveCashSession, getExpenses, getTodayStats, type TodayStats, type Expense, type CashSessionSnapshot } from '../lib/dataService'
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend } from 'chart.js'
+import { useEffect, useMemo, useState, useCallback } from 'react'
+import {
+  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary,
+  type FullOrder, type Expense, type RecipeSummary,
+} from '../lib/dataService'
+import { useRates } from '../context/rates-context'
+import { formatUsd, formatVes } from '../lib/money'
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
-import { Target, CheckCircle2, DollarSign, Wallet, ShieldAlert } from 'lucide-react'
+import {
+  Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent, Loader2,
+  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download,
+} from 'lucide-react'
 import './Finanzas.css'
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend)
+ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
-let finanzasCache: { stats: TodayStats | null; expenses: Expense[] } | null = null
+type Period = 'hoy' | 'semana' | 'mes'
+interface PL {
+  grossSales: number; cogs: number; opex: number; payroll: number
+  grossProfit: number; netProfit: number; margin: number
+  ordersCount: number; avgTicket: number; payments: Record<string, number>
+}
+const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
+const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
+const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
+
+const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
+  cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
+  mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#38bdf8', sub: 'Verificado con referencia' },
+  card: { label: 'Punto de Venta', icon: <CreditCard size={16} />, color: '#a855f7', sub: 'Tarjeta crédito/débito' },
+  transfer: { label: 'Transferencia', icon: <Building2 size={16} />, color: '#f59e0b' },
+  binance: { label: 'Binance', icon: <DollarSign size={16} />, color: '#eab308' },
+  zelle: { label: 'Zelle', icon: <DollarSign size={16} />, color: '#6366f1' },
+  other: { label: 'Otro', icon: <Wallet size={16} />, color: '#71717a' },
+}
 
 export function Finanzas() {
-  const [stats, setStats] = useState<TodayStats | null>(finanzasCache?.stats ?? null)
-  const [expenses, setExpenses] = useState<Expense[]>(finanzasCache?.expenses ?? [])
-  const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
-  const [, setLoading] = useState(!finanzasCache)
+  const { bcvRate } = useRates()
+  const [orders, setOrders] = useState<FullOrder[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
+  const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
+  const [loading, setLoading] = useState(true)
+  const [period, setPeriod] = useState<Period>('hoy')
+  const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
 
-  const fetchData = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
-      const [statsData, expensesData, cashData] = await Promise.all([
-        getTodayStats(),
-        getExpenses(),
-        getActiveCashSession(),
+      setLoading(true)
+      const now = new Date()
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1) // incluye mes anterior para comparativos
+      const [ords, exps, recipes, pay] = await Promise.all([
+        getOrdersWithItems(monthStart.toISOString()),
+        getExpenses(isoDate(monthStart)),
+        getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
+        getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
       ])
-      setStats(statsData)
-      setCashSession(cashData)
-      setExpenses(expensesData)
-      finanzasCache = { stats: statsData, expenses: expensesData }
-    } catch (e) {
-      console.error('Error:', e)
-    } finally {
-      setLoading(false)
+      setOrders(ords); setExpenses(exps); setRecipeCost(recipes); setPayroll(pay)
+    } catch (e) { console.error(e) } finally { setLoading(false) }
+  }, [])
+  useEffect(() => { void load() }, [load])
+
+  const computePL = useCallback((start: Date, end: Date): PL => {
+    const s = start.getTime(), e = end.getTime()
+    const sIso = isoDate(start), eIso = isoDate(end)
+    const paid = orders.filter((o) => { const t = new Date(o.createdAt).getTime(); return o.status === 'paid' && t >= s && t <= e })
+    const grossSales = paid.reduce((sum, o) => sum + o.totalAmount, 0)
+    let cogs = 0
+    const payments: Record<string, number> = {}
+    for (const o of paid) {
+      for (const it of o.items) cogs += it.quantity * (recipeCost.get(it.sellableProductId)?.recipeCost ?? 0)
+      for (const p of o.payments) payments[p.method] = (payments[p.method] ?? 0) + p.amount
+    }
+    const opex = expenses.filter((x) => x.expenseDate >= sIso && x.expenseDate <= eIso).reduce((sum, x) => sum + x.amount, 0)
+    const pay = payroll.periods.filter((p) => p.endDate >= sIso && p.endDate <= eIso).reduce((sum, p) => sum + p.total, 0)
+      + payroll.bonuses.filter((b) => b.date >= sIso && b.date <= eIso).reduce((sum, b) => sum + b.amount, 0)
+    const grossProfit = grossSales - cogs
+    const netProfit = grossProfit - opex - pay
+    return {
+      grossSales, cogs, opex, payroll: pay, grossProfit, netProfit,
+      margin: grossSales > 0 ? (netProfit / grossSales) * 100 : 0,
+      ordersCount: paid.length, avgTicket: paid.length > 0 ? grossSales / paid.length : 0, payments,
+    }
+  }, [orders, expenses, recipeCost, payroll])
+
+  const ranges = useMemo(() => {
+    const now = new Date()
+    const monday = startOfDay(addDays(now, -((now.getDay() + 6) % 7)))
+    const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
+    return {
+      hoy: [startOfDay(now), endOfDay(now)] as const,
+      ayer: [startOfDay(addDays(now, -1)), endOfDay(addDays(now, -1))] as const,
+      semana: [monday, endOfDay(now)] as const,
+      mes: [monthStart, endOfDay(now)] as const,
+      prevDay2: [startOfDay(addDays(now, -1)), endOfDay(addDays(now, -1))] as const,
     }
   }, [])
 
-  useEffect(() => {
-    fetchData()
-  }, [fetchData])
+  const pls = useMemo(() => (loading ? null : {
+    hoy: computePL(...ranges.hoy), ayer: computePL(...ranges.ayer),
+    semana: computePL(...ranges.semana), mes: computePL(...ranges.mes),
+  }), [loading, computePL, ranges])
 
-  // Financial Calculations
-  const currentSales = stats?.totalSales ?? 0
-  const breakEvenTargetUsd = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-  const breakEvenPct = breakEvenTargetUsd > 0 ? Math.min(100, Math.round((currentSales / breakEvenTargetUsd) * 100)) : 0
+  if (loading || !pls) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
 
-  const financialSummary = useMemo(() => {
-    const grossSales = currentSales
-    const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
-    const cogs = 0
-    const grossProfit = grossSales - cogs
-    const operatingExpenses = totalExpenses
-    const payroll = 0
-    const netProfit = grossProfit - operatingExpenses - payroll
-    const netMarginPct = grossSales > 0 ? (netProfit / grossSales) * 100 : 0
+  const cur = period === 'hoy' ? pls.hoy : period === 'semana' ? pls.semana : pls.mes
+  const prev = pls.ayer // referencia de comparación para las tarjetas
+  const breakEven = cur.opex + cur.payroll
+  const bePct = breakEven > 0 ? Math.min(100, Math.round((cur.grossSales / breakEven) * 100)) : (cur.grossSales > 0 ? 100 : 0)
+  const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
+  const periodLabel = period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Esta semana' : 'Este mes'
 
-    return { grossSales, cogs, grossProfit, operatingExpenses, payroll, netProfit, netMarginPct }
-  }, [currentSales, expenses])
-
-  const barChartData = {
+  const chartData = {
     labels: ['Ventas Brutas', 'Costo Insumos', 'Ganancia Bruta', 'Gastos Op.', 'Nómina', 'Ganancia Neta'],
-    datasets: [
-      {
-        label: 'Monto ($)',
-        data: [
-          financialSummary.grossSales,
-          financialSummary.cogs,
-          financialSummary.grossProfit,
-          financialSummary.operatingExpenses,
-          financialSummary.payroll,
-          financialSummary.netProfit,
-        ],
-        backgroundColor: [
-          'rgba(59, 130, 246, 0.8)',
-          'rgba(239, 68, 68, 0.8)',
-          'rgba(16, 185, 129, 0.8)',
-          'rgba(245, 158, 11, 0.8)',
-          'rgba(168, 85, 247, 0.8)',
-          'rgba(34, 197, 94, 0.9)',
-        ],
-        borderRadius: 8,
-      },
-    ],
+    datasets: [{
+      data: [cur.grossSales, -cur.cogs, cur.grossProfit, -cur.opex, -cur.payroll, cur.netProfit],
+      backgroundColor: ['#22c55e', '#ef4444', '#22c55e', '#ef4444', '#ef4444', cur.netProfit >= 0 ? '#22c55e' : '#ef4444'],
+      borderRadius: 6,
+    }],
+  }
+  const chartOpts = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: { raw: unknown }) => formatUsd(Number(c.raw)) } } },
+    scales: { x: { ticks: { color: '#a1a1aa', font: { size: 10 } } }, y: { ticks: { color: '#a1a1aa', callback: (v: string | number) => `$${v}` }, grid: { color: 'rgba(255,255,255,0.05)' } } },
   }
 
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
-    scales: {
-      x: { ticks: { color: '#aeaeb2' } },
-      y: { ticks: { color: '#aeaeb2', callback: (v: string | number) => `$${v}` } },
-    },
+  const exportReport = () => {
+    const rows = [
+      ['Concepto', `${periodLabel} (USD)`, '% Ventas'],
+      ['Ventas Totales Brutas', cur.grossSales.toFixed(2), '100.0'],
+      ['Costo de Productos Vendidos', (-cur.cogs).toFixed(2), cur.grossSales > 0 ? (-cur.cogs / cur.grossSales * 100).toFixed(1) : '0'],
+      ['Ganancia Bruta', cur.grossProfit.toFixed(2), cur.grossSales > 0 ? (cur.grossProfit / cur.grossSales * 100).toFixed(1) : '0'],
+      ['Gastos Operativos', (-cur.opex).toFixed(2), cur.grossSales > 0 ? (-cur.opex / cur.grossSales * 100).toFixed(1) : '0'],
+      ['Nómina', (-cur.payroll).toFixed(2), cur.grossSales > 0 ? (-cur.payroll / cur.grossSales * 100).toFixed(1) : '0'],
+      ['Ganancia Neta Final', cur.netProfit.toFixed(2), cur.margin.toFixed(1)],
+    ]
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+    const a = document.createElement('a'); a.href = url; a.download = `finanzas_${period}_${isoDate(new Date())}.csv`; a.click(); URL.revokeObjectURL(url)
   }
+
+  const salesDelta = pct(cur.grossSales, prev.grossSales)
+  const netDelta = pct(cur.netProfit, prev.netProfit)
+  const marginPP = cur.margin - prev.margin
+  const cogsPctSales = cur.grossSales > 0 ? (cur.cogs / cur.grossSales) * 100 : 0
+
+  const Row = ({ label, values, cls }: { label: string; values: string[]; cls?: string }) => (
+    <tr><td>{label}</td>{values.map((v, i) => <td key={i} className={cls}>{v}</td>)}</tr>
+  )
 
   return (
-    <div className="page animate-fade-in">
+    <div className="page fin-page animate-fade-in">
       <header className="page-header">
         <div>
           <h1 className="page-title text-gradient">Finanzas & Cierre Financiero Automático</h1>
-          <p className="page-subtitle">Consolidado diario sin necesidad de planillas de Excel. Punto de equilibrio y rentabilidad.</p>
+          <p className="page-subtitle">Consolidado sin planillas de Excel. Punto de equilibrio y rentabilidad real del negocio.</p>
+        </div>
+        <div className="fin-head-actions">
+          <span className="fin-period"><CalendarDays size={15} />
+            <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+              <option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option>
+            </select>
+          </span>
+          <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
 
-      {/* Break-even Point Banner */}
-      <div className="card" style={{ background: 'linear-gradient(135deg, #18181b 0%, #202024 100%)', border: '1px solid rgba(234, 179, 8, 0.3)', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ background: '#eab308', color: '#000', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Target size={20} />
+      {/* Break-even */}
+      <div className="fin-be">
+        <div className="fin-be-top">
+          <div style={{ display: 'flex', gap: 10 }}>
+            <span className="fin-be-ic"><Target size={20} /></span>
+            <div><h2>Punto de Equilibrio (Break-Even)</h2><p>Necesitas facturar esto para cubrir tus gastos operativos y nómina del período.</p></div>
+          </div>
+          <div className="fin-be-target"><span className="v">{formatUsd(breakEven)}</span><span className="l">Punto de equilibrio</span></div>
+        </div>
+        <div className="fin-be-bar"><div style={{ width: `${bePct}%` }} /></div>
+        <div className="fin-be-legend">
+          <span style={{ color: '#eab308', fontWeight: 700 }}>{bePct}% alcanzado</span>
+          <span>Llevas {formatUsd(cur.grossSales)} vendidos</span>
+          <span>{cur.grossSales >= breakEven ? '🎉 Generando utilidad' : `Faltan ${formatUsd(breakEven - cur.grossSales)} para llegar a cero`}</span>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div className="fin-kpis">
+        <div className="fin-kpi">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}><ShoppingCart size={18} /></span>
+            <div><div className="fin-kpi-lbl">Ventas Brutas Totales</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
+          <div className="fin-kpi-sub">{salesDelta != null ? <span className={salesDelta >= 0 ? 'fin-up' : 'fin-down'}>{salesDelta >= 0 ? '▲' : '▼'} {Math.abs(salesDelta).toFixed(0)}% vs ayer</span> : periodLabel}</div>
+        </div>
+        <div className="fin-kpi">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}><Wallet size={18} /></span>
+            <div><div className="fin-kpi-lbl">Costo de Insumos (COGS)</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
+          <div className="fin-kpi-sub fin-down">{cogsPctSales.toFixed(1)}% de las ventas</div>
+        </div>
+        <div className="fin-kpi">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><DollarSign size={18} /></span>
+            <div><div className="fin-kpi-lbl">Gastos + Nómina</div><div className="fin-kpi-val">{formatUsd(cur.opex + cur.payroll)}</div></div></div>
+          <div className="fin-kpi-sub">{formatUsd(cur.opex)} gastos · {formatUsd(cur.payroll)} nómina</div>
+        </div>
+        <div className="fin-kpi">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><TrendingUp size={18} /></span>
+            <div><div className="fin-kpi-lbl">Ganancia Neta Estimada</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
+          <div className="fin-kpi-sub">{netDelta != null ? <span className={netDelta >= 0 ? 'fin-up' : 'fin-down'}>{netDelta >= 0 ? '▲' : '▼'} {Math.abs(netDelta).toFixed(0)}% vs ayer</span> : `${cur.margin.toFixed(1)}% de las ventas`}</div>
+        </div>
+        <div className="fin-kpi">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}><Percent size={18} /></span>
+            <div><div className="fin-kpi-lbl">Margen Neto</div><div className="fin-kpi-val">{cur.margin.toFixed(1)}%</div></div></div>
+          <div className="fin-kpi-sub"><span className={marginPP >= 0 ? 'fin-up' : 'fin-down'}>{marginPP >= 0 ? '▲' : '▼'} {Math.abs(marginPP).toFixed(1)} pp vs ayer</span></div>
+        </div>
+      </div>
+
+      <div className="fin-grid">
+        {/* Izquierda: cierre por método + comparativo */}
+        <div>
+          <div className="fin-card">
+            <h2>Cierre por Método de Pago</h2>
+            <p className="sub">Total cobrado en {periodLabel.toLowerCase()} según los métodos usados en Caja.</p>
+            {Object.entries(cur.payments).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([m, v]) => {
+              const meta = PAY_META[m] ?? PAY_META.other
+              return (
+                <div className="fin-pay-row" key={m}>
+                  <span className="fin-pay-ic" style={{ background: `${meta.color}22`, color: meta.color }}>{meta.icon}</span>
+                  <span className="fin-pay-name">{meta.label}{meta.sub && <small>{meta.sub}</small>}</span>
+                  <span className="fin-pay-amt">{formatUsd(v)}{bcvRate ? <small style={{ display: 'block', color: '#71717a', fontWeight: 400 }}>{formatVes(v * bcvRate)}</small> : null}</span>
+                  <span className="fin-pay-pct">{totalPayments > 0 ? ((v / totalPayments) * 100).toFixed(1) : '0'}%</span>
+                </div>
+              )
+            })}
+            {totalPayments === 0 && <p style={{ color: '#71717a', padding: '10px 0' }}>Sin cobros en el período.</p>}
+            <div className="fin-pay-total"><span>Total Cobrado</span><span className="g">{formatUsd(totalPayments)}</span></div>
+          </div>
+
+          <div className="fin-card">
+            <h2>Comparativo</h2>
+            <p className="sub">Rendimiento vs períodos anteriores.</p>
+            <table className="fin-comp">
+              <thead><tr><th>Métrica</th><th>Hoy</th><th>Ayer</th><th>Semana</th><th>Mes</th></tr></thead>
+              <tbody>
+                <Row label="Ventas Brutas" values={[formatUsd(pls.hoy.grossSales), formatUsd(pls.ayer.grossSales), formatUsd(pls.semana.grossSales), formatUsd(pls.mes.grossSales)]} />
+                <Row label="Ganancia Neta" values={[formatUsd(pls.hoy.netProfit), formatUsd(pls.ayer.netProfit), formatUsd(pls.semana.netProfit), formatUsd(pls.mes.netProfit)]} />
+                <Row label="Margen Neto" values={[`${pls.hoy.margin.toFixed(1)}%`, `${pls.ayer.margin.toFixed(1)}%`, `${pls.semana.margin.toFixed(1)}%`, `${pls.mes.margin.toFixed(1)}%`]} />
+                <Row label="Ticket Promedio" values={[formatUsd(pls.hoy.avgTicket), formatUsd(pls.ayer.avgTicket), formatUsd(pls.semana.avgTicket), formatUsd(pls.mes.avgTicket)]} />
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Derecha: P&L */}
+        <div className="fin-card">
+          <div className="fin-pl-head">
+            <div><h2>Estado de Resultados (P&L)</h2><p className="sub" style={{ margin: 0 }}>{periodLabel}</p></div>
+            <div className="fin-toggle">
+              <button className={plView === 'grafico' ? 'active' : ''} onClick={() => setPlView('grafico')}>Gráfico</button>
+              <button className={plView === 'tabla' ? 'active' : ''} onClick={() => setPlView('tabla')}>Tabla</button>
             </div>
-            <div>
-              <h2 style={{ color: '#fff', fontSize: '16px', fontWeight: 800, margin: 0 }}>Indicador de Punto de Equilibrio (Break-Even)</h2>
-              <span style={{ fontSize: '11px', color: '#a1a1aa' }}>Monto necesario facturado para cubrir todos los costos fijos y nómina del mes</span>
-            </div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#eab308' }}>${currentSales.toFixed(2)}</span>
-            <span style={{ fontSize: '12px', color: '#71717a', display: 'block' }}>de ${breakEvenTargetUsd.toFixed(2)} Meta</span>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div style={{ height: '10px', background: '#27272a', borderRadius: '6px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${breakEvenPct}%`, background: 'linear-gradient(90deg, #eab308 0%, #22c55e 100%)', borderRadius: '6px' }} />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '11px', color: '#a1a1aa' }}>
-          <span>{breakEvenPct}% Alcanzado del Punto de Equilibrio</span>
-          <span>{breakEvenPct >= 100 ? '🎉 ¡Generando Utilidad Neta!' : `Faltan $${(breakEvenTargetUsd - currentSales).toFixed(2)} para llegar a cero`}</span>
-        </div>
-      </div>
-
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-icon"><DollarSign size={20} /></div>
-          <div className="stat-info">
-            <span className="stat-value">${financialSummary.grossSales.toFixed(2)}</span>
-            <span className="stat-label">Ventas Brutas Totales</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon"><Wallet size={20} /></div>
-          <div className="stat-info">
-            <span className="stat-value">${financialSummary.operatingExpenses.toFixed(2)}</span>
-            <span className="stat-label">Gastos Totales (Fijos/Var)</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon"><CheckCircle2 size={20} /></div>
-          <div className="stat-info">
-            <span className="stat-value">${financialSummary.netProfit.toFixed(2)}</span>
-            <span className="stat-label">Ganancia Neta Estimada</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon"><ShieldAlert size={20} /></div>
-          <div className="stat-info">
-            <span className="stat-value">{financialSummary.netMarginPct.toFixed(1)}%</span>
-            <span className="stat-label">Margen Neto Operativo</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Cierre Diario Desglosado por Métodos de Pago */}
-      <div className="card mt-6" style={{ background: '#18181b' }}>
-        <h2 className="card-title">Resumen de Cierre Diario por Método de Pago</h2>
-        <p style={{ color: '#71717a', fontSize: '12px', marginBottom: '16px' }}>Elimina el reporte manual que elaboraba la administración al día siguiente.</p>
-        
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>EFECTIVO CAJA USD</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>${(cashSession?.openingCashUsd ?? 0).toFixed(2)}</span>
-            <span style={{ fontSize: '10px', color: '#10b981' }}>En caja física en food truck</span>
           </div>
 
-          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>EFECTIVO CAJA BS</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#fff', display: 'block', margin: '4px 0' }}>{(cashSession?.openingCashVes ?? 0).toLocaleString()} Bs.</span>
-            <span style={{ fontSize: '10px', color: '#10b981' }}>Físico disponible</span>
-          </div>
+          {plView === 'grafico' ? (
+            <div style={{ height: 300 }}><Bar data={chartData} options={chartOpts} /></div>
+          ) : (
+            <table className="fin-pl-table">
+              <tbody>
+                <tr><td><strong>(+) Ventas Totales Brutas</strong></td><td>{formatUsd(cur.grossSales)}</td><td>100.0%</td></tr>
+                <tr><td>(−) Costo de Productos Vendidos</td><td className="fin-danger">-{formatUsd(cur.cogs)}</td><td className="fin-danger">{cur.grossSales > 0 ? (-cur.cogs / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
+                <tr className="sumline"><td><strong>(=) Ganancia Bruta</strong></td><td className="fin-success">{formatUsd(cur.grossProfit)}</td><td className="fin-success">{cur.grossSales > 0 ? (cur.grossProfit / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
+                <tr><td>(−) Gastos Operativos</td><td className="fin-danger">-{formatUsd(cur.opex)}</td><td className="fin-danger">{cur.grossSales > 0 ? (-cur.opex / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
+                <tr><td>(−) Nómina Base y Bonos</td><td className="fin-danger">-{formatUsd(cur.payroll)}</td><td className="fin-danger">{cur.grossSales > 0 ? (-cur.payroll / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
+                <tr className="sumline final"><td><strong>(=) GANANCIA NETA FINAL</strong></td><td style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</td><td style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{cur.margin.toFixed(1)}%</td></tr>
+              </tbody>
+            </table>
+          )}
 
-          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>PAGO MÓVIL (BANCOS)</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#38bdf8', display: 'block', margin: '4px 0' }}>{(cashSession?.paymentBreakdown.mobile ?? 0).toLocaleString()} Bs.</span>
-            <span style={{ fontSize: '10px', color: '#a1a1aa' }}>Verificado con referencia</span>
-          </div>
-
-          <div style={{ background: '#141416', padding: '14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: '11px', color: '#8e8e93', fontWeight: 700 }}>PUNTO DE VENTA USD</span>
-            <span style={{ fontSize: '20px', fontWeight: 900, color: '#a855f7', display: 'block', margin: '4px 0' }}>${(cashSession?.paymentBreakdown.card ?? 0).toFixed(2)}</span>
-            <span style={{ fontSize: '10px', color: '#a1a1aa' }}>Tarjetas de crédito/débito</span>
+          <div className="fin-foot">
+            <span>Datos reales: Ventas (Caja), COGS (recetas), Gastos y Nómina.</span>
+            <span>{periodLabel}</span>
           </div>
         </div>
-      </div>
-
-      <div className="card chart-card mt-6">
-        <h2 className="card-title">Desglose Financiero (P&L)</h2>
-        <div className="chart-container" style={{ height: '320px' }}>
-          <Bar data={barChartData} options={chartOptions} />
-        </div>
-      </div>
-
-      <div className="card table-card mt-6">
-        <div className="card-header">
-          <h2 className="card-title">Estado de Resultados Resumido</h2>
-        </div>
-        <table className="data-table">
-          <tbody>
-            <tr>
-              <td><strong>(+) Ventas Totales Brutas</strong></td>
-              <td className="text-right font-bold">${financialSummary.grossSales.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td>(-) Costo de Productos Vendidos (Materia Prima / Insumos)</td>
-              <td className="text-right text-danger">-${financialSummary.cogs.toFixed(2)}</td>
-            </tr>
-            <tr className="bg-surface-light">
-              <td><strong>(=) Ganancia Bruta</strong></td>
-              <td className="text-right font-bold text-success">${financialSummary.grossProfit.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td>(-) Gastos Operativos (Servicios, Mantenimiento, Transporte)</td>
-              <td className="text-right text-danger">-${financialSummary.operatingExpenses.toFixed(2)}</td>
-            </tr>
-            <tr>
-              <td>(-) Nómina Base y Bonos de Producción</td>
-              <td className="text-right text-danger">-${financialSummary.payroll.toFixed(2)}</td>
-            </tr>
-            <tr className="bg-surface-light text-lg">
-              <td><strong>(=) GANANCIA NETA FINAL</strong></td>
-              <td className="text-right font-bold text-gradient">${financialSummary.netProfit.toFixed(2)}</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
   )
 }
-
