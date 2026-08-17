@@ -304,3 +304,5 @@ export function Nomina() {
     </div>
   )
 }
+
+// build: nomina redesign v2 (2026-08-17)
