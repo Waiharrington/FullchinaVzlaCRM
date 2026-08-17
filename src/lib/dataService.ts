@@ -1333,6 +1333,20 @@ export async function setWeeklyDishActive(id: string, active: boolean): Promise<
   if (error) throw error
 }
 
+export async function updateWeeklyDish(id: string, fields: Partial<{
+  name: string; description: string; price: number; cost: number; emoji: string; weekTag: string
+}>): Promise<void> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (fields.name !== undefined) payload.name = fields.name
+  if (fields.description !== undefined) payload.description = fields.description
+  if (fields.price !== undefined) payload.price = fields.price
+  if (fields.cost !== undefined) payload.cost = fields.cost
+  if (fields.emoji !== undefined) payload.emoji = fields.emoji
+  if (fields.weekTag !== undefined) payload.week_tag = fields.weekTag
+  const { error } = await client().from('weekly_menu_items').update(payload).eq('id', id)
+  if (error) throw error
+}
+
 export async function syncWeeklyDishToCatalog(weeklyDishId: string): Promise<string> {
   const { data, error } = await client().rpc('fn_sync_weekly_dish_to_catalog', { p_weekly_dish_id: weeklyDishId })
   if (error) throw error
