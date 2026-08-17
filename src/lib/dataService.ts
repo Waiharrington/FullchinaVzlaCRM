@@ -746,6 +746,9 @@ export interface WeeklyDish {
   status: 'active' | 'inactive'
   weekTag: string
   sellableProductId: string | null
+  imageUrl: string | null
+  /** Fecha (YYYY-MM-DD) del lunes de la última semana en que estuvo activo. */
+  lastUsedWeekStart: string | null
 }
 
 export interface WhatsAppMessage {
@@ -1305,27 +1308,41 @@ export async function registerCustomerVisit(customerId: string): Promise<Custome
 
 // --- Menú semanal -----------------------------------------------------------
 
-export async function getWeeklyDishes(): Promise<WeeklyDish[]> {
-  const { data, error } = await client().from('weekly_menu_items').select('*').order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []).map((row) => ({
+function mapWeeklyRow(row: Record<string, unknown>): WeeklyDish {
+  const acts = Array.isArray(row.weekly_menu_activations)
+    ? (row.weekly_menu_activations as Array<Record<string, unknown>>).map((a) => a.week_start as string)
+    : []
+  const lastUsed = acts.length > 0 ? acts.sort().slice(-1)[0] : null
+  return {
     id: row.id as string, name: row.name as string, description: (row.description as string) ?? '',
     price: Number(row.price), cost: Number(row.cost ?? 0), emoji: row.emoji as string,
     status: row.is_active ? 'active' : 'inactive', weekTag: (row.week_tag as string) ?? '',
     sellableProductId: (row.sellable_product_id as string) ?? null,
-  }))
+    imageUrl: (row.image_url as string) ?? null,
+    lastUsedWeekStart: lastUsed,
+  }
 }
 
-export async function createWeeklyDish(dish: Omit<WeeklyDish, 'id' | 'status' | 'sellableProductId'>, userId: string): Promise<WeeklyDish> {
+export async function getWeeklyDishes(): Promise<WeeklyDish[]> {
+  const { data, error } = await client()
+    .from('weekly_menu_items')
+    .select('*, weekly_menu_activations(week_start)')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(mapWeeklyRow)
+}
+
+export async function createWeeklyDish(
+  dish: { name: string; description: string; price: number; cost: number; emoji: string; weekTag: string; imageUrl?: string | null },
+  userId: string,
+): Promise<WeeklyDish> {
   const { data, error } = await client().from('weekly_menu_items').insert({
     name: dish.name, description: dish.description, price: dish.price, cost: dish.cost,
-    emoji: dish.emoji, week_tag: dish.weekTag, is_active: true, created_by: userId,
+    emoji: dish.emoji, week_tag: dish.weekTag, image_url: dish.imageUrl ?? null,
+    is_active: true, created_by: userId,
   }).select('*').single()
   if (error) throw error
-  return { id: data.id as string, name: data.name as string, description: (data.description as string) ?? '',
-    price: Number(data.price), cost: Number(data.cost ?? 0), emoji: data.emoji as string,
-    status: data.is_active ? 'active' : 'inactive', weekTag: (data.week_tag as string) ?? '',
-    sellableProductId: (data.sellable_product_id as string) ?? null }
+  return mapWeeklyRow(data as Record<string, unknown>)
 }
 
 export async function setWeeklyDishActive(id: string, active: boolean): Promise<void> {
@@ -1333,8 +1350,47 @@ export async function setWeeklyDishActive(id: string, active: boolean): Promise<
   if (error) throw error
 }
 
+/** Registra (o confirma) que un plato estuvo activo en una semana (lun–dom). */
+export async function recordWeeklyActivation(dishId: string, weekStart: string, weekEnd: string, userId: string): Promise<void> {
+  const { error } = await client().from('weekly_menu_activations').upsert(
+    { weekly_dish_id: dishId, week_start: weekStart, week_end: weekEnd, activated_by: userId },
+    { onConflict: 'weekly_dish_id,week_start' },
+  )
+  if (error) throw error
+}
+
+/** Quita la activación de un plato para una semana concreta. */
+export async function removeWeeklyActivation(dishId: string, weekStart: string): Promise<void> {
+  const { error } = await client().from('weekly_menu_activations')
+    .delete().eq('weekly_dish_id', dishId).eq('week_start', weekStart)
+  if (error) throw error
+}
+
+/** Ids de platos que estuvieron activos en una semana dada. */
+export async function getWeekActivations(weekStart: string): Promise<string[]> {
+  const { data, error } = await client().from('weekly_menu_activations')
+    .select('weekly_dish_id').eq('week_start', weekStart)
+  if (error) throw error
+  return (data ?? []).map((r) => r.weekly_dish_id as string)
+}
+
+/** Resumen de semanas con actividad: week_start → cantidad de platos. */
+export async function getWeeklyActivationSummary(): Promise<Array<{ weekStart: string; weekEnd: string; count: number }>> {
+  const { data, error } = await client().from('weekly_menu_activations')
+    .select('week_start, week_end').order('week_start', { ascending: false })
+  if (error) throw error
+  const map = new Map<string, { weekEnd: string; count: number }>()
+  for (const r of data ?? []) {
+    const ws = r.week_start as string
+    const cur = map.get(ws) ?? { weekEnd: r.week_end as string, count: 0 }
+    cur.count += 1
+    map.set(ws, cur)
+  }
+  return Array.from(map.entries()).map(([weekStart, v]) => ({ weekStart, weekEnd: v.weekEnd, count: v.count }))
+}
+
 export async function updateWeeklyDish(id: string, fields: Partial<{
-  name: string; description: string; price: number; cost: number; emoji: string; weekTag: string
+  name: string; description: string; price: number; cost: number; emoji: string; weekTag: string; imageUrl: string | null
 }>): Promise<void> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (fields.name !== undefined) payload.name = fields.name
@@ -1343,6 +1399,7 @@ export async function updateWeeklyDish(id: string, fields: Partial<{
   if (fields.cost !== undefined) payload.cost = fields.cost
   if (fields.emoji !== undefined) payload.emoji = fields.emoji
   if (fields.weekTag !== undefined) payload.week_tag = fields.weekTag
+  if (fields.imageUrl !== undefined) payload.image_url = fields.imageUrl
   const { error } = await client().from('weekly_menu_items').update(payload).eq('id', id)
   if (error) throw error
 }
