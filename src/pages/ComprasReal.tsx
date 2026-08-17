@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid,
-  getIngredients, getUnits,
+  getIngredients, getUnits, createIngredient,
   type Supplier, type Purchase, type Ingredient,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
@@ -39,6 +39,10 @@ export function ComprasReal() {
   const [showSupplierForm, setShowSupplierForm] = useState(false)
   const [newSupplierName, setNewSupplierName] = useState('')
   const [newSupplierPhone, setNewSupplierPhone] = useState('')
+
+  const [showIngredientForm, setShowIngredientForm] = useState(false)
+  const [newIngredientName, setNewIngredientName] = useState('')
+  const [newIngredientUnitId, setNewIngredientUnitId] = useState('')
 
   const [search, setSearch] = useState('')
   const [paidFilter, setPaidFilter] = useState<PaidFilter>('todos')
@@ -126,6 +130,21 @@ export function ComprasReal() {
       setSuppliers((prev) => [...prev, { id, name: newSupplierName.trim(), contact: null, phone: newSupplierPhone.trim() || null, email: null, notes: null, isActive: true }])
       setSupplierId(id); setShowSupplierForm(false); setNewSupplierName(''); setNewSupplierPhone('')
     } catch (e) { setError(e instanceof Error ? e.message : 'Error creando proveedor') }
+  }
+
+  const handleCreateIngredient = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const unitId = newIngredientUnitId || units[0]?.id
+    if (!newIngredientName.trim() || !unitId) return
+    try {
+      const id = await createIngredient({ name: newIngredientName.trim(), unitId })
+      const unit = units.find((u) => u.id === unitId)
+      const ing: Ingredient = { id, name: newIngredientName.trim(), unitId, unitName: unit?.name ?? '', unitSymbol: unit?.symbol ?? '', isActive: true, currentStock: 0, pricePerUnit: null, stockValue: null }
+      setIngredients((prev) => [...prev, ing].sort((a, b) => a.name.localeCompare(b.name)))
+      setItems((prev) => [...prev, { ingredientId: id, quantity: '1', unitId, unitCost: '0' }])
+      setShowIngredientForm(false); setNewIngredientName(''); setNewIngredientUnitId('')
+      flash(`Ingrediente "${ing.name}" creado y agregado a la compra`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error creando ingrediente') }
   }
 
   const togglePaid = async (p: Purchase) => {
@@ -227,7 +246,23 @@ export function ComprasReal() {
               )
             })}
             {items.length === 0 && <p style={{ color: '#71717a', fontSize: 13 }}>Agrega ítems a la compra.</p>}
-            <button type="button" className="cmp-add-item" style={{ marginTop: 4 }} onClick={addItem}><Plus size={14} /> Agregar ítem</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+              <button type="button" className="cmp-add-item" onClick={addItem}><Plus size={14} /> Agregar ítem</button>
+              <button type="button" className="cmp-ghost-btn" style={{ padding: '8px 14px' }} onClick={() => setShowIngredientForm(!showIngredientForm)}><Plus size={14} /> Nuevo Ingrediente</button>
+            </div>
+
+            {showIngredientForm && (
+              <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 12, marginTop: 10 }}>
+                <div style={{ fontSize: 12, color: '#a1a1aa', marginBottom: 8 }}>Crear un ingrediente nuevo (elige su <strong>unidad base</strong>: cómo lo mides en inventario).</div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input placeholder="Nombre del ingrediente *" value={newIngredientName} onChange={(e) => setNewIngredientName(e.target.value)} style={{ flex: 2, minWidth: 180, background: '#17171d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#fff', padding: 9 }} />
+                  <select value={newIngredientUnitId || units[0]?.id || ''} onChange={(e) => setNewIngredientUnitId(e.target.value)} style={{ background: '#17171d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#fff', padding: 9 }}>
+                    {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
+                  </select>
+                  <button type="button" className="cmp-new-btn" onClick={handleCreateIngredient}>Crear ingrediente</button>
+                </div>
+              </div>
+            )}
 
             <label className="cmp-field" style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, fontSize: 13, color: '#d4d4d8', cursor: 'pointer' }}>
               <input type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#e11d2a' }} /> Marcar como pagada
