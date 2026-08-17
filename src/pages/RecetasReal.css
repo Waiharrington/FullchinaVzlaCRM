@@ -3,13 +3,12 @@
    ============================================================ */
 .rec-page { color: #fff; }
 
-/* Barra superior: búsqueda + acción */
-.rec-topbar {
-  display: flex; gap: 12px; align-items: center; justify-content: flex-end;
-  flex-wrap: wrap; margin: 4px 0 18px;
-}
+/* El encabezado deja el título a la izquierda y el botón a la derecha */
+.rec-page .page-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+/* Búsqueda: ancho completo dentro de la columna de la lista */
 .rec-search {
-  position: relative; flex: 1 1 340px; max-width: 460px;
+  position: relative; width: 100%; margin-bottom: 12px;
 }
 .rec-search input {
   width: 100%; padding: 11px 40px 11px 40px;

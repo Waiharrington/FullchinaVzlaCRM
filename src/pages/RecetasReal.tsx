@@ -196,21 +196,13 @@ export function RecetasReal() {
           <h1 className="page-title text-gradient">Recetas</h1>
           <p className="page-subtitle">Gestiona todas las recetas y sus componentes por producto vendible.</p>
         </div>
-      </header>
-
-      <div className="rec-topbar">
-        <div className="rec-search">
-          <Search size={16} className="rec-search-ic" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar receta..." />
-          <span className="rec-kbd">⌘K</span>
-        </div>
         <button
           className="rec-add-btn"
           onClick={() => { setNewRecipeProductId(''); setShowNewRecipe(true) }}
         >
           <Plus size={16} /> Agregar receta
         </button>
-      </div>
+      </header>
 
       {error && (
         <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
@@ -226,6 +218,12 @@ export function RecetasReal() {
       <div className="rec-layout">
         {/* ============ Lista ============ */}
         <div className="rec-panel">
+          <div className="rec-search">
+            <Search size={16} className="rec-search-ic" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar receta..." />
+            <span className="rec-kbd">⌘K</span>
+          </div>
+
           <div className="rec-tabs">
             <button className={`rec-tab${tab === 'todas' ? ' active' : ''}`} onClick={() => setTab('todas')}>
               Todas <span className="rec-count">{counts.todas}</span>
