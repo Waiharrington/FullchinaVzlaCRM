@@ -132,7 +132,7 @@ export function PublicMenu() {
         {loading ? <div className="public-state">Cargando sabores…</div> : error && products.length === 0 ? <div className="public-state error">{error}</div> : (
           <div className="public-products">
             {groups.map(group => <article className="public-product" key={group.key} onClick={() => openGroup(group)}>
-              <img src={productImage(group.category)} alt="" />
+              <img src={group.variants[0]?.product.imageUrl || productImage(group.category)} alt="" />
               <div className="public-product-copy"><div><h3>{group.name}</h3>{group.isGrouped && <p>{group.variants.map(item => item.label).join(' · ')}</p>}</div><div className="public-product-footer"><strong>{group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}</strong><button aria-label={`Agregar ${group.name}`}><Plus /></button></div></div>
             </article>)}
           </div>
