@@ -424,6 +424,51 @@ export async function getProducts(): Promise<Product[]> {
   }
 }
 
+/** Todos los productos vendibles (activos e inactivos) para el módulo Menú. */
+export async function getAllSellableProducts(): Promise<SellableProduct[]> {
+  const { data, error } = await client()
+    .from('sellable_products')
+    .select('id,name,description,price,cost,category,emoji,is_active,image_url')
+    .order('name', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string, name: r.name as string, description: (r.description as string) ?? null,
+    salePrice: Number(r.price), cost: r.cost === null ? null : Number(r.cost),
+    category: r.category as string, emoji: r.emoji as string, isActive: r.is_active as boolean,
+    imageUrl: (r.image_url as string) ?? null,
+  }))
+}
+
+export async function createProduct(p: {
+  name: string; description?: string | null; price: number; cost?: number | null
+  category: string; emoji?: string; imageUrl?: string | null; isActive?: boolean
+}): Promise<string> {
+  const { data, error } = await client().from('sellable_products').insert({
+    name: p.name, description: p.description ?? null, price: p.price, cost: p.cost ?? null,
+    category: p.category, emoji: p.emoji ?? '🍽️', image_url: p.imageUrl ?? null,
+    is_active: p.isActive ?? true,
+  }).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updateProduct(id: string, updates: Partial<{
+  name: string; description: string | null; price: number; cost: number | null
+  category: string; emoji: string; imageUrl: string | null; isActive: boolean
+}>): Promise<void> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (updates.name !== undefined) payload.name = updates.name
+  if (updates.description !== undefined) payload.description = updates.description
+  if (updates.price !== undefined) payload.price = updates.price
+  if (updates.cost !== undefined) payload.cost = updates.cost
+  if (updates.category !== undefined) payload.category = updates.category
+  if (updates.emoji !== undefined) payload.emoji = updates.emoji
+  if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl
+  if (updates.isActive !== undefined) payload.is_active = updates.isActive
+  const { error } = await client().from('sellable_products').update(payload).eq('id', id)
+  if (error) throw error
+}
+
 // --- Modificadores -----------------------------------------------------------
 
 /** Conjunto de ids de productos que tienen al menos un modificador asignado. */

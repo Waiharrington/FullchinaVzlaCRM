@@ -26,6 +26,7 @@ const Almacen = lazy(() => import('./pages/Almacen').then(module => ({ default: 
 const MarketingWhatsApp = lazy(() => import('./pages/MarketingWhatsApp').then(module => ({ default: module.MarketingWhatsApp })))
 const Fidelizacion = lazy(() => import('./pages/Fidelizacion').then(module => ({ default: module.Fidelizacion })))
 const MenuSemanal = lazy(() => import('./pages/MenuSemanal').then(module => ({ default: module.MenuSemanal })))
+const Menu = lazy(() => import('./pages/Menu').then(module => ({ default: module.Menu })))
 const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
 const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
 const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
@@ -82,6 +83,7 @@ function AppRoutes() {
         <Route path="/inventario" element={forRoles(['owner', 'manager'], <Inventario />)} />
         <Route path="/produccion" element={forRoles(['owner', 'manager'], <Produccion />)} />
         <Route path="/recetas" element={forRoles(['owner', 'manager'], <Recetas />)} />
+        <Route path="/menu" element={forRoles(['owner', 'manager'], <Menu />)} />
         <Route path="/menu-semanal" element={forRoles(['owner', 'manager'], <MenuSemanal />)} />
         <Route path="/compras" element={forRoles(['owner', 'manager'], <Compras />)} />
         <Route path="/gastos" element={forRoles(['owner', 'manager'], <Gastos />)} />

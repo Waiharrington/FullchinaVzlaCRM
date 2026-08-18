@@ -15,6 +15,7 @@ import {
   Award,
   MessageSquare,
   Utensils,
+  UtensilsCrossed,
   Receipt,
   BadgeDollarSign
 } from 'lucide-react'
@@ -36,6 +37,7 @@ export const allNavItems: NavItem[] = [
   { path: '/almacen', label: 'Almacén', icon: Building2, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/inventario', label: 'Inventario Truck', icon: Package, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/menu', label: 'Menú', icon: UtensilsCrossed, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/menu-semanal', label: 'Menú Semanal', icon: Utensils, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/compras', label: 'Compras', icon: ShoppingCart, roles: ['owner', 'manager'], group: 'Operación' },
