@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronRight, MapPin, Minus, Plus, Search, ShoppingBag, Trash2, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Check, ChevronRight, MapPin, Minus, Plus, Search, Navigation, ShoppingBag, Trash2, X } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, type WebOrderCartItem } from '../lib/publicOrders'
 import { getExchangeRates } from '../lib/rates'
@@ -38,6 +38,11 @@ export function PublicMenu() {
   const [phone, setPhone] = useState('')
   const [orderType, setOrderType] = useState<'takeaway' | 'delivery'>('takeaway')
   const [address, setAddress] = useState('')
+  const [addressSuggestions, setAddressSuggestions] = useState<Array<{ display_name: string; lat: string; lon: string }>>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
+  const addressRef = useRef<HTMLTextAreaElement>(null)
   const [notes, setNotes] = useState('')
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
@@ -77,6 +82,51 @@ export function PublicMenu() {
 
   const openGroup = (group: MenuProductGroup) => group.isGrouped ? setSelectedGroup(group) : addProduct(group.variants[0].product)
 
+  const useMyLocation = () => {
+    if (!navigator.geolocation) return setError('Tu navegador no soporta geolocalización.')
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        setGeoCoords({ lat, lng })
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
+            headers: { 'Accept-Language': 'es' }
+          })
+          const data = await res.json()
+          if (data.display_name) {
+            setAddress(data.display_name.length > 120 ? data.display_name.substring(0, 120) + '…' : data.display_name)
+            setShowSuggestions(false)
+          }
+        } catch { /* silently keep coordinates */ }
+        setLocating(false)
+      },
+      () => { setLocating(false); setError('No pudimos obtener tu ubicación. Activa el GPS e intenta de nuevo.') },
+      { enableHighAccuracy: true, timeout: 10000 }
+    )
+  }
+
+  const searchAddress = async (query: string) => {
+    setAddress(query)
+    setShowSuggestions(true)
+    setGeoCoords(null)
+    if (query.trim().length < 4) { setAddressSuggestions([]); return }
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ve&limit=5`, {
+        headers: { 'Accept-Language': 'es' }
+      })
+      const data = await res.json()
+      setAddressSuggestions(data)
+    } catch { setAddressSuggestions([]) }
+  }
+
+  const selectSuggestion = (s: { display_name: string; lat: string; lon: string }) => {
+    setAddress(s.display_name.length > 120 ? s.display_name.substring(0, 120) + '…' : s.display_name)
+    setGeoCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) })
+    setShowSuggestions(false)
+    setAddressSuggestions([])
+  }
+
   const submitOrder = async () => {
     setError('')
     if (name.trim().length < 2) return setError('Escribe tu nombre.')
@@ -96,9 +146,10 @@ export function PublicMenu() {
       const message = [
         `Hola Full China 👋 Quiero confirmar mi pedido ${result.code}`,
         '', ...lines, '', `Total: ${money(result.total)}`,
-        bcvRate ? `Ref. Bs.: ${(result.total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '',
+        bcvRate ? `Bs. ${(result.total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '',
         `Modalidad: ${orderType === 'delivery' ? 'Delivery' : 'Retiro en el local'}`,
         orderType === 'delivery' ? `Dirección: ${address.trim()}` : '',
+        orderType === 'delivery' && geoCoords ? `📍 Ubicación GPS: https://maps.google.com/?q=${geoCoords.lat},${geoCoords.lng}` : '',
         notes.trim() ? `Notas: ${notes.trim()}` : '',
         '', `Nombre: ${name.trim()}`, `Teléfono: ${phone.trim()}`,
       ].filter(Boolean).join('\n')
@@ -147,8 +198,40 @@ export function PublicMenu() {
 
       {cartOpen && <div className="public-drawer-backdrop" onClick={() => setCartOpen(false)}><aside className="public-cart-drawer" onClick={event => event.stopPropagation()}>
         <header><div><small>{step === 'sent' ? 'PEDIDO REGISTRADO' : 'TU PEDIDO'}</small><h2>{step === 'details' ? '¿Cómo te lo entregamos?' : step === 'sent' ? orderCode : `${itemCount} producto${itemCount === 1 ? '' : 's'}`}</h2></div><button onClick={() => setCartOpen(false)}><X /></button></header>
-        {step === 'cart' && <><div className="public-cart-items">{cart.map(item => <div className="public-cart-item" key={item.productId}><div><strong>{item.productName}</strong><span>{money(item.price)}</span></div><div className="public-qty"><button onClick={() => updateQuantity(item.productId, -1)}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1)}><Plus /></button></div><strong>{money(item.price * item.quantity)}</strong></div>)}</div><div className="public-total"><span>Total estimado</span><strong>{money(total)}</strong>{bcvRate && <small>Ref. Bs. {(total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</small>}</div><button className="public-primary" disabled={!cart.length} onClick={() => setStep('details')}>Continuar <ChevronRight /></button></>}
-        {step === 'details' && <div className="public-checkout"><div className="public-order-types"><button className={orderType === 'takeaway' ? 'active' : ''} onClick={() => setOrderType('takeaway')}>🥡 Retirar</button><button className={orderType === 'delivery' ? 'active' : ''} onClick={() => setOrderType('delivery')}>🛵 Delivery</button></div><label>Nombre<input value={name} onChange={event => setName(event.target.value)} placeholder="Tu nombre" /></label><label>Teléfono WhatsApp<input type="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></label>{orderType === 'delivery' && <label>Dirección<textarea value={address} onChange={event => setAddress(event.target.value)} placeholder="Dirección y punto de referencia" /></label>}<label>Notas del pedido<textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín" /></label>{error && <p className="public-form-error">{error}</p>}<button className="public-primary whatsapp" disabled={submitting} onClick={submitOrder}>{submitting ? 'Registrando…' : 'Registrar y abrir WhatsApp'} <ChevronRight /></button><button className="public-back" onClick={() => setStep('cart')}>Volver al carrito</button></div>}
+        {step === 'cart' && <><div className="public-cart-items">{cart.map(item => <div className="public-cart-item" key={item.productId}><div><strong>{item.productName}</strong><span>{money(item.price)}</span></div><div className="public-qty"><button onClick={() => updateQuantity(item.productId, -1)}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1)}><Plus /></button></div><strong>{money(item.price * item.quantity)}</strong></div>)}</div><div className="public-total"><span>Total estimado</span><strong>{money(total)}</strong>{bcvRate && <small>Bs. {(total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</small>}</div><button className="public-primary" disabled={!cart.length} onClick={() => setStep('details')}>Continuar <ChevronRight /></button></>}
+        {step === 'details' && (
+          <div className="public-checkout">
+            <div className="public-order-types">
+              <button className={orderType === 'takeaway' ? 'active' : ''} onClick={() => setOrderType('takeaway')}>🥡 Retirar</button>
+              <button className={orderType === 'delivery' ? 'active' : ''} onClick={() => setOrderType('delivery')}>🛵 Delivery</button>
+            </div>
+            <label>Nombre<input value={name} onChange={event => setName(event.target.value)} placeholder="Tu nombre" /></label>
+            <label>Teléfono WhatsApp<input type="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></label>
+            {orderType === 'delivery' && (
+              <div className="public-address-field">
+                <label>Dirección</label>
+                <div className="public-address-wrap">
+                  <textarea ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} placeholder="Ej. Av 1 san jacinto, Maracay" />
+                  <button type="button" className="public-geo-btn" onClick={useMyLocation} disabled={locating} title="Usar mi ubicación actual"><Navigation size={18} className={locating ? 'is-spinning' : ''} /></button>
+                </div>
+                {geoCoords && <span className="public-geo-coords">📍 {geoCoords.lat.toFixed(5)}, {geoCoords.lng.toFixed(5)}</span>}
+                {showSuggestions && addressSuggestions.length > 0 && (
+                  <div className="public-address-suggestions">
+                    {addressSuggestions.map((s, i) => (
+                      <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}>
+                        <MapPin size={14} />{s.display_name.length > 80 ? s.display_name.substring(0, 80) + '…' : s.display_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <label>Notas del pedido<textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín" /></label>
+            {error && <p className="public-form-error">{error}</p>}
+            <button className="public-primary whatsapp" disabled={submitting} onClick={submitOrder}>{submitting ? 'Registrando…' : 'Registrar y abrir WhatsApp'} <ChevronRight /></button>
+            <button className="public-back" onClick={() => setStep('cart')}>Volver al carrito</button>
+          </div>
+        )}
         {step === 'sent' && <div className="public-success"><span><Check /></span><h3>Tu pedido ya está en Full China</h3><p>En WhatsApp solo debes enviar el mensaje que preparamos. El equipo verá el mismo código y confirmará tu orden.</p><strong>{orderCode}</strong><button className="public-primary" onClick={() => setCartOpen(false)}>Listo</button></div>}
       </aside></div>}
     </main>

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
@@ -756,7 +757,7 @@ export function Comandas() {
       </div>
 
       {/* Modal detail */}
-      {selectedOrder && (
+      {selectedOrder && createPortal(
         <div className="cmd-modal-overlay" onClick={() => setSelectedOrder(null)}>
           <div className="cmd-modal-container animate-pop" onClick={e => e.stopPropagation()}>
             <header className="cmd-modal-header">
@@ -1021,10 +1022,11 @@ export function Comandas() {
               </div>
             </footer>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Modal Cobrar Pedido Directo desde Comandas */}
-      {showPaymentModal && paymentOrder && (
+      {showPaymentModal && paymentOrder && createPortal(
         <div className="modal-overlay-dark" onClick={() => setShowPaymentModal(false)}>
           <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
@@ -1248,7 +1250,8 @@ export function Comandas() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

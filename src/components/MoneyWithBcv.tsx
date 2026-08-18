@@ -32,7 +32,7 @@ export function MoneyWithBcv({ usd, rate, className = '', usdClassName = '', ali
     <span className={`money-with-bcv align-${align} ${compact ? 'compact' : ''} ${className}`.trim()}>
       <span className={`money-usd ${usdClassName}`.trim()}>{formatUsd(usd)}</span>
       <small className={`money-ves ${ves === null ? 'unavailable' : ''}`}>
-        {ves === null ? 'Ref. BCV no disponible' : `Ref. ${formatVes(ves)}`}
+        {ves === null ? 'Bs. no disponible' : formatVes(ves)}
       </small>
     </span>
   )
