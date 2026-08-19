@@ -30,6 +30,7 @@ const Menu = lazy(() => import('./pages/Menu').then(module => ({ default: module
 const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
 const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
 const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
+const Promociones = lazy(() => import('./pages/Promociones').then(module => ({ default: module.Promociones })))
 
 type Role = 'owner' | 'manager' | 'cashier'
 
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="/nomina" element={forRoles(['owner'], <Nomina />)} />
         <Route path="/auditoria" element={forRoles(['owner'], <Auditoria />)} />
         <Route path="/mas" element={forRoles(['owner', 'manager'], <Mas />)} />
+        <Route path="/promociones" element={forRoles(['owner', 'manager'], <Promociones />)} />
         <Route path="/reportes" element={forRoles(['owner', 'manager'], <Reportes />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

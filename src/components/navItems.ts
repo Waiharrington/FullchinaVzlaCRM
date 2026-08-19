@@ -17,7 +17,8 @@ import {
   Utensils,
   UtensilsCrossed,
   Receipt,
-  BadgeDollarSign
+  BadgeDollarSign,
+  Tag
 } from 'lucide-react'
 
 export interface NavItem {
@@ -44,6 +45,7 @@ export const allNavItems: NavItem[] = [
   { path: '/gastos', label: 'Gastos', icon: Receipt, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Gestión' },
   { path: '/fidelizacion', label: 'Fidelización', icon: Award, roles: ['owner', 'manager'], group: 'Gestión' },
+  { path: '/promociones', label: 'Promociones', icon: Tag, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Gestión' },
   { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Gestión' },
