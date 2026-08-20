@@ -465,11 +465,11 @@
 .product-family-price { display: flex; flex-direction: column; align-items: flex-start; }
 .product-family-price > small { color: #a1a1aa; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 
-.variant-selector-modal { width: min(620px, 100%); max-height: min(760px, 90vh); overflow: hidden; background: #18181b; border: 1px solid rgba(239, 68, 68, .32); border-radius: 18px; box-shadow: 0 28px 80px rgba(0, 0, 0, .75); }
+.variant-selector-modal { display: flex; flex-direction: column; width: min(620px, 100%); max-height: min(760px, 90vh); overflow: hidden; background: #18181b; border: 1px solid rgba(239, 68, 68, .32); border-radius: 18px; box-shadow: 0 28px 80px rgba(0, 0, 0, .75); }
 .variant-selector-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 22px 18px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
 .variant-selector-eyebrow { color: #ef4444; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .variant-selector-header h2 { color: #fff; font-size: 22px; margin: 4px 0 0; }
-.variant-selector-list { display: grid; gap: 10px; padding: 16px; overflow-y: auto; max-height: calc(90vh - 98px); }
+.variant-selector-list { flex: 1 1 auto; min-height: 0; display: grid; gap: 10px; padding: 16px; overflow-y: auto; }
 .variant-option-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; width: 100%; padding: 14px; background: #202024; border: 1px solid rgba(255, 255, 255, .08); border-radius: 12px; color: #fff; text-align: left; cursor: pointer; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
 .variant-option-card:hover, .variant-option-card:focus-visible { background: #27272a; border-color: rgba(239, 68, 68, .65); transform: translateY(-1px); outline: none; }
 .variant-option-emoji { display: grid; place-items: center; width: 44px; height: 44px; background: rgba(239, 68, 68, .1); border-radius: 10px; font-size: 24px; }
