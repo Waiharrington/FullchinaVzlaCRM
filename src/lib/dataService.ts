@@ -1806,6 +1806,70 @@ export async function updateEmployee(id: string, updates: {
   if (error) throw error
 }
 
+// --- Usuarios de acceso (login) ---------------------------------------------
+// Administración de auth.users vía RPC SECURITY DEFINER (owner-only). El
+// navegador nunca ve la service_role; toda la validación vive en la BD.
+
+export interface AuthUser {
+  id: string
+  email: string
+  fullName: string
+  role: 'owner' | 'manager' | 'cashier'
+  isActive: boolean
+  createdAt: string
+  lastSignInAt: string | null
+}
+
+export async function listAuthUsers(): Promise<AuthUser[]> {
+  const { data, error } = await client().rpc('fn_admin_list_users')
+  if (error) throw error
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: String(r.id),
+    email: String(r.email),
+    fullName: r.full_name ? String(r.full_name) : '',
+    role: String(r.role) as AuthUser['role'],
+    isActive: Boolean(r.is_active),
+    createdAt: String(r.created_at),
+    lastSignInAt: r.last_sign_in_at ? String(r.last_sign_in_at) : null,
+  }))
+}
+
+export async function adminSetUserPassword(userId: string, password: string): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_password', { p_user_id: userId, p_password: password })
+  if (error) throw error
+}
+
+export async function adminSetUserEmail(userId: string, email: string): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_email', { p_user_id: userId, p_email: email })
+  if (error) throw error
+}
+
+export async function adminSetUserRole(userId: string, role: AuthUser['role']): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_role', { p_user_id: userId, p_role: role })
+  if (error) throw error
+}
+
+export async function adminSetUserActive(userId: string, isActive: boolean): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_active', { p_user_id: userId, p_active: isActive })
+  if (error) throw error
+}
+
+export async function adminCreateUser(params: {
+  email: string
+  password: string
+  fullName: string
+  role: AuthUser['role']
+}): Promise<string> {
+  const { data, error } = await client().rpc('fn_admin_create_user', {
+    p_email: params.email,
+    p_password: params.password,
+    p_full_name: params.fullName,
+    p_role: params.role,
+  })
+  if (error) throw error
+  return String(data)
+}
+
 export async function getProductionBatches(dateStart?: string, dateEnd?: string): Promise<ProductionBatch[]> {
   let query = client()
     .from('preparation_batches')
