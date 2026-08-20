@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
 import {
   Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3, AlertTriangle,
-  KeyRound, Mail, UserCog, Ban, Clock,
+  KeyRound, Mail, UserCog, Ban, Clock, Hash,
 } from 'lucide-react'
 import {
   getAllEmployees, createEmployee, updateEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
-  adminSetUserRole, adminSetUserActive,
+  adminSetUserRole, adminSetUserActive, adminSetUserPin,
 } from '../lib/dataService'
 import type { Employee, AuthUser } from '../lib/dataService'
 import './Equipo.css'
@@ -135,6 +135,11 @@ export function Equipo() {
   const [pwValue, setPwValue] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
 
+  const [showPinModal, setShowPinModal] = useState(false)
+  const [pinUser, setPinUser] = useState<AuthUser | null>(null)
+  const [pinValue, setPinValue] = useState('')
+  const [pinSaving, setPinSaving] = useState(false)
+
   const openCreateUser = () => {
     setUserModalMode('create'); setUEditing(null)
     setUEmail(''); setUName(''); setURole('cashier'); setUPassword('')
@@ -186,6 +191,23 @@ export function Equipo() {
       setUsersError(e instanceof Error ? e.message : 'Error cambiando contraseña')
     } finally {
       setPwSaving(false)
+    }
+  }
+
+  const openPinModal = (u: AuthUser) => { setPinUser(u); setPinValue(''); setShowPinModal(true) }
+  const handleSavePin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!pinUser) return
+    setPinSaving(true)
+    setUsersError('')
+    try {
+      await adminSetUserPin(pinUser.id, pinValue)
+      flash(`PIN de "${pinUser.email}" actualizado`)
+      setShowPinModal(false)
+    } catch (e) {
+      setUsersError(e instanceof Error ? e.message : 'Error cambiando el PIN')
+    } finally {
+      setPinSaving(false)
     }
   }
 
@@ -288,6 +310,9 @@ export function Equipo() {
                     </button>
                     <button className="user-act" title="Cambiar contraseña" onClick={() => openPwModal(u)}>
                       <KeyRound size={15} /> Clave
+                    </button>
+                    <button className="user-act" title="Cambiar PIN de acceso" onClick={() => openPinModal(u)}>
+                      <Hash size={15} /> PIN
                     </button>
                     <button
                       className={`user-act ${u.isActive ? 'danger' : 'ok'}`}
@@ -465,6 +490,45 @@ export function Equipo() {
                 <button type="button" className="btn-cancel" onClick={() => setShowUserModal(false)}>Cancelar</button>
                 <button type="submit" className="btn-save" disabled={uSaving}>
                   {uSaving ? 'Guardando…' : userModalMode === 'create' ? 'Crear usuario' : 'Guardar cambios'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal cambiar PIN */}
+      {showPinModal && pinUser && (
+        <div className="modal-overlay" onClick={() => setShowPinModal(false)}>
+          <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-custom">
+              <h3>Cambiar PIN de acceso</h3>
+              <button className="close-btn" onClick={() => setShowPinModal(false)}>✕</button>
+            </div>
+            <form onSubmit={handleSavePin} className="modal-form">
+              <p className="equipo-section-hint" style={{ margin: 0 }}>
+                Usuario: <strong style={{ color: '#fff' }}>{pinUser.email}</strong>. El PIN de 4 dígitos
+                sirve para iniciar sesión rápido desde la caja.
+              </p>
+              <div className="form-group">
+                <label>Nuevo PIN (4 dígitos)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{4}"
+                  maxLength={4}
+                  value={pinValue}
+                  onChange={e => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="0000"
+                  required
+                  autoFocus
+                  style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '22px' }}
+                />
+              </div>
+              <div className="modal-actions-bar">
+                <button type="button" className="btn-cancel" onClick={() => setShowPinModal(false)}>Cancelar</button>
+                <button type="submit" className="btn-save" disabled={pinSaving || pinValue.length !== 4}>
+                  {pinSaving ? 'Guardando…' : 'Guardar PIN'}
                 </button>
               </div>
             </form>

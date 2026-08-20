@@ -1854,6 +1854,21 @@ export async function adminSetUserActive(userId: string, isActive: boolean): Pro
   if (error) throw error
 }
 
+const PIN_ERROR_MESSAGES: Record<string, string> = {
+  not_authorized: 'No autorizado para cambiar el PIN.',
+  pin_must_have_four_digits: 'El PIN debe tener exactamente 4 dígitos.',
+  active_profile_not_found: 'El usuario no está activo o no existe.',
+  pin_already_in_use: 'Ese PIN ya lo usa otro usuario. Elige otro.',
+}
+
+export async function adminSetUserPin(userId: string, pin: string): Promise<void> {
+  const { error } = await client().rpc('fn_set_user_pin', { p_user_id: userId, p_pin: pin })
+  if (error) {
+    const key = (error.message || '').trim()
+    throw new Error(PIN_ERROR_MESSAGES[key] ?? error.message)
+  }
+}
+
 export async function adminCreateUser(params: {
   email: string
   password: string
