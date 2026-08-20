@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Tag, Lock, ChevronUp, ChevronDown } from 'lucide-react'
 import './Promociones.css'
 
 interface Promotion {
@@ -157,59 +157,85 @@ export function Promociones() {
     } catch (e) { console.error(e) }
   }
 
+  const visibles = promos.filter(p => p.isActive).length
+
   return (
-    <div className="page animate-fade-in">
-      <header className="page-header">
-        <h1 className="page-title text-gradient">Promociones del Menú</h1>
-        <p className="page-subtitle">Gestiona las ofertas que se ven en /pedir</p>
+    <div className="promo-page animate-fade-in">
+      {/* Hero */}
+      <header className="promo-hero">
+        <div className="promo-hero-text">
+          <h1 className="promo-hero-title">Promociones <span>del Menú</span></h1>
+          <p className="promo-hero-sub">Gestiona las ofertas que se ven en /pedir</p>
+        </div>
+        <div className="promo-hero-fire" aria-hidden>🔥</div>
       </header>
 
-      <div className="card">
-        <div className="card-header-row">
-          <div>
-            <h2 className="card-title">Ofertas activas</h2>
-            <p className="card-subtitle">{promos.filter(p => p.isActive).length} visibles · {promos.length} total</p>
+      {/* Toolbar: stats + acción */}
+      <div className="promo-toolbar">
+        <div className="promo-stats">
+          <div className="promo-stat">
+            <Eye size={18} className="promo-stat-ico green" />
+            <b>{visibles}</b><span>Visibles</span>
           </div>
-          <button className="btn-accent btn-sm" onClick={openNew}>
-            <Plus size={16} /> Nueva promoción
-          </button>
+          <div className="promo-stat-divider" />
+          <div className="promo-stat">
+            <Tag size={18} className="promo-stat-ico red" />
+            <b>{promos.length}</b><span>Total</span>
+          </div>
         </div>
-
-        {loading ? (
-          <p className="empty-message">Cargando promociones…</p>
-        ) : promos.length === 0 ? (
-          <p className="empty-message">No hay promociones creadas</p>
-        ) : (
-          <div className="promos-list">
-            {promos.map((p, idx) => (
-              <div key={p.id} className={`promo-item ${!p.isActive ? 'inactive' : ''}`}>
-                <div className="promo-drag">
-                  <button className="promo-move" onClick={() => moveUp(p, idx)} disabled={idx === 0} title="Subir">▲</button>
-                  <button className="promo-move" onClick={() => moveDown(p, idx)} disabled={idx >= promos.length - 1} title="Bajar">▼</button>
-                </div>
-                <div className="promo-icon-preview" style={{ background: p.color }}>{p.icon}</div>
-                <div className="promo-info">
-                  <span className="promo-tag" style={{ color: p.color }}>{p.tag}</span>
-                  <strong>{p.title}</strong>
-                  <span className="promo-subtitle">{p.subtitle}</span>
-                  <div className="promo-meta">
-                    {p.price && <span className="promo-price-badge">${p.price}</span>}
-                    {p.oldPrice && <span className="promo-old-price">${p.oldPrice}</span>}
-                    <span className="promo-note-badge">{p.note}</span>
-                  </div>
-                </div>
-                <div className="promo-actions">
-                  <button className="promo-btn-toggle" onClick={() => toggleActive(p)} title={p.isActive ? 'Ocultar' : 'Mostrar'}>
-                    {p.isActive ? <Eye size={16} /> : <EyeOff size={16} />}
-                  </button>
-                  <button className="promo-btn-edit" onClick={() => openEdit(p)} title="Editar"><Pencil size={16} /></button>
-                  <button className="promo-btn-delete" onClick={() => handleDelete(p.id)} title="Eliminar"><Trash2 size={16} /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <button className="promo-new-btn" onClick={openNew}>
+          <Plus size={18} /> Nueva promoción
+        </button>
       </div>
+
+      {loading ? (
+        <p className="promo-empty">Cargando promociones…</p>
+      ) : promos.length === 0 ? (
+        <p className="promo-empty">No hay promociones creadas. Crea la primera con “Nueva promoción”.</p>
+      ) : (
+        <div className="promos-list">
+          {promos.map((p, idx) => (
+            <div
+              key={p.id}
+              className={`promo-item ${!p.isActive ? 'inactive' : ''}`}
+              style={{ '--pc': p.color } as CSSProperties}
+            >
+              <div className="promo-glow" aria-hidden>{p.icon}</div>
+
+              <div className="promo-drag">
+                <button className="promo-move" onClick={() => moveUp(p, idx)} disabled={idx === 0} title="Subir"><ChevronUp size={16} /></button>
+                <button className="promo-move" onClick={() => moveDown(p, idx)} disabled={idx >= promos.length - 1} title="Bajar"><ChevronDown size={16} /></button>
+              </div>
+
+              <div className="promo-icon-preview">{p.icon}</div>
+
+              <div className="promo-info">
+                <span className="promo-tag">{p.tag}</span>
+                <strong>{p.title}</strong>
+                <span className="promo-subtitle">{p.subtitle}</span>
+                {p.note && <span className="promo-note-badge">{p.note}</span>}
+              </div>
+
+              {p.price && (
+                <div className="promo-price-block">
+                  <span className="promo-price-main">${p.price}</span>
+                  {p.oldPrice && <span className="promo-price-old">${p.oldPrice}</span>}
+                </div>
+              )}
+
+              <div className="promo-actions">
+                <button className="promo-btn-toggle" onClick={() => toggleActive(p)} title={p.isActive ? 'Ocultar' : 'Mostrar'}>
+                  {p.isActive ? <Eye size={16} /> : <EyeOff size={16} />}
+                </button>
+                <button className="promo-btn-edit" onClick={() => openEdit(p)} title="Editar"><Pencil size={16} /></button>
+                <button className="promo-btn-delete" onClick={() => handleDelete(p.id)} title="Eliminar"><Trash2 size={16} /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <p className="promo-footer-note"><Lock size={13} /> Las promociones visibles aparecerán en tu menú público (/pedir)</p>
 
       {showForm && (
         <div className="modal-overlay" onClick={() => setShowForm(false)}>
