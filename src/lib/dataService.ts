@@ -645,6 +645,44 @@ export async function sendToKitchen(params: {
   }
 }
 
+// --- Agregar productos a un pedido existente (sin cobrar) --------------------
+
+/**
+ * Inserta ítems adicionales en un pedido ya creado que aún no se ha cobrado.
+ * Reutiliza la misma mecánica que sendToKitchen: order_items + los
+ * order_item_modifiers elegidos por renglón (esto dispara el consumo de
+ * inventario). No crea pedido ni registra pago; el total se recalcula solo
+ * desde los ítems.
+ */
+export async function addItemsToOrder(orderId: string, items: CartItem[]): Promise<void> {
+  if (items.length === 0) return
+  const sb = client()
+
+  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(
+    items.map((i) => ({
+      order_id: orderId,
+      sellable_product_id: i.productId,
+      quantity: i.quantity,
+      unit_price: i.price,
+    })),
+  ).select('id')
+  if (itemsErr) throw itemsErr
+
+  const modifierRows = (insertedItems ?? []).flatMap((row, idx) => {
+    const mods = items[idx]?.selectedModifiers ?? []
+    return mods.map((m) => ({
+      order_item_id: row.id as string,
+      modifier_option_id: m.optionId,
+      quantity: m.quantity,
+      unit_price: m.price,
+    }))
+  })
+  if (modifierRows.length > 0) {
+    const { error: modErr } = await sb.from('order_item_modifiers').insert(modifierRows)
+    if (modErr) throw modErr
+  }
+}
+
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {

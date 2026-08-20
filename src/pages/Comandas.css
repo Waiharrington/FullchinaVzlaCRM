@@ -1171,6 +1171,25 @@
   color: #e5e7eb;
   margin-bottom: 14px;
 }
+.cmd-section-title-row { justify-content: space-between; }
+.cmd-section-title-text { display: inline-flex; align-items: center; gap: 8px; }
+.cmd-add-item-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #dc2626;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  box-shadow: 0 5px 14px rgba(220, 38, 38, 0.24);
+  transition: background 0.16s ease, transform 0.12s ease;
+}
+.cmd-add-item-btn:hover { background: #ef4444; }
+.cmd-add-item-btn:active { transform: scale(0.97); }
 
 /* Left Col - Address */
 .cmd-address-content {

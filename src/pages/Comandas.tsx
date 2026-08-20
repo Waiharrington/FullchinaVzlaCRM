@@ -9,7 +9,9 @@ import {
   recordOrderPayments,
   updateOrderStatus,
   type PaymentMethod,
+  type CartItem,
 } from '../lib/dataService'
+import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
 import { useRates } from '../context/rates-context'
@@ -147,6 +149,29 @@ export function Comandas() {
   const [statusError, setStatusError] = useState('')
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
+  const [showAddItems, setShowAddItems] = useState(false)
+
+  // Agrega ítems (ya insertados en BD) al detalle abierto de forma optimista y
+  // recarga el tablero para reconciliar con los datos reales.
+  const handleItemsAdded = (added: CartItem[]) => {
+    setSelectedOrder((prev) => {
+      if (!prev) return prev
+      const newItems: ComandaItem[] = added.map((i, idx) => ({
+        id: i.lineId || `added-${Date.now()}-${idx}`,
+        name: i.productName,
+        quantity: i.quantity,
+        unitPrice: i.price,
+        subtotal: i.price * i.quantity,
+        observations:
+          i.selectedModifiers && i.selectedModifiers.length > 0
+            ? i.selectedModifiers.map((m) => m.optionName).join(', ')
+            : undefined,
+      }))
+      const addedTotal = added.reduce((s, i) => s + i.price * i.quantity, 0)
+      return { ...prev, items: [...prev.items, ...newItems], totalAmount: (prev.totalAmount || 0) + addedTotal }
+    })
+    setReloadToken((value) => value + 1)
+  }
   const paymentRate = paymentOrder?.bcvRate && paymentOrder.bcvRate > 0 ? paymentOrder.bcvRate : bcvRate
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
 
@@ -654,7 +679,7 @@ export function Comandas() {
                     <div
                       key={order.id}
                       className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''}`}
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={() => { setShowAddItems(false); setSelectedOrder(order) }}
                     >
                       {/* Top Header line */}
                       <div className="card-top-line">
@@ -756,6 +781,16 @@ export function Comandas() {
         })}
       </div>
 
+      {/* Agregar productos a una comanda sin cobrar */}
+      {showAddItems && selectedOrder && !selectedOrder.isPaid && (
+        <AddItemsToOrderModal
+          orderId={selectedOrder.id}
+          orderNumber={selectedOrder.orderNumber}
+          onClose={() => setShowAddItems(false)}
+          onAdded={handleItemsAdded}
+        />
+      )}
+
       {/* Modal detail */}
       {selectedOrder && createPortal(
         <div className="cmd-modal-overlay" onClick={() => setSelectedOrder(null)}>
@@ -852,7 +887,14 @@ export function Comandas() {
                 )}
 
                 <div className="cmd-section">
-                  <div className="cmd-section-title"><ShoppingBag size={16} /> Producción del pedido</div>
+                  <div className="cmd-section-title cmd-section-title-row">
+                    <span className="cmd-section-title-text"><ShoppingBag size={16} /> Producción del pedido</span>
+                    {!selectedOrder.isPaid && (
+                      <button type="button" className="cmd-add-item-btn" onClick={() => setShowAddItems(true)}>
+                        <Plus size={14} /> Agregar producto
+                      </button>
+                    )}
+                  </div>
                   <div className="cmd-items-table-wrap">
                     <table className="cmd-items-table">
                       <thead>
