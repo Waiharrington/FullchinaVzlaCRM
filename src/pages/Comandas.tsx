@@ -144,11 +144,14 @@ function cleanNotes(notes?: string): string {
 }
 
 const COLUMNS = [
-  { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8', totalCount: 5 },
-  { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316', totalCount: 7 },
-  { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981', totalCount: 15 },
-  { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6', totalCount: 7 },
+  { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8' },
+  { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316' },
+  { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981' },
+  { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6' },
 ]
+
+// Cuántas comandas se muestran por columna antes de "Ver todas".
+const COLUMN_PREVIEW_LIMIT = 6
 
 export function Comandas() {
   const navigate = useNavigate()
@@ -173,6 +176,7 @@ export function Comandas() {
   const [statusError, setStatusError] = useState('')
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
+  const [expandedCols, setExpandedCols] = useState<Record<string, boolean>>({})
   const [showAddItems, setShowAddItems] = useState(false)
   const [removingItemId, setRemovingItemId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState('')
@@ -708,6 +712,9 @@ export function Comandas() {
       <div className="kanban-board-grid">
         {COLUMNS.map(col => {
           const colOrders = getOrdersByStatus(col.key)
+          const isExpanded = expandedCols[col.key] ?? false
+          const visibleOrders = isExpanded ? colOrders : colOrders.slice(0, COLUMN_PREVIEW_LIMIT)
+          const hiddenCount = colOrders.length - visibleOrders.length
 
           return (
             <div key={col.key} className="kanban-column">
@@ -725,7 +732,7 @@ export function Comandas() {
                 {colOrders.length === 0 ? (
                   <div className="empty-col">Sin comandas</div>
                 ) : (
-                  colOrders.map(order => (
+                  visibleOrders.map(order => (
                     <div
                       key={order.id}
                       className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''}`}
@@ -821,11 +828,16 @@ export function Comandas() {
               </div>
 
               {/* Column Footer */}
-              <div className="kanban-col-footer">
-                <button className="ver-todas-btn">
-                  + Ver todas ({col.totalCount})
-                </button>
-              </div>
+              {(hiddenCount > 0 || isExpanded) && colOrders.length > COLUMN_PREVIEW_LIMIT && (
+                <div className="kanban-col-footer">
+                  <button
+                    className="ver-todas-btn"
+                    onClick={() => setExpandedCols(prev => ({ ...prev, [col.key]: !isExpanded }))}
+                  >
+                    {isExpanded ? 'Ver menos' : `+ Ver todas (${colOrders.length})`}
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
