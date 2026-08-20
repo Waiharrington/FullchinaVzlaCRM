@@ -29,6 +29,7 @@ import {
 } from '../lib/dataService'
 import {
   X,
+  Check,
   Printer,
   CheckCircle,
   QrCode,
@@ -201,6 +202,7 @@ export function Caja() {
   // Customer Search & Auto-complete state
   const [customerList, setCustomerList] = useState<CustomerOption[]>([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null)
 
   // New Client Modal state
   const [showNewClientModal, setShowNewClientModal] = useState(false)
@@ -274,6 +276,7 @@ export function Caja() {
 
       setCustomerList(prev => [newCust, ...prev])
       setCustomerName(fullName)
+      setSelectedCustomer(newCust)
       setShowCustomerDropdown(false)
       setShowNewClientModal(false)
       setNewClientName('')
@@ -515,6 +518,7 @@ export function Caja() {
       setCurrentOrder(order)
       setCart([])
       setCustomerName('')
+      setSelectedCustomer(null)
       setOrderNotes('')
       refreshTodayOrders()
       // Navigate directly to Comandas page
@@ -735,7 +739,7 @@ export function Caja() {
             <div className="success-actions-bar mt-4">
               <button
                 className="btn-success-primary"
-                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null) }}
+                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null); setCustomerName(''); setSelectedCustomer(null) }}
               >
                 <span>+</span> Nueva venta
               </button>
@@ -1183,6 +1187,29 @@ export function Caja() {
             <div className="cart-section-group mt-2">
               <div className="cart-field-col customer-input-col">
                 <label className="cart-label">Cliente</label>
+                {selectedCustomer ? (
+                  <div className="customer-selected-chip">
+                    <div className="customer-chip-avatar">{selectedCustomer.initials}</div>
+                    <div className="customer-chip-info">
+                      <span className="customer-chip-badge"><Check size={12} /> Cliente seleccionado</span>
+                      <span className="customer-chip-name">{selectedCustomer.name}</span>
+                      {selectedCustomer.phone && <span className="customer-chip-phone">{selectedCustomer.phone}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      className="customer-chip-clear"
+                      title="Quitar cliente"
+                      aria-label="Quitar cliente"
+                      onClick={() => {
+                        setSelectedCustomer(null)
+                        setCustomerName('')
+                        setShowCustomerDropdown(false)
+                      }}
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : (
                 <div className="customer-input-wrap">
                   <span className="input-search-icon"><Search size={15} /></span>
                   <input
@@ -1191,6 +1218,7 @@ export function Caja() {
                     value={customerName}
                     onChange={(e) => {
                       setCustomerName(e.target.value)
+                      setSelectedCustomer(null)
                       setShowCustomerDropdown(true)
                     }}
                     onFocus={() => setShowCustomerDropdown(true)}
@@ -1208,9 +1236,10 @@ export function Caja() {
                     <Plus size={15} />
                   </button>
                 </div>
+                )}
 
                 {/* Autocomplete Dropdown List */}
-                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                {!selectedCustomer && showCustomerDropdown && filteredCustomers.length > 0 && (
                   <div className="customer-dropdown-menu">
                     {filteredCustomers.map((cust) => (
                       <div
@@ -1218,6 +1247,7 @@ export function Caja() {
                         className="customer-dropdown-item"
                         onClick={() => {
                           setCustomerName(cust.name)
+                          setSelectedCustomer(cust)
                           setShowCustomerDropdown(false)
                         }}
                       >
