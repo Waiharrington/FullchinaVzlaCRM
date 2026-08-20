@@ -683,6 +683,15 @@ export async function addItemsToOrder(orderId: string, items: CartItem[]): Promi
   }
 }
 
+/**
+ * Elimina un producto de una comanda sin cobrar y revierte su consumo de
+ * inventario (vía RPC SECURITY DEFINER que inserta un ajuste compensatorio).
+ */
+export async function removeOrderItem(orderItemId: string): Promise<void> {
+  const { error } = await client().rpc('fn_remove_order_item', { p_item_id: orderItemId })
+  if (error) throw error
+}
+
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {

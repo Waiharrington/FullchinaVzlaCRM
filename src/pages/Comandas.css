@@ -1190,6 +1190,22 @@
 }
 .cmd-add-item-btn:hover { background: #ef4444; }
 .cmd-add-item-btn:active { transform: scale(0.97); }
+.cmd-item-actions { text-align: right; width: 44px; }
+.cmd-item-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.28);
+  color: #f87171;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cmd-item-remove:hover:not(:disabled) { background: rgba(239, 68, 68, 0.22); color: #fca5a5; }
+.cmd-item-remove:disabled { opacity: 0.5; cursor: not-allowed; }
+.cmd-item-remove-error { color: #f87171; font-size: 12px; margin: 8px 2px 0; }
 
 /* Left Col - Address */
 .cmd-address-content {

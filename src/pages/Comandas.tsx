@@ -8,6 +8,7 @@ import {
   getActiveCashSession,
   recordOrderPayments,
   updateOrderStatus,
+  removeOrderItem,
   type PaymentMethod,
   type CartItem,
 } from '../lib/dataService'
@@ -29,6 +30,7 @@ import {
   ShoppingBag,
   Bike,
   Plus,
+  Trash2,
   MapPin,
   CreditCard,
   Printer,
@@ -172,6 +174,32 @@ export function Comandas() {
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
   const [showAddItems, setShowAddItems] = useState(false)
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState('')
+
+  const handleRemoveItem = async (itemId: string) => {
+    if (!window.confirm('¿Quitar este producto de la comanda? Se revertirá su inventario.')) return
+    setRemovingItemId(itemId)
+    setRemoveError('')
+    try {
+      await removeOrderItem(itemId)
+      setSelectedOrder((prev) => {
+        if (!prev) return prev
+        const removed = prev.items.find((i) => i.id === itemId)
+        const removedTotal = removed ? removed.subtotal ?? (removed.unitPrice || 0) * removed.quantity : 0
+        return {
+          ...prev,
+          items: prev.items.filter((i) => i.id !== itemId),
+          totalAmount: Math.max(0, (prev.totalAmount || 0) - removedTotal),
+        }
+      })
+      setReloadToken((value) => value + 1)
+    } catch (e) {
+      setRemoveError(e instanceof Error ? e.message : 'No se pudo quitar el producto')
+    } finally {
+      setRemovingItemId(null)
+    }
+  }
 
   // Agrega ítems (ya insertados en BD) al detalle abierto de forma optimista y
   // recarga el tablero para reconciliar con los datos reales.
@@ -938,6 +966,7 @@ export function Comandas() {
                           <th>Cant.</th>
                           <th>P. Unit.</th>
                           <th>Subtotal</th>
+                          {!selectedOrder.isPaid && <th aria-label="Acciones"></th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -953,11 +982,26 @@ export function Comandas() {
                             <td>x{item.quantity}</td>
                             <td><MoneyWithBcv usd={item.unitPrice || 0} rate={selectedOrder.bcvRate} compact /></td>
                             <td><MoneyWithBcv usd={item.subtotal || 0} rate={selectedOrder.bcvRate} compact /></td>
+                            {!selectedOrder.isPaid && (
+                              <td className="cmd-item-actions">
+                                <button
+                                  type="button"
+                                  className="cmd-item-remove"
+                                  title="Quitar producto"
+                                  aria-label={`Quitar ${item.name}`}
+                                  disabled={removingItemId === item.id}
+                                  onClick={() => handleRemoveItem(item.id)}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  {removeError && <p className="cmd-item-remove-error">{removeError}</p>}
                 </div>
 
                 <div className="cmd-section cmd-notes-section">
