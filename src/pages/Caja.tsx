@@ -196,6 +196,7 @@ export function Caja() {
   const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
 
   const [orderType, setOrderType] = useState<OrderType>('dine-in')
+  const [deliveryFee, setDeliveryFee] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
 
@@ -498,7 +499,8 @@ export function Caja() {
   }
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
-  const total = subtotal
+  const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
+  const total = subtotal + deliveryFeeUsd
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate)
 
   // Action 1: Enviar a Cocina -> Saves order WITHOUT payment and navigates to /comandas
@@ -514,12 +516,14 @@ export function Caja() {
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
+        deliveryFee: deliveryFeeUsd,
       })
       setCurrentOrder(order)
       setCart([])
       setCustomerName('')
       setSelectedCustomer(null)
       setOrderNotes('')
+      setDeliveryFee('')
       refreshTodayOrders()
       // Navigate directly to Comandas page
       navigate('/comandas')
@@ -649,6 +653,7 @@ export function Caja() {
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
+        deliveryFee: deliveryFeeUsd,
         referenceNumber: selectedPaymentTab === 'split'
           ? (splitPrimaryReference.trim() || splitSecondaryReference.trim() || null)
           : (refNumber.trim() || null),
@@ -739,7 +744,7 @@ export function Caja() {
             <div className="success-actions-bar mt-4">
               <button
                 className="btn-success-primary"
-                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null); setCustomerName(''); setSelectedCustomer(null) }}
+                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null); setCustomerName(''); setSelectedCustomer(null); setDeliveryFee('') }}
               >
                 <span>+</span> Nueva venta
               </button>
@@ -1277,6 +1282,27 @@ export function Caja() {
                   ))}
                 </div>
               </div>
+
+              {orderType === 'delivery' && (
+                <div className="cart-field-col mt-2">
+                  <label className="cart-label">Costo del delivery (USD)</label>
+                  <div className="delivery-fee-input">
+                    <Bike size={16} className="delivery-fee-icon" />
+                    <span className="delivery-fee-currency">$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={deliveryFee}
+                      onChange={e => setDeliveryFee(e.target.value.replace(/[^0-9.,]/g, ''))}
+                      placeholder="0,00"
+                    />
+                    {deliveryFeeUsd > 0 && bcvRate && (
+                      <span className="delivery-fee-bs">Bs. {(deliveryFeeUsd * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    )}
+                  </div>
+                  <small className="delivery-fee-hint">Monto cotizado por WhatsApp según la ubicación del cliente.</small>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1291,6 +1317,12 @@ export function Caja() {
                 <span className="total-label">Descuento</span>
                 <MoneyWithBcv usd={0} className="total-val" compact />
               </div>
+              {orderType === 'delivery' && deliveryFeeUsd > 0 && (
+                <div className="cart-total-row">
+                  <span className="total-label">Delivery</span>
+                  <MoneyWithBcv usd={deliveryFeeUsd} className="total-val" compact />
+                </div>
+              )}
               <div className="cart-divide-row">
                 {(() => {
                   const currentPay = PAYMENT_DETAILS[selectedPaymentTab] || PAYMENT_DETAILS.card

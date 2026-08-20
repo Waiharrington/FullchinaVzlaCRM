@@ -711,6 +711,32 @@
   display: block;
 }
 
+.delivery-fee-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f0f12;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.delivery-fee-input:focus-within { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15); }
+.delivery-fee-icon { color: #f87171; flex-shrink: 0; }
+.delivery-fee-currency { color: #a1a1aa; font-weight: 700; }
+.delivery-fee-input input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+.delivery-fee-input input::placeholder { color: #52525b; font-weight: 500; }
+.delivery-fee-bs { color: #71717a; font-size: 12px; white-space: nowrap; }
+.delivery-fee-hint { display: block; margin-top: 5px; color: #71717a; font-size: 11px; }
+
 .customer-input-col {
   position: relative;
 }

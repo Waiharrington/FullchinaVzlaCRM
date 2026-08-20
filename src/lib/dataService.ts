@@ -524,8 +524,10 @@ export async function checkout(params: {
   referenceNumber?: string | null
   receivedAmount?: number | null
   payments?: OrderPaymentComponent[]
+  deliveryFee?: number
 }): Promise<OrderResult> {
-  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const deliveryFee = params.orderType === 'delivery' ? (params.deliveryFee ?? 0) : 0
+  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0) + deliveryFee
 
   const paymentComponents = params.payments ?? [{
     method: params.method,
@@ -553,6 +555,7 @@ export async function checkout(params: {
     p_notes: params.notes ?? null,
     p_order_type: params.orderType ?? 'takeaway',
     p_customer_name: params.customerName ?? 'Cliente',
+    p_delivery_fee: deliveryFee,
   })
   if (checkoutErr) throw checkoutErr
 
@@ -578,6 +581,18 @@ export async function checkout(params: {
 
 // --- Enviar a cocina (sin pago) ----------------------------------------------
 
+/** Id del producto oculto "Delivery" (para agregar el cargo como renglón). */
+export async function getDeliveryProductId(): Promise<string | null> {
+  const { data, error } = await client()
+    .from('sellable_products')
+    .select('id')
+    .eq('is_delivery', true)
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return (data?.id as string) ?? null
+}
+
 export async function sendToKitchen(params: {
   items: CartItem[]
   bcvRate: number | null
@@ -585,8 +600,10 @@ export async function sendToKitchen(params: {
   notes?: string | null
   orderType?: string
   customerName?: string
+  deliveryFee?: number
 }): Promise<OrderResult> {
-  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const deliveryFee = params.orderType === 'delivery' ? (params.deliveryFee ?? 0) : 0
+  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0) + deliveryFee
 
   const sb = client()
 
@@ -604,14 +621,20 @@ export async function sendToKitchen(params: {
     .single()
   if (orderErr) throw orderErr
 
-  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(
-    params.items.map((i) => ({
-      order_id: order.id,
-      sellable_product_id: i.productId,
-      quantity: i.quantity,
-      unit_price: i.price,
-    })),
-  ).select('id')
+  // Renglones de producto + (opcional) el cargo de delivery como renglón extra.
+  const itemRows = params.items.map((i) => ({
+    order_id: order.id,
+    sellable_product_id: i.productId,
+    quantity: i.quantity,
+    unit_price: i.price,
+  }))
+  if (deliveryFee > 0) {
+    const deliveryId = await getDeliveryProductId()
+    if (!deliveryId) throw new Error('No existe el producto de Delivery configurado')
+    itemRows.push({ order_id: order.id, sellable_product_id: deliveryId, quantity: 1, unit_price: Math.round(deliveryFee * 100) / 100 })
+  }
+
+  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(itemRows).select('id')
   if (itemsErr) throw itemsErr
 
   // Persistir las opciones de modificador elegidas por renglón. Los ids se
