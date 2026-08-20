@@ -1092,9 +1092,16 @@ export function Caja() {
                 {modifierError && <p style={{ color: '#dc2626', margin: '4px 0' }}>{modifierError}</p>}
               </div>
               {!modifierLoading && modifierGroups.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 4px 4px' }}>
-                  <MoneyWithBcv usd={modifierProduct.price + modifierExtraPrice} compact />
-                  <button type="button" className="btn-primary" onClick={confirmModifierSelection}>
+                <div className="variant-selector-footer">
+                  <div className="variant-selector-total">
+                    <span className="variant-selector-total-label">Total</span>
+                    <MoneyWithBcv
+                      usd={modifierProduct.price + modifierExtraPrice}
+                      align="start"
+                      className="variant-selector-total-money"
+                    />
+                  </div>
+                  <button type="button" className="btn-primary variant-selector-cta" onClick={confirmModifierSelection}>
                     Agregar al pedido
                   </button>
                 </div>
