@@ -504,3 +504,32 @@
   padding: 40px 16px;
   color: #71717a;
 }
+
+/* ---------- Checklist de módulos ---------- */
+.module-checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+.module-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #a1a1aa;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.module-check:hover { background: rgba(255, 255, 255, 0.04); }
+.module-check.on { color: #fff; background: rgba(220, 38, 38, 0.12); border-color: rgba(220, 38, 38, 0.3); }
+.module-check input { accent-color: #dc2626; }

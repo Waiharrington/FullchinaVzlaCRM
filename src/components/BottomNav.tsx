@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { Menu, X, LogOut } from 'lucide-react'
-import { allNavItems } from './navItems'
+import { allNavItems, canAccessModule } from './navItems'
 import './BottomNav.css'
 
 export function BottomNav() {
@@ -24,7 +24,7 @@ export function BottomNav() {
 
   // Filtramos las rutas permitidas para el usuario actual
   const allowedItems = allNavItems.filter(item =>
-    user?.role ? item.roles.includes(user.role) : true
+    canAccessModule(item.path, user?.role, user?.allowedModules)
   )
 
   // En la barra inferior (BottomNav) mostramos solo los primeros 4 elementos principales

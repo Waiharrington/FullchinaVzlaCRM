@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../context/auth-context', () => ({
-  useAuth: () => ({ user: { id: 'demo-cashier', email: 'caja@fullchinavzla.com', role: 'cashier' } }),
+  useAuth: () => ({ user: { id: 'demo-cashier', email: 'caja@fullchinavzla.com', role: 'cashier', allowedModules: null } }),
 }))
 
 vi.mock('../lib/dataService', async () => {

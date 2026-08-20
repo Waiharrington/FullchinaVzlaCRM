@@ -5,6 +5,7 @@ export interface User {
   id: string
   email: string
   role: 'owner' | 'manager' | 'cashier'
+  allowedModules: string[] | null
 }
 
 export interface AuthContextType {

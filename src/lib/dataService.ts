@@ -1816,6 +1816,7 @@ export interface AuthUser {
   fullName: string
   role: 'owner' | 'manager' | 'cashier'
   isActive: boolean
+  allowedModules: string[] | null
   createdAt: string
   lastSignInAt: string | null
 }
@@ -1829,9 +1830,16 @@ export async function listAuthUsers(): Promise<AuthUser[]> {
     fullName: r.full_name ? String(r.full_name) : '',
     role: String(r.role) as AuthUser['role'],
     isActive: Boolean(r.is_active),
+    allowedModules: Array.isArray(r.allowed_modules) ? (r.allowed_modules as string[]) : null,
     createdAt: String(r.created_at),
     lastSignInAt: r.last_sign_in_at ? String(r.last_sign_in_at) : null,
   }))
+}
+
+// p_modules null -> vuelve a los defaults del rol; array -> sólo esos módulos.
+export async function adminSetUserModules(userId: string, modules: string[] | null): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_modules', { p_user_id: userId, p_modules: modules })
+  if (error) throw error
 }
 
 export async function adminSetUserPassword(userId: string, password: string): Promise<void> {

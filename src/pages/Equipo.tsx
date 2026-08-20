@@ -9,11 +9,17 @@ import {
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
   adminSetUserRole, adminSetUserActive, adminSetUserPin,
 } from '../lib/dataService'
+import { adminSetUserModules } from '../lib/dataService'
 import type { Employee, AuthUser } from '../lib/dataService'
+import { allNavItems, type Role } from '../components/navItems'
 import './Equipo.css'
 
-type Role = 'owner' | 'manager' | 'cashier'
 const ROLE_LABEL: Record<Role, string> = { owner: 'Dueño', manager: 'Gerente', cashier: 'Cajero' }
+
+// Módulos que un rol ve por defecto (para pre-marcar el selector).
+function defaultModulesForRole(role: Role): string[] {
+  return allNavItems.filter(i => i.roles.includes(role)).map(i => i.path)
+}
 
 function timeAgo(iso: string | null): string {
   if (!iso) return 'Nunca'
@@ -129,6 +135,8 @@ export function Equipo() {
   const [uRole, setURole] = useState<Role>('cashier')
   const [uPassword, setUPassword] = useState('')
   const [uSaving, setUSaving] = useState(false)
+  const [uCustomModules, setUCustomModules] = useState(false)
+  const [uModules, setUModules] = useState<string[]>([])
 
   const [showPwModal, setShowPwModal] = useState(false)
   const [pwUser, setPwUser] = useState<AuthUser | null>(null)
@@ -143,12 +151,18 @@ export function Equipo() {
   const openCreateUser = () => {
     setUserModalMode('create'); setUEditing(null)
     setUEmail(''); setUName(''); setURole('cashier'); setUPassword('')
+    setUCustomModules(false); setUModules(defaultModulesForRole('cashier'))
     setShowUserModal(true)
   }
   const openEditUser = (u: AuthUser) => {
     setUserModalMode('edit'); setUEditing(u)
     setUEmail(u.email); setUName(u.fullName); setURole(u.role); setUPassword('')
+    setUCustomModules(u.allowedModules !== null)
+    setUModules(u.allowedModules ?? defaultModulesForRole(u.role))
     setShowUserModal(true)
+  }
+  const toggleModule = (path: string) => {
+    setUModules(prev => prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path])
   }
 
   const handleSaveUser = async (e: React.FormEvent) => {
@@ -165,6 +179,11 @@ export function Equipo() {
         }
         if (uRole !== uEditing.role) {
           await adminSetUserRole(uEditing.id, uRole)
+        }
+        if (uRole !== 'owner') {
+          await adminSetUserModules(uEditing.id, uCustomModules ? uModules : null)
+        } else if (uEditing.allowedModules !== null) {
+          await adminSetUserModules(uEditing.id, null)
         }
         flash(`Usuario "${uEmail.trim()}" actualizado`)
       }
@@ -480,12 +499,55 @@ export function Equipo() {
               )}
               <div className="form-group">
                 <label>Rol / accesos</label>
-                <select value={uRole} onChange={e => setURole(e.target.value as Role)}>
+                <select
+                  value={uRole}
+                  onChange={e => {
+                    const r = e.target.value as Role
+                    setURole(r)
+                    if (!uCustomModules) setUModules(defaultModulesForRole(r))
+                  }}
+                >
                   <option value="owner">Dueño (acceso total)</option>
                   <option value="manager">Gerente (gestión operativa)</option>
                   <option value="cashier">Cajero (sólo ventas)</option>
                 </select>
               </div>
+
+              {userModalMode === 'edit' && uRole !== 'owner' && (
+                <div className="form-group">
+                  <label className="promo-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={uCustomModules}
+                      onChange={e => {
+                        setUCustomModules(e.target.checked)
+                        if (!e.target.checked) setUModules(defaultModulesForRole(uRole))
+                      }}
+                    />
+                    <span>Personalizar módulos visibles para este usuario</span>
+                  </label>
+                  {uCustomModules && (
+                    <div className="module-checklist">
+                      {allNavItems.map(item => (
+                        <label key={item.path} className={`module-check ${uModules.includes(item.path) ? 'on' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={uModules.includes(item.path)}
+                            onChange={() => toggleModule(item.path)}
+                          />
+                          <span>{item.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  {!uCustomModules && (
+                    <p className="equipo-section-hint" style={{ margin: '6px 0 0' }}>
+                      Usa los permisos por defecto del rol. Actívalo para bloquear o habilitar módulos específicos.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => setShowUserModal(false)}>Cancelar</button>
                 <button type="submit" className="btn-save" disabled={uSaving}>
