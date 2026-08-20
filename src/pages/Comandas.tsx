@@ -9,6 +9,7 @@ import {
   recordOrderPayments,
   updateOrderStatus,
   removeOrderItem,
+  setOrderDeliveryFee,
   type PaymentMethod,
   type CartItem,
 } from '../lib/dataService'
@@ -180,6 +181,38 @@ export function Comandas() {
   const [showAddItems, setShowAddItems] = useState(false)
   const [removingItemId, setRemovingItemId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState('')
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState('')
+  const [savingDelivery, setSavingDelivery] = useState(false)
+
+  // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
+  useEffect(() => {
+    const d = selectedOrder?.items.find((i) => i.name === 'Delivery')
+    setDeliveryFeeInput(d ? String(d.unitPrice ?? d.subtotal ?? '') : '')
+  }, [selectedOrder])
+
+  const handleSaveDeliveryFee = async () => {
+    if (!selectedOrder) return
+    const fee = Math.max(0, parseFloat(deliveryFeeInput.replace(',', '.')) || 0)
+    setSavingDelivery(true)
+    setRemoveError('')
+    try {
+      await setOrderDeliveryFee(selectedOrder.id, fee)
+      setSelectedOrder((prev) => {
+        if (!prev) return prev
+        const withoutDelivery = prev.items.filter((i) => i.name !== 'Delivery')
+        const items = fee > 0
+          ? [...withoutDelivery, { id: 'delivery-fee', name: 'Delivery', quantity: 1, unitPrice: fee, subtotal: fee }]
+          : withoutDelivery
+        const totalAmount = items.reduce((s, i) => s + (i.subtotal ?? (i.unitPrice || 0) * i.quantity), 0)
+        return { ...prev, items, totalAmount }
+      })
+      setReloadToken((value) => value + 1)
+    } catch (e) {
+      setRemoveError(e instanceof Error ? e.message : 'No se pudo guardar el costo de delivery')
+    } finally {
+      setSavingDelivery(false)
+    }
+  }
 
   const handleRemoveItem = async (itemId: string) => {
     if (!window.confirm('¿Quitar este producto de la comanda? Se revertirá su inventario.')) return
@@ -957,6 +990,37 @@ export function Comandas() {
                         </div>
                       )}
                     </div>
+
+                    {!selectedOrder.isPaid && selectedOrder.source !== 'web' && (
+                      <div className="cmd-delivery-fee">
+                        <label className="cmd-delivery-fee-label"><Bike size={14} /> Costo del delivery</label>
+                        <div className="cmd-delivery-fee-row">
+                          <span className="cmd-delivery-fee-currency">$</span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="cmd-delivery-fee-input"
+                            value={deliveryFeeInput}
+                            onChange={(e) => setDeliveryFeeInput(e.target.value.replace(/[^0-9.,]/g, ''))}
+                            placeholder="0,00"
+                          />
+                          <button
+                            type="button"
+                            className="cmd-delivery-fee-save"
+                            disabled={savingDelivery}
+                            onClick={handleSaveDeliveryFee}
+                          >
+                            {savingDelivery ? 'Guardando…' : 'Guardar'}
+                          </button>
+                        </div>
+                        <small className="cmd-delivery-fee-hint">Monto cotizado por WhatsApp según la ubicación. Se suma al total.</small>
+                      </div>
+                    )}
+                    {!selectedOrder.isPaid && selectedOrder.source === 'web' && (
+                      <p className="cmd-delivery-fee-hint" style={{ marginTop: 12 }}>
+                        <Bike size={12} /> Confirma el pedido de WhatsApp para poder agregar el costo del delivery.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -982,7 +1046,7 @@ export function Comandas() {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedOrder.items.map(item => (
+                        {selectedOrder.items.filter(item => item.name !== 'Delivery').map(item => (
                           <tr key={item.id}>
                             <td>
                               <div className="cmd-product-cell">

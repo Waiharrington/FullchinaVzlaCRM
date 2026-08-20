@@ -1207,6 +1207,60 @@
 .cmd-item-remove:disabled { opacity: 0.5; cursor: not-allowed; }
 .cmd-item-remove-error { color: #f87171; font-size: 12px; margin: 8px 2px 0; }
 
+/* Costo de delivery (dentro de la seccion de direccion) */
+.cmd-delivery-fee {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+.cmd-delivery-fee-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.cmd-delivery-fee-label svg { color: #f87171; }
+.cmd-delivery-fee-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f0f12;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 10px;
+  padding: 6px 8px 6px 12px;
+}
+.cmd-delivery-fee-row:focus-within { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
+.cmd-delivery-fee-currency { color: #a1a1aa; font-weight: 700; }
+.cmd-delivery-fee-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.cmd-delivery-fee-input::placeholder { color: #52525b; font-weight: 500; }
+.cmd-delivery-fee-save {
+  background: #dc2626;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+.cmd-delivery-fee-save:hover:not(:disabled) { background: #b91c1c; }
+.cmd-delivery-fee-save:disabled { opacity: 0.6; cursor: not-allowed; }
+.cmd-delivery-fee-hint { display: block; margin-top: 6px; color: #71717a; font-size: 11px; }
+
 /* Left Col - Address */
 .cmd-address-content {
   display: flex;

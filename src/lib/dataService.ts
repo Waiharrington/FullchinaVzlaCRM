@@ -715,6 +715,40 @@ export async function removeOrderItem(orderItemId: string): Promise<void> {
   if (error) throw error
 }
 
+/**
+ * Fija (o quita) el costo de delivery de una comanda sin cobrar. El cargo se
+ * guarda como el renglón del producto oculto "Delivery". Se elimina el renglón
+ * previo (si existe) y se inserta uno nuevo con el monto; fee 0 sólo lo quita.
+ */
+export async function setOrderDeliveryFee(orderId: string, fee: number): Promise<void> {
+  const sb = client()
+  const deliveryId = await getDeliveryProductId()
+  if (!deliveryId) throw new Error('No existe el producto de Delivery configurado')
+
+  const { data: existing, error: findErr } = await sb
+    .from('order_items')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('sellable_product_id', deliveryId)
+    .limit(1)
+    .maybeSingle()
+  if (findErr) throw findErr
+
+  if (existing?.id) {
+    await removeOrderItem(existing.id as string)
+  }
+  const rounded = Math.round(Math.max(0, fee) * 100) / 100
+  if (rounded > 0) {
+    const { error: insErr } = await sb.from('order_items').insert({
+      order_id: orderId,
+      sellable_product_id: deliveryId,
+      quantity: 1,
+      unit_price: rounded,
+    })
+    if (insErr) throw insErr
+  }
+}
+
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {
