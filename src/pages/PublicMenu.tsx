@@ -120,10 +120,19 @@ export function PublicMenu() {
     if (orderType === 'delivery' && address.trim().length < 8) return setError('Escribe la dirección de entrega.')
     if (!cart.length) return setError('Tu carrito está vacío.')
     setSubmitting(true)
+    // Para delivery, persistimos la ubicación GPS dentro de las notas del pedido
+    // (link de Google Maps) para que llegue a la comanda. La caja la extrae y
+    // muestra un botón "Ver ubicación".
+    const savedNotes = [
+      notes.trim(),
+      orderType === 'delivery' && geoCoords
+        ? `📍 Ubicación GPS: https://maps.google.com/?q=${geoCoords.lat},${geoCoords.lng}`
+        : '',
+    ].filter(Boolean).join('\n')
     try {
       const result = await createWebOrder({
         customerName: name.trim(), customerPhone: phone.trim(), orderType,
-        deliveryAddress: address.trim(), notes: notes.trim(), items: cart, bcvRate,
+        deliveryAddress: address.trim(), notes: savedNotes, items: cart, bcvRate,
         idempotencyKey: crypto.randomUUID(),
       })
       setOrderCode(result.code)

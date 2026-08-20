@@ -12,8 +12,8 @@
 .aito-modal {
   display: flex;
   flex-direction: column;
-  width: min(560px, 100%);
-  max-height: min(780px, 92vh);
+  width: min(640px, 100%);
+  max-height: min(820px, 92vh);
   overflow: hidden;
   background: #18181b;
   border: 1px solid rgba(239, 68, 68, 0.32);
@@ -74,38 +74,54 @@
 .aito-error { color: #f87171; font-size: 13px; margin: 6px 2px; }
 .aito-error-foot { padding: 0 22px 12px; }
 
-.aito-product {
+.aito-grid {
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 12px;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
+}
+.aito-card {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
   background: #202024;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   color: #fff;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.18s ease, background 0.18s ease;
+  overflow: hidden;
+  transition: border-color 0.18s ease, transform 0.14s ease;
 }
-.aito-product:hover { background: #27272a; border-color: rgba(239, 68, 68, 0.6); }
-.aito-product-emoji {
-  width: 42px;
-  height: 42px;
-  border-radius: 9px;
+.aito-card:hover { border-color: rgba(239, 68, 68, 0.6); transform: translateY(-2px); }
+.aito-card-photo {
+  position: relative;
+  aspect-ratio: 4 / 3;
   background: rgba(239, 68, 68, 0.1);
   display: grid;
   place-items: center;
-  font-size: 22px;
   overflow: hidden;
 }
-.aito-product-emoji img { width: 100%; height: 100%; object-fit: cover; }
-.aito-product-info { display: flex; flex-direction: column; min-width: 0; }
-.aito-product-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aito-product-cat { font-size: 11px; color: #a1a1aa; text-transform: capitalize; }
-.aito-product-price .money-usd { font-size: 14px; font-weight: 700; }
-.aito-product-add { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #f87171; white-space: nowrap; }
+.aito-card-photo img { width: 100%; height: 100%; object-fit: cover; }
+.aito-card-emoji { font-size: 40px; }
+.aito-card-badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: rgba(220, 38, 38, 0.92);
+  border-radius: 999px;
+}
+.aito-card-body { display: flex; flex-direction: column; gap: 8px; padding: 10px 11px 11px; flex: 1 1 auto; }
+.aito-card-name { font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.aito-card-foot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
+.aito-card-price .money-usd { font-size: 15px; font-weight: 800; }
+.aito-card-price .money-ves { font-size: 10px; }
+.aito-card-add { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; color: #f87171; white-space: nowrap; }
 
 .aito-pending {
   flex: 0 0 auto;

@@ -119,6 +119,28 @@ export interface ComandaOrder {
 
 const MOCK_COMANDAS: ComandaOrder[] = []
 
+// La ubicación GPS del cliente llega dentro de las notas del pedido web como un
+// link de Google Maps. Estos helpers la extraen para mostrar un botón de mapa y
+// limpian esa línea del texto de notas visible.
+const MAPS_URL_RE = /https?:\/\/(?:maps\.google\.[a-z.]+|www\.google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps)\S*/i
+
+function extractMapsUrl(notes?: string): string | null {
+  if (!notes) return null
+  const url = notes.match(MAPS_URL_RE)
+  if (url) return url[0]
+  const coords = notes.match(/(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/)
+  return coords ? `https://maps.google.com/?q=${coords[1]},${coords[2]}` : null
+}
+
+function cleanNotes(notes?: string): string {
+  if (!notes) return ''
+  return notes
+    .split('\n')
+    .filter((line) => !MAPS_URL_RE.test(line) && !/ubicaci[oó]n gps/i.test(line))
+    .join('\n')
+    .trim()
+}
+
 const COLUMNS = [
   { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8', totalCount: 5 },
   { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316', totalCount: 7 },
@@ -879,9 +901,21 @@ export function Comandas() {
                         {selectedOrder.reference && <p className="cmd-reference">Referencia de entrega: {selectedOrder.reference}</p>}
                         {selectedOrder.paymentReference && <p className="cmd-reference">Referencia de pago: {selectedOrder.paymentReference}</p>}
                       </div>
-                      <div className="cmd-map-placeholder">
-                        <MapPin size={24} className="cmd-map-icon" />
-                      </div>
+                      {extractMapsUrl(selectedOrder.notes) ? (
+                        <a
+                          className="cmd-map-link"
+                          href={extractMapsUrl(selectedOrder.notes)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <MapPin size={18} />
+                          <span>Ver ubicación</span>
+                        </a>
+                      ) : (
+                        <div className="cmd-map-placeholder">
+                          <MapPin size={24} className="cmd-map-icon" />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -929,7 +963,7 @@ export function Comandas() {
                 <div className="cmd-section cmd-notes-section">
                   <div className="cmd-section-title"><FileText size={16} /> Notas del pedido</div>
                   <div className="cmd-notes-content">
-                    {selectedOrder.notes ? selectedOrder.notes.split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
+                    {cleanNotes(selectedOrder.notes) ? cleanNotes(selectedOrder.notes).split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
                   </div>
                 </div>
               </div>

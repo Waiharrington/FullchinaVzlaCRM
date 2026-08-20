@@ -296,21 +296,25 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
             <div className="aito-body">
               {loading && <p className="aito-muted" role="status">Cargando productos…</p>}
               {loadError && <p className="aito-error">{loadError}</p>}
-              {!loading &&
-                !loadError &&
-                filtered.map((p) => (
-                  <button key={p.id} type="button" className="aito-product" onClick={() => pickProduct(p)}>
-                    <span className="aito-product-emoji">
-                      {p.imageUrl ? <img src={p.imageUrl} alt="" /> : p.emoji || '🍽️'}
-                    </span>
-                    <span className="aito-product-info">
-                      <span className="aito-product-name">{p.name}</span>
-                      <span className="aito-product-cat">{p.category}</span>
-                    </span>
-                    <MoneyWithBcv usd={p.price} className="aito-product-price" align="end" compact />
-                    <span className="aito-product-add">{withMods.has(p.id) ? 'Opciones' : 'Agregar'}</span>
-                  </button>
-                ))}
+              {!loading && !loadError && (
+                <div className="aito-grid">
+                  {filtered.map((p) => (
+                    <button key={p.id} type="button" className="aito-card" onClick={() => pickProduct(p)}>
+                      <span className="aito-card-photo">
+                        {p.imageUrl ? <img src={p.imageUrl} alt="" /> : <span className="aito-card-emoji">{p.emoji || '🍽️'}</span>}
+                        {withMods.has(p.id) && <span className="aito-card-badge">Opciones</span>}
+                      </span>
+                      <span className="aito-card-body">
+                        <span className="aito-card-name">{p.name}</span>
+                        <span className="aito-card-foot">
+                          <MoneyWithBcv usd={p.price} className="aito-card-price" align="start" compact />
+                          <span className="aito-card-add">{withMods.has(p.id) ? 'Elegir' : 'Agregar'}</span>
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {!loading && !loadError && filtered.length === 0 && <p className="aito-muted">Sin resultados.</p>}
             </div>
 
