@@ -1046,11 +1046,11 @@ export function Comandas() {
                         </tr>
                       </thead>
                       <tbody>
-                        {selectedOrder.items.filter(item => item.name !== 'Delivery').map(item => (
+                        {selectedOrder.items.map(item => (
                           <tr key={item.id}>
                             <td>
                               <div className="cmd-product-cell">
-                                <div className="cmd-product-img">🍔</div>
+                                <div className="cmd-product-img">{item.name === 'Delivery' ? '🛵' : '🍔'}</div>
                                 <span>{item.name}</span>
                               </div>
                             </td>
