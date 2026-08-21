@@ -946,6 +946,7 @@ export interface CashSessionSnapshot {
   cashSalesUsd: number
   paymentTotal: number
   paymentBreakdown: Record<string, number>
+  paymentBreakdownVes: Record<string, number>
   movementInUsd: number
   movementOutUsd: number
   movementInVes: number
@@ -1114,6 +1115,7 @@ function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
   const numberValue = (key: string): number => Number(value[key] ?? 0)
   const nullableNumber = (key: string): number | null => value[key] == null ? null : Number(value[key])
   const breakdown = (value.paymentBreakdown ?? {}) as Record<string, unknown>
+  const breakdownVes = (value.paymentBreakdownVes ?? {}) as Record<string, unknown>
   return {
     id: String(value.id),
     sessionNumber: numberValue('sessionNumber'),
@@ -1128,6 +1130,7 @@ function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
     cashSalesUsd: numberValue('cashSalesUsd'),
     paymentTotal: numberValue('paymentTotal'),
     paymentBreakdown: Object.fromEntries(Object.entries(breakdown).map(([key, amount]) => [key, Number(amount)])),
+    paymentBreakdownVes: Object.fromEntries(Object.entries(breakdownVes).map(([key, amount]) => [key, Number(amount)])),
     movementInUsd: numberValue('movementInUsd'),
     movementOutUsd: numberValue('movementOutUsd'),
     movementInVes: numberValue('movementInVes'),

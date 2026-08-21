@@ -16,6 +16,9 @@ const PAYMENT_LABELS: Record<string, string> = {
   cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Combinado',
 }
 
+// Métodos que el cliente paga en bolívares: se muestran con el monto en Bs.
+const BS_METHODS = new Set(['mobile', 'card', 'transfer'])
+
 function money(value: number, currency: 'USD' | 'VES' = 'USD') {
   return new Intl.NumberFormat('es-VE', {
     style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -203,7 +206,23 @@ export function CajaOperativa() {
               <div className="cash-card-heading"><div><span>Cobros registrados</span><h2>Desglose por método</h2></div><WalletCards size={24} /></div>
               <div className="cash-payment-list">
                 {Object.keys(session.paymentBreakdown).length === 0 && <p className="cash-empty">Aún no hay pagos en este turno.</p>}
-                {Object.entries(session.paymentBreakdown).map(([method, amount]) => <div key={method}><span>{PAYMENT_LABELS[method] ?? method}</span><strong>{money(amount)}</strong></div>)}
+                {Object.entries(session.paymentBreakdown).map(([method, amount]) => {
+                  const bsExact = session.paymentBreakdownVes?.[method]
+                  const showBs = BS_METHODS.has(method) && bsExact != null && bsExact > 0
+                  return (
+                    <div key={method}>
+                      <span>{PAYMENT_LABELS[method] ?? method}</span>
+                      {showBs ? (
+                        <div className="cash-amt-dual">
+                          <strong>{money(bsExact, 'VES')}</strong>
+                          <small>{money(amount)}</small>
+                        </div>
+                      ) : (
+                        <strong>{money(amount)}</strong>
+                      )}
+                    </div>
+                  )
+                })}
                 <div className="cash-payment-total"><span>Total cobrado</span><strong>{money(session.paymentTotal)}</strong></div>
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
