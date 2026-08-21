@@ -523,7 +523,12 @@ export function PublicMenu() {
     if (!cart.length) return setError('Tu carrito está vacío.')
 
     const lineNotes = cart.filter(item => item.notes).map(item => `${item.productName}: ${item.notes}`).join(' | ')
-    const orderNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ').slice(0, 500)
+    // El link de Google Maps con las coordenadas va en su propia línea para que
+    // Comandas lo muestre como "Ver ubicación" (y lo limpie del texto de notas).
+    const mapsLine = orderType === 'delivery' && geoCoords
+      ? `\nUbicación GPS: https://maps.google.com/?q=${geoCoords.lat},${geoCoords.lng}`
+      : ''
+    const orderNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ').slice(0, 400) + mapsLine
     const checkoutSignature = JSON.stringify({
       cart: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: item.price, notes: item.notes || '' })),
       name: name.trim(), phone: phone.trim(), orderType, address: address.trim(), orderNotes,
