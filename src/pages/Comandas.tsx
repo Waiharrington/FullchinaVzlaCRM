@@ -139,9 +139,28 @@ function cleanNotes(notes?: string): string {
   if (!notes) return ''
   return notes
     .split('\n')
-    .filter((line) => !MAPS_URL_RE.test(line) && !/ubicaci[oó]n gps/i.test(line))
+    .filter((line) => !MAPS_URL_RE.test(line) && !/ubicaci[oó]n gps/i.test(line) && !/pago preferido/i.test(line))
     .join('\n')
     .trim()
+}
+
+// El método de pago que el cliente eligió en la web viaja en las notas como
+// "Pago preferido: <codigos>" (p. ej. "cash" o "cash+mobile"). Se extrae para
+// pre-seleccionarlo al cobrar y mostrarlo en la comanda.
+const PAY_METHOD_LABELS: Record<string, string> = {
+  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle',
+}
+
+function extractPreferredPayment(notes?: string | null): { methods: SplitPaymentMethod[]; label: string } | null {
+  if (!notes) return null
+  const match = notes.match(/pago preferido:\s*([a-z+]+)/i)
+  if (!match) return null
+  const methods = match[1]
+    .split('+')
+    .map((s) => s.trim().toLowerCase())
+    .filter((c): c is SplitPaymentMethod => c in PAY_METHOD_LABELS)
+  if (methods.length === 0) return null
+  return { methods, label: methods.map((c) => PAY_METHOD_LABELS[c]).join(' + ') }
 }
 
 const COLUMNS = [
@@ -266,11 +285,23 @@ export function Comandas() {
     // Abrir primero el modal para que el clic siempre tenga respuesta visual,
     // incluso si la validación de caja tarda o el backend devuelve un error.
     setPaymentOrder(order)
-    setSelectedPaymentTab('cash')
+    // Pre-seleccionar el método que el cliente indicó en la web (si lo hay).
+    const pref = extractPreferredPayment(order.notes)
+    if (pref && pref.methods.length >= 2) {
+      setSelectedPaymentTab('split')
+      setSplitPrimaryMethod(pref.methods[0])
+      setSplitSecondaryMethod(pref.methods[1])
+    } else if (pref && pref.methods.length === 1) {
+      setSelectedPaymentTab(pref.methods[0])
+      setSplitPrimaryMethod('cash')
+      setSplitSecondaryMethod('mobile')
+    } else {
+      setSelectedPaymentTab('cash')
+      setSplitPrimaryMethod('cash')
+      setSplitSecondaryMethod('mobile')
+    }
     setRefNumber('')
     setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
-    setSplitPrimaryMethod('cash')
-    setSplitSecondaryMethod('mobile')
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     setPaymentNote('')
@@ -1118,6 +1149,12 @@ export function Comandas() {
                     <span className="cmd-method-label">Método de pago</span>
                     <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : '⚠️ Sin cobrar'}</span>
                   </div>
+                  {!selectedOrder.isPaid && extractPreferredPayment(selectedOrder.notes) && (
+                    <div className="cmd-payment-method-row cmd-pref-pay-row">
+                      <span className="cmd-method-label">💳 Pago del cliente</span>
+                      <span className="cmd-pref-pay-badge">{extractPreferredPayment(selectedOrder.notes)!.label}</span>
+                    </div>
+                  )}
 
                   <div className="cmd-breakdown-section">
                     <div className="cmd-summary-row cmd-breakdown-title">Desglose del pago</div>

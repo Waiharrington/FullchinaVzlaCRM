@@ -1376,6 +1376,17 @@
   color: #d1d5db;
 }
 
+.cmd-pref-pay-row { margin-top: 6px; }
+.cmd-pref-pay-badge {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fca5a5;
+}
+
 .cmd-breakdown-title { font-weight: 600; margin-bottom: 8px; color: #fff; }
 .cmd-paid-green { color: #10b981; }
 .cmd-paid-yellow { color: #f97316; }

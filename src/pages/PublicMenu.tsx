@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleAlert, Heart, LoaderCircle, Mail, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingCart, Trash2, UserRound, X } from 'lucide-react'
+import { Check, ChevronRight, CircleAlert, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingCart, Trash2, UserRound, X } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -74,6 +74,19 @@ const CART_KEY = 'fullchina_public_cart'
 const LAST_ORDER_KEY = 'fullchina_public_last_order'
 const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
+
+// Métodos de pago que el cliente puede indicar en la web. Los códigos coinciden
+// con los del sistema de cobro para poder pre-seleccionarlos en la comanda.
+const PAY_OPTIONS = [
+  { code: 'cash', label: 'Efectivo' },
+  { code: 'mobile', label: 'Pago móvil' },
+  { code: 'transfer', label: 'Transferencia' },
+  { code: 'card', label: 'Punto' },
+  { code: 'zelle', label: 'Zelle' },
+  { code: 'binance', label: 'Binance' },
+] as const
+type PayMethod = (typeof PAY_OPTIONS)[number]['code']
+const payLabel = (code: string) => PAY_OPTIONS.find((o) => o.code === code)?.label ?? code
 
 // Opciones públicas de personalización. Se envían como indicaciones a cocina;
 // el cobro automático se habilitará cuando el RPC público exponga modifiers.
@@ -160,6 +173,9 @@ export function PublicMenu() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [orderType, setOrderType] = useState<'takeaway' | 'delivery'>('takeaway')
+  const [payMode, setPayMode] = useState<'single' | 'mixed'>('single')
+  const [payPrimary, setPayPrimary] = useState<PayMethod>('cash')
+  const [paySecondary, setPaySecondary] = useState<PayMethod>('mobile')
   const [deliveryChosen, setDeliveryChosen] = useState(false)
   const [address, setAddress] = useState('')
   const [addressReference, setAddressReference] = useState('')
@@ -528,7 +544,12 @@ export function PublicMenu() {
     const mapsLine = orderType === 'delivery' && geoCoords
       ? `\nUbicación GPS: https://maps.google.com/?q=${geoCoords.lat},${geoCoords.lng}`
       : ''
-    const orderNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ').slice(0, 400) + mapsLine
+    // Método de pago que el cliente indica. Va en su propia línea con códigos
+    // para que Comandas lo pre-seleccione al cobrar (y lo limpie del texto).
+    const paymentCodes = payMode === 'mixed' ? `${payPrimary}+${paySecondary}` : payPrimary
+    const paymentLabels = payMode === 'mixed' ? `${payLabel(payPrimary)} + ${payLabel(paySecondary)}` : payLabel(payPrimary)
+    const payLine = `\nPago preferido: ${paymentCodes}`
+    const orderNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ').slice(0, 400) + mapsLine + payLine
     const checkoutSignature = JSON.stringify({
       cart: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: item.price, notes: item.notes || '' })),
       name: name.trim(), phone: phone.trim(), orderType, address: address.trim(), orderNotes,
@@ -565,7 +586,7 @@ export function PublicMenu() {
       const customerLines = [
         `Nombre: ${name.trim()}`,
         `Teléfono: ${phone.trim()}`,
-        ...(email.trim() ? [`Correo: ${email.trim()}`] : []),
+        `💳 Pago: ${paymentLabels}`,
         `Modalidad: ${orderType === 'delivery' ? '🛵 Delivery' : '🥡 Retiro en el local'}`,
         ...(orderType === 'delivery' ? ['', `🏠 ${address.trim()}`] : []),
         ...(orderType === 'delivery' && addressReference.trim() ? [`Referencia: ${addressReference.trim()}`] : []),
@@ -859,7 +880,30 @@ export function PublicMenu() {
             <div className="public-data-form-card">
               <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="Nombre y apellido" /></div></span></label>
               <label className="public-data-field"><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></div><small>Te escribiremos aquí para confirmar</small></span></label>
-              <label className="public-data-field"><span className="public-data-icon"><Mail /></span><span className="public-data-field-copy"><span>Correo <small>Opcional</small></span><div className="public-data-input"><input type="email" inputMode="email" autoComplete="email" value={email} onChange={event => setEmail(event.target.value)} placeholder="ejemplo@correo.com" /></div></span></label>
+            </div>
+            <div className="public-pay-card">
+              <div className="public-pay-head"><Wallet size={17} /><span>¿Cómo vas a pagar?</span></div>
+              <div className="public-pay-modes">
+                <button type="button" className={`public-pay-mode ${payMode === 'single' ? 'active' : ''}`} onClick={() => setPayMode('single')}>Un método</button>
+                <button type="button" className={`public-pay-mode ${payMode === 'mixed' ? 'active' : ''}`} onClick={() => setPayMode('mixed')}>Mixto (2 métodos)</button>
+              </div>
+              <div className="public-pay-selects">
+                <label className="public-pay-select">
+                  <span>{payMode === 'mixed' ? 'Primer método' : 'Método de pago'}</span>
+                  <select value={payPrimary} onChange={event => setPayPrimary(event.target.value as PayMethod)}>
+                    {PAY_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}
+                  </select>
+                </label>
+                {payMode === 'mixed' && (
+                  <label className="public-pay-select">
+                    <span>Segundo método</span>
+                    <select value={paySecondary} onChange={event => setPaySecondary(event.target.value as PayMethod)}>
+                      {PAY_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}
+                    </select>
+                  </label>
+                )}
+              </div>
+              {payMode === 'mixed' && <p className="public-pay-hint">Al cobrar coordinamos cuánto va por cada método.</p>}
             </div>
             <label className="public-data-notes"><span className="public-data-notes-title"><MessageSquareText /><span><strong>¿Alguna indicación para cocina?</strong><small>Opcional</small></span></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín, poca salsa…" /></label>
             <div className="public-data-privacy"><ShieldCheck /><span>Tus datos están seguros y solo se usarán para este pedido.</span></div>

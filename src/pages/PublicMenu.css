@@ -949,6 +949,19 @@
 .public-data-form-card > label + label { border-top: 0; }
 .public-data-form-card .public-data-field { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 14px; min-height: 78px; box-sizing: border-box; padding: 12px 16px; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(9,10,13,.68); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
 .public-data-form-card .public-data-field:focus-within { border-color: rgba(239,51,69,.88); background: rgba(25,11,14,.82); box-shadow: 0 0 0 3px rgba(239,51,69,.12); }
+
+.public-pay-card { margin-top: 14px; padding: 16px; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(9,10,13,.68); display: grid; gap: 12px; }
+.public-pay-head { display: flex; align-items: center; gap: 9px; color: #fff; font-weight: 700; font-size: 15px; }
+.public-pay-head svg { color: #ef3345; }
+.public-pay-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.public-pay-mode { padding: 11px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.04); color: #cbd0d8; font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color .16s ease, background .16s ease, color .16s ease; }
+.public-pay-mode.active { border-color: #ef3345; background: rgba(239,51,69,.14); color: #fff; }
+.public-pay-selects { display: grid; gap: 10px; }
+.public-pay-select { display: grid; gap: 6px; }
+.public-pay-select > span { font-size: 12px; font-weight: 700; color: #9aa1ab; text-transform: uppercase; letter-spacing: .04em; }
+.public-pay-select select { width: 100%; padding: 12px 14px; border-radius: 13px; border: 1px solid rgba(255,255,255,.2); background: rgba(9,10,13,.9); color: #fff; font-size: 15px; font-weight: 600; appearance: none; cursor: pointer; }
+.public-pay-select select:focus { outline: none; border-color: rgba(239,51,69,.88); box-shadow: 0 0 0 3px rgba(239,51,69,.12); }
+.public-pay-hint { font-size: 12px; color: #9aa1ab; margin: 0; }
 .public-data-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: rgba(239,51,69,.13); color: #ff5361; }
 .public-data-icon svg { width: 22px; height: 22px; }
 .public-data-field-copy { display: grid; gap: 2px; min-width: 0; }
