@@ -79,10 +79,45 @@
 .public-hero-header {
   padding: 8px 20px 24px;
 }
+.public-hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
 .public-hero-header h1 {
   font-size: 26px;
   font-weight: 700;
   margin: 0 0 6px 0;
+}
+.public-rate-badge {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: rgba(255, 214, 102, 0.1);
+  border: 1px solid rgba(255, 214, 102, 0.35);
+  margin-bottom: 6px;
+}
+.public-rate-badge-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 214, 102, 0.85);
+}
+.public-rate-badge-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #FFD666;
+}
+.public-reco-bs {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 1px;
 }
 .public-status {
   display: flex;
