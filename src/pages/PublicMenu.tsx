@@ -537,7 +537,9 @@ export function PublicMenu() {
     setStep('preparing')
     // Abrir la pestaña inmediatamente conserva el gesto del usuario y evita
     // que el navegador bloquee WhatsApp después de la respuesta del servidor.
-    const whatsappWindow = window.open('about:blank', '_blank', 'noopener,noreferrer')
+    // OJO: sin 'noopener' a propósito — con noopener window.open devuelve null
+    // y no podríamos redirigir la pestaña a WhatsApp (se quedaría en blanco).
+    const whatsappWindow = window.open('about:blank', '_blank')
     try {
       const result = await createWebOrder({
         customerName: name.trim(), customerPhone: phone.trim(), orderType,
