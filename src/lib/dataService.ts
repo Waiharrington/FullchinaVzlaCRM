@@ -1,5 +1,4 @@
 import { supabase } from './supabase'
-import { dateKeyInTimeZone, dayRangeInTimeZone } from './money'
 
 export interface Product {
   id: string
@@ -70,7 +69,7 @@ export interface OrderResult {
   total: number
   bcvRate: number | null
   createdAt: string
-  paymentMethod: PaymentMethod | null
+  paymentMethod: PaymentMethod
   items: CartItem[]
 }
 
@@ -525,8 +524,10 @@ export async function checkout(params: {
   referenceNumber?: string | null
   receivedAmount?: number | null
   payments?: OrderPaymentComponent[]
+  deliveryFee?: number
 }): Promise<OrderResult> {
-  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
+  const deliveryFee = params.orderType === 'delivery' ? (params.deliveryFee ?? 0) : 0
+  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0) + deliveryFee
 
   const paymentComponents = params.payments ?? [{
     method: params.method,
@@ -554,6 +555,7 @@ export async function checkout(params: {
     p_notes: params.notes ?? null,
     p_order_type: params.orderType ?? 'takeaway',
     p_customer_name: params.customerName ?? 'Cliente',
+    p_delivery_fee: deliveryFee,
   })
   if (checkoutErr) throw checkoutErr
 
@@ -579,6 +581,18 @@ export async function checkout(params: {
 
 // --- Enviar a cocina (sin pago) ----------------------------------------------
 
+/** Id del producto oculto "Delivery" (para agregar el cargo como renglón). */
+export async function getDeliveryProductId(): Promise<string | null> {
+  const { data, error } = await client()
+    .from('sellable_products')
+    .select('id')
+    .eq('is_delivery', true)
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
+  return (data?.id as string) ?? null
+}
+
 export async function sendToKitchen(params: {
   items: CartItem[]
   bcvRate: number | null
@@ -586,10 +600,13 @@ export async function sendToKitchen(params: {
   notes?: string | null
   orderType?: string
   customerName?: string
+  deliveryFee?: number
 }): Promise<OrderResult> {
+  const deliveryFee = params.orderType === 'delivery' ? (params.deliveryFee ?? 0) : 0
+  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0) + deliveryFee
+
   const sb = client()
 
-  // 1. Crear la orden
   const { data: order, error: orderErr } = await sb
     .from('orders')
     .insert({
@@ -604,89 +621,38 @@ export async function sendToKitchen(params: {
     .single()
   if (orderErr) throw orderErr
 
-  // 2. Leer precios del catálogo activo (nunca confiar en el navegador)
-  const productIds = [...new Set(params.items.map((i) => i.productId))]
-  const { data: catalogRows, error: catalogErr } = await sb
-    .from('sellable_products')
-    .select('id, price')
-    .in('id', productIds)
-    .eq('is_active', true)
-  if (catalogErr) throw catalogErr
-
-  const priceMap = new Map<string, number>()
-  for (const row of catalogRows ?? []) {
-    priceMap.set(String(row.id), Number(row.price))
+  // Renglones de producto + (opcional) el cargo de delivery como renglón extra.
+  const itemRows = params.items.map((i) => ({
+    order_id: order.id,
+    sellable_product_id: i.productId,
+    quantity: i.quantity,
+    unit_price: i.price,
+  }))
+  if (deliveryFee > 0) {
+    const deliveryId = await getDeliveryProductId()
+    if (!deliveryId) throw new Error('No existe el producto de Delivery configurado')
+    itemRows.push({ order_id: order.id, sellable_product_id: deliveryId, quantity: 1, unit_price: Math.round(deliveryFee * 100) / 100 })
   }
 
-  // 3. Insertar items con precio efectivo (base + modificadores) y mapear product_id → order_item_id
-  const itemsToInsert = params.items.map((i) => {
-    const dbPrice = priceMap.get(i.productId)
-    if (dbPrice == null) {
-      throw new Error(`Producto ${i.productId} no encontrado o inactivo`)
-    }
-    // Precio efectivo = precio base + suma de modificadores seleccionados
-    const modifierExtra = (i.selectedModifiers ?? []).reduce(
-      (sum, m) => sum + m.price * m.quantity, 0,
-    )
-    return {
-      order_id: order.id,
-      sellable_product_id: i.productId,
-      quantity: i.quantity,
-      unit_price: dbPrice + modifierExtra,
-    }
-  })
-
-  const { data: insertedItems, error: itemsErr } = await sb
-    .from('order_items')
-    .insert(itemsToInsert)
-    .select('id, sellable_product_id')
+  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(itemRows).select('id')
   if (itemsErr) throw itemsErr
 
-  // 4. Agrupar los renglones insertados por producto. Un mismo producto puede
-  // aparecer varias veces si cada línea tiene modificadores distintos.
-  const orderItemsByProduct = new Map<string, string[]>()
-  for (const row of insertedItems ?? []) {
-    const productId = String(row.sellable_product_id)
-    const ids = orderItemsByProduct.get(productId) ?? []
-    ids.push(String(row.id))
-    orderItemsByProduct.set(productId, ids)
-  }
-
-  // 5. Insertar modificadores asociados a su renglón, conservando el orden de
-  // inserción para soportar líneas repetidas del mismo producto.
-  const modifierRows: Array<{
-    order_item_id: string
-    modifier_option_id: string
-    quantity: number
-    unit_price: number
-  }> = []
-  for (const cartItem of params.items) {
-    if (!cartItem.selectedModifiers || cartItem.selectedModifiers.length === 0) continue
-    const orderItemIds = orderItemsByProduct.get(cartItem.productId)
-    const orderItemId = orderItemIds?.shift()
-    if (!orderItemId) continue
-    for (const m of cartItem.selectedModifiers) {
-      modifierRows.push({
-        order_item_id: orderItemId,
-        modifier_option_id: m.optionId,
-        quantity: m.quantity,
-        unit_price: m.price,
-      })
-    }
-  }
+  // Persistir las opciones de modificador elegidas por renglón. Los ids se
+  // devuelven en el mismo orden en que se insertaron, así que se mapean por
+  // índice. Esto dispara el consumo de inventario por modificador.
+  const modifierRows = (insertedItems ?? []).flatMap((row, idx) => {
+    const mods = params.items[idx]?.selectedModifiers ?? []
+    return mods.map((m) => ({
+      order_item_id: row.id as string,
+      modifier_option_id: m.optionId,
+      quantity: m.quantity,
+      unit_price: m.price,
+    }))
+  })
   if (modifierRows.length > 0) {
     const { error: modErr } = await sb.from('order_item_modifiers').insert(modifierRows)
     if (modErr) throw modErr
   }
-
-  // 6. Calcular total con precios reales de la DB (incluye modificadores)
-  const total = itemsToInsert.reduce((sum, i) => sum + i.unit_price * i.quantity, 0)
-
-  // Retornar items con precios verificados por el servidor
-  const verifiedItems: CartItem[] = params.items.map((item, index) => ({
-    ...item,
-    price: itemsToInsert[index]?.unit_price ?? item.price,
-  }))
 
   // NO payment inserted — the order stays unpaid until cobro
 
@@ -697,22 +663,103 @@ export async function sendToKitchen(params: {
     total,
     bcvRate: params.bcvRate,
     createdAt: order.created_at as string,
-    paymentMethod: null,
-    items: verifiedItems,
+    paymentMethod: 'cash',
+    items: params.items,
+  }
+}
+
+// --- Agregar productos a un pedido existente (sin cobrar) --------------------
+
+/**
+ * Inserta ítems adicionales en un pedido ya creado que aún no se ha cobrado.
+ * Reutiliza la misma mecánica que sendToKitchen: order_items + los
+ * order_item_modifiers elegidos por renglón (esto dispara el consumo de
+ * inventario). No crea pedido ni registra pago; el total se recalcula solo
+ * desde los ítems.
+ */
+export async function addItemsToOrder(orderId: string, items: CartItem[]): Promise<void> {
+  if (items.length === 0) return
+  const sb = client()
+
+  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(
+    items.map((i) => ({
+      order_id: orderId,
+      sellable_product_id: i.productId,
+      quantity: i.quantity,
+      unit_price: i.price,
+    })),
+  ).select('id')
+  if (itemsErr) throw itemsErr
+
+  const modifierRows = (insertedItems ?? []).flatMap((row, idx) => {
+    const mods = items[idx]?.selectedModifiers ?? []
+    return mods.map((m) => ({
+      order_item_id: row.id as string,
+      modifier_option_id: m.optionId,
+      quantity: m.quantity,
+      unit_price: m.price,
+    }))
+  })
+  if (modifierRows.length > 0) {
+    const { error: modErr } = await sb.from('order_item_modifiers').insert(modifierRows)
+    if (modErr) throw modErr
+  }
+}
+
+/**
+ * Elimina un producto de una comanda sin cobrar y revierte su consumo de
+ * inventario (vía RPC SECURITY DEFINER que inserta un ajuste compensatorio).
+ */
+export async function removeOrderItem(orderItemId: string): Promise<void> {
+  const { error } = await client().rpc('fn_remove_order_item', { p_item_id: orderItemId })
+  if (error) throw error
+}
+
+/**
+ * Fija (o quita) el costo de delivery de una comanda sin cobrar. El cargo se
+ * guarda como el renglón del producto oculto "Delivery". Se elimina el renglón
+ * previo (si existe) y se inserta uno nuevo con el monto; fee 0 sólo lo quita.
+ */
+export async function setOrderDeliveryFee(orderId: string, fee: number): Promise<void> {
+  const sb = client()
+  const deliveryId = await getDeliveryProductId()
+  if (!deliveryId) throw new Error('No existe el producto de Delivery configurado')
+
+  const { data: existing, error: findErr } = await sb
+    .from('order_items')
+    .select('id')
+    .eq('order_id', orderId)
+    .eq('sellable_product_id', deliveryId)
+    .limit(1)
+    .maybeSingle()
+  if (findErr) throw findErr
+
+  if (existing?.id) {
+    await removeOrderItem(existing.id as string)
+  }
+  const rounded = Math.round(Math.max(0, fee) * 100) / 100
+  if (rounded > 0) {
+    const { error: insErr } = await sb.from('order_items').insert({
+      order_id: orderId,
+      sellable_product_id: deliveryId,
+      quantity: 1,
+      unit_price: rounded,
+    })
+    if (insErr) throw insErr
   }
 }
 
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {
-  const { start, end } = dayRangeInTimeZone()
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
 
   const { data, error } = await client()
     .from('orders')
     .select('id, order_number, status, created_at, payments(method, amount)')
     .eq('status', 'paid')
-    .gte('created_at', start)
-    .lt('created_at', end)
+    .gte('created_at', start.toISOString())
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -736,7 +783,7 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
 export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): Promise<FullOrder[]> {
   let query = client().from('v_orders_with_items').select('*')
   if (dateStart) query = query.gte('created_at', dateStart)
-  if (dateEnd) query = query.lt('created_at', dateEnd)
+  if (dateEnd) query = query.lte('created_at', dateEnd)
   query = query.order('created_at', { ascending: false })
 
   const { data, error } = await query
@@ -899,6 +946,7 @@ export interface CashSessionSnapshot {
   cashSalesUsd: number
   paymentTotal: number
   paymentBreakdown: Record<string, number>
+  paymentBreakdownVes: Record<string, number>
   movementInUsd: number
   movementOutUsd: number
   movementInVes: number
@@ -1067,6 +1115,7 @@ function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
   const numberValue = (key: string): number => Number(value[key] ?? 0)
   const nullableNumber = (key: string): number | null => value[key] == null ? null : Number(value[key])
   const breakdown = (value.paymentBreakdown ?? {}) as Record<string, unknown>
+  const breakdownVes = (value.paymentBreakdownVes ?? {}) as Record<string, unknown>
   return {
     id: String(value.id),
     sessionNumber: numberValue('sessionNumber'),
@@ -1081,6 +1130,7 @@ function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
     cashSalesUsd: numberValue('cashSalesUsd'),
     paymentTotal: numberValue('paymentTotal'),
     paymentBreakdown: Object.fromEntries(Object.entries(breakdown).map(([key, amount]) => [key, Number(amount)])),
+    paymentBreakdownVes: Object.fromEntries(Object.entries(breakdownVes).map(([key, amount]) => [key, Number(amount)])),
     movementInUsd: numberValue('movementInUsd'),
     movementOutUsd: numberValue('movementOutUsd'),
     movementInVes: numberValue('movementInVes'),
@@ -1816,6 +1866,93 @@ export async function updateEmployee(id: string, updates: {
   if (error) throw error
 }
 
+// --- Usuarios de acceso (login) ---------------------------------------------
+// Administración de auth.users vía RPC SECURITY DEFINER (owner-only). El
+// navegador nunca ve la service_role; toda la validación vive en la BD.
+
+export interface AuthUser {
+  id: string
+  email: string
+  fullName: string
+  role: 'owner' | 'manager' | 'cashier'
+  isActive: boolean
+  allowedModules: string[] | null
+  createdAt: string
+  lastSignInAt: string | null
+}
+
+export async function listAuthUsers(): Promise<AuthUser[]> {
+  const { data, error } = await client().rpc('fn_admin_list_users')
+  if (error) throw error
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    id: String(r.id),
+    email: String(r.email),
+    fullName: r.full_name ? String(r.full_name) : '',
+    role: String(r.role) as AuthUser['role'],
+    isActive: Boolean(r.is_active),
+    allowedModules: Array.isArray(r.allowed_modules) ? (r.allowed_modules as string[]) : null,
+    createdAt: String(r.created_at),
+    lastSignInAt: r.last_sign_in_at ? String(r.last_sign_in_at) : null,
+  }))
+}
+
+// p_modules null -> vuelve a los defaults del rol; array -> sólo esos módulos.
+export async function adminSetUserModules(userId: string, modules: string[] | null): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_modules', { p_user_id: userId, p_modules: modules })
+  if (error) throw error
+}
+
+export async function adminSetUserPassword(userId: string, password: string): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_password', { p_user_id: userId, p_password: password })
+  if (error) throw error
+}
+
+export async function adminSetUserEmail(userId: string, email: string): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_email', { p_user_id: userId, p_email: email })
+  if (error) throw error
+}
+
+export async function adminSetUserRole(userId: string, role: AuthUser['role']): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_role', { p_user_id: userId, p_role: role })
+  if (error) throw error
+}
+
+export async function adminSetUserActive(userId: string, isActive: boolean): Promise<void> {
+  const { error } = await client().rpc('fn_admin_set_active', { p_user_id: userId, p_active: isActive })
+  if (error) throw error
+}
+
+const PIN_ERROR_MESSAGES: Record<string, string> = {
+  not_authorized: 'No autorizado para cambiar el PIN.',
+  pin_must_have_four_digits: 'El PIN debe tener exactamente 4 dígitos.',
+  active_profile_not_found: 'El usuario no está activo o no existe.',
+  pin_already_in_use: 'Ese PIN ya lo usa otro usuario. Elige otro.',
+}
+
+export async function adminSetUserPin(userId: string, pin: string): Promise<void> {
+  const { error } = await client().rpc('fn_set_user_pin', { p_user_id: userId, p_pin: pin })
+  if (error) {
+    const key = (error.message || '').trim()
+    throw new Error(PIN_ERROR_MESSAGES[key] ?? error.message)
+  }
+}
+
+export async function adminCreateUser(params: {
+  email: string
+  password: string
+  fullName: string
+  role: AuthUser['role']
+}): Promise<string> {
+  const { data, error } = await client().rpc('fn_admin_create_user', {
+    p_email: params.email,
+    p_password: params.password,
+    p_full_name: params.fullName,
+    p_role: params.role,
+  })
+  if (error) throw error
+  return String(data)
+}
+
 export async function getProductionBatches(dateStart?: string, dateEnd?: string): Promise<ProductionBatch[]> {
   let query = client()
     .from('preparation_batches')
@@ -1878,8 +2015,8 @@ export async function getProductionBatches(dateStart?: string, dateEnd?: string)
 }
 
 export async function getProductionStats(): Promise<ProductionStats> {
-  const today = dateKeyInTimeZone()
-  const yesterday = dateKeyInTimeZone(new Date(Date.now() - 86400000))
+  const today = new Date().toISOString().split('T')[0]
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
 
   const [todayBatches, yesterdayBatches] = await Promise.all([
     getProductionBatches(today, today),
@@ -2112,7 +2249,7 @@ export async function createAdvance(params: {
   const { error } = await client().from('advances').insert({
     employee_id: params.employeeId,
     amount: params.amount,
-    advance_date: params.advanceDate ?? dateKeyInTimeZone(),
+    advance_date: params.advanceDate ?? new Date().toISOString().split('T')[0],
     notes: params.notes ?? null,
   })
   if (error) throw error
@@ -2135,7 +2272,7 @@ export async function createProductionBonus(params: {
   const { error } = await client().from('production_bonuses').insert({
     employee_id: params.employeeId,
     amount: params.amount,
-    bonus_date: params.bonusDate ?? dateKeyInTimeZone(),
+    bonus_date: params.bonusDate ?? new Date().toISOString().split('T')[0],
     reason: params.reason ?? null,
   })
   if (error) throw error

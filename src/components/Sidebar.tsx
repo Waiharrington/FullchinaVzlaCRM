@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { LogOut, ChevronLeft } from 'lucide-react'
-import { allNavItems } from './navItems'
+import { allNavItems, canAccessModule } from './navItems'
 import './Sidebar.css'
 
 interface SidebarProps {
@@ -23,7 +23,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const navItems = allNavItems.filter(item =>
-    user?.role ? item.roles.includes(user.role) : true
+    canAccessModule(item.path, user?.role, user?.allowedModules)
   )
 
   const showTooltip = useCallback((text: string, e: React.MouseEvent) => {

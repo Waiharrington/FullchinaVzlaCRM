@@ -11,6 +11,19 @@ export interface WebOrderCartItem {
   notes?: string
 }
 
+export interface Promotion {
+  id: string
+  tag: string
+  title: string
+  subtitle: string
+  price: string | null
+  oldPrice: string | null
+  note: string
+  icon: string
+  color: string
+  sortOrder: number
+}
+
 export interface WebOrderResult {
   id: string
   code: string
@@ -50,6 +63,27 @@ export async function getPublicCatalog(): Promise<Product[]> {
     emoji: String(row.emoji || '🥡'),
     active: true,
     imageUrl: row.image_url ? String(row.image_url) : null,
+  }))
+}
+
+export async function getPublicPromotions(): Promise<Promotion[]> {
+  const { data, error } = await db()
+    .from('promotions')
+    .select('id,tag,title,subtitle,price,old_price,note,icon,color,sort_order')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((row: Record<string, unknown>) => ({
+    id: String(row.id),
+    tag: String(row.tag),
+    title: String(row.title),
+    subtitle: String(row.subtitle),
+    price: row.price ? String(row.price) : null,
+    oldPrice: row.old_price ? String(row.old_price) : null,
+    note: String(row.note),
+    icon: String(row.icon),
+    color: String(row.color),
+    sortOrder: Number(row.sort_order),
   }))
 }
 

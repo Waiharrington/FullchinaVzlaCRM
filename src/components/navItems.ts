@@ -17,14 +17,17 @@ import {
   Utensils,
   UtensilsCrossed,
   Receipt,
-  BadgeDollarSign
+  BadgeDollarSign,
+  Tag
 } from 'lucide-react'
+
+export type Role = 'owner' | 'manager' | 'cashier'
 
 export interface NavItem {
   path: string
   label: string
   icon: typeof Home
-  roles: Array<'owner' | 'manager' | 'cashier'>
+  roles: Role[]
   group: string
 }
 
@@ -44,9 +47,32 @@ export const allNavItems: NavItem[] = [
   { path: '/gastos', label: 'Gastos', icon: Receipt, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Gestión' },
   { path: '/fidelizacion', label: 'Fidelización', icon: Award, roles: ['owner', 'manager'], group: 'Gestión' },
+  { path: '/promociones', label: 'Promociones', icon: Tag, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Gestión' },
   { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Gestión' }
 ]
+
+/**
+ * Determina si un usuario puede acceder a un módulo/ruta.
+ * - El owner siempre ve todo (no se puede auto-bloquear).
+ * - Si el usuario tiene `allowedModules` definido (override), sólo ve esos
+ *   módulos del nav; los defaults del rol se ignoran.
+ * - Si `allowedModules` es null/undefined, se usan los permisos del rol.
+ * Para rutas fuera del nav (ej. /cocina, /auditoria) se usa `fallbackRoles`.
+ */
+export function canAccessModule(
+  path: string,
+  role: Role | undefined,
+  allowedModules: string[] | null | undefined,
+  fallbackRoles?: Role[],
+): boolean {
+  if (!role) return true
+  if (role === 'owner') return true
+  const item = allNavItems.find(i => i.path === path)
+  if (item && allowedModules) return allowedModules.includes(path)
+  if (item) return item.roles.includes(role)
+  return fallbackRoles ? fallbackRoles.includes(role) : false
+}

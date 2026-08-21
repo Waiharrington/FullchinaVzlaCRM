@@ -6,9 +6,8 @@ import { RatesProvider } from './context/RatesProvider'
 import { useAuth } from './context/auth-context'
 import { SplashScreen } from './components/SplashScreen'
 import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
-import './components/SplashScreen.css'
-import './styles/motion.css'
 import { Layout } from './components/Layout'
+import { canAccessModule, type Role } from './components/navItems'
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })))
 const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
 const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))
@@ -33,17 +32,18 @@ const Menu = lazy(() => import('./pages/Menu').then(module => ({ default: module
 const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
 const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
 const PublicOnboarding = lazy(() => import('./pages/PublicOnboarding').then(module => ({ default: module.PublicOnboarding })))
+const Promociones = lazy(() => import('./pages/Promociones').then(module => ({ default: module.Promociones })))
 
-type Role = 'owner' | 'manager' | 'cashier'
-
-function RoleRoute({ roles, children }: { roles: Role[]; children: React.ReactNode }) {
+function ModuleRoute({ path, fallbackRoles, children }: { path: string; fallbackRoles?: Role[]; children: React.ReactNode }) {
   const { user } = useAuth()
-  if (!user || !roles.includes(user.role)) return <Navigate to="/caja" replace />
+  if (!user || !canAccessModule(path, user.role, user.allowedModules, fallbackRoles)) {
+    return <Navigate to="/caja" replace />
+  }
   return <>{children}</>
 }
 
-const forRoles = (roles: Role[], element: React.ReactNode) => (
-  <RoleRoute roles={roles}>{element}</RoleRoute>
+const forModule = (path: string, element: React.ReactNode, fallbackRoles?: Role[]) => (
+  <ModuleRoute path={path} fallbackRoles={fallbackRoles}>{element}</ModuleRoute>
 )
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -76,28 +76,29 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/" element={forRoles(['owner', 'manager'], <Inicio />)} />
-        <Route path="/caja" element={<Caja />} />
-        <Route path="/caja-operativa" element={forRoles(['owner', 'manager'], <CajaOperativa />)} />
-        <Route path="/comandas" element={<Comandas />} />
-        <Route path="/cocina" element={forRoles(['owner', 'manager'], <Cocina />)} />
-        <Route path="/clientes" element={forRoles(['owner', 'manager'], <Clientes />)} />
-        <Route path="/almacen" element={forRoles(['owner', 'manager'], <Almacen />)} />
-        <Route path="/inventario" element={forRoles(['owner', 'manager'], <Inventario />)} />
-        <Route path="/produccion" element={forRoles(['owner', 'manager'], <Produccion />)} />
-        <Route path="/recetas" element={forRoles(['owner', 'manager'], <Recetas />)} />
-        <Route path="/menu" element={forRoles(['owner', 'manager'], <Menu />)} />
-        <Route path="/menu-semanal" element={forRoles(['owner', 'manager'], <MenuSemanal />)} />
-        <Route path="/compras" element={forRoles(['owner', 'manager'], <Compras />)} />
-        <Route path="/gastos" element={forRoles(['owner', 'manager'], <Gastos />)} />
-        <Route path="/finanzas" element={forRoles(['owner'], <Finanzas />)} />
-        <Route path="/equipo" element={forRoles(['owner', 'manager'], <Equipo />)} />
-        <Route path="/fidelizacion" element={forRoles(['owner', 'manager'], <Fidelizacion />)} />
-        <Route path="/marketing" element={forRoles(['owner', 'manager'], <MarketingWhatsApp />)} />
-        <Route path="/nomina" element={forRoles(['owner'], <Nomina />)} />
-        <Route path="/auditoria" element={forRoles(['owner'], <Auditoria />)} />
-        <Route path="/mas" element={forRoles(['owner', 'manager'], <Mas />)} />
-        <Route path="/reportes" element={forRoles(['owner', 'manager'], <Reportes />)} />
+        <Route path="/" element={forModule('/', <Inicio />)} />
+        <Route path="/caja" element={forModule('/caja', <Caja />)} />
+        <Route path="/caja-operativa" element={forModule('/caja-operativa', <CajaOperativa />)} />
+        <Route path="/comandas" element={forModule('/comandas', <Comandas />)} />
+        <Route path="/cocina" element={forModule('/cocina', <Cocina />, ['owner', 'manager'])} />
+        <Route path="/clientes" element={forModule('/clientes', <Clientes />)} />
+        <Route path="/almacen" element={forModule('/almacen', <Almacen />)} />
+        <Route path="/inventario" element={forModule('/inventario', <Inventario />)} />
+        <Route path="/produccion" element={forModule('/produccion', <Produccion />)} />
+        <Route path="/recetas" element={forModule('/recetas', <Recetas />)} />
+        <Route path="/menu" element={forModule('/menu', <Menu />)} />
+        <Route path="/menu-semanal" element={forModule('/menu-semanal', <MenuSemanal />)} />
+        <Route path="/compras" element={forModule('/compras', <Compras />)} />
+        <Route path="/gastos" element={forModule('/gastos', <Gastos />)} />
+        <Route path="/finanzas" element={forModule('/finanzas', <Finanzas />)} />
+        <Route path="/equipo" element={forModule('/equipo', <Equipo />)} />
+        <Route path="/fidelizacion" element={forModule('/fidelizacion', <Fidelizacion />)} />
+        <Route path="/marketing" element={forModule('/marketing', <MarketingWhatsApp />)} />
+        <Route path="/nomina" element={forModule('/nomina', <Nomina />)} />
+        <Route path="/auditoria" element={forModule('/auditoria', <Auditoria />, ['owner'])} />
+        <Route path="/mas" element={forModule('/mas', <Mas />)} />
+        <Route path="/promociones" element={forModule('/promociones', <Promociones />)} />
+        <Route path="/reportes" element={forModule('/reportes', <Reportes />)} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

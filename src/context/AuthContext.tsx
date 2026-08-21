@@ -3,15 +3,21 @@ import { AuthContext } from './auth-context'
 import type { User } from './auth-context'
 import { supabase } from '../lib/supabase'
 
-async function fetchUserRole(userId: string): Promise<'owner' | 'manager' | 'cashier' | null> {
+type Role = 'owner' | 'manager' | 'cashier'
+interface Profile { role: Role; allowedModules: string[] | null }
+
+async function fetchUserProfile(userId: string): Promise<Profile | null> {
   if (!supabase) return null
   const { data, error } = await supabase
     .from('profiles')
-    .select('role,is_active')
+    .select('role,is_active,allowed_modules')
     .eq('id', userId)
     .maybeSingle()
   if (error || !data?.is_active || !['owner', 'manager', 'cashier'].includes(data.role)) return null
-  return data.role as 'owner' | 'manager' | 'cashier'
+  return {
+    role: data.role as Role,
+    allowedModules: (data.allowed_modules as string[] | null) ?? null,
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -31,9 +37,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sb.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       setSession(currentSession)
       if (currentSession?.user) {
-        const role = await fetchUserRole(currentSession.user.id)
-        if (role) {
-          setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role })
+        const profile = await fetchUserProfile(currentSession.user.id)
+        if (profile) {
+          setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role: profile.role, allowedModules: profile.allowedModules })
         } else {
           setSession(null)
           setUser(null)
@@ -47,9 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (_event, currentSession) => {
         setSession(currentSession)
         if (currentSession?.user) {
-          const role = await fetchUserRole(currentSession.user.id)
-          if (role) {
-            setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role })
+          const profile = await fetchUserProfile(currentSession.user.id)
+          if (profile) {
+            setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role: profile.role, allowedModules: profile.allowedModules })
           } else {
             setSession(null)
             setUser(null)
@@ -69,12 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
-    const role = data.user ? await fetchUserRole(data.user.id) : null
-    if (!role) {
+    const profile = data.user ? await fetchUserProfile(data.user.id) : null
+    if (!profile) {
       await supabase.auth.signOut({ scope: 'local' })
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
-    setUser({ id: data.user.id, email: data.user.email || email, role })
+    setUser({ id: data.user.id, email: data.user.email || email, role: profile.role, allowedModules: profile.allowedModules })
     setSplashDone(false)
     return {}
   }
@@ -103,13 +109,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     if (error || !data.user) return { error: 'No se pudo iniciar sesión con el PIN.' }
 
-    const role = await fetchUserRole(data.user.id)
-    if (!role) {
+    const profile = await fetchUserProfile(data.user.id)
+    if (!profile) {
       await supabase.auth.signOut({ scope: 'local' })
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
 
-    setUser({ id: data.user.id, email: data.user.email || pinData.email, role })
+    setUser({ id: data.user.id, email: data.user.email || pinData.email, role: profile.role, allowedModules: profile.allowedModules })
     setSplashDone(false)
     return {}
   }

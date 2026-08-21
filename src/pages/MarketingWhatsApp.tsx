@@ -54,7 +54,7 @@ export function MarketingWhatsApp() {
     <div className="whatsapp-page">
       {/* Metrics Banner */}
       <div className="almacen-metrics-grid">
-        <div className="almacen-metric-card">
+        <div className="almacen-metric-card accent-green">
           <div className="metric-icon-box green">
             <MessageSquare size={24} />
           </div>
@@ -65,7 +65,7 @@ export function MarketingWhatsApp() {
           </div>
         </div>
 
-        <div className="almacen-metric-card">
+        <div className="almacen-metric-card accent-purple">
           <div className="metric-icon-box purple">
             <Cake size={24} />
           </div>
@@ -76,7 +76,7 @@ export function MarketingWhatsApp() {
           </div>
         </div>
 
-        <div className="almacen-metric-card">
+        <div className="almacen-metric-card accent-orange">
           <div className="metric-icon-box orange">
             <Clock size={24} />
           </div>
@@ -87,7 +87,7 @@ export function MarketingWhatsApp() {
           </div>
         </div>
 
-        <div className="almacen-metric-card">
+        <div className="almacen-metric-card accent-red">
           <div className="metric-icon-box red">
             <Users size={24} />
           </div>

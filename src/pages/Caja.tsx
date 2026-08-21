@@ -29,6 +29,7 @@ import {
 } from '../lib/dataService'
 import {
   X,
+  Check,
   Printer,
   CheckCircle,
   QrCode,
@@ -196,12 +197,14 @@ export function Caja() {
   const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
 
   const [orderType, setOrderType] = useState<OrderType>('dine-in')
+  const [deliveryFee, setDeliveryFee] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
 
   // Customer Search & Auto-complete state
   const [customerList, setCustomerList] = useState<CustomerOption[]>([])
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null)
 
   // New Client Modal state
   const [showNewClientModal, setShowNewClientModal] = useState(false)
@@ -275,6 +278,7 @@ export function Caja() {
 
       setCustomerList(prev => [newCust, ...prev])
       setCustomerName(fullName)
+      setSelectedCustomer(newCust)
       setShowCustomerDropdown(false)
       setShowNewClientModal(false)
       setNewClientName('')
@@ -496,7 +500,8 @@ export function Caja() {
   }
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
-  const total = subtotal
+  const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
+  const total = subtotal + deliveryFeeUsd
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate)
 
   // Action 1: Enviar a Cocina -> Saves order WITHOUT payment and navigates to /comandas
@@ -512,11 +517,14 @@ export function Caja() {
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
+        deliveryFee: deliveryFeeUsd,
       })
       setCurrentOrder(order)
       setCart([])
       setCustomerName('')
+      setSelectedCustomer(null)
       setOrderNotes('')
+      setDeliveryFee('')
       refreshTodayOrders()
       // Navigate directly to Comandas page
       navigate('/comandas')
@@ -655,6 +663,7 @@ export function Caja() {
         notes: orderNotes || null,
         orderType,
         customerName: customerName || 'Cliente general',
+        deliveryFee: deliveryFeeUsd,
         referenceNumber: selectedPaymentTab === 'split'
           ? (splitPrimaryReference.trim() || splitSecondaryReference.trim() || null)
           : (refNumber.trim() || null),
@@ -747,7 +756,7 @@ export function Caja() {
             <div className="success-actions-bar mt-4">
               <button
                 className="btn-success-primary"
-                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null) }}
+                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null); setCustomerName(''); setSelectedCustomer(null); setDeliveryFee('') }}
               >
                 <span>+</span> Nueva venta
               </button>
@@ -1108,9 +1117,16 @@ export function Caja() {
                 {modifierError && <p style={{ color: '#dc2626', margin: '4px 0' }}>{modifierError}</p>}
               </div>
               {!modifierLoading && modifierGroups.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 4px 4px' }}>
-                  <MoneyWithBcv usd={modifierProduct.price + modifierExtraPrice} compact />
-                  <button type="button" className="btn-primary" onClick={confirmModifierSelection}>
+                <div className="variant-selector-footer">
+                  <div className="variant-selector-total">
+                    <span className="variant-selector-total-label">Total</span>
+                    <MoneyWithBcv
+                      usd={modifierProduct.price + modifierExtraPrice}
+                      align="start"
+                      className="variant-selector-total-money"
+                    />
+                  </div>
+                  <button type="button" className="btn-primary variant-selector-cta" onClick={confirmModifierSelection}>
                     Agregar al pedido
                   </button>
                 </div>
@@ -1192,6 +1208,29 @@ export function Caja() {
             <div className="cart-section-group mt-2">
               <div className="cart-field-col customer-input-col">
                 <label className="cart-label">Cliente</label>
+                {selectedCustomer ? (
+                  <div className="customer-selected-chip">
+                    <div className="customer-chip-avatar">{selectedCustomer.initials}</div>
+                    <div className="customer-chip-info">
+                      <span className="customer-chip-badge"><Check size={12} /> Cliente seleccionado</span>
+                      <span className="customer-chip-name">{selectedCustomer.name}</span>
+                      {selectedCustomer.phone && <span className="customer-chip-phone">{selectedCustomer.phone}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      className="customer-chip-clear"
+                      title="Quitar cliente"
+                      aria-label="Quitar cliente"
+                      onClick={() => {
+                        setSelectedCustomer(null)
+                        setCustomerName('')
+                        setShowCustomerDropdown(false)
+                      }}
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+                ) : (
                 <div className="customer-input-wrap">
                   <span className="input-search-icon"><Search size={15} /></span>
                   <input
@@ -1200,6 +1239,7 @@ export function Caja() {
                     value={customerName}
                     onChange={(e) => {
                       setCustomerName(e.target.value)
+                      setSelectedCustomer(null)
                       setShowCustomerDropdown(true)
                     }}
                     onFocus={() => setShowCustomerDropdown(true)}
@@ -1217,9 +1257,10 @@ export function Caja() {
                     <Plus size={15} />
                   </button>
                 </div>
+                )}
 
                 {/* Autocomplete Dropdown List */}
-                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                {!selectedCustomer && showCustomerDropdown && filteredCustomers.length > 0 && (
                   <div className="customer-dropdown-menu">
                     {filteredCustomers.map((cust) => (
                       <div
@@ -1227,6 +1268,7 @@ export function Caja() {
                         className="customer-dropdown-item"
                         onClick={() => {
                           setCustomerName(cust.name)
+                          setSelectedCustomer(cust)
                           setShowCustomerDropdown(false)
                         }}
                       >
@@ -1256,6 +1298,27 @@ export function Caja() {
                   ))}
                 </div>
               </div>
+
+              {orderType === 'delivery' && (
+                <div className="cart-field-col mt-2">
+                  <label className="cart-label">Costo del delivery (USD)</label>
+                  <div className="delivery-fee-input">
+                    <Bike size={16} className="delivery-fee-icon" />
+                    <span className="delivery-fee-currency">$</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={deliveryFee}
+                      onChange={e => setDeliveryFee(e.target.value.replace(/[^0-9.,]/g, ''))}
+                      placeholder="0,00"
+                    />
+                    {deliveryFeeUsd > 0 && bcvRate && (
+                      <span className="delivery-fee-bs">Bs. {(deliveryFeeUsd * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    )}
+                  </div>
+                  <small className="delivery-fee-hint">Monto cotizado por WhatsApp según la ubicación del cliente.</small>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1270,6 +1333,12 @@ export function Caja() {
                 <span className="total-label">Descuento</span>
                 <MoneyWithBcv usd={0} className="total-val" compact />
               </div>
+              {orderType === 'delivery' && deliveryFeeUsd > 0 && (
+                <div className="cart-total-row">
+                  <span className="total-label">Delivery</span>
+                  <MoneyWithBcv usd={deliveryFeeUsd} className="total-val" compact />
+                </div>
+              )}
               <div className="cart-divide-row">
                 {(() => {
                   const currentPay = PAYMENT_DETAILS[selectedPaymentTab] || PAYMENT_DETAILS.card

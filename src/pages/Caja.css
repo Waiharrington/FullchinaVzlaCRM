@@ -465,11 +465,22 @@
 .product-family-price { display: flex; flex-direction: column; align-items: flex-start; }
 .product-family-price > small { color: #a1a1aa; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 
-.variant-selector-modal { width: min(620px, 100%); max-height: min(760px, 90vh); overflow: hidden; background: #18181b; border: 1px solid rgba(239, 68, 68, .32); border-radius: 18px; box-shadow: 0 28px 80px rgba(0, 0, 0, .75); }
+.variant-selector-modal { display: flex; flex-direction: column; width: min(620px, 100%); max-height: min(760px, 90vh); overflow: hidden; background: #18181b; border: 1px solid rgba(239, 68, 68, .32); border-radius: 18px; box-shadow: 0 28px 80px rgba(0, 0, 0, .75); }
 .variant-selector-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 22px 18px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
 .variant-selector-eyebrow { color: #ef4444; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .variant-selector-header h2 { color: #fff; font-size: 22px; margin: 4px 0 0; }
-.variant-selector-list { display: grid; gap: 10px; padding: 16px; overflow-y: auto; max-height: calc(90vh - 98px); }
+.variant-selector-list { flex: 1 1 auto; min-height: 0; display: grid; gap: 10px; padding: 16px; overflow-y: auto; }
+.variant-selector-footer { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 22px; border-top: 1px solid rgba(255, 255, 255, .08); background: #141416; }
+.variant-selector-total { display: flex; flex-direction: column; gap: 3px; }
+.variant-selector-total-label { color: #a1a1aa; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
+.variant-selector-total-money .money-usd { font-size: 24px; font-weight: 800; color: #fff; line-height: 1; }
+.variant-selector-total-money .money-ves { font-size: 13px; font-weight: 650; color: #a1a1aa; }
+.variant-selector-cta { flex: 0 0 auto; padding: 13px 24px; font-size: 15px; font-weight: 700; border-radius: 12px; white-space: nowrap; }
+@media (max-width: 680px) {
+  .variant-selector-footer { padding: 14px 16px; gap: 12px; }
+  .variant-selector-total-money .money-usd { font-size: 21px; }
+  .variant-selector-cta { padding: 12px 18px; font-size: 14px; }
+}
 .variant-option-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; width: 100%; padding: 14px; background: #202024; border: 1px solid rgba(255, 255, 255, .08); border-radius: 12px; color: #fff; text-align: left; cursor: pointer; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
 .variant-option-card:hover, .variant-option-card:focus-visible { background: #27272a; border-color: rgba(239, 68, 68, .65); transform: translateY(-1px); outline: none; }
 .variant-option-emoji { display: grid; place-items: center; width: 44px; height: 44px; background: rgba(239, 68, 68, .1); border-radius: 10px; font-size: 24px; }
@@ -700,6 +711,32 @@
   display: block;
 }
 
+.delivery-fee-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #0f0f12;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.delivery-fee-input:focus-within { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15); }
+.delivery-fee-icon { color: #f87171; flex-shrink: 0; }
+.delivery-fee-currency { color: #a1a1aa; font-weight: 700; }
+.delivery-fee-input input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+}
+.delivery-fee-input input::placeholder { color: #52525b; font-weight: 500; }
+.delivery-fee-bs { color: #71717a; font-size: 12px; white-space: nowrap; }
+.delivery-fee-hint { display: block; margin-top: 5px; color: #71717a; font-size: 11px; }
+
 .customer-input-col {
   position: relative;
 }
@@ -713,6 +750,57 @@
   padding: 6px 10px;
   gap: 8px;
 }
+
+/* Chip de cliente seleccionado */
+.customer-selected-chip {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, .14), rgba(239, 68, 68, .05));
+  border: 1px solid rgba(239, 68, 68, .5);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .08);
+}
+.customer-chip-avatar {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+}
+.customer-chip-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 auto; }
+.customer-chip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #f87171;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.customer-chip-name { font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.customer-chip-phone { font-size: 12px; color: #a1a1aa; }
+.customer-chip-clear {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .1);
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.customer-chip-clear:hover { background: rgba(239, 68, 68, .18); border-color: rgba(239, 68, 68, .5); color: #fca5a5; }
 
 .customer-dropdown-menu {
   position: absolute;

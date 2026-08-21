@@ -8,13 +8,16 @@ import {
   getActiveCashSession,
   recordOrderPayments,
   updateOrderStatus,
+  removeOrderItem,
+  setOrderDeliveryFee,
   type PaymentMethod,
+  type CartItem,
 } from '../lib/dataService'
+import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
-import { formatProductTitle } from '../lib/textFormat'
+import { formatUsd, formatVes } from '../lib/money'
 import {
   Search,
   Calendar,
@@ -28,6 +31,7 @@ import {
   ShoppingBag,
   Bike,
   Plus,
+  Trash2,
   MapPin,
   CreditCard,
   Printer,
@@ -116,6 +120,30 @@ export interface ComandaOrder {
   webRequestId?: string
 }
 
+const MOCK_COMANDAS: ComandaOrder[] = []
+
+// La ubicación GPS del cliente llega dentro de las notas del pedido web como un
+// link de Google Maps. Estos helpers la extraen para mostrar un botón de mapa y
+// limpian esa línea del texto de notas visible.
+const MAPS_URL_RE = /https?:\/\/(?:maps\.google\.[a-z.]+|www\.google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps)\S*/i
+
+function extractMapsUrl(notes?: string): string | null {
+  if (!notes) return null
+  const url = notes.match(MAPS_URL_RE)
+  if (url) return url[0]
+  const coords = notes.match(/(-?\d{1,3}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)/)
+  return coords ? `https://maps.google.com/?q=${coords[1]},${coords[2]}` : null
+}
+
+function cleanNotes(notes?: string): string {
+  if (!notes) return ''
+  return notes
+    .split('\n')
+    .filter((line) => !MAPS_URL_RE.test(line) && !/ubicaci[oó]n gps/i.test(line))
+    .join('\n')
+    .trim()
+}
+
 const COLUMNS = [
   { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8' },
   { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316' },
@@ -123,10 +151,13 @@ const COLUMNS = [
   { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6' },
 ]
 
+// Cuántas comandas se muestran por columna antes de "Ver todas".
+const COLUMN_PREVIEW_LIMIT = 6
+
 export function Comandas() {
   const navigate = useNavigate()
   const { bcvRate } = useRates()
-  const [comandas, setComandas] = useState<ComandaOrder[]>([])
+  const [comandas, setComandas] = useState<ComandaOrder[]>(MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
 
@@ -146,6 +177,88 @@ export function Comandas() {
   const [statusError, setStatusError] = useState('')
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
+  const [expandedCols, setExpandedCols] = useState<Record<string, boolean>>({})
+  const [showAddItems, setShowAddItems] = useState(false)
+  const [removingItemId, setRemovingItemId] = useState<string | null>(null)
+  const [removeError, setRemoveError] = useState('')
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState('')
+  const [savingDelivery, setSavingDelivery] = useState(false)
+
+  // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
+  useEffect(() => {
+    const d = selectedOrder?.items.find((i) => i.name === 'Delivery')
+    setDeliveryFeeInput(d ? String(d.unitPrice ?? d.subtotal ?? '') : '')
+  }, [selectedOrder])
+
+  const handleSaveDeliveryFee = async () => {
+    if (!selectedOrder) return
+    const fee = Math.max(0, parseFloat(deliveryFeeInput.replace(',', '.')) || 0)
+    setSavingDelivery(true)
+    setRemoveError('')
+    try {
+      await setOrderDeliveryFee(selectedOrder.id, fee)
+      setSelectedOrder((prev) => {
+        if (!prev) return prev
+        const withoutDelivery = prev.items.filter((i) => i.name !== 'Delivery')
+        const items = fee > 0
+          ? [...withoutDelivery, { id: 'delivery-fee', name: 'Delivery', quantity: 1, unitPrice: fee, subtotal: fee }]
+          : withoutDelivery
+        const totalAmount = items.reduce((s, i) => s + (i.subtotal ?? (i.unitPrice || 0) * i.quantity), 0)
+        return { ...prev, items, totalAmount }
+      })
+      setReloadToken((value) => value + 1)
+    } catch (e) {
+      setRemoveError(e instanceof Error ? e.message : 'No se pudo guardar el costo de delivery')
+    } finally {
+      setSavingDelivery(false)
+    }
+  }
+
+  const handleRemoveItem = async (itemId: string) => {
+    if (!window.confirm('¿Quitar este producto de la comanda? Se revertirá su inventario.')) return
+    setRemovingItemId(itemId)
+    setRemoveError('')
+    try {
+      await removeOrderItem(itemId)
+      setSelectedOrder((prev) => {
+        if (!prev) return prev
+        const removed = prev.items.find((i) => i.id === itemId)
+        const removedTotal = removed ? removed.subtotal ?? (removed.unitPrice || 0) * removed.quantity : 0
+        return {
+          ...prev,
+          items: prev.items.filter((i) => i.id !== itemId),
+          totalAmount: Math.max(0, (prev.totalAmount || 0) - removedTotal),
+        }
+      })
+      setReloadToken((value) => value + 1)
+    } catch (e) {
+      setRemoveError(e instanceof Error ? e.message : 'No se pudo quitar el producto')
+    } finally {
+      setRemovingItemId(null)
+    }
+  }
+
+  // Agrega ítems (ya insertados en BD) al detalle abierto de forma optimista y
+  // recarga el tablero para reconciliar con los datos reales.
+  const handleItemsAdded = (added: CartItem[]) => {
+    setSelectedOrder((prev) => {
+      if (!prev) return prev
+      const newItems: ComandaItem[] = added.map((i, idx) => ({
+        id: i.lineId || `added-${Date.now()}-${idx}`,
+        name: i.productName,
+        quantity: i.quantity,
+        unitPrice: i.price,
+        subtotal: i.price * i.quantity,
+        observations:
+          i.selectedModifiers && i.selectedModifiers.length > 0
+            ? i.selectedModifiers.map((m) => m.optionName).join(', ')
+            : undefined,
+      }))
+      const addedTotal = added.reduce((s, i) => s + i.price * i.quantity, 0)
+      return { ...prev, items: [...prev.items, ...newItems], totalAmount: (prev.totalAmount || 0) + addedTotal }
+    })
+    setReloadToken((value) => value + 1)
+  }
   const paymentRate = paymentOrder?.bcvRate && paymentOrder.bcvRate > 0 ? paymentOrder.bcvRate : bcvRate
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
 
@@ -196,12 +309,6 @@ export function Comandas() {
     setPaying(true)
     setPaymentError('')
     try {
-      // Re-validar que la caja sigue abierta
-      const activeSession = await getActiveCashSession()
-      if (!activeSession) {
-        throw new Error('La caja se cerró. Abre la caja nuevamente para cobrar.')
-      }
-
       const total = Number(paymentOrder.totalAmount ?? 0)
       const enteredAmount = Number(amountReceived)
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
@@ -223,10 +330,8 @@ export function Comandas() {
       }>
 
       if (selectedPaymentTab === 'split') {
-        const totalCents = Math.round(total * 100)
-        const primaryCents = Math.round(splitPrimaryAmountUsd * 100)
-        const primaryAmount = primaryCents / 100
-        const secondaryAmount = (totalCents - primaryCents) / 100
+        const primaryAmount = Math.round(splitPrimaryAmountUsd * 100) / 100
+        const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
         if (primaryAmount <= 0 || secondaryAmount <= 0) {
           throw new Error('El pago combinado necesita dos montos mayores a cero')
         }
@@ -330,14 +435,11 @@ export function Comandas() {
   // Fetch real orders from Supabase / dataService
   useEffect(() => {
     let active = true
-    let inflight = false
     const loadRealOrders = async () => {
-      if (inflight) return
-      inflight = true
       try {
-        const dayRange = dayRangeInTimeZone()
+        const today = new Date().toISOString().split('T')[0]
         const [realOrders, webOrders] = await Promise.all([
-          getOrdersWithItems(dayRange.start, dayRange.end),
+          getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59'),
           getPendingWebOrders(),
         ])
 
@@ -364,7 +466,7 @@ export function Comandas() {
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
             const status: ComandaOrder['status'] = o.fulfillmentStatus
 
-            const hasPaid = o.status === 'paid'
+            const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
             const paymentMethods = [...new Set(o.payments.map((payment) => payment.method))]
             const paymentLabels: Record<PaymentMethod, string> = {
               cash: 'Efectivo',
@@ -391,11 +493,9 @@ export function Comandas() {
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
               isRetraso: elapsed > 15 && status !== 'delivered',
               customerName: o.customerName || 'Cliente general',
-              customerPhone: '',
-              address: o.orderType === 'delivery'
-                ? (o.notes?.match(/Direcci(?:ó|o)n:\s*(.+)/i)?.[1] || '')
-                : '',
-              reference: '',
+              customerPhone: '0412-1234567',
+              address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
+              reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
               paymentReference: persistedReference,
               orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mesa' : 'Para llevar',
               items: o.items.map((item) => ({
@@ -460,8 +560,6 @@ export function Comandas() {
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
-      } finally {
-        inflight = false
       }
     }
 
@@ -625,10 +723,10 @@ export function Comandas() {
           <ChevronDown size={12} />
         </div>
 
-        <div className="filter-group-item filter-btn-dark" aria-label="Filtros disponibles">
+        <button className="filter-group-item filter-btn-dark">
           <Filter size={14} />
           <span>Filtros</span>
-        </div>
+        </button>
 
         <div className="filter-search-inline">
           <Search size={14} />
@@ -647,6 +745,9 @@ export function Comandas() {
       <div className="kanban-board-grid">
         {COLUMNS.map(col => {
           const colOrders = getOrdersByStatus(col.key)
+          const isExpanded = expandedCols[col.key] ?? false
+          const visibleOrders = isExpanded ? colOrders : colOrders.slice(0, COLUMN_PREVIEW_LIMIT)
+          const hiddenCount = colOrders.length - visibleOrders.length
 
           return (
             <div key={col.key} className="kanban-column">
@@ -664,11 +765,11 @@ export function Comandas() {
                 {colOrders.length === 0 ? (
                   <div className="empty-col">Sin comandas</div>
                 ) : (
-                  colOrders.map(order => (
+                  visibleOrders.map(order => (
                     <div
                       key={order.id}
                       className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''}`}
-                      onClick={() => setSelectedOrder(order)}
+                      onClick={() => { setShowAddItems(false); setSelectedOrder(order) }}
                     >
                       {/* Top Header line */}
                       <div className="card-top-line">
@@ -696,7 +797,7 @@ export function Comandas() {
                         {order.items.map(item => (
                           <div key={item.id} className="card-item-row">
                             <span className="dot-indicator" style={{ backgroundColor: col.color }}></span>
-                                <span className="item-name-text">{formatProductTitle(item.name)}</span>
+                            <span className="item-name-text">{item.name}</span>
                             <span className="item-qty-text">× {item.quantity}</span>
                           </div>
                         ))}
@@ -760,13 +861,30 @@ export function Comandas() {
               </div>
 
               {/* Column Footer */}
-              <div className="kanban-col-footer">
-                <span className="ver-todas-btn">{colOrders.length ? `Mostrando ${colOrders.length}` : 'Sin pedidos'}</span>
-              </div>
+              {(hiddenCount > 0 || isExpanded) && colOrders.length > COLUMN_PREVIEW_LIMIT && (
+                <div className="kanban-col-footer">
+                  <button
+                    className="ver-todas-btn"
+                    onClick={() => setExpandedCols(prev => ({ ...prev, [col.key]: !isExpanded }))}
+                  >
+                    {isExpanded ? 'Ver menos' : `+ Ver todas (${colOrders.length})`}
+                  </button>
+                </div>
+              )}
             </div>
           )
         })}
       </div>
+
+      {/* Agregar productos a una comanda sin cobrar */}
+      {showAddItems && selectedOrder && !selectedOrder.isPaid && (
+        <AddItemsToOrderModal
+          orderId={selectedOrder.id}
+          orderNumber={selectedOrder.orderNumber}
+          onClose={() => setShowAddItems(false)}
+          onAdded={handleItemsAdded}
+        />
+      )}
 
       {/* Modal detail */}
       {selectedOrder && createPortal(
@@ -856,15 +974,65 @@ export function Comandas() {
                         {selectedOrder.reference && <p className="cmd-reference">Referencia de entrega: {selectedOrder.reference}</p>}
                         {selectedOrder.paymentReference && <p className="cmd-reference">Referencia de pago: {selectedOrder.paymentReference}</p>}
                       </div>
-                      <div className="cmd-map-placeholder">
-                        <MapPin size={24} className="cmd-map-icon" />
-                      </div>
+                      {extractMapsUrl(selectedOrder.notes) ? (
+                        <a
+                          className="cmd-map-link"
+                          href={extractMapsUrl(selectedOrder.notes)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <MapPin size={18} />
+                          <span>Ver ubicación</span>
+                        </a>
+                      ) : (
+                        <div className="cmd-map-placeholder">
+                          <MapPin size={24} className="cmd-map-icon" />
+                        </div>
+                      )}
                     </div>
+
+                    {!selectedOrder.isPaid && selectedOrder.source !== 'web' && (
+                      <div className="cmd-delivery-fee">
+                        <label className="cmd-delivery-fee-label"><Bike size={14} /> Costo del delivery</label>
+                        <div className="cmd-delivery-fee-row">
+                          <span className="cmd-delivery-fee-currency">$</span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className="cmd-delivery-fee-input"
+                            value={deliveryFeeInput}
+                            onChange={(e) => setDeliveryFeeInput(e.target.value.replace(/[^0-9.,]/g, ''))}
+                            placeholder="0,00"
+                          />
+                          <button
+                            type="button"
+                            className="cmd-delivery-fee-save"
+                            disabled={savingDelivery}
+                            onClick={handleSaveDeliveryFee}
+                          >
+                            {savingDelivery ? 'Guardando…' : 'Guardar'}
+                          </button>
+                        </div>
+                        <small className="cmd-delivery-fee-hint">Monto cotizado por WhatsApp según la ubicación. Se suma al total.</small>
+                      </div>
+                    )}
+                    {!selectedOrder.isPaid && selectedOrder.source === 'web' && (
+                      <p className="cmd-delivery-fee-hint" style={{ marginTop: 12 }}>
+                        <Bike size={12} /> Confirma el pedido de WhatsApp para poder agregar el costo del delivery.
+                      </p>
+                    )}
                   </div>
                 )}
 
                 <div className="cmd-section">
-                  <div className="cmd-section-title"><ShoppingBag size={16} /> Producción del pedido</div>
+                  <div className="cmd-section-title cmd-section-title-row">
+                    <span className="cmd-section-title-text"><ShoppingBag size={16} /> Producción del pedido</span>
+                    {!selectedOrder.isPaid && (
+                      <button type="button" className="cmd-add-item-btn" onClick={() => setShowAddItems(true)}>
+                        <Plus size={14} /> Agregar producto
+                      </button>
+                    )}
+                  </div>
                   <div className="cmd-items-table-wrap">
                     <table className="cmd-items-table">
                       <thead>
@@ -874,6 +1042,7 @@ export function Comandas() {
                           <th>Cant.</th>
                           <th>P. Unit.</th>
                           <th>Subtotal</th>
+                          {!selectedOrder.isPaid && <th aria-label="Acciones"></th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -881,25 +1050,40 @@ export function Comandas() {
                           <tr key={item.id}>
                             <td>
                               <div className="cmd-product-cell">
-                                <div className="cmd-product-img">🍔</div>
-                                <span>{formatProductTitle(item.name)}</span>
+                                <div className="cmd-product-img">{item.name === 'Delivery' ? '🛵' : '🍔'}</div>
+                                <span>{item.name}</span>
                               </div>
                             </td>
                             <td className="cmd-obs">{item.observations || '—'}</td>
                             <td>x{item.quantity}</td>
                             <td><MoneyWithBcv usd={item.unitPrice || 0} rate={selectedOrder.bcvRate} compact /></td>
                             <td><MoneyWithBcv usd={item.subtotal || 0} rate={selectedOrder.bcvRate} compact /></td>
+                            {!selectedOrder.isPaid && (
+                              <td className="cmd-item-actions">
+                                <button
+                                  type="button"
+                                  className="cmd-item-remove"
+                                  title="Quitar producto"
+                                  aria-label={`Quitar ${item.name}`}
+                                  disabled={removingItemId === item.id}
+                                  onClick={() => handleRemoveItem(item.id)}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  {removeError && <p className="cmd-item-remove-error">{removeError}</p>}
                 </div>
 
                 <div className="cmd-section cmd-notes-section">
                   <div className="cmd-section-title"><FileText size={16} /> Notas del pedido</div>
                   <div className="cmd-notes-content">
-                    {selectedOrder.notes ? selectedOrder.notes.split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
+                    {cleanNotes(selectedOrder.notes) ? cleanNotes(selectedOrder.notes).split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
                   </div>
                 </div>
               </div>
@@ -1004,7 +1188,7 @@ export function Comandas() {
             <footer className="cmd-modal-footer">
               <div className="cmd-footer-left">
                 {selectedOrder.status !== 'delivered' && (
-                  <span className="cmd-btn-outline" aria-label="La edición de pedidos no está disponible"><Edit3 size={16} /> Edición no disponible</span>
+                  <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
                 )}
                 <button className="cmd-btn-outline" onClick={() => window.print()}><Printer size={16} /> Imprimir comanda</button>
               </div>

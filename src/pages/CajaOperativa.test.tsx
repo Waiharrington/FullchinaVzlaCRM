@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('../context/auth-context', () => ({
-  useAuth: () => ({ user: { id: 'demo-cashier', email: 'caja@fullchinavzla.com', role: 'cashier' } }),
+  useAuth: () => ({ user: { id: 'demo-cashier', email: 'caja@fullchinavzla.com', role: 'cashier', allowedModules: null } }),
 }))
 
 vi.mock('../lib/dataService', async () => {
@@ -24,7 +24,7 @@ const activeSession: CashSessionSnapshot = {
   id: 'session-1', sessionNumber: 7, registerId: 'register-1', registerCode: 'caja-principal',
   registerName: 'Caja principal', status: 'open', openedAt: '2026-08-08T12:00:00.000Z',
   openedBy: 'demo-cashier', openingCashUsd: 20, openingCashVes: 100,
-  cashSalesUsd: 35, paymentTotal: 50, paymentBreakdown: { cash: 35, mobile: 15 },
+  cashSalesUsd: 35, paymentTotal: 50, paymentBreakdown: { cash: 35, mobile: 15 }, paymentBreakdownVes: { cash: 0, mobile: 2332.5 },
   movementInUsd: 0, movementOutUsd: 5, movementInVes: 0, movementOutVes: 0,
   expectedCashUsd: 50, expectedCashVes: 100, countedCashUsd: null, countedCashVes: null,
   differenceUsd: null, differenceVes: null, closedAt: null, movements: [],

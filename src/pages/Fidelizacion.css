@@ -1,76 +1,236 @@
-/* Fidelizacion.css */
-.fidelizacion-page {
+/* ─── Fidelización (dark premium, brand Full China) ──────────────────── */
+.fidel-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   max-width: 1600px;
   margin: 0 auto;
+  padding: 0 4px 20px;
 }
 
-.fidel-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-}
-
-@media (min-width: 1024px) {
-  .fidel-grid {
-    grid-template-columns: 1fr 380px;
-  }
-}
-
-.fidel-card {
+.fidel-empty {
   background: #18181b;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 48px 20px;
+  text-align: center;
+  color: #a1a1aa;
 }
 
-.loyalty-stamp-card {
-  background: linear-gradient(135deg, #18181b 0%, #27272a 100%);
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  border-radius: 16px;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.stamps-grid {
+/* ─── Métricas ───────────────────────────────────────────────────────── */
+.fidel-metrics {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
 }
+@media (max-width: 1100px) { .fidel-metrics { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px)  { .fidel-metrics { grid-template-columns: 1fr; } }
 
-.stamp-slot {
-  aspect-ratio: 1;
-  background: #141416;
-  border: 2px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 50%;
+.fidel-metric {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-weight: 800;
+  gap: 14px;
+  background: linear-gradient(135deg, #1a1a1d 0%, #121214 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 16px 18px;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.fidel-metric:hover { transform: translateY(-2px); border-color: rgba(234, 179, 8, 0.35); }
+
+.fidel-metric-icon {
+  width: 50px; height: 50px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+.fidel-metric-icon.gold   { background: linear-gradient(135deg, #eab308, #a16207); color: #1c1917; box-shadow: 0 0 18px rgba(234,179,8,.35); }
+.fidel-metric-icon.fire   { background: linear-gradient(135deg, #f97316, #c2410c); box-shadow: 0 0 18px rgba(249,115,22,.3); }
+.fidel-metric-icon.violet { background: linear-gradient(135deg, #a855f7, #7c3aed); box-shadow: 0 0 18px rgba(168,85,247,.3); }
+.fidel-metric-icon.red    { background: linear-gradient(135deg, #ef4444, #b91c1c); box-shadow: 0 0 18px rgba(239,68,68,.3); }
+
+.fidel-metric-body { display: flex; flex-direction: column; min-width: 0; }
+.fidel-metric-label { font-size: 11.5px; color: #a1a1aa; font-weight: 600; }
+.fidel-metric-value { font-size: 24px; font-weight: 900; color: #fff; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fidel-metric-sub { font-size: 11px; color: #71717a; }
+
+/* ─── Layout ─────────────────────────────────────────────────────────── */
+.fidel-grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+@media (min-width: 1024px) { .fidel-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
+
+.fidel-card {
+  background: #161618;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.fidel-card-head { display: flex; align-items: center; gap: 12px; }
+.fidel-card-head-icon {
+  width: 38px; height: 38px; border-radius: 11px;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #eab308, #ca8a04); color: #1c1917;
+  box-shadow: 0 0 16px rgba(234,179,8,.35);
+}
+.fidel-card-title { color: #fff; font-size: 16px; font-weight: 800; margin: 0; }
+.fidel-card-sub { color: #a1a1aa; font-size: 12px; }
+
+/* ─── Tabla ranking ──────────────────────────────────────────────────── */
+.fidel-table-wrap { overflow-x: auto; }
+.fidel-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+.fidel-table thead th {
+  text-align: left;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
   color: #71717a;
-  font-size: 14px;
+  font-weight: 700;
+  padding: 4px 12px;
+}
+.fidel-table tbody tr {
+  background: #1c1c1f;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.fidel-table tbody tr:hover { background: #232327; }
+.fidel-table tbody td {
+  padding: 12px;
+  color: #d4d4d8;
+  font-size: 13px;
+  border-top: 1px solid rgba(255,255,255,.05);
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.fidel-table tbody td:first-child { border-left: 1px solid rgba(255,255,255,.05); border-radius: 10px 0 0 10px; }
+.fidel-table tbody td:last-child  { border-right: 1px solid rgba(255,255,255,.05); border-radius: 0 10px 10px 0; }
+
+.fidel-table tbody tr.selected td { background: rgba(234, 179, 8, 0.08); border-color: rgba(234,179,8,.3); }
+.fidel-table tbody tr.podium-1 td:first-child { box-shadow: inset 3px 0 0 #eab308; }
+.fidel-table tbody tr.podium-2 td:first-child { box-shadow: inset 3px 0 0 #cbd5e1; }
+.fidel-table tbody tr.podium-3 td:first-child { box-shadow: inset 3px 0 0 #d97706; }
+
+.fidel-rank {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-weight: 800; font-size: 12px; color: #a1a1aa;
+}
+.fidel-rank.medal-1 { color: #fde047; }
+.fidel-rank.medal-2 { color: #e2e8f0; }
+.fidel-rank.medal-3 { color: #fdba74; }
+.fidel-cust-name { font-weight: 700; color: #fff; }
+.fidel-muted { color: #8a8a93; }
+.fidel-visits { font-weight: 900; color: #eab308; font-size: 15px; }
+.fidel-reward-badge {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc; font-weight: 700;
+  padding: 3px 9px; border-radius: 20px; font-size: 11px; white-space: nowrap;
+}
+.fidel-add-visit {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #fde047;
+  padding: 6px 12px; border-radius: 8px;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: all 0.15s;
+}
+.fidel-add-visit:hover { background: #eab308; color: #1c1917; }
+
+.hide-sm { }
+@media (max-width: 640px) { .hide-sm { display: none; } }
+
+/* ─── Tarjeta de fidelidad ───────────────────────────────────────────── */
+.fidel-side { display: flex; flex-direction: column; gap: 16px; }
+
+.loyalty-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 100% 0%, rgba(234,179,8,.18) 0%, transparent 55%),
+    linear-gradient(160deg, #201d16 0%, #121013 60%);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 14px 40px rgba(0,0,0,.45);
+}
+.loyalty-card-shine {
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 40%, rgba(255,255,255,.05) 50%, transparent 60%);
+  pointer-events: none;
 }
 
-.stamp-slot.stamped {
-  background: #eab308;
-  color: #000;
-  border-style: solid;
-  border-color: #fef08a;
-  box-shadow: 0 0 12px rgba(234, 179, 8, 0.4);
-}
-
-.rank-badge-gold {
-  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  color: #000;
-  font-weight: 900;
-  font-size: 11px;
-  padding: 3px 8px;
+.loyalty-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; position: relative; z-index: 1; }
+.loyalty-kicker { font-size: 10.5px; color: #eab308; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.loyalty-name { color: #fff; font-size: 19px; font-weight: 900; margin: 3px 0 2px; }
+.loyalty-meta { color: #a1a1aa; font-size: 12px; }
+.loyalty-award {
+  width: 44px; height: 44px; flex-shrink: 0;
   border-radius: 12px;
+  display: grid; place-items: center;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.4);
+  color: #eab308;
 }
+
+.loyalty-notice {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(234, 179, 8, 0.15);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fef08a; padding: 9px 12px; border-radius: 10px; font-size: 12px;
+  position: relative; z-index: 1;
+}
+.loyalty-notice.error { background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.35); color: #fca5a5; }
+
+.loyalty-progress-block { position: relative; z-index: 1; }
+.loyalty-progress-top { display: flex; justify-content: space-between; font-size: 12px; color: #d4d4d8; margin-bottom: 7px; }
+.loyalty-progress-top strong { color: #fde047; }
+.loyalty-progress-bar { height: 8px; background: rgba(255,255,255,.08); border-radius: 20px; overflow: hidden; }
+.loyalty-progress-fill { height: 100%; background: linear-gradient(90deg, #eab308, #f59e0b); border-radius: 20px; transition: width 0.4s ease; }
+
+.loyalty-stamps {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+}
+.loyalty-stamp {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 15px; color: #71717a;
+  background: rgba(255,255,255,.03);
+  border: 2px dashed rgba(255,255,255,.14);
+}
+.loyalty-stamp.on {
+  color: #1c1917;
+  background: radial-gradient(circle at 35% 30%, #fde047, #eab308);
+  border: 2px solid #fde047;
+  box-shadow: 0 0 14px rgba(234,179,8,.55);
+}
+
+.loyalty-reward-box {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px; padding: 12px 14px;
+}
+.loyalty-reward-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.loyalty-reward-label { font-size: 10.5px; color: #8a8a93; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.loyalty-reward-value { color: #fff; font-weight: 700; font-size: 13px; }
+.loyalty-mark-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #1c1917; border: none;
+  padding: 10px 14px; border-radius: 10px;
+  font-weight: 800; font-size: 12.5px; cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  box-shadow: 0 6px 16px rgba(234,179,8,.35);
+  transition: transform 0.1s;
+}
+.loyalty-mark-btn:hover { transform: scale(1.03); }
+.loyalty-mark-btn:active { transform: scale(0.97); }
