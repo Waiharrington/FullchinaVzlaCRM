@@ -7,6 +7,7 @@ import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { downloadReceipt } from '../lib/receipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
+import { classifyMenuCategory, MENU_CATEGORY_ORDER, MENU_CATEGORY_LABELS } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
 import {
   getProducts,
@@ -66,20 +67,6 @@ import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 
 type ViewMode = 'grid' | 'list'
 
-const CATEGORY_LABELS: Record<string, string> = {
-  arroz: 'Arroces',
-  noodles: 'Noodles',
-  lumpia: 'Lumpias',
-  combo: 'Combos',
-  proteina: 'Proteínas',
-  bebida: 'Bebidas',
-  extra: 'Extras',
-  plato: 'Platos',
-  wok: 'Wok',
-  pollo_camaron: 'Pollo y Camarón',
-  racion: 'Raciones',
-}
-const CATEGORY_ORDER = ['arroz', 'noodles', 'lumpia', 'combo', 'proteina', 'bebida', 'extra', 'plato', 'wok', 'pollo_camaron', 'racion']
 const BIRTH_MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
@@ -349,13 +336,13 @@ export function Caja() {
   }, [])
 
   const categories = useMemo(() => {
-    const present = new Set(products.map((p) => p.category))
-    return CATEGORY_ORDER.filter((c) => present.has(c))
+    const present = new Set(products.map((p) => classifyMenuCategory(p.name, p.category)))
+    return MENU_CATEGORY_ORDER.filter((c) => present.has(c))
   }, [products])
 
   const filteredProductGroups = useMemo(() => {
     const categoryProducts = products.filter((product) => {
-      const matchCat = activeCategory === 'all' || product.category === activeCategory
+      const matchCat = activeCategory === 'all' || classifyMenuCategory(product.name, product.category) === activeCategory
       return matchCat && product.active
     })
     let result = groupMenuProducts(categoryProducts)
@@ -951,7 +938,7 @@ export function Caja() {
                 className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
                 onClick={() => setActiveCategory(cat)}
               >
-                {CATEGORY_LABELS[cat] ?? cat}
+                {MENU_CATEGORY_LABELS[cat] ?? cat}
               </button>
             ))}
           </div>
