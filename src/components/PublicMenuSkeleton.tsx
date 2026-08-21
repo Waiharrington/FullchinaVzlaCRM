@@ -1,0 +1,11 @@
+export function PublicMenuSkeleton() {
+  return (
+    <main className="public-menu-page public-menu-skeleton" aria-label="Cargando menú">
+      <header className="public-top-bar"><span className="public-skeleton-block public-skeleton-icon" /><span className="public-skeleton-block public-skeleton-logo" /><span className="public-skeleton-block public-skeleton-icon" /></header>
+      <section className="public-hero-header"><span className="public-skeleton-block public-skeleton-heading" /><span className="public-skeleton-block public-skeleton-status" /></section>
+      <section className="public-recommended-card public-skeleton-recommended"><div className="public-skeleton-copy"><span className="public-skeleton-block public-skeleton-kicker" /><span className="public-skeleton-block public-skeleton-recommend-title" /><span className="public-skeleton-block public-skeleton-recommend-line" /><span className="public-skeleton-block public-skeleton-recommend-line short" /><span className="public-skeleton-block public-skeleton-recommend-price" /><span className="public-skeleton-block public-skeleton-recommend-button" /></div><span className="public-skeleton-block public-skeleton-recommend-image" /></section>
+      <nav className="public-categories-scroll public-skeleton-categories">{Array.from({ length: 5 }, (_, index) => <span key={index} className="public-skeleton-block public-skeleton-category" />)}</nav>
+      <section className="public-content"><div className="public-list-header"><span className="public-skeleton-block public-skeleton-section-title" /><span className="public-skeleton-block public-skeleton-see-all" /></div><div className="public-product-list">{Array.from({ length: 6 }, (_, index) => <article className="public-prod-card public-skeleton-product" key={index}><span className="public-skeleton-block public-skeleton-product-image" /><span className="public-skeleton-block public-skeleton-product-price" /><span className="public-skeleton-block public-skeleton-product-title" /><span className="public-skeleton-block public-skeleton-product-description" /><span className="public-skeleton-block public-skeleton-product-description short" /></article>)}</div></section>
+    </main>
+  )
+}

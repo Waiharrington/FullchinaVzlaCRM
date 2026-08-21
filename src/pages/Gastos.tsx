@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { createExpense, getExpenses } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { getExchangeRates } from '../lib/rates'
-import { formatUsd, formatVes } from '../lib/money'
+import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import {
   Receipt, Store, Plus, CheckCircle2, TrendingDown, Wallet, Activity,
   Search, Filter, Download, HelpCircle, X,
@@ -89,7 +89,7 @@ export function Gastos() {
     try {
       const saved = await createExpense({
         concept: form.description.trim(), amount: amountNum, category: form.type,
-        expenseDate: new Date().toISOString().split('T')[0], userId: user.id,
+        expenseDate: dateKeyInTimeZone(), userId: user.id,
         notes: JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() }),
       })
       setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountNum, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
@@ -105,7 +105,7 @@ export function Gastos() {
     filtered.forEach((e) => rows.push([e.date, e.description, e.type === 'fixed' ? 'Fijo' : 'Variable', catLabel(e.category), e.vendor, e.amountUsd.toFixed(2), (e.amountUsd * rate).toFixed(2), methodLabel(e.paymentMethod), e.reference ?? '']))
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-    const a = document.createElement('a'); a.href = url; a.download = `gastos_${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url)
+    const a = document.createElement('a'); a.href = url; a.download = `gastos_${dateKeyInTimeZone()}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
   return (

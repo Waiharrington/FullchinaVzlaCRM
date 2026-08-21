@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { AlertTriangle, ArrowRightLeft, CheckCircle2, DollarSign, Package, Plus, Warehouse } from 'lucide-react'
 import { adjustStock, getIngredients, getStockMovements } from '../lib/dataService'
 import './Almacen.css'
+import { dateKeyInTimeZone } from '../lib/money'
 
 type WarehouseItem = {
   id: string
@@ -100,7 +101,7 @@ export function Almacen() {
         itemName: targetItem.name,
         quantityTransferred: qty,
         unit: targetItem.unit,
-        date: new Date().toISOString().split('T')[0],
+        date: dateKeyInTimeZone(),
         operator,
         destination: 'Food Truck Inventario Operativo',
         status: 'completed'

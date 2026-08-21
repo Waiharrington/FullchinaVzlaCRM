@@ -33,3 +33,17 @@ export function dateKeyInTimeZone(date: Date = new Date(), timeZone = 'America/C
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
   return `${values.year}-${values.month}-${values.day}`
 }
+
+/** Rango de instantes para un día calendario en la zona horaria indicada. */
+export function dayRangeInTimeZone(date: Date = new Date(), timeZone = 'America/Caracas') {
+  const startDate = dateKeyInTimeZone(date, timeZone)
+  const [year, month, day] = startDate.split('-').map(Number)
+  const next = new Date(Date.UTC(year, month - 1, day + 1))
+  const endDate = next.toISOString().slice(0, 10)
+  // Venezuela mantiene UTC-4; el offset explícito evita que PostgreSQL
+  // interprete la fecha como UTC y desplace las órdenes al día anterior.
+  return {
+    start: `${startDate}T00:00:00-04:00`,
+    end: `${endDate}T00:00:00-04:00`,
+  }
+}

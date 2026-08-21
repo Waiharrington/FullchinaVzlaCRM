@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
+import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getExpenses, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type Expense } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
@@ -209,16 +210,16 @@ export function Inicio() {
           </div>
         </div>
         <div className="db-header-right">
-          <button className="db-header-pill">
+          <span className="db-header-pill" aria-label="Período actual">
             <Calendar size={14} /><span>Hoy</span><ChevronDown size={14} />
-          </button>
+          </span>
           <div className="db-header-search">
             <input placeholder="Buscar..." />
             <Search size={16} />
           </div>
-          <button className="db-header-icon-btn">
+          <span className="db-header-icon-btn" aria-label="Notificaciones">
             <Bell size={18} />
-          </button>
+          </span>
           <button className="db-primary-btn" onClick={() => navigate('/comandas')}>
             <Plus size={16} /><span>Nueva comanda</span><ChefHat size={16} />
           </button>
@@ -264,7 +265,7 @@ export function Inicio() {
           </div>
         </div>
         <div className="kpi-banner-img-wrap">
-          <img src="/kpi-bg.png" alt="" className="kpi-banner-img" />
+          <img src="/optimized/root/kpi-bg.webp" alt="" className="kpi-banner-img" />
           <div className="kpi-banner-gradient"></div>
         </div>
       </div>
@@ -273,7 +274,7 @@ export function Inicio() {
         <div className="db-card">
           <div className="db-card-head">
             <h3>RESUMEN DE VENTAS</h3>
-            <button className="db-card-pill-sm">Últimos 7 días</button>
+            <span className="db-card-pill-sm">Últimos 7 días</span>
           </div>
           <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>
         </div>
@@ -325,7 +326,7 @@ export function Inicio() {
               <div key={d.name} className="seller-row-v2">
                 <span className={`seller-rank r${i + 1}`}>{i + 1}</span>
                 <div className="seller-meta">
-                  <span className="seller-name-v2">{'emoji' in d ? d.emoji : '🥢'} {d.name}</span>
+                  <span className="seller-name-v2">{'emoji' in d ? d.emoji : '🥢'} {formatProductTitle(d.name)}</span>
                   <span className="seller-sub">{d.count} platos</span>
                 </div>
                 <MoneyWithBcv usd={d.revenue} className="seller-rev" compact />
@@ -350,7 +351,7 @@ export function Inicio() {
                   <div className="inv-row-icon">
                     <AlertTriangle size={14} />
                   </div>
-                  <span className="inv-row-name">{it.name}</span>
+                  <span className="inv-row-name">{formatSpanishText(it.name)}</span>
                   <span className="inv-row-qty">{it.currentStock.toLocaleString('es-VE', { maximumFractionDigits: 2 })} {it.unitSymbol}</span>
                   <span className={`inv-badge ${it.currentStock <= 0 ? 'inv-crítico' : 'inv-ok'}`}>{level}</span>
                 </div>

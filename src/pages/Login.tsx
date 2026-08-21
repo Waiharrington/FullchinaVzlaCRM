@@ -4,11 +4,11 @@ import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Grid3X3 } from 'lucid
 import './Login.css'
 
 const CAROUSEL_IMAGES = [
-  '/login-carousel/slide1.webp',
-  '/login-carousel/slide2.webp',
-  '/login-carousel/slide3.png',
-  '/login-carousel/slide4.png',
-  '/login-carousel/slide5.png'
+  '/optimized/login-carousel/slide1.webp',
+  '/optimized/login-carousel/slide2.webp',
+  '/optimized/login-carousel/slide3.webp',
+  '/optimized/login-carousel/slide4.webp',
+  '/optimized/login-carousel/slide5.webp'
 ];
 
 const CAROUSEL_SETTINGS = [
@@ -109,6 +109,11 @@ export function Login() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const nextImage = new Image()
+    nextImage.src = CAROUSEL_IMAGES[(currentSlide + 1) % CAROUSEL_IMAGES.length]
+  }, [currentSlide])
+
   // Tablets en el mostrador funcionan como terminal de caja: PIN es el modo por defecto.
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 680px) and (max-width: 1200px)')
@@ -162,6 +167,9 @@ export function Login() {
             key={src}
             src={src} 
             alt="Full China Food"
+            loading={index === 0 ? 'eager' : 'lazy'}
+            fetchPriority={index === 0 ? 'high' : 'low'}
+            decoding="async"
             className={`carousel-img ${index === currentSlide ? 'active' : ''}`}
             style={isMobileViewport ? {
               objectPosition: `${mobileSettings[index]?.posX ?? 50}% ${mobileSettings[index]?.posY ?? 50}%`,
@@ -176,7 +184,7 @@ export function Login() {
 
       {/* Desktop Premium Layers */}
       <div className="desktop-layers">
-        <div className="desktop-bg-layer" style={{ backgroundImage: 'url(/fondo-login.png)' }}></div>
+        <div className="desktop-bg-layer" style={{ backgroundImage: 'url(/optimized/root/fondo-login.webp)' }}></div>
         
         {/* Left Carousel for Desktop */}
         <div className="desktop-carousel-layer">
@@ -185,6 +193,9 @@ export function Login() {
               key={src}
               src={src} 
               alt="Full China Food"
+              loading={index === 0 ? 'eager' : 'lazy'}
+              fetchPriority={index === 0 ? 'high' : 'low'}
+              decoding="async"
               className={`desktop-carousel-img ${index === currentSlide ? 'active' : ''}`}
               style={{
                 objectPosition: 'center',
@@ -202,7 +213,7 @@ export function Login() {
 
         {/* Bottom food image */}
         <div className="desktop-bottom-layer">
-          <img src="/foto-comida.png" alt="Platos Full China" className="desktop-food-img" />
+          <img src="/optimized/root/foto-comida.webp" alt="Platos Full China" className="desktop-food-img" loading="lazy" decoding="async" />
         </div>
       </div>
 
@@ -211,7 +222,7 @@ export function Login() {
         {/* LEFT COLUMN: Branding */}
         <div className="login-left">
           <div className="login-left-top">
-            <img src="/logo.png" alt="Full China" className="login-main-logo" />
+            <img src="/optimized/root/logo.webp" alt="Full China" className="login-main-logo" decoding="async" />
           </div>
           
           <div className="login-left-bottom">
@@ -231,7 +242,7 @@ export function Login() {
           <div className={`login-card animate-fade-in ${isPinMode ? 'pin-active' : ''}`}>
             {/* Logo */}
             <div className="card-logo-wrapper">
-              <img src="/logo.png" alt="Full China" className="card-logo-img" />
+              <img src="/optimized/root/logo.webp" alt="Full China" className="card-logo-img" decoding="async" />
             </div>
 
             <div className="login-header">

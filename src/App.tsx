@@ -5,6 +5,9 @@ import { RatesProvider } from './context/RatesProvider'
 
 import { useAuth } from './context/auth-context'
 import { SplashScreen } from './components/SplashScreen'
+import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
+import './components/SplashScreen.css'
+import './styles/motion.css'
 import { Layout } from './components/Layout'
 const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })))
 const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
@@ -29,7 +32,7 @@ const MenuSemanal = lazy(() => import('./pages/MenuSemanal').then(module => ({ d
 const Menu = lazy(() => import('./pages/Menu').then(module => ({ default: module.Menu })))
 const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
 const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
-const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
+const PublicOnboarding = lazy(() => import('./pages/PublicOnboarding').then(module => ({ default: module.PublicOnboarding })))
 
 type Role = 'owner' | 'manager' | 'cashier'
 
@@ -61,7 +64,7 @@ function AppRoutes() {
   return (
     <Suspense fallback={<div className="page" role="status">Cargando módulo…</div>}>
     <Routes>
-      <Route path="/pedir" element={<PublicMenu />} />
+      <Route path="/pedir" element={<Suspense fallback={<PublicMenuSkeleton />}><PublicOnboarding /></Suspense>} />
       <Route
         path="/login"
         element={user ? <Navigate to="/" replace /> : <Login />}

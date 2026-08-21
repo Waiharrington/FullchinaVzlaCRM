@@ -6,7 +6,7 @@ import {
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
 import { useAuth } from '../context/auth-context'
-import { formatUsd } from '../lib/money'
+import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import {
   ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart,
   ClipboardList, Package, CalendarClock, Search, Download, Eye, X,
@@ -29,7 +29,7 @@ export function ComprasReal() {
 
   const [showForm, setShowForm] = useState(false)
   const [supplierId, setSupplierId] = useState('')
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0])
+  const [purchaseDate, setPurchaseDate] = useState(dateKeyInTimeZone())
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [markPaid, setMarkPaid] = useState(true)
@@ -104,7 +104,7 @@ export function ComprasReal() {
     return up
   }))
 
-  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setPurchaseDate(new Date().toISOString().split('T')[0]) }
+  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setPurchaseDate(dateKeyInTimeZone()) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -157,7 +157,7 @@ export function ComprasReal() {
     filtered.forEach((p) => rows.push([p.purchaseDate, p.supplierName, p.invoiceNumber ?? '', String(p.items.length), p.totalAmount.toFixed(2), p.isPaid ? 'Si' : 'No']))
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
-    const a = document.createElement('a'); a.href = url; a.download = `compras_${new Date().toISOString().split('T')[0]}.csv`; a.click(); URL.revokeObjectURL(url)
+    const a = document.createElement('a'); a.href = url; a.download = `compras_${dateKeyInTimeZone()}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
   if (loading) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>

@@ -23,7 +23,7 @@ export function SplashScreen({ onDone, minDuration = 2800 }: SplashScreenProps) 
 
   return (
     <div className={`splash-screen ${phase === 'exit' ? 'splash-exit' : ''}`}>
-      <img src="/splash-logo.png" alt="Full China" className="splash-logo" />
+      <img src="/optimized/root/splash-logo.webp" alt="Full China" className="splash-logo" />
       <p className="splash-tagline splash-tagline-desktop">El mejor chino-venezolano de Aragua</p>
       <p className="splash-tagline splash-tagline-mobile">Chino-venezolano auténtico</p>
       <div className="splash-bar-wrap">

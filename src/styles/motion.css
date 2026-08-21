@@ -1,0 +1,55 @@
+/* Sistema de movimiento compartido: breve, funcional y respetuoso con el rendimiento. */
+:root {
+  --app-motion-fast: 160ms;
+  --app-motion-base: 240ms;
+  --app-motion-ease: cubic-bezier(.16, 1, .3, 1);
+}
+
+@keyframes app-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.app-main > * {
+  animation: app-page-in 280ms var(--app-motion-ease) both;
+}
+
+.app-main button,
+.app-main a,
+.app-main [role='button'] {
+  transition: transform var(--app-motion-fast) var(--app-motion-ease),
+    opacity var(--app-motion-fast) ease,
+    background-color var(--app-motion-fast) ease,
+    border-color var(--app-motion-fast) ease,
+    color var(--app-motion-fast) ease,
+    box-shadow var(--app-motion-fast) ease;
+}
+
+.app-main button:not(:disabled):hover,
+.app-main a:hover,
+.app-main [role='button']:hover {
+  transform: translateY(-1px);
+}
+
+.app-main button:not(:disabled):active,
+.app-main a:active,
+.app-main [role='button']:active {
+  transform: translateY(0) scale(.97);
+}
+
+.app-main button:focus-visible,
+.app-main a:focus-visible,
+.app-main [role='button']:focus-visible {
+  outline: 2px solid rgba(255, 214, 102, .75);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-main > *,
+  .app-main button,
+  .app-main a,
+  .app-main [role='button'] {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}

@@ -12,14 +12,22 @@ export default defineConfig({
       workbox: {
         // Las fotos de productos NO van al precache (pesan ~5.5 MB); se cachean
         // en tiempo de ejecución la primera vez que se muestran.
-        globIgnores: ['**/productos/**'],
+        globIgnores: [
+          '**/productos/**',
+          '**/menu-icons/**',
+          '**/fondos/**',
+          '**/login-carousel/**',
+          '**/onboarding-slides/**',
+          '**/cargando-pedido/**',
+          '**/optimized/**',
+        ],
         runtimeCaching: [
           {
-            urlPattern: /\/productos\/.*\.(?:png|jpg|jpeg|webp)$/i,
-            handler: 'CacheFirst',
+            urlPattern: /\/(?:optimized\/.*|productos\/.*)\.(?:png|jpg|jpeg|webp)$/i,
+            handler: 'StaleWhileRevalidate',
             options: {
-              cacheName: 'product-images',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 60 },
+              cacheName: 'optimized-images',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 60 },
             },
           },
         ],

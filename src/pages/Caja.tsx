@@ -61,6 +61,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import './Caja.css'
+import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 
 type ViewMode = 'grid' | 'list'
 
@@ -177,7 +178,7 @@ export function Caja() {
   const location = useLocation()
 
   const [products, setProducts] = useState<Product[]>(cajaCache?.products ?? [])
-  const [todayOrders, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
+  const [, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
   const [, setLoading] = useState(!cajaCache)
 
   const [cart, setCart] = useState<CartItem[]>([])
@@ -383,7 +384,7 @@ export function Caja() {
     setCart((prev) => {
       const existing = prev.find((i) => i.productId === product.id && (!i.selectedModifiers || i.selectedModifiers.length === 0))
       if (existing) return prev.map((i) => i === existing ? { ...i, quantity: i.quantity + 1 } : i)
-      return [...prev, { lineId: genLineId(), productId: product.id, productName: product.name, price: product.price, quantity: 1, emoji: product.emoji }]
+      return [...prev, { lineId: genLineId(), productId: product.id, productName: formatProductTitle(product.name), price: product.price, quantity: 1, emoji: product.emoji }]
     })
   }
 
@@ -485,7 +486,7 @@ export function Caja() {
     setCart((prev) => [...prev, {
       lineId: genLineId(),
       productId: modifierProduct.id,
-      productName: modifierProduct.name,
+      productName: formatProductTitle(modifierProduct.name),
       price: modifierProduct.price + modifierExtraPrice,
       quantity: 1,
       emoji: modifierProduct.emoji,
@@ -577,6 +578,13 @@ export function Caja() {
     setPaying(true)
     setPayError('')
     try {
+      // Re-validar que la caja sigue abierta antes de procesar el pago
+      const activeSession = await getActiveCashSession()
+      if (!activeSession) {
+        throw new Error('La caja se cerró. Abre la caja nuevamente para cobrar.')
+      }
+      setCashSession(activeSession)
+
       const enteredAmount = Number(amountReceived)
       if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
         throw new Error('Ingresa un monto válido')
@@ -592,8 +600,10 @@ export function Caja() {
       let paymentComponents
       let finalMethod: PaymentMethod
       if (selectedPaymentTab === 'split') {
-        const primaryAmount = Math.round(splitPrimaryAmountUsd * 100) / 100
-        const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
+        const totalCents = Math.round(total * 100)
+        const primaryCents = Math.round(splitPrimaryAmountUsd * 100)
+        const primaryAmount = primaryCents / 100
+        const secondaryAmount = (totalCents - primaryCents) / 100
         if (primaryAmount <= 0 || secondaryAmount <= 0) {
           throw new Error('El pago combinado necesita dos montos mayores a cero')
         }
@@ -668,7 +678,7 @@ export function Caja() {
         orderId: `FC-${String(currentOrder.orderNumber).padStart(6, '0')}`,
         items: currentOrder.items,
         total: currentOrder.total,
-        paymentMethod: currentOrder.paymentMethod,
+        paymentMethod: currentOrder.paymentMethod || 'other',
         createdAt: currentOrder.createdAt,
         bcvRate: currentOrder.bcvRate || bcvRate,
       })
@@ -692,7 +702,9 @@ export function Caja() {
               ? 'Binance'
               : currentOrder.paymentMethod === 'zelle'
                 ? 'Zelle'
-                : 'Pago combinado'
+                : currentOrder.paymentMethod === 'other'
+                  ? 'Pago combinado'
+                  : 'Sin pago'
 
     return (
       <div className="page animate-fade-in">
@@ -745,7 +757,11 @@ export function Caja() {
               <button className="btn-success-secondary" onClick={handlePrintReceipt}>
                 <Printer size={16} /> Imprimir recibo
               </button>
-              <button className="btn-success-secondary">
+              <button className="btn-success-secondary" onClick={async () => {
+                const text = `Pedido #${orderNo} · Total ${currentOrder ? formatUsd(currentOrder.total) : ''}`
+                if (navigator.share) await navigator.share({ title: 'Comprobante Full China', text })
+                else if (navigator.clipboard) await navigator.clipboard.writeText(text)
+              }}>
                 <Share2 size={16} /> Compartir comprobante
               </button>
             </div>
@@ -824,7 +840,7 @@ export function Caja() {
                     <div key={idx} className="ticket-item-row">
                       <img src={imgUrl} alt={item.productName} className="ticket-item-thumb" />
                       <div className="ticket-item-info">
-                        <span className="ticket-item-name">{item.productName}</span>
+                        <span className="ticket-item-name">{formatProductTitle(item.productName)}</span>
                       </div>
                       <MoneyWithBcv usd={item.price * item.quantity} rate={currentOrder.bcvRate || bcvRate} className="ticket-item-price" compact />
                     </div>
@@ -984,7 +1000,7 @@ export function Caja() {
                       </button>
                     </div>
                     <div className="product-card-body">
-                      <h3 className="product-card-title">{group.name}</h3>
+                      <h3 className="product-card-title">{formatProductTitle(group.name)}</h3>
                       {group.isGrouped && (
                         <span className="product-variant-preview">
                           {group.variants.map(variant => variant.label).join(' · ')}
@@ -1013,7 +1029,7 @@ export function Caja() {
               <div className="variant-selector-header">
                 <div>
                   <span className="variant-selector-eyebrow">Selecciona una presentación</span>
-                  <h2 id="variant-selector-title">{selectedProductGroup.name}</h2>
+                  <h2 id="variant-selector-title">{formatProductTitle(selectedProductGroup.name)}</h2>
                 </div>
                 <button type="button" className="payment-modal-close" onClick={() => setSelectedProductGroup(null)} aria-label="Cerrar selector">
                   <X size={18} />
@@ -1025,7 +1041,7 @@ export function Caja() {
                     <span className="variant-option-emoji">{product.emoji || '🍽️'}</span>
                     <span className="variant-option-copy">
                       <strong>{label}</strong>
-                      {product.description && <small>{product.description}</small>}
+                      {product.description && <small>{formatSpanishText(product.description)}</small>}
                     </span>
                     <MoneyWithBcv usd={product.price} className="variant-option-price" compact />
                     <span className="variant-option-add">Agregar</span>
@@ -1042,7 +1058,7 @@ export function Caja() {
               <div className="variant-selector-header">
                 <div>
                   <span className="variant-selector-eyebrow">Personaliza el producto</span>
-                  <h2 id="modifier-selector-title">{modifierProduct.name}</h2>
+                  <h2 id="modifier-selector-title">{formatProductTitle(modifierProduct.name)}</h2>
                 </div>
                 <button type="button" className="payment-modal-close" onClick={closeModifierPicker} aria-label="Cerrar selector">
                   <X size={18} />
@@ -1061,7 +1077,7 @@ export function Caja() {
                   return (
                     <div key={group.modifierId} style={{ marginBottom: 14 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                        <strong>{group.name}</strong>
+                      <strong>{formatProductTitle(group.name)}</strong>
                         <small style={{ opacity: 0.7 }}>{rule}</small>
                       </div>
                       {group.options.map((opt) => {
@@ -1077,7 +1093,7 @@ export function Caja() {
                           >
                             <span className="variant-option-emoji">{selected ? '✅' : '⚪'}</span>
                             <span className="variant-option-copy">
-                              <strong>{opt.name}{qty > 1 ? ` ×${qty}` : ''}</strong>
+                              <strong>{formatProductTitle(opt.name)}{qty > 1 ? ` ×${qty}` : ''}</strong>
                             </span>
                             {opt.price > 0
                               ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact />
@@ -1109,14 +1125,14 @@ export function Caja() {
             <div className="cart-order-title-group">
               <span className="cart-eyebrow">Comanda activa</span>
               <h3 className="cart-order-title">
-                Pedido <span className="cart-order-number">#FC-{String(todayOrders.length + 125).padStart(6, '0')}</span>
+                Pedido <span className="cart-order-number">#FC-Nuevo</span>
               </h3>
               <div className="cart-header-badges">
                 <span className="cart-badge-type">{ORDER_TYPE_LABELS[orderType].label}</span>
-                <span className="cart-time">12:45 PM</span>
+                <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
-            <button className="cart-edit-btn" type="button"><PencilLine size={13} /> Editar</button>
+            <span className="cart-edit-btn" aria-label="La edición se realiza modificando las cantidades"><PencilLine size={13} /> Editar cantidades</span>
           </div>
 
           <div className="cart-sidebar-body">
@@ -1141,7 +1157,7 @@ export function Caja() {
                     <div key={lineKey} className="cart-item-row">
                       <img src={imgUrl} alt={item.productName} className="cart-item-thumb" />
                       <div className="cart-item-details">
-                        <span className="cart-item-name">{item.productName}</span>
+                        <span className="cart-item-name">{formatProductTitle(item.productName)}</span>
                         {mods && <span className="cart-item-sub">{mods}</span>}
                       </div>
                       <div className="cart-item-controls">
@@ -1558,7 +1574,7 @@ export function Caja() {
                     <span className="customer-box-label">Cliente</span>
                     <div className="customer-box-card">
                       <span className="customer-box-name">👤 {customerName || 'Cliente general'}</span>
-                      <button className="customer-edit-btn">✏️</button>
+                      <span className="customer-edit-btn" title="El cliente se define al crear la venta">✏️</span>
                     </div>
                   </div>
 

@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { getOrdersWithItems, updateOrderStatus, type FullOrder } from '../lib/dataService'
+import { dayRangeInTimeZone } from '../lib/money'
 import './Cocina.css'
+import { formatProductTitle } from '../lib/textFormat'
 
 type StationFilter = 'all' | 'wok' | 'fryer' | 'prep'
 
@@ -25,9 +27,9 @@ export function Cocina() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const data = await getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59')
-      const active = data.filter(o => ['open', 'confirmed', 'preparing', 'ready'].includes(o.status))
+      const { start, end } = dayRangeInTimeZone()
+      const data = await getOrdersWithItems(start, end)
+      const active = data.filter(o => ['new', 'preparing', 'ready'].includes(o.fulfillmentStatus))
       setOrders(active)
       cocinaCache = active
     } catch (e) {
@@ -44,7 +46,7 @@ export function Cocina() {
   }, [fetchOrders])
 
   const activeOrders = useMemo(() => {
-    return orders.filter(o => o.status === 'open' || o.status === 'confirmed' || o.status === 'preparing')
+    return orders.filter(o => o.fulfillmentStatus === 'new' || o.fulfillmentStatus === 'preparing')
   }, [orders])
 
   const getElapsedTime = (createdAt: string) => {
@@ -63,7 +65,7 @@ export function Cocina() {
     try {
       await updateOrderStatus(orderId, newStatus)
       setOrders(prev => prev.map(o =>
-        o.id === orderId ? { ...o, status: newStatus } : o
+        o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o
       ))
     } catch (e) {
       console.error('Error actualizando estado:', e)
@@ -116,7 +118,7 @@ export function Cocina() {
             const timerInfo = getTimerBadge(elapsedMins)
 
             return (
-              <div key={order.id} className={`kds-card ${order.status === 'preparing' ? 'in-prep' : 'new-order'}`}>
+              <div key={order.id} className={`kds-card ${order.fulfillmentStatus === 'preparing' ? 'in-prep' : 'new-order'}`}>
                 <div className="kds-card-header">
                   <div className="kds-order-info">
                     <span className="kds-order-id">#{String(order.orderNumber).padStart(4, '0')}</span>
@@ -132,14 +134,14 @@ export function Cocina() {
                     {order.items.map((item) => (
                       <li key={item.id} className="kds-item">
                         <span className="kds-item-qty">{item.quantity}</span>
-                        <span className="kds-item-name">{item.emoji} {item.productName}</span>
+                        <span className="kds-item-name">{item.emoji} {formatProductTitle(item.productName)}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 <div className="kds-card-footer">
-                  {order.status === 'open' || order.status === 'confirmed' ? (
+                  {order.fulfillmentStatus === 'new' ? (
                     <button
                       className="kds-btn-action kds-btn-start"
                       onClick={() => handleStatusChange(order.id, 'preparing')}
@@ -147,7 +149,7 @@ export function Cocina() {
                     >
                       {updatingId === order.id ? '⏳...' : '👨‍🍳 EMPEZAR A PREPARAR'}
                     </button>
-                  ) : order.status === 'preparing' ? (
+                  ) : order.fulfillmentStatus === 'preparing' ? (
                     <button
                       className="kds-btn-action kds-btn-finish"
                       onClick={() => handleStatusChange(order.id, 'ready')}

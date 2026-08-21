@@ -43,7 +43,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
-        <img src="/logo.png" alt="Full China" className="sidebar-logo-img" />
+        <img src="/optimized/root/logo.webp" alt="Full China" className="sidebar-logo-img" />
         <button
           className="sidebar-toggle"
           onClick={onToggle}
@@ -97,7 +97,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {!collapsed && (
         <div className="sidebar-user-profile">
           <img 
-            src="/login-carousel/slide7.jpg" 
+            src="/optimized/login-carousel/slide7.webp" 
             alt="Avatar" 
             className="sidebar-user-avatar" 
           />

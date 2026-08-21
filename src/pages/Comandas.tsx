@@ -13,7 +13,8 @@ import {
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes } from '../lib/money'
+import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
+import { formatProductTitle } from '../lib/textFormat'
 import {
   Search,
   Calendar,
@@ -115,19 +116,17 @@ export interface ComandaOrder {
   webRequestId?: string
 }
 
-const MOCK_COMANDAS: ComandaOrder[] = []
-
 const COLUMNS = [
-  { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8', totalCount: 5 },
-  { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316', totalCount: 7 },
-  { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981', totalCount: 15 },
-  { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6', totalCount: 7 },
+  { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8' },
+  { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316' },
+  { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981' },
+  { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6' },
 ]
 
 export function Comandas() {
   const navigate = useNavigate()
   const { bcvRate } = useRates()
-  const [comandas, setComandas] = useState<ComandaOrder[]>(MOCK_COMANDAS)
+  const [comandas, setComandas] = useState<ComandaOrder[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
 
@@ -197,6 +196,12 @@ export function Comandas() {
     setPaying(true)
     setPaymentError('')
     try {
+      // Re-validar que la caja sigue abierta
+      const activeSession = await getActiveCashSession()
+      if (!activeSession) {
+        throw new Error('La caja se cerró. Abre la caja nuevamente para cobrar.')
+      }
+
       const total = Number(paymentOrder.totalAmount ?? 0)
       const enteredAmount = Number(amountReceived)
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
@@ -218,8 +223,10 @@ export function Comandas() {
       }>
 
       if (selectedPaymentTab === 'split') {
-        const primaryAmount = Math.round(splitPrimaryAmountUsd * 100) / 100
-        const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
+        const totalCents = Math.round(total * 100)
+        const primaryCents = Math.round(splitPrimaryAmountUsd * 100)
+        const primaryAmount = primaryCents / 100
+        const secondaryAmount = (totalCents - primaryCents) / 100
         if (primaryAmount <= 0 || secondaryAmount <= 0) {
           throw new Error('El pago combinado necesita dos montos mayores a cero')
         }
@@ -323,11 +330,14 @@ export function Comandas() {
   // Fetch real orders from Supabase / dataService
   useEffect(() => {
     let active = true
+    let inflight = false
     const loadRealOrders = async () => {
+      if (inflight) return
+      inflight = true
       try {
-        const today = new Date().toISOString().split('T')[0]
+        const dayRange = dayRangeInTimeZone()
         const [realOrders, webOrders] = await Promise.all([
-          getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59'),
+          getOrdersWithItems(dayRange.start, dayRange.end),
           getPendingWebOrders(),
         ])
 
@@ -354,7 +364,7 @@ export function Comandas() {
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
             const status: ComandaOrder['status'] = o.fulfillmentStatus
 
-            const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
+            const hasPaid = o.status === 'paid'
             const paymentMethods = [...new Set(o.payments.map((payment) => payment.method))]
             const paymentLabels: Record<PaymentMethod, string> = {
               cash: 'Efectivo',
@@ -381,9 +391,11 @@ export function Comandas() {
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
               isRetraso: elapsed > 15 && status !== 'delivered',
               customerName: o.customerName || 'Cliente general',
-              customerPhone: '0412-1234567',
-              address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
-              reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
+              customerPhone: '',
+              address: o.orderType === 'delivery'
+                ? (o.notes?.match(/Direcci(?:ó|o)n:\s*(.+)/i)?.[1] || '')
+                : '',
+              reference: '',
               paymentReference: persistedReference,
               orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mesa' : 'Para llevar',
               items: o.items.map((item) => ({
@@ -448,6 +460,8 @@ export function Comandas() {
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
+      } finally {
+        inflight = false
       }
     }
 
@@ -611,10 +625,10 @@ export function Comandas() {
           <ChevronDown size={12} />
         </div>
 
-        <button className="filter-group-item filter-btn-dark">
+        <div className="filter-group-item filter-btn-dark" aria-label="Filtros disponibles">
           <Filter size={14} />
           <span>Filtros</span>
-        </button>
+        </div>
 
         <div className="filter-search-inline">
           <Search size={14} />
@@ -682,7 +696,7 @@ export function Comandas() {
                         {order.items.map(item => (
                           <div key={item.id} className="card-item-row">
                             <span className="dot-indicator" style={{ backgroundColor: col.color }}></span>
-                            <span className="item-name-text">{item.name}</span>
+                                <span className="item-name-text">{formatProductTitle(item.name)}</span>
                             <span className="item-qty-text">× {item.quantity}</span>
                           </div>
                         ))}
@@ -747,9 +761,7 @@ export function Comandas() {
 
               {/* Column Footer */}
               <div className="kanban-col-footer">
-                <button className="ver-todas-btn">
-                  + Ver todas ({col.totalCount})
-                </button>
+                <span className="ver-todas-btn">{colOrders.length ? `Mostrando ${colOrders.length}` : 'Sin pedidos'}</span>
               </div>
             </div>
           )
@@ -870,7 +882,7 @@ export function Comandas() {
                             <td>
                               <div className="cmd-product-cell">
                                 <div className="cmd-product-img">🍔</div>
-                                <span>{item.name}</span>
+                                <span>{formatProductTitle(item.name)}</span>
                               </div>
                             </td>
                             <td className="cmd-obs">{item.observations || '—'}</td>
@@ -992,7 +1004,7 @@ export function Comandas() {
             <footer className="cmd-modal-footer">
               <div className="cmd-footer-left">
                 {selectedOrder.status !== 'delivered' && (
-                  <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
+                  <span className="cmd-btn-outline" aria-label="La edición de pedidos no está disponible"><Edit3 size={16} /> Edición no disponible</span>
                 )}
                 <button className="cmd-btn-outline" onClick={() => window.print()}><Printer size={16} /> Imprimir comanda</button>
               </div>

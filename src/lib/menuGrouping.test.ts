@@ -7,27 +7,26 @@ function product(id: string, name: string, price: number, category = 'arroz'): P
 }
 
 describe('groupMenuProducts', () => {
-  it('agrupa presentaciones pero conserva sus productos e IDs reales', () => {
+  it('muestra cada presentación como una tarjeta independiente', () => {
     const groups = groupMenuProducts([
       product('a1', 'Arroz Frito Especial — Full Kilo', 18),
       product('a2', 'Arroz Frito Especial — Medio Kilo', 10),
       product('a3', "Arroz Frito Especial — Pa'Mí (350g)", 6),
     ])
 
-    expect(groups).toHaveLength(1)
-    expect(groups[0].name).toBe('Arroz Frito Especial')
-    expect(groups[0].variants.map(item => item.product.id)).toEqual(['a3', 'a2', 'a1'])
-    expect(groups[0].minPrice).toBe(6)
+    expect(groups).toHaveLength(3)
+    expect(groups.map(group => group.variants[0].product.id)).toEqual(['a1', 'a2', 'a3'])
+    expect(groups.every(group => !group.isGrouped)).toBe(true)
   })
 
-  it('combina el Trío base como Clásico cuando existe otra variante', () => {
+  it('mantiene separados los productos con nombres parecidos', () => {
     const groups = groupMenuProducts([
       product('t1', 'Trío', 6, 'plato'),
       product('t2', 'Trío con Camarón', 8, 'plato'),
     ])
 
-    expect(groups).toHaveLength(1)
-    expect(groups[0].variants.map(item => item.label)).toEqual(['Clásico', 'con Camarón'])
+    expect(groups).toHaveLength(2)
+    expect(groups.map(group => group.variants[0].label)).toEqual(['Trío', 'Trío con Camarón'])
   })
 
   it('deja los platos independientes como tarjetas directas', () => {

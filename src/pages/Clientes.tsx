@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { formatProductTitle } from '../lib/textFormat'
 import {
   getCredits,
   getCreditPayments,
@@ -688,7 +689,7 @@ export function Clientes() {
                     <ShoppingBag size={24} />
                   </div>
                   <div className="fav-card-body">
-                    <span className="fav-food-title">{favorite.name}</span>
+                    <span className="fav-food-title">{formatProductTitle(favorite.name)}</span>
                     <span className="fav-orders-sub">{favorite.quantity} unidad{favorite.quantity === 1 ? '' : 'es'} pedida{favorite.quantity === 1 ? '' : 's'}</span>
                   </div>
                 </div>

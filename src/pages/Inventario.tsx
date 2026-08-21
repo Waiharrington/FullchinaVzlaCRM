@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
+import { useNavigate } from 'react-router-dom'
 import {
   getIngredients,
   getStockMovements,
@@ -34,11 +35,14 @@ let inventarioCache: { ingredients: Ingredient[]; stockMovements: StockMovement[
 
 export function Inventario() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [ingredients, setIngredients] = useState<Ingredient[]>(inventarioCache?.ingredients ?? [])
   const [stockMovements, setStockMovements] = useState<StockMovement[]>(inventarioCache?.stockMovements ?? [])
   const [, setLoading] = useState(!inventarioCache)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null)
 
   const showCosts = user?.role === 'owner' || user?.role === 'manager'
 
@@ -63,10 +67,16 @@ export function Inventario() {
   }, [fetchAll])
 
   const filteredIngredients = useMemo(() => {
-    return ingredients.filter(ing =>
-      ing.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  }, [ingredients, searchTerm])
+    return ingredients.filter(ing => {
+      const category = String((ing as Ingredient & { category?: string }).category ?? '').toLowerCase()
+      const matchesCategory = categoryFilter === 'all' ||
+        (categoryFilter === 'raw' && (category.includes('materia') || category.includes('ingred'))) ||
+        (categoryFilter === 'portions' && category.includes('porcion')) ||
+        (categoryFilter === 'packaging' && (category.includes('empaq') || category.includes('envase'))) ||
+        (categoryFilter === 'beverages' && (category.includes('bebida') || category.includes('drink')))
+      return matchesCategory && ing.name.toLowerCase().includes(searchTerm.toLowerCase())
+    })
+  }, [ingredients, searchTerm, categoryFilter])
 
   const totalPages = Math.ceil(filteredIngredients.length / ITEMS_PER_PAGE)
   const paginatedIngredients = useMemo(() => {
@@ -205,11 +215,9 @@ export function Inventario() {
       {/* Filters Row */}
       <div className="inv-filters-row">
         <div className="inv-filter-pills">
-          <button className="inv-filter-pill active">Todos</button>
-          <button className="inv-filter-pill">Materia prima</button>
-          <button className="inv-filter-pill">Porciones</button>
-          <button className="inv-filter-pill">Empaques</button>
-          <button className="inv-filter-pill">Bebidas</button>
+          {[['all', 'Todos'], ['raw', 'Materia prima'], ['portions', 'Porciones'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
+            <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
+          ))}
         </div>
         <div className="inv-search-and-filters">
           <div className="inv-search-box">
@@ -221,7 +229,7 @@ export function Inventario() {
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
             />
           </div>
-          <button className="inv-filter-btn">
+          <button className="inv-filter-btn" onClick={() => { setCategoryFilter('all'); setSearchTerm(''); setCurrentPage(1) }} title="Limpiar filtros">
             <SlidersHorizontal size={16} />
             Filtros
           </button>
@@ -281,11 +289,11 @@ export function Inventario() {
                         </td>
                         <td>
                           <div className="inv-actions">
-                            <button className="inv-action-btn" title="Ver detalle">
+                            <button className="inv-action-btn" title="Ver detalle" onClick={() => setSelectedIngredient(ing)}>
                               <Eye size={14} />
                             </button>
                             {showCosts && (
-                              <button className="inv-action-btn" title="Editar">
+                              <button className="inv-action-btn" title="Ver opciones de edición" onClick={() => setSelectedIngredient(ing)}>
                                 <Pencil size={14} />
                               </button>
                             )}
@@ -340,7 +348,7 @@ export function Inventario() {
           <div className="inv-sidebar-card">
             <div className="inv-sidebar-header">
               <h3 className="inv-sidebar-title">Movimientos recientes</h3>
-              <button className="inv-sidebar-link">Ver todos</button>
+              <button className="inv-sidebar-link" onClick={() => setSearchTerm('')}>Ver todos</button>
             </div>
             {recentMovements.length === 0 ? (
               <div className="inv-empty-state">
@@ -373,7 +381,7 @@ export function Inventario() {
           <div className="inv-sidebar-card">
             <div className="inv-sidebar-header">
               <h3 className="inv-sidebar-title">Alertas de inventario</h3>
-              <button className="inv-sidebar-link">Ver todas</button>
+              <button className="inv-sidebar-link" onClick={() => setCategoryFilter('all')}>Ver todas</button>
             </div>
             {alerts.length === 0 ? (
               <div className="inv-empty-state">
@@ -400,13 +408,25 @@ export function Inventario() {
                 )
               })
             )}
-            <button className="inv-generate-order-btn">
+            <button className="inv-generate-order-btn" onClick={() => navigate('/compras')}>
               <ShoppingCart size={18} />
               Generar orden de compra
             </button>
           </div>
         </div>
       </div>
+      {selectedIngredient && (
+        <div className="cmd-modal-overlay" onClick={() => setSelectedIngredient(null)}>
+          <div className="inv-sidebar-card" style={{ maxWidth: 420, margin: '10vh auto', position: 'relative' }} onClick={event => event.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setSelectedIngredient(null)} aria-label="Cerrar">×</button>
+            <h3>{selectedIngredient.name}</h3>
+            <p>Stock actual: <strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></p>
+            <p>Categoría: {(selectedIngredient as Ingredient & { category?: string }).category || 'Sin categoría'}</p>
+            {showCosts && <p>Costo por unidad: {selectedIngredient.pricePerUnit === null ? 'No disponible' : `$${selectedIngredient.pricePerUnit.toFixed(2)}`}</p>}
+            <button className="inv-generate-order-btn" onClick={() => { setSelectedIngredient(null); navigate('/compras') }}>Gestionar desde Compras</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

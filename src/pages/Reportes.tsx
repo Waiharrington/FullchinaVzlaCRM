@@ -4,6 +4,7 @@ import { getDailySales, getProductRanking, getCategorySales, getPaymentMethodSal
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import './Reportes.css'
+import { formatProductTitle } from '../lib/textFormat'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -229,7 +230,7 @@ export function Reportes() {
               <div key={p.name} className="ranking-item">
                 <span className="ranking-pos">{i + 1}</span>
                 <div className="ranking-info">
-                  <span className="ranking-name">{p.emoji} {p.name}</span>
+                  <span className="ranking-name">{p.emoji} {formatProductTitle(p.name)}</span>
                   <span className="ranking-stat">{p.count} und · ${p.revenue.toFixed(2)}</span>
                 </div>
                 <div className="ranking-bar-container">

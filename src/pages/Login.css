@@ -11,7 +11,7 @@ body:has(.login-page) {
   right: 0.75rem;
   bottom: 0.75rem;
   background-color: #000;
-  background-image: url('/login-bg.png');
+  background-image: url('/optimized/root/login-bg.webp');
   background-size: cover;
   background-position: 32% 40%;
   background-repeat: no-repeat;
@@ -764,6 +764,7 @@ body:has(.login-page) {
     top: 0;
     left: 0;
     width: 100%;
+    background: #09090b;
     height: 100%;
     object-fit: cover;
     opacity: 0;
@@ -1361,7 +1362,7 @@ body:has(.login-page) {
   .desktop-bg-layer {
     position: absolute;
     inset: 0;
-    background-image: url('/fondo-login.png');
+    background-image: url('/optimized/root/fondo-login.webp');
     background-size: cover;
     background-position: right center;
     background-repeat: no-repeat;
@@ -1384,6 +1385,7 @@ body:has(.login-page) {
     top: 0;
     left: 0;
     width: 100%;
+    background: #09090b;
     height: 100%;
     object-fit: contain;
     opacity: 0;

@@ -27,3 +27,5 @@ Thumbs.db
 
 # App build
 *.tsbuildinfo
+.vercel
+.env*.local

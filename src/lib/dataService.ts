@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { dateKeyInTimeZone, dayRangeInTimeZone } from './money'
 
 export interface Product {
   id: string
@@ -69,7 +70,7 @@ export interface OrderResult {
   total: number
   bcvRate: number | null
   createdAt: string
-  paymentMethod: PaymentMethod
+  paymentMethod: PaymentMethod | null
   items: CartItem[]
 }
 
@@ -586,10 +587,9 @@ export async function sendToKitchen(params: {
   orderType?: string
   customerName?: string
 }): Promise<OrderResult> {
-  const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0)
-
   const sb = client()
 
+  // 1. Crear la orden
   const { data: order, error: orderErr } = await sb
     .from('orders')
     .insert({
@@ -604,32 +604,89 @@ export async function sendToKitchen(params: {
     .single()
   if (orderErr) throw orderErr
 
-  const { data: insertedItems, error: itemsErr } = await sb.from('order_items').insert(
-    params.items.map((i) => ({
+  // 2. Leer precios del catálogo activo (nunca confiar en el navegador)
+  const productIds = [...new Set(params.items.map((i) => i.productId))]
+  const { data: catalogRows, error: catalogErr } = await sb
+    .from('sellable_products')
+    .select('id, price')
+    .in('id', productIds)
+    .eq('is_active', true)
+  if (catalogErr) throw catalogErr
+
+  const priceMap = new Map<string, number>()
+  for (const row of catalogRows ?? []) {
+    priceMap.set(String(row.id), Number(row.price))
+  }
+
+  // 3. Insertar items con precio efectivo (base + modificadores) y mapear product_id → order_item_id
+  const itemsToInsert = params.items.map((i) => {
+    const dbPrice = priceMap.get(i.productId)
+    if (dbPrice == null) {
+      throw new Error(`Producto ${i.productId} no encontrado o inactivo`)
+    }
+    // Precio efectivo = precio base + suma de modificadores seleccionados
+    const modifierExtra = (i.selectedModifiers ?? []).reduce(
+      (sum, m) => sum + m.price * m.quantity, 0,
+    )
+    return {
       order_id: order.id,
       sellable_product_id: i.productId,
       quantity: i.quantity,
-      unit_price: i.price,
-    })),
-  ).select('id')
+      unit_price: dbPrice + modifierExtra,
+    }
+  })
+
+  const { data: insertedItems, error: itemsErr } = await sb
+    .from('order_items')
+    .insert(itemsToInsert)
+    .select('id, sellable_product_id')
   if (itemsErr) throw itemsErr
 
-  // Persistir las opciones de modificador elegidas por renglón. Los ids se
-  // devuelven en el mismo orden en que se insertaron, así que se mapean por
-  // índice. Esto dispara el consumo de inventario por modificador.
-  const modifierRows = (insertedItems ?? []).flatMap((row, idx) => {
-    const mods = params.items[idx]?.selectedModifiers ?? []
-    return mods.map((m) => ({
-      order_item_id: row.id as string,
-      modifier_option_id: m.optionId,
-      quantity: m.quantity,
-      unit_price: m.price,
-    }))
-  })
+  // 4. Agrupar los renglones insertados por producto. Un mismo producto puede
+  // aparecer varias veces si cada línea tiene modificadores distintos.
+  const orderItemsByProduct = new Map<string, string[]>()
+  for (const row of insertedItems ?? []) {
+    const productId = String(row.sellable_product_id)
+    const ids = orderItemsByProduct.get(productId) ?? []
+    ids.push(String(row.id))
+    orderItemsByProduct.set(productId, ids)
+  }
+
+  // 5. Insertar modificadores asociados a su renglón, conservando el orden de
+  // inserción para soportar líneas repetidas del mismo producto.
+  const modifierRows: Array<{
+    order_item_id: string
+    modifier_option_id: string
+    quantity: number
+    unit_price: number
+  }> = []
+  for (const cartItem of params.items) {
+    if (!cartItem.selectedModifiers || cartItem.selectedModifiers.length === 0) continue
+    const orderItemIds = orderItemsByProduct.get(cartItem.productId)
+    const orderItemId = orderItemIds?.shift()
+    if (!orderItemId) continue
+    for (const m of cartItem.selectedModifiers) {
+      modifierRows.push({
+        order_item_id: orderItemId,
+        modifier_option_id: m.optionId,
+        quantity: m.quantity,
+        unit_price: m.price,
+      })
+    }
+  }
   if (modifierRows.length > 0) {
     const { error: modErr } = await sb.from('order_item_modifiers').insert(modifierRows)
     if (modErr) throw modErr
   }
+
+  // 6. Calcular total con precios reales de la DB (incluye modificadores)
+  const total = itemsToInsert.reduce((sum, i) => sum + i.unit_price * i.quantity, 0)
+
+  // Retornar items con precios verificados por el servidor
+  const verifiedItems: CartItem[] = params.items.map((item, index) => ({
+    ...item,
+    price: itemsToInsert[index]?.unit_price ?? item.price,
+  }))
 
   // NO payment inserted — the order stays unpaid until cobro
 
@@ -640,22 +697,22 @@ export async function sendToKitchen(params: {
     total,
     bcvRate: params.bcvRate,
     createdAt: order.created_at as string,
-    paymentMethod: 'cash',
-    items: params.items,
+    paymentMethod: null,
+    items: verifiedItems,
   }
 }
 
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
+  const { start, end } = dayRangeInTimeZone()
 
   const { data, error } = await client()
     .from('orders')
     .select('id, order_number, status, created_at, payments(method, amount)')
     .eq('status', 'paid')
-    .gte('created_at', start.toISOString())
+    .gte('created_at', start)
+    .lt('created_at', end)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -679,7 +736,7 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
 export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): Promise<FullOrder[]> {
   let query = client().from('v_orders_with_items').select('*')
   if (dateStart) query = query.gte('created_at', dateStart)
-  if (dateEnd) query = query.lte('created_at', dateEnd)
+  if (dateEnd) query = query.lt('created_at', dateEnd)
   query = query.order('created_at', { ascending: false })
 
   const { data, error } = await query
@@ -1821,8 +1878,8 @@ export async function getProductionBatches(dateStart?: string, dateEnd?: string)
 }
 
 export async function getProductionStats(): Promise<ProductionStats> {
-  const today = new Date().toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  const today = dateKeyInTimeZone()
+  const yesterday = dateKeyInTimeZone(new Date(Date.now() - 86400000))
 
   const [todayBatches, yesterdayBatches] = await Promise.all([
     getProductionBatches(today, today),
@@ -2055,7 +2112,7 @@ export async function createAdvance(params: {
   const { error } = await client().from('advances').insert({
     employee_id: params.employeeId,
     amount: params.amount,
-    advance_date: params.advanceDate ?? new Date().toISOString().split('T')[0],
+    advance_date: params.advanceDate ?? dateKeyInTimeZone(),
     notes: params.notes ?? null,
   })
   if (error) throw error
@@ -2078,7 +2135,7 @@ export async function createProductionBonus(params: {
   const { error } = await client().from('production_bonuses').insert({
     employee_id: params.employeeId,
     amount: params.amount,
-    bonus_date: params.bonusDate ?? new Date().toISOString().split('T')[0],
+    bonus_date: params.bonusDate ?? dateKeyInTimeZone(),
     reason: params.reason ?? null,
   })
   if (error) throw error

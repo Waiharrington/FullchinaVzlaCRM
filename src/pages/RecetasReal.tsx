@@ -12,6 +12,7 @@ import {
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
 } from 'lucide-react'
 import './RecetasReal.css'
+import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 
 const PAGE_SIZE = 8
 type Tab = 'todas' | 'completas' | 'faltan'
@@ -265,7 +266,7 @@ export function RecetasReal() {
                     ? <img className="rec-thumb" src={p.imageUrl} alt={p.name} loading="lazy" />
                     : <span className="rec-thumb">{p.emoji || '🍽️'}</span>}
                   <span className="rec-card-body">
-                    <span className="rec-card-name">{p.name}</span>
+                    <span className="rec-card-name">{formatProductTitle(p.name)}</span>
                     <span className="rec-card-meta">
                       {complete
                         ? `${s.componentCount} ingrediente${s.componentCount === 1 ? '' : 's'}${s.recipeCost != null ? ` · Costo ${formatUsd(s.recipeCost)}` : ''}`
@@ -312,7 +313,7 @@ export function RecetasReal() {
                   : <span className="rec-detail-thumb">{sel.emoji || '🍽️'}</span>}
                 <div className="rec-detail-title">
                   <h2>
-                    {sel.name}
+                    {formatProductTitle(sel.name)}
                     <span className={`rec-pill ${selComplete ? 'ok' : 'warn'}`}>
                       {selComplete ? <><CheckCircle2 size={13} /> Completa</> : <><AlertTriangle size={13} /> Falta configurar</>}
                     </span>
@@ -387,7 +388,7 @@ export function RecetasReal() {
               ) : (
                 <div className="rec-detail-sub" style={{ padding: '8px 2px' }}>
                   <p><strong>Categoría:</strong> {sel.category || '—'}</p>
-                  {sel.description && <p><strong>Descripción:</strong> {sel.description}</p>}
+                  {sel.description && <p><strong>Descripción:</strong> {formatSpanishText(sel.description)}</p>}
                   <p><strong>Estado:</strong> {sel.isActive ? 'Activo' : 'Inactivo'}</p>
                 </div>
               )}
@@ -436,7 +437,7 @@ export function RecetasReal() {
                 })
                 .map((p) => ({
                   value: p.id,
-                  label: `${p.name}${summaryOf(p.id).componentCount > 0 ? ' ✓' : ' · sin receta'}`,
+                  label: `${formatProductTitle(p.name)}${summaryOf(p.id).componentCount > 0 ? ' ✓' : ' · sin receta'}`,
                 }))}
               value={newRecipeProductId}
               onChange={setNewRecipeProductId}

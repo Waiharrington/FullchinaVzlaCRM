@@ -74,6 +74,17 @@ export function generateReceipt(data: ReceiptData): jsPDF {
     const sub = `$${(item.price * item.quantity).toFixed(2)}`.padStart(7)
     doc.text(`${qty}   ${name}  ${sub}`, margin, y)
     y += 4
+    if (item.selectedModifiers && item.selectedModifiers.length > 0) {
+      for (const mod of item.selectedModifiers) {
+        const modName = mod.optionName.length > 20
+          ? mod.optionName.substring(0, 19) + '.'
+          : mod.optionName
+        doc.setFontSize(7)
+        doc.text(`     + ${modName}`, margin, y)
+        doc.setFontSize(8)
+        y += 3
+      }
+    }
   }
 
   y += 2

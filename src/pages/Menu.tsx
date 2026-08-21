@@ -6,9 +6,12 @@ import {
   LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag,
 } from 'lucide-react'
 import './Menu.css'
+import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import { getEditorialDescription } from '../lib/menuEditorial'
+import { categoryLabel, classifyMenuCategory, menuItemRank, MENU_CATEGORY_ORDER, type MenuCategory } from '../lib/menuCategories'
 
-const CATEGORIES = ['arroz', 'plato', 'wok', 'pollo_camaron', 'racion', 'bebida', 'extra', 'especial_semanal', 'combo', 'entrada', 'postre']
-const catLabel = (c: string) => c.replace(/_/g, ' ')
+const CATEGORIES = [...MENU_CATEGORY_ORDER]
+const catLabel = categoryLabel
 
 function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -32,7 +35,7 @@ function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
 }
 
 interface Form { name: string; description: string; category: string; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean }
-const emptyForm: Form = { name: '', description: '', category: 'plato', emoji: '🍽️', price: '', cost: '', imageUrl: null, isActive: true }
+const emptyForm: Form = { name: '', description: '', category: 'otros', emoji: '🍽️', price: '', cost: '', imageUrl: null, isActive: true }
 
 export function Menu() {
   const [products, setProducts] = useState<SellableProduct[]>([])
@@ -49,7 +52,15 @@ export function Menu() {
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
-    try { setLoading(true); setProducts(await getAllSellableProducts()) }
+    try {
+      setLoading(true)
+      const catalog = await getAllSellableProducts()
+      setProducts(catalog.map(product => ({ ...product, category: classifyMenuCategory(product.name, product.category) }))
+        .sort((a, b) => {
+          const categoryDelta = MENU_CATEGORY_ORDER.indexOf(a.category as typeof MENU_CATEGORY_ORDER[number]) - MENU_CATEGORY_ORDER.indexOf(b.category as typeof MENU_CATEGORY_ORDER[number])
+          return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
+        }))
+    }
     catch (e) { setError(e instanceof Error ? e.message : 'Error cargando el menú') }
     finally { setLoading(false) }
   }, [])
@@ -57,7 +68,7 @@ export function Menu() {
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 
-  const categories = useMemo(() => Array.from(new Set(products.map((p) => p.category).filter(Boolean))).sort(), [products])
+  const categories = useMemo(() => MENU_CATEGORY_ORDER.filter(category => products.some(product => product.category === category)), [products])
   const summary = useMemo(() => ({
     total: products.length,
     active: products.filter((p) => p.isActive).length,
@@ -99,9 +110,9 @@ export function Menu() {
     setSaving(true); setError('')
     try {
       const payload = {
-        name: form.name.trim(), description: form.description.trim() || null,
+        name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
         price: parseFloat(form.price) || 0, cost: form.cost.trim() ? parseFloat(form.cost) : null,
-        category: form.category.trim() || 'plato', emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
+        category: MENU_CATEGORY_ORDER.includes(form.category as MenuCategory) ? form.category : classifyMenuCategory(form.name, form.category), emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
       }
       if (editing === 'new') { await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
       else if (editing) { await updateProduct(editing.id, payload); flash(`"${payload.name}" actualizado`) }
@@ -152,7 +163,7 @@ export function Menu() {
             <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}`}>
               {thumb(p, 'mnu-thumb')}
               <div className="mnu-card-body">
-                <span className="mnu-card-name">{p.name}</span>
+                <span className="mnu-card-name">{formatProductTitle(p.name)}</span>
                 <span className="mnu-card-cat">{catLabel(p.category)}</span>
                 <div className="mnu-card-row">
                   <span className="mnu-price">{formatUsd(p.salePrice)}</span>
@@ -173,7 +184,7 @@ export function Menu() {
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id}>
-                  <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{p.name}</strong>{p.description && <><br /><small style={{ color: '#71717a' }}>{p.description.slice(0, 40)}</small></>}</div></div></td>
+                  <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{formatProductTitle(p.name)}</strong>{(p.description || getEditorialDescription(p.name)) && <><br /><small style={{ color: '#71717a', display: 'block', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(p.name, p.description || '')}</small></>}</div></div></td>
                   <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{catLabel(p.category)}</td>
                   <td className="mnu-price" style={{ fontSize: 15 }}>{formatUsd(p.salePrice)}</td>
                   <td><button className={`mnu-switch ${p.isActive ? 'on' : ''}`} onClick={() => toggleActive(p)} title={p.isActive ? 'Activo' : 'Inactivo'} /></td>

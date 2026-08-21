@@ -6,6 +6,9 @@ export interface WebOrderCartItem {
   productName: string
   price: number
   quantity: number
+  imageUrl?: string
+  /** Indicaciones y extras elegidos para esta línea; se envían a cocina en las notas. */
+  notes?: string
 }
 
 export interface WebOrderResult {
@@ -66,7 +69,7 @@ export async function createWebOrder(params: {
     p_order_type: params.orderType,
     p_delivery_address: params.deliveryAddress || null,
     p_notes: params.notes || null,
-    p_items: params.items.map(item => ({ productId: item.productId, quantity: item.quantity })),
+    p_items: params.items.map(item => ({ productId: item.productId, quantity: item.quantity, notes: item.notes || undefined })),
     p_bcv_rate: params.bcvRate,
     p_idempotency_key: params.idempotencyKey,
   })

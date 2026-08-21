@@ -3,7 +3,7 @@
   inset: 0;
   z-index: 99999;
   background: #0a0a0a;
-  background-image: url('/splash-bg-desktop.png');
+  background-image: url('/optimized/root/splash-bg-desktop.webp');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -117,7 +117,7 @@
 /* Tablet vertical / Teléfono */
 @media (max-width: 1024px) and (orientation: portrait) {
   .splash-screen {
-    background-image: url('/splash-bg-mobile.png');
+    background-image: url('/optimized/root/splash-bg-mobile.webp');
   }
 }
 

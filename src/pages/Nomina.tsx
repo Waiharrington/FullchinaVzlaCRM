@@ -4,7 +4,7 @@ import {
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord,
 } from '../lib/dataService'
-import { formatUsd } from '../lib/money'
+import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import {
   Plus, CheckCircle2, AlertTriangle, Loader2, Users, Banknote, Gift, Hourglass,
   HelpCircle, Save, X,
@@ -32,9 +32,9 @@ export function Nomina() {
   const [showPeriod, setShowPeriod] = useState(false)
   const [pStart, setPStart] = useState(''); const [pEnd, setPEnd] = useState(''); const [pNotes, setPNotes] = useState('')
   const [showAdvance, setShowAdvance] = useState(false)
-  const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advDate, setAdvDate] = useState(new Date().toISOString().split('T')[0]); const [advNotes, setAdvNotes] = useState('')
+  const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advDate, setAdvDate] = useState(dateKeyInTimeZone()); const [advNotes, setAdvNotes] = useState('')
   const [showBonus, setShowBonus] = useState(false)
-  const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(new Date().toISOString().split('T')[0]); const [bonReason, setBonReason] = useState('')
+  const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -54,7 +54,6 @@ export function Nomina() {
 
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
   const selected = periods.find((p) => p.id === selectedId) ?? null
-  const selectedEntries = selectedId ? entriesByPeriod[selectedId] ?? [] : []
 
   // Bonos de un empleado dentro del período seleccionado
   const bonusForEmp = useCallback((empId: string) => {
@@ -65,13 +64,14 @@ export function Nomina() {
   // Inicializar edición al cambiar de período
   useEffect(() => {
     if (!selected) return
+    const selectedEntries = selectedId ? entriesByPeriod[selectedId] ?? [] : []
     const init: Record<string, { hours: string; deductions: string }> = {}
     for (const emp of activeEmployees) {
       const ex = selectedEntries.find((e) => e.employeeId === emp.id)
       init[emp.id] = { hours: ex ? String(ex.hoursWorked) : '0', deductions: ex ? String(ex.deductions) : '0' }
     }
     setEdit(init)
-  }, [selectedId, activeEmployees, selectedEntries, selected])
+  }, [selectedId, entriesByPeriod, activeEmployees, selected])
 
   const periodNet = useCallback((p: PayrollPeriod) => {
     const ents = entriesByPeriod[p.id] ?? []

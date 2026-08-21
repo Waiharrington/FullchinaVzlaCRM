@@ -11,6 +11,8 @@ import {
   HelpCircle, Pencil, X, Loader2, ShoppingCart, CheckCircle2, ChevronLeft, ChevronRight, ImagePlus,
 } from 'lucide-react'
 import './MenuSemanal.css'
+import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import { getEditorialDescription } from '../lib/menuEditorial'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const mondayOf = (d: Date) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x }
@@ -158,7 +160,7 @@ export function MenuSemanal() {
     setSaving(true); setError('')
     try {
       const dish = await createWeeklyDish({
-        name: form.name.trim(), description: form.description.trim(),
+        name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()),
         price: parseFloat(form.price) || 0, cost: parseFloat(form.cost) || 0,
         emoji: form.emoji || '🍽️', weekTag: activateNow ? weekLabel(iso(todayMonday)) : '',
         imageUrl: form.imageUrl,
@@ -183,7 +185,7 @@ export function MenuSemanal() {
     setSaving(true); setError('')
     try {
       await updateWeeklyDish(editing.id, {
-        emoji: editForm.emoji, name: editForm.name.trim(), description: editForm.description.trim(),
+        emoji: editForm.emoji, name: formatProductTitle(editForm.name), description: formatSpanishText(editForm.description.trim()),
         price: parseFloat(editForm.price) || 0, cost: parseFloat(editForm.cost) || 0, imageUrl: editForm.imageUrl,
       })
       if (editing.sellableProductId) await syncWeeklyDishToCatalog(editing.id)
@@ -272,8 +274,8 @@ export function MenuSemanal() {
                 {thumb(d, 'ws-card-thumb')}
                 <div className="ws-card-title">
                   {d.weekTag && <div className="ws-card-week">{d.weekTag}</div>}
-                  <h3>{d.name}</h3>
-                  <p className="ws-card-desc">{d.description || 'Sin descripción'}</p>
+                  <h3>{formatProductTitle(d.name)}</h3>
+                  <p className="ws-card-desc">{getEditorialDescription(d.name, d.description || 'Sin descripción')}</p>
                 </div>
                 {isCurrentWeek && <button className="ws-switch on" title="Desactivar" disabled={busyId === d.id} onClick={() => setActive(d, false)} />}
               </div>
@@ -319,8 +321,8 @@ export function MenuSemanal() {
             <tbody>
               {pageItems.map((d) => (
                 <tr key={d.id}>
-                  <td><div className="ws-row-name">{thumb(d, 'ws-row-emoji')}<strong>{d.name}</strong></div></td>
-                  <td style={{ color: '#a1a1aa', maxWidth: 220 }}>{d.description || '—'}</td>
+                  <td><div className="ws-row-name">{thumb(d, 'ws-row-emoji')}<strong>{formatProductTitle(d.name)}</strong></div></td>
+                  <td style={{ color: '#a1a1aa', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(d.name, d.description || '—')}</td>
                   <td style={{ color: '#a1a1aa' }}>{d.lastUsedWeekStart ? shortWeek(d.lastUsedWeekStart) : (d.weekTag || '—')}</td>
                   <td className="ws-row-price">{formatUsd(d.price)}</td>
                   <td style={{ color: '#d4d4d8' }}>{formatUsd(d.cost)}</td>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCustomers, getWhatsAppMessages, queueWhatsAppMessage, type Customer, type WhatsAppMessage } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
+import { dateKeyInTimeZone } from '../lib/money'
 import { MessageSquare, Cake, Sparkles, Send, Users, CheckCircle2, Clock } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
@@ -15,9 +16,9 @@ export function MarketingWhatsApp() {
   const [customMsg, setCustomMsg] = useState('¡Hola! En Full China tenemos promociones especiales en tallarines y arroz frito hoy. ¡Pide tu delivery!')
   const [sentNotice, setSentNotice] = useState('')
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = dateKeyInTimeZone()
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
-  const inactiveThreshold = new Date(Date.now() - 21 * 86400000).toISOString().split('T')[0]
+  const inactiveThreshold = dateKeyInTimeZone(new Date(Date.now() - 21 * 86400000))
   const inactiveCustomers = customers.filter(c => c.lastVisit && c.lastVisit < inactiveThreshold)
   const loyalCustomers = customers.filter(c => c.totalVisits >= 10)
 
@@ -40,7 +41,7 @@ export function MarketingWhatsApp() {
       customerName: target.name,
       phone: target.phone,
       message: customMsg,
-      sentAt: `${new Date().toISOString().split('T')[0]} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      sentAt: `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
       status: 'queued'
     }
     await queueWhatsAppMessage({ customerId: target.id, phone: target.phone, message: customMsg, userId: user.id })

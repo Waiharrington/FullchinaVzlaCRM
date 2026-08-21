@@ -15,6 +15,8 @@ import {
   type FullOrder,
 } from '../lib/dataService'
 import './Mas.css'
+import { dateKeyInTimeZone } from '../lib/money'
+import { formatProductTitle } from '../lib/textFormat'
 
 type Tab = 'credits' | 'close'
 
@@ -113,7 +115,7 @@ export function Mas() {
     if (!user) return
     setClosing(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
+        const today = dateKeyInTimeZone()
       await createDailyClose(today)
       fetchAll()
     } catch (e) {
@@ -124,7 +126,7 @@ export function Mas() {
     }
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = dateKeyInTimeZone()
 
   const paidOrdersToday = useMemo(() =>
     todayOrders.filter(o => o.createdAt.startsWith(today)),
@@ -192,11 +194,11 @@ export function Mas() {
     y += 8
 
     doc.setFont('helvetica', 'bold')
-    doc.text('Productos mas vendidos:', 15, y)
+    doc.text('Productos más vendidos:', 15, y)
     y += 8
     doc.setFont('helvetica', 'normal')
     for (const p of topProductsToday) {
-      doc.text(`  ${p.name}: ${p.count} und - $${p.total.toFixed(2)}`, 15, y)
+      doc.text(`  ${formatProductTitle(p.name)}: ${p.count} und - $${p.total.toFixed(2)}`, 15, y)
       y += 6
     }
 
@@ -204,7 +206,7 @@ export function Mas() {
     doc.line(15, y, pageWidth - 15, y)
     y += 8
     doc.setFontSize(8)
-    doc.text('Documento generado automaticamente', pageWidth / 2, y, { align: 'center' })
+    doc.text('Documento generado automáticamente', pageWidth / 2, y, { align: 'center' })
 
     doc.save(`cierre-caja-${today}.pdf`)
   }
@@ -260,7 +262,7 @@ export function Mas() {
 
       <div className="tabs">
         <button className={`tab ${tab === 'credits' ? 'active' : ''}`} onClick={() => setTab('credits')}>
-          💳 Creditos ({activeCredits.length} activos)
+          💳 Créditos ({activeCredits.length} activos)
         </button>
         <button className={`tab ${tab === 'close' ? 'active' : ''}`} onClick={() => setTab('close')}>
           📊 Cierre de Caja
@@ -275,7 +277,7 @@ export function Mas() {
               <p className="card-subtitle">${totalPending.toFixed(2)} pendiente de {credits.length} clientes</p>
             </div>
             <button className="btn-accent btn-sm" onClick={() => setShowNewCredit(true)}>
-              + Nuevo credito
+              + Nuevo crédito
             </button>
           </div>
 
@@ -293,7 +295,7 @@ export function Mas() {
                 <input
                   type="number"
                   step="0.01"
-                  placeholder="Monto del credito"
+                  placeholder="Monto del crédito"
                   value={newAmount}
                   onChange={(e) => setNewAmount(e.target.value)}
                 />
@@ -307,7 +309,7 @@ export function Mas() {
 
           <div className="credits-list">
             {activeCredits.length === 0 && settledCredits.length === 0 ? (
-              <p className="empty-message">No hay creditos registrados</p>
+              <p className="empty-message">No hay créditos registrados</p>
             ) : (
               <>
                 {activeCredits.length > 0 && (
@@ -423,7 +425,7 @@ export function Mas() {
                   {topProductsToday.map((p, i) => (
                     <div key={p.name} className="top-product-item">
                       <span className="top-product-rank">#{i + 1}</span>
-                      <span className="top-product-name">{p.name}</span>
+                      <span className="top-product-name">{formatProductTitle(p.name)}</span>
                       <span className="top-product-stat">{p.count} und</span>
                       <span className="top-product-revenue">${p.total.toFixed(2)}</span>
                     </div>
@@ -454,7 +456,7 @@ export function Mas() {
       {paymentModal && (
         <div className="modal-overlay" onClick={() => setPaymentModal(null)}>
           <div className="modal animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Abonar a credito</h3>
+            <h3 className="modal-title">Abonar a crédito</h3>
             <p className="modal-subtitle">{paymentModal.customerName}</p>
             <p className="modal-remaining">Pendiente: <span className="text-danger">${paymentModal.balancePending.toFixed(2)}</span></p>
             <input
