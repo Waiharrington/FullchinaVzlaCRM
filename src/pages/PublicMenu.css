@@ -510,15 +510,42 @@
   white-space: normal;
   padding-right: 0;
 }
-.public-prod-price {
+.public-prod-price-wrap {
   position: absolute;
   bottom: 6px;
   left: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.public-prod-price {
   color: #FFD666;
   font-size: 14px;
   font-weight: 800;
-  top: auto;
-  right: auto;
+}
+.public-prod-price-bs {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10.5px;
+  font-weight: 600;
+  margin-top: 1px;
+}
+.ppdm-price-bs {
+  display: block;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.public-cart-bar-total-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+.public-cart-bar-total-bs {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10.5px;
+  font-weight: 600;
 }
 .public-prod-add {
   position: absolute;

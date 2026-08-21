@@ -607,12 +607,19 @@ export function PublicMenu() {
 
   if (loading) return <PublicMenuSkeleton />
 
+  // Monto en Bs (referencia) calculado con la tasa BCV actual. null si no hay tasa.
+  const priceBs = (usd: number) =>
+    bcvRate ? `Bs. ${(usd * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null
+
   const renderProductCard = (group: MenuProductGroup, priority = false) => (
     <article className="public-prod-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
       <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className="public-prod-img" alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
       <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
       <div className="public-prod-info">
-        <span className="public-prod-price">{group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}</span>
+        <span className="public-prod-price-wrap">
+          <span className="public-prod-price">{group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}</span>
+          {priceBs(group.minPrice) && <span className="public-prod-price-bs">{priceBs(group.minPrice)}</span>}
+        </span>
         <h3 className="public-prod-title">{productTitle(group.name)}</h3>
         <p className="public-prod-desc">{group.isGrouped ? getEditorialDescription(group.name, group.variants.map(item => formatSpanishText(item.label)).join(' • ')) : getEditorialDescription(group.variants[0].product.name, group.variants[0].product.description || '')}</p>
         <button className="public-prod-add" aria-label={`Agregar ${group.name} al carrito`} onClick={(e) => { e.stopPropagation(); const defaultProduct = group.variants[0]?.product; if (defaultProduct) addProduct(defaultProduct) }}>
@@ -671,6 +678,7 @@ export function PublicMenu() {
           <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
           <p>{getEditorialDescription(recommendedGroup?.variants[0]?.product.name ?? '', recommendedGroup?.variants[0]?.product.description ?? 'Elige tu favorito y arma tu pedido.')}</p>
           {recommendedGroup && <span className="public-recommended-price">{money(recommendedGroup.minPrice)}</span>}
+          {recommendedGroup && priceBs(recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedGroup.minPrice)}</span>}
           <button
             className="public-recommended-btn"
             onClick={() => {
@@ -750,7 +758,10 @@ export function PublicMenu() {
             <div className="public-cart-bar-text"><h4>{itemCount} producto{itemCount !== 1 ? 's' : ''}</h4><p>Ver tu pedido</p></div>
           </div>}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <span className="public-cart-bar-total">{money(total)}</span>
+             <span className="public-cart-bar-total-group">
+               <span className="public-cart-bar-total">{money(total)}</span>
+               {priceBs(total) && <span className="public-cart-bar-total-bs">{priceBs(total)}</span>}
+             </span>
              <button className="public-cart-bar-btn">
                 {addFeedback ? 'Ver carrito' : 'Ver pedido'} <ChevronRight size={18} />
              </button>
@@ -769,7 +780,7 @@ export function PublicMenu() {
             <div className="ppdm-content">
               <h1>{productTitle(selectedGroup.name)}</h1>
               <p className="ppdm-desc">{getEditorialDescription(selectedProduct.name, selectedProduct.description || 'Preparado al momento con el sabor de Full China.')}</p>
-              <div className="ppdm-price">{money(selectedProduct.price)}</div>
+              <div className="ppdm-price">{money(selectedProduct.price)}{priceBs(selectedProduct.price) && <span className="ppdm-price-bs">{priceBs(selectedProduct.price)}</span>}</div>
               {selectedGroup.variants.length > 1 && (
                 <div className="ppdm-section">
                   <div className="ppdm-section-header"><h3>Elige tu presentación</h3><span>Obligatorio</span></div>
