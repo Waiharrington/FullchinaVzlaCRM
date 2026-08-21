@@ -351,8 +351,8 @@ export function PublicMenu() {
     setCartPulse(true)
     if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current)
     if (cartPulseTimer.current) window.clearTimeout(cartPulseTimer.current)
-    addFeedbackTimer.current = window.setTimeout(() => setAddFeedback(null), 1800)
-    cartPulseTimer.current = window.setTimeout(() => setCartPulse(false), 520)
+    addFeedbackTimer.current = setTimeout(() => setAddFeedback(null), 1800)
+    cartPulseTimer.current = setTimeout(() => setCartPulse(false), 520)
     setCart(current => {
       const existing = current.find(item => item.productId === product.id && (item.notes || '') === notes)
       return existing
