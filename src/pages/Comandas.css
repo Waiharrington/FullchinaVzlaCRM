@@ -1042,7 +1042,7 @@
   background: #111111;
   border: 1px solid #333;
   border-radius: 14px;
-  width: min(860px, calc(100vw - 32px));
+  width: min(1080px, calc(100vw - 32px));
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 32px);
   overflow-y: auto;
@@ -1141,7 +1141,7 @@
 /* Body Layout */
 .cmd-modal-body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 20px;
   padding: 20px;
 }
