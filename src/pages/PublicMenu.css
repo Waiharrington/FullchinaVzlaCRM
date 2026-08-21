@@ -1810,3 +1810,26 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Montos en Bs (referencia BCV) dentro del carrito/checkout */
+.public-cart-item-bs {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 1px;
+}
+.public-total-bs {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 1px;
+}
+.public-whatsapp-total-bs {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+  margin-top: 1px;
+}
