@@ -75,6 +75,12 @@ export function classifyMenuCategory(name: string, rawCategory = ''): MenuCatego
   // tienen una forma editorial reconocible; nunca forzamos un plato a una
   // categoría equivocada por su valor histórico.
   if (raw === 'bebida' || raw === 'bebidas') return 'bebidas'
+
+  // Si la categoría cruda ya es una categoría válida del menú (asignada en la
+  // BD), la respetamos en vez de mandar el plato a "Otros".
+  if (raw && raw !== 'otros' && (MENU_CATEGORY_ORDER as readonly string[]).includes(raw)) {
+    return raw as MenuCategory
+  }
   return 'otros'
 }
 
