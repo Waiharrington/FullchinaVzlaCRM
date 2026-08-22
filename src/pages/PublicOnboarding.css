@@ -349,46 +349,43 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: rgba(12, 14, 18, 0.55);
+  background: rgba(14, 16, 21, 0.65);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 20px;
-  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 14px 18px;
   box-shadow:
-    0 2px 12px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
   animation: onb-fade-in-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-  transition: transform 0.15s ease;
-}
-
-.onb-feature-card:active {
-  transform: scale(0.98);
 }
 
 .onb-feature-icon {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: rgba(227, 27, 43, 0.1);
-  border: 1px solid rgba(227, 27, 43, 0.12);
-  color: #E31B2B;
-  box-shadow: 0 0 20px rgba(227, 27, 43, 0.06);
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(227, 27, 43, 0.18) 0%, rgba(204, 26, 26, 0.06) 100%);
+  border: 1px solid rgba(255, 80, 80, 0.25);
+  color: #FF5A52;
+  box-shadow:
+    0 4px 16px rgba(227, 27, 43, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .onb-feature-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
   flex: 1;
 }
 
 .onb-feature-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #F0F1F3;
 }
@@ -396,16 +393,8 @@
 .onb-feature-desc {
   font-size: 13px;
   font-weight: 400;
-  color: #7D8089;
+  color: #8B8E96;
   line-height: 1.35;
-}
-
-.onb-feature-arrow {
-  flex-shrink: 0;
-  font-size: 22px;
-  font-weight: 300;
-  color: #FFC83D;
-  line-height: 1;
 }
 
 /* --- CTA --------------------------------------------------------- */
@@ -613,15 +602,14 @@
   .onb-feature-icon {
     width: 44px;
     height: 44px;
-    border-radius: 50%;
-    background: transparent;
-    border: 1px solid rgba(227, 27, 43, 0.4);
-    color: #E31B2B;
-    box-shadow: none;
+    border-radius: 13px;
+    background: linear-gradient(135deg, rgba(227, 27, 43, 0.18) 0%, rgba(204, 26, 26, 0.06) 100%);
+    border: 1px solid rgba(255, 80, 80, 0.25);
+    color: #FF5A52;
+    box-shadow: 0 4px 16px rgba(227, 27, 43, 0.12);
   }
   .onb-feature-title { font-size: 17px; font-weight: 700; color: #fff; }
-  .onb-feature-desc { font-size: 14px; color: #7D8089; }
-  .onb-feature-arrow { color: #FFC83D; font-size: 24px; }
+  .onb-feature-desc { font-size: 14px; color: #8B8E96; }
 
   .onb-bottom {
     margin-top: auto;
@@ -679,7 +667,15 @@
 
   .onb-features { margin-top: 5vh; gap: 20px; width: 85%; margin-left: auto; margin-right: auto; }
   .onb-feature-card { height: 90px; border-radius: 20px; background: rgba(0,0,0,0.4); backdrop-filter: blur(10px); border: 1px solid rgba(255, 85, 35, 0.2); }
-  .onb-feature-icon { width: 50px; height: 50px; background: transparent; border: 1px solid rgba(227, 27, 43, 0.4); box-shadow: none; }
+  .onb-feature-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(227, 27, 43, 0.18) 0%, rgba(204, 26, 26, 0.06) 100%);
+    border: 1px solid rgba(255, 80, 80, 0.25);
+    color: #FF5A52;
+    box-shadow: 0 4px 16px rgba(227, 27, 43, 0.12);
+  }
   .onb-feature-title { font-size: 20px; }
   .onb-feature-desc { font-size: 16px; color: #7D8089; }
 
@@ -872,8 +868,8 @@
 
 @media (min-width: 1025px), (orientation: landscape) {
   .onb-bg-img {
-    background-image: url('/optimized/fondos/public-flow-bg.webp');
-    background-position: left center;
+    background-image: url('/fondos/fondo-compu.png');
+    background-position: center center;
     background-size: cover;
   }
   .onb-bg-img::after { display: none !important; }
@@ -981,10 +977,11 @@
   .onb-feature-icon {
     width: 44px !important;
     height: 44px !important;
-    background: transparent !important;
-    border: 1px solid rgba(227, 27, 43, 0.4) !important;
-    color: #E31B2B !important;
-    box-shadow: none !important;
+    border-radius: 13px !important;
+    background: linear-gradient(135deg, rgba(227, 27, 43, 0.18) 0%, rgba(204, 26, 26, 0.06) 100%) !important;
+    border: 1px solid rgba(255, 80, 80, 0.25) !important;
+    color: #FF5A52 !important;
+    box-shadow: 0 4px 16px rgba(227, 27, 43, 0.12) !important;
   }
   
   .onb-feature-title { 

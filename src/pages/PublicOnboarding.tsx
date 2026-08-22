@@ -28,7 +28,6 @@ function FeatureCard({ icon, title, description, delay }: {
         <span className="onb-feature-title">{title}</span>
         <span className="onb-feature-desc">{description}</span>
       </div>
-      <span className="onb-feature-arrow">&#8250;</span>
     </div>
   )
 }
