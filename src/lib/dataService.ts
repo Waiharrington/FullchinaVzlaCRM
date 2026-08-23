@@ -89,6 +89,7 @@ export interface FullOrder {
   fulfillmentStatus: 'new' | 'preparing' | 'ready' | 'delivered'
   notes: string | null
   orderType: string
+  tableNumber: number | null
   customerName: string
   bcvRate: number | null
   createdBy: string
@@ -520,6 +521,7 @@ export async function checkout(params: {
   userId: string
   notes?: string | null
   orderType?: string
+  tableNumber?: number | null
   customerName?: string
   referenceNumber?: string | null
   receivedAmount?: number | null
@@ -556,6 +558,7 @@ export async function checkout(params: {
     p_order_type: params.orderType ?? 'takeaway',
     p_customer_name: params.customerName ?? 'Cliente',
     p_delivery_fee: deliveryFee,
+    p_table_number: params.orderType === 'dine-in' ? (params.tableNumber ?? null) : null,
   })
   if (checkoutErr) throw checkoutErr
 
@@ -599,6 +602,7 @@ export async function sendToKitchen(params: {
   userId: string
   notes?: string | null
   orderType?: string
+  tableNumber?: number | null
   customerName?: string
   deliveryFee?: number
 }): Promise<OrderResult> {
@@ -614,6 +618,7 @@ export async function sendToKitchen(params: {
       bcv_rate: params.bcvRate,
       notes: params.notes ?? null,
       order_type: params.orderType ?? 'takeaway',
+      table_number: params.orderType === 'dine-in' ? (params.tableNumber ?? null) : null,
       customer_name: params.customerName ?? 'Cliente',
       status: 'open',
     })
@@ -778,6 +783,19 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
   })
 }
 
+/** Mesas con un pedido abierto (sin cobrar) ahora mismo, para el selector de Caja. */
+export async function getOccupiedTables(): Promise<number[]> {
+  const { data, error } = await client()
+    .from('orders')
+    .select('table_number')
+    .eq('status', 'open')
+    .eq('order_type', 'dine-in')
+    .not('table_number', 'is', null)
+
+  if (error) throw error
+  return [...new Set((data ?? []).map((o) => Number(o.table_number)))]
+}
+
 // --- Órdenes completas (para Comandas/Cocina) --------------------------------
 
 export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): Promise<FullOrder[]> {
@@ -796,6 +814,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
     fulfillmentStatus: (o.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
     notes: (o.notes as string) ?? null,
     orderType: (o.order_type as string) ?? 'takeaway',
+    tableNumber: o.table_number == null ? null : Number(o.table_number),
     customerName: (o.customer_name as string) ?? 'Cliente',
     bcvRate: o.bcv_rate ? Number(o.bcv_rate) : null,
     createdBy: o.created_by as string,
@@ -2547,6 +2566,7 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
     fulfillmentStatus: (data.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
     notes: (data.notes as string) ?? null,
     orderType: (data.order_type as string) ?? 'takeaway',
+    tableNumber: data.table_number == null ? null : Number(data.table_number),
     customerName: (data.customer_name as string) ?? 'Cliente',
     bcvRate: data.bcv_rate ? Number(data.bcv_rate) : null,
     createdBy: data.created_by as string,

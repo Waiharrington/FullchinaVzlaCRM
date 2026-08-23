@@ -19,6 +19,7 @@ import {
   createCustomer,
   getProductsWithModifiers,
   getProductModifiers,
+  getOccupiedTables,
   type Product,
   type CartItem,
   type OrderResult,
@@ -72,6 +73,8 @@ const BIRTH_MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ] as const
 const getDaysInBirthMonth = (month: string) => month ? new Date(2000, Number(month), 0).getDate() : 31
+
+const TABLE_COUNT = 10
 
 const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> = {
   'dine-in': { label: 'Mesa', icon: <UtensilsCrossed size={18} strokeWidth={1.8} /> },
@@ -184,6 +187,8 @@ export function Caja() {
   const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
 
   const [orderType, setOrderType] = useState<OrderType>('dine-in')
+  const [tableNumber, setTableNumber] = useState<number | null>(null)
+  const [occupiedTables, setOccupiedTables] = useState<Set<number>>(new Set())
   const [deliveryFee, setDeliveryFee] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [orderNotes, setOrderNotes] = useState('')
@@ -308,6 +313,14 @@ export function Caja() {
     }
   }, [])
 
+  const refreshOccupiedTables = useCallback(async () => {
+    try {
+      setOccupiedTables(new Set(await getOccupiedTables()))
+    } catch (e) {
+      console.error('getOccupiedTables error:', e)
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -326,8 +339,9 @@ export function Caja() {
         if (!cancelled) setLoading(false)
       }
     })()
+    refreshOccupiedTables()
     return () => { cancelled = true }
-  }, [])
+  }, [refreshOccupiedTables])
 
   useEffect(() => {
     getActiveCashSession()
@@ -494,6 +508,10 @@ export function Caja() {
   // Action 1: Enviar a Cocina -> Saves order WITHOUT payment and navigates to /comandas
   const handleSendToKitchen = async () => {
     if (cart.length === 0) return
+    if (orderType === 'dine-in' && !tableNumber) {
+      setPayError('Selecciona el número de mesa')
+      return
+    }
     setPaying(true)
     setPayError('')
     try {
@@ -503,6 +521,7 @@ export function Caja() {
         userId: user!.id,
         notes: orderNotes || null,
         orderType,
+        tableNumber,
         customerName: customerName || 'Cliente general',
         deliveryFee: deliveryFeeUsd,
       })
@@ -512,7 +531,9 @@ export function Caja() {
       setSelectedCustomer(null)
       setOrderNotes('')
       setDeliveryFee('')
+      setTableNumber(null)
       refreshTodayOrders()
+      refreshOccupiedTables()
       // Navigate directly to Comandas page
       navigate('/comandas')
     } catch (e) {
@@ -525,6 +546,10 @@ export function Caja() {
   // Open Payment Modal (Image 1)
   const handleOpenPaymentModal = async (preferredMethod: PaymentMethod | 'split' = 'cash') => {
     if (cart.length === 0) return
+    if (orderType === 'dine-in' && !tableNumber) {
+      setPayError('Selecciona el número de mesa')
+      return
+    }
     try {
       const active = await getActiveCashSession()
       setCashSession(active)
@@ -649,6 +674,7 @@ export function Caja() {
         userId: user!.id,
         notes: orderNotes || null,
         orderType,
+        tableNumber,
         customerName: customerName || 'Cliente general',
         deliveryFee: deliveryFeeUsd,
         referenceNumber: selectedPaymentTab === 'split'
@@ -660,7 +686,9 @@ export function Caja() {
       setCurrentOrder(order)
       setShowPaymentModal(false)
       setShowConfirmation(true)
+      setTableNumber(null)
       refreshTodayOrders()
+      refreshOccupiedTables()
     } catch (e) {
       setPayError(e instanceof Error ? e.message : 'Error al confirmar pago')
     } finally {
@@ -1285,6 +1313,32 @@ export function Caja() {
                   ))}
                 </div>
               </div>
+
+              {orderType === 'dine-in' && (
+                <div className="cart-field-col mt-2">
+                  <label className="cart-label">Número de mesa</label>
+                  <div className="table-picker-grid">
+                    {Array.from({ length: TABLE_COUNT }, (_, i) => i + 1).map((n) => {
+                      const isOccupied = occupiedTables.has(n)
+                      const isSelected = tableNumber === n
+                      return (
+                        <button
+                          key={n}
+                          type="button"
+                          className={`table-picker-btn ${isSelected ? 'selected' : ''} ${isOccupied && !isSelected ? 'occupied' : ''}`}
+                          onClick={() => setTableNumber(n)}
+                          title={isOccupied ? `Mesa ${n} · con pedido abierto` : `Mesa ${n}`}
+                        >
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {occupiedTables.size > 0 && (
+                    <small className="delivery-fee-hint">Las mesas resaltadas ya tienen un pedido abierto sin cobrar.</small>
+                  )}
+                </div>
+              )}
 
               {orderType === 'delivery' && (
                 <div className="cart-field-col mt-2">

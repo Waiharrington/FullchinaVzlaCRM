@@ -30,6 +30,7 @@ import {
   User,
   ShoppingBag,
   Bike,
+  UtensilsCrossed,
   Plus,
   Trash2,
   MapPin,
@@ -528,7 +529,7 @@ export function Comandas() {
               address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
               reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
               paymentReference: persistedReference,
-              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? 'Mesa' : 'Para llevar',
+              orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? (o.tableNumber ? `Mesa ${o.tableNumber}` : 'Mesa') : 'Para llevar',
               items: o.items.map((item) => ({
                 id: item.id,
                 name: item.productName,
@@ -819,7 +820,7 @@ export function Comandas() {
                           <User size={13} className="meta-icon" /> {order.customerName}
                         </span>
                         <span className="order-type-tag">
-                          {order.orderType === 'Delivery' ? <Bike size={13} /> : <ShoppingBag size={13} />} {order.orderType}
+                          {order.orderType === 'Delivery' ? <Bike size={13} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={13} /> : <ShoppingBag size={13} />} {order.orderType}
                         </span>
                       </div>
 

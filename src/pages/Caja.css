@@ -737,6 +737,26 @@
 .delivery-fee-bs { color: #71717a; font-size: 12px; white-space: nowrap; }
 .delivery-fee-hint { display: block; margin-top: 5px; color: #71717a; font-size: 11px; }
 
+.table-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+}
+.table-picker-btn {
+  background: #202024;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 4px;
+  color: #d4d4d8;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 140ms ease;
+}
+.table-picker-btn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.18); }
+.table-picker-btn.occupied { border-color: rgba(250, 204, 21, 0.4); color: #facc15; background: rgba(250, 204, 21, 0.08); }
+.table-picker-btn.selected { background: #dc2626; border-color: #dc2626; color: #fff; }
+
 .customer-input-col {
   position: relative;
 }
