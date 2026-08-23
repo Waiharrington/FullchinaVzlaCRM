@@ -1765,31 +1765,42 @@ export async function getRecipeSummaries(): Promise<Map<string, RecipeSummary>> 
 }
 
 export async function getRecipeComponents(sellableProductId: string): Promise<RecipeComponent[]> {
-  const { data, error } = await client()
-    .from('recipe_components')
-    .select('id,sellable_product_id,ingredient_id,preparation_batch_id,quantity,unit_id,ingredients(name,ingredient_costs(price_per_unit)),units(symbol)')
-    .eq('sellable_product_id', sellableProductId)
-    .order('created_at', { ascending: true })
+  const sb = client()
+  // El costo por ingrediente NO se puede leer con un embed de ingredient_costs
+  // (la RLS de esa tabla lo bloquea al cliente). Se toma de v_current_stock, que
+  // sí expone price_per_unit a owner/manager. Para cashier viene null (correcto).
+  const [componentsRes, stockRes] = await Promise.all([
+    sb
+      .from('recipe_components')
+      .select('id,sellable_product_id,ingredient_id,preparation_batch_id,quantity,unit_id,ingredients(name),units(symbol)')
+      .eq('sellable_product_id', sellableProductId)
+      .order('created_at', { ascending: true }),
+    sb.from('v_current_stock').select('ingredient_id,price_per_unit'),
+  ])
 
-  if (error) throw error
+  if (componentsRes.error) throw componentsRes.error
+  const costMap = new Map<string, number>()
+  for (const s of (stockRes.data as Array<Record<string, unknown>> | null) ?? []) {
+    if (s.price_per_unit != null) costMap.set(s.ingredient_id as string, Number(s.price_per_unit))
+  }
   // PostgREST devuelve las relaciones to-one como objeto (no array); toleramos
   // ambos por si la versión del cliente las envuelve en array.
   const toOne = (value: unknown): Record<string, unknown> | null =>
     Array.isArray(value) ? (value[0] as Record<string, unknown>) ?? null : (value as Record<string, unknown>) ?? null
-  return (data ?? []).map((r) => {
+  return (componentsRes.data ?? []).map((r) => {
     const ingr = toOne(r.ingredients)
-    const costs = ingr && Array.isArray(ingr.ingredient_costs) ? ingr.ingredient_costs as Array<Record<string, unknown>> : []
     const unit = toOne(r.units)
+    const ingredientId = (r.ingredient_id as string) ?? null
     return {
       id: r.id as string,
       sellableProductId: r.sellable_product_id as string,
-      ingredientId: (r.ingredient_id as string) ?? null,
+      ingredientId,
       preparationBatchId: (r.preparation_batch_id as string) ?? null,
       ingredientName: (ingr?.name as string) ?? null,
       quantity: Number(r.quantity),
       unitId: r.unit_id as string,
       unitSymbol: (unit?.symbol as string) ?? '',
-      costPerUnit: costs.length > 0 ? Number(costs[0]?.price_per_unit) : null,
+      costPerUnit: ingredientId && costMap.has(ingredientId) ? costMap.get(ingredientId)! : null,
     }
   })
 }
