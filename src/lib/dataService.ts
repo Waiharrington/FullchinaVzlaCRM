@@ -1772,18 +1772,23 @@ export async function getRecipeComponents(sellableProductId: string): Promise<Re
     .order('created_at', { ascending: true })
 
   if (error) throw error
+  // PostgREST devuelve las relaciones to-one como objeto (no array); toleramos
+  // ambos por si la versión del cliente las envuelve en array.
+  const toOne = (value: unknown): Record<string, unknown> | null =>
+    Array.isArray(value) ? (value[0] as Record<string, unknown>) ?? null : (value as Record<string, unknown>) ?? null
   return (data ?? []).map((r) => {
-    const ingr = Array.isArray(r.ingredients) ? r.ingredients[0] as Record<string, unknown> : null
+    const ingr = toOne(r.ingredients)
     const costs = ingr && Array.isArray(ingr.ingredient_costs) ? ingr.ingredient_costs as Array<Record<string, unknown>> : []
+    const unit = toOne(r.units)
     return {
       id: r.id as string,
       sellableProductId: r.sellable_product_id as string,
       ingredientId: (r.ingredient_id as string) ?? null,
       preparationBatchId: (r.preparation_batch_id as string) ?? null,
-      ingredientName: ingr?.name as string ?? null,
+      ingredientName: (ingr?.name as string) ?? null,
       quantity: Number(r.quantity),
       unitId: r.unit_id as string,
-      unitSymbol: Array.isArray(r.units) ? (r.units[0] as Record<string, unknown>)?.symbol as string ?? '' : '',
+      unitSymbol: (unit?.symbol as string) ?? '',
       costPerUnit: costs.length > 0 ? Number(costs[0]?.price_per_unit) : null,
     }
   })
