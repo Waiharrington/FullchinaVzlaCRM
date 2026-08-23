@@ -13,6 +13,7 @@ const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: mo
 const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))
 const CajaOperativa = lazy(() => import('./pages/CajaOperativa').then(module => ({ default: module.CajaOperativa })))
 const Comandas = lazy(() => import('./pages/Comandas').then(module => ({ default: module.Comandas })))
+const Mesas = lazy(() => import('./pages/Mesas').then(module => ({ default: module.Mesas })))
 const Cocina = lazy(() => import('./pages/Cocina').then(module => ({ default: module.Cocina })))
 const Clientes = lazy(() => import('./pages/Clientes').then(module => ({ default: module.Clientes })))
 const Inventario = lazy(() => import('./pages/Inventario').then(module => ({ default: module.Inventario })))
@@ -78,6 +79,7 @@ function AppRoutes() {
       >
         <Route path="/" element={forModule('/', <Inicio />)} />
         <Route path="/caja" element={forModule('/caja', <Caja />)} />
+        <Route path="/mesas" element={forModule('/mesas', <Mesas />)} />
         <Route path="/caja-operativa" element={forModule('/caja-operativa', <CajaOperativa />)} />
         <Route path="/comandas" element={forModule('/comandas', <Comandas />)} />
         <Route path="/cocina" element={forModule('/cocina', <Cocina />, ['owner', 'manager'])} />

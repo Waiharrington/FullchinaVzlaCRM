@@ -227,11 +227,19 @@ export function Caja() {
     })))).catch(error => console.error('getCustomers error:', error))
   }, [])
 
-  // Cliente pre-seleccionado al venir desde el perfil de un cliente ("Nuevo pedido").
+  // Cliente pre-seleccionado al venir desde el perfil de un cliente ("Nuevo pedido"),
+  // o mesa pre-seleccionada al venir desde el mapa de Mesas.
   useEffect(() => {
-    const incoming = (location.state as { customerName?: string } | null)?.customerName
+    const incoming = location.state as { customerName?: string; tableNumber?: number } | null
+    if (incoming?.customerName) {
+      setCustomerName(incoming.customerName)
+    }
+    if (incoming?.tableNumber) {
+      setOrderType('dine-in')
+      setTableNumber(incoming.tableNumber)
+      setSelectedPaymentTab(defaultPaymentForOrderType('dine-in'))
+    }
     if (incoming) {
-      setCustomerName(incoming)
       // Limpiar el state para que no reaparezca al refrescar o volver.
       navigate(location.pathname, { replace: true, state: null })
     }

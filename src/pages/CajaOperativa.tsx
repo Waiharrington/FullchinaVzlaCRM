@@ -104,6 +104,14 @@ export function CajaOperativa() {
     } finally { setSaving(false) }
   }
 
+  // La caja física del food truck solo maneja efectivo (USD/Bs) y el punto de
+  // venta; pago móvil, transferencia, etc. no pasan por ahí, así que se
+  // excluyen del desglose y del total cobrado de esta pantalla.
+  const cajaMethods = session
+    ? Object.entries(session.paymentBreakdown).filter(([method]) => method === 'cash' || method === 'card')
+    : []
+  const cajaTotal = cajaMethods.reduce((sum, [, amount]) => sum + amount, 0)
+
   const prepareClose = () => {
     if (!session) return
     setCountedUsd(session.expectedCashUsd.toFixed(2))
@@ -205,8 +213,8 @@ export function CajaOperativa() {
             <article className="cash-card">
               <div className="cash-card-heading"><div><span>Cobros registrados</span><h2>Desglose por método</h2></div><WalletCards size={24} /></div>
               <div className="cash-payment-list">
-                {Object.keys(session.paymentBreakdown).length === 0 && <p className="cash-empty">Aún no hay pagos en este turno.</p>}
-                {Object.entries(session.paymentBreakdown).map(([method, amount]) => {
+                {cajaMethods.length === 0 && <p className="cash-empty">Aún no hay pagos en este turno.</p>}
+                {cajaMethods.map(([method, amount]) => {
                   const bsExact = session.paymentBreakdownVes?.[method]
                   const showBs = BS_METHODS.has(method) && bsExact != null && bsExact > 0
                   return (
@@ -223,7 +231,7 @@ export function CajaOperativa() {
                     </div>
                   )
                 })}
-                <div className="cash-payment-total"><span>Total cobrado</span><strong>{money(session.paymentTotal)}</strong></div>
+                <div className="cash-payment-total"><span>Total cobrado</span><strong>{money(cajaTotal)}</strong></div>
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
             </article>

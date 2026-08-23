@@ -24,7 +24,7 @@ const activeSession: CashSessionSnapshot = {
   id: 'session-1', sessionNumber: 7, registerId: 'register-1', registerCode: 'caja-principal',
   registerName: 'Caja principal', status: 'open', openedAt: '2026-08-08T12:00:00.000Z',
   openedBy: 'demo-cashier', openingCashUsd: 20, openingCashVes: 100,
-  cashSalesUsd: 35, paymentTotal: 50, paymentBreakdown: { cash: 35, mobile: 15 }, paymentBreakdownVes: { cash: 0, mobile: 2332.5 },
+  cashSalesUsd: 35, paymentTotal: 50, paymentBreakdown: { cash: 35, card: 15 }, paymentBreakdownVes: { cash: 0, card: 0 },
   movementInUsd: 0, movementOutUsd: 5, movementInVes: 0, movementOutVes: 0,
   expectedCashUsd: 50, expectedCashVes: 100, countedCashUsd: null, countedCashVes: null,
   differenceUsd: null, differenceVes: null, closedAt: null, movements: [],
@@ -61,7 +61,7 @@ describe('CajaOperativa', () => {
 
     expect(await screen.findByText('Turno activo')).toBeInTheDocument()
     expect(screen.getByText('Efectivo esperado USD')).toBeInTheDocument()
-    expect(screen.getByText('Pago móvil')).toBeInTheDocument()
+    expect(screen.getByText('Punto')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /iniciar arqueo y cierre/i })).toBeEnabled()
   })
 })

@@ -783,6 +783,98 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
   })
 }
 
+// --- Mapa de mesas (módulo Mesas) --------------------------------------------
+
+export interface FloorTable {
+  id: string
+  number: number
+  zone: string
+  shape: 'square' | 'round'
+  seats: number
+  posX: number
+  posY: number
+  isActive: boolean
+  openOrderId: string | null
+  openOrderNumber: number | null
+  openOrderCustomer: string | null
+  openOrderCreatedAt: string | null
+  openOrderTotal: number
+}
+
+export async function getFloorTables(): Promise<FloorTable[]> {
+  const { data, error } = await client()
+    .from('v_floor_tables_status')
+    .select('*')
+    .order('number', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((t) => ({
+    id: t.id as string,
+    number: Number(t.number),
+    zone: (t.zone as string) ?? 'Salón',
+    shape: (t.shape as FloorTable['shape']) ?? 'square',
+    seats: Number(t.seats ?? 4),
+    posX: Number(t.pos_x ?? 10),
+    posY: Number(t.pos_y ?? 10),
+    isActive: Boolean(t.is_active),
+    openOrderId: (t.open_order_id as string) ?? null,
+    openOrderNumber: t.open_order_number == null ? null : Number(t.open_order_number),
+    openOrderCustomer: (t.open_order_customer as string) ?? null,
+    openOrderCreatedAt: (t.open_order_created_at as string) ?? null,
+    openOrderTotal: Number(t.open_order_total ?? 0),
+  }))
+}
+
+export async function createFloorTable(params: {
+  number: number
+  zone: string
+  shape: 'square' | 'round'
+  seats: number
+  posX: number
+  posY: number
+}): Promise<string> {
+  const { data, error } = await client()
+    .from('floor_tables')
+    .insert({
+      number: params.number,
+      zone: params.zone,
+      shape: params.shape,
+      seats: params.seats,
+      pos_x: params.posX,
+      pos_y: params.posY,
+    })
+    .select('id')
+    .single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updateFloorTable(id: string, params: Partial<{
+  number: number
+  zone: string
+  shape: 'square' | 'round'
+  seats: number
+  posX: number
+  posY: number
+  isActive: boolean
+}>): Promise<void> {
+  const patch: Record<string, unknown> = {}
+  if (params.number !== undefined) patch.number = params.number
+  if (params.zone !== undefined) patch.zone = params.zone
+  if (params.shape !== undefined) patch.shape = params.shape
+  if (params.seats !== undefined) patch.seats = params.seats
+  if (params.posX !== undefined) patch.pos_x = params.posX
+  if (params.posY !== undefined) patch.pos_y = params.posY
+  if (params.isActive !== undefined) patch.is_active = params.isActive
+
+  const { error } = await client().from('floor_tables').update(patch).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteFloorTable(id: string): Promise<void> {
+  const { error } = await client().from('floor_tables').delete().eq('id', id)
+  if (error) throw error
+}
+
 /** Mesas con un pedido abierto (sin cobrar) ahora mismo, para el selector de Caja. */
 export async function getOccupiedTables(): Promise<number[]> {
   const { data, error } = await client()

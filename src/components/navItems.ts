@@ -18,7 +18,8 @@ import {
   UtensilsCrossed,
   Receipt,
   BadgeDollarSign,
-  Tag
+  Tag,
+  LayoutGrid
 } from 'lucide-react'
 
 export type Role = 'owner' | 'manager' | 'cashier'
@@ -35,6 +36,7 @@ export const allNavItems: NavItem[] = [
   { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
+  { path: '/mesas', label: 'Mesas', icon: LayoutGrid, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/caja-operativa', label: 'Apertura y cierre', icon: BadgeDollarSign, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/almacen', label: 'Almacén', icon: Building2, roles: ['owner', 'manager'], group: 'Operación' },
