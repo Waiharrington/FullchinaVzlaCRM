@@ -3,7 +3,7 @@ import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, ty
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
-  LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2,
+  LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2, CheckSquare, Square,
 } from 'lucide-react'
 import './Menu.css'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -50,6 +50,10 @@ export function Menu() {
   const [editing, setEditing] = useState<SellableProduct | null | 'new'>(null)
   const [form, setForm] = useState<Form>(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  const [selectMode, setSelectMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkDeleting, setBulkDeleting] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -111,6 +115,32 @@ export function Menu() {
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar el plato') }
   }
 
+  const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()) }
+  const toggleSelect = (id: string) => setSelectedIds((prev) => {
+    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
+  })
+  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id))
+  const toggleSelectAll = () => setSelectedIds((prev) => {
+    if (allFilteredSelected) { const next = new Set(prev); filtered.forEach((p) => next.delete(p.id)); return next }
+    const next = new Set(prev); filtered.forEach((p) => next.add(p.id)); return next
+  })
+
+  const handleBulkDelete = async () => {
+    const targets = products.filter((p) => selectedIds.has(p.id))
+    if (targets.length === 0) return
+    if (!window.confirm(`¿Eliminar ${targets.length} plato${targets.length === 1 ? '' : 's'} de forma permanente?\n\nLos platos con ventas registradas no se podrán eliminar; se omitirán.`)) return
+    setBulkDeleting(true); setError('')
+    let ok = 0; const failed: string[] = []
+    for (const p of targets) {
+      try { await deleteProduct(p.id); ok++ }
+      catch { failed.push(p.name) }
+    }
+    setBulkDeleting(false); exitSelectMode()
+    if (ok > 0) flash(`${ok} plato${ok === 1 ? '' : 's'} eliminado${ok === 1 ? '' : 's'}`)
+    if (failed.length > 0) setError(`No se pudieron eliminar (tienen ventas): ${failed.join(', ')}`)
+    await load()
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim() || !(parseFloat(form.price) >= 0)) { setError('Nombre y precio son obligatorios'); return }
@@ -156,18 +186,32 @@ export function Menu() {
         <div className="mnu-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar plato..." /></div>
         <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}><option value="all">Categoría: Todas</option>{categories.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}</select>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}><option value="all">Estado: Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>
+        {selectMode
+          ? <button className="mnu-select-btn active" onClick={exitSelectMode}><X size={15} /> Salir de selección</button>
+          : <button className="mnu-select-btn" onClick={() => setSelectMode(true)}><CheckSquare size={15} /> Seleccionar</button>}
         <div className="mnu-view">
           <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="Cuadrícula"><LayoutGrid size={16} /></button>
           <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={16} /></button>
         </div>
       </div>
 
+      {selectMode && (
+        <div className="mnu-bulk-bar">
+          <button className="mnu-bulk-check" onClick={toggleSelectAll}>{allFilteredSelected ? <CheckSquare size={16} /> : <Square size={16} />} {allFilteredSelected ? 'Quitar todos' : 'Seleccionar todos'}</button>
+          <span className="mnu-bulk-count">{selectedIds.size} seleccionado{selectedIds.size === 1 ? '' : 's'}</span>
+          <button className="mnu-bulk-delete" onClick={handleBulkDelete} disabled={selectedIds.size === 0 || bulkDeleting}>{bulkDeleting ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />} Eliminar seleccionados</button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="mnu-table-wrap" style={{ textAlign: 'center', color: '#71717a', padding: 30 }}>No hay platos que coincidan.</div>
       ) : view === 'grid' ? (
         <div className="mnu-grid">
-          {filtered.map((p) => (
-            <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}`}>
+          {filtered.map((p) => {
+            const selected = selectedIds.has(p.id)
+            return (
+            <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}${selectMode ? ' selectable' : ''}${selected ? ' selected' : ''}`} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
+              {selectMode && <span className="mnu-check" aria-hidden>{selected ? <CheckSquare size={20} /> : <Square size={20} />}</span>}
               {thumb(p, 'mnu-thumb')}
               <div className="mnu-card-body">
                 <span className="mnu-card-name">{formatProductTitle(p.name)}</span>
@@ -177,27 +221,30 @@ export function Menu() {
                   <span className={`mnu-badge ${p.isActive ? 'on' : 'off'}`}>{p.isActive ? 'Activo' : 'Inactivo'}</span>
                 </div>
               </div>
+              {!selectMode && (
               <div className="mnu-card-actions">
                 <button className="mnu-act" onClick={() => openEdit(p)}><Pencil size={14} /> Editar</button>
                 <button className="mnu-act" onClick={() => toggleActive(p)}>{p.isActive ? <><EyeOff size={14} /> Ocultar</> : <><Eye size={14} /> Activar</>}</button>
                 <button className="mnu-act mnu-act-danger" onClick={() => handleDelete(p)} title="Eliminar plato" aria-label={`Eliminar ${p.name}`}><Trash2 size={14} /></button>
               </div>
+              )}
             </div>
-          ))}
+          )})}
         </div>
       ) : (
         <div className="mnu-table-wrap">
           <table className="mnu-table">
-            <thead><tr><th>Plato</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <thead><tr>{selectMode && <th style={{ width: 40 }}><button className="mnu-icon-btn" onClick={toggleSelectAll} title="Seleccionar todos">{allFilteredSelected ? <CheckSquare size={16} /> : <Square size={16} />}</button></th>}<th>Plato</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id}>
+                <tr key={p.id} className={selectMode ? 'selectable' : ''} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
+                  {selectMode && <td><span className="mnu-check-cell">{selectedIds.has(p.id) ? <CheckSquare size={18} /> : <Square size={18} />}</span></td>}
                   <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{formatProductTitle(p.name)}</strong>{(p.description || getEditorialDescription(p.name)) && <><br /><small style={{ color: '#71717a', display: 'block', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(p.name, p.description || '')}</small></>}</div></div></td>
                   <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{catLabel(p.category)}</td>
                   <td className="mnu-price" style={{ fontSize: 15 }}>{formatUsd(p.salePrice)}</td>
-                  <td><button className={`mnu-switch ${p.isActive ? 'on' : ''}`} onClick={() => toggleActive(p)} title={p.isActive ? 'Activo' : 'Inactivo'} /></td>
-                  <td><button className="mnu-icon-btn" onClick={() => openEdit(p)} title="Editar"><Pencil size={16} /></button>
-                    <button className="mnu-icon-btn mnu-icon-danger" onClick={() => handleDelete(p)} title="Eliminar" aria-label={`Eliminar ${p.name}`}><Trash2 size={16} /></button></td>
+                  <td><button className={`mnu-switch ${p.isActive ? 'on' : ''}`} onClick={(e) => { e.stopPropagation(); toggleActive(p) }} title={p.isActive ? 'Activo' : 'Inactivo'} /></td>
+                  <td><button className="mnu-icon-btn" onClick={(e) => { e.stopPropagation(); openEdit(p) }} title="Editar"><Pencil size={16} /></button>
+                    <button className="mnu-icon-btn mnu-icon-danger" onClick={(e) => { e.stopPropagation(); handleDelete(p) }} title="Eliminar" aria-label={`Eliminar ${p.name}`}><Trash2 size={16} /></button></td>
                 </tr>
               ))}
             </tbody>
