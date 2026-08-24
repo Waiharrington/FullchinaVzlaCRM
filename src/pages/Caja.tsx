@@ -7,7 +7,7 @@ import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { downloadReceipt } from '../lib/receipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
-import { classifyMenuCategory, MENU_CATEGORY_ORDER, MENU_CATEGORY_LABELS } from '../lib/menuCategories'
+import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
 import {
   getProducts,
@@ -20,6 +20,7 @@ import {
   getProductsWithModifiers,
   getProductModifiers,
   getOccupiedTables,
+  getMenuCategories,
   type Product,
   type CartItem,
   type OrderResult,
@@ -334,11 +335,13 @@ export function Caja() {
     ;(async () => {
       setLoading(true)
       try {
-        const [prods, orders, withMods] = await Promise.all([
+        const [prods, orders, withMods, cats] = await Promise.all([
           getProducts().catch((e) => { console.error('getProducts error:', e); return [] as Product[] }),
           getTodayOrders().catch((e) => { console.error('getTodayOrders error:', e); return [] as TodayOrder[] }),
           getProductsWithModifiers().catch((e) => { console.error('getProductsWithModifiers error:', e); return new Set<string>() }),
+          getMenuCategories().catch((e) => { console.error('getMenuCategories error:', e); return [] }),
         ])
+        if (cats.length) hydrateMenuCategories(cats)
         setProducts(prods)
         setTodayOrders(orders)
         setProductsWithModifiers(withMods)
@@ -357,14 +360,21 @@ export function Caja() {
       .catch(() => setCashSession(null))
   }, [])
 
+  // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
+  const resolveCat = (product: Product) =>
+    product.category !== 'otros' && isKnownCategory(product.category)
+      ? product.category
+      : classifyMenuCategory(product.name, product.category)
+
   const categories = useMemo(() => {
-    const present = new Set(products.map((p) => classifyMenuCategory(p.name, p.category)))
-    return MENU_CATEGORY_ORDER.filter((c) => present.has(c))
+    const present = new Set(products.map((p) => resolveCat(p)))
+    return menuCategoryKeys().filter((c) => present.has(c))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products])
 
   const filteredProductGroups = useMemo(() => {
     const categoryProducts = products.filter((product) => {
-      const matchCat = activeCategory === 'all' || classifyMenuCategory(product.name, product.category) === activeCategory
+      const matchCat = activeCategory === 'all' || resolveCat(product) === activeCategory
       return matchCat && product.active
     })
     let result = groupMenuProducts(categoryProducts)
@@ -974,7 +984,7 @@ export function Caja() {
                 className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
                 onClick={() => setActiveCategory(cat)}
               >
-                {MENU_CATEGORY_LABELS[cat] ?? cat}
+                {categoryLabel(cat)}
               </button>
             ))}
           </div>
@@ -1311,13 +1321,17 @@ export function Caja() {
                 <div className="order-type-buttons">
                   {(Object.entries(ORDER_TYPE_LABELS) as Array<[OrderType, { label: string; icon: ReactNode }]>).map(([key, val]) => (
                     <button
-                      key={key}
-                      className={`order-type-card ${orderType === key ? 'active' : ''}`}
-                      onClick={() => { setOrderType(key); setSelectedPaymentTab(defaultPaymentForOrderType(key)) }}
-                    >
-                      <span className="order-type-icon">{val.icon}</span>
-                      <span className="order-type-text">{val.label}</span>
-                    </button>
+                        key={key}
+                        className={`order-type-card ${orderType === key ? 'active' : ''}`}
+                        onClick={() => {
+                          setOrderType(key)
+                          setSelectedPaymentTab(defaultPaymentForOrderType(key))
+                          if (key !== 'dine-in') setTableNumber(null)
+                        }}
+                      >
+                        <span className="order-type-icon">{val.icon}</span>
+                        <span className="order-type-text">{val.label}</span>
+                      </button>
                   ))}
                 </div>
               </div>
@@ -1333,6 +1347,7 @@ export function Caja() {
                         <button
                           key={n}
                           type="button"
+                          disabled={isOccupied && !isSelected}
                           className={`table-picker-btn ${isSelected ? 'selected' : ''} ${isOccupied && !isSelected ? 'occupied' : ''}`}
                           onClick={() => setTableNumber(n)}
                           title={isOccupied ? `Mesa ${n} · con pedido abierto` : `Mesa ${n}`}

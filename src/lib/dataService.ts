@@ -480,6 +480,47 @@ export async function deleteProduct(id: string): Promise<void> {
   if (error) throw error
 }
 
+// --- Categorías del menú ------------------------------------------------------
+
+export interface MenuCategoryRow { id: string; key: string; label: string; sortOrder: number; isActive: boolean }
+
+/** Lee todas las categorías (incluidas inactivas) para administrarlas. */
+export async function getMenuCategories(): Promise<MenuCategoryRow[]> {
+  const { data, error } = await client()
+    .from('menu_categories')
+    .select('id,key,label,sort_order,is_active')
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string, key: r.key as string, label: r.label as string,
+    sortOrder: Number(r.sort_order), isActive: r.is_active as boolean,
+  }))
+}
+
+/** Crea una categoría nueva. `key` debe ser un slug único. */
+export async function createMenuCategory(input: { key: string; label: string; sortOrder: number }): Promise<string> {
+  const { data, error } = await client().from('menu_categories').insert({
+    key: input.key, label: input.label, sort_order: input.sortOrder,
+  }).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updateMenuCategory(id: string, updates: Partial<{ label: string; sortOrder: number; isActive: boolean }>): Promise<void> {
+  const payload: Record<string, unknown> = {}
+  if (updates.label !== undefined) payload.label = updates.label
+  if (updates.sortOrder !== undefined) payload.sort_order = updates.sortOrder
+  if (updates.isActive !== undefined) payload.is_active = updates.isActive
+  if (Object.keys(payload).length === 0) return
+  const { error } = await client().from('menu_categories').update(payload).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteMenuCategory(id: string): Promise<void> {
+  const { error } = await client().from('menu_categories').delete().eq('id', id)
+  if (error) throw error
+}
+
 // --- Modificadores -----------------------------------------------------------
 
 /** Conjunto de ids de productos que tienen al menos un modificador asignado. */

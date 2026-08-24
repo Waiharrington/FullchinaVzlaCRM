@@ -3,7 +3,7 @@ import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, Clock, Flame, Hea
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
-import { createWebOrder, getPublicCatalog, type WebOrderCartItem } from '../lib/publicOrders'
+import { createWebOrder, getPublicCatalog, getPublicMenuCategories, type WebOrderCartItem } from '../lib/publicOrders'
 import { getProductModifiers, type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -11,7 +11,7 @@ import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
-import { categoryLabel, classifyMenuCategory, menuItemRank, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
+import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import './PublicMenu.css'
 
 declare global { interface Window { __removeFCSplash?: () => void } }
@@ -306,14 +306,18 @@ export function PublicMenu() {
       window.__removeFCSplash?.()
       return
     }
-    Promise.all([getPublicCatalog(), getExchangeRates()])
-      .then(([catalog, rates]) => { 
-        setProducts(catalog.map(p => ({ ...p, category: classifyMenuCategory(p.name, p.category) }))
+    Promise.all([getPublicCatalog(), getExchangeRates(), getPublicMenuCategories().catch(() => [])])
+      .then(([catalog, rates, cats]) => {
+        if (cats.length) hydrateMenuCategories(cats)
+        // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
+        const resolveCategory = (p: { name: string; category: string }) =>
+          p.category !== 'otros' && isKnownCategory(p.category) ? p.category : classifyMenuCategory(p.name, p.category)
+        setProducts(catalog.map(p => ({ ...p, category: resolveCategory(p) }))
           .sort((a, b) => {
-            const categoryDelta = MENU_CATEGORY_ORDER.indexOf(a.category as typeof MENU_CATEGORY_ORDER[number]) - MENU_CATEGORY_ORDER.indexOf(b.category as typeof MENU_CATEGORY_ORDER[number])
+            const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
             return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
           }))
-        setBcvRate(rates.bcv || null) 
+        setBcvRate(rates.bcv || null)
       })
       .catch(() => setError('No pudimos cargar el menú. Intenta nuevamente.'))
       .finally(() => {
@@ -324,14 +328,7 @@ export function PublicMenu() {
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.map(p => p.category)));
-    const order = [...MENU_CATEGORY_ORDER];
-    extracted.sort((a, b) => {
-      let idxA = order.indexOf(a as typeof MENU_CATEGORY_ORDER[number]);
-      let idxB = order.indexOf(b as typeof MENU_CATEGORY_ORDER[number]);
-      if (idxA === -1) idxA = 999;
-      if (idxB === -1) idxB = 999;
-      return idxA - idxB;
-    });
+    extracted.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
     return ['Todos', ...extracted];
   }, [products]);
   const groups = useMemo(() => groupMenuProducts(products.filter(product => {
@@ -1960,7 +1957,7 @@ export function PublicMenu() {
       )}
 
       {cartOpen && <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia('(min-width: 1024px)').matches; if (step === 'details') { if (isDesktop) { orderType === 'delivery' ? setStep('address') : closeCart(); } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') setStep('details'); else if (step === 'address') { isDesktop ? closeCart() : setStep('delivery'); } else if (step === 'delivery') setStep('cart'); else if (step === 'preparing' || step === 'sent') closeCart(); else closeCart() }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2>{step !== 'confirm' && <Flame className="desktop-only public-review-heading-icon" size={24} aria-hidden="true" />}{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
+        <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia('(min-width: 1024px)').matches; if (step === 'details') { if (isDesktop) { if (orderType === 'delivery') { setStep('address'); } else { closeCart(); } } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { if (isDesktop) { closeCart(); } else { setStep('delivery'); } } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing' || step === 'sent') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2>{step !== 'confirm' && <Flame className="desktop-only public-review-heading-icon" size={24} aria-hidden="true" />}{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className="public-cart-guard" role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-empty-cart"><ShoppingCart /><strong>Tu carrito está vacío</strong><span>Agrega un plato para comenzar tu pedido.</span></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><span className="mobile-only">🔥</span><Flame className="desktop-only" size={18} aria-hidden="true" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}<div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>{cart.length ? 'Productos seleccionados' : 'Agrega un producto para comenzar'}</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div><button className="public-primary" disabled={!cart.length} onClick={() => requireCart() && setStep('delivery')}>{cart.length ? 'Continuar' : 'Elegir productos'} <ChevronRight /></button></div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}

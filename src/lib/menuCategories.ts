@@ -20,8 +20,51 @@ export const MENU_CATEGORY_LABELS: Record<MenuCategory, string> = {
   extras: 'Extras',
 }
 
+/**
+ * Registro din\u00e1mico de categor\u00edas hidratado desde la base de datos. Cuando est\u00e1
+ * disponible, manda sobre las constantes de arriba (que quedan como respaldo si
+ * la BD a\u00fan no carg\u00f3 o falla). As\u00ed se pueden crear/renombrar/reordenar categor\u00edas
+ * sin tocar c\u00f3digo, y los cambios se ven en todas las pantallas.
+ */
+export interface MenuCategoryDef { key: string; label: string; sortOrder: number }
+
+let registry: MenuCategoryDef[] | null = null
+
+export function hydrateMenuCategories(list: MenuCategoryDef[]) {
+  registry = [...list].sort((a, b) => a.sortOrder - b.sortOrder)
+}
+
+/** Claves de categor\u00eda en el orden vigente (BD si est\u00e1 hidratada, si no el fijo). */
+export function menuCategoryKeys(): string[] {
+  if (registry && registry.length) return registry.map((c) => c.key)
+  return [...MENU_CATEGORY_ORDER]
+}
+
+/** \u00bfEs una categor\u00eda conocida (de la BD o de las fijas)? */
+export function isKnownCategory(key: string): boolean {
+  return menuCategoryKeys().includes(key)
+}
+
+/** Posici\u00f3n de una categor\u00eda para ordenar; las desconocidas van al final. */
+export function menuCategoryRank(key: string): number {
+  const index = menuCategoryKeys().indexOf(key)
+  return index === -1 ? 999 : index
+}
+
 function normalize(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-VE').trim()
+}
+
+/** Convierte un nombre visible en una clave estable (slug) para una categor\u00eda nueva. */
+export function slugifyCategory(label: string): string {
+  return normalize(label).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'categoria'
+}
+
+/** Categor\u00edas por defecto (respaldo si la tabla de BD a\u00fan no existe o falla). */
+export function defaultMenuCategories(): MenuCategoryDef[] {
+  return MENU_CATEGORY_ORDER.map((key, index) => ({
+    key, label: MENU_CATEGORY_LABELS[key], sortOrder: (index + 1) * 10,
+  }))
 }
 
 /**
@@ -85,6 +128,10 @@ export function classifyMenuCategory(name: string, rawCategory = ''): MenuCatego
 }
 
 export function categoryLabel(category: string) {
+  if (registry) {
+    const found = registry.find((c) => c.key === category)
+    if (found) return found.label
+  }
   return MENU_CATEGORY_LABELS[category as MenuCategory] || category.replace(/_/g, ' ')
 }
 

@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, type SellableProduct } from '../lib/dataService'
+import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, type SellableProduct, type MenuCategoryRow } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
   LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2, CheckSquare, Square,
+  ChevronUp, ChevronDown, Check,
 } from 'lucide-react'
 import './Menu.css'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
-import { categoryLabel, classifyMenuCategory, menuItemRank, MENU_CATEGORY_ORDER, type MenuCategory } from '../lib/menuCategories'
+import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
 
-const CATEGORIES = [...MENU_CATEGORY_ORDER]
 const catLabel = categoryLabel
 
 function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
@@ -55,20 +55,33 @@ export function Menu() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkDeleting, setBulkDeleting] = useState(false)
 
+  const [menuCats, setMenuCats] = useState<MenuCategoryRow[]>([])
+  const [catManagerOpen, setCatManagerOpen] = useState(false)
+
   const load = useCallback(async () => {
     try {
       setLoading(true)
-      const catalog = await getAllSellableProducts()
+      const [catalog, fetchedCats] = await Promise.all([
+        getAllSellableProducts(),
+        getMenuCategories().catch(() => [] as MenuCategoryRow[]),
+      ])
+      // Si la tabla aún no existe (migración sin aplicar), usamos las por defecto
+      // para que el panel siga funcionando.
+      const cats: MenuCategoryRow[] = fetchedCats.length
+        ? fetchedCats
+        : defaultMenuCategories().map((d) => ({ id: d.key, key: d.key, label: d.label, sortOrder: d.sortOrder, isActive: true }))
+      hydrateMenuCategories(cats)
+      setMenuCats(cats)
       // Respetamos la categoría guardada si ya es una categoría válida y
       // específica (una edición manual). Solo auto-clasificamos por nombre los
       // platos sin categoría útil ("otros") o con valores heredados/desconocidos.
       const resolveCategory = (product: SellableProduct) =>
-        product.category !== 'otros' && (MENU_CATEGORY_ORDER as readonly string[]).includes(product.category)
+        product.category !== 'otros' && isKnownCategory(product.category)
           ? product.category
           : classifyMenuCategory(product.name, product.category)
       setProducts(catalog.map(product => ({ ...product, category: resolveCategory(product) }))
         .sort((a, b) => {
-          const categoryDelta = MENU_CATEGORY_ORDER.indexOf(a.category as typeof MENU_CATEGORY_ORDER[number]) - MENU_CATEGORY_ORDER.indexOf(b.category as typeof MENU_CATEGORY_ORDER[number])
+          const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
           return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
         }))
     }
@@ -79,7 +92,9 @@ export function Menu() {
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 
-  const categories = useMemo(() => MENU_CATEGORY_ORDER.filter(category => products.some(product => product.category === category)), [products])
+  // Categorías disponibles para asignar a un plato (todas las de la BD).
+  const allCategoryKeys = useMemo(() => menuCats.map((c) => c.key), [menuCats])
+  const categories = useMemo(() => allCategoryKeys.filter(category => products.some(product => product.category === category)), [allCategoryKeys, products])
   const summary = useMemo(() => ({
     total: products.length,
     active: products.filter((p) => p.isActive).length,
@@ -148,6 +163,50 @@ export function Menu() {
     await load()
   }
 
+  // --- Gestión de categorías --------------------------------------------------
+  const reloadCategories = async () => {
+    const cats = await getMenuCategories()
+    hydrateMenuCategories(cats); setMenuCats(cats)
+  }
+
+  const handleAddCategory = async (label: string) => {
+    const clean = formatSpanishText(label.trim())
+    if (!clean) return
+    let key = slugifyCategory(clean)
+    const existingKeys = new Set(menuCats.map((c) => c.key))
+    if (existingKeys.has(key)) { let n = 2; while (existingKeys.has(`${key}_${n}`)) n++; key = `${key}_${n}` }
+    const sortOrder = (menuCats.reduce((max, c) => Math.max(max, c.sortOrder), 0)) + 10
+    setError('')
+    try { await createMenuCategory({ key, label: clean, sortOrder }); flash(`Categoría "${clean}" creada`); await reloadCategories() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo crear la categoría') }
+  }
+
+  const handleRenameCategory = async (cat: MenuCategoryRow, label: string) => {
+    const clean = formatSpanishText(label.trim())
+    if (!clean || clean === cat.label) return
+    setError('')
+    try { await updateMenuCategory(cat.id, { label: clean }); flash('Nombre actualizado'); await reloadCategories() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo renombrar la categoría') }
+  }
+
+  const handleMoveCategory = async (index: number, dir: -1 | 1) => {
+    const target = index + dir
+    if (target < 0 || target >= menuCats.length) return
+    const a = menuCats[index], b = menuCats[target]
+    setError('')
+    try { await Promise.all([updateMenuCategory(a.id, { sortOrder: b.sortOrder }), updateMenuCategory(b.id, { sortOrder: a.sortOrder })]); await reloadCategories() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo reordenar') }
+  }
+
+  const handleDeleteCategory = async (cat: MenuCategoryRow) => {
+    const inUse = products.filter((p) => p.category === cat.key).length
+    if (inUse > 0) { setError(`No se puede eliminar "${cat.label}": tiene ${inUse} plato${inUse === 1 ? '' : 's'}. Muévelos a otra categoría primero.`); return }
+    if (!window.confirm(`¿Eliminar la categoría "${cat.label}"?`)) return
+    setError('')
+    try { await deleteMenuCategory(cat.id); flash(`Categoría "${cat.label}" eliminada`); await reloadCategories() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar la categoría') }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim() || !(parseFloat(form.price) >= 0)) { setError('Nombre y precio son obligatorios'); return }
@@ -156,7 +215,7 @@ export function Menu() {
       const payload = {
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
         price: parseFloat(form.price) || 0, cost: form.cost.trim() ? parseFloat(form.cost) : null,
-        category: MENU_CATEGORY_ORDER.includes(form.category as MenuCategory) ? form.category : classifyMenuCategory(form.name, form.category), emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
+        category: isKnownCategory(form.category) ? form.category : classifyMenuCategory(form.name, form.category), emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
       }
       if (editing === 'new') { await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
       else if (editing) { await updateProduct(editing.id, payload); flash(`"${payload.name}" actualizado`) }
@@ -176,7 +235,10 @@ export function Menu() {
           <h1 className="page-title text-gradient"><UtensilsCrossed size={22} style={{ verticalAlign: '-3px', marginRight: 8 }} />Menú</h1>
           <p className="page-subtitle">Gestiona tus platos: nombre, precio, categoría, foto y disponibilidad.</p>
         </div>
-        <button className="mnu-btn" onClick={openNew}><Plus size={16} /> Nuevo plato</button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="mnu-select-btn" onClick={() => setCatManagerOpen(true)}><Tag size={15} /> Categorías</button>
+          <button className="mnu-btn" onClick={openNew}><Plus size={16} /> Nuevo plato</button>
+        </div>
       </header>
 
       {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}><AlertTriangle size={18} /> {error}</div>}
@@ -285,8 +347,8 @@ export function Menu() {
 
             <div className="mnu-row2">
               <div className="mnu-field"><label>Categoría</label>
-                <select value={CATEGORIES.includes(form.category as MenuCategory) ? form.category : 'otros'} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}
+                <select value={allCategoryKeys.includes(form.category) ? form.category : (allCategoryKeys.includes('otros') ? 'otros' : allCategoryKeys[0] ?? '')} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+                  {menuCats.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                 </select>
               </div>
               <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
@@ -309,6 +371,96 @@ export function Menu() {
           </form>
         </div>
       )}
+
+      {catManagerOpen && (
+        <CategoryManager
+          cats={menuCats}
+          products={products}
+          onClose={() => setCatManagerOpen(false)}
+          onAdd={handleAddCategory}
+          onRename={handleRenameCategory}
+          onMove={handleMoveCategory}
+          onDelete={handleDeleteCategory}
+        />
+      )}
+    </div>
+  )
+}
+
+interface CategoryManagerProps {
+  cats: MenuCategoryRow[]
+  products: SellableProduct[]
+  onClose: () => void
+  onAdd: (label: string) => Promise<void>
+  onRename: (cat: MenuCategoryRow, label: string) => Promise<void>
+  onMove: (index: number, dir: -1 | 1) => Promise<void>
+  onDelete: (cat: MenuCategoryRow) => Promise<void>
+}
+
+function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onDelete }: CategoryManagerProps) {
+  const [newLabel, setNewLabel] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const countFor = (key: string) => products.filter((p) => p.category === key).length
+
+  const submitNew = async () => {
+    if (!newLabel.trim() || busy) return
+    setBusy(true); await onAdd(newLabel); setNewLabel(''); setBusy(false)
+  }
+  const submitRename = async (cat: MenuCategoryRow) => {
+    if (busy) return
+    setBusy(true); await onRename(cat, editLabel); setEditingId(null); setBusy(false)
+  }
+
+  return (
+    <div className="mnu-modal-overlay" onClick={onClose}>
+      <div className="mnu-modal mnu-cat-modal" onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3><Tag size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Categorías del menú</h3>
+          <button type="button" className="mnu-cancel" style={{ padding: 6 }} onClick={onClose}><X size={16} /></button>
+        </div>
+        <p className="page-subtitle" style={{ margin: '4px 0 12px' }}>Crea, renombra y reordena las categorías. Los cambios se ven en el menú y en el sitio de clientes.</p>
+
+        <div className="mnu-cat-add">
+          <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitNew() }} placeholder="Nueva categoría (ej. Postres)" />
+          <button className="mnu-btn" onClick={() => void submitNew()} disabled={!newLabel.trim() || busy}><Plus size={15} /> Agregar</button>
+        </div>
+
+        <div className="mnu-cat-list">
+          {cats.map((cat, index) => (
+            <div key={cat.id} className="mnu-cat-row">
+              <div className="mnu-cat-order">
+                <button className="mnu-icon-btn" onClick={() => void onMove(index, -1)} disabled={index === 0 || busy} title="Subir"><ChevronUp size={15} /></button>
+                <button className="mnu-icon-btn" onClick={() => void onMove(index, 1)} disabled={index === cats.length - 1 || busy} title="Bajar"><ChevronDown size={15} /></button>
+              </div>
+              {editingId === cat.id ? (
+                <input className="mnu-cat-edit" autoFocus value={editLabel} onChange={(e) => setEditLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitRename(cat); if (e.key === 'Escape') setEditingId(null) }} />
+              ) : (
+                <div className="mnu-cat-name"><strong>{cat.label}</strong><span>{countFor(cat.key)} plato{countFor(cat.key) === 1 ? '' : 's'}</span></div>
+              )}
+              <div className="mnu-cat-actions">
+                {editingId === cat.id ? (
+                  <>
+                    <button className="mnu-icon-btn" onClick={() => void submitRename(cat)} title="Guardar"><Check size={16} /></button>
+                    <button className="mnu-icon-btn" onClick={() => setEditingId(null)} title="Cancelar"><X size={16} /></button>
+                  </>
+                ) : (
+                  <>
+                    <button className="mnu-icon-btn" onClick={() => { setEditingId(cat.id); setEditLabel(cat.label) }} title="Renombrar"><Pencil size={16} /></button>
+                    <button className="mnu-icon-btn mnu-icon-danger" onClick={() => void onDelete(cat)} title="Eliminar"><Trash2 size={16} /></button>
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mnu-modal-actions">
+          <button type="button" className="mnu-btn" onClick={onClose}>Listo</button>
+        </div>
+      </div>
     </div>
   )
 }

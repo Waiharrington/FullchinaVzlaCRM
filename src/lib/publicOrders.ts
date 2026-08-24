@@ -66,6 +66,17 @@ export async function getPublicCatalog(): Promise<Product[]> {
   }))
 }
 
+export async function getPublicMenuCategories(): Promise<{ key: string; label: string; sortOrder: number }[]> {
+  const { data, error } = await db().rpc('fn_get_menu_categories')
+  if (error) throw error
+  const rows = Array.isArray(data) ? data : []
+  return rows.map((row: Record<string, unknown>) => ({
+    key: String(row.key),
+    label: String(row.label),
+    sortOrder: Number(row.sort_order),
+  }))
+}
+
 export async function getPublicPromotions(): Promise<Promotion[]> {
   const { data, error } = await db()
     .from('promotions')
