@@ -3,9 +3,9 @@ import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, Clock, Flame, Hea
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
-import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, type WebOrderCartItem } from '../lib/publicOrders'
+import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
-import { getProductModifiers, type ProductModifierGroup } from '../lib/dataService'
+import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
 import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
@@ -169,20 +169,6 @@ function PayDropdown({ value, onChange }: { value: PayMethod; onChange: (v: PayM
 }
 
 // Opciones públicas de personalización. Se envían como indicaciones a cocina;
-// el cobro automático se habilitará cuando el RPC público exponga modifiers.
-const PUBLIC_EXTRA_OPTIONS: ProductModifierGroup = {
-  modifierId: 'public-extras',
-  name: 'Extras',
-  minSelections: 0,
-  maxSelections: null,
-  allowRepeat: false,
-  options: [
-    { id: 'extra-camaron', name: 'Extra camarón', price: 0 },
-    { id: 'salsa-agridulce', name: 'Salsa agridulce', price: 0 },
-    { id: 'extra-vegetales', name: 'Extra vegetales', price: 0 },
-  ],
-}
-
 function productImage(category: string) {
   const sum = [...category].reduce((acc, char) => acc + char.charCodeAt(0), 0)
   return CATEGORY_IMAGES[sum % CATEGORY_IMAGES.length]
@@ -496,8 +482,9 @@ export function PublicMenu() {
     }, 180)
   }
 
-  const addProduct = (product: Product, quantity = 1, notes = '') => {
+  const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0) => {
     const imageUrl = optimizedProductImage(product.imageUrl) || undefined
+    const linePrice = product.price + extrasPrice
     setAddFeedback({ name: formatProductTitle(product.name), imageUrl })
     setCartPulse(true)
     if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current)
@@ -508,7 +495,7 @@ export function PublicMenu() {
       const existing = current.find(item => item.productId === product.id && (item.notes || '') === notes)
       return existing
         ? current.map(item => item.productId === product.id && (item.notes || '') === notes ? { ...item, quantity: item.quantity + quantity } : item)
-        : [...current, { productId: product.id, productName: formatProductTitle(product.name), price: product.price, quantity, imageUrl, notes: notes || undefined }]
+        : [...current, { productId: product.id, productName: formatProductTitle(product.name), price: linePrice, quantity, imageUrl, notes: notes || undefined }]
     })
     closeProductDetail()
   }
@@ -548,12 +535,14 @@ export function PublicMenu() {
     setDetailQuantity(1)
     setDetailNotes('')
     setSelectedExtras([])
-    setDetailModifierGroups([PUBLIC_EXTRA_OPTIONS])
+    setDetailModifierGroups([])
     const productId = group.variants[0]?.product.id
     if (productId) {
-      getProductModifiers(productId)
-        .then(groups => setDetailModifierGroups(groups.filter(item => item.minSelections === 0).length > 0 ? groups.filter(item => item.minSelections === 0) : [PUBLIC_EXTRA_OPTIONS]))
-        .catch(() => setDetailModifierGroups([PUBLIC_EXTRA_OPTIONS]))
+      // Muestra los extras/opciones reales del plato. Si no tiene (ej. bebidas),
+      // no se muestra ninguna sección.
+      getPublicProductModifiers(productId)
+        .then(groups => setDetailModifierGroups(groups.filter(item => item.options.length > 0)))
+        .catch(() => setDetailModifierGroups([]))
     }
   }
 
@@ -562,9 +551,11 @@ export function PublicMenu() {
 
   const addSelectedProduct = () => {
     if (selectedProduct) {
-      const extras = detailModifierGroups.flatMap(group => group.options.filter(option => selectedExtras.includes(option.id)).map(option => option.name))
+      const chosen = detailModifierGroups.flatMap(group => group.options.filter(option => selectedExtras.includes(option.id)))
+      const extrasPrice = chosen.reduce((sum, option) => sum + option.price, 0)
+      const extras = chosen.map(option => option.price > 0 ? `${option.name} (+${money(option.price)})` : option.name)
       const lineNotes = [extras.length ? `Extras: ${extras.join(', ')}` : '', detailNotes.trim()].filter(Boolean).join(' · ')
-      addProduct(selectedProduct, detailQuantity, lineNotes)
+      addProduct(selectedProduct, detailQuantity, lineNotes, extrasPrice)
     }
   }
 

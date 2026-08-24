@@ -84,6 +84,22 @@ export async function getPublicMenuCategories(): Promise<{ key: string; label: s
   }))
 }
 
+export async function getPublicProductModifiers(productId: string): Promise<import('./dataService').ProductModifierGroup[]> {
+  const { data, error } = await db().rpc('fn_get_product_modifiers', { p_product_id: productId })
+  if (error) throw error
+  const rows = Array.isArray(data) ? data as Record<string, unknown>[] : []
+  return rows.map((g) => ({
+    modifierId: String(g.modifierId),
+    name: String(g.name),
+    minSelections: Number(g.minSelections ?? 0),
+    maxSelections: g.maxSelections == null ? null : Number(g.maxSelections),
+    allowRepeat: Boolean(g.allowRepeat),
+    options: (Array.isArray(g.options) ? g.options as Record<string, unknown>[] : []).map((o) => ({
+      id: String(o.id), name: String(o.name), price: Number(o.price ?? 0),
+    })),
+  }))
+}
+
 export async function getPublicDeliverySettings(): Promise<import('./delivery').DeliverySettings> {
   const { data, error } = await db().rpc('fn_get_delivery_settings')
   if (error) throw error
