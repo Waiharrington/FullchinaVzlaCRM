@@ -232,7 +232,7 @@ export function Menu() {
             <div className="mnu-row2">
               <div className="mnu-field"><label>Categoría</label>
                 <input list="mnu-cats" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="plato" />
-                <datalist id="mnu-cats">{Array.from(new Set([...CATEGORIES, ...categories])).map((c) => <option key={c} value={c} />)}</datalist>
+                <datalist id="mnu-cats">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
               </div>
               <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
             </div>
