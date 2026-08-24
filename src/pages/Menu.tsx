@@ -79,7 +79,8 @@ export function Menu() {
         product.category !== 'otros' && isKnownCategory(product.category)
           ? product.category
           : classifyMenuCategory(product.name, product.category)
-      setProducts(catalog.map(product => ({ ...product, category: resolveCategory(product) }))
+      // El producto de sistema "Delivery" (cargo variable) no es un plato: se oculta.
+      setProducts(catalog.filter(product => !product.isDelivery).map(product => ({ ...product, category: resolveCategory(product) }))
         .sort((a, b) => {
           const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
           return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)

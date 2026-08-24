@@ -269,6 +269,7 @@ export interface SellableProduct {
   emoji: string
   isActive: boolean
   imageUrl: string | null
+  isDelivery: boolean
 }
 
 export interface RecipeSummary {
@@ -429,14 +430,14 @@ export async function getProducts(): Promise<Product[]> {
 export async function getAllSellableProducts(): Promise<SellableProduct[]> {
   const { data, error } = await client()
     .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active,image_url')
+    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
     .order('name', { ascending: true })
   if (error) throw error
   return (data ?? []).map((r) => ({
     id: r.id as string, name: r.name as string, description: (r.description as string) ?? null,
     salePrice: Number(r.price), cost: r.cost === null ? null : Number(r.cost),
     category: r.category as string, emoji: r.emoji as string, isActive: r.is_active as boolean,
-    imageUrl: (r.image_url as string) ?? null,
+    imageUrl: (r.image_url as string) ?? null, isDelivery: (r.is_delivery as boolean) ?? false,
   }))
 }
 
