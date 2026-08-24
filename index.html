@@ -12,6 +12,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Graduate&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="apple-touch-icon" href="/pwa-logo.png" />
+    <link rel="manifest" id="pwa-manifest" href="/manifest-admin.webmanifest" />
+    <script>
+      // Elige el manifest correcto en la primera carga: menú de clientes (/pedir)
+      // instala la app "Full China"; el resto instala "Full China Admin".
+      (function () {
+        var link = document.getElementById('pwa-manifest');
+        if (link && location.pathname.toLowerCase().indexOf('/pedir') === 0) {
+          link.setAttribute('href', '/manifest-cliente.webmanifest');
+        }
+      })();
+    </script>
     <link rel="preload" as="image" href="/optimized/root/logo.webp" type="image/webp" fetchpriority="high" />
     <link rel="preload" as="image" href="/optimized/fondos/fondo-pagina-carga.webp" type="image/webp" fetchpriority="high" />
     <title>Full China</title>

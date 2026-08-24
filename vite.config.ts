@@ -8,7 +8,10 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      // Usamos dos manifests propios (cliente/admin) enlazados dinámicamente en
+      // index.html, así que desactivamos el manifest que genera el plugin.
+      manifest: false,
+      includeAssets: ['favicon.ico', 'icons/*.png', 'manifest-cliente.webmanifest', 'manifest-admin.webmanifest'],
       workbox: {
         // Las fotos de productos NO van al precache (pesan ~5.5 MB); se cachean
         // en tiempo de ejecución la primera vez que se muestran.
@@ -32,29 +35,6 @@ export default defineConfig({
           },
         ],
       },
-      manifest: {
-        name: 'Full China',
-        short_name: 'Full China',
-        description: 'PWA para administrar la operación diaria de FullChinaVzla',
-        theme_color: '#1a1a2e',
-        background_color: '#ffffff',
-        display: 'standalone',
-        scope: '/',
-        start_url: '/',
-        icons: [
-          {
-            src: 'pwa-logo.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: 'pwa-logo.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ]
-      }
     })
   ],
   build: {

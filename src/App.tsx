@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense, useCallback, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { RatesProvider } from './context/RatesProvider'
 
@@ -16,6 +16,7 @@ const Comandas = lazy(() => import('./pages/Comandas').then(module => ({ default
 const Mesas = lazy(() => import('./pages/Mesas').then(module => ({ default: module.Mesas })))
 const Cocina = lazy(() => import('./pages/Cocina').then(module => ({ default: module.Cocina })))
 const Clientes = lazy(() => import('./pages/Clientes').then(module => ({ default: module.Clientes })))
+const Proveedores = lazy(() => import('./pages/Proveedores').then(module => ({ default: module.Proveedores })))
 const Inventario = lazy(() => import('./pages/Inventario').then(module => ({ default: module.Inventario })))
 const Produccion = lazy(() => import('./pages/ProduccionReal').then(module => ({ default: module.ProduccionReal })))
 const Recetas = lazy(() => import('./pages/RecetasReal').then(module => ({ default: module.RecetasReal })))
@@ -49,14 +50,36 @@ const forModule = (path: string, element: React.ReactNode, fallbackRoles?: Role[
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
+  const location = useLocation()
 
   const handleSplashDone = useCallback(() => {
     setSplashDone(true)
   }, [setSplashDone])
 
   if (!splashDone || loading) return <SplashScreen onDone={handleSplashDone} minDuration={2800} />
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    // Un visitante sin sesión que entra a la raíz es un cliente: lo llevamos al
+    // menú público. Los enlaces internos (ej. /caja) sí van al login.
+    return <Navigate to={location.pathname === '/' ? '/pedir' : '/login'} replace />
+  }
   return <>{children}</>
+}
+
+/**
+ * Cambia el manifest de la PWA según la sección: menú de clientes (/pedir) usa
+ * la app "Full China"; el resto (login/admin) usa "Full China Admin". Así se
+ * pueden instalar dos PWAs distintas desde el mismo dominio.
+ */
+function ManifestSwitcher() {
+  const location = useLocation()
+  useEffect(() => {
+    const link = document.getElementById('pwa-manifest')
+    if (!link) return
+    const isClient = location.pathname.toLowerCase().startsWith('/pedir')
+    const href = isClient ? '/manifest-cliente.webmanifest' : '/manifest-admin.webmanifest'
+    if (link.getAttribute('href') !== href) link.setAttribute('href', href)
+  }, [location.pathname])
+  return null
 }
 
 function AppRoutes() {
@@ -84,6 +107,7 @@ function AppRoutes() {
         <Route path="/comandas" element={forModule('/comandas', <Comandas />)} />
         <Route path="/cocina" element={forModule('/cocina', <Cocina />, ['owner', 'manager'])} />
         <Route path="/clientes" element={forModule('/clientes', <Clientes />)} />
+        <Route path="/proveedores" element={forModule('/proveedores', <Proveedores />, ['owner', 'manager'])} />
         <Route path="/almacen" element={forModule('/almacen', <Almacen />)} />
         <Route path="/inventario" element={forModule('/inventario', <Inventario />)} />
         <Route path="/produccion" element={forModule('/produccion', <Produccion />)} />
@@ -111,6 +135,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ManifestSwitcher />
       <RatesProvider>
         <AuthProvider>
           <AppRoutes />
