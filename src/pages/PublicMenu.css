@@ -978,6 +978,58 @@ button.mobile-only {
 .public-pay-select > span { font-size: 12px; font-weight: 700; color: #9aa1ab; text-transform: uppercase; letter-spacing: .04em; }
 .public-pay-select select { width: 100%; padding: 12px 14px; border-radius: 13px; border: 1px solid rgba(255,255,255,.2); background: rgba(9,10,13,.9); color: #fff; font-size: 15px; font-weight: 600; appearance: none; cursor: pointer; }
 .public-pay-select select:focus { outline: none; border-color: rgba(239,51,69,.88); box-shadow: 0 0 0 3px rgba(239,51,69,.12); }
+/* Desplegables de pago: lista nativa en modo oscuro + flecha propia */
+.public-pay-select select {
+  color-scheme: dark;
+  background-color: rgba(9,10,13,.9);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa1ab' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 13px center;
+  padding-right: 40px;
+}
+.public-pay-select select:focus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23ef3345' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+.public-pay-select select option {
+  background-color: #16181e;
+  color: #fff;
+}
+
+/* ===== Desplegable de pago personalizado (on-brand) =====
+   El menú se expande en el flujo (no absoluto) para que nunca lo corte
+   el overflow de la tarjeta. */
+.public-paydd { position: relative; display: grid; gap: 6px; }
+.public-paydd-trigger {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 12px 14px; border-radius: 13px; border: 1px solid rgba(255,255,255,.2);
+  background: rgba(9,10,13,.9); color: #fff; font: 600 15px 'DM Sans', sans-serif;
+  cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.public-paydd-trigger:hover { border-color: rgba(255,255,255,.34); }
+.public-paydd.open .public-paydd-trigger {
+  border-color: rgba(239,51,69,.88); box-shadow: 0 0 0 3px rgba(239,51,69,.12);
+}
+.public-paydd-caret { flex: 0 0 auto; color: #9aa1ab; transform: rotate(90deg); transition: transform .2s ease, color .16s ease; }
+.public-paydd.open .public-paydd-caret { transform: rotate(-90deg); color: #ef3345; }
+
+.public-paydd-menu {
+  list-style: none; margin: 0; padding: 6px;
+  background: #16181e; border: 1px solid rgba(255,255,255,.14); border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+  max-height: 260px; overflow-y: auto;
+  animation: public-paydd-in 150ms ease both;
+}
+@keyframes public-paydd-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.public-paydd-option {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border-radius: 10px;
+  color: #d7dade; font: 600 14px 'DM Sans', sans-serif; cursor: pointer;
+  transition: background .14s ease, color .14s ease;
+}
+.public-paydd-option:hover { background: rgba(239,51,69,.16); color: #fff; }
+.public-paydd-option.selected { background: rgba(239,51,69,.22); color: #fff; }
+.public-paydd-option.selected svg { color: #ff5361; flex: 0 0 auto; }
+
 .public-pay-hint { font-size: 12px; color: #9aa1ab; margin: 0; }
 .public-data-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: rgba(239,51,69,.13); color: #ff5361; }
 .public-data-icon svg { width: 22px; height: 22px; }
@@ -4707,6 +4759,7 @@ button.mobile-only {
     border: none !important;
     border-radius: 12px !important;
     padding: 10px 14px !important;
+    margin-top: 6px !important;
     cursor: pointer !important;
     display: flex !important;
     flex-direction: column !important;
@@ -4988,6 +5041,309 @@ button.mobile-only {
     background: #0E1015 !important;
     background-image: none !important;
   }
+
+  /* === Pulido del panel de escritorio (drawer de pasos) ===
+     Compacta el interior de los pasos para que se lean como panel de
+     computadora y no como pantalla de teléfono. Solo estética. */
+  .public-checkout .public-data-form-card .public-data-field {
+    min-height: 62px;
+    padding: 10px 14px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+  .public-checkout .public-data-icon {
+    width: 40px; height: 40px; border-radius: 11px;
+  }
+  .public-checkout .public-data-icon svg { width: 19px; height: 19px; }
+  .public-checkout .public-data-input input { font-size: 16px; }
+  .public-checkout .public-data-intro strong { font-size: 19px; }
+  .public-checkout .public-data-intro span { font-size: 12.5px; }
+  .public-checkout .public-pay-card { margin-top: 8px; padding: 14px; border-radius: 14px; }
+  .public-checkout .public-data-notes { padding: 12px 14px; border-radius: 14px; }
+  .public-data-drawer .public-primary.whatsapp { min-height: 58px; font-size: 18px; }
+
+  /* ======================================================================
+     TARJETA ÚNICA QUE SE TRANSFORMA (no paneles-overlay nuevos)
+     En escritorio, el drawer de pasos se dibuja EXACTAMENTE sobre la
+     columna de la tarjeta fija del carrito (350px, esquina derecha) y se
+     oculta la tarjeta original mientras un paso está activo. Se ve como
+     una sola tarjeta que va cambiando su contenido. La lógica no cambia.
+     ====================================================================== */
+
+  /* El fondo ya no oscurece ni tapa el menú: la tarjeta flota sobre él */
+  .public-drawer-backdrop {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+  }
+
+  /* El panel de pasos ocupa el lugar exacto de la columna de la tarjeta */
+  .public-drawer-backdrop .public-cart-drawer {
+    position: fixed !important;
+    top: 104px !important;
+    right: max(24px, calc((100vw - 1312px) / 2)) !important;
+    left: auto !important;
+    bottom: auto !important;
+    width: 350px !important;
+    max-width: 350px !important;
+    height: auto !important;
+    max-height: calc(100vh - 128px) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255,255,255,0.10) !important;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.6) !important;
+    background: rgba(14,16,22,0.98) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Ocultar la tarjeta-carrito original mientras un paso está activo
+     (visibility mantiene reservada la columna del grid, sin saltos) */
+  .public-menu-page:has(> .public-drawer-backdrop) .public-desktop-sidebar {
+    visibility: hidden !important;
+  }
+
+  /* Sin deslizamientos horizontales: cada paso hace un fundido en su lugar */
+  .public-drawer-backdrop:not(.closing) .public-step-cart,
+  .public-drawer-backdrop:not(.closing) .public-step-delivery,
+  .public-drawer-backdrop:not(.closing) .public-step-address,
+  .public-drawer-backdrop:not(.closing) .public-step-details,
+  .public-drawer-backdrop:not(.closing) .public-step-confirm,
+  .public-drawer-backdrop:not(.closing) .public-step-preparing,
+  .public-drawer-backdrop:not(.closing) .public-step-sent {
+    animation: public-card-fade-in 220ms ease both !important;
+  }
+  .public-drawer-backdrop.closing .public-cart-drawer {
+    animation: public-card-fade-out 170ms ease both !important;
+  }
+
+  /* Header del paso: compacto tipo tarjeta */
+  .public-drawer-backdrop .public-cart-drawer .public-review-header {
+    padding: 16px 16px 12px !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+    position: static !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-review-header > img {
+    width: 76px !important; margin: 0 auto 8px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading h2 { font-size: 18px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading p { font-size: 12px !important; }
+  /* Botón "volver" rediseñado para la tarjeta compacta: círculo con
+     contraste claro (no se perdía contra el fondo oscuro) e ícono fijo y
+     centrado sin depender de rotar el botón completo. */
+  .public-drawer-backdrop .public-cart-drawer .public-review-back {
+    top: 14px !important; left: 14px !important; width: 34px !important; height: 34px !important;
+    transform: none !important;
+    background: rgba(255,255,255,.09) !important;
+    border: 1px solid rgba(255,255,255,.16) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,.25) !important;
+    transition: background .16s ease, border-color .16s ease, transform .16s ease !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-review-back:hover {
+    background: rgba(255,255,255,.16) !important;
+    border-color: rgba(255,255,255,.26) !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-review-back:active {
+    transform: scale(.92) !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-review-back svg {
+    width: 16px !important; height: 16px !important;
+    transform: rotate(180deg) !important; /* la flecha ChevronRight apunta a la izquierda (volver) */
+  }
+
+  /* Contenido de cada paso: padding de tarjeta */
+  .public-drawer-backdrop .public-cart-drawer .public-review-page,
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-step,
+  .public-drawer-backdrop .public-cart-drawer .public-address-step,
+  .public-drawer-backdrop .public-cart-drawer .public-checkout,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page,
+  .public-drawer-backdrop .public-cart-drawer .public-success {
+    padding: 20px 20px 20px !important;
+  }
+  .public-drawer-backdrop .public-data-drawer .public-checkout {
+    min-height: 0 !important; max-width: none !important;
+  }
+
+  /* === Compactar contenido para reducir scroll dentro de la tarjeta === */
+  /* Header más bajo */
+  .public-drawer-backdrop .public-cart-drawer .public-review-header { padding: 12px 16px 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-review-header > img { width: 60px !important; margin-bottom: 6px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading h2 { font-size: 17px !important; margin-bottom: 2px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading p { font-size: 11.5px !important; line-height: 1.35 !important; }
+  /* La tarjeta ya no es un panel de pasos con posicionamiento propio, así que
+     el título hereda alineación centrada explícita en vez de depender de
+     reglas pensadas para el drawer original. */
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading {
+    position: static !important; top: auto !important; left: auto !important; transform: none !important;
+    width: 100% !important; text-align: center !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading h2,
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading p {
+    text-align: center !important; margin-left: auto !important; margin-right: auto !important;
+  }
+  /* Los títulos con el ícono de fuego (todos los pasos menos "confirmar")
+     son una fila flex alineada a la izquierda por defecto, lo que la pegaba
+     contra el botón de volver. Se centra el conjunto ícono + texto. */
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading h2 {
+    justify-content: center !important;
+  }
+
+  /* Checkout: menos separación vertical */
+  .public-drawer-backdrop .public-cart-drawer .public-checkout { gap: 10px !important; padding: 12px 16px 18px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-intro { gap: 2px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-intro strong { font-size: 16px !important; line-height: 1.2 !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-intro span { font-size: 11.5px !important; line-height: 1.3 !important; }
+
+  /* Campos más compactos */
+  .public-drawer-backdrop .public-cart-drawer .public-data-form-card { gap: 8px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-form-card .public-data-field { min-height: 52px !important; padding: 8px 12px !important; gap: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-icon { width: 36px !important; height: 36px !important; border-radius: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-icon svg { width: 17px !important; height: 17px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-input input { font-size: 15px !important; }
+
+  /* Pago y notas: más ajustados */
+  .public-drawer-backdrop .public-cart-drawer .public-pay-card { margin-top: 4px !important; padding: 12px !important; gap: 9px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-data-notes { padding: 10px 12px !important; gap: 8px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-checkout .public-data-notes textarea { min-height: 44px !important; }
+
+  /* Botón WhatsApp un poco más bajo */
+  .public-drawer-backdrop .public-data-drawer .public-primary.whatsapp { min-height: 54px !important; font-size: 17px !important; }
+
+  /* CTA anclado abajo de la tarjeta (siempre visible; el contenido de arriba
+     hace scroll mínimo por detrás, tapado por la banda sólida) */
+  .public-drawer-backdrop .public-data-drawer .public-checkout { padding-bottom: 10px !important; }
+  .public-drawer-backdrop .public-data-drawer .public-primary.whatsapp {
+    position: sticky !important;
+    bottom: 10px !important;
+    margin-top: 12px !important;
+    z-index: 6 !important;
+    box-shadow: 0 0 0 16px rgba(14,16,22,0.98), 0 14px 30px rgba(227,27,43,.28) !important;
+  }
+
+  /* Paso "¿Cómo quieres recibirlo?": tarjetas de entrega menos altas */
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-step { gap: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice { min-height: 0 !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice img { height: 96px !important; }
+
+  /* === Paso "Confirmar pedido": recibo compacto que entra en la tarjeta === */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page { padding: 14px !important; gap: 8px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-receipt { padding: 10px 12px 12px !important; gap: 8px !important; border-radius: 0 !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head { padding: 0 0 8px !important; gap: 8px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head img { width: 48px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head strong { font-size: 12px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head span,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head small { font-size: 9px !important; }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item {
+    grid-template-columns: 38px minmax(0,1fr) auto !important;
+    gap: 8px !important; min-height: 0 !important; padding: 6px 0 10px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item img { width: 38px !important; height: 38px !important; border-radius: 8px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item strong { font-size: 12.5px !important; line-height: 1.15 !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item span,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item small { font-size: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item b { font-size: 12.5px !important; align-self: start !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item button { bottom: 2px !important; font-size: 10.5px !important; }
+  /* La lista y el bloque de totales ya no arrastran el espaciado alto del
+     diseño móvil original: se comprimen para que la tarjeta se lea de una
+     sola vez, sin aire vacío entre el producto y el subtotal. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-items { padding-bottom: 2px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total { margin: 4px 0 0 !important; }
+
+  /* Nota de seguridad al pie: que quepa en una sola línea dentro de la
+     tarjeta angosta de escritorio. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-order-security {
+    font-size: 9.5px !important;
+    white-space: nowrap !important;
+    letter-spacing: -.1px !important;
+    margin-top: 10px !important;
+  }
+
+  /* Totales del recibo, más compactos */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total > strong,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total em { font-size: 12.5px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total > span { font-size: 11px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b { padding-top: 8px !important; margin-top: 4px !important; }
+
+  /* Bloque "Entrega" / "Datos de contacto": misma compactación que el resto
+     de la tarjeta (heredaba el espaciado alto del diseño móvil original). */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info { margin-top: 2px !important; gap: 0 !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button { padding: 6px 4px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > svg { left: 4px !important; width: 18px !important; height: 18px !important; padding: 3px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div { padding-left: 28px !important; gap: 1px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div strong { font-size: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div span { font-size: 11.5px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div small { font-size: 10px !important; }
+
+  /* CTA "Enviar pedido": fluye normal al final de la tarjeta, sin quedar
+     pegado (sticky) mientras se hace scroll dentro del recibo. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-primary.whatsapp {
+    position: static !important; margin-top: 10px !important;
+    box-shadow: 0 14px 30px rgba(8,169,67,.28) !important;
+  }
+
+  /* === Paso "¡Enviado!": misma compactación que el resto de la tarjeta.
+     Usaba tamaños pensados para pantalla completa (clamp con vw, ícono de
+     116px), que en la tarjeta de 350px se veían enormes. === */
+  .public-drawer-backdrop .public-cart-drawer .public-success {
+    gap: 10px !important; padding: 4px 20px 20px !important; max-width: none !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-success > span {
+    width: 56px !important; height: 56px !important; border-width: 3px !important;
+    box-shadow: 0 0 0 6px rgba(0,210,90,.07), 0 0 20px rgba(0,210,90,.35) !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-success > span svg {
+    width: 30px !important; height: 30px !important; stroke-width: 3 !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-success h3 { font-size: 22px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-success > p {
+    max-width: none !important; font-size: 12.5px !important; line-height: 1.4 !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-success > strong {
+    padding: 6px 12px !important; border-radius: 10px !important; font-size: 14px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-success .public-primary {
+    max-width: none !important; min-height: 46px !important; font-size: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline {
+    padding: 12px 12px !important; border-radius: 14px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline > div {
+    grid-template-columns: 32px minmax(0,1fr) auto !important; gap: 8px !important; min-height: 56px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline > div:not(:last-child)::after {
+    left: 15px !important; top: 36px !important; bottom: -16px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline i {
+    width: 32px !important; height: 32px !important; border-width: 1.5px !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline i svg { width: 16px !important; height: 16px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline strong { font-size: 13px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline small,
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline time { font-size: 10.5px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-status-timeline .pending time { font-size: 13px !important; }
+
+  /* Solo se deja el CTA "Hacer otro pedido" en la tarjeta de escritorio;
+     se ocultan "Volver a WhatsApp" y "Repetir este pedido" (siguen
+     existiendo para el flujo móvil, no se toca su lógica). */
+  .public-drawer-backdrop .public-cart-drawer .public-success > .public-primary:not(:last-child),
+  .public-drawer-backdrop .public-cart-drawer .public-success .public-repeat-order {
+    display: none !important;
+  }
+}
+
+/* Fundidos de la tarjeta que se transforma (fuera del media para reuso) */
+@keyframes public-card-fade-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.992); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes public-card-fade-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(6px); }
 }
 
 /* Product Detail Modal */

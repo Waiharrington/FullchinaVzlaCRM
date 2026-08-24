@@ -128,6 +128,45 @@ const PAY_OPTIONS = [
 type PayMethod = (typeof PAY_OPTIONS)[number]['code']
 const payLabel = (code: string) => PAY_OPTIONS.find((o) => o.code === code)?.label ?? code
 
+/* Desplegable de pago personalizado (reemplaza el <select> nativo).
+   No cambia la lógica: recibe el valor actual y notifica el cambio. */
+function PayDropdown({ value, onChange }: { value: PayMethod; onChange: (v: PayMethod) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
+  }, [open])
+  return (
+    <div className={`public-paydd ${open ? 'open' : ''}`} ref={ref}>
+      <button type="button" className="public-paydd-trigger" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}>
+        <span>{payLabel(value)}</span>
+        <ChevronRight className="public-paydd-caret" size={18} aria-hidden="true" />
+      </button>
+      {open && (
+        <ul className="public-paydd-menu" role="listbox">
+          {PAY_OPTIONS.map(o => (
+            <li
+              key={o.code}
+              role="option"
+              aria-selected={o.code === value}
+              className={`public-paydd-option ${o.code === value ? 'selected' : ''}`}
+              onClick={() => { onChange(o.code); setOpen(false) }}
+            >
+              <span>{o.label}</span>
+              {o.code === value && <Check size={16} aria-hidden="true" />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // Opciones públicas de personalización. Se envían como indicaciones a cocina;
 // el cobro automático se habilitará cuando el RPC público exponga modifiers.
 const PUBLIC_EXTRA_OPTIONS: ProductModifierGroup = {
@@ -233,6 +272,11 @@ export function PublicMenu() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
+  useEffect(() => {
+    if (!error) return
+    document.querySelector('.public-cart-drawer')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [error])
   const [cartGuardMessage, setCartGuardMessage] = useState('')
   const restoringFlow = useRef(true)
   const [orderCode, setOrderCode] = useState('')
@@ -1916,7 +1960,7 @@ export function PublicMenu() {
       )}
 
       {cartOpen && <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header"><button className="public-review-back" onClick={() => { if (step === 'details') setStep(orderType === 'delivery' ? 'address' : 'delivery'); else if (step === 'confirm') setStep('details'); else if (step === 'address') setStep('delivery'); else if (step === 'delivery') setStep('cart'); else if (step === 'preparing' || step === 'sent') closeCart(); else closeCart() }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2>{step !== 'confirm' && <Flame className="desktop-only public-review-heading-icon" size={24} aria-hidden="true" />}{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
+        <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia('(min-width: 1024px)').matches; if (step === 'details') { if (isDesktop) { orderType === 'delivery' ? setStep('address') : closeCart(); } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') setStep('details'); else if (step === 'address') { isDesktop ? closeCart() : setStep('delivery'); } else if (step === 'delivery') setStep('cart'); else if (step === 'preparing' || step === 'sent') closeCart(); else closeCart() }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2>{step !== 'confirm' && <Flame className="desktop-only public-review-heading-icon" size={24} aria-hidden="true" />}{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className="public-cart-guard" role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-empty-cart"><ShoppingCart /><strong>Tu carrito está vacío</strong><span>Agrega un plato para comenzar tu pedido.</span></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><span className="mobile-only">🔥</span><Flame className="desktop-only" size={18} aria-hidden="true" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}<div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>{cart.length ? 'Productos seleccionados' : 'Agrega un producto para comenzar'}</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div><button className="public-primary" disabled={!cart.length} onClick={() => requireCart() && setStep('delivery')}>{cart.length ? 'Continuar' : 'Elegir productos'} <ChevronRight /></button></div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
@@ -1924,9 +1968,10 @@ export function PublicMenu() {
         {step === 'details' && (
           <div className="public-checkout">
             <div className="public-data-intro">
-              <strong>¿A nombre de quién preparamos el pedido?</strong>
-              <span>Usaremos estos datos únicamente para coordinar tu compra.</span>
+              <strong>¿A nombre de quién?</strong>
+              <span>Solo para coordinar tu pedido.</span>
             </div>
+            {error && <p className="public-form-error" role="alert">{error}</p>}
             <div className="public-data-form-card">
               <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="Nombre y apellido" /></div></span></label>
               <label className="public-data-field"><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></div><small>Te escribiremos aquí para confirmar</small></span></label>
@@ -1938,26 +1983,21 @@ export function PublicMenu() {
                 <button type="button" className={`public-pay-mode ${payMode === 'mixed' ? 'active' : ''}`} onClick={() => setPayMode('mixed')}>Mixto (2 métodos)</button>
               </div>
               <div className="public-pay-selects">
-                <label className="public-pay-select">
+                <div className="public-pay-select">
                   <span>{payMode === 'mixed' ? 'Primer método' : 'Método de pago'}</span>
-                  <select value={payPrimary} onChange={event => setPayPrimary(event.target.value as PayMethod)}>
-                    {PAY_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}
-                  </select>
-                </label>
+                  <PayDropdown value={payPrimary} onChange={setPayPrimary} />
+                </div>
                 {payMode === 'mixed' && (
-                  <label className="public-pay-select">
+                  <div className="public-pay-select">
                     <span>Segundo método</span>
-                    <select value={paySecondary} onChange={event => setPaySecondary(event.target.value as PayMethod)}>
-                      {PAY_OPTIONS.map(o => <option key={o.code} value={o.code}>{o.label}</option>)}
-                    </select>
-                  </label>
+                    <PayDropdown value={paySecondary} onChange={setPaySecondary} />
+                  </div>
                 )}
               </div>
               {payMode === 'mixed' && <p className="public-pay-hint">Al cobrar coordinamos cuánto va por cada método.</p>}
             </div>
-            <label className="public-data-notes"><span className="public-data-notes-title"><MessageSquareText /><span><strong>¿Alguna indicación para cocina?</strong><small>Opcional</small></span></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín, poca salsa…" /></label>
+            <label className="public-data-notes"><span className="public-data-notes-title"><MessageSquareText /><span><strong>¿Algo para la cocina?</strong><small>Opcional</small></span></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín, poca salsa…" /></label>
             <div className="public-data-privacy"><ShieldCheck /><span>Tus datos están seguros y solo se usarán para este pedido.</span></div>
-            {error && <p className="public-form-error">{error}</p>}
             <button className="public-primary whatsapp" disabled={submitting} onClick={continueToConfirmation}>Revisar pedido <ChevronRight /></button>
           </div>
         )}
