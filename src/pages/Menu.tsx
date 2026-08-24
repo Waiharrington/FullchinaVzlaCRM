@@ -59,7 +59,14 @@ export function Menu() {
     try {
       setLoading(true)
       const catalog = await getAllSellableProducts()
-      setProducts(catalog.map(product => ({ ...product, category: classifyMenuCategory(product.name, product.category) }))
+      // Respetamos la categoría guardada si ya es una categoría válida y
+      // específica (una edición manual). Solo auto-clasificamos por nombre los
+      // platos sin categoría útil ("otros") o con valores heredados/desconocidos.
+      const resolveCategory = (product: SellableProduct) =>
+        product.category !== 'otros' && (MENU_CATEGORY_ORDER as readonly string[]).includes(product.category)
+          ? product.category
+          : classifyMenuCategory(product.name, product.category)
+      setProducts(catalog.map(product => ({ ...product, category: resolveCategory(product) }))
         .sort((a, b) => {
           const categoryDelta = MENU_CATEGORY_ORDER.indexOf(a.category as typeof MENU_CATEGORY_ORDER[number]) - MENU_CATEGORY_ORDER.indexOf(b.category as typeof MENU_CATEGORY_ORDER[number])
           return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
