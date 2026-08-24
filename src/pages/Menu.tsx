@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { getAllSellableProducts, createProduct, updateProduct, type SellableProduct } from '../lib/dataService'
+import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, type SellableProduct } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
-  LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag,
+  LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2,
 } from 'lucide-react'
 import './Menu.css'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -104,6 +104,13 @@ export function Menu() {
     catch (e) { setError(e instanceof Error ? e.message : 'Error al cambiar estado') }
   }
 
+  const handleDelete = async (p: SellableProduct) => {
+    if (!window.confirm(`¿Eliminar "${p.name}" del menú de forma permanente?\n\nSi el plato tiene ventas registradas no se podrá eliminar; en ese caso usa "Ocultar".`)) return
+    setError('')
+    try { await deleteProduct(p.id); flash(`"${p.name}" eliminado`); await load() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar el plato') }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim() || !(parseFloat(form.price) >= 0)) { setError('Nombre y precio son obligatorios'); return }
@@ -173,6 +180,7 @@ export function Menu() {
               <div className="mnu-card-actions">
                 <button className="mnu-act" onClick={() => openEdit(p)}><Pencil size={14} /> Editar</button>
                 <button className="mnu-act" onClick={() => toggleActive(p)}>{p.isActive ? <><EyeOff size={14} /> Ocultar</> : <><Eye size={14} /> Activar</>}</button>
+                <button className="mnu-act mnu-act-danger" onClick={() => handleDelete(p)} title="Eliminar plato" aria-label={`Eliminar ${p.name}`}><Trash2 size={14} /></button>
               </div>
             </div>
           ))}
@@ -188,7 +196,8 @@ export function Menu() {
                   <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{catLabel(p.category)}</td>
                   <td className="mnu-price" style={{ fontSize: 15 }}>{formatUsd(p.salePrice)}</td>
                   <td><button className={`mnu-switch ${p.isActive ? 'on' : ''}`} onClick={() => toggleActive(p)} title={p.isActive ? 'Activo' : 'Inactivo'} /></td>
-                  <td><button className="mnu-icon-btn" onClick={() => openEdit(p)} title="Editar"><Pencil size={16} /></button></td>
+                  <td><button className="mnu-icon-btn" onClick={() => openEdit(p)} title="Editar"><Pencil size={16} /></button>
+                    <button className="mnu-icon-btn mnu-icon-danger" onClick={() => handleDelete(p)} title="Eliminar" aria-label={`Eliminar ${p.name}`}><Trash2 size={16} /></button></td>
                 </tr>
               ))}
             </tbody>

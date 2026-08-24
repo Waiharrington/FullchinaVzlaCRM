@@ -470,6 +470,16 @@ export async function updateProduct(id: string, updates: Partial<{
   if (error) throw error
 }
 
+/**
+ * Elimina un plato de forma permanente (vía RPC SECURITY DEFINER). Falla con un
+ * mensaje claro si el plato tiene ventas registradas; en ese caso hay que usar
+ * "Ocultar" en lugar de eliminar.
+ */
+export async function deleteProduct(id: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_sellable_product', { p_id: id })
+  if (error) throw error
+}
+
 // --- Modificadores -----------------------------------------------------------
 
 /** Conjunto de ids de productos que tienen al menos un modificador asignado. */
@@ -797,6 +807,8 @@ export interface FloorTable {
   openOrderId: string | null
   openOrderNumber: number | null
   openOrderCustomer: string | null
+  openOrderCreatedBy: string | null
+  openOrderCreatedByName: string | null
   openOrderCreatedAt: string | null
   openOrderTotal: number
 }
@@ -819,6 +831,8 @@ export async function getFloorTables(): Promise<FloorTable[]> {
     openOrderId: (t.open_order_id as string) ?? null,
     openOrderNumber: t.open_order_number == null ? null : Number(t.open_order_number),
     openOrderCustomer: (t.open_order_customer as string) ?? null,
+    openOrderCreatedBy: (t.open_order_created_by as string) ?? null,
+    openOrderCreatedByName: (t.open_order_created_name as string) ?? null,
     openOrderCreatedAt: (t.open_order_created_at as string) ?? null,
     openOrderTotal: Number(t.open_order_total ?? 0),
   }))
