@@ -77,6 +77,23 @@ export async function getPublicMenuCategories(): Promise<{ key: string; label: s
   }))
 }
 
+export async function getPublicDeliverySettings(): Promise<import('./delivery').DeliverySettings> {
+  const { data, error } = await db().rpc('fn_get_delivery_settings')
+  if (error) throw error
+  const raw = (data ?? {}) as Record<string, unknown>
+  const zones = Array.isArray(raw.zones) ? raw.zones as Record<string, unknown>[] : []
+  return {
+    originLat: raw.originLat == null ? null : Number(raw.originLat),
+    originLng: raw.originLng == null ? null : Number(raw.originLng),
+    roadFactor: raw.roadFactor == null ? 1.3 : Number(raw.roadFactor),
+    enabled: raw.enabled == null ? true : Boolean(raw.enabled),
+    zones: zones.map((z) => ({
+      id: String(z.id), minKm: Number(z.minKm), maxKm: z.maxKm == null ? null : Number(z.maxKm),
+      price: Number(z.price), sortOrder: Number(z.sortOrder),
+    })),
+  }
+}
+
 export async function getPublicPromotions(): Promise<Promotion[]> {
   const { data, error } = await db()
     .from('promotions')

@@ -17,8 +17,9 @@ import {
 import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
+import { DeliverySettings } from '../components/DeliverySettings'
 
-type Tab = 'credits' | 'close'
+type Tab = 'credits' | 'close' | 'delivery'
 
 // Cache a nivel de módulo: al volver a Más se muestran los datos de la
 // última visita al instante, sin el parpadeo de "Cargando...", mientras se
@@ -267,7 +268,12 @@ export function Mas() {
         <button className={`tab ${tab === 'close' ? 'active' : ''}`} onClick={() => setTab('close')}>
           📊 Cierre de Caja
         </button>
+        <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
+          🛵 Delivery
+        </button>
       </div>
+
+      {tab === 'delivery' && <DeliverySettings />}
 
       {tab === 'credits' && (
         <div className="card">

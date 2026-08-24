@@ -522,6 +522,69 @@ export async function deleteMenuCategory(id: string): Promise<void> {
   if (error) throw error
 }
 
+// --- Delivery por distancia ---------------------------------------------------
+
+export interface DeliveryConfigRow { originLat: number | null; originLng: number | null; roadFactor: number; enabled: boolean }
+export interface DeliveryZoneRow { id: string; minKm: number; maxKm: number | null; price: number; sortOrder: number; isActive: boolean }
+
+export async function getDeliverySettings(): Promise<{ config: DeliveryConfigRow; zones: DeliveryZoneRow[] }> {
+  const [configRes, zonesRes] = await Promise.all([
+    client().from('delivery_config').select('origin_lat,origin_lng,road_factor,is_enabled').eq('id', 1).maybeSingle(),
+    client().from('delivery_zones').select('id,min_km,max_km,price,sort_order,is_active').order('sort_order', { ascending: true }),
+  ])
+  if (configRes.error) throw configRes.error
+  if (zonesRes.error) throw zonesRes.error
+  const c = configRes.data
+  return {
+    config: {
+      originLat: c?.origin_lat == null ? null : Number(c.origin_lat),
+      originLng: c?.origin_lng == null ? null : Number(c.origin_lng),
+      roadFactor: c?.road_factor == null ? 1.3 : Number(c.road_factor),
+      enabled: c?.is_enabled ?? true,
+    },
+    zones: (zonesRes.data ?? []).map((z) => ({
+      id: z.id as string, minKm: Number(z.min_km), maxKm: z.max_km == null ? null : Number(z.max_km),
+      price: Number(z.price), sortOrder: Number(z.sort_order), isActive: z.is_active as boolean,
+    })),
+  }
+}
+
+export async function updateDeliveryConfig(updates: Partial<{ originLat: number | null; originLng: number | null; roadFactor: number; enabled: boolean }>): Promise<void> {
+  const payload: Record<string, unknown> = {}
+  if (updates.originLat !== undefined) payload.origin_lat = updates.originLat
+  if (updates.originLng !== undefined) payload.origin_lng = updates.originLng
+  if (updates.roadFactor !== undefined) payload.road_factor = updates.roadFactor
+  if (updates.enabled !== undefined) payload.is_enabled = updates.enabled
+  if (Object.keys(payload).length === 0) return
+  const { error } = await client().from('delivery_config').update(payload).eq('id', 1)
+  if (error) throw error
+}
+
+export async function createDeliveryZone(input: { minKm: number; maxKm: number | null; price: number; sortOrder: number }): Promise<string> {
+  const { data, error } = await client().from('delivery_zones').insert({
+    min_km: input.minKm, max_km: input.maxKm, price: input.price, sort_order: input.sortOrder,
+  }).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
+
+export async function updateDeliveryZone(id: string, updates: Partial<{ minKm: number; maxKm: number | null; price: number; sortOrder: number; isActive: boolean }>): Promise<void> {
+  const payload: Record<string, unknown> = {}
+  if (updates.minKm !== undefined) payload.min_km = updates.minKm
+  if (updates.maxKm !== undefined) payload.max_km = updates.maxKm
+  if (updates.price !== undefined) payload.price = updates.price
+  if (updates.sortOrder !== undefined) payload.sort_order = updates.sortOrder
+  if (updates.isActive !== undefined) payload.is_active = updates.isActive
+  if (Object.keys(payload).length === 0) return
+  const { error } = await client().from('delivery_zones').update(payload).eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteDeliveryZone(id: string): Promise<void> {
+  const { error } = await client().from('delivery_zones').delete().eq('id', id)
+  if (error) throw error
+}
+
 // --- Modificadores -----------------------------------------------------------
 
 /** Conjunto de ids de productos que tienen al menos un modificador asignado. */
@@ -1874,7 +1937,7 @@ export async function updateIngredient(id: string, updates: { name?: string; is_
 export async function getSellableProducts(): Promise<SellableProduct[]> {
   const { data, error } = await client()
     .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active,image_url')
+    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
     .eq('is_active', true)
     .order('name', { ascending: true })
 
@@ -1889,6 +1952,7 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
     emoji: r.emoji as string,
     isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null,
+    isDelivery: (r.is_delivery as boolean) ?? false,
   }))
 }
 

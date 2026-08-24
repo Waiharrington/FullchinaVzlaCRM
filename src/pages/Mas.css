@@ -633,3 +633,22 @@
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Configuración de delivery */
+.ds-section { padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.07); }
+.ds-section:first-of-type { border-top: 0; }
+.ds-h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: #fff; }
+.ds-hint { font-size: 12px; color: #a1a1aa; margin: 0 0 12px; }
+.ds-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+@media (max-width: 640px) { .ds-grid { grid-template-columns: 1fr; } }
+.ds-field { display: flex; flex-direction: column; gap: 4px; }
+.ds-field label { font-size: 12px; color: #a1a1aa; }
+.ds-field input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; }
+.ds-sub { font-size: 11px; color: #71717a; }
+.ds-zones { display: flex; flex-direction: column; gap: 6px; }
+.ds-zone-head, .ds-zone-row { display: grid; grid-template-columns: 1fr 1fr 1fr 90px; gap: 8px; align-items: center; }
+.ds-zone-head span { font-size: 11px; color: #71717a; padding-left: 4px; }
+.ds-zone-row input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; color: #fff; padding: 9px; font-size: 14px; width: 100%; }
+.ds-zone-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.ds-test-input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; width: 100%; max-width: 320px; }
+.ds-test-result { margin-top: 10px; font-size: 14px; color: #d4d4d8; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 12px; }
