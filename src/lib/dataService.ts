@@ -7,6 +7,7 @@ export interface Product {
   price: number
   cost: number | null
   category: string
+  categories: string[]
   emoji: string
   active: boolean
   imageUrl: string | null
@@ -266,6 +267,7 @@ export interface SellableProduct {
   salePrice: number
   cost: number | null
   category: string
+  categories: string[]
   emoji: string
   isActive: boolean
   imageUrl: string | null
@@ -398,15 +400,39 @@ function client() {
 
 // --- Productos ---------------------------------------------------------------
 
+/** Mapa productoId -> categorías adicionales (más allá de la principal). */
+async function getProductExtraCategoriesMap(): Promise<Map<string, string[]>> {
+  const { data, error } = await client()
+    .from('sellable_product_categories')
+    .select('sellable_product_id,category_key')
+  if (error) throw error
+  const map = new Map<string, string[]>()
+  for (const r of data ?? []) {
+    const id = r.sellable_product_id as string
+    const list = map.get(id) ?? []
+    list.push(r.category_key as string)
+    map.set(id, list)
+  }
+  return map
+}
+
+/** Conjunto completo de categorías de un plato: principal + adicionales, sin duplicar. */
+function mergeCategories(primary: string, extras: string[] | undefined): string[] {
+  return Array.from(new Set([primary, ...(extras ?? [])]))
+}
+
 export async function getProducts(): Promise<Product[]> {
   if (!supabase) throw new Error('Supabase no está configurado')
   try {
-    const { data, error } = await supabase
-      .from('sellable_products')
-      .select('id,name,description,price,cost,category,emoji,is_active,image_url')
-      .eq('is_active', true)
-      .order('category', { ascending: true })
-      .order('name', { ascending: true })
+    const [{ data, error }, extraMap] = await Promise.all([
+      supabase
+        .from('sellable_products')
+        .select('id,name,description,price,cost,category,emoji,is_active,image_url')
+        .eq('is_active', true)
+        .order('category', { ascending: true })
+        .order('name', { ascending: true }),
+      getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
+    ])
 
     if (error) throw error
     return data.map((r) => ({
@@ -416,6 +442,7 @@ export async function getProducts(): Promise<Product[]> {
       price: Number(r.price),
       cost: r.cost === null ? null : Number(r.cost),
       category: r.category as string,
+      categories: mergeCategories(r.category as string, extraMap.get(r.id as string)),
       emoji: r.emoji as string,
       active: Boolean(r.is_active),
       imageUrl: (r.image_url as string) ?? null,
@@ -428,15 +455,19 @@ export async function getProducts(): Promise<Product[]> {
 
 /** Todos los productos vendibles (activos e inactivos) para el módulo Menú. */
 export async function getAllSellableProducts(): Promise<SellableProduct[]> {
-  const { data, error } = await client()
-    .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
-    .order('name', { ascending: true })
+  const [{ data, error }, extraMap] = await Promise.all([
+    client()
+      .from('sellable_products')
+      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
+      .order('name', { ascending: true }),
+    getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
+  ])
   if (error) throw error
   return (data ?? []).map((r) => ({
     id: r.id as string, name: r.name as string, description: (r.description as string) ?? null,
     salePrice: Number(r.price), cost: r.cost === null ? null : Number(r.cost),
-    category: r.category as string, emoji: r.emoji as string, isActive: r.is_active as boolean,
+    category: r.category as string, categories: mergeCategories(r.category as string, extraMap.get(r.id as string)),
+    emoji: r.emoji as string, isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null, isDelivery: (r.is_delivery as boolean) ?? false,
   }))
 }
@@ -469,6 +500,21 @@ export async function updateProduct(id: string, updates: Partial<{
   if (updates.isActive !== undefined) payload.is_active = updates.isActive
   const { error } = await client().from('sellable_products').update(payload).eq('id', id)
   if (error) throw error
+}
+
+/**
+ * Reemplaza las categorías ADICIONALES de un plato (todas menos la principal).
+ * `primaryCategory` es la categoría guardada en sellable_products.category, que
+ * se excluye para no duplicarla en la tabla de relación.
+ */
+export async function setProductExtraCategories(productId: string, allCategories: string[], primaryCategory: string): Promise<void> {
+  const extras = Array.from(new Set(allCategories)).filter((c) => c && c !== primaryCategory)
+  const del = await client().from('sellable_product_categories').delete().eq('sellable_product_id', productId)
+  if (del.error) throw del.error
+  if (extras.length === 0) return
+  const rows = extras.map((category_key) => ({ sellable_product_id: productId, category_key }))
+  const ins = await client().from('sellable_product_categories').insert(rows)
+  if (ins.error) throw ins.error
 }
 
 /**
@@ -1949,6 +1995,7 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
     salePrice: Number(r.price),
     cost: r.cost === null ? null : Number(r.cost),
     category: r.category as string,
+    categories: [r.category as string],
     emoji: r.emoji as string,
     isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null,

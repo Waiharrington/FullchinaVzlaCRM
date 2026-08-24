@@ -105,3 +105,9 @@
 .mnu-cat-name span { font-size: 11px; color: #71717a; }
 .mnu-cat-edit { flex: 1; background: #0f0f14; border: 1px solid rgba(225,29,42,0.4); border-radius: 8px; color: #fff; padding: 8px 10px; font-size: 14px; }
 .mnu-cat-actions { display: flex; gap: 4px; }
+
+/* Selección múltiple de categorías en el formulario de plato */
+.mnu-cat-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.mnu-cat-chip { display: inline-flex; align-items: center; gap: 5px; background: #17171d; border: 1px solid rgba(255,255,255,0.12); color: #d4d4d8; border-radius: 999px; padding: 7px 12px; font-size: 13px; cursor: pointer; transition: all .12s; }
+.mnu-cat-chip:hover { border-color: rgba(225,29,42,0.4); }
+.mnu-cat-chip.on { background: rgba(225,29,42,0.15); border-color: #e11d2a; color: #fff; font-weight: 600; }

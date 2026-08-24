@@ -365,16 +365,22 @@ export function Caja() {
     product.category !== 'otros' && isKnownCategory(product.category)
       ? product.category
       : classifyMenuCategory(product.name, product.category)
+  // Conjunto completo de categorías de un plato (principal resuelta + adicionales).
+  const resolveCats = (product: Product): string[] => {
+    const primary = resolveCat(product)
+    const extras = product.categories.filter((c) => c !== product.category)
+    return Array.from(new Set([primary, ...extras]))
+  }
 
   const categories = useMemo(() => {
-    const present = new Set(products.map((p) => resolveCat(p)))
+    const present = new Set(products.flatMap((p) => resolveCats(p)))
     return menuCategoryKeys().filter((c) => present.has(c))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products])
 
   const filteredProductGroups = useMemo(() => {
     const categoryProducts = products.filter((product) => {
-      const matchCat = activeCategory === 'all' || resolveCat(product) === activeCategory
+      const matchCat = activeCategory === 'all' || resolveCats(product).includes(activeCategory)
       return matchCat && product.active
     })
     let result = groupMenuProducts(categoryProducts)

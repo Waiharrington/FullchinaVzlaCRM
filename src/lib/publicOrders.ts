@@ -53,17 +53,24 @@ export async function getPublicCatalog(): Promise<Product[]> {
   const { data, error } = await db().rpc('fn_get_public_catalog')
   if (error) throw error
   const rows = Array.isArray(data) ? data : []
-  return rows.map((row: Record<string, unknown>) => ({
-    id: String(row.id),
-    name: String(row.name),
-    description: row.description ? String(row.description) : null,
-    price: Number(row.price),
-    cost: null,
-    category: String(row.category || 'plato'),
-    emoji: String(row.emoji || '🥡'),
-    active: true,
-    imageUrl: row.image_url ? String(row.image_url) : null,
-  }))
+  return rows.map((row: Record<string, unknown>) => {
+    const category = String(row.category || 'plato')
+    const categories = Array.isArray(row.categories) && row.categories.length
+      ? Array.from(new Set((row.categories as unknown[]).map((c) => String(c))))
+      : [category]
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      description: row.description ? String(row.description) : null,
+      price: Number(row.price),
+      cost: null,
+      category,
+      categories,
+      emoji: String(row.emoji || '🥡'),
+      active: true,
+      imageUrl: row.image_url ? String(row.image_url) : null,
+    }
+  })
 }
 
 export async function getPublicMenuCategories(): Promise<{ key: string; label: string; sortOrder: number }[]> {

@@ -315,7 +315,11 @@ export function PublicMenu() {
         // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
         const resolveCategory = (p: { name: string; category: string }) =>
           p.category !== 'otros' && isKnownCategory(p.category) ? p.category : classifyMenuCategory(p.name, p.category)
-        setProducts(catalog.map(p => ({ ...p, category: resolveCategory(p) }))
+        setProducts(catalog.map(p => {
+          const primary = resolveCategory(p)
+          const extras = (p.categories ?? []).filter(c => c !== p.category)
+          return { ...p, category: primary, categories: Array.from(new Set([primary, ...extras])) }
+        })
           .sort((a, b) => {
             const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
             return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
@@ -330,12 +334,12 @@ export function PublicMenu() {
   }, [designMode])
 
   const categories = useMemo(() => {
-    const extracted = Array.from(new Set(products.map(p => p.category)));
+    const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
     extracted.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
     return ['Todos', ...extracted];
   }, [products]);
   const groups = useMemo(() => groupMenuProducts(products.filter(product => {
-    const categoryMatch = activeCategory === 'Todos' || product.category === activeCategory
+    const categoryMatch = activeCategory === 'Todos' || product.categories.includes(activeCategory)
     const term = search.trim().toLowerCase()
     return categoryMatch && (!term || `${product.name} ${product.description || ''}`.toLowerCase().includes(term))
   })), [products, activeCategory, search])
@@ -374,7 +378,7 @@ export function PublicMenu() {
   }
   const categorySections = useMemo(() => categories
     .filter(category => category !== 'Todos')
-    .map(category => ({ category, groups: visibleGroups.filter(group => group.category === category) }))
+    .map(category => ({ category, groups: visibleGroups.filter(group => group.variants.some(v => v.product.categories.includes(category))) }))
     .filter(section => section.groups.length > 0), [categories, visibleGroups])
   const recommendedGroup = groups.find(group => group.name.toLowerCase().includes('full kilo')) ?? groups[0]
   const isStoreOpen = (() => {

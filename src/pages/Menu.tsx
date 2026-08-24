@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, type SellableProduct, type MenuCategoryRow } from '../lib/dataService'
+import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, type SellableProduct, type MenuCategoryRow } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
@@ -34,8 +34,8 @@ function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
   })
 }
 
-interface Form { name: string; description: string; category: string; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean }
-const emptyForm: Form = { name: '', description: '', category: 'otros', emoji: '🍽️', price: '', cost: '', imageUrl: null, isActive: true }
+interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean }
+const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '🍽️', price: '', cost: '', imageUrl: null, isActive: true }
 
 export function Menu() {
   const [products, setProducts] = useState<SellableProduct[]>([])
@@ -79,8 +79,13 @@ export function Menu() {
         product.category !== 'otros' && isKnownCategory(product.category)
           ? product.category
           : classifyMenuCategory(product.name, product.category)
+      const resolveAll = (product: SellableProduct) => {
+        const primary = resolveCategory(product)
+        const extras = product.categories.filter((c) => c !== product.category)
+        return { ...product, category: primary, categories: Array.from(new Set([primary, ...extras])) }
+      }
       // El producto de sistema "Delivery" (cargo variable) no es un plato: se oculta.
-      setProducts(catalog.filter(product => !product.isDelivery).map(product => ({ ...product, category: resolveCategory(product) }))
+      setProducts(catalog.filter(product => !product.isDelivery).map(resolveAll)
         .sort((a, b) => {
           const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
           return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
@@ -95,7 +100,7 @@ export function Menu() {
 
   // Categorías disponibles para asignar a un plato (todas las de la BD).
   const allCategoryKeys = useMemo(() => menuCats.map((c) => c.key), [menuCats])
-  const categories = useMemo(() => allCategoryKeys.filter(category => products.some(product => product.category === category)), [allCategoryKeys, products])
+  const categories = useMemo(() => allCategoryKeys.filter(category => products.some(product => product.categories.includes(category))), [allCategoryKeys, products])
   const summary = useMemo(() => ({
     total: products.length,
     active: products.filter((p) => p.isActive).length,
@@ -107,7 +112,7 @@ export function Menu() {
     const q = search.trim().toLowerCase()
     return products.filter((p) => {
       if (q && !p.name.toLowerCase().includes(q)) return false
-      if (catFilter !== 'all' && p.category !== catFilter) return false
+      if (catFilter !== 'all' && !p.categories.includes(catFilter)) return false
       if (statusFilter === 'active' && !p.isActive) return false
       if (statusFilter === 'inactive' && p.isActive) return false
       return true
@@ -116,7 +121,7 @@ export function Menu() {
 
   const openNew = () => { setForm(emptyForm); setEditing('new') }
   const openEdit = (p: SellableProduct) => {
-    setForm({ name: p.name, description: p.description ?? '', category: p.category, emoji: p.emoji || '🍽️', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive })
+    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '🍽️', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive })
     setEditing(p)
   }
 
@@ -200,7 +205,7 @@ export function Menu() {
   }
 
   const handleDeleteCategory = async (cat: MenuCategoryRow) => {
-    const inUse = products.filter((p) => p.category === cat.key).length
+    const inUse = products.filter((p) => p.categories.includes(cat.key)).length
     if (inUse > 0) { setError(`No se puede eliminar "${cat.label}": tiene ${inUse} plato${inUse === 1 ? '' : 's'}. Muévelos a otra categoría primero.`); return }
     if (!window.confirm(`¿Eliminar la categoría "${cat.label}"?`)) return
     setError('')
@@ -211,15 +216,21 @@ export function Menu() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim() || !(parseFloat(form.price) >= 0)) { setError('Nombre y precio son obligatorios'); return }
+    // Al menos una categoría; la principal es la de mayor prioridad en el orden del menú.
+    const chosen = form.categories.length ? form.categories : ['otros']
+    const primary = [...chosen].sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b))[0]
     setSaving(true); setError('')
     try {
       const payload = {
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
         price: parseFloat(form.price) || 0, cost: form.cost.trim() ? parseFloat(form.cost) : null,
-        category: isKnownCategory(form.category) ? form.category : classifyMenuCategory(form.name, form.category), emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
+        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
       }
-      if (editing === 'new') { await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
-      else if (editing) { await updateProduct(editing.id, payload); flash(`"${payload.name}" actualizado`) }
+      let productId: string
+      if (editing === 'new') { productId = await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
+      else if (editing) { productId = editing.id; await updateProduct(editing.id, payload); flash(`"${payload.name}" actualizado`) }
+      else { productId = '' }
+      if (productId) await setProductExtraCategories(productId, chosen, payload.category)
       setEditing(null); await load()
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al guardar el plato') }
     finally { setSaving(false) }
@@ -285,7 +296,7 @@ export function Menu() {
               {thumb(p, 'mnu-thumb')}
               <div className="mnu-card-body">
                 <span className="mnu-card-name">{formatProductTitle(p.name)}</span>
-                <span className="mnu-card-cat">{catLabel(p.category)}</span>
+                <span className="mnu-card-cat">{p.categories.map(catLabel).join(' · ')}</span>
                 <div className="mnu-card-row">
                   <span className="mnu-price">{formatUsd(p.salePrice)}</span>
                   <span className={`mnu-badge ${p.isActive ? 'on' : 'off'}`}>{p.isActive ? 'Activo' : 'Inactivo'}</span>
@@ -310,7 +321,7 @@ export function Menu() {
                 <tr key={p.id} className={selectMode ? 'selectable' : ''} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
                   {selectMode && <td><span className="mnu-check-cell">{selectedIds.has(p.id) ? <CheckSquare size={18} /> : <Square size={18} />}</span></td>}
                   <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{formatProductTitle(p.name)}</strong>{(p.description || getEditorialDescription(p.name)) && <><br /><small style={{ color: '#71717a', display: 'block', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(p.name, p.description || '')}</small></>}</div></div></td>
-                  <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{catLabel(p.category)}</td>
+                  <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{p.categories.map(catLabel).join(' · ')}</td>
                   <td className="mnu-price" style={{ fontSize: 15 }}>{formatUsd(p.salePrice)}</td>
                   <td><button className={`mnu-switch ${p.isActive ? 'on' : ''}`} onClick={(e) => { e.stopPropagation(); toggleActive(p) }} title={p.isActive ? 'Activo' : 'Inactivo'} /></td>
                   <td><button className="mnu-icon-btn" onClick={(e) => { e.stopPropagation(); openEdit(p) }} title="Editar"><Pencil size={16} /></button>
@@ -346,22 +357,29 @@ export function Menu() {
 
             <div className="mnu-field"><label>Descripción</label><textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción para el cliente" /></div>
 
-            <div className="mnu-row2">
-              <div className="mnu-field"><label>Categoría</label>
-                <select value={allCategoryKeys.includes(form.category) ? form.category : (allCategoryKeys.includes('otros') ? 'otros' : allCategoryKeys[0] ?? '')} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                  {menuCats.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
-                </select>
+            <div className="mnu-field"><label>Categorías (elige una o varias)</label>
+              <div className="mnu-cat-chips">
+                {menuCats.map((c) => {
+                  const on = form.categories.includes(c.key)
+                  return (
+                    <button type="button" key={c.key} className={`mnu-cat-chip ${on ? 'on' : ''}`}
+                      onClick={() => setForm((f) => ({ ...f, categories: on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key] }))}>
+                      {on && <Check size={13} />}{c.label}
+                    </button>
+                  )
+                })}
               </div>
-              <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
             </div>
 
             <div className="mnu-row2">
+              <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
               <div className="mnu-field"><label>Costo estimado ($)</label><input type="number" step="0.01" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Opcional" /></div>
-              <div className="mnu-field"><label>Estado</label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 6 }}>
-                  <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
-                  <span style={{ fontSize: 13, color: '#d4d4d8' }}>{form.isActive ? 'Activo (en venta)' : 'Inactivo'}</span>
-                </div>
+            </div>
+
+            <div className="mnu-field"><label>Estado</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 6 }}>
+                <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
+                <span style={{ fontSize: 13, color: '#d4d4d8' }}>{form.isActive ? 'Activo (en venta)' : 'Inactivo'}</span>
               </div>
             </div>
 
