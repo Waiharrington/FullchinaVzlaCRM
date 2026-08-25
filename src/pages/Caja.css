@@ -1430,6 +1430,25 @@
   color: #8e8e93;
 }
 
+.cash-currency-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.cash-currency-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #27272a;
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cash-currency-btn:hover { background: #3f3f46; color: #fff; }
+.cash-currency-btn.active { background: #16a34a; border-color: #22c55e; color: #fff; }
+
 .payment-input-wrap {
   position: relative;
   display: flex;

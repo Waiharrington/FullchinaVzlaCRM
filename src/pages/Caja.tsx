@@ -100,7 +100,6 @@ const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; i
   { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
   { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
-  { method: 'zelle', label: 'Zelle', icon: <BadgeDollarSign size={16} strokeWidth={1.8} /> },
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ]
 
@@ -114,7 +113,6 @@ const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cas
 const paymentReferenceLabel = (method: SplitPaymentMethod) => {
   if (method === 'card') return 'Referencia del voucher del punto *'
   if (method === 'binance') return 'ID de transacción de Binance *'
-  if (method === 'zelle') return 'Confirmación de Zelle *'
   return 'Número de referencia *'
 }
 const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
@@ -309,6 +307,7 @@ export function Caja() {
   const [paymentNote, setPaymentNote] = useState('')
 
   const [paying, setPaying] = useState(false)
+  const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [payError, setPayError] = useState('')
   const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
   const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
@@ -628,10 +627,13 @@ export function Caja() {
       }
       setCashSession(activeSession)
 
-      const enteredAmount = Number(amountReceived)
-      if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
+      const enteredAmountRaw = Number(amountReceived)
+      if (!Number.isFinite(enteredAmountRaw) || enteredAmountRaw <= 0) {
         throw new Error('Ingresa un monto válido')
       }
+      const enteredAmount = (selectedPaymentTab === 'cash' && cashCurrency === 'VES' && bcvRate && bcvRate > 0)
+        ? enteredAmountRaw / bcvRate
+        : enteredAmountRaw
 
       const requiresReference = selectedPaymentTab !== 'split'
         && selectedPaymentTab !== 'other'
@@ -1616,6 +1618,20 @@ export function Caja() {
                   <label className="payment-field-label">
                     MONTO RECIBIDO <span className="text-red">*</span>
                   </label>
+                  {selectedPaymentTab === 'cash' && (
+                    <div className="cash-currency-toggle">
+                      <button
+                        type="button"
+                        className={`cash-currency-btn ${cashCurrency === 'USD' ? 'active' : ''}`}
+                        onClick={() => { setCashCurrency('USD'); setAmountReceived(total.toFixed(2)) }}
+                      >USD</button>
+                      <button
+                        type="button"
+                        className={`cash-currency-btn ${cashCurrency === 'VES' ? 'active' : ''}`}
+                        onClick={() => { setCashCurrency('VES'); setAmountReceived(bcvRate ? (total * bcvRate).toFixed(2) : '') }}
+                      >Bs</button>
+                    </div>
+                  )}
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -1625,13 +1641,17 @@ export function Caja() {
                       onChange={(e) => setAmountReceived(e.target.value)}
                     />
                     <span className="currency-tag-right">
-                      {selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD'}
+                      {selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}
                     </span>
                   </div>
                   <span className="payment-hint-sub">
-                    {selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab)
-                      ? `Ref. ${formatUsd(total)}`
-                      : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
+                    {selectedPaymentTab === 'cash'
+                      ? (cashCurrency === 'USD'
+                        ? bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'
+                        : `Ref. ${formatUsd(total)}`)
+                      : selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab)
+                        ? `Ref. ${formatUsd(total)}`
+                        : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
                   </span>
                 </div>}
 
