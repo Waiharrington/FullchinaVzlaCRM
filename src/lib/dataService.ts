@@ -887,7 +887,7 @@ export async function removeOrderItem(orderItemId: string): Promise<void> {
  */
 export async function deleteOrder(orderId: string): Promise<void> {
   const { error } = await client().rpc('fn_delete_order', { p_order_id: orderId })
-  if (error) throw error
+  if (error) throw new Error(error.message || 'No se pudo eliminar la comanda')
 }
 
 /**
