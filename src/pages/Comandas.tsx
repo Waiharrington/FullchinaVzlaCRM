@@ -973,7 +973,7 @@ export function Comandas() {
               </div>
               <div className="cmd-header-actions">
                 {!selectedOrder.isPaid && (
-                  <button className="cmd-delete-btn" onClick={() => setShowDeleteModal(true)} title="Eliminar comanda">
+                  <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
                     <Trash2 size={18} />
                   </button>
                 )}
