@@ -1307,10 +1307,12 @@ export function Comandas() {
             </div>
             <p className="cmd-pin-text">Ingrese el PIN de administrador para eliminar la comanda <strong>{selectedOrder?.orderNumber}</strong></p>
             <input
+              key={deletePin}
               type="password"
               className="cmd-pin-input"
               placeholder="PIN"
               maxLength={4}
+              autoComplete="new-password"
               value={deletePin}
               onChange={e => { setDeletePin(e.target.value); setDeleteError('') }}
               onKeyDown={e => { if (e.key === 'Enter') handleDeleteOrder() }}
