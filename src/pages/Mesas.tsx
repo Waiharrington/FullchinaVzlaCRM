@@ -262,14 +262,17 @@ export function Mesas() {
         >
           {visibleTables.map(table => {
             const isOccupied = Boolean(table.openOrderId)
+            const isActive = Boolean(table.isActive)
             return (
               <button
                 key={table.id}
                 type="button"
-                className={`mesas-tile ${table.shape} ${isOccupied ? 'occupied' : 'free'}`}
+                className={`mesas-tile ${table.shape} ${isOccupied ? 'occupied' : isActive ? 'free' : 'inactive'}`}
                 style={{ left: `${table.posX}%`, top: `${table.posY}%` }}
                 onPointerDown={(e) => handlePointerDown(table, e)}
                 onClick={() => handleTableClick(table)}
+                disabled={!isActive && !editMode}
+                aria-disabled={!isActive && !editMode}
               >
                 <span className="mesas-tile-number">{table.number}</span>
                 <span className="mesas-tile-seats"><Users size={11} /> {table.seats}</span>

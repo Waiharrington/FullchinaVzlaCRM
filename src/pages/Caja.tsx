@@ -375,8 +375,7 @@ export function Caja() {
   const categories = useMemo(() => {
     const present = new Set(products.flatMap((p) => resolveCats(p)))
     return menuCategoryKeys().filter((c) => present.has(c))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products])
+  }, [products, resolveCats])
 
   const filteredProductGroups = useMemo(() => {
     const categoryProducts = products.filter((product) => {

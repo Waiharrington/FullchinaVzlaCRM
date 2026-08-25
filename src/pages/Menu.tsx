@@ -145,7 +145,9 @@ export function Menu() {
 
   const exitSelectMode = () => { setSelectMode(false); setSelectedIds(new Set()) }
   const toggleSelect = (id: string) => setSelectedIds((prev) => {
-    const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    return next
   })
   const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id))
   const toggleSelectAll = () => setSelectedIds((prev) => {

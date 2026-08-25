@@ -104,6 +104,8 @@ SELECT
   o.id AS open_order_id,
   o.order_number AS open_order_number,
   o.customer_name AS open_order_customer,
+  o.created_by AS open_order_created_by,
+  p.full_name AS open_order_created_name,
   o.created_at AS open_order_created_at,
   COALESCE((
     SELECT SUM(oi.quantity * oi.unit_price)
@@ -112,8 +114,15 @@ SELECT
   ), 0) AS open_order_total
 FROM fullchinavzla.floor_tables ft
 LEFT JOIN LATERAL (
-  SELECT o2.id, o2.order_number, o2.customer_name, o2.created_at
+  SELECT
+    o2.id,
+    o2.order_number,
+    o2.customer_name,
+    o2.created_by,
+    o2.created_at,
+    p.full_name
   FROM fullchinavzla.orders o2
+  LEFT JOIN fullchinavzla.profiles p ON p.id = o2.created_by
   WHERE o2.table_number = ft.number
     AND o2.order_type = 'dine-in'
     AND o2.status = 'open'

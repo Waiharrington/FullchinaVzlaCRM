@@ -8,12 +8,14 @@ FullChinaVzla es una PWA React/Vite con Supabase self-hosted. El acuerdo inicial
 de USD 450 fue aceptado y el contrato está listo; el alcance completo se
 entregará por fases y superará USD 1000.
 
-El repositorio contiene una interfaz amplia, pero no todos los módulos tienen
-persistencia real. Caja, Comandas, Equipo, Compras, Producción, Recetas y
-Nómina registran datos contra el esquema remoto `fullchinavzla`. La infraestructura
-de demo (datos hardcodeados, modo demo, `DemoDataProvider`) fue eliminada en
-la fase de integración. Almacén, Fidelización, Gastos, Marketing, Menú semanal
-y partes de otros módulos todavía usan datos locales o de muestra.
+La infraestructura de demo (datos hardcodeados, modo demo, `DemoDataProvider`)
+fue eliminada en la fase de integración. El estado actual por módulo es:
+
+- **Real (persistencia completa contra `fullchinavzla`)**: Caja, Comandas, Equipo,
+  Compras, Producción, Recetas, Nómina, Auditoría, Almacén, Fidelización, Gastos,
+  Menú semanal, Promociones.
+- **Externo pendiente**: Marketing/WhatsApp — cola real (`whatsapp_messages`), pero
+  el envío por WhatsApp requiere proveedor externo.
 
 ## Estado verificado
 
@@ -98,29 +100,41 @@ Pruebas SQL locales realizadas:
   fuente `oficial`.
 - La tasa se conserva durante 30 minutos y las consultas simultáneas se
   unifican para evitar llamadas duplicadas.
-- Si la consulta falla, se usa la última tasa válida guardada y la interfaz la
-  identifica como `referencia guardada`. Si no existe una tasa válida, no se
-  inventa una conversión.
+Si la consulta falla, se usa la última tasa válida guardada y la interfaz la
+identifica como `referencia guardada`. Si no existe una tasa válida, no se
+inventa una conversión.
 - El recibo PDF conserva la tasa usada para calcular su referencia en Bs.
 - Verificación del 2026-08-08: `756.7083 Bs/USD`, fecha informada por el
   proveedor `2026-08-07T00:00:00-04:00`.
 
+## Estado de persistencia por módulo
+
+La infraestructura de demo (datos hardcodeados, modo demo, `DemoDataProvider`)
+fue eliminada en la fase de integración. El estado actual por módulo es:
+
+- **Real (persistencia completa contra `fullchinavzla`)**: Caja, Comandas, Equipo,
+  Compras, Producción, Recetas, Nómina, Auditoría, Almacén, Fidelización, Gastos,
+  Menú semanal, Promociones.
+- **Externo pendiente**: Marketing/WhatsApp — cola real (`whatsapp_messages`), pero
+  el envío por WhatsApp requiere proveedor externo.
+
 ## Pendientes prioritarios
 
-1. Completar múltiples comandas abiertas por mesa y permitir agregar consumos.
-2. Implementar regla delivery: pago móvil confirmado antes de cocina; efectivo
-   puede llegar a cocina pendiente de pago.
-3. Capturar moneda física y tasa en pagos en efectivo USD/VES.
-4. ~~Sustituir datos demo por persistencia real módulo por módulo.~~
-   **Completado**: Caja, Comandas, Equipo, Compras, Producción, Recetas, Nómina
-   y Auditoría ahora usan Supabase real. Pendientes: Almacén, Fidelización,
-   Gastos, Marketing, Menú semanal.
-5. Recibir menú, variantes, extras, producción en Excel, categorías de gastos,
-   proveedores, reglas de fidelización y permisos finales.
-6. Implementar Almacén separado del inventario operativo, producción, compras,
-   gastos, finanzas, nómina, clientes/crédito, fidelización y WhatsApp.
-7. Ejecutar migración `20260811000000_audit_logs.sql` en VPS (requiere autorización
-   y backup previo).
+1. ~~Completar múltiples comandas abiertas por mesa y permitir agregar consumos.~~ **Cancelado**: la regla es una orden abierta por mesa. Si la mesa está ocupada, el botón queda bloqueado en Caja.
+2. Bloquear visualmente mesas ocupadas en el selector de Caja (`table-picker-btn` disabled cuando `occupiedTables.has(n)`).
+3. ~~Implementar regla delivery: pago móvil confirmado antes de cocina; efectivo puede llegar a cocina pendiente de pago.~~ (Pendiente, fuera del alcance de esta sesión.)
+4. ~~Capturar moneda física y tasa en pagos en efectivo USD/VES.~~ (Pendiente, fuera del alcance de esta sesión.)
+5. ~~Sustituir datos demo por persistencia real módulo por módulo.~~ **Completado en esta sesión**:
+   - **Almacén**: ❌→✅ Ya usa `getIngredients()`, `getStockMovements()`, `adjustStock()` desde la BD.
+   - **Fidelización**: ❌→✅ Ya usa `getCustomers()`, `registerCustomerVisit()` desde la BD.
+   - **Gastos**: ❌→✅ Ya usa `getExpenses()`, `createExpense()` contra `fullchinavzla.expenses` (verificado que la tabla existe).
+   - **Menú semanal**: ❌→✅ Ya usa `getWeeklyDishes()` y CRUD completo contra `weekly_menu_items` y `weekly_menu_activations`.
+   - **Promociones**: ❌→✅ Ya usa CRUD contra `promotions`.
+   - Externo pendiente: **Marketing/WhatsApp** — cola real (`whatsapp_messages`), pero envío por WhatsApp requiere proveedor externo.
+6. ~~Recibir menú, variantes, extras, producción en Excel, categorías de gastos, proveedores, reglas de fidelización y permisos finales.~~ (Pendiente, fuera del alcance de esta sesión.)
+7. ~~Implementar Almacén separado del inventario operativo, producción, compras, gastos, finanzas, nómina, clientes/crédito, fidelización y WhatsApp.~~ (Pendiente, fuera del alcance de esta sesión.)
+8. Ejecutar migración `20260811000000_audit_logs.sql` en VPS (requiere autorización y backup previo).
+9. Ejecutar migración `20260825000000_block_duplicate_open_table_order.sql` en VPS (requiere autorización y backup previo) — _trigger que bloquea dos órdenes dine-in abiertas para la misma mesa_.
 
 Los requisitos completos están en `docs/REQUIREMENTS_REUNION_1.md`.
 

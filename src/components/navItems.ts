@@ -39,6 +39,7 @@ export const allNavItems: NavItem[] = [
   { path: '/mesas', label: 'Mesas', icon: LayoutGrid, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/caja-operativa', label: 'Apertura y cierre', icon: BadgeDollarSign, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/proveedores', label: 'Proveedores', icon: Building2, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/almacen', label: 'Almacén', icon: Building2, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/inventario', label: 'Inventario Truck', icon: Package, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'], group: 'Operación' },
