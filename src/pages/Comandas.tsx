@@ -49,7 +49,6 @@ import {
   Smartphone,
   Landmark,
   Hexagon,
-  BadgeDollarSign,
   Split,
 } from 'lucide-react'
 import './Comandas.css'
@@ -60,7 +59,6 @@ const PAYMENT_METHODS = [
   { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
   { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
-  { method: 'zelle', label: 'Zelle', icon: <BadgeDollarSign size={16} strokeWidth={1.8} /> },
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ] as const
 
@@ -73,7 +71,6 @@ const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cas
 const paymentReferenceLabel = (method: SplitPaymentMethod) => {
   if (method === 'card') return 'Referencia del voucher del punto *'
   if (method === 'binance') return 'ID de transacción de Binance *'
-  if (method === 'zelle') return 'Confirmación de Zelle *'
   return 'Número de referencia *'
 }
 const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
@@ -196,6 +193,7 @@ export function Comandas() {
   const [paymentNote, setPaymentNote] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [paying, setPaying] = useState(false)
+  const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [statusError, setStatusError] = useState('')
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
@@ -334,6 +332,7 @@ export function Comandas() {
     }
     setRefNumber('')
     setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
+    setCashCurrency('USD')
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     setPaymentNote('')
@@ -373,10 +372,13 @@ export function Comandas() {
     setPaymentError('')
     try {
       const total = Number(paymentOrder.totalAmount ?? 0)
-      const enteredAmount = Number(amountReceived)
+      let enteredAmount = Number(amountReceived)
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
       if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
         throw new Error('Ingresa un monto válido')
+      }
+      if (selectedPaymentTab === 'cash' && cashCurrency === 'VES') {
+        enteredAmount = paymentRate && paymentRate > 0 ? enteredAmount / paymentRate : 0
       }
 
       const requiresReference = selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab)
@@ -443,12 +445,11 @@ export function Comandas() {
       })
 
       const methodLabels: Record<string, string> = {
-        cash: 'Pago: Efectivo',
+        cash: cashCurrency === 'USD' ? 'Pago: Efectivo $' : 'Pago: Efectivo Bs',
         mobile: 'Pago: Pago móvil',
         card: 'Pago: Punto',
         transfer: 'Pago: Transferencia',
         binance: 'Pago: Binance',
-        zelle: 'Pago: Zelle',
         split: 'Pago combinado',
       }
       const methodLabel = methodLabels[selectedPaymentTab] || 'Pago: Efectivo'
@@ -1443,6 +1444,20 @@ export function Comandas() {
                     {selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'}
                     <span className="text-red"> *</span>
                   </label>
+                  {selectedPaymentTab === 'cash' && (
+                    <div className="cash-currency-toggle">
+                      <button
+                        type="button"
+                        className={`cash-currency-btn ${cashCurrency === 'USD' ? 'active' : ''}`}
+                        onClick={() => { setCashCurrency('USD'); setAmountReceived(paymentOrder?.totalAmount ? paymentOrder.totalAmount.toFixed(2) : '') }}
+                      >USD</button>
+                      <button
+                        type="button"
+                        className={`cash-currency-btn ${cashCurrency === 'VES' ? 'active' : ''}`}
+                        onClick={() => { setCashCurrency('VES'); setAmountReceived(paymentRate && paymentOrder?.totalAmount ? (paymentOrder.totalAmount * paymentRate).toFixed(2) : '') }}
+                      >Bs</button>
+                    </div>
+                  )}
                   <div className="payment-input-wrap">
                     <input
                       type="text"
@@ -1451,12 +1466,16 @@ export function Comandas() {
                       value={amountReceived}
                       onChange={(e) => setAmountReceived(e.target.value)}
                     />
-                    <span className="currency-tag-right">{usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD'}</span>
+                    <span className="currency-tag-right">{selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}</span>
                   </div>
                   <span className="payment-hint-sub">
-                    {usesBolivares(selectedPaymentTab)
-                      ? `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`
-                      : paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible'}
+                    {selectedPaymentTab === 'cash'
+                      ? (cashCurrency === 'USD'
+                        ? (paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible')
+                        : `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`)
+                      : usesBolivares(selectedPaymentTab)
+                        ? `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`
+                        : (paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible')}
                   </span>
                 </div>}
 
