@@ -207,6 +207,10 @@ export function Comandas() {
   const [deletePin, setDeletePin] = useState('')
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [historyOrders, setHistoryOrders] = useState<ComandaOrder[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historySearch, setHistorySearch] = useState('')
 
   // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
   useEffect(() => {
@@ -647,6 +651,95 @@ export function Comandas() {
     }
   }
 
+  const loadHistoryOrders = async () => {
+    setHistoryLoading(true)
+    try {
+      const today = new Date()
+      const thirtyDaysAgo = new Date(today)
+      thirtyDaysAgo.setDate(today.getDate() - 30)
+      const dateFrom = thirtyDaysAgo.toISOString().split('T')[0] + 'T00:00:00'
+      const dateTo = today.toISOString().split('T')[0] + 'T23:59:59'
+
+      const allOrders = await getOrdersWithItems(dateFrom, dateTo)
+
+      const creatorNames = new Map<string, string>()
+      const creatorIds = [...new Set(allOrders.map(order => order.createdBy).filter(Boolean))]
+      if (supabase && creatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id,full_name')
+          .in('id', creatorIds)
+        for (const profile of profiles ?? []) {
+          creatorNames.set(String(profile.id), String(profile.full_name || 'Usuario del sistema'))
+        }
+      }
+
+      const mapped: ComandaOrder[] = allOrders.map((o) => {
+        const date = new Date(o.createdAt)
+        const status: ComandaOrder['status'] = o.fulfillmentStatus
+        const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
+        const paymentMethods = [...new Set(o.payments.map((p) => p.method))]
+        const paymentLabels: Record<PaymentMethod, string> = {
+          cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia',
+          binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+        }
+        const paymentLabel = paymentMethods.length > 1
+          ? 'Pago combinado'
+          : paymentMethods.length === 1
+            ? `Pago: ${paymentLabels[paymentMethods[0]]}`
+            : 'Sin pago'
+
+        return {
+          id: o.id,
+          orderNumber: `#FC-${String(o.orderNumber).padStart(6, '0')}`,
+          time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+          date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          customerName: o.customerName || 'Cliente general',
+          orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? (o.tableNumber ? `Mesa ${o.tableNumber}` : 'Mesa') : 'Para llevar',
+          items: o.items.map((item) => ({
+            id: item.id, name: item.productName, quantity: item.quantity,
+            unitPrice: item.unitPrice || 0, subtotal: (item.quantity || 0) * (item.unitPrice || 0),
+          })),
+          notes: o.notes || '',
+          paymentMethod: hasPaid ? paymentLabel : 'Sin pago',
+          paymentType: hasPaid
+            ? paymentMethods.includes('cash') ? 'cash'
+              : paymentMethods.includes('mobile') || paymentMethods.includes('transfer') ? 'app'
+                : 'card'
+            : 'pending',
+          isPaid: hasPaid,
+          totalAmount: o.totalAmount || 0,
+          elapsedMins: Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)),
+          status,
+          deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+          attendedBy: creatorNames.get(o.createdBy) || 'Admin',
+          source: 'pos',
+        }
+      })
+
+      setHistoryOrders(mapped.sort((a, b) => {
+        const dateA = a.date || ''
+        const dateB = b.date || ''
+        if (dateA !== dateB) return dateB.localeCompare(dateA)
+        return b.time.localeCompare(a.time)
+      }))
+    } catch (e) {
+      console.error('Error cargando historial:', e)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const filteredHistoryOrders = useMemo(() => {
+    if (!historySearch) return historyOrders
+    const q = historySearch.toLowerCase()
+    return historyOrders.filter(c =>
+      c.orderNumber.toLowerCase().includes(q) ||
+      c.customerName.toLowerCase().includes(q) ||
+      c.items.some(i => i.name.toLowerCase().includes(q))
+    )
+  }, [historyOrders, historySearch])
+
   // Simulation timer for elapsed mins
   useEffect(() => {
     const timer = setInterval(() => {
@@ -658,7 +751,14 @@ export function Comandas() {
   }, [])
 
   const filteredComandas = useMemo(() => {
+    const now = new Date()
+    const hour = now.getHours()
+    const isPast2AM = hour >= 2
+
     return comandas.filter(c => {
+      // After 2 AM, remove delivered orders from the kanban board
+      if (isPast2AM && c.status === 'delivered') return false
+
       const matchSearch =
         c.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -763,6 +863,10 @@ export function Comandas() {
           <button className="btn-nueva-comanda" onClick={() => navigate('/caja')}>
             <Plus size={16} />
             <span>Nueva comanda</span>
+          </button>
+          <button className="btn-nueva-comanda btn-historial" onClick={() => { setShowHistoryModal(true); loadHistoryOrders() }}>
+            <Clock size={16} />
+            <span>Historial de comandas</span>
           </button>
         </div>
       </div>
@@ -1572,6 +1676,88 @@ export function Comandas() {
                 <X size={18} /> Cancelar
               </button>
             </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Modal Historial de Comandas */}
+      {showHistoryModal && createPortal(
+        <div className="cmd-modal-overlay" onClick={() => setShowHistoryModal(false)}>
+          <div className="cmd-history-modal animate-pop" onClick={e => e.stopPropagation()}>
+            <header className="cmd-history-header">
+              <div className="cmd-history-title">
+                <Clock size={20} />
+                <h2>Historial de comandas</h2>
+              </div>
+              <div className="cmd-history-search">
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="Buscar por #, cliente o producto..."
+                  value={historySearch}
+                  onChange={e => setHistorySearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <button className="cmd-close-btn" onClick={() => { setShowHistoryModal(false); setHistorySearch('') }}>
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="cmd-history-body">
+              {historyLoading ? (
+                <div className="cmd-history-loading">
+                  <div className="cmd-history-spinner"></div>
+                  <span>Cargando historial...</span>
+                </div>
+              ) : filteredHistoryOrders.length === 0 ? (
+                <div className="cmd-history-empty">
+                  <Package size={40} />
+                  <p>No se encontraron comandas</p>
+                </div>
+              ) : (
+                <div className="cmd-history-list">
+                  {filteredHistoryOrders.map(order => (
+                    <div
+                      key={order.id}
+                      className={`cmd-history-item ${order.isPaid ? 'paid' : 'unpaid'}`}
+                      onClick={() => { setShowHistoryModal(false); setSelectedOrder(order) }}
+                    >
+                      <div className="cmd-history-item-left">
+                        <span className="cmd-history-order-no">{order.orderNumber}</span>
+                        <span className="cmd-history-customer">{order.customerName}</span>
+                        <span className="cmd-history-type">
+                          {order.orderType === 'Delivery' ? '🛵' : order.orderType.startsWith('Mesa') ? '🍽️' : '🛍️'} {order.orderType}
+                        </span>
+                      </div>
+                      <div className="cmd-history-item-center">
+                        {order.items.slice(0, 3).map(item => (
+                          <span key={item.id} className="cmd-history-item-tag">{item.name} ×{item.quantity}</span>
+                        ))}
+                        {order.items.length > 3 && <span className="cmd-history-item-more">+{order.items.length - 3} más</span>}
+                      </div>
+                      <div className="cmd-history-item-right">
+                        <span className="cmd-history-date">{order.date}</span>
+                        <span className="cmd-history-time">{order.time}</span>
+                        <span className={`cmd-history-status ${order.status}`}>
+                          {order.status === 'delivered' ? '✓ Entregada' : order.status === 'ready' ? '✓ Lista' : order.status === 'preparing' ? '🔥 Preparando' : '📦 Nueva'}
+                        </span>
+                      </div>
+                      <div className="cmd-history-item-total">
+                        <MoneyWithBcv usd={order.totalAmount || 0} compact />
+                        <span className={`cmd-history-paid-badge ${order.isPaid ? 'paid' : 'unpaid'}`}>
+                          {order.isPaid ? order.paymentMethod : '⚠️ Sin cobrar'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <footer className="cmd-history-footer">
+              <span>{filteredHistoryOrders.length} comanda{filteredHistoryOrders.length !== 1 ? 's' : ''} en los últimos 30 días</span>
+            </footer>
           </div>
         </div>,
         document.body
