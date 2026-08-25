@@ -882,6 +882,15 @@ export async function removeOrderItem(orderItemId: string): Promise<void> {
 }
 
 /**
+ * Elimina una comanda completa y revierte el consumo de inventario de todos sus
+ * items. Solo permite eliminar comandas no cobradas.
+ */
+export async function deleteOrder(orderId: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_order', { p_order_id: orderId })
+  if (error) throw error
+}
+
+/**
  * Fija (o quita) el costo de delivery de una comanda sin cobrar. El cargo se
  * guarda como el renglón del producto oculto "Delivery". Se elimina el renglón
  * previo (si existe) y se inserta uno nuevo con el monto; fee 0 sólo lo quita.

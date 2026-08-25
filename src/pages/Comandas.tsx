@@ -9,6 +9,7 @@ import {
   recordOrderPayments,
   updateOrderStatus,
   removeOrderItem,
+  deleteOrder,
   setOrderDeliveryFee,
   type PaymentMethod,
   type CartItem,
@@ -203,6 +204,10 @@ export function Comandas() {
   const [removeError, setRemoveError] = useState('')
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('')
   const [savingDelivery, setSavingDelivery] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deletePin, setDeletePin] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
   useEffect(() => {
@@ -255,6 +260,27 @@ export function Comandas() {
       setRemoveError(e instanceof Error ? e.message : 'No se pudo quitar el producto')
     } finally {
       setRemovingItemId(null)
+    }
+  }
+
+  const handleDeleteOrder = async () => {
+    if (deletePin !== '2850') {
+      setDeleteError('PIN incorrecto')
+      return
+    }
+    if (!selectedOrder) return
+    setDeleting(true)
+    setDeleteError('')
+    try {
+      await deleteOrder(selectedOrder.id)
+      setSelectedOrder(null)
+      setShowDeleteModal(false)
+      setDeletePin('')
+      setReloadToken((value) => value + 1)
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la comanda')
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -940,7 +966,14 @@ export function Comandas() {
                 )}
                 <div className="cmd-badge delivery">{selectedOrder.orderType}</div>
               </div>
-              <button className="cmd-close-btn" onClick={() => setSelectedOrder(null)}><X size={20} /></button>
+              <div className="cmd-header-actions">
+                {!selectedOrder.isPaid && (
+                  <button className="cmd-delete-btn" onClick={() => setShowDeleteModal(true)} title="Eliminar comanda">
+                    <Trash2 size={18} />
+                  </button>
+                )}
+                <button className="cmd-close-btn" onClick={() => setSelectedOrder(null)}><X size={20} /></button>
+              </div>
             </header>
 
             <div className="cmd-modal-meta">
@@ -1255,6 +1288,36 @@ export function Comandas() {
                 <button className="cmd-btn-secondary" onClick={() => setSelectedOrder(null)}>Cerrar</button>
               </div>
             </footer>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* Modal PIN para eliminar comanda */}
+      {showDeleteModal && createPortal(
+        <div className="cmd-modal-overlay" onClick={() => { setShowDeleteModal(false); setDeletePin(''); setDeleteError('') }}>
+          <div className="cmd-pin-modal animate-pop" onClick={e => e.stopPropagation()}>
+            <div className="cmd-pin-header">
+              <ShieldCheck size={24} className="cmd-pin-icon" />
+              <h3>Autorización requerida</h3>
+            </div>
+            <p className="cmd-pin-text">Ingrese el PIN de administrador para eliminar la comanda <strong>{selectedOrder?.orderNumber}</strong></p>
+            <input
+              type="password"
+              className="cmd-pin-input"
+              placeholder="PIN"
+              maxLength={4}
+              value={deletePin}
+              onChange={e => { setDeletePin(e.target.value); setDeleteError('') }}
+              onKeyDown={e => { if (e.key === 'Enter') handleDeleteOrder() }}
+              autoFocus
+            />
+            {deleteError && <p className="cmd-pin-error">{deleteError}</p>}
+            <div className="cmd-pin-actions">
+              <button className="cmd-btn-secondary" onClick={() => { setShowDeleteModal(false); setDeletePin(''); setDeleteError('') }}>Cancelar</button>
+              <button className="cmd-btn-danger" onClick={handleDeleteOrder} disabled={deleting || deletePin.length < 4}>
+                <Trash2 size={16} /> {deleting ? 'Eliminando…' : 'Eliminar comanda'}
+              </button>
+            </div>
           </div>
         </div>,
         document.body

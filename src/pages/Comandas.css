@@ -1117,6 +1117,78 @@
 }
 .cmd-close-btn:hover { background: #333; color: #fff; }
 
+.cmd-header-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cmd-delete-btn {
+  background: #222;
+  border: none;
+  color: #9ca3af;
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.cmd-delete-btn:hover { background: #ef4444; color: #fff; }
+
+/* PIN Modal */
+.cmd-pin-modal {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 24px;
+  width: 340px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.cmd-pin-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.cmd-pin-icon { color: #f97316; }
+.cmd-pin-header h3 { margin: 0; font-size: 16px; color: #fff; }
+.cmd-pin-text { font-size: 13px; color: #9ca3af; margin: 0 0 16px; line-height: 1.5; }
+.cmd-pin-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-size: 18px;
+  text-align: center;
+  letter-spacing: 8px;
+  outline: none;
+  box-sizing: border-box;
+}
+.cmd-pin-input:focus { border-color: #f97316; }
+.cmd-pin-error { color: #ef4444; font-size: 12px; margin: 8px 0 0; }
+.cmd-pin-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+.cmd-btn-danger {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: 0.2s;
+}
+.cmd-btn-danger:hover { background: #dc2626; }
+.cmd-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* Meta Bar */
 .cmd-modal-meta {
   display: grid;
