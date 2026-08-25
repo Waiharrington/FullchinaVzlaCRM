@@ -28,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'Solo se pueden eliminar pedidos web pendientes de confirmación.';
   END IF;
 
-  DELETE FROM fullchinavzla.web_order_items WHERE web_order_request_id = p_request_id;
+  DELETE FROM fullchinavzla.web_order_items WHERE request_id = p_request_id;
   DELETE FROM fullchinavzla.web_order_requests WHERE id = p_request_id;
 END;
 $function$;
