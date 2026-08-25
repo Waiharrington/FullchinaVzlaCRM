@@ -537,17 +537,41 @@ export function PublicMenu() {
     setSelectedExtras([])
     setDetailModifierGroups([])
     const productId = group.variants[0]?.product.id
+    const isExtrasEligible = !group.variants.some(v =>
+      v.product.categories.includes('bebidas') || v.product.categories.includes('extras')
+    )
     if (productId) {
-      // Muestra los extras/opciones reales del plato. Si no tiene (ej. bebidas),
-      // no se muestra ninguna sección.
       getPublicProductModifiers(productId)
-        .then(groups => setDetailModifierGroups(groups.filter(item => item.options.length > 0)))
+        .then(groups => {
+          const real = groups.filter(item => item.options.length > 0)
+          if (isExtrasEligible) {
+            const extrasProducts = products.filter(p => p.categories.includes('extras'))
+            if (extrasProducts.length > 0) {
+              real.push({
+                modifierId: '__catalog_extras__',
+                name: 'Extras',
+                minSelections: 0,
+                maxSelections: null,
+                allowRepeat: false,
+                options: extrasProducts.map(p => ({
+                  id: p.id,
+                  name: p.name.replace(/^[^—]+—\s*/, ''),
+                  price: p.price,
+                })),
+              })
+            }
+          }
+          setDetailModifierGroups(real)
+        })
         .catch(() => setDetailModifierGroups([]))
     }
   }
 
   const selectedProduct = selectedGroup?.variants.find(({ product }) => product.id === selectedVariantId)?.product
     ?? selectedGroup?.variants[0]?.product
+  const detailExtrasTotal = detailModifierGroups
+    .flatMap(g => g.options.filter(o => selectedExtras.includes(o.id)))
+    .reduce((sum, o) => sum + o.price, 0)
 
   const addSelectedProduct = () => {
     if (selectedProduct) {
@@ -1957,7 +1981,7 @@ export function PublicMenu() {
                 <span>{detailQuantity}</span>
                 <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
               </div>
-              <button type="button" className="ppdm-add-btn" onClick={addSelectedProduct}>Agregar · {money(selectedProduct.price * detailQuantity)}</button>
+              <button type="button" className="ppdm-add-btn" onClick={addSelectedProduct}>Agregar · {money((selectedProduct.price + detailExtrasTotal) * detailQuantity)}</button>
             </footer>
           </section>
         </div>
