@@ -1,7 +1,7 @@
 /**
- * Cálculo de delivery por distancia. Usa la fórmula de Haversine (distancia
- * geográfica en línea recta) multiplicada por un factor de ruta para aproximar
- * los kilómetros reales por calle, sin depender de APIs de pago.
+ * Cálculo de delivery por distancia. Usa OSRM (gratis) para obtener la
+ * distancia real por carretera, con fallback a Haversine × roadFactor si
+ * la API no responde.
  */
 
 export interface DeliveryZone {
@@ -51,10 +51,23 @@ export function zoneForDistance(distanceKm: number, zones: DeliveryZone[]): Deli
   return null
 }
 
+/** Distancia real por carretera vía OSRM (gratis, sin API key). */
+async function osrmRouteKm(aLat: number, aLng: number, bLat: number, bLng: number): Promise<number | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${aLng},${aLat};${bLng},${bLat}?overview=false`
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json() as { code?: string; routes?: Array<{ distance?: number }> }
+    if (data.code !== 'Ok' || !data.routes?.[0]?.distance) return null
+    return data.routes[0].distance / 1000
+  } catch {
+    return null
+  }
+}
+
 /**
- * Estima el costo de delivery entre el origen y el destino del cliente.
- * Devuelve la distancia (ya ajustada por el factor de ruta), la zona aplicable
- * y el costo. Si no hay origen o el destino cae fuera de las zonas, fee = null.
+ * Estima el costo de delivery (síncrono, Haversine × roadFactor).
+ * Usado como fallback y en el probador del admin.
  */
 export function estimateDelivery(settings: DeliverySettings, destLat: number, destLng: number): DeliveryEstimate | null {
   if (settings.originLat == null || settings.originLng == null) return null
@@ -62,4 +75,18 @@ export function estimateDelivery(settings: DeliverySettings, destLat: number, de
   const distanceKm = straight * (settings.roadFactor || 1)
   const zone = zoneForDistance(distanceKm, settings.zones)
   return { distanceKm, zone, fee: zone ? zone.price : null }
+}
+
+/**
+ * Estima el costo de delivery usando la distancia real por carretera (OSRM).
+ * Si OSRM no responde, usa Haversine × roadFactor como fallback.
+ */
+export async function estimateDeliveryAsync(settings: DeliverySettings, destLat: number, destLng: number): Promise<DeliveryEstimate | null> {
+  if (settings.originLat == null || settings.originLng == null) return null
+  const routeKm = await osrmRouteKm(settings.originLat, settings.originLng, destLat, destLng)
+  if (routeKm != null) {
+    const zone = zoneForDistance(routeKm, settings.zones)
+    return { distanceKm: routeKm, zone, fee: zone ? zone.price : null }
+  }
+  return estimateDelivery(settings, destLat, destLng)
 }

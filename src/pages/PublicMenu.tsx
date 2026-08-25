@@ -4,7 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
-import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
+import { estimateDeliveryAsync, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -257,6 +257,7 @@ export function PublicMenu() {
   const [notes, setNotes] = useState('')
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null)
+  const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -373,10 +374,16 @@ export function PublicMenu() {
   })()
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  // Estimado de delivery según la distancia (solo si hay origen, zonas y ubicación).
-  const deliveryEstimate = (orderType === 'delivery' && geoCoords && deliverySettings && deliverySettings.enabled)
-    ? estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng)
-    : null
+  useEffect(() => {
+    if (orderType !== 'delivery' || !geoCoords || !deliverySettings?.enabled) {
+      setDeliveryEstimate(null)
+      return
+    }
+    let cancelled = false
+    estimateDeliveryAsync(deliverySettings, geoCoords.lat, geoCoords.lng)
+      .then(est => { if (!cancelled) setDeliveryEstimate(est) })
+    return () => { cancelled = true }
+  }, [orderType, geoCoords, deliverySettings])
   const deliveryFeeText = orderType !== 'delivery'
     ? 'No aplica'
     : deliveryEstimate && deliveryEstimate.fee != null
