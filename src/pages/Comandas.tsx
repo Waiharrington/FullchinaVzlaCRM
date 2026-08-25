@@ -10,6 +10,7 @@ import {
   updateOrderStatus,
   removeOrderItem,
   deleteOrder,
+  deleteWebOrder,
   setOrderDeliveryFee,
   type PaymentMethod,
   type CartItem,
@@ -272,7 +273,11 @@ export function Comandas() {
     setDeleting(true)
     setDeleteError('')
     try {
-      await deleteOrder(selectedOrder.id)
+      if (selectedOrder.source === 'web' && selectedOrder.webRequestId) {
+        await deleteWebOrder(selectedOrder.webRequestId)
+      } else {
+        await deleteOrder(selectedOrder.id)
+      }
       setSelectedOrder(null)
       setShowDeleteModal(false)
       setDeletePin('')

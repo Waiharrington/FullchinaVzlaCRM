@@ -891,6 +891,14 @@ export async function deleteOrder(orderId: string): Promise<void> {
 }
 
 /**
+ * Elimina un pedido web pendiente (web_order_requests) y sus items.
+ */
+export async function deleteWebOrder(requestId: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_web_order', { p_request_id: requestId })
+  if (error) throw new Error(error.message || 'No se pudo eliminar el pedido web')
+}
+
+/**
  * Fija (o quita) el costo de delivery de una comanda sin cobrar. El cargo se
  * guarda como el renglón del producto oculto "Delivery". Se elimina el renglón
  * previo (si existe) y se inserta uno nuevo con el monto; fee 0 sólo lo quita.
