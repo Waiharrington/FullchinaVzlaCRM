@@ -12,7 +12,7 @@ import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
-import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
+import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
 import './PublicMenu.css'
 
 declare global { interface Window { __removeFCSplash?: () => void } }
@@ -34,12 +34,12 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const DESKTOP_CATEGORY_CARDS = [
   { id: 'Todos', label: 'Todo', icon: '/optimized/menu-icons/menu.webp' },
+  { id: 'promociones', label: 'Promociones', icon: '/optimized/menu-icons/promociones.webp', isPromo: true },
+  { id: 'bebidas', label: 'Bebidas', icon: '/optimized/menu-icons/bebidas.webp' },
   { id: 'arroz', label: 'Arroz', icon: '/optimized/menu-icons/arroz chino.webp' },
   { id: 'chopsuey', label: 'Chopsuey', icon: '/optimized/menu-icons/Chopsuey.webp' },
   { id: 'tallarines', label: 'Tallarines', icon: '/optimized/menu-icons/pastas.webp' },
   { id: 'pastas', label: 'Pastas', icon: '/optimized/menu-icons/pastas.webp' },
-  { id: 'promociones', label: 'Promociones', icon: '/optimized/menu-icons/promociones.webp', isPromo: true },
-  { id: 'bebidas', label: 'Bebidas', icon: '/optimized/menu-icons/bebidas.webp' },
   { id: 'individuales', label: 'Individuales', icon: '/optimized/menu-icons/individuales.webp' },
   { id: 'raciones', label: 'Raciones', icon: '/optimized/menu-icons/raciones.webp' },
 ]
@@ -322,8 +322,9 @@ export function PublicMenu() {
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
-    extracted.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
-    return ['Todos', ...extracted];
+    const allCats = Array.from(new Set([...MENU_CATEGORY_ORDER, ...extracted]));
+    allCats.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
+    return ['Todos', ...allCats.filter(c => c !== 'otros')];
   }, [products]);
   const groups = useMemo(() => groupMenuProducts(products.filter(product => {
     const categoryMatch = activeCategory === 'Todos' || product.categories.includes(activeCategory)
@@ -808,34 +809,12 @@ export function PublicMenu() {
 
   const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
 
-  const handleAddCombo = () => {
-    const comboGroup = groups.find(g => 
-      g.name.toLowerCase().includes('todos') || 
-      g.name.toLowerCase().includes('pana') || 
-      g.name.toLowerCase().includes('combo') || 
-      g.category === 'combos'
-    ) || popularGroups[0]
-
-    if (comboGroup && comboGroup.variants[0]) {
-      addProduct(comboGroup.variants[0].product, 1)
-    }
-  }
 
   const renderProductCard = (group: MenuProductGroup, priority = false) => {
-    const isPopular = group.category.toLowerCase().includes('popular') || group.category === 'Todos' || group.minPrice > 20
-    const isSpicy = group.name.toLowerCase().includes('saltado') || group.name.toLowerCase().includes('picante')
-    const badgeLabel = isSpicy ? 'Picante' : isPopular ? 'Más pedido' : null
-
     return (
       <article className="public-prod-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-prod-img-wrap">
           <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className="public-prod-img" alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
-          {badgeLabel && (
-            <span className={`public-prod-tag ${isSpicy ? 'spicy' : 'popular'}`}>
-              <span className="mobile-only">{isSpicy ? '🌶️ Picante' : '🔥 Más pedido'}</span>
-              <span className="desktop-only public-prod-tag-vector"><Flame size={12} aria-hidden="true" />{badgeLabel}</span>
-            </span>
-          )}
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         </div>
         <div className="public-prod-info">
@@ -856,20 +835,12 @@ export function PublicMenu() {
     )
   }
 
-  const renderDesktopProductCard = (group: MenuProductGroup, index: number) => {
-    const badges = [
-      { label: 'Más pedido', color: 'badge-red' },
-      { label: 'Favorito', color: 'badge-amber' },
-      { label: 'Popular', color: 'badge-gold' },
-      { label: 'Nuevo', color: 'badge-green' },
-    ]
-    const badge = badges[index % badges.length]
+  const renderDesktopProductCard = (group: MenuProductGroup, _index: number) => {
     const qty = getCardQty(group.key)
 
     return (
       <article className="public-home-product-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-home-prod-img-wrap">
-          <span className={`public-home-prod-badge ${badge.color}`}>{badge.label}</span>
           <img 
             src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
             alt={group.name} 
@@ -922,22 +893,15 @@ export function PublicMenu() {
     )
   }
 
-  const renderDesktopPromoCard = (group: MenuProductGroup, index: number) => {
-    const promoSavingsList = [15.00, 8.00, 10.00, 6.00]
-    const savingAmount = promoSavingsList[index % promoSavingsList.length]
-    const originalPrice = group.minPrice + savingAmount
-
+  const renderDesktopPromoCard = (group: MenuProductGroup, _index: number) => {
     return (
       <article className="public-home-promo-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-home-promo-top">
           <h3 className="public-home-promo-title">{productTitle(group.name)}</h3>
           <div className="public-home-promo-price-row">
             <span className="public-home-promo-price">{money(group.minPrice)}</span>
-            <span className="public-home-promo-old-price">{money(originalPrice)}</span>
           </div>
-          <div className="public-home-promo-savings">
-            <span>Ahorras {money(savingAmount)}</span>
-          </div>
+
         </div>
 
         <div className="public-home-promo-img-wrap">
@@ -970,7 +934,7 @@ export function PublicMenu() {
         {showSearch ? (
           <div className={`public-search-active-overlay ${closingSearch ? 'closing' : ''}`}>
             <div className="public-search-pill">
-              <Search size={20} color="#FFD666" />
+              <Search size={20} />
               <input 
                 autoFocus 
                 placeholder="Busca Arroz, combos, pollo..." 
@@ -1055,7 +1019,7 @@ export function PublicMenu() {
         {/* 2. Hero Status */}
         <div className="public-hero-header">
           <div className="public-hero-title-row">
-            <h1>¿Qué provoca hoy? 🔥</h1>
+            <h1>¿Qué provoca hoy? <Flame size={22} className="fire-icon-pulse" /></h1>
             {bcvRate && (
               <span className="public-rate-badge" title="Tasa oficial del Banco Central de Venezuela">
                 <span className="public-rate-badge-label">Dólar BCV</span>
@@ -1071,7 +1035,7 @@ export function PublicMenu() {
         {/* 3. Recommended Card */}
         <div className="public-recommended-card">
           <div className="public-recommended-copy">
-            <small>RECOMENDADO 🔥</small>
+            <small>RECOMENDADO <Flame size={12} /></small>
             <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
             <p>{getEditorialDescription(recommendedGroup?.variants[0]?.product.name ?? '', recommendedGroup?.variants[0]?.product.description ?? 'Elige tu favorito y arma tu pedido.')}</p>
             {recommendedGroup && <span className="public-recommended-price">{money(recommendedGroup.minPrice)}</span>}
@@ -1124,7 +1088,7 @@ export function PublicMenu() {
             <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
               {visibleGroups.length === 0 ? (
                 <div className="public-empty-menu">
-                  <span>🍜</span>
+                  <span><Utensils size={42} /></span>
                   <h3>{showFavorites ? 'Todavía no tienes favoritos' : 'No encontramos ese plato'}</h3>
                   <p>{showFavorites ? 'Toca el corazón de un plato para guardarlo en este dispositivo.' : 'Prueba con otro nombre o vuelve a ver todo el menú.'}</p>
                   <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
@@ -1157,7 +1121,7 @@ export function PublicMenu() {
 
                 <div className="public-hero-left">
                   <span className="public-hero-tag">
-                    <Flame size={14} color="#FF5A52" className="fire-icon-pulse" />
+                    <Flame size={14} className="fire-icon-pulse" />
                     AUTÉNTICO SABOR AL WOK
                   </span>
                   <h1 className="public-hero-main-title">
@@ -1169,7 +1133,7 @@ export function PublicMenu() {
 
                   <div className="public-hero-search-row">
                     <div className="public-hero-search-box">
-                      <Search size={18} color="#9DA0A6" />
+                      <Search size={18} />
                       <input 
                         placeholder="Buscar platos, combos o bebidas..." 
                         value={search} 
@@ -1208,7 +1172,34 @@ export function PublicMenu() {
                 </div>
               </section>
 
-              {/* 2. NUESTRAS CATEGORÍAS */}
+              {/* 2. PEDIR ES MUY FÁCIL */}
+              <section className="public-home-section public-howto-section">
+                <div className="public-howto-banner">
+                  <div className="public-howto-header">
+                    <h2 className="public-howto-title">PEDIR ES MUY FÁCIL</h2>
+                    <p className="public-howto-sub">En solo 3 pasos, tu antojo en camino.</p>
+                  </div>
+                  <div className="public-howto-steps">
+                    <div className="public-howto-step">
+                      <div className="public-howto-step-num"><span>1</span></div>
+                      <h4>Elige tus platos</h4>
+                      <p>Explora el menú y agrega lo que más te guste.</p>
+                    </div>
+                    <div className="public-howto-step">
+                      <div className="public-howto-step-num"><span>2</span></div>
+                      <h4>Arma tu pedido</h4>
+                      <p>Revisa tu carrito y confirma tu selección.</p>
+                    </div>
+                    <div className="public-howto-step">
+                      <div className="public-howto-step-num"><span>3</span></div>
+                      <h4>Confirma por WhatsApp</h4>
+                      <p>Te escribiremos para validar tu pedido.</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 3. NUESTRAS CATEGORÍAS */}
               <section className="public-home-section">
                 <div className="public-home-section-header">
                   <div className="public-home-section-title-wrap">
@@ -1268,52 +1259,7 @@ export function PublicMenu() {
                 </div>
               </section>
 
-              {/* 4. Panoramic Combo Promo Banner */}
-              <section className="public-combo-banner">
-                <div className="public-combo-left">
-                  <div className="public-combo-title-stack">
-                    <span className="public-combo-title-white">COMBO</span>
-                    <span className="public-combo-title-gold">FULL CHINA</span>
-                  </div>
-                  <span className="public-combo-subtitle">Más sabor, más por tu plata.</span>
-                </div>
 
-                <div className="public-combo-visual">
-                  <div className="public-combo-dish-wrap">
-                    <img src="/productos/M1.jpg" alt="Arroz Chaufa Especial" className="public-combo-dish-img" />
-                  </div>
-                  <span className="public-combo-plus">+</span>
-                  <div className="public-combo-dish-wrap">
-                    <img src="/productos/M11.jpg" alt="Tallarín Saltado Especial" className="public-combo-dish-img" />
-                  </div>
-                  <span className="public-combo-plus">+</span>
-                  <div className="public-combo-dish-wrap drink-wrap">
-                    <img src="/optimized/menu-icons/bebidas.webp" alt="Gaseosa 1L" className="public-combo-drink-img" />
-                  </div>
-                </div>
-
-                <div className="public-combo-items-list">
-                  <span>Arroz Chaufa Especial</span>
-                  <span>+ Tallarín Saltado Especial</span>
-                  <span>+ Gaseosa 1L</span>
-                </div>
-
-                <div className="public-combo-right-price">
-                  <div className="public-combo-price-stack">
-                    <span className="public-combo-price">USD 22,90</span>
-                    <span className="public-combo-badge">Ahorra $ 6.00</span>
-                  </div>
-                  <button 
-                    type="button" 
-                    className="public-combo-order-btn"
-                    onClick={handleAddCombo}
-                    aria-label="Agregar Combo Full China al pedido"
-                  >
-                    <Plus size={15} />
-                    <span>Agregar combo</span>
-                  </button>
-                </div>
-              </section>
 
               {/* 5. ¿CÓMO QUIERES RECIBIR TU PEDIDO? */}
               <section className="public-home-section">
@@ -1334,18 +1280,6 @@ export function PublicMenu() {
                         <span className="del-badge"><ShieldCheck size={13} /> Seguro</span>
                         <span className="del-badge"><MapPin size={13} /> Cobertura</span>
                       </div>
-                      <button 
-                        type="button" 
-                        className="public-home-delivery-btn"
-                        onClick={() => {
-                          setOrderType('delivery');
-                          setCurrentTab('menu');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <span>Pedir con delivery</span>
-                        <ChevronRight size={15} />
-                      </button>
                     </div>
                   </div>
 
@@ -1359,62 +1293,6 @@ export function PublicMenu() {
                         <span className="del-badge"><ShoppingBag size={13} /> Listo</span>
                         <span className="del-badge"><Zap size={13} /> Veloz</span>
                       </div>
-                      <button 
-                        type="button" 
-                        className="public-home-delivery-btn"
-                        onClick={() => {
-                          setOrderType('takeaway');
-                          setCurrentTab('menu');
-                          window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                      >
-                        <span>Pedir para retirar</span>
-                        <ChevronRight size={15} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 6. PEDIR ES MUY FÁCIL */}
-              <section className="public-home-section">
-                <div className="public-home-section-header">
-                  <div className="public-home-section-title-wrap">
-                    <h2 className="public-home-section-title">PEDIR ES MUY FÁCIL</h2>
-                    <p className="public-home-section-sub">En solo 3 pasos, tu antojo en camino.</p>
-                  </div>
-                </div>
-
-                <div className="public-home-steps-grid">
-                  <div className="public-home-step-card step-orange">
-                    <div className="public-home-step-icon-wrap">
-                      <Utensils size={28} color="#FF9119" />
-                    </div>
-                    <div className="public-home-step-text">
-                      <h4>Elige tus platos</h4>
-                      <p>Explora el menú y agrega lo que más te guste.</p>
-                    </div>
-                  </div>
-
-                  <div className="public-home-step-card step-red">
-                    <div className="public-home-step-icon-wrap">
-                      <ShoppingCart size={28} color="#FF3B30" />
-                    </div>
-                    <div className="public-home-step-text">
-                      <h4>Arma tu pedido</h4>
-                      <p>Revisa tu carrito y confirma tu selección.</p>
-                    </div>
-                  </div>
-
-                  <div className="public-home-step-card step-green">
-                    <div className="public-home-step-icon-wrap">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28">
-                        <path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
-                      </svg>
-                    </div>
-                    <div className="public-home-step-text">
-                      <h4>Confirma por WhatsApp</h4>
-                      <p>Te escribiremos para validar tu pedido.</p>
                     </div>
                   </div>
                 </div>
@@ -1537,52 +1415,7 @@ export function PublicMenu() {
                 </div>
               </div>
 
-              {/* Panoramic Combo Promo Banner */}
-              <section className="public-combo-banner" style={{ margin: '0 0 24px 0' }}>
-                <div className="public-combo-left">
-                  <div className="public-combo-title-stack">
-                    <span className="public-combo-title-white">COMBO</span>
-                    <span className="public-combo-title-gold">FULL CHINA</span>
-                  </div>
-                  <span className="public-combo-subtitle">Más sabor, más por tu plata.</span>
-                </div>
 
-                <div className="public-combo-visual">
-                  <div className="public-combo-dish-wrap">
-                    <img src="/productos/M1.jpg" alt="Arroz Chaufa Especial" className="public-combo-dish-img" />
-                  </div>
-                  <span className="public-combo-plus">+</span>
-                  <div className="public-combo-dish-wrap">
-                    <img src="/productos/M11.jpg" alt="Tallarín Saltado Especial" className="public-combo-dish-img" />
-                  </div>
-                  <span className="public-combo-plus">+</span>
-                  <div className="public-combo-dish-wrap drink-wrap">
-                    <img src="/optimized/menu-icons/bebidas.webp" alt="Gaseosa 1L" className="public-combo-drink-img" />
-                  </div>
-                </div>
-
-                <div className="public-combo-items-list">
-                  <span>Arroz Chaufa Especial</span>
-                  <span>+ Tallarín Saltado Especial</span>
-                  <span>+ Gaseosa 1L</span>
-                </div>
-
-                <div className="public-combo-right-price">
-                  <div className="public-combo-price-stack">
-                    <span className="public-combo-price">USD 22,90</span>
-                    <span className="public-combo-badge">Ahorra $ 6.00</span>
-                  </div>
-                  <button 
-                    type="button" 
-                    className="public-combo-order-btn"
-                    onClick={handleAddCombo}
-                    aria-label="Agregar Combo Full China al pedido"
-                  >
-                    <Plus size={15} />
-                    <span>Pedir Combo</span>
-                  </button>
-                </div>
-              </section>
 
               <div className="public-category-grid">
                 {promoGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < 6))}
@@ -1597,7 +1430,7 @@ export function PublicMenu() {
                 <HeroWokEmbers />
                 <div className="public-hero-left public-contact-hero-copy">
                   <span className="public-hero-tag">
-                    <Flame size={14} color="#FF5A52" className="fire-icon-pulse" />
+                    <Flame size={14} className="fire-icon-pulse" />
                     ESTAMOS PARA SERVIRTE
                   </span>
                   <h1 className="public-hero-main-title">
@@ -1744,7 +1577,7 @@ export function PublicMenu() {
             {/* Sidebar Header */}
             <div className="public-sidebar-head">
               <div className="public-sidebar-title">
-                <ShoppingBag size={18} color="#FF3D2E" />
+                <ShoppingBag size={18} />
                 <span>Tu pedido</span>
               </div>
               {cart.length > 0 && (
@@ -1874,7 +1707,7 @@ export function PublicMenu() {
                 {/* Address Input Box */}
                 {orderType === 'delivery' && (
                   <div className="public-sidebar-address-box" onClick={() => { setCartOpen(true); setStep('address'); }}>
-                    <MapPin size={16} color="#FF5A52" />
+                    <MapPin size={16} />
                     <input 
                       readOnly 
                       placeholder="Ingresa tu dirección de entrega" 
@@ -1917,7 +1750,7 @@ export function PublicMenu() {
             <div className="public-cart-bar-text"><h4>{addFeedback.name}</h4><p>Añadido al carrito</p></div>
           </div> : <div className="public-cart-bar-info">
             <div className={`public-cart-bar-icon ${cartPulse ? 'is-pulsing' : ''}`}>
-              <ShoppingCart size={24} color="#FFF" />
+              <ShoppingCart size={24} />
               <span className={`public-cart-bar-badge ${cartPulse ? 'is-pulsing' : ''}`}>{itemCount}</span>
             </div>
             <div className="public-cart-bar-text"><h4>{itemCount} producto{itemCount !== 1 ? 's' : ''}</h4><p>Ver tu pedido</p></div>
@@ -1995,9 +1828,9 @@ export function PublicMenu() {
       )}
 
       {cartOpen && <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia('(min-width: 1024px)').matches; if (step === 'details') { if (isDesktop) { if (orderType === 'delivery') { setStep('address'); } else { closeCart(); } } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { if (isDesktop) { closeCart(); } else { setStep('delivery'); } } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing' || step === 'sent') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2>{step !== 'confirm' && <Flame className="desktop-only public-review-heading-icon" size={24} aria-hidden="true" />}{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
+        <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia('(min-width: 1024px)').matches; if (step === 'details') { if (isDesktop) { if (orderType === 'delivery') { setStep('address'); } else { closeCart(); } } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { if (isDesktop) { closeCart(); } else { setStep('delivery'); } } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing' || step === 'sent') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className="public-cart-guard" role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
-        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-empty-cart"><ShoppingCart /><strong>Tu carrito está vacío</strong><span>Agrega un plato para comenzar tu pedido.</span></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><span className="mobile-only">🔥</span><Flame className="desktop-only" size={18} aria-hidden="true" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}<div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>{cart.length ? 'Productos seleccionados' : 'Agrega un producto para comenzar'}</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div><button className="public-primary" disabled={!cart.length} onClick={() => requireCart() && setStep('delivery')}>{cart.length ? 'Continuar' : 'Elegir productos'} <ChevronRight /></button></div>}
+        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/fondos/carrito-vacio.png" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
         {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<AddressMap coordinates={geoCoords} onPick={selectMapLocation} /><div className="public-address-selected"><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span></div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className="public-address-extra"><span>Casa / edificio / referencia</span><input value={addressReference} onChange={event => setAddressReference(event.target.value)} placeholder="Ej. Torre B, Piso 4, Apt. 4B" /></label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div>{addressError && <p className="public-address-error" role="alert">{addressError}</p>}<button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
         {step === 'details' && (

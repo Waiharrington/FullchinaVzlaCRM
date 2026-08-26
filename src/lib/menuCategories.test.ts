@@ -4,8 +4,8 @@ import { classifyMenuCategory, MENU_CATEGORY_ORDER } from './menuCategories'
 describe('categorías editoriales del menú', () => {
   it('mantiene el orden acordado', () => {
     expect(MENU_CATEGORY_ORDER).toEqual([
-      'promociones', 'arroz', 'tallarines', 'pastas', 'chopsuey',
-      'individuales', 'ejecutivos', 'raciones', 'extras', 'bebidas', 'otros',
+      'promociones', 'bebidas', 'arroz', 'tallarines', 'pastas', 'chopsuey',
+      'individuales', 'ejecutivos', 'raciones', 'extras', 'otros',
     ])
   })
 

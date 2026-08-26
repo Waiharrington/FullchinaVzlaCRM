@@ -1,7 +1,7 @@
 /** Categorías editoriales compartidas por el menú público y el admin. */
 export const MENU_CATEGORY_ORDER = [
-  'promociones', 'arroz', 'tallarines', 'pastas', 'chopsuey',
-  'individuales', 'ejecutivos', 'raciones', 'extras', 'bebidas', 'otros',
+  'promociones', 'bebidas', 'arroz', 'tallarines', 'pastas', 'chopsuey',
+  'individuales', 'ejecutivos', 'raciones', 'extras', 'otros',
 ] as const
 
 export type MenuCategory = typeof MENU_CATEGORY_ORDER[number]
@@ -31,7 +31,12 @@ export interface MenuCategoryDef { key: string; label: string; sortOrder: number
 let registry: MenuCategoryDef[] | null = null
 
 export function hydrateMenuCategories(list: MenuCategoryDef[]) {
-  registry = [...list].sort((a, b) => a.sortOrder - b.sortOrder)
+  const sorted = [...list].sort((a, b) => a.sortOrder - b.sortOrder)
+  const dbMap = new Map(sorted.map(c => [c.key, c]))
+  registry = MENU_CATEGORY_ORDER.map((key, i) => {
+    const fromDb = dbMap.get(key)
+    return fromDb || { key, label: MENU_CATEGORY_LABELS[key], sortOrder: (i + 1) * 10 }
+  })
 }
 
 /** Claves de categor\u00eda en el orden vigente (BD si est\u00e1 hidratada, si no el fijo). */
@@ -47,7 +52,8 @@ export function isKnownCategory(key: string): boolean {
 
 /** Posici\u00f3n de una categor\u00eda para ordenar; las desconocidas van al final. */
 export function menuCategoryRank(key: string): number {
-  const index = menuCategoryKeys().indexOf(key)
+  const normalized = normalize(key)
+  const index = menuCategoryKeys().findIndex(k => normalize(k) === normalized)
   return index === -1 ? 999 : index
 }
 
