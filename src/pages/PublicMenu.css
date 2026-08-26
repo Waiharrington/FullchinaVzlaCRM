@@ -118,12 +118,14 @@ button.mobile-only {
 .public-rate-badge {
   display: inline-flex;
   flex-direction: column;
+  align-items: center;
   line-height: 1.1;
   padding: 5px 10px;
   border-radius: 12px;
   background: rgba(255, 214, 102, 0.1);
   border: 1px solid rgba(255, 214, 102, 0.35);
   margin-bottom: 6px;
+  margin-left: auto;
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -138,6 +140,7 @@ button.mobile-only {
   font-size: 12px;
   font-weight: 800;
   color: #FFD666;
+  align-self: flex-end;
 }
 .public-reco-bs {
   display: block;
@@ -1747,6 +1750,37 @@ button.mobile-only {
   }
 }
 
+/* --- Mobile icon colors (rojo #E31B2B) --------------------------- */
+
+.fire-icon-pulse { color: #E31B2B; }
+.public-top-bar-action-btn svg { color: #E31B2B; }
+.public-recommended-card svg { color: #E31B2B; }
+.public-category-grid svg { color: #E31B2B; }
+.public-product-list svg { color: #E31B2B; }
+.public-prod-card svg { color: #E31B2B; }
+.public-prod-add svg { color: #FFF; }
+.public-favorite-btn svg { color: #E31B2B; }
+.public-list-title-badge svg { color: #E31B2B; }
+.public-review-heading svg { color: #E31B2B; }
+.public-review-qty svg { color: #E31B2B; }
+.public-review-edit { color: #E31B2B; }
+.public-empty-explore-btn svg { color: #E31B2B; }
+.public-empty-cart svg { color: #E31B2B; }
+.public-location-row svg { color: #E31B2B; }
+.public-address-selected > svg { color: #E31B2B; }
+.public-suggestion-icon svg { color: #E31B2B; }
+.public-cart-guard > svg { color: #E31B2B; }
+.public-delivery-hint svg { color: #E31B2B; }
+.public-recommendation-row svg { color: #E31B2B; }
+.public-cart-recommendations svg { color: #E31B2B; }
+.public-favorites-inline svg { color: #E31B2B; }
+.public-home-section-title svg { color: #E31B2B; }
+.public-home-section-header svg { color: #E31B2B; }
+.public-home-product-card svg { color: #E31B2B; }
+.public-home-fav-btn svg { color: #E31B2B; }
+.public-hero-cta-btn svg { color: #FFF; }
+.public-empty-explore-btn svg { color: #FFF; }
+
 /* ==========================================================================
    DESKTOP VIEWPORT (>= 1024px) — MAQUETA FULL CHINA PRO
    ========================================================================== */
@@ -2068,7 +2102,12 @@ button.mobile-only {
   }
 
   .fire-icon-pulse {
+    color: #E31B2B !important;
     animation: firePulse 1.8s ease-in-out infinite alternate !important;
+  }
+
+  .public-top-bar-action-btn svg {
+    color: #E31B2B !important;
   }
 
   @keyframes firePulse {
@@ -2960,7 +2999,7 @@ button.mobile-only {
   .public-favorites-inline svg { color: #E31B2B !important; }
   .public-favorite-btn svg,
   .public-home-fav-btn svg { color: #E31B2B !important; }
-  .public-prod-add svg { color: #E31B2B !important; }
+  .public-prod-add svg { color: #FFF !important; }
   .public-prod-card svg,
   .public-home-product-card svg { color: #E31B2B !important; }
   .public-empty-explore-btn svg { color: #FFF !important; }
