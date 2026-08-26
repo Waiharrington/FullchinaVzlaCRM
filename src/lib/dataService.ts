@@ -1517,6 +1517,38 @@ export async function getCashSessionHistory(limit = 20): Promise<CashSessionSnap
   return (data ?? []).map((item: Record<string, unknown>) => mapCashSession(item))
 }
 
+export interface CashTransaction {
+  id: string
+  kind: 'payment' | 'movement'
+  direction: 'in' | 'out'
+  orderNumber: number | null
+  orderType: string | null
+  customerName: string | null
+  method: string
+  amount: number
+  referenceNumber: string | null
+  createdAt: string
+  itemsSummary: string | null
+}
+
+export async function getCashSessionTransactions(sessionId: string): Promise<CashTransaction[]> {
+  const { data, error } = await client().rpc('fn_get_cash_session_transactions', { p_session_id: sessionId })
+  if (error) throw error
+  return ((data ?? []) as Record<string, unknown>[]).map(t => ({
+    id: String(t.id),
+    kind: t.kind as 'payment' | 'movement',
+    direction: t.direction as 'in' | 'out',
+    orderNumber: t.orderNumber != null ? Number(t.orderNumber) : null,
+    orderType: t.orderType as string | null,
+    customerName: t.customerName as string | null,
+    method: String(t.method),
+    amount: Number(t.amount),
+    referenceNumber: t.referenceNumber as string | null,
+    createdAt: String(t.createdAt),
+    itemsSummary: t.itemsSummary as string | null,
+  }))
+}
+
 export async function createDailyClose(date: string, notes?: string): Promise<string> {
   const { data, error } = await client().rpc('fn_create_daily_close', {
     p_close_date: date,

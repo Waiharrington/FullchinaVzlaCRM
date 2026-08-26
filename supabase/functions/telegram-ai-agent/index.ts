@@ -10,8 +10,11 @@ Hablas en español venezolano natural, profesional y cercano. Interpretas el sig
 Cuando el usuario responde algo corto como "sí pollo", "el primero", "ese mismo" o "sí, créalo", interprétalo como respuesta directa a tu última pregunta y continúa la operación pendiente con todos los datos ya mencionados. No reinicies la conversación ni respondas con un saludo o "¿en qué te ayudo?".
 Cuando confirm_latest_draft indique que la compra quedó registrada, considera esa operación cerrada. Responde una sola vez con el resultado y no vuelvas a preparar la misma compra por un saludo o mensaje posterior. Si la herramienta indica duplicate_prevented o already_registered, explica que ya estaba registrada y que no se creó otra.
 Tienes herramientas con datos reales del esquema fullchinavzla. Úsalas cuando la persona pregunte por ventas, comandas, productos, inventario o desempeño. Nunca inventes cifras.
+Cuando recibas el análisis de una factura o comprobante en imagen, diferencia datos visibles de inferencias. Cruza proveedor e ingredientes con search_catalog, pide únicamente los datos obligatorios ausentes o ilegibles y jamás registres basándote solo en una imagen sin mostrar el borrador y recibir confirmación explícita. Una referencia de pago no demuestra por sí sola que la factura y el pago correspondan si los importes o beneficiarios no coinciden; señala la discrepancia.
 Para compras: antes de preparar el borrador usa search_catalog pasando por separado supplier_query e ingredient_query. Si hay una coincidencia exacta, úsala; si hay varias parecidas, enumera las opciones y pregunta cuál es. Si no existe el proveedor, ofrece crearlo y usa create_supplier únicamente después de que el usuario confirme claramente que desea agregarlo. Si el ingrediente no coincide exactamente pero hay una alternativa razonable, pregunta de forma natural, por ejemplo: "No veo Milanesa; ¿te refieres a Pollo?". Nunca inventes IDs ni digas que algo no existe sin haber consultado su nombre correcto. Si la moneda es bolívares usa get_bcv_rate y calcula unit_cost_usd. Prepara el borrador solo cuando todos los artículos estén resueltos; pide confirmación y usa confirm_latest_draft únicamente cuando el usuario confirme claramente.
-Para gastos o ajustes: reúne la información faltante y pide confirmación antes de registrar. Una consulta nunca reemplaza un borrador pendiente.
+Haz cálculos obvios tú misma. Si compraron 660 gramos por 2600 Bs y el ingrediente se controla en kg, convierte 660 g a 0,66 kg y calcula 2600 / 0,66 = 3939,39 Bs/kg; no preguntes el precio unitario. Convierte también mg↔g↔kg y ml↔L cuando corresponda. Muestra el cálculo y pregunta solo si la unidad o el total son ambiguos.
+Clasifica cada salida de dinero según su efecto: purchase es compra de ingredientes que aumenta inventario; expense variable es una compra o gasto que no entra al inventario y cambia con la operación; expense fixed es un gasto recurrente/estructural; expense other solo si el usuario no permite decidir entre fijo y variable. Si el usuario dice "compra no inventario", "gasto variable" o equivalente, usa expense y no modifiques stock. income es un ingreso manual diferente de una venta/comanda ya registrada. Para expense e income reúne concepto, total, moneda, fecha y cuenta si fue indicada; usa get_bcv_rate para bolívares. Siempre muestra borrador y confirma antes de escribir.
+Para gastos, ingresos o ajustes: reúne únicamente la información realmente faltante y pide confirmación antes de registrar. Una consulta nunca reemplaza un borrador pendiente.
 No menciones JSON, tablas, RPC, campos internos ni detalles técnicos. Responde de manera breve y útil. Si el usuario saluda y además pregunta algo, responde el saludo y atiende también la pregunta.`
 
 const tools = [
@@ -20,10 +23,10 @@ const tools = [
   { type: 'function', function: { name: 'get_product_ranking', description: 'Consulta productos más vendidos e ingresos por producto.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'get_open_orders', description: 'Consulta comandas abiertas o en proceso.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'get_inventory', description: 'Consulta existencias reales; puede buscar un ingrediente.', parameters: { type: 'object', properties: { search: { type: 'string' } }, additionalProperties: false } } },
-  { type: 'function', function: { name: 'search_catalog', description: 'Busca proveedores e ingredientes reales usando consultas separadas. Devuelve coincidencias exactas y sugerencias parecidas.', parameters: { type: 'object', properties: { supplier_query: { type: 'string' }, ingredient_query: { type: 'string' } }, additionalProperties: false } } },
+  { type: 'function', function: { name: 'search_catalog', description: 'Busca proveedores e ingredientes reales usando consultas separadas. Devuelve coincidencias exactas y sugerencias parecidas.', parameters: { type: 'object', properties: { supplier_query: { type: ['string', 'null'] }, ingredient_query: { type: ['string', 'null'] } }, additionalProperties: false } } },
   { type: 'function', function: { name: 'create_supplier', description: 'Crea un proveedor nuevo. Solo debe usarse después de mostrar que no existe y recibir confirmación explícita del usuario.', parameters: { type: 'object', properties: { name: { type: 'string' }, contact: { type: ['string', 'null'] }, phone: { type: ['string', 'null'] }, email: { type: ['string', 'null'] }, notes: { type: ['string', 'null'] }, explicitly_confirmed: { type: 'boolean' } }, required: ['name', 'explicitly_confirmed'], additionalProperties: false } } },
   { type: 'function', function: { name: 'get_bcv_rate', description: 'Obtiene la tasa oficial actual Bs por USD para normalizar una compra expresada en bolívares.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
-  { type: 'function', function: { name: 'prepare_operation', description: 'Guarda un borrador ya resuelto. Los IDs deben provenir de search_catalog.', parameters: { type: 'object', properties: { type: { type: 'string', enum: ['purchase', 'expense', 'inventory'] }, supplier: { type: ['string', 'null'] }, supplier_id: { type: ['string', 'null'] }, concept: { type: ['string', 'null'] }, total: { type: ['number', 'null'] }, currency: { type: ['string', 'null'] }, exchange_rate: { type: ['number', 'null'] }, payment_account: { type: ['string', 'null'] }, items: { type: 'array', items: { type: 'object', properties: { description: { type: 'string' }, ingredient_id: { type: ['string', 'null'] }, quantity: { type: 'number' }, unit: { type: ['string', 'null'] }, unit_id: { type: ['string', 'null'] }, unit_cost: { type: ['number', 'null'] }, unit_cost_usd: { type: ['number', 'null'] } }, required: ['description', 'quantity'] } } }, required: ['type', 'items'], additionalProperties: false } } },
+  { type: 'function', function: { name: 'prepare_operation', description: 'Guarda un borrador resuelto para compra con inventario, gasto sin inventario o ingreso manual. Los IDs de compras deben provenir de search_catalog.', parameters: { type: 'object', properties: { type: { type: 'string', enum: ['purchase', 'expense', 'income', 'inventory'] }, expense_category: { type: ['string', 'null'] }, supplier: { type: ['string', 'null'] }, supplier_id: { type: ['string', 'null'] }, concept: { type: ['string', 'null'] }, date: { type: ['string', 'null'] }, total: { type: ['number', 'null'] }, currency: { type: ['string', 'null'] }, exchange_rate: { type: ['number', 'null'] }, payment_account: { type: ['string', 'null'] }, notes: { type: ['string', 'null'] }, items: { type: 'array', items: { type: 'object', properties: { description: { type: 'string' }, ingredient_id: { type: ['string', 'null'] }, quantity: { type: 'number' }, unit: { type: ['string', 'null'] }, unit_id: { type: ['string', 'null'] }, unit_cost: { type: ['number', 'null'] }, unit_cost_usd: { type: ['number', 'null'] } }, required: ['description', 'quantity'] } } }, required: ['type'], additionalProperties: false } } },
   { type: 'function', function: { name: 'confirm_latest_draft', description: 'Confirma el último borrador pendiente cuando el usuario da aprobación inequívoca.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'cancel_latest_draft', description: 'Cancela el último borrador pendiente cuando el usuario lo solicita.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
 ]
@@ -65,11 +68,34 @@ async function hydratePurchaseItems(url: string, key: string, operation: Json) {
   const hydratedItems = []
   for (const rawItem of operation.items) {
     const item = { ...(rawItem as Json) }
-    if (item.ingredient_id && !item.unit_id) {
-      const ingredients = await db(url, key, `ingredients?id=eq.${encodeURIComponent(String(item.ingredient_id))}&select=id,unit_id&limit=1`)
-      if (ingredients?.[0]?.unit_id) item.unit_id = ingredients[0].unit_id
+    if (item.ingredient_id) {
+      const ingredients = await db(url, key, `ingredients?id=eq.${encodeURIComponent(String(item.ingredient_id))}&select=id,unit_id,units!ingredients_unit_id_fkey(symbol)&limit=1`)
+      const ingredient = ingredients?.[0]
+      if (ingredient?.unit_id) item.unit_id = ingredient.unit_id
+      const inputUnit = String(item.unit || '').toLowerCase().replace(/\s/g, '')
+      const targetUnit = String(ingredient?.units?.symbol || '').toLowerCase().replace(/\s/g, '')
+      let quantity = Number(item.quantity)
+      if (Number.isFinite(quantity) && inputUnit && targetUnit && inputUnit !== targetUnit) {
+        if ((inputUnit === 'g' || inputUnit === 'gr' || inputUnit === 'gramos') && targetUnit === 'kg') quantity /= 1000
+        else if (inputUnit === 'mg' && targetUnit === 'g') quantity /= 1000
+        else if (inputUnit === 'mg' && targetUnit === 'kg') quantity /= 1_000_000
+        else if (inputUnit === 'kg' && (targetUnit === 'g' || targetUnit === 'gr')) quantity *= 1000
+        else if ((inputUnit === 'ml' || inputUnit === 'mililitros') && (targetUnit === 'l' || targetUnit === 'lt')) quantity /= 1000
+        else if ((inputUnit === 'l' || inputUnit === 'lt' || inputUnit === 'litros') && targetUnit === 'ml') quantity *= 1000
+      }
+      if (Number.isFinite(quantity) && quantity > 0) item.quantity = quantity
+      if (targetUnit) item.unit = ingredient.units.symbol
     }
     hydratedItems.push(item)
+  }
+  if (hydratedItems.length === 1) {
+    const item = hydratedItems[0]
+    const quantity = Number(item.quantity)
+    const total = Number(operation.total)
+    const rate = Number(operation.exchange_rate)
+    const currency = String(operation.currency || 'USD').toUpperCase()
+    const totalUsd = ['VES', 'BS', 'BOLIVARES'].includes(currency) ? total / rate : total
+    if (quantity > 0 && totalUsd > 0 && Number.isFinite(totalUsd)) item.unit_cost_usd = Number((totalUsd / quantity).toFixed(6))
   }
   return { ...operation, items: hydratedItems }
 }
@@ -140,7 +166,7 @@ async function executeTool(name: string, args: Json, ctx: Json) {
     return { source: 'BCV oficial', rate_bs_per_usd: Number(rate.promedio), date: rate.fechaActualizacion }
   }
   if (name === 'prepare_operation') {
-    const hydratedOperation = await hydratePurchaseItems(supabaseUrl, serviceKey, args)
+    const hydratedOperation = await hydratePurchaseItems(supabaseUrl, serviceKey, { ...args, items: Array.isArray(args.items) ? args.items : [] })
     await db(supabaseUrl, serviceKey, 'ai_intake_messages', { method: 'POST', headers: { Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify({ source_message_id: messageId, source_chat_id: chatId, source_user_id: userId, input_kind: 'text', raw_text: rawText, extracted_data: hydratedOperation, confidence: 1, status: 'awaiting_confirmation' }) })
     return { ok: true, status: 'awaiting_confirmation', operation: hydratedOperation }
   }
@@ -156,6 +182,13 @@ async function executeTool(name: string, args: Json, ctx: Json) {
         return await db(supabaseUrl, serviceKey, 'rpc/fn_ai_finalize_purchase', { method: 'POST', body: JSON.stringify({ p_draft_id: pending[0].id, p_profile_id: identities[0].profile_id }) })
       } catch (error) {
         return { ok: false, message: error instanceof Error ? `No pude registrar la compra: ${error.message}` : 'No pude registrar la compra. Revisa los datos del borrador.' }
+      }
+    }
+    if (['expense', 'income'].includes(String(pending[0].extracted_data?.type))) {
+      try {
+        return await db(supabaseUrl, serviceKey, 'rpc/fn_ai_finalize_financial_operation', { method: 'POST', body: JSON.stringify({ p_draft_id: pending[0].id, p_profile_id: identities[0].profile_id }) })
+      } catch (error) {
+        return { ok: false, message: error instanceof Error ? `No pude registrar la operación: ${error.message}` : 'No pude registrar la operación financiera.' }
       }
     }
     return { ok: false, message: 'La escritura real de este tipo de operación todavía no está habilitada.' }
@@ -179,6 +212,57 @@ async function transcribe(fileId: string, telegramToken: string, groqKey: string
   return (await response.json()).text
 }
 
+async function telegramFile(fileId: string, telegramToken: string) {
+  const lookup = await fetch(`https://api.telegram.org/bot${telegramToken}/getFile?file_id=${encodeURIComponent(fileId)}`)
+  if (!lookup.ok) throw new Error(`telegram_file_lookup_${lookup.status}`)
+  const fileData = await lookup.json()
+  if (!fileData.result?.file_path) throw new Error('telegram_file_path_missing')
+  const file = await fetch(`https://api.telegram.org/file/bot${telegramToken}/${fileData.result.file_path}`)
+  if (!file.ok) throw new Error(`telegram_file_download_${file.status}`)
+  return { bytes: new Uint8Array(await file.arrayBuffer()), path: String(fileData.result.file_path) }
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = ''
+  const chunkSize = 0x8000
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize))
+  }
+  return btoa(binary)
+}
+
+async function inspectBusinessImage(fileId: string, telegramToken: string, groqKey: string, caption = '') {
+  const file = await telegramFile(fileId, telegramToken)
+  if (file.bytes.length > 3_500_000) throw new Error('image_too_large')
+  const extension = file.path.split('.').pop()?.toLowerCase()
+  const mimeType = extension === 'png' ? 'image/png' : extension === 'webp' ? 'image/webp' : 'image/jpeg'
+  const imageUrl = `data:${mimeType};base64,${bytesToBase64(file.bytes)}`
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'qwen/qwen3.6-27b',
+      temperature: 0,
+      max_completion_tokens: 1400,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `Analiza esta imagen administrativa de FullChinaVzla. Puede ser factura, ticket, nota de entrega o comprobante de pago móvil. Transcribe únicamente datos visibles y nunca inventes. Identifica: tipo de documento; proveedor/comercio; fecha y hora; número de factura; artículos con descripción, cantidad, unidad, precio unitario y subtotal; total, moneda e impuestos; banco emisor/receptor; monto pagado; referencia; titular o beneficiario; estado del pago. Señala claramente cada dato ilegible, dudoso o ausente. Si hay factura y pago en la misma imagen, sepáralos. Texto adjunto del usuario: ${caption || '(ninguno)'}`,
+          },
+          { type: 'image_url', image_url: { url: imageUrl } },
+        ],
+      }],
+    }),
+  })
+  if (!response.ok) throw new Error(`vision_${response.status}_${(await response.text()).slice(0, 180)}`)
+  const result = await response.json()
+  const description = result.choices?.[0]?.message?.content?.trim()
+  if (!description) throw new Error('vision_empty_response')
+  return `El usuario envió una imagen. Análisis visual fiel:\n${description}\nUsa estos datos junto con el texto adjunto. Pregunta por cualquier dato obligatorio ausente o dudoso y muestra un borrador antes de registrar.`
+}
+
 Deno.serve(async (request) => {
   if (request.method !== 'POST') return jsonResponse({ error: 'method_not_allowed' }, 405)
   try {
@@ -193,10 +277,35 @@ Deno.serve(async (request) => {
     const chatId = String(message.chat.id)
     const userId = message.from?.id ? String(message.from.id) : null
     let text = message.text || message.caption || ''
-    if (message.voice?.file_id) text = await transcribe(message.voice.file_id, telegramToken, groqKey)
-    if (!text.trim()) text = 'El usuario envió un archivo o imagen. Explícale brevemente qué información adicional necesitas.'
+    let inputKind = 'text'
+    if (message.voice?.file_id) {
+      inputKind = 'voice'
+      text = await transcribe(message.voice.file_id, telegramToken, groqKey)
+    } else if (message.photo?.length) {
+      inputKind = 'photo'
+      const bestPhoto = message.photo[message.photo.length - 1]
+      try {
+        text = await inspectBusinessImage(bestPhoto.file_id, telegramToken, groqKey, message.caption || '')
+      } catch (error) {
+        console.error('Image analysis failed:', error instanceof Error ? error.message : 'unknown')
+        text = error instanceof Error && error.message === 'image_too_large'
+          ? 'La imagen supera el tamaño que puedo analizar. Pídele al usuario reenviarla como foto comprimida o captura de pantalla.'
+          : 'No pude leer la imagen con suficiente claridad. Pídele al usuario una foto más nítida, completa, de frente y con buena iluminación.'
+      }
+    } else if (message.document?.file_id && /^image\/(jpeg|png|webp)$/i.test(message.document.mime_type || '')) {
+      inputKind = 'image_document'
+      try {
+        text = await inspectBusinessImage(message.document.file_id, telegramToken, groqKey, message.caption || '')
+      } catch (error) {
+        console.error('Image document analysis failed:', error instanceof Error ? error.message : 'unknown')
+        text = error instanceof Error && error.message === 'image_too_large'
+          ? 'La imagen supera el tamaño que puedo analizar. Pídele al usuario reenviarla como foto comprimida o captura de pantalla.'
+          : 'No pude leer la imagen con suficiente claridad. Pídele al usuario una foto más nítida, completa, de frente y con buena iluminación.'
+      }
+    }
+    if (!text.trim()) text = 'El usuario envió un archivo que no pude interpretar. Pídele una foto JPG, PNG o WEBP legible.'
 
-    const conversationId = await remember(supabaseUrl, serviceKey, chatId, userId, 'user', text, { telegram_message_id: message.message_id })
+    const conversationId = await remember(supabaseUrl, serviceKey, chatId, userId, 'user', text, { telegram_message_id: message.message_id, input_kind: inputKind })
     const messages: Json[] = [{ role: 'system', content: SYSTEM_PROMPT }, ...(await history(supabaseUrl, serviceKey, conversationId)).slice(-20)]
     let finalText = ''
     for (let turn = 0; turn < 8; turn++) {

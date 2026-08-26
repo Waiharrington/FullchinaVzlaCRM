@@ -6,14 +6,24 @@ import {
   closeCashSession,
   getActiveCashSession,
   getCashSessionHistory,
+  getCashSessionTransactions,
   openCashSession,
   type CashMovement,
   type CashSessionSnapshot,
+  type CashTransaction,
 } from '../lib/dataService'
 import './CajaOperativa.css'
 
 const PAYMENT_LABELS: Record<string, string> = {
   cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Combinado',
+}
+
+const MOVEMENT_LABELS: Record<string, string> = {
+  cash_in: 'Ingreso', cash_out: 'Salida', withdrawal: 'Retiro', expense: 'Gasto', adjustment: 'Ajuste',
+}
+
+const ORDER_TYPE_LABELS: Record<string, string> = {
+  'dine-in': 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery',
 }
 
 // Métodos que el cliente paga en bolívares: se muestran con el monto en Bs.
@@ -29,6 +39,8 @@ export function CajaOperativa() {
   const { user } = useAuth()
   const [session, setSession] = useState<CashSessionSnapshot | null>(null)
   const [history, setHistory] = useState<CashSessionSnapshot[]>([])
+  const [transactions, setTransactions] = useState<CashTransaction[]>([])
+  const [txFilter, setTxFilter] = useState<'all' | 'in' | 'out'>('all')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -57,6 +69,11 @@ export function CajaOperativa() {
       const [active, recent] = await Promise.all([getActiveCashSession(), getCashSessionHistory(10)])
       setSession(active)
       setHistory(recent)
+      if (active) {
+        getCashSessionTransactions(active.id).then(setTransactions).catch(() => setTransactions([]))
+      } else {
+        setTransactions([])
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar la caja')
     } finally {
@@ -235,6 +252,52 @@ export function CajaOperativa() {
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
             </article>
+          </section>
+
+          <section className="cash-transactions">
+            <div className="cash-card">
+              <div className="cash-card-heading">
+                <div>
+                  <span>Línea de tiempo</span>
+                  <h2>Historial de comandas</h2>
+                </div>
+                <div className="cash-tx-filters">
+                  <button className={`cash-tx-filter${txFilter === 'all' ? ' active' : ''}`} onClick={() => setTxFilter('all')}>Todo</button>
+                  <button className={`cash-tx-filter${txFilter === 'in' ? ' active' : ''}`} onClick={() => setTxFilter('in')}>Entradas</button>
+                  <button className={`cash-tx-filter${txFilter === 'out' ? ' active' : ''}`} onClick={() => setTxFilter('out')}>Salidas</button>
+                </div>
+              </div>
+              <div className="cash-tx-list">
+                {transactions.filter(t => txFilter === 'all' || t.direction === txFilter).length === 0 && (
+                  <p className="cash-empty">{txFilter === 'all' ? 'No hay transacciones en este turno.' : txFilter === 'in' ? 'No hay entradas registradas.' : 'No hay salidas registradas.'}</p>
+                )}
+                {transactions.filter(t => txFilter === 'all' || t.direction === txFilter).map(tx => (
+                  <div className="cash-tx-row" key={tx.id}>
+                    <span className={`cash-direction ${tx.direction}`}>
+                      {tx.direction === 'in' ? <ArrowDownLeft size={17} /> : <ArrowUpRight size={17} />}
+                    </span>
+                    <div className="cash-tx-info">
+                      <strong>
+                        {tx.kind === 'payment'
+                          ? `#${tx.orderNumber} · ${tx.customerName ?? 'Cliente'}`
+                          : MOVEMENT_LABELS[tx.method] ?? tx.method}
+                      </strong>
+                      <span className="cash-tx-meta">
+                        {tx.kind === 'payment' && (
+                          <>
+                            <span className="cash-tx-badge">{PAYMENT_LABELS[tx.method] ?? tx.method}</span>
+                            {tx.orderType && <span className="cash-tx-badge muted">{ORDER_TYPE_LABELS[tx.orderType] ?? tx.orderType}</span>}
+                          </>
+                        )}
+                        <span>{new Date(tx.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </span>
+                      {tx.itemsSummary && <span className="cash-tx-items">{tx.itemsSummary}</span>}
+                    </div>
+                    <b className={tx.direction}>{tx.direction === 'in' ? '+' : '-'}{money(tx.amount)}</b>
+                  </div>
+                ))}
+              </div>
+            </div>
           </section>
         </>
       )}

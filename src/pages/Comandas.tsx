@@ -751,14 +751,7 @@ export function Comandas() {
   }, [])
 
   const filteredComandas = useMemo(() => {
-    const now = new Date()
-    const hour = now.getHours()
-    const isPast2AM = hour >= 2
-
     return comandas.filter(c => {
-      // After 2 AM, remove delivered orders from the kanban board
-      if (isPast2AM && c.status === 'delivered') return false
-
       const matchSearch =
         c.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
