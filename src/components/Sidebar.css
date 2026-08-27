@@ -139,7 +139,12 @@
   font-size: 0.9rem;
   font-weight: 500;
   letter-spacing: -0.1px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Borde transparente reservado: evita el salto de ancho y el "destello
+     blanco" del borde al activarse (currentColor -> rojo). */
+  border: 1px solid transparent;
+  /* No transicionar el borde: solo fondo y color. */
+  transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   white-space: nowrap;
 }
