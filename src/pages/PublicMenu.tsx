@@ -1032,6 +1032,10 @@ export function PublicMenu() {
           MOBILE VIEWPORT (< 1024px) — 100% ORIGINAL f88d057 LAYOUT
           ========================================================================= */}
       <div className="public-mobile-view mobile-only">
+
+        {/* MENU VIEW */}
+        {currentTab !== 'contacto' && (
+          <>
         {/* 2. Hero Status */}
         <div className="public-hero-header">
           <div className="public-hero-title-row">
@@ -1161,6 +1165,148 @@ export function PublicMenu() {
             </div>
           )}
         </section>
+          </>
+        )}
+
+        {/* CONTACT VIEW */}
+        {currentTab === 'contacto' && (
+          <section className="public-contact-view public-contact-page">
+            <section className="public-cinematic-hero public-contact-hero">
+              <HeroWokEmbers />
+              <div className="public-hero-left public-contact-hero-copy">
+                <span className="public-hero-tag">
+                  <Flame size={14} className="fire-icon-pulse" />
+                  ESTAMOS PARA SERVIRTE
+                </span>
+                <h1 className="public-hero-main-title">
+                  CONTÁCTANOS <br /><span className="public-hero-gold">TE ESCUCHAMOS</span>
+                </h1>
+                <p className="public-hero-desc">Escríbenos, estamos para servirte.</p>
+                <div className="public-hero-search-row public-contact-hero-actions">
+                  {configuredPhone && (
+                    <a href={`https://wa.me/${configuredPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
+                      Escríbenos ahora <ChevronRight size={16} />
+                    </a>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="public-contact-hub">
+              <article className="public-contact-panel public-contact-talk">
+                <header className="public-order-ticket-head">
+                  <span><Flame size={14} /> Pedido directo</span>
+                  <h2>Pide sin complicarte</h2>
+                </header>
+                <div className="public-contact-status-row">
+                  <span><Clock size={14} /> Horario de atención</span>
+                  <strong>Martes a Domingo</strong>
+                  <small>Desde las 11:30 AM</small>
+                </div>
+                <div className="public-contact-payment-block">
+                  <span><Wallet size={17} /> Métodos de pago</span>
+                  <ul className="public-payment-ticket-list">
+                    <li><i>01</i><span>Efectivo USD</span></li>
+                    <li><i>02</i><span>Efectivo Bs.</span></li>
+                    <li><i>03</i><span>Pago móvil</span></li>
+                    <li><i>04</i><span>Punto de venta</span></li>
+                    <li><i>05</i><span>Binance</span></li>
+                    <li><i>06</i><span>Transferencia Bs.</span></li>
+                    <li className="is-mixed"><i>+</i><span>Pago mixto<small>Combina dos métodos</small></span></li>
+                  </ul>
+                </div>
+              </article>
+
+              <article className="public-contact-panel public-contact-instagram-studio">
+                <header className="public-order-ticket-head public-instagram-ticket-head">
+                  <span>
+                    <svg className="public-instagram-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect width="18" height="18" x="3" y="3" rx="5" />
+                      <circle cx="12" cy="12" r="4" />
+                      <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
+                    </svg>
+                    Desde Instagram
+                  </span>
+                  <h2>El wok en movimiento</h2>
+                </header>
+                <div className="public-instagram-intro">
+                  <p>Seis momentos, un solo antojo. Explora lo que está pasando en Full China.</p>
+                </div>
+                <div className="public-instagram-reel-stage" aria-label="Reels de Full China en Instagram">
+                  {INSTAGRAM_REELS.map((reel, index) => (
+                    <a
+                      key={reel.href}
+                      href={reel.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`public-instagram-reel is-reel-${index + 1}`}
+                      aria-label={`Ver reel ${index + 1} de Full China en Instagram`}
+                    >
+                      <video autoPlay muted loop playsInline preload="metadata">
+                        <source src={reel.src} type="video/mp4" />
+                      </video>
+                      <span className="public-instagram-reel-shade" aria-hidden="true" />
+                      <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
+                    </a>
+                  ))}
+                </div>
+                <a
+                  href="https://www.instagram.com/fullchinavzla/?hl=es"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="public-contact-footer-cta is-instagram"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect width="18" height="18" x="3" y="3" rx="5" />
+                    <circle cx="12" cy="12" r="4" />
+                    <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
+                  </svg>
+                  <span>Seguir a <strong>@fullchinavzla</strong></span>
+                  <ChevronRight size={18} />
+                </a>
+              </article>
+
+              <article className="public-contact-panel public-contact-location">
+                <div className="public-contact-location-stage">
+                  <iframe
+                    title="Ubicación de Full China en Google Maps"
+                    src="https://www.google.com/maps?q=10.2547567,-67.5926267&z=17&output=embed"
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    allowFullScreen
+                  />
+                  <span className="public-contact-location-tint" aria-hidden="true" />
+                  <span className="public-contact-location-tag"><MapPin size={14} /> Punto Full China</span>
+                  <span className="public-contact-brand-pin" aria-hidden="true">
+                    <img src="/optimized/root/logo.webp" alt="" />
+                  </span>
+                  <div className="public-contact-location-overlay">
+                    <span>Maracay · Estado Aragua</span>
+                    <strong>Ven, come<br />y disfruta.</strong>
+                    <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
+                    <a href="https://maps.app.goo.gl/sh8SDNhhdD6is87y8" target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-location">
+                      <Navigation size={16} />
+                      <span>Cómo llegar</span>
+                      <ChevronRight size={17} />
+                    </a>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </section>
+        )}
+
+        {/* Bottom Tab Bar */}
+        <nav className="public-mobile-tab-bar">
+          <button className={`public-mobile-tab ${currentTab !== 'contacto' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>
+            <Utensils size={18} />
+            <span>Menú</span>
+          </button>
+          <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onClick={() => setCurrentTab('contacto')}>
+            <Store size={18} />
+            <span>Contacto</span>
+          </button>
+        </nav>
       </div>
 
       {/* =========================================================================
@@ -1495,7 +1641,7 @@ export function PublicMenu() {
                   <h1 className="public-hero-main-title">
                     CONTÁCTANOS <br /><span className="public-hero-gold">TE ESCUCHAMOS</span>
                   </h1>
-                  <p className="public-hero-desc">¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.</p>
+                <p className="public-hero-desc">¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.</p>
 
                   <div className="public-hero-search-row public-contact-hero-actions">
                     {configuredPhone ? (
@@ -1530,17 +1676,6 @@ export function PublicMenu() {
                       <li className="is-mixed"><i>+</i><span>Pago mixto<small>Combina dos métodos</small></span></li>
                     </ul>
                   </div>
-                  {configuredPhone ? (
-                    <a href={`https://wa.me/${configuredPhone}`} target="_blank" rel="noopener noreferrer" className="public-contact-channel public-contact-footer-cta is-whatsapp">
-                      <i className="is-whatsapp">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479s1.065 2.875 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.262.489 1.693.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.002-5.45 4.438-9.886 9.892-9.886 2.641 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.9 6.99c-.003 5.45-4.438 9.884-9.888 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
-                        </svg>
-                      </i>
-                      <span><small>Canal oficial</small><strong>Pedir por WhatsApp</strong></span>
-                      <ChevronRight size={18} />
-                    </a>
-                  ) : null}
                 </article>
 
                 <article className="public-contact-panel public-contact-instagram-studio">
@@ -1800,7 +1935,7 @@ export function PublicMenu() {
       </div>
 
       {/* Floating Cart FAB for Mobile */}
-      {itemCount > 0 && !cartOpen && (
+      {itemCount > 0 && !cartOpen && currentTab !== 'contacto' && (
         <div className="public-cart-fab-wrap">
           <span className="public-cart-fab-tooltip">
             Toca aquí para ver tu pedido <ChevronRight size={14} />
