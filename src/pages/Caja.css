@@ -1455,6 +1455,17 @@
   align-items: center;
 }
 
+.payment-ref-row { display: flex; align-items: center; gap: 8px; }
+.cmd-add-ref-btn,
+.cmd-remove-ref-btn {
+  flex-shrink: 0; width: 38px; height: 38px; border-radius: 8px; border: 1px dashed #555;
+  background: transparent; color: #a1a1aa; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.cmd-add-ref-btn:hover { border-color: #16a34a; color: #22c55e; }
+.cmd-remove-ref-btn { border-style: solid; border-color: #444; }
+.cmd-remove-ref-btn:hover { border-color: #ef4444; color: #ef4444; }
+
 .payment-field-input {
   background: #202024;
   border: 1px solid rgba(255, 255, 255, 0.08);

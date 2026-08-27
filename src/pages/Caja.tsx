@@ -299,6 +299,7 @@ export function Caja() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>(defaultPaymentForOrderType('dine-in'))
   const [refNumber, setRefNumber] = useState('')
+  const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('0.00')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
   const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
@@ -585,7 +586,9 @@ export function Caja() {
     }
     setSelectedPaymentTab(preferredMethod)
     setRefNumber('')
-    setAmountReceived((preferredMethod === 'split' ? total / 2 : total).toFixed(2))
+    setExtraRefs([])
+    const initialMethod: SplitPaymentMethod = preferredMethod === 'split' || preferredMethod === 'other' ? 'cash' : preferredMethod
+    setAmountReceived(usdToPaymentInput(preferredMethod === 'split' ? total / 2 : total, initialMethod, bcvRate))
     setSplitPrimaryMethod('cash')
     setSplitSecondaryMethod('mobile')
     setSplitPrimaryReference('')
@@ -608,6 +611,7 @@ export function Caja() {
   const handleSelectPaymentTab = (method: PaymentMethod | 'split') => {
     setSelectedPaymentTab(method)
     setRefNumber('')
+    setExtraRefs([])
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     setPayError('')
@@ -641,6 +645,7 @@ export function Caja() {
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
+      const combinedRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
 
       let paymentComponents
       let finalMethod: PaymentMethod
@@ -686,7 +691,7 @@ export function Caja() {
         paymentComponents = [{
           method: selectedPaymentTab,
           amount: total,
-          referenceNumber: refNumber.trim() || undefined,
+          referenceNumber: combinedRefs || undefined,
           receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
           notes: paymentNote || undefined,
         }]
@@ -704,7 +709,7 @@ export function Caja() {
         deliveryFee: deliveryFeeUsd,
         referenceNumber: selectedPaymentTab === 'split'
           ? (splitPrimaryReference.trim() || splitSecondaryReference.trim() || null)
-          : (refNumber.trim() || null),
+          : (combinedRefs || null),
         receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : null,
         payments: paymentComponents,
       })
@@ -1510,16 +1515,37 @@ export function Caja() {
                 {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && requiresPaymentReference(selectedPaymentTab) && (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">{paymentReferenceLabel(selectedPaymentTab)}</label>
-                    <div className="payment-input-wrap">
-                      <input
-                        type="text"
-                        className="payment-field-input"
-                        value={refNumber}
-                        onChange={(e) => setRefNumber(e.target.value)}
-                        placeholder="Ej. 458921"
-                      />
-                      <QrCode size={16} className="qr-icon-right" />
+                    <div className="payment-ref-row">
+                      <div className="payment-input-wrap" style={{ flex: 1 }}>
+                        <input
+                          type="text"
+                          className="payment-field-input"
+                          value={refNumber}
+                          onChange={(e) => setRefNumber(e.target.value)}
+                          placeholder="Ej. 458921"
+                        />
+                        <QrCode size={16} className="qr-icon-right" />
+                      </div>
+                      <button type="button" className="cmd-add-ref-btn" title="Agregar otra referencia" onClick={() => setExtraRefs(prev => [...prev, ''])}>
+                        <Plus size={18} />
+                      </button>
                     </div>
+                    {extraRefs.map((ref, idx) => (
+                      <div className="payment-ref-row mt-1" key={idx}>
+                        <div className="payment-input-wrap" style={{ flex: 1 }}>
+                          <input
+                            type="text"
+                            className="payment-field-input"
+                            value={ref}
+                            onChange={(e) => { const v = e.target.value; setExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
+                            placeholder={`Referencia ${idx + 2}`}
+                          />
+                        </div>
+                        <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
@@ -1616,7 +1642,7 @@ export function Caja() {
 
                 {selectedPaymentTab !== 'split' && <div className="payment-field-group mt-3">
                   <label className="payment-field-label">
-                    MONTO RECIBIDO <span className="text-red">*</span>
+                    {selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'} <span className="text-red">*</span>
                   </label>
                   {selectedPaymentTab === 'cash' && (
                     <div className="cash-currency-toggle">
