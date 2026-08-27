@@ -305,6 +305,8 @@ export function Caja() {
   const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
   const [splitPrimaryReference, setSplitPrimaryReference] = useState('')
   const [splitSecondaryReference, setSplitSecondaryReference] = useState('')
+  const [splitPrimaryExtraRefs, setSplitPrimaryExtraRefs] = useState<string[]>([])
+  const [splitSecondaryExtraRefs, setSplitSecondaryExtraRefs] = useState<string[]>([])
   const [paymentNote, setPaymentNote] = useState('')
 
   const [paying, setPaying] = useState(false)
@@ -593,6 +595,8 @@ export function Caja() {
     setSplitSecondaryMethod('mobile')
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
+    setSplitPrimaryExtraRefs([])
+    setSplitSecondaryExtraRefs([])
     setPaymentNote('')
     setPayError('')
     setShowPaymentModal(true)
@@ -614,6 +618,8 @@ export function Caja() {
     setExtraRefs([])
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
+    setSplitPrimaryExtraRefs([])
+    setSplitSecondaryExtraRefs([])
     setPayError('')
     const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method === 'other' ? 'cash' : method
     setAmountReceived(usdToPaymentInput(method === 'split' ? total / 2 : total, inputMethod, bcvRate))
@@ -667,18 +673,20 @@ export function Caja() {
           throw new Error('Ingresa la referencia del segundo método')
         }
         finalMethod = 'other'
+        const primaryRefs = [splitPrimaryReference, ...splitPrimaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
+        const secondaryRefs = [splitSecondaryReference, ...splitSecondaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
         paymentComponents = [
           {
             method: splitPrimaryMethod,
             amount: primaryAmount,
-            referenceNumber: splitPrimaryReference.trim() || undefined,
+            referenceNumber: primaryRefs || undefined,
             receivedAmount: splitPrimaryMethod === 'cash' ? primaryAmount : undefined,
             notes: paymentNote || undefined,
           },
           {
             method: splitSecondaryMethod,
             amount: secondaryAmount,
-            referenceNumber: splitSecondaryReference.trim() || undefined,
+            referenceNumber: secondaryRefs || undefined,
             receivedAmount: splitSecondaryMethod === 'cash' ? secondaryAmount : undefined,
             notes: paymentNote || undefined,
           },
@@ -1566,6 +1574,7 @@ export function Caja() {
                           setSplitPrimaryMethod(nextMethod)
                           setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, bcvRate))
                           setSplitPrimaryReference('')
+                          setSplitPrimaryExtraRefs([])
                           setPayError('')
                         }}
                       />
@@ -1588,13 +1597,34 @@ export function Caja() {
                       {requiresPaymentReference(splitPrimaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitPrimaryMethod)}</label>
-                          <input
-                            type="text"
-                            className="payment-field-input"
-                            value={splitPrimaryReference}
-                            onChange={(e) => setSplitPrimaryReference(e.target.value)}
-                            placeholder="Ej. 458921"
-                          />
+                          <div className="payment-ref-row">
+                            <input
+                              type="text"
+                              className="payment-field-input"
+                              style={{ flex: 1 }}
+                              value={splitPrimaryReference}
+                              onChange={(e) => setSplitPrimaryReference(e.target.value)}
+                              placeholder="Ej. 458921"
+                            />
+                            <button type="button" className="cmd-add-ref-btn" title="Agregar otra referencia" onClick={() => setSplitPrimaryExtraRefs(prev => [...prev, ''])}>
+                              <Plus size={18} />
+                            </button>
+                          </div>
+                          {splitPrimaryExtraRefs.map((ref, idx) => (
+                            <div className="payment-ref-row mt-1" key={idx}>
+                              <input
+                                type="text"
+                                className="payment-field-input"
+                                style={{ flex: 1 }}
+                                value={ref}
+                                onChange={(e) => { const v = e.target.value; setSplitPrimaryExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
+                                placeholder={`Referencia ${idx + 2}`}
+                              />
+                              <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setSplitPrimaryExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
+                                <X size={16} />
+                              </button>
+                            </div>
+                          ))}
                         </>
                       )}
                     </section>
@@ -1612,6 +1642,7 @@ export function Caja() {
                         onChange={(nextMethod) => {
                           setSplitSecondaryMethod(nextMethod)
                           setSplitSecondaryReference('')
+                          setSplitSecondaryExtraRefs([])
                           setPayError('')
                         }}
                       />
@@ -1627,13 +1658,34 @@ export function Caja() {
                       {requiresPaymentReference(splitSecondaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
-                          <input
-                            type="text"
-                            className="payment-field-input"
-                            value={splitSecondaryReference}
-                            onChange={(e) => setSplitSecondaryReference(e.target.value)}
-                            placeholder="Ej. 458921"
-                          />
+                          <div className="payment-ref-row">
+                            <input
+                              type="text"
+                              className="payment-field-input"
+                              style={{ flex: 1 }}
+                              value={splitSecondaryReference}
+                              onChange={(e) => setSplitSecondaryReference(e.target.value)}
+                              placeholder="Ej. 458921"
+                            />
+                            <button type="button" className="cmd-add-ref-btn" title="Agregar otra referencia" onClick={() => setSplitSecondaryExtraRefs(prev => [...prev, ''])}>
+                              <Plus size={18} />
+                            </button>
+                          </div>
+                          {splitSecondaryExtraRefs.map((ref, idx) => (
+                            <div className="payment-ref-row mt-1" key={idx}>
+                              <input
+                                type="text"
+                                className="payment-field-input"
+                                style={{ flex: 1 }}
+                                value={ref}
+                                onChange={(e) => { const v = e.target.value; setSplitSecondaryExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
+                                placeholder={`Referencia ${idx + 2}`}
+                              />
+                              <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setSplitSecondaryExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
+                                <X size={16} />
+                              </button>
+                            </div>
+                          ))}
                         </>
                       )}
                     </section>
