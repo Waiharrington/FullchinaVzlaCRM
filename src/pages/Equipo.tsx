@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
 import {
   Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3, AlertTriangle,
-  KeyRound, Mail, UserCog, Ban, Clock, Hash,
+  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2,
 } from 'lucide-react'
 import {
-  getAllEmployees, createEmployee, updateEmployee,
+  getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
   adminSetUserRole, adminSetUserActive, adminSetUserPin,
 } from '../lib/dataService'
@@ -104,10 +104,10 @@ export function Equipo() {
     if (!name.trim()) return
     try {
       if (editingId) {
-        await updateEmployee(editingId, { fullName: name.trim(), position: position.trim() || null, hourlyRate })
+        await updateEmployee(editingId, { fullName: name.trim(), hourlyRate })
         flash(`"${name.trim()}" actualizado con éxito`)
       } else {
-        await createEmployee({ fullName: name.trim(), position: position.trim() || null, hourlyRate })
+        await createEmployee({ fullName: name.trim(), hourlyRate })
         flash(`"${name.trim()}" registrado correctamente`)
       }
       setShowModal(false)
@@ -123,6 +123,17 @@ export function Equipo() {
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error actualizando')
+    }
+  }
+
+  const handleDelete = async (emp: Employee) => {
+    if (!window.confirm(`¿Eliminar a "${emp.fullName}" de la nómina?`)) return
+    try {
+      await deleteEmployee(emp.id)
+      flash(`"${emp.fullName}" eliminado`)
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error eliminando empleado')
     }
   }
 
@@ -367,12 +378,11 @@ export function Equipo() {
                 <div className="team-avatar">{emp.fullName.charAt(0).toUpperCase()}</div>
                 <div className="team-info-header">
                   <h3 className="team-name">{emp.fullName}</h3>
-                  <span className="team-badge">{emp.position || 'Sin cargo'}</span>
                 </div>
               </div>
               <div className="team-card-details">
                 <div className="detail-row">
-                  <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Tarifa/hora:</span>
+                  <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Salario mensual:</span>
                   <span style={{ color: '#fff', fontSize: '13px' }}>${emp.hourlyRate.toFixed(2)}</span>
                 </div>
               </div>
@@ -383,6 +393,9 @@ export function Equipo() {
                 </button>
                 <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
                   <Edit3 size={16} />
+                </button>
+                <button className="icon-action-btn" title="Eliminar" style={{ color: '#f87171' }} onClick={() => handleDelete(emp)}>
+                  <Trash2 size={16} />
                 </button>
               </div>
             </div>
@@ -456,12 +469,8 @@ export function Equipo() {
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Pedro Pérez" required />
               </div>
               <div className="form-group">
-                <label>Cargo / Posición</label>
-                <input type="text" value={position} onChange={e => setPosition(e.target.value)} placeholder="Ej. Cajero, Cocinero, Encargado" />
-              </div>
-              <div className="form-group">
-                <label>Tarifa por hora (USD)</label>
-                <input type="number" min="0" step="0.25" value={hourlyRate} onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)} />
+                <label>Salario mensual (USD)</label>
+                <input type="number" min="0" step="1" value={hourlyRate} onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)} />
               </div>
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancelar</button>

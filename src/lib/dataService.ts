@@ -2209,6 +2209,14 @@ export async function updateEmployee(id: string, updates: {
   if (error) throw error
 }
 
+export async function deleteEmployee(id: string): Promise<void> {
+  const { error } = await client()
+    .from('employees')
+    .delete()
+    .eq('id', id)
+  if (error) throw error
+}
+
 // --- Usuarios de acceso (login) ---------------------------------------------
 // Administración de auth.users vía RPC SECURITY DEFINER (owner-only). El
 // navegador nunca ve la service_role; toda la validación vive en la BD.

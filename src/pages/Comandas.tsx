@@ -1070,11 +1070,9 @@ export function Comandas() {
                 <div className="cmd-badge delivery">{selectedOrder.orderType}</div>
               </div>
               <div className="cmd-header-actions">
-                {!selectedOrder.isPaid && (
-                  <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
-                    <Trash2 size={18} />
-                  </button>
-                )}
+                <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
+                  <Trash2 size={18} />
+                </button>
                 <button className="cmd-close-btn" onClick={() => setSelectedOrder(null)}><X size={20} /></button>
               </div>
             </header>
