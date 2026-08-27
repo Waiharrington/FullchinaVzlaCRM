@@ -165,6 +165,21 @@ export interface Expense {
   createdAt: string
 }
 
+export interface FinancialOperation {
+  id: string
+  type: 'transfer' | 'receivable' | 'receivable_collection' | 'tip' | 'tip_distribution' | 'employee_advance' | 'loan' | 'loan_payment' | 'bank_fee' | 'adjustment'
+  concept: string
+  operationDate: string
+  amountUsd: number
+  originalCurrency: 'USD' | 'VES'
+  originalAmount: number
+  counterparty: string | null
+  referenceNumber: string | null
+  affectsProfit: boolean
+  fromAccount: string | null
+  toAccount: string | null
+}
+
 export interface TodayStats {
   totalSales: number
   ordersCount: number
@@ -1632,6 +1647,31 @@ export async function createExpense(params: {
     createdBy: data.created_by as string,
     createdAt: data.created_at as string,
   }
+}
+
+export async function getFinancialOperations(dateStart?: string, dateEnd?: string): Promise<FinancialOperation[]> {
+  let query = client().from('financial_operations').select(`
+    id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,
+    counterparty,reference_number,affects_profit,
+    from_account:financial_accounts!financial_operations_from_account_id_fkey(name),
+    to_account:financial_accounts!financial_operations_to_account_id_fkey(name)
+  `).eq('status', 'confirmed')
+  if (dateStart) query = query.gte('operation_date', dateStart)
+  if (dateEnd) query = query.lte('operation_date', dateEnd)
+  const { data, error } = await query.order('operation_date', { ascending: false }).limit(100)
+  if (error) throw error
+  const relationName = (value: unknown) => {
+    const row = Array.isArray(value) ? value[0] : value
+    return row && typeof row === 'object' && 'name' in row ? String(row.name) : null
+  }
+  return (data ?? []).map((row) => ({
+    id: String(row.id), type: row.operation_type as FinancialOperation['type'], concept: String(row.concept),
+    operationDate: String(row.operation_date), amountUsd: Number(row.amount_usd),
+    originalCurrency: row.original_currency as 'USD' | 'VES', originalAmount: Number(row.original_amount),
+    counterparty: row.counterparty ? String(row.counterparty) : null,
+    referenceNumber: row.reference_number ? String(row.reference_number) : null,
+    affectsProfit: Boolean(row.affects_profit), fromAccount: relationName(row.from_account), toAccount: relationName(row.to_account),
+  }))
 }
 
 // --- Clientes y fidelización ------------------------------------------------

@@ -69,3 +69,11 @@
 .fin-pl-table tr.final td { font-size: 15px; }
 .fin-danger { color: #ef4444; } .fin-success { color: #22c55e; }
 .fin-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; color: #71717a; font-size: 11px; flex-wrap: wrap; }
+.fin-ops { display: grid; gap: 8px; }
+.fin-op { display: grid; grid-template-columns: minmax(180px,1fr) minmax(130px,.7fr) auto; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+.fin-op strong,.fin-op small { display:block; }
+.fin-op small { color:#71717a; font-size:11px; margin-top:3px; }
+.fin-op-route { color:#a1a1aa; font-size:12px; }
+.fin-op-amount { text-align:right; font-weight:800; }
+.fin-neutral { color:#38bdf8 !important; }
+@media (max-width:640px) { .fin-op { grid-template-columns:1fr auto; } .fin-op-route { grid-column:1/-1; grid-row:2; } }

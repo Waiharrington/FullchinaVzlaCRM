@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary,
-  type FullOrder, type Expense, type RecipeSummary,
+  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, getFinancialOperations,
+  type FullOrder, type Expense, type RecipeSummary, type FinancialOperation,
 } from '../lib/dataService'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes } from '../lib/money'
@@ -43,6 +43,7 @@ export function Finanzas() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
   const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
+  const [operations, setOperations] = useState<FinancialOperation[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('hoy')
   const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
@@ -52,13 +53,14 @@ export function Finanzas() {
       setLoading(true)
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1) // incluye mes anterior para comparativos
-      const [ords, exps, recipes, pay] = await Promise.all([
+      const [ords, exps, recipes, pay, ops] = await Promise.all([
         getOrdersWithItems(monthStart.toISOString()),
         getExpenses(isoDate(monthStart)),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
+        getFinancialOperations(isoDate(monthStart)).catch(() => []),
       ])
-      setOrders(ords); setExpenses(exps); setRecipeCost(recipes); setPayroll(pay)
+      setOrders(ords); setExpenses(exps); setRecipeCost(recipes); setPayroll(pay); setOperations(ops)
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
@@ -111,6 +113,7 @@ export function Finanzas() {
   const breakEven = cur.opex + cur.payroll
   const bePct = breakEven > 0 ? Math.min(100, Math.round((cur.grossSales / breakEven) * 100)) : (cur.grossSales > 0 ? 100 : 0)
   const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
+  const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
   const periodLabel = period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Esta semana' : 'Este mes'
 
   const chartData = {
@@ -279,6 +282,20 @@ export function Finanzas() {
             <span>Datos reales: Ventas (Caja), COGS (recetas), Gastos y Nómina.</span>
             <span>{periodLabel}</span>
           </div>
+        </div>
+      </div>
+      <div className="fin-card">
+        <h2>Movimientos administrativos</h2>
+        <p className="sub">Traspasos, cuentas por cobrar, adelantos, préstamos y propinas. Los que no afectan utilidad se muestran sin convertirlos en gastos.</p>
+        <div className="fin-ops">
+          {periodOperations.slice(0, 12).map((op) => (
+            <div className="fin-op" key={op.id}>
+              <div><strong>{op.concept}</strong><small>{op.operationDate} · {op.type.replace(/_/g, ' ')}{op.counterparty ? ` · ${op.counterparty}` : ''}</small></div>
+              <div className="fin-op-route">{op.fromAccount && <span>{op.fromAccount}</span>}{op.fromAccount && op.toAccount && ' → '}{op.toAccount && <span>{op.toAccount}</span>}</div>
+              <div className="fin-op-amount">{formatUsd(op.amountUsd)}<small className={op.affectsProfit ? 'fin-down' : 'fin-neutral'}>{op.affectsProfit ? 'Afecta resultado' : 'No altera utilidad'}</small></div>
+            </div>
+          ))}
+          {periodOperations.length === 0 && <p style={{ color: '#71717a' }}>Sin movimientos administrativos en este período.</p>}
         </div>
       </div>
     </div>
