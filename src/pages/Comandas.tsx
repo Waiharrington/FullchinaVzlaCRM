@@ -186,6 +186,7 @@ export function Comandas() {
   const [paymentOrder, setPaymentOrder] = useState<ComandaOrder | null>(null)
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<SplitPaymentMethod | 'split'>('cash')
   const [refNumber, setRefNumber] = useState('')
+  const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
   const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
@@ -338,6 +339,7 @@ export function Comandas() {
       setSplitSecondaryMethod('mobile')
     }
     setRefNumber('')
+    setExtraRefs([])
     const initialTab: SplitPaymentMethod = pref && pref.methods.length === 1 ? pref.methods[0] : 'cash'
     const initialRate = order.bcvRate && order.bcvRate > 0 ? order.bcvRate : bcvRate
     setAmountReceived(usdToPaymentInput(order.totalAmount || 0, initialTab, initialRate))
@@ -365,6 +367,7 @@ export function Comandas() {
     setSelectedPaymentTab(method)
     setPaymentError('')
     setRefNumber('')
+    setExtraRefs([])
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     if (method === 'split' && paymentOrder?.totalAmount) {
@@ -438,10 +441,11 @@ export function Comandas() {
         if (selectedPaymentTab === 'cash' && enteredAmount < total) {
           throw new Error('El efectivo recibido no cubre el total')
         }
+        const allRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
         payments = [{
           method: selectedPaymentTab,
           amount: total,
-          referenceNumber: refNumber.trim() || undefined,
+          referenceNumber: allRefs || undefined,
           receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
           notes: paymentNote || undefined,
         }]
@@ -1471,16 +1475,37 @@ export function Comandas() {
                   <label className="payment-field-label">
                     {paymentReferenceLabel(selectedPaymentTab)}
                   </label>
-                  <div className="payment-input-wrap">
-                    <input
-                      type="text"
-                      className="payment-field-input"
-                      value={refNumber}
-                      onChange={(e) => setRefNumber(e.target.value)}
-                      placeholder="Ej. 876543210"
-                    />
-                    <QrCode size={16} className="qr-icon-right" />
+                  <div className="payment-ref-row">
+                    <div className="payment-input-wrap" style={{ flex: 1 }}>
+                      <input
+                        type="text"
+                        className="payment-field-input"
+                        value={refNumber}
+                        onChange={(e) => setRefNumber(e.target.value)}
+                        placeholder="Ej. 876543210"
+                      />
+                      <QrCode size={16} className="qr-icon-right" />
+                    </div>
+                    <button type="button" className="cmd-add-ref-btn" title="Agregar referencia" onClick={() => setExtraRefs(prev => [...prev, ''])}>
+                      <Plus size={18} />
+                    </button>
                   </div>
+                  {extraRefs.map((ref, idx) => (
+                    <div className="payment-ref-row mt-1" key={idx}>
+                      <div className="payment-input-wrap" style={{ flex: 1 }}>
+                        <input
+                          type="text"
+                          className="payment-field-input"
+                          value={ref}
+                          onChange={(e) => { const v = e.target.value; setExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
+                          placeholder={`Referencia ${idx + 2}`}
+                        />
+                      </div>
+                      <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ))}
                 </div>
                 )}
 
