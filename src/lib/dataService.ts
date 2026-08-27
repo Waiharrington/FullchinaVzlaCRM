@@ -890,6 +890,12 @@ export async function deleteOrder(orderId: string): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudo eliminar la comanda')
 }
 
+export async function validateMyPin(pin: string): Promise<boolean> {
+  const { data, error } = await client().rpc('fn_validate_my_pin', { p_pin: pin })
+  if (error) throw new Error(error.message || 'No se pudo validar el PIN')
+  return data === true
+}
+
 /**
  * Elimina un pedido web pendiente (web_order_requests) y sus items.
  */

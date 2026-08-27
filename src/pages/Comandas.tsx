@@ -11,6 +11,7 @@ import {
   removeOrderItem,
   deleteOrder,
   deleteWebOrder,
+  validateMyPin,
   setOrderDeliveryFee,
   type PaymentMethod,
   type CartItem,
@@ -267,14 +268,16 @@ export function Comandas() {
   }
 
   const handleDeleteOrder = async () => {
-    if (deletePin !== '2850') {
-      setDeleteError('PIN incorrecto')
-      return
-    }
     if (!selectedOrder) return
     setDeleting(true)
     setDeleteError('')
     try {
+      const valid = await validateMyPin(deletePin)
+      if (!valid) {
+        setDeleteError('PIN incorrecto')
+        setDeleting(false)
+        return
+      }
       if (selectedOrder.source === 'web' && selectedOrder.webRequestId) {
         await deleteWebOrder(selectedOrder.webRequestId)
       } else {
@@ -1401,7 +1404,7 @@ export function Comandas() {
               <ShieldCheck size={24} className="cmd-pin-icon" />
               <h3>Autorización requerida</h3>
             </div>
-            <p className="cmd-pin-text">Ingrese el PIN de administrador para eliminar la comanda <strong>{selectedOrder?.orderNumber}</strong></p>
+            <p className="cmd-pin-text">Ingresa tu PIN para eliminar la comanda <strong>{selectedOrder?.orderNumber}</strong></p>
             <input
               key={deletePin}
               type="password"
