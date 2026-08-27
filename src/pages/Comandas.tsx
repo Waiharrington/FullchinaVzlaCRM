@@ -338,7 +338,9 @@ export function Comandas() {
       setSplitSecondaryMethod('mobile')
     }
     setRefNumber('')
-    setAmountReceived(order.totalAmount?.toFixed(2) || '0.00')
+    const initialTab: SplitPaymentMethod = pref && pref.methods.length === 1 ? pref.methods[0] : 'cash'
+    const initialRate = order.bcvRate && order.bcvRate > 0 ? order.bcvRate : bcvRate
+    setAmountReceived(usdToPaymentInput(order.totalAmount || 0, initialTab, initialRate))
     setCashCurrency('USD')
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
