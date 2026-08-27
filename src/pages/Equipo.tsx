@@ -49,7 +49,6 @@ export function Equipo() {
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [position, setPosition] = useState('')
   const [hourlyRate, setHourlyRate] = useState(0)
 
   // --- Usuarios de acceso ---
@@ -91,10 +90,9 @@ export function Equipo() {
     if (emp) {
       setEditingId(emp.id)
       setName(emp.fullName)
-      setPosition(emp.position ?? '')
       setHourlyRate(emp.hourlyRate)
     } else {
-      setEditingId(null); setName(''); setPosition(''); setHourlyRate(0)
+      setEditingId(null); setName(''); setHourlyRate(0)
     }
     setShowModal(true)
   }
