@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, Clock, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
+import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -224,7 +224,6 @@ export function PublicMenu() {
   const [selectedExtras, setSelectedExtras] = useState<string[]>([])
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [search, setSearch] = useState('')
-  const [closingSearch, setClosingSearch] = useState(false)
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]') as string[] } catch { return [] }
   })
@@ -273,8 +272,13 @@ export function PublicMenu() {
   const [whatsappUrl, setWhatsappUrl] = useState('')
   const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string } | null>(null)
   const [cartPulse, setCartPulse] = useState(false)
+  const [recommendedIndex, setRecommendedIndex] = useState(0)
+  const recommendedTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [enteringContent, setEnteringContent] = useState<typeof recommendedPool[0] | null>(null)
+  const [enterVisible, setEnterVisible] = useState(false)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cartPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const heroSearchRef = useRef<HTMLInputElement>(null)
   const submitLockRef = useRef(false)
   const checkoutAttemptRef = useRef<{ signature: string; key: string } | null>(readCheckoutAttempt())
   const [lastOrder, setLastOrder] = useState<WebOrderCartItem[]>(() => {
@@ -286,6 +290,13 @@ export function PublicMenu() {
     if (typeof window.matchMedia !== 'function' || !window.matchMedia('(min-width: 1024px)').matches) return
     try { localStorage.setItem(DESKTOP_TAB_KEY, currentTab) } catch { /* storage unavailable */ }
   }, [currentTab])
+
+  useEffect(() => {
+    if (showSearch) {
+      const t = setTimeout(() => heroSearchRef.current?.focus(), 50)
+      return () => clearTimeout(t)
+    }
+  }, [showSearch])
 
   useEffect(() => {
     if (designMode) {
@@ -368,7 +379,41 @@ export function PublicMenu() {
     .filter(category => category !== 'Todos')
     .map(category => ({ category, groups: visibleGroups.filter(group => group.variants.some(v => v.product.categories.includes(category))) }))
     .filter(section => section.groups.length > 0), [categories, visibleGroups])
-  const recommendedGroup = groups.find(group => group.name.toLowerCase().includes('full kilo')) ?? groups[0]
+
+  const recommendedPool = useMemo(() => {
+    const source = activeCategory === 'Todos'
+      ? groups
+      : groups.filter(group => group.variants.some(v => v.product.categories.includes(activeCategory)))
+    const pool = [...(source.length > 0 ? source : groups)]
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]]
+    }
+    return pool.slice(0, 8)
+  }, [groups, activeCategory])
+
+  useEffect(() => {
+    setRecommendedIndex(0)
+  }, [activeCategory])
+
+  useEffect(() => {
+    if (recommendedPool.length <= 1) return
+    recommendedTimer.current = setInterval(() => {
+      setRecommendedIndex(prev => {
+        const next = (prev + 1) % recommendedPool.length
+        setEnteringContent(recommendedPool[next])
+        setEnterVisible(true)
+        setTimeout(() => {
+          setEnterVisible(false)
+          setTimeout(() => setEnteringContent(null), 600)
+        }, 600)
+        return next
+      })
+    }, 4500)
+    return () => { if (recommendedTimer.current) clearInterval(recommendedTimer.current) }
+  }, [recommendedPool.length])
+
+  const recommendedGroup = recommendedPool[recommendedIndex] ?? recommendedPool[0] ?? groups[0]
   const isStoreOpen = (() => {
     const hour = new Date().getHours()
     return hour >= 11 && hour < 22
@@ -482,12 +527,8 @@ export function PublicMenu() {
     return false
   }
   const closeSearch = () => {
-    setClosingSearch(true)
-    window.setTimeout(() => {
-      setShowSearch(false)
-      setClosingSearch(false)
-      setSearch('')
-    }, 180)
+    setShowSearch(false)
+    setSearch('')
   }
 
   const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0) => {
@@ -497,7 +538,7 @@ export function PublicMenu() {
     setCartPulse(true)
     if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current)
     if (cartPulseTimer.current) window.clearTimeout(cartPulseTimer.current)
-    addFeedbackTimer.current = setTimeout(() => setAddFeedback(null), 1800)
+    addFeedbackTimer.current = setTimeout(() => setAddFeedback(null), 1000)
     cartPulseTimer.current = setTimeout(() => setCartPulse(false), 520)
     setCart(current => {
       const existing = current.find(item => item.productId === product.id && (item.notes || '') === notes)
@@ -931,31 +972,12 @@ export function PublicMenu() {
     <main className="public-menu-page">
       {/* Top Navbar */}
       <header className="public-top-bar" id="inicio">
-        {showSearch ? (
-          <div className={`public-search-active-overlay ${closingSearch ? 'closing' : ''}`}>
-            <div className="public-search-pill">
-              <Search size={20} />
-              <input 
-                autoFocus 
-                placeholder="Busca Arroz, combos, pollo..." 
-                value={search} 
-                onChange={e => setSearch(e.target.value)} 
-              />
-              {search && <button className="public-search-clear" onClick={() => setSearch('')}><X size={16}/></button>}
-            </div>
-            <button className="public-search-cancel" onClick={closeSearch}>
-              Cancelar
-            </button>
-          </div>
-        ) : (
           <>
-            {/* Mobile: Search on Left */}
-            <button className="public-top-bar-action-btn mobile-only" onClick={() => setShowSearch(true)} aria-label="Buscar en el menú">
-              <Search size={24} />
-            </button>
+            {/* Mobile: empty left spacer */}
+            <div className="mobile-only" style={{ width: 24 }} />
 
-            {/* Logo */}
-            <div className="public-top-bar-left">
+            {/* Logo — centered on mobile, left on desktop */}
+            <div className="public-top-bar-center">
               <img src="/optimized/root/logo.webp" alt="Full China" className="public-top-bar-logo" decoding="async" />
             </div>
 
@@ -1003,13 +1025,7 @@ export function PublicMenu() {
               </div>
             </div>
 
-            {/* Mobile: Cart on Right */}
-            <button className="public-top-bar-action-btn mobile-only" onClick={() => { setCartOpen(true); setStep('cart') }}>
-              <ShoppingCart size={24} />
-              {itemCount > 0 && <span className="public-cart-badge">{itemCount}</span>}
-            </button>
           </>
-        )}
       </header>
 
       {/* =========================================================================
@@ -1030,6 +1046,24 @@ export function PublicMenu() {
           <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
             <i /> <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>{isStoreOpen ? ' hasta las 10:00 PM' : ' · abre a las 11:00 AM'}
           </span>
+          <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) setShowSearch(true) }}>
+            <Search size={16} />
+            {showSearch ? (
+              <>
+                <input
+                  ref={heroSearchRef}
+                  placeholder="Busca Arroz, combos, pollo..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  onClick={e => e.stopPropagation()}
+                />
+                {search && <button className="public-search-pill-clear" onClick={() => setSearch('')}><X size={14}/></button>}
+                <button className="public-search-pill-cancel" onClick={closeSearch}>Cancelar</button>
+              </>
+            ) : (
+              <span>Busca Arroz, combos, pollo...</span>
+            )}
+          </div>
         </div>
 
         {/* 3. Recommended Card */}
@@ -1049,8 +1083,33 @@ export function PublicMenu() {
             >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
           </div>
           <img src={optimizedProductImage(recommendedGroup?.variants[0]?.product.imageUrl) || (recommendedGroup ? productImage(recommendedGroup.category) : '/optimized/login-carousel/slide3.webp')} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className="public-recommended-img" fetchPriority="high" decoding="async" />
+          {enteringContent && (
+            <div className={`public-recommended-entering ${enterVisible ? 'visible' : ''}`}>
+              <div className="public-recommended-copy">
+                <small>RECOMENDADO <Flame size={12} /></small>
+                <h2>{productTitle(enteringContent.name)}</h2>
+                <p>{getEditorialDescription(enteringContent.variants[0]?.product.name ?? '', enteringContent.variants[0]?.product.description ?? '')}</p>
+                <span className="public-recommended-price">{money(enteringContent.minPrice)}</span>
+                {priceBs(enteringContent.minPrice) && <span className="public-prod-price-bs">{priceBs(enteringContent.minPrice)}</span>}
+                <button className="public-recommended-btn" aria-label={`Ver ${productTitle(enteringContent.name)}`}>Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
+              </div>
+              <img src={optimizedProductImage(enteringContent.variants[0]?.product.imageUrl) || productImage(enteringContent.category)} alt={productTitle(enteringContent.name)} className="public-recommended-img" decoding="async" />
+            </div>
+          )}
           <div className="public-recommended-dots-overlay">
-            <span className="active"></span><span></span><span></span>
+            {recommendedPool.map((_, i) => (
+              <span key={i} className={i === recommendedIndex ? 'active' : ''} onClick={() => {
+                if (i === recommendedIndex) return
+                if (recommendedTimer.current) clearInterval(recommendedTimer.current)
+                setEnteringContent(recommendedPool[i])
+                setEnterVisible(true)
+                setRecommendedIndex(i)
+                setTimeout(() => {
+                  setEnterVisible(false)
+                  setTimeout(() => setEnteringContent(null), 600)
+                }, 600)
+              }} />
+            ))}
           </div>
         </div>
 
@@ -1740,30 +1799,27 @@ export function PublicMenu() {
         </aside>
       </div>
 
-      {/* Floating Cart for Mobile */}
+      {/* Floating Cart FAB for Mobile */}
       {itemCount > 0 && !cartOpen && (
-        <div className={`public-cart-bar ${addFeedback ? 'is-feedback' : ''}`} onClick={() => { setCartOpen(true); setStep('cart') }}>
-          {addFeedback ? <div className="public-cart-bar-added" role="status" aria-live="polite">
-            <span className="public-cart-bar-added-image" aria-hidden="true">
-              {addFeedback.imageUrl ? <img src={addFeedback.imageUrl} alt="" /> : <ShoppingCart size={18} />}
-            </span>
-            <div className="public-cart-bar-text"><h4>{addFeedback.name}</h4><p>Añadido al carrito</p></div>
-          </div> : <div className="public-cart-bar-info">
-            <div className={`public-cart-bar-icon ${cartPulse ? 'is-pulsing' : ''}`}>
-              <ShoppingCart size={24} />
-              <span className={`public-cart-bar-badge ${cartPulse ? 'is-pulsing' : ''}`}>{itemCount}</span>
-            </div>
-            <div className="public-cart-bar-text"><h4>{itemCount} producto{itemCount !== 1 ? 's' : ''}</h4><p>Ver tu pedido</p></div>
-          </div>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-             <span className="public-cart-bar-total-group">
-               <span className="public-cart-bar-total">{money(total)}</span>
-               {priceBs(total) && <span className="public-cart-bar-total-bs">{priceBs(total)}</span>}
-             </span>
-             <button className="public-cart-bar-btn">
-                {addFeedback ? 'Ver carrito' : 'Ver pedido'} <ChevronRight size={18} />
-             </button>
-          </div>
+        <div className="public-cart-fab-wrap">
+          <span className="public-cart-fab-tooltip">
+            Toca aquí para ver tu pedido <ChevronRight size={14} />
+          </span>
+          <button className="public-cart-fab" onClick={() => { setCartOpen(true); setStep('cart') }}>
+            <ShoppingCart size={24} />
+            <span className="public-cart-fab-badge">{itemCount}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Add-to-cart mini-toast */}
+      {addFeedback && (
+        <div className="public-add-toast" role="status" aria-live="polite">
+          <span className="public-add-toast-img" aria-hidden="true">
+            {addFeedback.imageUrl ? <img src={addFeedback.imageUrl} alt="" /> : <ShoppingBag size={16} />}
+          </span>
+          <span className="public-add-toast-name">{addFeedback.name}</span>
+          <span className="public-add-toast-check"><CircleCheck size={16} /></span>
         </div>
       )}
 
