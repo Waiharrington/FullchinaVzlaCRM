@@ -24,7 +24,6 @@ const NAMED_FAMILIES = [
   /^(Tr[ií]o)\s+(Cl[aá]sico|Con\s+Camar[oó]n)$/i,
   /^(Chop\s+Suey)\s+(Veggie|Mixto|Full)$/i,
   /^(Tallar[ií]n)\s+(Veggie|Mixto|Especial)$/i,
-  /^(Refresco)\s+(.+)$/i,
 ]
 
 function normalizeKey(value: string) {
