@@ -57,11 +57,16 @@ export function RecetasReal() {
         getUnits(),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
       ])
-      setProducts(prods)
+      // Las bebidas son productos de reventa: se auto-gestionan como ítem de
+      // inventario (costo/venta en Menú, stock en Inventario) y descuentan solo
+      // al vender vía su ingrediente espejo. No requieren receta manual, así que
+      // se ocultan de esta pantalla.
+      const recipeProds = prods.filter((p) => p.category !== 'bebidas')
+      setProducts(recipeProds)
       setIngredients(ingr)
       setUnits(un)
       setSummaries(sums)
-      if (prods.length > 0) setSelected((cur) => cur ?? prods[0])
+      if (recipeProds.length > 0) setSelected((cur) => cur ?? recipeProds[0])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando recetas')
     } finally {
