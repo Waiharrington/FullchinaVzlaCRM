@@ -5,6 +5,7 @@ import { RatesProvider } from './context/RatesProvider'
 
 import { useAuth } from './context/auth-context'
 import { SplashScreen } from './components/SplashScreen'
+import { ModuleLoader } from './components/ModuleLoader'
 import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
 import { Layout } from './components/Layout'
 import { canAccessModule, type Role } from './components/navItems'
@@ -86,7 +87,7 @@ function AppRoutes() {
   const { user } = useAuth()
 
   return (
-    <Suspense fallback={<div className="page" role="status">Cargando módulo…</div>}>
+    <Suspense fallback={<ModuleLoader />}>
     <Routes>
       <Route path="/pedir" element={<Suspense fallback={<PublicMenuSkeleton />}><PublicOnboarding /></Suspense>} />
       <Route

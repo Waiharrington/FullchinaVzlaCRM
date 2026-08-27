@@ -1,0 +1,40 @@
+.module-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: #0a0a0a;
+  background-image: url('/optimized/root/splash-bg-desktop.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+.module-loader-logo {
+  width: clamp(180px, 32vw, 320px);
+  height: auto;
+  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.4));
+}
+
+.module-loader-spinner {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #ef4444;
+  animation: moduleLoaderSpin 0.8s linear infinite;
+}
+
+@keyframes moduleLoaderSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1024px) and (orientation: portrait) {
+  .module-loader {
+    background-image: url('/optimized/root/splash-bg-mobile.webp');
+  }
+}
