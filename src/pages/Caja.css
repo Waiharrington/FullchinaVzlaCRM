@@ -329,25 +329,8 @@
 }
 
 .sort-select {
-  background: #1c1c1f;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #aeaeb2;
-  padding: 0 14px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  outline: none;
-  height: 42px;
-  display: inline-flex;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.sort-select option {
-  background-color: #1c1c1f;
-  color: #ffffff;
-  padding: 8px 12px;
+  font-size: 13px; height: 42px; color: #aeaeb2;
+  display: inline-flex; align-items: center; box-sizing: border-box;
 }
 
 .view-toggle {

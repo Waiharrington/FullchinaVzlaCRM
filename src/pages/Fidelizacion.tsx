@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getCustomers, registerCustomerVisit, type Customer } from '../lib/dataService'
-import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame, Plus } from 'lucide-react'
+import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame, Plus, Medal } from 'lucide-react'
 import './Fidelizacion.css'
 
 const CYCLE = 10 // visitas por premio
@@ -61,7 +61,7 @@ export function Fidelizacion() {
     { icon: <Star size={22} />, cls: 'red', label: 'Clientes VIP (≥ 10)', value: vipCount.toLocaleString('es-VE'), sub: 'Criterio de fidelización' },
   ]
 
-  const medal = (idx: number) => (idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null)
+  const medal = (idx: number) => (idx === 0 ? <Trophy size={16} /> : idx === 1 ? <Medal size={16} /> : idx === 2 ? <Award size={16} /> : null)
 
   return (
     <div className="fidel-page">
@@ -119,7 +119,7 @@ export function Fidelizacion() {
                     <td className="hide-sm fidel-muted">{cust.phone || '—'}</td>
                     <td><span className="fidel-visits">{cust.totalVisits}</span></td>
                     <td className="hide-sm fidel-muted">{cust.lastVisit || '—'}</td>
-                    <td><span className="fidel-reward-badge">🎁 {cust.rewardsUnlocked}</span></td>
+                    <td><span className="fidel-reward-badge"><Gift size={14} /> {cust.rewardsUnlocked}</span></td>
                     <td>
                       <button
                         className="fidel-add-visit"
@@ -173,7 +173,7 @@ export function Fidelizacion() {
                 const isStamped = i < stampsInCycle
                 return (
                   <div key={i} className={`loyalty-stamp ${isStamped ? 'on' : ''}`}>
-                    {isStamped ? '🥟' : i + 1}
+                    {isStamped ? <CheckCircle2 size={18} /> : i + 1}
                   </div>
                 )
               })}
@@ -184,7 +184,7 @@ export function Fidelizacion() {
                 <span className="loyalty-reward-label">Recompensas disponibles</span>
                 <span className="loyalty-reward-value">
                   {selectedCustomer.rewardsUnlocked > 0
-                    ? `🎁 ${selectedCustomer.rewardsUnlocked} ración(es) gratis`
+                    ? <><Gift size={14} /> {selectedCustomer.rewardsUnlocked} ración(es) gratis</>
                     : `Faltan ${CYCLE - stampsInCycle} visita(s) para el próximo premio`}
                 </span>
               </div>

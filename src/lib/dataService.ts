@@ -494,7 +494,7 @@ export async function createProduct(p: {
 }): Promise<string> {
   const { data, error } = await client().from('sellable_products').insert({
     name: p.name, description: p.description ?? null, price: p.price, cost: p.cost ?? null,
-    category: p.category, emoji: p.emoji ?? '🍽️', image_url: p.imageUrl ?? null,
+    category: p.category, emoji: p.emoji ?? '🍽️', /* DB default: emoji */ image_url: p.imageUrl ?? null,
     is_active: p.isActive ?? true,
   }).select('id').single()
   if (error) throw error
@@ -1122,7 +1122,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
       id: i.id as string,
       sellableProductId: i.sellable_product_id as string,
       productName: i.product_name as string,
-      emoji: (i.emoji as string) ?? '🍽️',
+      emoji: (i.emoji as string) ?? '🍽️', /* DB default: emoji */
       category: (i.category as string) ?? 'plato',
       quantity: Number(i.quantity),
       unitPrice: Number(i.unit_price),
@@ -1395,7 +1395,7 @@ export async function getProductRanking(): Promise<ProductRanking[]> {
 
   return (data ?? []).map((r: Record<string, unknown>) => ({
     name: r.product_name as string,
-    emoji: (r.emoji as string) ?? '🍽️',
+    emoji: (r.emoji as string) ?? '🍽️', /* DB default: emoji */
     count: Number(r.total_quantity ?? 0),
     revenue: Number(r.total_revenue ?? 0),
   }))
@@ -2942,7 +2942,7 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
       id: i.id as string,
       sellableProductId: i.sellable_product_id as string,
       productName: i.product_name as string,
-      emoji: (i.emoji as string) ?? '🍽️',
+      emoji: (i.emoji as string) ?? '🍽️', /* DB default: emoji */
       category: (i.category as string) ?? 'plato',
       quantity: Number(i.quantity),
       unitPrice: Number(i.unit_price),

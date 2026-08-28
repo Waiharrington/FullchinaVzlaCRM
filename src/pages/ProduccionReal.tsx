@@ -8,7 +8,7 @@ import { useAuth } from '../context/auth-context'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
 import {
-  Flame, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ChevronUp,
+  Flame, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ChevronUp, Package, DollarSign,
 } from 'lucide-react'
 import './Almacen.css'
 
@@ -158,28 +158,28 @@ export function ProduccionReal() {
       {/* Stats */}
       <div className="stats-grid">
         <div className="stat-card">
-          <div className="stat-icon">📦</div>
+          <div className="stat-icon"><Package size={16} /></div>
           <div className="stat-info">
             <span className="stat-value">{stats?.batchesToday ?? 0}</span>
             <span className="stat-label">Lotes hoy</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">✅</div>
+          <div className="stat-icon"><CheckCircle2 size={16} /></div>
           <div className="stat-info">
             <span className="stat-value">{(stats?.avgYield ?? 0).toFixed(1)}%</span>
             <span className="stat-label">Rendimiento promedio</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">⚠️</div>
+          <div className="stat-icon"><AlertTriangle size={16} /></div>
           <div className="stat-info">
             <span className="stat-value">{(stats?.totalWaste ?? 0).toFixed(2)}</span>
             <span className="stat-label">Merma total</span>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">💰</div>
+          <div className="stat-icon"><DollarSign size={16} /></div>
           <div className="stat-info">
             <span className="stat-value">${(stats?.avgCostPerPortion ?? 0).toFixed(2)}</span>
             <span className="stat-label">Costo promedio/porción</span>

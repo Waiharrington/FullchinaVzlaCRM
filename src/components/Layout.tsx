@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
+import { GlobalSearch } from './GlobalSearch'
 import './Layout.css'
 
 export function Layout() {
@@ -30,6 +31,9 @@ export function Layout() {
       </div>
 
       <div className={`main-content-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        <header className="app-topbar">
+          <GlobalSearch />
+        </header>
         <main className="app-main">
           <Outlet />
         </main>

@@ -18,6 +18,7 @@ import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
+import { Beef, BookOpen, ShoppingBag, TrendingUp, Wallet, CreditCard, BarChart3, Bike, Loader2, Lock, FileText } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -225,35 +226,35 @@ export function Mas() {
 
       <div className="module-shortcuts-grid mb-6">
         <a href="/produccion" className="card shortcut-card">
-          <span className="shortcut-icon">🥩</span>
+          <span className="shortcut-icon"><Beef size={28} /></span>
           <div className="shortcut-info">
             <span className="shortcut-title">Producción y Porcionado</span>
             <span className="shortcut-desc">Transformación de carnes y bonos por lumpias</span>
           </div>
         </a>
         <a href="/recetas" className="card shortcut-card">
-          <span className="shortcut-icon">📖</span>
+          <span className="shortcut-icon"><BookOpen size={28} /></span>
           <div className="shortcut-info">
             <span className="shortcut-title">Recetas y Costeo</span>
             <span className="shortcut-desc">Cálculo de costo de plato y margen %</span>
           </div>
         </a>
         <a href="/compras" className="card shortcut-card">
-          <span className="shortcut-icon">🛍️</span>
+          <span className="shortcut-icon"><ShoppingBag size={28} /></span>
           <div className="shortcut-info">
             <span className="shortcut-title">Compras de Insumos</span>
             <span className="shortcut-desc">Facturación y proveedores</span>
           </div>
         </a>
         <a href="/finanzas" className="card shortcut-card">
-          <span className="shortcut-icon">📈</span>
+          <span className="shortcut-icon"><TrendingUp size={28} /></span>
           <div className="shortcut-info">
             <span className="shortcut-title">Finanzas y P&L</span>
             <span className="shortcut-desc">Ventas, costos, gastos y utilidad neta</span>
           </div>
         </a>
         <a href="/nomina" className="card shortcut-card">
-          <span className="shortcut-icon">💸</span>
+          <span className="shortcut-icon"><Wallet size={28} /></span>
           <div className="shortcut-info">
             <span className="shortcut-title">Nómina y Bonos</span>
             <span className="shortcut-desc">Sueldos base, adelantos y comisiones</span>
@@ -263,13 +264,13 @@ export function Mas() {
 
       <div className="tabs">
         <button className={`tab ${tab === 'credits' ? 'active' : ''}`} onClick={() => setTab('credits')}>
-          💳 Créditos ({activeCredits.length} activos)
+          <CreditCard size={14} /> Créditos ({activeCredits.length} activos)
         </button>
         <button className={`tab ${tab === 'close' ? 'active' : ''}`} onClick={() => setTab('close')}>
-          📊 Cierre de Caja
+          <BarChart3 size={14} /> Cierre de Caja
         </button>
         <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
-          🛵 Delivery
+          <Bike size={14} /> Delivery
         </button>
       </div>
 
@@ -401,10 +402,10 @@ export function Mas() {
             <h2 className="card-title">Cierre del dia</h2>
             <div style={{ display: 'flex', gap: '8px' }}>
               <button className="btn-accent btn-sm" onClick={handleDailyClose} disabled={closing}>
-                {closing ? '⏳ Cerrando...' : '🔒 Cerrar caja'}
+                {closing ? <><Loader2 size={14} className="spin" /> Cerrando...</> : <><Lock size={14} /> Cerrar caja</>}
               </button>
               <button className="btn-ghost btn-sm" onClick={exportDailyClose}>
-                📄 Exportar PDF
+                <FileText size={14} /> Exportar PDF
               </button>
             </div>
           </div>

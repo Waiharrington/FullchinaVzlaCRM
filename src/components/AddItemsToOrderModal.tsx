@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Search } from 'lucide-react'
+import { X, Search, CheckCircle2, Circle, UtensilsCrossed } from 'lucide-react'
 import { MoneyWithBcv } from './MoneyWithBcv'
 import {
   addItemsToOrder,
@@ -256,7 +256,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                             className={`aito-opt ${selected ? 'is-selected' : ''}`}
                             onClick={() => toggleMod(group, opt.id)}
                           >
-                            <span className="aito-opt-check">{selected ? '✅' : '⚪'}</span>
+                            <span className="aito-opt-check">{selected ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
                             <span className="aito-opt-name">{opt.name}{qty > 1 ? ` ×${qty}` : ''}</span>
                             {opt.price > 0 ? (
                               <MoneyWithBcv usd={opt.price} className="aito-opt-price" compact />
@@ -301,7 +301,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                   {filtered.map((p) => (
                     <button key={p.id} type="button" className="aito-card" onClick={() => pickProduct(p)}>
                       <span className="aito-card-photo">
-                        {p.imageUrl ? <img src={p.imageUrl} alt="" /> : <span className="aito-card-emoji">{p.emoji || '🍽️'}</span>}
+                        {p.imageUrl ? <img src={p.imageUrl} alt="" /> : <span className="aito-card-emoji"><UtensilsCrossed size={16} /></span>}
                         {withMods.has(p.id) && <span className="aito-card-badge">Opciones</span>}
                       </span>
                       <span className="aito-card-body">

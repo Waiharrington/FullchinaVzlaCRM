@@ -3,14 +3,15 @@ import { getOrdersWithItems, updateOrderStatus, type FullOrder } from '../lib/da
 import { dayRangeInTimeZone } from '../lib/money'
 import './Cocina.css'
 import { formatProductTitle } from '../lib/textFormat'
+import { ChefHat, CookingPot, Utensils, Package, Bell, BellOff, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 
 type StationFilter = 'all' | 'wok' | 'fryer' | 'prep'
 
 const STATIONS = [
-  { key: 'all', label: 'Todas las Estaciones', icon: '🍳' },
-  { key: 'wok', label: 'Arroz & Wok', icon: '🥘' },
-  { key: 'fryer', label: 'Freidora & Lumpias', icon: '🥢' },
-  { key: 'prep', label: 'Salsas & Empaque', icon: '📦' },
+  { key: 'all', label: 'Todas las Estaciones', icon: <ChefHat size={16} /> },
+  { key: 'wok', label: 'Arroz & Wok', icon: <CookingPot size={16} /> },
+  { key: 'fryer', label: 'Freidora & Lumpias', icon: <Utensils size={16} /> },
+  { key: 'prep', label: 'Salsas & Empaque', icon: <Package size={16} /> },
 ]
 
 // Cache a nivel de módulo: al volver a Cocina se muestran las órdenes de la
@@ -78,8 +79,8 @@ export function Cocina() {
     <div className="kds-page animate-fade-in">
       <header className="kds-header">
         <div className="kds-header-title">
-          <h1>🍳 KDS - Pantalla de Cocina</h1>
-          <span className="kds-live-badge">🔴 EN VIVO</span>
+          <h1><ChefHat size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} /> KDS - Pantalla de Cocina</h1>
+          <span className="kds-live-badge"><span className="kds-live-dot" /> EN VIVO</span>
         </div>
 
         <div className="kds-header-actions">
@@ -100,7 +101,7 @@ export function Cocina() {
             onClick={() => setSoundEnabled(!soundEnabled)}
             title="Toggle alerta de sonido"
           >
-            {soundEnabled ? '🔔 Alertas ON' : '🔕 Alertas OFF'}
+            {soundEnabled ? <><Bell size={14} /> Alertas ON</> : <><BellOff size={14} /> Alertas OFF</>}
           </button>
         </div>
       </header>
@@ -108,7 +109,7 @@ export function Cocina() {
       <main className="kds-grid">
         {activeOrders.length === 0 ? (
           <div className="kds-empty-state">
-            <span className="kds-empty-icon">✨</span>
+            <span className="kds-empty-icon"><Sparkles size={40} /></span>
             <h2>¡Sin comandas pendientes!</h2>
             <p>La cocina está al día con todos los pedidos.</p>
           </div>
@@ -134,7 +135,7 @@ export function Cocina() {
                     {order.items.map((item) => (
                       <li key={item.id} className="kds-item">
                         <span className="kds-item-qty">{item.quantity}</span>
-                        <span className="kds-item-name">{item.emoji} {formatProductTitle(item.productName)}</span>
+                        <span className="kds-item-name"><ChefHat size={14} style={{opacity:.7}} /> {formatProductTitle(item.productName)}</span>
                       </li>
                     ))}
                   </ul>
@@ -147,7 +148,7 @@ export function Cocina() {
                       onClick={() => handleStatusChange(order.id, 'preparing')}
                       disabled={updatingId === order.id}
                     >
-                      {updatingId === order.id ? '⏳...' : '👨‍🍳 EMPEZAR A PREPARAR'}
+                      {updatingId === order.id ? <><Loader2 size={14} className="spin" />...</> : <><ChefHat size={14} /> EMPEZAR A PREPARAR</>}
                     </button>
                   ) : order.fulfillmentStatus === 'preparing' ? (
                     <button
@@ -155,7 +156,7 @@ export function Cocina() {
                       onClick={() => handleStatusChange(order.id, 'ready')}
                       disabled={updatingId === order.id}
                     >
-                      {updatingId === order.id ? '⏳...' : '✅ LISTO PARA ENTREGAR'}
+                      {updatingId === order.id ? <><Loader2 size={14} className="spin" />...</> : <><CheckCircle2 size={14} /> LISTO PARA ENTREGAR</>}
                     </button>
                   ) : null}
                 </div>

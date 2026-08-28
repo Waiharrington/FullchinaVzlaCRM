@@ -73,7 +73,7 @@
 .nom-modal h3 { font-size: 18px; font-weight: 700; margin: 0 0 14px; }
 .nom-field { margin-bottom: 12px; }
 .nom-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
-.nom-field input, .nom-field select { width: 100%; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; }
+.nom-field input, .nom-field select { width: 100%; font-size: 14px; }
 .nom-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .nom-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .nom-cancel { background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 12px; padding: 11px 18px; font-size: 14px; cursor: pointer; }

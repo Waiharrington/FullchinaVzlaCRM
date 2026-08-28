@@ -60,7 +60,7 @@
 .gst-field { margin-bottom: 12px; }
 .gst-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
 .gst-req { color: #e11d2a; }
-.gst-field input, .gst-field select, .gst-field textarea { width: 100%; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; }
+.gst-field input, .gst-field select, .gst-field textarea { width: 100%; font-size: 14px; }
 .gst-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gst-rate-hint { font-size: 11px; color: #71717a; display: flex; align-items: center; gap: 6px; margin: -4px 0 12px; }
 .gst-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #d4d4d8; cursor: pointer; }
