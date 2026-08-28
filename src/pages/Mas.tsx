@@ -47,6 +47,7 @@ export function Mas() {
   const [tab, setTab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [newAmount, setNewAmount] = useState('')
   const [newDueDate, setNewDueDate] = useState('')
@@ -86,7 +87,7 @@ export function Mas() {
   const handleCreateCredit = async () => {
     if (!newClient || !newAmount || !user) return
     try {
-      const customer = customers.find(item => item.name.toLocaleLowerCase('es-VE') === newClient.trim().toLocaleLowerCase('es-VE'))
+      const customer = customers.find(item => item.id === selectedCustomerId)
       if (!customer) {
         alert('Selecciona un cliente registrado')
         return
@@ -101,6 +102,7 @@ export function Mas() {
         userId: user.id,
       })
       setNewClient('')
+      setSelectedCustomerId(null)
       setNewAmount('')
       setNewDueDate('')
       setShowNewCredit(false)
@@ -271,11 +273,11 @@ export function Mas() {
                   type="text"
                   placeholder="Buscar cliente registrado"
                   value={newClient}
-                  onChange={(e) => setNewClient(e.target.value)}
+                  onChange={(e) => { setNewClient(e.target.value); setSelectedCustomerId(null) }}
                 />
                 {newClient.trim() && <div className="credit-customer-options">
                   {customers.filter(customer => `${customer.name} ${customer.phone}`.toLocaleLowerCase('es-VE').includes(newClient.toLocaleLowerCase('es-VE'))).slice(0, 8).map(customer => (
-                    <button type="button" key={customer.id} onClick={() => setNewClient(customer.name)}>
+                    <button type="button" key={customer.id} onMouseDown={(event) => event.preventDefault()} onClick={() => { setNewClient(customer.name); setSelectedCustomerId(customer.id) }}>
                       <strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small>
                     </button>
                   ))}
