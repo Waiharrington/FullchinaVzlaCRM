@@ -266,14 +266,20 @@ export function Mas() {
 
           {showNewCredit && (
             <div className="new-credit-form animate-slide-up">
-              <div className="form-row">
-                <input list="credit-customers"
+              <div className="form-row credit-customer-field">
+                <input
                   type="text"
                   placeholder="Buscar cliente registrado"
                   value={newClient}
                   onChange={(e) => setNewClient(e.target.value)}
                 />
-                <datalist id="credit-customers">{customers.map(customer => <option key={customer.id} value={customer.name}>{customer.phone}</option>)}</datalist>
+                {newClient.trim() && <div className="credit-customer-options">
+                  {customers.filter(customer => `${customer.name} ${customer.phone}`.toLocaleLowerCase('es-VE').includes(newClient.toLocaleLowerCase('es-VE'))).slice(0, 8).map(customer => (
+                    <button type="button" key={customer.id} onClick={() => setNewClient(customer.name)}>
+                      <strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small>
+                    </button>
+                  ))}
+                </div>}
               </div>
               <div className="form-row">
                 <input
