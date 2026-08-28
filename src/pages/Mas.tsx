@@ -6,6 +6,7 @@ import {
   getCredits,
   addCreditPayment,
   createCredit,
+  getCustomers,
   getTodayStats,
   getOrdersWithItems,
   createDailyClose,
@@ -14,6 +15,7 @@ import {
   type DailyCloseSummary,
   type TodayStats,
   type FullOrder,
+  type Customer,
 } from '../lib/dataService'
 import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
@@ -45,7 +47,10 @@ export function Mas() {
   const [tab, setTab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [newAmount, setNewAmount] = useState('')
+  const [newDueDate, setNewDueDate] = useState('')
+  const [newIndefinite, setNewIndefinite] = useState(true)
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
@@ -76,23 +81,28 @@ export function Mas() {
     fetchAll()
   }, [fetchAll])
 
+  useEffect(() => { if (isCreditsModule) getCustomers().then(setCustomers).catch(() => undefined) }, [isCreditsModule])
+
   const handleCreateCredit = async () => {
     if (!newClient || !newAmount || !user) return
     try {
-      const orders = await getOrdersWithItems()
-      const orderId = orders[0]?.id
-      if (!orderId) {
-        alert('No hay órdenes disponibles')
+      const customer = customers.find(item => item.name.toLocaleLowerCase('es-VE') === newClient.trim().toLocaleLowerCase('es-VE'))
+      if (!customer) {
+        alert('Selecciona un cliente registrado')
         return
       }
       await createCredit({
-        orderId,
+        orderId: null,
+        customerId: customer.id,
         customerName: newClient,
         totalAmount: parseFloat(newAmount),
+        dueDate: newIndefinite ? null : newDueDate,
+        isIndefinite: newIndefinite,
         userId: user.id,
       })
       setNewClient('')
       setNewAmount('')
+      setNewDueDate('')
       setShowNewCredit(false)
       fetchAll()
     } catch (e) {
@@ -257,12 +267,13 @@ export function Mas() {
           {showNewCredit && (
             <div className="new-credit-form animate-slide-up">
               <div className="form-row">
-                <input
+                <input list="credit-customers"
                   type="text"
-                  placeholder="Nombre del cliente"
+                  placeholder="Buscar cliente registrado"
                   value={newClient}
                   onChange={(e) => setNewClient(e.target.value)}
                 />
+                <datalist id="credit-customers">{customers.map(customer => <option key={customer.id} value={customer.name}>{customer.phone}</option>)}</datalist>
               </div>
               <div className="form-row">
                 <input
@@ -272,6 +283,8 @@ export function Mas() {
                   value={newAmount}
                   onChange={(e) => setNewAmount(e.target.value)}
                 />
+                <label><input type="checkbox" checked={newIndefinite} onChange={e => setNewIndefinite(e.target.checked)} /> Plazo indefinido</label>
+                {!newIndefinite && <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />}
                 <div className="form-actions-inline">
                   <button className="btn-ghost" onClick={() => setShowNewCredit(false)}>Cancelar</button>
                   <button className="btn-accent" onClick={handleCreateCredit}>Crear</button>

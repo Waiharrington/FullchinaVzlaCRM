@@ -122,6 +122,8 @@ export interface Credit {
   status: string
   orderId: string
   createdAt: string
+  dueDate?: string | null
+  isIndefinite?: boolean
 }
 
 export interface CreditPayment {
@@ -1311,13 +1313,18 @@ export async function getCredits(): Promise<Credit[]> {
     status: c.status as string,
     orderId: c.order_id as string,
     createdAt: c.created_at as string,
+    dueDate: (c.due_date as string) ?? null,
+    isIndefinite: Boolean(c.is_indefinite ?? true),
   }))
 }
 
 export async function createCredit(params: {
-  orderId: string
+  orderId?: string | null
+  customerId?: string | null
   customerName: string
   totalAmount: number
+  dueDate?: string | null
+  isIndefinite?: boolean
   notes?: string
   userId: string
 }): Promise<string> {
@@ -1325,8 +1332,11 @@ export async function createCredit(params: {
     .from('credits')
     .insert({
       order_id: params.orderId,
+      customer_id: params.customerId ?? null,
       customer_name: params.customerName,
       total_amount: params.totalAmount,
+      due_date: params.isIndefinite ? null : (params.dueDate ?? null),
+      is_indefinite: params.isIndefinite ?? true,
       notes: params.notes ?? null,
       created_by: params.userId,
     })
