@@ -36,6 +36,7 @@ let masCache: {
 export function Mas() {
   const { user } = useAuth()
   const location = useLocation()
+  const isCreditsModule = location.pathname === '/creditos'
   const [credits, setCredits] = useState<CreditType[]>(masCache?.credits ?? [])
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
@@ -222,24 +223,24 @@ export function Mas() {
   return (
     <div className="page mas-page animate-fade-in">
       <header className="page-header">
-        <h1 className="page-title text-gradient">Más Módulos y Administración</h1>
-        <p className="page-subtitle">Configuración administrativa y Delivery</p>
+        <h1 className="page-title text-gradient">{isCreditsModule ? 'Cuentas por cobrar' : 'Más Módulos y Administración'}</h1>
+        <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : 'Configuración administrativa y Delivery'}</p>
       </header>
 
-      <div className="module-shortcuts-grid mb-6">
+      {!isCreditsModule && <div className="module-shortcuts-grid mb-6">
         <a href="/equipo" className="card shortcut-card"><span className="shortcut-icon"><Users size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Equipo y Usuarios</span><span className="shortcut-desc">Roles y accesos del personal</span></div></a>
         <a href="/fidelizacion" className="card shortcut-card"><span className="shortcut-icon"><Award size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Fidelización</span><span className="shortcut-desc">Clientes frecuentes y beneficios</span></div></a>
         <a href="/marketing" className="card shortcut-card"><span className="shortcut-icon"><MessageSquare size={28} /></span><div className="shortcut-info"><span className="shortcut-title">WhatsApp Bot</span><span className="shortcut-desc">Mensajes y automatizaciones</span></div></a>
         <a href="/promociones" className="card shortcut-card"><span className="shortcut-icon"><Tag size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Promociones</span><span className="shortcut-desc">Ofertas y campañas activas</span></div></a>
-      </div>
+      </div>}
 
-      <div className="tabs">
+      {!isCreditsModule && <div className="tabs">
         {tab !== 'credits' && <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
           <Bike size={14} /> Delivery
         </button>}
-      </div>
+      </div>}
 
-      {tab === 'delivery' && <DeliverySettings />}
+      {!isCreditsModule && tab === 'delivery' && <DeliverySettings />}
 
       {tab === 'credits' && (
         <div className="card">
