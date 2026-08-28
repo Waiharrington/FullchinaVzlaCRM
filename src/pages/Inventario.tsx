@@ -417,7 +417,7 @@ export function Inventario() {
       </div>
       {selectedIngredient && (
         <div className="cmd-modal-overlay" onClick={() => setSelectedIngredient(null)}>
-          <div className="inv-sidebar-card" style={{ maxWidth: 420, margin: '10vh auto', position: 'relative' }} onClick={event => event.stopPropagation()}>
+          <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
             <button className="modal-close-btn" onClick={() => setSelectedIngredient(null)} aria-label="Cerrar">×</button>
             <h3>{selectedIngredient.name}</h3>
             <p>Stock actual: <strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></p>

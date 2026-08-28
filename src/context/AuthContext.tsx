@@ -73,6 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     if (!supabase) return { error: 'Supabase no está configurado (revisa el .env).' }
 
+    // Prepara una nueva transición de entrada. En /login el splash no se
+    // renderiza; aparecerá cuando la sesión redirija al área protegida.
+    setSplashDone(false)
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { error: error.message }
     const profile = data.user ? await fetchUserProfile(data.user.id) : null
@@ -87,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithPin = async (pin: string) => {
     if (!supabase) return { error: 'Supabase no está configurado (revisa el .env).' }
 
+    setSplashDone(false)
     const { data: pinData, error: pinError } = await supabase.functions.invoke('pin-login', {
       body: { pin },
     })

@@ -340,7 +340,7 @@ export function PublicMenu() {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
     const allCats = Array.from(new Set([...MENU_CATEGORY_ORDER, ...extracted]));
     allCats.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
-    return ['Todos', ...allCats.filter(c => c !== 'otros')];
+    return ['Todos', ...allCats.filter(c => c !== 'otros' && c !== 'extras')];
   }, [products]);
   const groups = useMemo(() => groupMenuProducts(products.filter(product => {
     const categoryMatch = activeCategory === 'Todos' || product.categories.includes(activeCategory)
@@ -856,10 +856,13 @@ export function PublicMenu() {
 
 
   const renderProductCard = (group: MenuProductGroup, priority = false) => {
+    const isBeverage = group.variants.some(({ product }) => product.categories.includes('bebidas'))
+    const isTallBottle = /^(agua|refresco\s+2\s+litros)$/i.test(group.name.trim())
+    const isLiptonBottle = /^lipton\b/i.test(group.name.trim())
     return (
       <article className="public-prod-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-prod-img-wrap">
-          <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className="public-prod-img" alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
+          <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         </div>
         <div className="public-prod-info">

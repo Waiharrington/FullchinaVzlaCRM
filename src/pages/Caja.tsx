@@ -4,6 +4,7 @@ import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
+import { StyledSelect } from '../components/StyledSelect'
 import { downloadReceipt } from '../lib/receipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -1025,7 +1026,7 @@ export function Caja() {
                 className="search-input-caja"
               />
             </div>
-            <select
+            <StyledSelect
               className="sort-select"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -1033,7 +1034,7 @@ export function Caja() {
               <option value="popular">Más vendidos</option>
               <option value="price">Precio</option>
               <option value="name">Nombre</option>
-            </select>
+            </StyledSelect>
             <div className="view-toggle">
               <button className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>▦</button>
               <button className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>☰</button>
@@ -1931,7 +1932,7 @@ export function Caja() {
                 <div className="birthday-selects-row">
                   <div className="select-col">
                     <span className="select-sub-label">Mes</span>
-                    <select
+                    <StyledSelect
                       className="modal-select-dark"
                       value={birthMonth}
                       onChange={(e) => {
@@ -1944,11 +1945,11 @@ export function Caja() {
                       {BIRTH_MONTHS.map((month, index) => (
                         <option key={month} value={String(index + 1).padStart(2, '0')}>{month}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                   <div className="select-col">
                     <span className="select-sub-label">Día</span>
-                    <select
+                    <StyledSelect
                       className="modal-select-dark"
                       value={birthDay}
                       onChange={(e) => setBirthDay(e.target.value)}
@@ -1957,7 +1958,7 @@ export function Caja() {
                       {Array.from({ length: getDaysInBirthMonth(birthMonth) }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                 </div>
                 <span className="birthday-hint mt-1">

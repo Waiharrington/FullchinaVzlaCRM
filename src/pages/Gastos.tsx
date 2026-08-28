@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createExpense, getExpenses } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
+import { StyledSelect } from '../components/StyledSelect'
 import { getExchangeRates } from '../lib/rates'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import {
@@ -212,9 +213,9 @@ export function Gastos() {
 
             <div className="gst-row2">
               <div className="gst-field"><label>Tipo de Gasto <span className="gst-req">*</span></label>
-                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'fixed' | 'variable' })}><option value="variable">Gasto Variable</option><option value="fixed">Gasto Fijo</option></select></div>
+                <StyledSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'fixed' | 'variable' })}><option value="variable">Gasto Variable</option><option value="fixed">Gasto Fijo</option></StyledSelect></div>
               <div className="gst-field"><label>Categoría <span className="gst-req">*</span></label>
-                <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}</select></div>
+                <StyledSelect value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}</StyledSelect></div>
             </div>
 
             <div className="gst-field"><label>Establecimiento / Proveedor</label>
@@ -232,7 +233,7 @@ export function Gastos() {
 
             <div className="gst-row2">
               <div className="gst-field"><label>Método de Pago <span className="gst-req">*</span></label>
-                <select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</select></div>
+                <StyledSelect value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</StyledSelect></div>
               <div className="gst-field"><label>N° de Referencia</label>
                 <input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Ej: 8841023" /></div>
             </div>

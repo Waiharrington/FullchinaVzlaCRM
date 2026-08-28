@@ -970,8 +970,6 @@
 .split-method-card select.payment-field-input {
   font-size: 14px;
 }
-  background-size: 15px;
-}
 
 .payment-modal-box input[type='number'] {
   appearance: textfield;

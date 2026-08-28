@@ -1,18 +1,21 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, type SellableProduct, type MenuCategoryRow } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
   LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2, CheckSquare, Square,
-  ChevronUp, ChevronDown, Check, Camera,
+  ChevronUp, ChevronDown, Check,
 } from 'lucide-react'
 import './Menu.css'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
 
 const catLabel = categoryLabel
+const EDIT_MODAL_EXIT_MS = 300
 
 function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -49,6 +52,8 @@ export function Menu() {
   const [view, setView] = useState<'grid' | 'list'>('grid')
 
   const [editing, setEditing] = useState<SellableProduct | null | 'new'>(null)
+  const [editingClosing, setEditingClosing] = useState(false)
+  const editCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [form, setForm] = useState<Form>(emptyForm)
   const [saving, setSaving] = useState(false)
 
@@ -57,6 +62,10 @@ export function Menu() {
     else document.body.classList.remove('modal-open')
     return () => document.body.classList.remove('modal-open')
   }, [editing])
+
+  useEffect(() => () => {
+    if (editCloseTimer.current) clearTimeout(editCloseTimer.current)
+  }, [])
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -120,8 +129,23 @@ export function Menu() {
     })
   }, [products, search, catFilter, statusFilter])
 
-  const openNew = () => { setForm(emptyForm); setEditing('new') }
+  const prepareEditorOpen = () => {
+    if (editCloseTimer.current) clearTimeout(editCloseTimer.current)
+    editCloseTimer.current = null
+    setEditingClosing(false)
+  }
+  const closeEditor = () => {
+    if (!editing || editingClosing) return
+    setEditingClosing(true)
+    editCloseTimer.current = setTimeout(() => {
+      setEditing(null)
+      setEditingClosing(false)
+      editCloseTimer.current = null
+    }, EDIT_MODAL_EXIT_MS)
+  }
+  const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setEditing('new') }
   const openEdit = (p: SellableProduct) => {
+    prepareEditorOpen()
     setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive })
     setEditing(p)
   }
@@ -242,7 +266,7 @@ export function Menu() {
         setProducts(prev => editing === 'new' ? [...prev, updated] : prev.map(p => p.id === productId ? updated : p))
       }
 
-      setEditing(null)
+      closeEditor()
       // Silent background refresh to stay in sync (no loading spinner)
       void load(true)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al guardar el plato') }
@@ -278,8 +302,8 @@ export function Menu() {
 
       <div className="mnu-tools">
         <div className="mnu-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar plato..." /></div>
-        <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}><option value="all">Categoría: Todas</option>{categories.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}</select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}><option value="all">Estado: Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select>
+        <StyledSelect value={catFilter} onChange={(e) => setCatFilter(e.target.value)}><option value="all">Categoría: Todas</option>{categories.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}</StyledSelect>
+        <StyledSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}><option value="all">Estado: Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></StyledSelect>
         {selectMode
           ? <button className="mnu-select-btn active" onClick={exitSelectMode}><X size={15} /> Salir de selección</button>
           : <button className="mnu-select-btn" onClick={() => setSelectMode(true)}><CheckSquare size={15} /> Seleccionar</button>}
@@ -346,74 +370,86 @@ export function Menu() {
         </div>
       )}
 
-      {editing && (
-        <div className="mnu-modal-overlay" onClick={() => setEditing(null)}>
-          <form className="mnu-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+      {editing && createPortal(
+        <div className={`mnu-modal-overlay ${editingClosing ? 'closing' : ''}`} onClick={closeEditor}>
+          <form className="mnu-modal mnu-product-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
             <div className="mnu-modal-header">
               <h3><UtensilsCrossed size={20} style={{ color: '#e11d2a' }} />{editing === 'new' ? 'Nuevo plato' : 'Editar plato'}</h3>
-              <button type="button" className="mnu-modal-close" onClick={() => setEditing(null)}><X size={16} /></button>
+              <button type="button" className="mnu-modal-close" onClick={closeEditor}><X size={16} /></button>
             </div>
 
-            <div className="mnu-modal-body">
-              <div className="mnu-field">
-                <label>Foto del plato</label>
-                <div className="mnu-img-pick">
-                  <div className="mnu-img-prev-wrap">
-                    <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" /> : <UtensilsCrossed size={16} />}</span>
-                    <label className="mnu-img-camera-badge" title="Cambiar foto"><Camera size={14} /><input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
-                    {form.imageUrl && <button type="button" className="mnu-img-remove-badge" title="Quitar foto" onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}><X size={12} /></button>}
+            <div className="mnu-modal-body mnu-product-body">
+              <aside className="mnu-product-aside">
+                <div className="mnu-field mnu-photo-field">
+                  <label>Foto del plato</label>
+                  {form.imageUrl ? (
+                    <div className="mnu-photo-card mnu-photo-card-filled">
+                      <label className="mnu-photo-preview" title="Cambiar foto">
+                        <img src={form.imageUrl} alt="Vista previa del plato" />
+                        <span>Cambiar foto</span>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pickImage(e.target.files?.[0])} />
+                      </label>
+                      <div className="mnu-photo-info">
+                        <small>JPG, PNG o WebP</small>
+                        <label className="mnu-photo-change"><ImagePlus size={15} /> Cambiar foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pickImage(e.target.files?.[0])} /></label>
+                      </div>
+                      <button type="button" className="mnu-photo-delete" title="Quitar foto" aria-label="Quitar foto" onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}><Trash2 size={16} /></button>
+                    </div>
+                  ) : (
+                    <label className="mnu-photo-card mnu-photo-empty">
+                      <span className="mnu-photo-empty-icon"><ImagePlus size={22} /></span>
+                      <span className="mnu-photo-empty-copy"><strong>Selecciona una foto</strong><small>JPG, PNG o WebP</small></span>
+                      <span className="mnu-photo-select">Subir foto</span>
+                      <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pickImage(e.target.files?.[0])} />
+                    </label>
+                  )}
+                </div>
+
+                <div className="mnu-product-status">
+                  <div><strong>Disponible en el menú</strong><small>{form.isActive ? 'Los clientes pueden verlo y pedirlo.' : 'El plato permanecerá oculto.'}</small></div>
+                  <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} aria-label={form.isActive ? 'Desactivar plato' : 'Activar plato'} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
+                </div>
+              </aside>
+
+              <section className="mnu-product-main">
+                <div className="mnu-product-section">
+                  <div className="mnu-product-section-title">Información del plato</div>
+                  <div className="mnu-field"><label>Nombre del plato *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Arroz Frito Especial" required /></div>
+                  <div className="mnu-field"><label>Descripción</label><textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe los ingredientes o qué incluye" /></div>
+                </div>
+
+                <div className="mnu-product-section">
+                  <div className="mnu-product-section-title">Precio</div>
+                  <div className="mnu-row2">
+                    <div className="mnu-field"><label>Precio de venta *</label><div className="mnu-money-input"><span>$</span><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div></div>
+                    <div className="mnu-field"><label>Costo estimado</label><div className="mnu-money-input"><span>$</span><input type="number" step="0.01" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Opcional" /></div></div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <label className="mnu-upload"><ImagePlus size={14} /> Subir foto<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
-                    {form.imageUrl && <button type="button" className="mnu-cancel" style={{ padding: '8px 12px', fontSize: 12 }} onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}>Quitar foto</button>}
+                </div>
+
+                <div className="mnu-product-section mnu-category-section">
+                  <div className="mnu-product-section-title">Categorías <small>Elige una o varias</small></div>
+                  <div className="mnu-cat-chips">
+                    {menuCats.map((c) => {
+                      const on = form.categories.includes(c.key)
+                      return (
+                        <button type="button" key={c.key} className={`mnu-cat-chip ${on ? 'on' : ''}`}
+                          onClick={() => setForm((f) => ({ ...f, categories: on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key] }))}>
+                          {on && <Check size={13} />}{c.label}
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
-              </div>
-
-              <div className="mnu-modal-divider" />
-
-              <div className="mnu-row2">
-                <div className="mnu-field" style={{ maxWidth: 90 }}><label>Emoji</label><input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} style={{ textAlign: 'center', fontSize: 20 }} /></div>
-                <div className="mnu-field"><label>Nombre *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Arroz Frito Especial" required /></div>
-              </div>
-
-              <div className="mnu-field"><label>Descripción</label><textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción para el cliente" /></div>
-
-              <div className="mnu-modal-divider" />
-
-              <div className="mnu-field"><label>Categorías (elige una o varias)</label>
-                <div className="mnu-cat-chips">
-                  {menuCats.map((c) => {
-                    const on = form.categories.includes(c.key)
-                    return (
-                      <button type="button" key={c.key} className={`mnu-cat-chip ${on ? 'on' : ''}`}
-                        onClick={() => setForm((f) => ({ ...f, categories: on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key] }))}>
-                        {on && <Check size={13} />}{c.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="mnu-row2">
-                <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
-                <div className="mnu-field"><label>Costo estimado ($)</label><input type="number" step="0.01" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Opcional" /></div>
-              </div>
-
-              <div className="mnu-field"><label>Estado</label>
-                <div className="mnu-status-row">
-                  <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
-                  <span className="mnu-status-label">{form.isActive ? 'Activo (en venta)' : 'Inactivo'}</span>
-                </div>
-              </div>
+              </section>
             </div>
 
             <div className="mnu-modal-actions">
-              <button type="button" className="mnu-cancel" onClick={() => setEditing(null)}>Cancelar</button>
+              <button type="button" className="mnu-cancel" onClick={closeEditor}>Cancelar</button>
               <button type="submit" className="mnu-btn" disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editing === 'new' ? 'Crear plato' : 'Guardar cambios'}</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {catManagerOpen && (
@@ -458,7 +494,7 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
     setBusy(true); await onRename(cat, editLabel); setEditingId(null); setBusy(false)
   }
 
-  return (
+  return createPortal(
     <div className="mnu-modal-overlay" onClick={onClose}>
       <div className="mnu-modal mnu-cat-modal" onClick={(e) => e.stopPropagation()}>
         <div className="mnu-modal-header">
@@ -505,6 +541,7 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
           <button type="button" className="mnu-btn" onClick={onClose}>Listo</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

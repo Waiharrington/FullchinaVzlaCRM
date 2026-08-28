@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { StyledSelect } from '../components/StyledSelect'
 import { formatProductTitle } from '../lib/textFormat'
 import {
   getCredits,
@@ -815,7 +816,7 @@ export function Clientes() {
 
             <div className="filter-dropdown-wrap">
               <span className="dropdown-label">Estado</span>
-              <select
+              <StyledSelect
                 className="filter-select"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -825,12 +826,12 @@ export function Clientes() {
                 <option value="frecuente">Frecuente</option>
                 <option value="activo">Activo</option>
                 <option value="inactivo">Inactivo</option>
-              </select>
+              </StyledSelect>
             </div>
 
             <div className="filter-dropdown-wrap">
               <span className="dropdown-label">Identificación</span>
-              <select
+              <StyledSelect
                 className="filter-select"
                 value={identityFilter}
                 onChange={(e) => setIdentityFilter(e.target.value)}
@@ -839,7 +840,7 @@ export function Clientes() {
                 <option value="verified_format">Cédula</option>
                 <option value="legacy_review">Por revisar</option>
                 <option value="missing">Sin identificación</option>
-              </select>
+              </StyledSelect>
             </div>
 
             <button className="btn-export-dark">
@@ -997,7 +998,7 @@ export function Clientes() {
                 <div className="birthday-selects-row">
                   <div className="select-col">
                     <span className="select-sub-label">Mes</span>
-                    <select
+                    <StyledSelect
                       className="modal-select-dark"
                       value={birthMonth}
                       onChange={(e) => setBirthMonth(e.target.value)}
@@ -1006,11 +1007,11 @@ export function Clientes() {
                       {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
                         <option key={m} value={String(i + 1)}>{m}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                   <div className="select-col">
                     <span className="select-sub-label">Día</span>
-                    <select
+                    <StyledSelect
                       className="modal-select-dark"
                       value={birthDay}
                       onChange={(e) => setBirthDay(e.target.value)}
@@ -1019,7 +1020,7 @@ export function Clientes() {
                       {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                 </div>
                 <span className="birthday-hint mt-1">
@@ -1084,21 +1085,21 @@ export function Clientes() {
                 <div className="birthday-selects-row">
                   <div className="select-col">
                     <span className="select-sub-label">Mes</span>
-                    <select className="modal-select-dark" value={editBirthMonth} onChange={(e) => setEditBirthMonth(e.target.value)}>
+                    <StyledSelect className="modal-select-dark" value={editBirthMonth} onChange={(e) => setEditBirthMonth(e.target.value)}>
                       <option value="">Selecciona el mes</option>
                       {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
                         <option key={m} value={String(i + 1)}>{m}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                   <div className="select-col">
                     <span className="select-sub-label">Día</span>
-                    <select className="modal-select-dark" value={editBirthDay} onChange={(e) => setEditBirthDay(e.target.value)}>
+                    <StyledSelect className="modal-select-dark" value={editBirthDay} onChange={(e) => setEditBirthDay(e.target.value)}>
                       <option value="">Selecciona el día</option>
                       {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                         <option key={d} value={d}>{d}</option>
                       ))}
-                    </select>
+                    </StyledSelect>
                   </div>
                 </div>
               </div>

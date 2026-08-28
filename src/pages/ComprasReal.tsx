@@ -6,6 +6,7 @@ import {
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import { useAuth } from '../context/auth-context'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import {
@@ -239,7 +240,7 @@ export function ComprasReal() {
                 <div className="cmp-item-row" key={i}>
                   <SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />
                   <input type="number" step="any" min="0" value={it.quantity} onChange={(e) => changeItem(i, 'quantity', e.target.value)} />
-                  <select value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</select>
+                  <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
                   <div className="cmp-cost-wrap"><span>$</span><input type="number" step="any" min="0" value={it.unitCost} onChange={(e) => changeItem(i, 'unitCost', e.target.value)} /></div>
                   <span className="cmp-subtotal" style={{ textAlign: 'right' }}>{formatUsd(sub)}</span>
                   <button type="button" className="cmp-del" onClick={() => removeItem(i)}><Trash2 size={16} /></button>
@@ -257,9 +258,9 @@ export function ComprasReal() {
                 <div style={{ fontSize: 12, color: '#a1a1aa', marginBottom: 8 }}>Crear un ingrediente nuevo (elige su <strong>unidad base</strong>: cómo lo mides en inventario).</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input placeholder="Nombre del ingrediente *" value={newIngredientName} onChange={(e) => setNewIngredientName(e.target.value)} style={{ flex: 2, minWidth: 180, borderRadius: 9, padding: 9 }} />
-                  <select value={newIngredientUnitId || units[0]?.id || ''} onChange={(e) => setNewIngredientUnitId(e.target.value)} style={{ borderRadius: 9, padding: 9 }}>
+                  <StyledSelect value={newIngredientUnitId || units[0]?.id || ''} onChange={(e) => setNewIngredientUnitId(e.target.value)} style={{ flex: 1, minWidth: 170 }}>
                     {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
-                  </select>
+                  </StyledSelect>
                   <button type="button" className="cmp-new-btn" onClick={handleCreateIngredient}>Crear ingrediente</button>
                 </div>
               </div>
@@ -288,9 +289,9 @@ export function ComprasReal() {
         <h3 className="cmp-card-title">Historial de Compras</h3>
         <div className="cmp-hist-tools">
           <div className="cmp-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar compra..." /></div>
-          <select className="cmp-tool" value={paidFilter} onChange={(e) => setPaidFilter(e.target.value as PaidFilter)}>
+          <StyledSelect className="cmp-tool" value={paidFilter} onChange={(e) => setPaidFilter(e.target.value as PaidFilter)}>
             <option value="todos">Todas</option><option value="pagados">Pagadas</option><option value="pendientes">Por pagar</option>
-          </select>
+          </StyledSelect>
           <button className="cmp-tool" onClick={exportCsv}><Download size={15} /> Exportar</button>
         </div>
 

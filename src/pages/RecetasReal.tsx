@@ -6,6 +6,7 @@ import {
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes } from '../lib/money'
 import {
@@ -239,14 +240,14 @@ export function RecetasReal() {
           </div>
 
           <div className="rec-filters">
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
+            <StyledSelect value={category} onChange={(e) => setCategory(e.target.value)}>
               <option value="all">Categoría: Todas</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={sort} onChange={(e) => setSort(e.target.value as 'az' | 'price')}>
+            </StyledSelect>
+            <StyledSelect value={sort} onChange={(e) => setSort(e.target.value as 'az' | 'price')}>
               <option value="az">Ordenar: A - Z</option>
               <option value="price">Ordenar: Precio</option>
-            </select>
+            </StyledSelect>
             <div className="rec-view-toggle">
               <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={16} /></button>
               <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="Cuadrícula"><LayoutGrid size={16} /></button>
@@ -352,9 +353,9 @@ export function RecetasReal() {
                         emptyText="Sin ingredientes"
                       />
                       <input type="number" step="any" min="0.01" placeholder="Cant." value={addQuantity} onChange={(e) => setAddQuantity(e.target.value)} required />
-                      <select value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
+                      <StyledSelect value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
                         {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
-                      </select>
+                      </StyledSelect>
                       <button type="submit" className="save">Guardar</button>
                     </form>
                   )}

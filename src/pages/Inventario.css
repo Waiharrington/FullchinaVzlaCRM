@@ -532,6 +532,24 @@
   padding: 1.25rem;
 }
 
+.inv-detail-modal {
+  position: relative;
+  width: min(420px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
+
+@media (max-width: 767px) {
+  .cmd-modal-overlay:has(.inv-detail-modal) { align-items: flex-end; padding: 6px; overflow: hidden; }
+  .inv-detail-modal {
+    width: 100%;
+    max-height: calc(100dvh - 6px);
+    padding: 20px 16px 16px;
+    border-radius: 18px 18px 10px 10px;
+  }
+  .inv-detail-modal .inv-generate-order-btn { width: 100%; min-height: 44px; }
+}
+
 .inv-sidebar-header {
   display: flex;
   align-items: center;

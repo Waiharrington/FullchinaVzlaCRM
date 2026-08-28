@@ -382,7 +382,7 @@ export function MenuSemanal() {
       {editing && (
         <div className="ws-modal-overlay" onClick={() => setEditing(null)}>
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleEdit}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="ws-modal-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>Editar plato</h3>
               <button type="button" className="ws-cancel" style={{ padding: 6 }} onClick={() => setEditing(null)}><X size={16} /></button>
             </div>
@@ -431,7 +431,7 @@ export function MenuSemanal() {
 
 function ImagePicker({ value, emoji, onPick, onClear }: { value: string | null; emoji: string; onPick: (f: File | undefined) => void; onClear: () => void }) {
   return (
-    <div className="ws-field">
+    <div className="ws-field ws-image-field">
       <label>Foto del plato (opcional)</label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span className="ws-card-thumb" style={{ width: 64, height: 64 }}>

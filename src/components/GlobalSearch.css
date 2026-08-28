@@ -308,11 +308,15 @@
 /* Mobile */
 @media (max-width: 640px) {
   .gs-overlay {
-    padding-top: 8vh;
-    padding-left: 8px;
-    padding-right: 8px;
+    align-items: flex-end;
+    padding: 6px;
   }
   .gs-dropdown {
-    max-height: 70vh;
+    width: 100%;
+    max-width: none;
+    max-height: min(78dvh, 680px);
+    border-radius: 18px 18px 10px 10px;
   }
+  .gs-input-row { padding: 12px; }
+  .gs-input { font-size: 16px; }
 }

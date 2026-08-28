@@ -7,6 +7,7 @@ import {
 } from '../lib/dataService'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import {
   Plus, CheckCircle2, AlertTriangle, Loader2, Users, Banknote, Gift, Hourglass,
   HelpCircle, Save, X,
@@ -296,7 +297,7 @@ export function Nomina() {
         <div className="nom-modal-overlay" onClick={() => setShowAdvance(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitAdvance}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo adelanto</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowAdvance(false)}><X size={16} /></button></div>
-            <div className="nom-field"><label>Empleado *</label><select value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</select></div>
+            <div className="nom-field"><label>Empleado *</label><StyledSelect value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={advAmt} onChange={(e) => setAdvAmt(e.target.value)} required /></div>
               <div className="nom-field"><label>Fecha</label><input type="date" value={advDate} onChange={(e) => setAdvDate(e.target.value)} /></div>
@@ -310,7 +311,7 @@ export function Nomina() {
         <div className="nom-modal-overlay" onClick={() => setShowBonus(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitBonus}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo bono de producción</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowBonus(false)}><X size={16} /></button></div>
-            <div className="nom-field"><label>Empleado *</label><select value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</select></div>
+            <div className="nom-field"><label>Empleado *</label><StyledSelect value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={bonAmt} onChange={(e) => setBonAmt(e.target.value)} required /></div>
               <div className="nom-field"><label>Fecha</label><input type="date" value={bonDate} onChange={(e) => setBonDate(e.target.value)} /></div>
@@ -320,7 +321,7 @@ export function Nomina() {
           </form>
         </div>
       )}
-      {showPayment && <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}><form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}><div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowPayment(false)}><X size={16} /></button></div><div className="nom-field"><label>Empleado *</label><select value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</select></div><div className="nom-row2"><div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} required /></div><div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div></div><div className="nom-row2"><div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div><div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div></div><div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div></form></div>}
+      {showPayment && <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}><form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}><div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowPayment(false)}><X size={16} /></button></div><div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div><div className="nom-row2"><div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} required /></div><div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div></div><div className="nom-row2"><div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div><div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div></div><div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div></form></div>}
     </div>
   )
 }

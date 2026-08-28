@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { AlertTriangle, ArrowRightLeft, CheckCircle2, DollarSign, Package, Plus, Warehouse } from 'lucide-react'
 import { adjustStock, getIngredients, getStockMovements } from '../lib/dataService'
+import { StyledSelect } from '../components/StyledSelect'
 import './Almacen.css'
 import { dateKeyInTimeZone } from '../lib/money'
 
@@ -240,9 +241,9 @@ export function Almacen() {
             <form onSubmit={handleTransfer} className="transfer-form-box">
               <div className="select-field-group">
                 <label className="field-label" htmlFor="warehouse-item">Insumo de almacén</label>
-                <select id="warehouse-item" className="field-select" value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>
+                <StyledSelect id="warehouse-item" className="field-select" value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>
                   {items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}
-                </select>
+                </StyledSelect>
               </div>
 
               <div className="transfer-fields-grid">
@@ -252,9 +253,9 @@ export function Almacen() {
                 </div>
                 <div className="select-field-group">
                   <label className="field-label" htmlFor="transfer-operator">Operador responsable</label>
-                  <select id="transfer-operator" className="field-select" value={operator} onChange={event => setOperator(event.target.value)}>
+                  <StyledSelect id="transfer-operator" className="field-select" value={operator} onChange={event => setOperator(event.target.value)}>
                     <option value="Usuario del sistema">Usuario del sistema</option>
-                  </select>
+                  </StyledSelect>
                 </div>
               </div>
 

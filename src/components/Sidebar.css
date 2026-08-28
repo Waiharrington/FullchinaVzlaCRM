@@ -1,5 +1,5 @@
 .sidebar {
-  width: 232px;
+  width: 242px;
   background: rgba(16, 6, 6, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -11,11 +11,13 @@
   top: 0;
   left: 0;
   z-index: 20;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.28s ease;
+  will-change: width;
 }
 
 .sidebar.collapsed {
-  width: 72px;
+  width: 84px;
   overflow: visible;
 }
 
@@ -27,7 +29,7 @@
   justify-content: center;
   padding: 1.5rem 2rem 0.5rem;
   position: relative;
-  transition: padding 0.3s ease;
+  transition: padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sidebar-brand::before {
@@ -57,11 +59,14 @@
   max-width: 140px;
   height: auto;
   object-fit: contain;
-  transition: all 0.3s ease;
+  transition: max-width 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.18s ease,
+              transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sidebar.collapsed .sidebar-logo-img {
   max-width: 48px;
+  transform: scale(0.94);
 }
 
 .sidebar-logo-collapsed {
@@ -85,7 +90,9 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.2s ease, background-color 0.2s ease,
+              color 0.2s ease, border-color 0.2s ease,
+              box-shadow 0.3s ease;
   box-shadow: 3px 0 10px rgba(0, 0, 0, 0.35);
   z-index: 30;
 }
@@ -94,11 +101,17 @@
   background: #27272a;
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.2);
-  width: 26px;
+}
+
+/* Mantiene el botón centrado al pulsarlo. La animación táctil global aplica
+   translateY(1px) a los botones y desplazaba este control hacia abajo. */
+.sidebar-toggle:active {
+  transform: translateY(-50%) scale(0.94);
+  transition-duration: 80ms;
 }
 
 .sidebar-toggle-icon {
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sidebar-toggle-icon.rotated {
@@ -112,6 +125,7 @@
   padding: 0 1rem;
   flex: 1;
   overflow-y: auto;
+  transition: padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sidebar.collapsed .sidebar-nav {
@@ -126,6 +140,24 @@
   letter-spacing: 0.1em;
   padding: 0.75rem 1.25rem 0.25rem;
   margin-top: 0.5rem;
+  max-height: 40px;
+  opacity: 1;
+  overflow: hidden;
+  transform: translateX(0);
+  transition: opacity 0.2s ease 0.08s,
+              transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+              max-height 0.32s ease,
+              padding 0.32s ease,
+              margin 0.32s ease;
+}
+
+.sidebar.collapsed .sidebar-group-title {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin: 0;
+  opacity: 0;
+  transform: translateX(-10px);
 }
 
 .sidebar-group-header {
@@ -217,11 +249,20 @@
 }
 
 .sidebar-label {
-  transition: opacity 0.2s ease;
+  display: block;
+  max-width: 170px;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.2s ease 0.08s,
+              transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+              max-width 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .sidebar.collapsed .sidebar-label {
-  display: none;
+  max-width: 0;
+  opacity: 0;
+  transform: translateX(-8px);
 }
 
 .sidebar-link:hover {
@@ -265,6 +306,10 @@
 }
 
 /* Tooltip for collapsed state */
+.sidebar-tooltip-portal {
+  pointer-events: none;
+}
+
 .sidebar-tooltip {
   background: linear-gradient(135deg, #a31d1d, #7c1313);
   color: #ffffff;
@@ -392,7 +437,13 @@
   margin: 0 0.5rem 0.75rem;
   border-radius: 12px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  max-height: 70px;
+  overflow: hidden;
+  opacity: 1;
+  transform: translateY(0);
+  transition: background-color 0.2s, opacity 0.22s ease 0.08s,
+              transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              max-height 0.35s ease, padding 0.35s ease, margin 0.35s ease;
   position: relative;
 }
 
@@ -435,6 +486,17 @@
   white-space: nowrap;
 }
 
+.sidebar.collapsed .sidebar-user-profile {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
 .sidebar-user-sub {
   font-size: 0.65rem;
   color: #71717a;
@@ -463,14 +525,6 @@
     max-width: 120px;
   }
 
-  .sidebar-label {
-    display: none;
-  }
-  
-  .sidebar:not(.collapsed) .sidebar-label {
-    display: block;
-  }
-  
   .sidebar-link {
     justify-content: center;
     padding: 0.75rem;
@@ -485,16 +539,6 @@
   
   .sidebar-icon {
     margin: 0;
-  }
-  
-  .sidebar-active-orders-card,
-  .sidebar-user-profile {
-    display: none;
-  }
-  
-  .sidebar:not(.collapsed) .sidebar-active-orders-card,
-  .sidebar:not(.collapsed) .sidebar-user-profile {
-    display: flex;
   }
   
   .sidebar:not(.collapsed) .sidebar-nav {

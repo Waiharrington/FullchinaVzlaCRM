@@ -4,6 +4,7 @@ import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { GlobalSearch } from '../components/GlobalSearch'
+import { StyledSelect } from '../components/StyledSelect'
 import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -361,11 +362,11 @@ export function Inicio() {
             <h3>Resumen de ventas</h3>
             <label className="db-period-control">
               <span className="sr-only">Período de ventas</span>
-              <select aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
+              <StyledSelect aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
                 <option value={7}>Últimos 7 días</option>
                 <option value={14}>Últimos 14 días</option>
                 <option value={30}>Últimos 30 días</option>
-              </select>
+              </StyledSelect>
               {chartLoading ? <RefreshCw size={12} className="is-spinning" /> : null}
             </label>
           </div>
