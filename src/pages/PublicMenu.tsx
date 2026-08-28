@@ -1035,7 +1035,7 @@ export function PublicMenu() {
 
         {/* MENU VIEW */}
         {currentTab !== 'contacto' && (
-          <>
+          <div className="public-mobile-tab-content" key="menu">
         {/* 2. Hero Status */}
         <div className="public-hero-header">
           <div className="public-hero-title-row">
@@ -1165,11 +1165,12 @@ export function PublicMenu() {
             </div>
           )}
         </section>
-          </>
+          </div>
         )}
 
         {/* CONTACT VIEW */}
         {currentTab === 'contacto' && (
+          <div className="public-mobile-tab-content" key="contacto">
           <section className="public-contact-view public-contact-page">
             <section className="public-cinematic-hero public-contact-hero">
               <HeroWokEmbers />
@@ -1294,6 +1295,7 @@ export function PublicMenu() {
               </article>
             </section>
           </section>
+          </div>
         )}
 
         {/* Bottom Tab Bar */}
