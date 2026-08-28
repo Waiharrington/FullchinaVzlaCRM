@@ -251,7 +251,7 @@ export function Menu() {
 
   if (loading) return <PageSkeleton cards={4} rows={6} hasTable={false} />
 
-  const thumb = (p: SellableProduct, cls: string) => p.imageUrl ? <img className={cls} src={p.imageUrl} alt={p.name} loading="lazy" /> : <span className={cls}>{p.emoji ? p.emoji : <UtensilsCrossed size={16} />}</span>
+  const thumb = (p: SellableProduct, cls: string) => p.imageUrl ? <img className={cls} src={p.imageUrl} alt={p.name} loading="lazy" /> : <span className={cls}><UtensilsCrossed size={16} /></span>
 
   return (
     <div className="page mnu-page animate-fade-in">
@@ -359,7 +359,7 @@ export function Menu() {
                 <label>Foto del plato</label>
                 <div className="mnu-img-pick">
                   <div className="mnu-img-prev-wrap">
-                    <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" /> : (form.emoji || <UtensilsCrossed size={16} />)}</span>
+                    <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" /> : <UtensilsCrossed size={16} />}</span>
                     <label className="mnu-img-camera-badge" title="Cambiar foto"><Camera size={14} /><input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
                     {form.imageUrl && <button type="button" className="mnu-img-remove-badge" title="Quitar foto" onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}><X size={12} /></button>}
                   </div>

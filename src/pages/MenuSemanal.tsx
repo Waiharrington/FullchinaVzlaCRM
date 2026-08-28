@@ -208,7 +208,7 @@ export function MenuSemanal() {
   const margin = (d: WeeklyDish) => d.price - d.cost
   const thumb = (d: WeeklyDish, cls: string) => d.imageUrl
     ? <img className={cls} src={d.imageUrl} alt={d.name} loading="lazy" />
-    : <span className={cls}>{d.emoji || <UtensilsCrossed size={16} />}</span>
+    : <span className={cls}><UtensilsCrossed size={16} /></span>
 
   return (
     <div className="page ws-page animate-fade-in">

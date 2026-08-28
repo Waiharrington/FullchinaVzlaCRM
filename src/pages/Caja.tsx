@@ -1104,7 +1104,7 @@ export function Caja() {
               <div className="variant-selector-list">
                 {selectedProductGroup.variants.map(({ product, label }) => (
                   <button key={product.id} type="button" className="variant-option-card" onClick={() => addVariantToCart(product)}>
-                    <span className="variant-option-emoji">{product.emoji || <UtensilsCrossed size={16} />}</span>
+                    <span className="variant-option-emoji"><UtensilsCrossed size={16} /></span>
                     <span className="variant-option-copy">
                       <strong>{label}</strong>
                       {product.description && <small>{formatSpanishText(product.description)}</small>}

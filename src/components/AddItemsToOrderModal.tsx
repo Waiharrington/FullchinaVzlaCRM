@@ -301,7 +301,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                   {filtered.map((p) => (
                     <button key={p.id} type="button" className="aito-card" onClick={() => pickProduct(p)}>
                       <span className="aito-card-photo">
-                        {p.imageUrl ? <img src={p.imageUrl} alt="" /> : <span className="aito-card-emoji">{p.emoji || <UtensilsCrossed size={16} />}</span>}
+                        {p.imageUrl ? <img src={p.imageUrl} alt="" /> : <span className="aito-card-emoji"><UtensilsCrossed size={16} /></span>}
                         {withMods.has(p.id) && <span className="aito-card-badge">Opciones</span>}
                       </span>
                       <span className="aito-card-body">

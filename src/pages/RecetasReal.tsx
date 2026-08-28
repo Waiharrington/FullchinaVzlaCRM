@@ -265,7 +265,7 @@ export function RecetasReal() {
                 >
                   {p.imageUrl
                     ? <img className="rec-thumb" src={p.imageUrl} alt={p.name} loading="lazy" />
-                    : <span className="rec-thumb">{p.emoji || <UtensilsCrossed size={16} />}</span>}
+                    : <span className="rec-thumb"><UtensilsCrossed size={16} /></span>}
                   <span className="rec-card-body">
                     <span className="rec-card-name">{formatProductTitle(p.name)}</span>
                     <span className="rec-card-meta">
@@ -311,7 +311,7 @@ export function RecetasReal() {
               <div className="rec-detail-head">
                 {sel.imageUrl
                   ? <img className="rec-detail-thumb" src={sel.imageUrl} alt={sel.name} />
-                  : <span className="rec-detail-thumb">{sel.emoji || <UtensilsCrossed size={16} />}</span>}
+                    : <span className="rec-detail-thumb"><UtensilsCrossed size={16} /></span>}
                 <div className="rec-detail-title">
                   <h2>
                     {formatProductTitle(sel.name)}

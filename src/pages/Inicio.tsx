@@ -25,7 +25,8 @@ import {
   Package,
   FileText,
   AlertTriangle,
-  Receipt
+  Receipt,
+  UtensilsCrossed
 } from 'lucide-react'
 import './Inicio.css'
 
@@ -326,7 +327,7 @@ export function Inicio() {
               <div key={d.name} className="seller-row-v2">
                 <span className={`seller-rank r${i + 1}`}>{i + 1}</span>
                 <div className="seller-meta">
-                  <span className="seller-name-v2">{'emoji' in d ? d.emoji : '🥢'} {formatProductTitle(d.name)}</span>
+                  <span className="seller-name-v2"><UtensilsCrossed size={14} style={{opacity:.6}} /> {formatProductTitle(d.name)}</span>
                   <span className="seller-sub">{d.count} platos</span>
                 </div>
                 <MoneyWithBcv usd={d.revenue} className="seller-rev" compact />

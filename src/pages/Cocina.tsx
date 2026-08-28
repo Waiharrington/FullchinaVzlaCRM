@@ -135,7 +135,7 @@ export function Cocina() {
                     {order.items.map((item) => (
                       <li key={item.id} className="kds-item">
                         <span className="kds-item-qty">{item.quantity}</span>
-                        <span className="kds-item-name">{item.emoji} {formatProductTitle(item.productName)}</span>
+                        <span className="kds-item-name"><ChefHat size={14} style={{opacity:.7}} /> {formatProductTitle(item.productName)}</span>
                       </li>
                     ))}
                   </ul>
