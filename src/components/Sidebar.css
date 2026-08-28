@@ -133,6 +133,7 @@
   align-items: center;
   margin-top: 0.5rem;
   padding: 0.25rem 0;
+  cursor: pointer;
 }
 
 .sidebar-group-parent {

@@ -56,6 +56,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     Configuración: '/mas'
   }
 
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [group]: !prev[group] }))
+  }
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
@@ -80,10 +84,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           return (
             <React.Fragment key={group}>
               {!collapsed && parent && (
-                <div className="sidebar-group-header">
+                <div
+                  className="sidebar-group-header"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleGroup(group)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      toggleGroup(group)
+                    }
+                  }}
+                >
                   <NavLink
                     to={parent.path}
                     className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
+                    onClick={(event) => event.stopPropagation()}
                   >
                     <span>{group}</span>
                   </NavLink>
@@ -92,11 +108,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     className="sidebar-group-toggle"
                     aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} ${group}`}
                     aria-expanded={isOpen}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      setCollapsedGroups(prev => ({ ...prev, [group]: !isOpen }))
-                    }}
+                    onClick={(event) => event.stopPropagation()}
                   >
                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </button>
