@@ -21,15 +21,6 @@
   overflow-y: auto;
 }
 
-/* Top bar with search */
-.app-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  padding: 12px 1rem 0;
-  gap: 12px;
-}
-
 /* Sidebar overlay for mobile */
 .sidebar-overlay {
   position: fixed;
@@ -67,10 +58,6 @@
   .app-main {
     padding: calc(2rem + env(safe-area-inset-top, 0px)) 2rem 2rem 2rem;
   }
-
-  .app-topbar {
-    padding: 16px 2rem 0;
-  }
 }
 
 /* ═══ TABLET (768px – 1024px) ═══ */
@@ -104,10 +91,6 @@
 
   .app-main {
     padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.5rem 5rem 1.5rem;
-  }
-
-  .app-topbar {
-    padding: 14px 1.5rem 0;
   }
 }
 

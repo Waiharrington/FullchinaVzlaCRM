@@ -2,6 +2,7 @@ import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { GlobalSearch } from '../components/GlobalSearch'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getExpenses, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type Expense } from '../lib/dataService'
@@ -21,7 +22,6 @@ import {
   Users,
   ShoppingCart,
   BarChart3,
-  Search,
   Package,
   FileText,
   AlertTriangle,
@@ -215,8 +215,7 @@ export function Inicio() {
             <Calendar size={14} /><span>Hoy</span><ChevronDown size={14} />
           </span>
           <div className="db-header-search">
-            <input placeholder="Buscar..." />
-            <Search size={16} />
+            <GlobalSearch inline />
           </div>
           <span className="db-header-icon-btn" aria-label="Notificaciones">
             <Bell size={18} />

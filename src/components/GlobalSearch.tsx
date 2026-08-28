@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearch } from '../context/search-context'
 import {
   Search,
   Home,
@@ -25,7 +26,6 @@ import {
   Utensils,
   X,
   ArrowRight,
-  Hash,
 } from 'lucide-react'
 import {
   getProducts,
@@ -86,51 +86,52 @@ const MODULE_ICONS: Record<string, typeof Home> = {
 
 const MAX_PER_GROUP = 5
 
-export function GlobalSearch() {
+export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const [query, setQuery] = useState('')
-  const [isOpen, setIsOpen] = useState(false)
+  const { isOpen, open: ctxOpen, close: ctxClose } = useSearch()
   const [activeIndex, setActiveIndex] = useState(0)
   const [results, setResults] = useState<ResultGroup[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
   const { user } = useAuth()
 
   const allResults = useMemo(() => results.flatMap(g => g.items), [results])
   const totalResults = allResults.length
+  const showDropdown = inline ? query.trim().length > 0 || isOpen : isOpen
 
   const close = useCallback(() => {
-    setIsOpen(false)
+    ctxClose()
     setQuery('')
     setResults([])
     setActiveIndex(0)
-  }, [])
+  }, [ctxClose])
 
   // Keyboard shortcut: Cmd+K / Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        setIsOpen(true)
+        ctxOpen()
         setTimeout(() => inputRef.current?.focus(), 50)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [ctxOpen])
 
   // Click outside to close
   useEffect(() => {
-    if (!isOpen) return
+    if (!showDropdown) return
     const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
         close()
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [isOpen, close])
+  }, [showDropdown, close])
 
   // Search logic
   useEffect(() => {
@@ -180,7 +181,6 @@ export function GlobalSearch() {
 
         if (cancelled) return
 
-        // Products
         const productMatches = products
           .filter(p => p.name.toLowerCase().includes(q))
           .slice(0, MAX_PER_GROUP)
@@ -198,7 +198,6 @@ export function GlobalSearch() {
           groups.push({ title: 'Productos', items: productMatches })
         }
 
-        // Customers
         const customerMatches = customers
           .filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)))
           .slice(0, MAX_PER_GROUP)
@@ -216,7 +215,6 @@ export function GlobalSearch() {
           groups.push({ title: 'Clientes', items: customerMatches })
         }
 
-        // Orders (last 100)
         const recentOrders = orders.slice(0, 100)
         const orderMatches = recentOrders
           .filter(o => {
@@ -239,7 +237,6 @@ export function GlobalSearch() {
           groups.push({ title: 'Órdenes recientes', items: orderMatches })
         }
 
-        // Suppliers
         const supplierMatches = suppliers
           .filter(s => s.name.toLowerCase().includes(q) || (s.contact && s.contact.toLowerCase().includes(q)))
           .slice(0, MAX_PER_GROUP)
@@ -293,30 +290,84 @@ export function GlobalSearch() {
 
   // Scroll active item into view
   useEffect(() => {
-    if (!isOpen) return
-    const el = dropdownRef.current?.querySelector(`[data-idx="${activeIndex}"]`)
+    if (!showDropdown) return
+    const el = wrapperRef.current?.querySelector(`[data-idx="${activeIndex}"]`)
     el?.scrollIntoView({ block: 'nearest' })
-  }, [activeIndex, isOpen])
+  }, [activeIndex, showDropdown])
 
+  // ── Inline mode: input + dropdown in a relative wrapper ──
+  if (inline) {
+    return (
+      <div className="gs-inline-wrapper" ref={wrapperRef}>
+        <Search size={16} className="gs-inline-icon" />
+        <input
+          ref={inputRef}
+          className="gs-inline-field"
+          placeholder="Buscar..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => { if (query.trim()) ctxOpen() }}
+          onKeyDown={handleKeyDown}
+        />
+        {query && (
+          <button className="gs-inline-clear" onClick={() => { setQuery(''); inputRef.current?.focus() }} aria-label="Limpiar">
+            <X size={13} />
+          </button>
+        )}
+
+        {showDropdown && (
+          <div className="gs-inline-dropdown">
+            {query.trim().length === 0 && (
+              <div className="gs-empty-inline">Escribe para buscar...</div>
+            )}
+
+            {query.trim().length > 0 && totalResults === 0 && !isLoading && (
+              <div className="gs-empty-inline">Sin resultados para "{query}"</div>
+            )}
+
+            {isLoading && <div className="gs-empty-inline"><div className="gs-spinner" /> Buscando...</div>}
+
+            {results.map((group, gi) => (
+              <div key={group.title} className="gs-group">
+                <div className="gs-group-title">{group.title}</div>
+                {group.items.map((item) => {
+                  const globalIdx = results
+                    .slice(0, gi)
+                    .reduce((acc, g) => acc + g.items.length, 0) + group.items.indexOf(item)
+                  const Icon = item.icon
+                  return (
+                    <button
+                      key={item.id}
+                      className={`gs-item ${globalIdx === activeIndex ? 'active' : ''}`}
+                      data-idx={globalIdx}
+                      onMouseEnter={() => setActiveIndex(globalIdx)}
+                      onClick={() => navigateTo(item.path)}
+                    >
+                      <span className="gs-item-icon" style={item.accentColor ? { color: item.accentColor } : undefined}>
+                        <Icon size={15} />
+                      </span>
+                      <span className="gs-item-text">
+                        <span className="gs-item-title">{item.title}</span>
+                        {item.subtitle && <span className="gs-item-sub">{item.subtitle}</span>}
+                      </span>
+                      <ArrowRight size={13} className="gs-item-arrow" />
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Modal mode: ⌘K command palette ──
   return (
     <>
-      <button
-        className="gs-trigger"
-        onClick={() => { setIsOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }}
-        aria-label="Buscar"
-      >
-        <Search size={16} />
-        <span className="gs-trigger-label">Buscar...</span>
-        <kbd className="gs-trigger-kbd">⌘K</kbd>
-      </button>
-
       {isOpen && (
         <div className="gs-overlay" onClick={close}>
-          <div
-            className="gs-dropdown"
-            ref={dropdownRef}
-            onClick={e => e.stopPropagation()}
-          >
+          <div className="gs-dropdown" ref={wrapperRef} onClick={e => e.stopPropagation()}>
             <div className="gs-input-row">
               <Search size={18} className="gs-input-icon" />
               <input
@@ -333,32 +384,17 @@ export function GlobalSearch() {
                   <X size={14} />
                 </button>
               )}
-              <button className="gs-close-btn" onClick={close} aria-label="Cerrar">
-                Esc
-              </button>
+              <button className="gs-close-btn" onClick={close} aria-label="Cerrar">Esc</button>
             </div>
 
-            <div className="gs-results" ref={dropdownRef}>
+            <div className="gs-results">
               {query.trim().length === 0 && (
-                <div className="gs-empty">
-                  <Hash size={20} style={{ opacity: 0.3 }} />
-                  <span>Escribe para buscar en todo el sistema</span>
-                </div>
+                <div className="gs-empty"><span>Escribe para buscar en todo el sistema</span></div>
               )}
-
               {query.trim().length > 0 && totalResults === 0 && !isLoading && (
-                <div className="gs-empty">
-                  <Search size={20} style={{ opacity: 0.3 }} />
-                  <span>No se encontraron resultados para "{query}"</span>
-                </div>
+                <div className="gs-empty"><span>No se encontraron resultados para "{query}"</span></div>
               )}
-
-              {isLoading && (
-                <div className="gs-empty">
-                  <div className="gs-spinner" />
-                  <span>Buscando...</span>
-                </div>
-              )}
+              {isLoading && <div className="gs-empty"><div className="gs-spinner" /> <span>Buscando...</span></div>}
 
               {results.map((group, gi) => (
                 <div key={group.title} className="gs-group">

@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { GlobalSearch } from './GlobalSearch'
+import { SearchProvider } from '../context/search-context'
 import './Layout.css'
 
 export function Layout() {
@@ -19,26 +20,26 @@ export function Layout() {
   }, [])
 
   return (
-    <div className="app-layout">
-      <div className={`sidebar-container ${mobileMenuOpen ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        {mobileMenuOpen && (
-          <div 
-            className="sidebar-overlay" 
-            onClick={() => setMobileMenuOpen(false)}
-          />
-        )}
-      </div>
+    <SearchProvider>
+      <div className="app-layout">
+        <div className={`sidebar-container ${mobileMenuOpen ? 'mobile-open' : ''} ${sidebarCollapsed ? 'collapsed' : ''}`}>
+          <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+          {mobileMenuOpen && (
+            <div 
+              className="sidebar-overlay" 
+              onClick={() => setMobileMenuOpen(false)}
+            />
+          )}
+        </div>
 
-      <div className={`main-content-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        <header className="app-topbar">
-          <GlobalSearch />
-        </header>
-        <main className="app-main">
-          <Outlet />
-        </main>
+        <div className={`main-content-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          <main className="app-main">
+            <Outlet />
+          </main>
+        </div>
+        <BottomNav />
       </div>
-      <BottomNav />
-    </div>
+      <GlobalSearch />
+    </SearchProvider>
   )
 }
