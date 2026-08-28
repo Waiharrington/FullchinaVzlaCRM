@@ -18,7 +18,7 @@ import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
-import { CreditCard, Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
+import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -39,7 +39,7 @@ export function Mas() {
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
   const [, setLoading] = useState(!masCache)
-  const [tab, setTab] = useState<Tab>('credits')
+  const [tab, setTab] = useState<Tab>('delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
   const [newAmount, setNewAmount] = useState('')
@@ -221,7 +221,7 @@ export function Mas() {
     <div className="page mas-page animate-fade-in">
       <header className="page-header">
         <h1 className="page-title text-gradient">Más Módulos y Administración</h1>
-        <p className="page-subtitle">Créditos, cierre de caja, finanzas, recetas y auditoría</p>
+        <p className="page-subtitle">Configuración administrativa y Delivery</p>
       </header>
 
       <div className="module-shortcuts-grid mb-6">
@@ -232,9 +232,6 @@ export function Mas() {
       </div>
 
       <div className="tabs">
-        <button className={`tab ${tab === 'credits' ? 'active' : ''}`} onClick={() => setTab('credits')}>
-          <CreditCard size={14} /> Créditos ({activeCredits.length} activos)
-        </button>
         <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
           <Bike size={14} /> Delivery
         </button>
