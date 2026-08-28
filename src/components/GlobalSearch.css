@@ -208,6 +208,114 @@
   opacity: 1;
 }
 
+/* ═══ Inline mode (dashboard search bar) ═══ */
+.gs-inline-wrapper {
+  position: relative;
+  flex: 1;
+  max-width: 320px;
+}
+
+.gs-inline-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: text;
+  transition: border-color 0.15s;
+}
+.gs-inline-input:focus-within {
+  border-color: rgba(225, 29, 72, 0.4);
+}
+
+.gs-inline-icon {
+  color: #52525b;
+  flex-shrink: 0;
+}
+
+.gs-inline-field {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #d4d4d8;
+  font-size: 13px;
+  font-family: inherit;
+}
+.gs-inline-field::placeholder {
+  color: #3f3f46;
+}
+
+.gs-inline-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #71717a;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.gs-inline-clear:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #a1a1aa;
+}
+
+.gs-inline-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #1a1a1e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  max-height: 380px;
+  overflow-y: auto;
+  z-index: 50;
+  padding: 4px;
+  animation: gs-slide-down 0.12s ease;
+}
+.gs-inline-dropdown::-webkit-scrollbar {
+  width: 4px;
+}
+.gs-inline-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.gs-empty-inline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: #52525b;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Mobile inline */
+@media (max-width: 640px) {
+  .gs-inline-wrapper {
+    max-width: 100%;
+  }
+  .gs-inline-dropdown {
+    position: fixed;
+    top: auto;
+    bottom: 60px;
+    left: 8px;
+    right: 8px;
+    max-height: 50vh;
+    border-radius: 14px;
+  }
+}
+
 /* Mobile */
 @media (max-width: 640px) {
   .gs-overlay {
