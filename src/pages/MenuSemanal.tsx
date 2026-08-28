@@ -10,6 +10,7 @@ import { PageSkeleton } from '../components/PageSkeleton'
 import {
   Utensils, Plus, Flame, Library, Link2, CalendarDays, Search, Check, AlertTriangle,
   HelpCircle, Pencil, X, Loader2, ShoppingCart, CheckCircle2, ChevronLeft, ChevronRight, ImagePlus,
+  UtensilsCrossed,
 } from 'lucide-react'
 import './MenuSemanal.css'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -53,7 +54,7 @@ function fileToScaledDataUrl(file: File, max = 420): Promise<string> {
 const PAGE_SIZE = 10
 type CatTab = 'todos' | 'activos' | 'inactivos'
 interface DishForm { emoji: string; name: string; description: string; price: string; cost: string; imageUrl: string | null }
-const emptyForm: DishForm = { emoji: '🍜', name: '', description: '', price: '7.5', cost: '2.5', imageUrl: null }
+const emptyForm: DishForm = { emoji: '', name: '', description: '', price: '7.5', cost: '2.5', imageUrl: null }
 
 export function MenuSemanal() {
   const { user } = useAuth()
@@ -163,7 +164,7 @@ export function MenuSemanal() {
       const dish = await createWeeklyDish({
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()),
         price: parseFloat(form.price) || 0, cost: parseFloat(form.cost) || 0,
-        emoji: form.emoji || '🍽️', weekTag: activateNow ? weekLabel(iso(todayMonday)) : '',
+        emoji: form.emoji || '', weekTag: activateNow ? weekLabel(iso(todayMonday)) : '',
         imageUrl: form.imageUrl,
       }, user.id)
       if (activateNow) await recordWeeklyActivation(dish.id, iso(todayMonday), iso(addDays(todayMonday, 6)), user.id)
@@ -207,7 +208,7 @@ export function MenuSemanal() {
   const margin = (d: WeeklyDish) => d.price - d.cost
   const thumb = (d: WeeklyDish, cls: string) => d.imageUrl
     ? <img className={cls} src={d.imageUrl} alt={d.name} loading="lazy" />
-    : <span className={cls}>{d.emoji}</span>
+    : <span className={cls}>{d.emoji || <UtensilsCrossed size={16} />}</span>
 
   return (
     <div className="page ws-page animate-fade-in">
@@ -434,7 +435,7 @@ function ImagePicker({ value, emoji, onPick, onClear }: { value: string | null; 
       <label>Foto del plato (opcional)</label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span className="ws-card-thumb" style={{ width: 64, height: 64 }}>
-          {value ? <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} /> : emoji || '🍽️'}
+          {value ? <img src={value} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} /> : (emoji || <UtensilsCrossed size={16} />)}
         </span>
         <label className="ws-btn-sm" style={{ cursor: 'pointer' }}>
           <ImagePlus size={14} /> Subir foto

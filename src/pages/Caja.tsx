@@ -35,6 +35,7 @@ import {
   Check,
   Printer,
   CheckCircle,
+  CheckCircle2,
   QrCode,
   ShieldCheck,
   Share2,
@@ -47,6 +48,7 @@ import {
   Flame,
   WalletCards,
   PencilLine,
+  Pencil,
   Plus,
   Minus,
   Trash2,
@@ -63,6 +65,8 @@ import {
   IdCard,
   MapPin,
   RefreshCw,
+  Circle,
+  User,
 } from 'lucide-react'
 import './Caja.css'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -800,8 +804,8 @@ export function Caja() {
 
               {/* Status Badges */}
               <div className="success-status-badges-row">
-                <span className="badge-status green">🟢 Pagado</span>
-                <span className="badge-status gold">👨‍🍳 Enviado a cocina</span>
+                <span className="badge-status green"><CheckCircle2 size={14} className="text-green" /> Pagado</span>
+                <span className="badge-status gold"><ChefHat size={14} /> Enviado a cocina</span>
               </div>
             </div>
 
@@ -875,7 +879,7 @@ export function Caja() {
           <div className="success-right-col">
             <div className="ticket-receipt-card">
               <div className="ticket-header-logo">
-                <span className="ticket-logo-icon">🔥</span>
+                <span className="ticket-logo-icon"><Flame size={20} /></span>
                 <span className="ticket-logo-text">FULL CHINA</span>
                 <span className="ticket-sub-title">Comprobante de venta</span>
               </div>
@@ -976,7 +980,7 @@ export function Caja() {
           {/* Hero Wok Flame Banner */}
           <div className="caja-hero-banner">
             <div className="hero-banner-left">
-              <div className="hero-cart-icon">🛒</div>
+              <div className="hero-cart-icon"><ShoppingCart size={28} /></div>
               <div>
                 <h1 className="hero-title">Nueva venta</h1>
                 <p className="hero-subtitle">Crea pedidos, cobra y envía a cocina.</p>
@@ -1012,7 +1016,7 @@ export function Caja() {
           {/* Toolbar */}
           <div className="products-toolbar">
             <div className="search-box">
-              <span className="search-icon">🔍</span>
+              <span className="search-icon"><Search size={16} /></span>
               <input
                 type="text"
                 placeholder="Buscar en el menú..."
@@ -1051,7 +1055,7 @@ export function Caja() {
                 return (
                   <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''} ${viewMode}`} onClick={() => selectMenuGroup(group)}>
                     <div className="product-image-area" style={{ backgroundImage: `url(${imgUrl})` }}>
-                      {isPopular && <span className="product-badge badge-popular">🔥 Más vendido</span>}
+                      {isPopular && <span className="product-badge badge-popular"><Flame size={12} /> Más vendido</span>}
                       {group.isGrouped && <span className="product-badge badge-variants">{group.variants.length} opciones</span>}
                       <button
                         className="product-quick-add-btn"
@@ -1100,7 +1104,7 @@ export function Caja() {
               <div className="variant-selector-list">
                 {selectedProductGroup.variants.map(({ product, label }) => (
                   <button key={product.id} type="button" className="variant-option-card" onClick={() => addVariantToCart(product)}>
-                    <span className="variant-option-emoji">{product.emoji || '🍽️'}</span>
+                    <span className="variant-option-emoji">{product.emoji || <UtensilsCrossed size={16} />}</span>
                     <span className="variant-option-copy">
                       <strong>{label}</strong>
                       {product.description && <small>{formatSpanishText(product.description)}</small>}
@@ -1153,7 +1157,7 @@ export function Caja() {
                             onClick={() => toggleModifierOption(group, opt.id)}
                             style={selected ? { outline: '2px solid var(--accent, #f97316)', outlineOffset: -2 } : undefined}
                           >
-                            <span className="variant-option-emoji">{selected ? '✅' : '⚪'}</span>
+                            <span className="variant-option-emoji">{selected ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
                             <span className="variant-option-copy">
                               <strong>{formatProductTitle(opt.name)}{qty > 1 ? ` ×${qty}` : ''}</strong>
                             </span>
@@ -1809,8 +1813,8 @@ export function Caja() {
                   <div className="summary-box-customer mt-4">
                     <span className="customer-box-label">Cliente</span>
                     <div className="customer-box-card">
-                      <span className="customer-box-name">👤 {customerName || 'Cliente general'}</span>
-                      <span className="customer-edit-btn" title="El cliente se define al crear la venta">✏️</span>
+                      <span className="customer-box-name"><User size={14} /> {customerName || 'Cliente general'}</span>
+                      <span className="customer-edit-btn" title="El cliente se define al crear la venta"><Pencil size={14} /></span>
                     </div>
                   </div>
 

@@ -285,18 +285,9 @@
 }
 
 .filter-select {
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  outline: none;
-  cursor: pointer;
-  color-scheme: dark;
+  background: transparent; border: none;
+  font-size: 13px; font-weight: 600; color-scheme: dark;
 }
-.filter-select option,
-.modal-select-dark option { background: #18181b; color: #f4f4f5; }
-.modal-select-dark { color-scheme: dark; }
 
 .btn-export-dark {
   background: #202024;
@@ -813,21 +804,7 @@
 }
 
 .modal-select-dark {
-  background-color: #202024;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 10px 12px;
-  color: #ffffff;
-  font-size: 13px;
-  outline: none;
-  cursor: pointer;
-  width: 100%;
-}
-
-.modal-select-dark option {
-  background-color: #202024;
-  color: #ffffff;
-  padding: 8px 12px;
+  width: 100%; font-size: 13px;
 }
 
 .birthday-hint {

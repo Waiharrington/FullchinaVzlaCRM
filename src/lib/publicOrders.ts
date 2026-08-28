@@ -66,7 +66,7 @@ export async function getPublicCatalog(): Promise<Product[]> {
       cost: null,
       category,
       categories,
-      emoji: String(row.emoji || '🥡'),
+      emoji: String(row.emoji || '🥡'), /* DB default: emoji */
       active: true,
       imageUrl: row.image_url ? String(row.image_url) : null,
     }

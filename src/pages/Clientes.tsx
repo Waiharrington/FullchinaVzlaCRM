@@ -39,6 +39,8 @@ import {
   Ticket,
   MapPin,
   ArrowLeft,
+  Tag,
+  Info,
 } from 'lucide-react'
 import './Clientes.css'
 
@@ -461,7 +463,7 @@ export function Clientes() {
                     ? 'Identificación por revisar'
                     : 'Sin identificación'}
                 </span>
-                {isFrecuente && <><span className="meta-divider">|</span><span className="badge-tag-purple">🏷️ Cliente Frecuente</span></>}
+                {isFrecuente && <><span className="meta-divider">|</span><span className="badge-tag-purple"><Tag size={13} /> Cliente Frecuente</span></>}
                 <span className="meta-divider">|</span>
                 <span className={fullCustomer?.isActive === false ? 'badge-tag-red' : 'badge-tag-green'}>
                   {fullCustomer?.isActive === false ? 'Inactivo' : 'Activo'}
@@ -469,7 +471,7 @@ export function Clientes() {
                 <span className="meta-divider">|</span>
                 <span className="hero-detail-tag" style={{ whiteSpace: 'nowrap' }}>
                   <Calendar size={13} /> Reg: {formatDate(fullCustomer?.createdAt ?? '')}
-                  {birthdayText && <><Gift size={13} style={{ marginLeft: 10 }} /> {birthdayText} 🎁</>}
+                  {birthdayText && <><Gift size={13} style={{ marginLeft: 10 }} /> {birthdayText}</>}
                 </span>
               </div>
             </div>
@@ -1021,7 +1023,7 @@ export function Clientes() {
                   </div>
                 </div>
                 <span className="birthday-hint mt-1">
-                  ℹ️ Solo para promociones y recordatorios
+                  <Info size={14} /> Solo para promociones y recordatorios
                 </span>
               </div>
 

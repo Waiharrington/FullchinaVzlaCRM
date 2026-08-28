@@ -256,8 +256,8 @@ export function ComprasReal() {
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 12, marginTop: 10 }}>
                 <div style={{ fontSize: 12, color: '#a1a1aa', marginBottom: 8 }}>Crear un ingrediente nuevo (elige su <strong>unidad base</strong>: cómo lo mides en inventario).</div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input placeholder="Nombre del ingrediente *" value={newIngredientName} onChange={(e) => setNewIngredientName(e.target.value)} style={{ flex: 2, minWidth: 180, background: '#17171d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#fff', padding: 9 }} />
-                  <select value={newIngredientUnitId || units[0]?.id || ''} onChange={(e) => setNewIngredientUnitId(e.target.value)} style={{ background: '#17171d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#fff', padding: 9 }}>
+                  <input placeholder="Nombre del ingrediente *" value={newIngredientName} onChange={(e) => setNewIngredientName(e.target.value)} style={{ flex: 2, minWidth: 180, borderRadius: 9, padding: 9 }} />
+                  <select value={newIngredientUnitId || units[0]?.id || ''} onChange={(e) => setNewIngredientUnitId(e.target.value)} style={{ borderRadius: 9, padding: 9 }}>
                     {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
                   </select>
                   <button type="button" className="cmp-new-btn" onClick={handleCreateIngredient}>Crear ingrediente</button>

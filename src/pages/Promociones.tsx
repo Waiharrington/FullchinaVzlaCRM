@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Tag, Lock, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
 import './Promociones.css'
 
 interface Promotion {
@@ -23,7 +23,26 @@ const EMPTY_FORM = {
   note: '', icon: '🎁', color: '#1b1715', isActive: true, sortOrder: 0,
 }
 
-const EMOJI_OPTIONS = ['🛵', '🍱', '🎉', '🍚', '🔥', '⭐', '⏰', '💰', '🥤', '🥟', '🍜', '🥘', '🍗', '🎁', '💎', '🏆']
+const ICON_OPTIONS = [
+  { key: '🛵', icon: Bike, label: 'Delivery' },
+  { key: '🍱', icon: Package, label: 'Bento' },
+  { key: '🎉', icon: PartyPopper, label: 'Fiesta' },
+  { key: '🍚', icon: UtensilsCrossed, label: 'Arroz' },
+  { key: '🔥', icon: Flame, label: 'Popular' },
+  { key: '⭐', icon: Star, label: 'Estrella' },
+  { key: '⏰', icon: Clock, label: 'Reloj' },
+  { key: '💰', icon: DollarSign, label: 'Dinero' },
+  { key: '🥤', icon: CupSoda, label: 'Bebida' },
+  { key: '🥟', icon: Disc, label: 'Dumpling' },
+  { key: '🍜', icon: Soup, label: 'Sopa' },
+  { key: '🥘', icon: CookingPot, label: 'Olla' },
+  { key: '🍗', icon: Beef, label: 'Carne' },
+  { key: '🎁', icon: Gift, label: 'Regalo' },
+  { key: '💎', icon: Gem, label: 'Diamante' },
+  { key: '🏆', icon: Trophy, label: 'Trofeo' },
+]
+
+const ICON_MAP = Object.fromEntries(ICON_OPTIONS.map(o => [o.key, o.icon]))
 
 function db() {
   if (!supabase) throw new Error('Supabase no está configurado')
@@ -167,7 +186,7 @@ export function Promociones() {
           <h1 className="promo-hero-title">Promociones <span>del Menú</span></h1>
           <p className="promo-hero-sub">Gestiona las ofertas que se ven en /pedir</p>
         </div>
-        <div className="promo-hero-fire" aria-hidden>🔥</div>
+        <div className="promo-hero-fire" aria-hidden><Flame size={28} /></div>
       </header>
 
       {/* Toolbar: stats + acción */}
@@ -200,14 +219,14 @@ export function Promociones() {
               className={`promo-item ${!p.isActive ? 'inactive' : ''}`}
               style={{ '--pc': p.color } as CSSProperties}
             >
-              <div className="promo-glow" aria-hidden>{p.icon}</div>
+              <div className="promo-glow" aria-hidden>{(() => { const Ico = ICON_MAP[p.icon]; return Ico ? <Ico size={32} /> : p.icon; })()}</div>
 
               <div className="promo-drag">
                 <button className="promo-move" onClick={() => moveUp(p, idx)} disabled={idx === 0} title="Subir"><ChevronUp size={16} /></button>
                 <button className="promo-move" onClick={() => moveDown(p, idx)} disabled={idx >= promos.length - 1} title="Bajar"><ChevronDown size={16} /></button>
               </div>
 
-              <div className="promo-icon-preview">{p.icon}</div>
+              <div className="promo-icon-preview">{(() => { const Ico = ICON_MAP[p.icon]; return Ico ? <Ico size={20} /> : p.icon; })()}</div>
 
               <div className="promo-info">
                 <span className="promo-tag">{p.tag}</span>
@@ -249,16 +268,16 @@ export function Promociones() {
               <div className="promo-form-row">
                 <label>Ícono</label>
                 <div className="promo-emoji-grid">
-                  {EMOJI_OPTIONS.map(em => (
-                    <button key={em} type="button" className={`promo-emoji-btn ${form.icon === em ? 'selected' : ''}`}
-                      onClick={() => setForm(f => ({ ...f, icon: em }))}>{em}</button>
+                  {ICON_OPTIONS.map(opt => (
+                    <button key={opt.key} type="button" className={`promo-emoji-btn ${form.icon === opt.key ? 'selected' : ''}`}
+                      onClick={() => setForm(f => ({ ...f, icon: opt.key }))} title={opt.label}><opt.icon size={18} /></button>
                   ))}
                 </div>
               </div>
 
               <div className="promo-form-row">
                 <label>Tag</label>
-                <input value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))} placeholder="🔥 PROMO" />
+                <input value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))} placeholder="PROMO" />
               </div>
 
               <div className="promo-form-row">

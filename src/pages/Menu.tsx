@@ -36,7 +36,7 @@ function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
 }
 
 interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean }
-const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '🍽️', price: '', cost: '', imageUrl: null, isActive: true }
+const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true }
 
 export function Menu() {
   const [products, setProducts] = useState<SellableProduct[]>([])
@@ -51,6 +51,12 @@ export function Menu() {
   const [editing, setEditing] = useState<SellableProduct | null | 'new'>(null)
   const [form, setForm] = useState<Form>(emptyForm)
   const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (editing) document.body.classList.add('modal-open')
+    else document.body.classList.remove('modal-open')
+    return () => document.body.classList.remove('modal-open')
+  }, [editing])
 
   const [selectMode, setSelectMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -116,7 +122,7 @@ export function Menu() {
 
   const openNew = () => { setForm(emptyForm); setEditing('new') }
   const openEdit = (p: SellableProduct) => {
-    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '🍽️', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive })
+    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive })
     setEditing(p)
   }
 
@@ -220,7 +226,7 @@ export function Menu() {
       const payload = {
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
         price: parseFloat(form.price) || 0, cost: form.cost.trim() ? parseFloat(form.cost) : null,
-        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '🍽️', imageUrl: form.imageUrl, isActive: form.isActive,
+        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '', imageUrl: form.imageUrl, isActive: form.isActive,
       }
       let productId: string
       if (editing === 'new') { productId = await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
@@ -245,7 +251,7 @@ export function Menu() {
 
   if (loading) return <PageSkeleton cards={4} rows={6} hasTable={false} />
 
-  const thumb = (p: SellableProduct, cls: string) => p.imageUrl ? <img className={cls} src={p.imageUrl} alt={p.name} loading="lazy" /> : <span className={cls}>{p.emoji || '🍽️'}</span>
+  const thumb = (p: SellableProduct, cls: string) => p.imageUrl ? <img className={cls} src={p.imageUrl} alt={p.name} loading="lazy" /> : <span className={cls}>{p.emoji ? p.emoji : <UtensilsCrossed size={16} />}</span>
 
   return (
     <div className="page mnu-page animate-fade-in">
@@ -353,11 +359,9 @@ export function Menu() {
                 <label>Foto del plato</label>
                 <div className="mnu-img-pick">
                   <div className="mnu-img-prev-wrap">
-                    <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" /> : (form.emoji || '🍽️')}</span>
-                    <div className="mnu-img-overlay">
-                      <label className="mnu-upload" style={{ border: 0, padding: '6px 10px', margin: 0 }}><Camera size={12} /> Cambiar<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
-                      {form.imageUrl && <button type="button" className="mnu-img-overlay-danger" onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}>Quitar</button>}
-                    </div>
+                    <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" /> : (form.emoji || <UtensilsCrossed size={16} />)}</span>
+                    <label className="mnu-img-camera-badge" title="Cambiar foto"><Camera size={14} /><input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
+                    {form.imageUrl && <button type="button" className="mnu-img-remove-badge" title="Quitar foto" onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}><X size={12} /></button>}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <label className="mnu-upload"><ImagePlus size={14} /> Subir foto<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>

@@ -268,7 +268,7 @@ export function Inventario() {
                       <tr key={ing.id}>
                         <td>
                           <div className="inv-product-cell">
-                            <div className="inv-product-img">📦</div>
+                            <div className="inv-product-img"><Package size={16} /></div>
                             {ing.name}
                           </div>
                         </td>
@@ -393,7 +393,7 @@ export function Inventario() {
                 return (
                   <div key={ing.id} className="inv-alert-item">
                     <div className={`inv-alert-icon ${status}`}>
-                      📦
+                      <Package size={16} />
                     </div>
                     <div className="inv-alert-info">
                       <div className="inv-alert-name">{ing.name}</div>

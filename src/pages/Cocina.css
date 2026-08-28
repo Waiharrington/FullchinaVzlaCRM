@@ -44,6 +44,32 @@
   font-size: 12px;
   font-weight: 700;
   animation: pulse-red 1.5s infinite;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kds-live-dot {
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  display: inline-block;
+  animation: blink-red 1s infinite;
+}
+
+@keyframes blink-red {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
 }
 
 .kds-header-actions {

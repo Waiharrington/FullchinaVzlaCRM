@@ -30,7 +30,7 @@
 .cmp-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
 .cmp-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
 .cmp-field input, .cmp-field select, .cmp-field textarea {
-  width: 100%; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px;
+  width: 100%; font-size: 14px;
 }
 .cmp-prov-row { display: flex; gap: 8px; align-items: stretch; }
 .cmp-prov-row > :first-child { flex: 1; }
@@ -40,7 +40,7 @@
 .cmp-items-head, .cmp-item-row { display: grid; grid-template-columns: 2fr 90px 110px 130px 110px 40px; gap: 10px; align-items: center; }
 .cmp-items-head { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #71717a; padding: 0 2px 8px; }
 .cmp-item-row { margin-bottom: 8px; }
-.cmp-item-row input, .cmp-item-row select { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; color: #fff; padding: 9px; font-size: 13px; width: 100%; }
+.cmp-item-row input, .cmp-item-row select { border-radius: 9px; padding: 9px; font-size: 13px; width: 100%; }
 .cmp-cost-wrap { position: relative; }
 .cmp-cost-wrap span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #71717a; font-size: 13px; }
 .cmp-cost-wrap input { padding-left: 24px; }

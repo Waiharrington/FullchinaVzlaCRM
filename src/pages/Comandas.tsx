@@ -28,12 +28,14 @@ import {
   Filter,
   Clock,
   CheckCircle,
+  CheckCircle2,
   Package,
   Truck,
   User,
   ShoppingBag,
   Bike,
   UtensilsCrossed,
+  Utensils,
   Plus,
   Trash2,
   MapPin,
@@ -51,6 +53,13 @@ import {
   Landmark,
   Hexagon,
   Split,
+  ChefHat,
+  AlertTriangle,
+  ClipboardList,
+  Globe,
+  Timer,
+  DollarSign,
+  Flame,
 } from 'lucide-react'
 import './Comandas.css'
 
@@ -819,7 +828,7 @@ export function Comandas() {
       {/* Comandas Header + Stat Cards Row */}
       <div className="comandas-header-row">
         <div className="comandas-header-left">
-          <div className="header-icon-box red">📋</div>
+          <div className="header-icon-box red"><ClipboardList size={20} /></div>
           <div>
             <h1 className="comandas-title">Comandas</h1>
             <p className="comandas-subtitle">Gestiona el estado de tus pedidos en tiempo real.</p>
@@ -949,7 +958,7 @@ export function Comandas() {
                         <div className="card-time-wrap">
                           <span className="card-time-text">{order.time}</span>
                           {order.isRetraso && (
-                            <span className="badge-retraso">⏰ Retraso</span>
+                            <span className="badge-retraso"><Clock size={12} /> Retraso</span>
                           )}
                         </div>
                       </div>
@@ -978,19 +987,19 @@ export function Comandas() {
                       {/* Footer Row */}
                       <div className="card-footer-line">
                         {order.source === 'web' ? (
-                          <span className="badge-sin-pagar">🌐 Web · Por confirmar</span>
+                          <span className="badge-sin-pagar"><Globe size={12} /> Web · Por confirmar</span>
                         ) : order.isPaid ? (
                           <span className={`payment-type-badge pay-${order.paymentType}`}>
                             {order.paymentMethod}
                           </span>
                         ) : (
-                          <span className="badge-sin-pagar">⚠️ Sin cobrar</span>
+                          <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
                         )}
 
                         {order.status === 'ready' ? (
                           <div className="status-ready-group">
                             <span className="badge-ready-tag">✓ Listo</span>
-                            <span className="timer-mins text-green">⏱️ {order.elapsedMins} min</span>
+                            <span className="timer-mins text-green"><Timer size={12} /> {order.elapsedMins} min</span>
                           </div>
                         ) : order.status === 'delivered' ? (
                           <span className="badge-delivered-tag">
@@ -998,7 +1007,7 @@ export function Comandas() {
                           </span>
                         ) : (
                           <span className={`timer-mins ${order.isRetraso ? 'text-red-urgent' : 'text-orange'}`}>
-                            {order.isRetraso ? '⏰' : '⏱️'} {order.elapsedMins} min
+                            {order.isRetraso ? <Clock size={12} /> : <Timer size={12} />} {order.elapsedMins} min
                           </span>
                         )}
                       </div>
@@ -1010,7 +1019,7 @@ export function Comandas() {
                           disabled={confirmingWebId === order.webRequestId}
                           onClick={e => { e.stopPropagation(); handleConfirmWebOrder(order) }}
                         >
-                          {confirmingWebId === order.webRequestId ? 'Confirmando…' : '✅ Confirmar pedido de WhatsApp'}
+                          {confirmingWebId === order.webRequestId ? 'Confirmando…' : <><CheckCircle2 size={16} /> Confirmar pedido de WhatsApp</>}
                         </button>
                       ) : order.status !== 'delivered' && (
                         <button
@@ -1021,10 +1030,10 @@ export function Comandas() {
                           }}
                         >
                           {order.status === 'new'
-                            ? '👨‍🍳 Iniciar preparación'
+                            ? <><ChefHat size={16} /> Iniciar preparación</>
                             : order.status === 'preparing'
-                            ? '✅ Marcar como lista'
-                            : '🚚 Marcar como entregada'}
+                            ? <><CheckCircle2 size={16} /> Marcar como lista</>
+                            : <><Truck size={16} /> Marcar como entregada</>}
                         </button>
                       )}
                     </div>
@@ -1076,7 +1085,7 @@ export function Comandas() {
                 {selectedOrder.isPaid ? (
                   <div className="cmd-badge paid">Pagado</div>
                 ) : (
-                  <div className="cmd-badge sin-pagar">⚠️ Sin cobrar</div>
+                  <div className="cmd-badge sin-pagar"><AlertTriangle size={14} /> Sin cobrar</div>
                 )}
                 <div className="cmd-badge delivery">{selectedOrder.orderType}</div>
               </div>
@@ -1227,7 +1236,7 @@ export function Comandas() {
                           <tr key={item.id}>
                             <td>
                               <div className="cmd-product-cell">
-                                <div className="cmd-product-img">{item.name === 'Delivery' ? '🛵' : '🍔'}</div>
+                                <div className="cmd-product-img">{item.name === 'Delivery' ? <Bike size={16} /> : <Utensils size={16} />}</div>
                                 <span>{item.name}</span>
                               </div>
                             </td>
@@ -1293,11 +1302,11 @@ export function Comandas() {
 
                   <div className="cmd-payment-method-row">
                     <span className="cmd-method-label">Método de pago</span>
-                    <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : '⚠️ Sin cobrar'}</span>
+                    <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : <><AlertTriangle size={14} /> Sin cobrar</>}</span>
                   </div>
                   {!selectedOrder.isPaid && extractPreferredPayment(selectedOrder.notes) && (
                     <div className="cmd-payment-method-row cmd-pref-pay-row">
-                      <span className="cmd-method-label">💳 Pago del cliente</span>
+                      <span className="cmd-method-label"><CreditCard size={14} /> Pago del cliente</span>
                       <span className="cmd-pref-pay-badge">{extractPreferredPayment(selectedOrder.notes)!.label}</span>
                     </div>
                   )}
@@ -1311,7 +1320,7 @@ export function Comandas() {
                       </div>
                     ) : (
                       <div className="cmd-summary-row cmd-breakdown-item">
-                        <span className="cmd-paid-yellow">⚠️ Pendiente de cobro</span>
+                        <span className="cmd-paid-yellow"><AlertTriangle size={14} /> Pendiente de cobro</span>
                         <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className="cmd-paid-yellow" compact />
                       </div>
                     )}
@@ -1385,7 +1394,7 @@ export function Comandas() {
                     className="cmd-btn-cobrar"
                     onClick={() => handleOpenPaymentForOrder(selectedOrder)}
                   >
-                    💲 Cobrar pedido
+                    <DollarSign size={16} /> Cobrar pedido
                   </button>
                 )}
                 {selectedOrder.source !== 'web' && selectedOrder.status !== 'delivered' && <button
@@ -1674,7 +1683,7 @@ export function Comandas() {
                   <div className="summary-box-customer mt-4">
                     <span className="customer-box-label">Cliente</span>
                     <div className="customer-box-card">
-                      <span className="customer-box-name">👤 {paymentOrder.customerName || 'Cliente general'}</span>
+                      <span className="customer-box-name"><User size={14} /> {paymentOrder.customerName || 'Cliente general'}</span>
                     </div>
                   </div>
 
@@ -1750,7 +1759,7 @@ export function Comandas() {
                         <span className="cmd-history-order-no">{order.orderNumber}</span>
                         <span className="cmd-history-customer">{order.customerName}</span>
                         <span className="cmd-history-type">
-                          {order.orderType === 'Delivery' ? '🛵' : order.orderType.startsWith('Mesa') ? '🍽️' : '🛍️'} {order.orderType}
+                          {order.orderType === 'Delivery' ? <Bike size={14} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={14} /> : <ShoppingBag size={14} />} {order.orderType}
                         </span>
                       </div>
                       <div className="cmd-history-item-center">
@@ -1763,13 +1772,13 @@ export function Comandas() {
                         <span className="cmd-history-date">{order.date}</span>
                         <span className="cmd-history-time">{order.time}</span>
                         <span className={`cmd-history-status ${order.status}`}>
-                          {order.status === 'delivered' ? '✓ Entregada' : order.status === 'ready' ? '✓ Lista' : order.status === 'preparing' ? '🔥 Preparando' : '📦 Nueva'}
+                          {order.status === 'delivered' ? '✓ Entregada' : order.status === 'ready' ? '✓ Lista' : order.status === 'preparing' ? <><Flame size={12} /> Preparando</> : <><Package size={12} /> Nueva</>}
                         </span>
                       </div>
                       <div className="cmd-history-item-total">
                         <MoneyWithBcv usd={order.totalAmount || 0} compact />
                         <span className={`cmd-history-paid-badge ${order.isPaid ? 'paid' : 'unpaid'}`}>
-                          {order.isPaid ? order.paymentMethod : '⚠️ Sin cobrar'}
+                          {order.isPaid ? order.paymentMethod : <><AlertTriangle size={12} /> Sin cobrar</>}
                         </span>
                       </div>
                     </div>
