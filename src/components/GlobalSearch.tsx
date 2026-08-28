@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useSearch } from '../context/search-context'
 import {
   Search,
   Home,
@@ -88,7 +89,7 @@ const MAX_PER_GROUP = 5
 
 export function GlobalSearch() {
   const [query, setQuery] = useState('')
-  const [isOpen, setIsOpen] = useState(false)
+  const { isOpen, open: ctxOpen, close: ctxClose } = useSearch()
   const [activeIndex, setActiveIndex] = useState(0)
   const [results, setResults] = useState<ResultGroup[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -101,24 +102,24 @@ export function GlobalSearch() {
   const totalResults = allResults.length
 
   const close = useCallback(() => {
-    setIsOpen(false)
+    ctxClose()
     setQuery('')
     setResults([])
     setActiveIndex(0)
-  }, [])
+  }, [ctxClose])
 
   // Keyboard shortcut: Cmd+K / Ctrl+K
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
-        setIsOpen(true)
+        ctxOpen()
         setTimeout(() => inputRef.current?.focus(), 50)
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [])
+  }, [ctxOpen])
 
   // Click outside to close
   useEffect(() => {
@@ -300,16 +301,6 @@ export function GlobalSearch() {
 
   return (
     <>
-      <button
-        className="gs-trigger"
-        onClick={() => { setIsOpen(true); setTimeout(() => inputRef.current?.focus(), 50) }}
-        aria-label="Buscar"
-      >
-        <Search size={16} />
-        <span className="gs-trigger-label">Buscar...</span>
-        <kbd className="gs-trigger-kbd">⌘K</kbd>
-      </button>
-
       {isOpen && (
         <div className="gs-overlay" onClick={close}>
           <div

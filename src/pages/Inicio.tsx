@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
+import { useSearch } from '../context/search-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -53,6 +54,7 @@ const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '
 
 export function Inicio() {
   const navigate = useNavigate()
+  const { open: openSearch } = useSearch()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const [stats, setStats] = useState<TodayStats | null>(inicioCache?.stats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(inicioCache?.todayOrders ?? [])
@@ -214,9 +216,9 @@ export function Inicio() {
           <span className="db-header-pill" aria-label="Período actual">
             <Calendar size={14} /><span>Hoy</span><ChevronDown size={14} />
           </span>
-          <div className="db-header-search">
-            <input placeholder="Buscar..." />
-            <Search size={16} />
+          <div className="db-header-search" onClick={openSearch} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') openSearch() }}>
+            <span style={{ pointerEvents: 'none' }}>Buscar...</span>
+            <Search size={16} style={{ pointerEvents: 'none' }} />
           </div>
           <span className="db-header-icon-btn" aria-label="Notificaciones">
             <Bell size={18} />
