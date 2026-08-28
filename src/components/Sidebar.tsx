@@ -20,7 +20,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
+    Finanzas: true,
+    Configuración: true
+  })
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const navItems = allNavItems.filter(item =>
@@ -89,7 +92,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     className="sidebar-group-toggle"
                     aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} ${group}`}
                     aria-expanded={isOpen}
-                    onClick={() => setCollapsedGroups(prev => ({ ...prev, [group]: !isOpen }))}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      setCollapsedGroups(prev => ({ ...prev, [group]: !isOpen }))
+                    }}
                   >
                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </button>
