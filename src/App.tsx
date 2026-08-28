@@ -63,7 +63,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     // menú público. Los enlaces internos (ej. /caja) sí van al login.
     return <Navigate to={location.pathname === '/' ? '/pedir' : '/login'} replace />
   }
-  return <>{children}</>
+  return <Suspense fallback={<SplashScreen onDone={() => {}} persist />}>{children}</Suspense>
 }
 
 /**

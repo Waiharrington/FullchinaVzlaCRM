@@ -4,22 +4,25 @@ import './SplashScreen.css'
 interface SplashScreenProps {
   onDone: () => void
   minDuration?: number
+  /** When true the splash stays visible indefinitely (no auto-close). */
+  persist?: boolean
 }
 
-export function SplashScreen({ onDone, minDuration = 2800 }: SplashScreenProps) {
+export function SplashScreen({ onDone, minDuration = 2800, persist }: SplashScreenProps) {
   const [phase, setPhase] = useState<'enter' | 'exit'>('enter')
 
   useEffect(() => {
+    if (persist) return
     const timer = setTimeout(() => setPhase('exit'), minDuration)
     return () => clearTimeout(timer)
-  }, [minDuration])
+  }, [minDuration, persist])
 
   useEffect(() => {
-    if (phase === 'exit') {
+    if (!persist && phase === 'exit') {
       const timer = setTimeout(onDone, 600)
       return () => clearTimeout(timer)
     }
-  }, [phase, onDone])
+  }, [phase, onDone, persist])
 
   return (
     <div className={`splash-screen ${phase === 'exit' ? 'splash-exit' : ''}`}>
