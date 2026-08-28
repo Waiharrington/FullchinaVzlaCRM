@@ -212,6 +212,9 @@ function readCheckoutAttempt(): { signature: string; key: string } | null {
 export function PublicMenu() {
   const designMode = new URLSearchParams(window.location.search).get('modo') === 'diseno'
   const [products, setProducts] = useState<Product[]>([])
+  // Los productos de categoría "extras" no se muestran como tarjeta en el menú;
+  // solo se ofrecen como add-on dentro del detalle de cada plato (el check).
+  const [extrasProducts, setExtrasProducts] = useState<Product[]>([])
   const [cart, setCart] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
@@ -313,7 +316,7 @@ export function PublicMenu() {
         // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
         const resolveCategory = (p: { name: string; category: string }) =>
           p.category !== 'otros' && isKnownCategory(p.category) ? p.category : classifyMenuCategory(p.name, p.category)
-        setProducts(catalog.map(p => {
+        const resolved = catalog.map(p => {
           const primary = resolveCategory(p)
           const extras = (p.categories ?? []).filter(c => c !== p.category)
           return { ...p, category: primary, categories: Array.from(new Set([primary, ...extras])) }
@@ -321,7 +324,9 @@ export function PublicMenu() {
           .sort((a, b) => {
             const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
             return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
-          }))
+          })
+        setExtrasProducts(resolved.filter(p => p.categories.includes('extras')))
+        setProducts(resolved.filter(p => !p.categories.includes('extras')))
         setBcvRate(rates.bcv || null)
       })
       .catch(() => setError('No pudimos cargar el menú. Intenta nuevamente.'))
@@ -594,7 +599,6 @@ export function PublicMenu() {
         .then(groups => {
           const real = groups.filter(item => item.options.length > 0)
           if (isExtrasEligible) {
-            const extrasProducts = products.filter(p => p.categories.includes('extras'))
             if (extrasProducts.length > 0) {
               real.push({
                 modifierId: '__catalog_extras__',

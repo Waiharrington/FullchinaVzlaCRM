@@ -20,7 +20,7 @@ import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes } from '../lib/money'
+import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
 import {
   Search,
   Calendar,
@@ -514,9 +514,12 @@ export function Comandas() {
     let active = true
     const loadRealOrders = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0]
+        // El "día" del negocio se calcula en horario de Venezuela (UTC-4), no en
+        // UTC: de lo contrario las comandas creadas después de las 8pm local
+        // caen en el día UTC siguiente y desaparecen del tablero.
+        const { start, end } = dayRangeInTimeZone()
         const [realOrders, webOrders] = await Promise.all([
-          getOrdersWithItems(today + 'T00:00:00', today + 'T23:59:59'),
+          getOrdersWithItems(start, end),
           getPendingWebOrders(),
         ])
 
@@ -663,11 +666,10 @@ export function Comandas() {
   const loadHistoryOrders = async () => {
     setHistoryLoading(true)
     try {
-      const today = new Date()
-      const thirtyDaysAgo = new Date(today)
-      thirtyDaysAgo.setDate(today.getDate() - 30)
-      const dateFrom = thirtyDaysAgo.toISOString().split('T')[0] + 'T00:00:00'
-      const dateTo = today.toISOString().split('T')[0] + 'T23:59:59'
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+      const dateFrom = dayRangeInTimeZone(thirtyDaysAgo).start
+      const dateTo = dayRangeInTimeZone().end
 
       const allOrders = await getOrdersWithItems(dateFrom, dateTo)
 

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { dateKeyInTimeZone, dayRangeInTimeZone } from './money'
 
 export interface Product {
   id: string
@@ -956,14 +957,16 @@ export async function setOrderDeliveryFee(orderId: string, fee: number): Promise
 // --- Ventas de hoy -----------------------------------------------------------
 
 export async function getTodayOrders(): Promise<TodayOrder[]> {
-  const start = new Date()
-  start.setHours(0, 0, 0, 0)
+  // El día del negocio es en horario de Venezuela (UTC-4), no en la zona del
+  // navegador ni en UTC. Ver dayRangeInTimeZone en ./money.
+  const { start, end } = dayRangeInTimeZone()
 
   const { data, error } = await client()
     .from('orders')
     .select('id, order_number, status, created_at, payments(method, amount)')
     .eq('status', 'paid')
-    .gte('created_at', start.toISOString())
+    .gte('created_at', start)
+    .lt('created_at', end)
     .order('created_at', { ascending: false })
 
   if (error) throw error
@@ -2412,8 +2415,9 @@ export async function getProductionBatches(dateStart?: string, dateEnd?: string)
 }
 
 export async function getProductionStats(): Promise<ProductionStats> {
-  const today = new Date().toISOString().split('T')[0]
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  // Fechas en horario de Venezuela (UTC-4), no en UTC.
+  const today = dateKeyInTimeZone()
+  const yesterday = dateKeyInTimeZone(new Date(Date.now() - 86400000))
 
   const [todayBatches, yesterdayBatches] = await Promise.all([
     getProductionBatches(today, today),
@@ -2646,7 +2650,7 @@ export async function createAdvance(params: {
   const { error } = await client().from('advances').insert({
     employee_id: params.employeeId,
     amount: params.amount,
-    advance_date: params.advanceDate ?? new Date().toISOString().split('T')[0],
+    advance_date: params.advanceDate ?? dateKeyInTimeZone(),
     notes: params.notes ?? null,
   })
   if (error) throw error
@@ -2669,7 +2673,7 @@ export async function createProductionBonus(params: {
   const { error } = await client().from('production_bonuses').insert({
     employee_id: params.employeeId,
     amount: params.amount,
-    bonus_date: params.bonusDate ?? new Date().toISOString().split('T')[0],
+    bonus_date: params.bonusDate ?? dateKeyInTimeZone(),
     reason: params.reason ?? null,
   })
   if (error) throw error
