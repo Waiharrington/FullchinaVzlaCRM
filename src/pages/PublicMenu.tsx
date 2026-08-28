@@ -1460,7 +1460,7 @@ export function PublicMenu() {
                 </div>
 
                 <div className="public-home-products-grid">
-                  {popularGroups.map((group, groupIndex) => renderDesktopProductCard(group, groupIndex))}
+                  {popularGroups.map(group => renderDesktopProductCard(group))}
                 </div>
               </section>
 
@@ -1521,7 +1521,7 @@ export function PublicMenu() {
                 </div>
 
                 <div className="public-home-promos-grid">
-                  {promoGroups.map((group, groupIndex) => renderDesktopPromoCard(group, groupIndex))}
+                  {promoGroups.map(group => renderDesktopPromoCard(group))}
                 </div>
               </section>
             </>
