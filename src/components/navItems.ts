@@ -16,6 +16,7 @@ import {
   MessageSquare,
   UtensilsCrossed,
   Receipt,
+  CreditCard,
   BadgeDollarSign,
   Tag,
   LayoutGrid
@@ -48,6 +49,7 @@ export const allNavItems: NavItem[] = [
   { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Finanzas' },
   { path: '/gastos', label: 'Gastos', icon: Receipt, roles: ['owner', 'manager'], group: 'Finanzas' },
   { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Finanzas' },
+  { path: '/creditos', label: 'Créditos', icon: CreditCard, roles: ['owner', 'manager'], group: 'Finanzas' },
   { path: '/fidelizacion', label: 'Fidelización', icon: Award, roles: ['owner', 'manager'], group: 'Configuración' },
   { path: '/promociones', label: 'Promociones', icon: Tag, roles: ['owner', 'manager'], group: 'Configuración' },
   { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Configuración' },

@@ -18,7 +18,7 @@ import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
-import { CreditCard, BarChart3, Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
+import { CreditCard, Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -234,9 +234,6 @@ export function Mas() {
       <div className="tabs">
         <button className={`tab ${tab === 'credits' ? 'active' : ''}`} onClick={() => setTab('credits')}>
           <CreditCard size={14} /> Créditos ({activeCredits.length} activos)
-        </button>
-        <button className={`tab ${tab === 'close' ? 'active' : ''}`} onClick={() => setTab('close')}>
-          <BarChart3 size={14} /> Cierre de Caja
         </button>
         <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
           <Bike size={14} /> Delivery

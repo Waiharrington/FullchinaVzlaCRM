@@ -151,6 +151,7 @@ function AppRoutes() {
         <Route path="/fidelizacion" element={forModule('/fidelizacion', <Fidelizacion />)} />
         <Route path="/marketing" element={forModule('/marketing', <MarketingWhatsApp />)} />
         <Route path="/nomina" element={forModule('/nomina', <Nomina />)} />
+        <Route path="/creditos" element={forModule('/creditos', <Mas />)} />
         <Route path="/auditoria" element={forModule('/auditoria', <Auditoria />, ['owner'])} />
         <Route path="/mas" element={forModule('/mas', <Mas />)} />
         <Route path="/promociones" element={forModule('/promociones', <Promociones />)} />
