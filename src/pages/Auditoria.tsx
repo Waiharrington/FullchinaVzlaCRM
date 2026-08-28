@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAuditLogs, type AuditLog } from '../lib/dataService'
-import { Shield, Loader2, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Shield, AlertTriangle, RefreshCw } from 'lucide-react'
 import './Auditoria.css'
+import { PageSkeleton } from '../components/PageSkeleton'
 
 export function Auditoria() {
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -44,13 +45,7 @@ export function Auditoria() {
   }
 
   if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
-          <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
-        </div>
-      </div>
-    )
+    return <PageSkeleton cards={2} rows={5} />
   }
 
   if (migrationNeeded) {

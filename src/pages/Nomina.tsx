@@ -5,6 +5,7 @@ import {
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord,
 } from '../lib/dataService'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
+import { PageSkeleton } from '../components/PageSkeleton'
 import {
   Plus, CheckCircle2, AlertTriangle, Loader2, Users, Banknote, Gift, Hourglass,
   HelpCircle, Save, X,
@@ -121,7 +122,7 @@ export function Nomina() {
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando bono') }
   }
 
-  if (loading) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
+  if (loading) return <PageSkeleton cards={3} rows={5} />
 
   const pendingAdvances = advances.filter((a) => !a.isDeducted).reduce((s, a) => s + a.amount, 0)
   const pendingCount = advances.filter((a) => !a.isDeducted).length

@@ -1,0 +1,119 @@
+.skeleton-page { color: #fff; }
+
+.sk-header { margin-bottom: 24px; }
+.sk-title {
+  width: 180px; height: 32px; border-radius: 10px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.5s infinite;
+}
+.sk-subtitle {
+  width: 320px; height: 16px; border-radius: 8px; margin-top: 10px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: sk-shimmer 1.5s infinite;
+}
+
+.sk-cards {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;
+}
+@media (max-width: 800px) { .sk-cards { grid-template-columns: repeat(2, 1fr); } }
+.sk-card {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 16px; padding: 18px 20px;
+}
+.sk-card-icon {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-card-text { display: flex; flex-direction: column; gap: 6px; }
+.sk-card-label {
+  width: 80px; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-card-value {
+  width: 48px; height: 24px; border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+
+.sk-tools {
+  display: flex; gap: 10px; margin-bottom: 16px;
+}
+.sk-search {
+  flex: 1 1 220px; max-width: 340px; height: 40px; border-radius: 12px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-filter {
+  width: 140px; height: 40px; border-radius: 12px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+
+.sk-table {
+  background: linear-gradient(170deg, #1c1c22 0%, #161618 100%);
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 8px 16px;
+}
+.sk-table-row {
+  display: flex; align-items: center; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.sk-table-row:last-child { border-bottom: none; }
+.sk-table-cell {
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-table-thumb { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; }
+.sk-table-name { width: 200px; height: 16px; }
+.sk-table-cat { width: 100px; height: 14px; }
+.sk-table-price { width: 60px; height: 18px; }
+.sk-table-actions { width: 80px; height: 32px; border-radius: 8px; margin-left: auto; }
+
+.sk-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px;
+}
+.sk-grid-card {
+  background: linear-gradient(170deg, #1c1c22 0%, #161618 100%);
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; overflow: hidden;
+}
+.sk-grid-img {
+  width: 100%; height: 140px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-grid-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.sk-grid-title { width: 70%; height: 16px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.06) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-grid-sub { width: 40%; height: 12px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-grid-row { display: flex; justify-content: space-between; margin-top: 4px; }
+.sk-grid-row::before { content: ''; width: 60px; height: 20px; border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+.sk-grid-row::after { content: ''; width: 50px; height: 20px; border-radius: 20px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
+}
+
+@keyframes sk-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 600px) {
+  .sk-cards { gap: 10px; }
+  .sk-card { padding: 14px 16px; }
+  .sk-card-icon { width: 40px; height: 40px; }
+  .sk-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .sk-grid-img { height: 120px; }
+}

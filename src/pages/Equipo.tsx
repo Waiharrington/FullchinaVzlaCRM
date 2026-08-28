@@ -4,6 +4,7 @@ import {
   Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3, AlertTriangle,
   KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2,
 } from 'lucide-react'
+import { PageSkeleton } from '../components/PageSkeleton'
 import {
   getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
@@ -250,13 +251,7 @@ export function Equipo() {
   }
 
   if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
-          <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
-        </div>
-      </div>
-    )
+    return <PageSkeleton cards={3} rows={5} />
   }
 
   return (

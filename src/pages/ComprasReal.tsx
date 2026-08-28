@@ -5,6 +5,7 @@ import {
   type Supplier, type Purchase, type Ingredient,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useAuth } from '../context/auth-context'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import {
@@ -160,7 +161,7 @@ export function ComprasReal() {
     const a = document.createElement('a'); a.href = url; a.download = `compras_${dateKeyInTimeZone()}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
-  if (loading) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
+  if (loading) return <PageSkeleton cards={3} rows={5} />
 
   return (
     <div className="page cmp-page animate-fade-in">

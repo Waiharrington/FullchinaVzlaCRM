@@ -6,6 +6,7 @@ import {
   getWeeklyActivationSummary, type WeeklyDish,
 } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
+import { PageSkeleton } from '../components/PageSkeleton'
 import {
   Utensils, Plus, Flame, Library, Link2, CalendarDays, Search, Check, AlertTriangle,
   HelpCircle, Pencil, X, Loader2, ShoppingCart, CheckCircle2, ChevronLeft, ChevronRight, ImagePlus,
@@ -201,7 +202,7 @@ export function MenuSemanal() {
     try { setWeekSummary(await getWeeklyActivationSummary()) } catch { setWeekSummary([]) }
   }
 
-  if (loading) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
+  if (loading) return <PageSkeleton cards={4} rows={4} hasTable={false} />
 
   const margin = (d: WeeklyDish) => d.price - d.cost
   const thumb = (d: WeeklyDish, cls: string) => d.imageUrl

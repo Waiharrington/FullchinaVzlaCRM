@@ -36,7 +36,15 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
             <Bell size={20} />
           </div>
         </button>
-        {notificationsOpen && <div style={{ position: 'absolute', right: 24, top: 62, zIndex: 10, padding: '12px 16px', borderRadius: 12, background: '#fff', boxShadow: '0 10px 30px rgba(15,23,42,.15)', fontSize: 13 }}>No hay notificaciones nuevas.</div>}
+        {notificationsOpen && (
+          <div className="topbar-notifications">
+            <div className="topbar-notifications-header">Notificaciones</div>
+            <div className="topbar-notifications-empty">
+              <Bell size={28} />
+              <p>No hay notificaciones nuevas</p>
+            </div>
+          </div>
+        )}
         
         <div className="user-profile">
           <img 

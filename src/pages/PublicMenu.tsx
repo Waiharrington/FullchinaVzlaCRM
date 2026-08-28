@@ -104,13 +104,13 @@ const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 
-type DesktopTab = 'inicio' | 'menu' | 'promos' | 'contacto'
+type DesktopTab = 'inicio' | 'menu' | 'contacto'
 
 const readDesktopTab = (): DesktopTab => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(min-width: 1024px)').matches) return 'inicio'
   try {
     const savedTab = localStorage.getItem(DESKTOP_TAB_KEY)
-    return savedTab === 'menu' || savedTab === 'promos' || savedTab === 'contacto' ? savedTab : 'inicio'
+    return savedTab === 'menu' || savedTab === 'contacto' ? savedTab : 'inicio'
   } catch {
     return 'inicio'
   }
@@ -997,12 +997,6 @@ export function PublicMenu() {
               </button>
               <button 
                 type="button" 
-                className={`public-nav-tab-btn ${currentTab === 'promos' ? 'active' : ''}`} 
-                onClick={() => { setCurrentTab('promos'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-                Promos
-              </button>
-              <button 
-                type="button" 
                 className={`public-nav-tab-btn ${currentTab === 'contacto' ? 'active' : ''}`} 
                 onClick={() => { setCurrentTab('contacto'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                 Contacto
@@ -1515,7 +1509,7 @@ export function PublicMenu() {
                   <button 
                     type="button" 
                     className="public-home-see-all-btn"
-                    onClick={() => { setCurrentTab('promos'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                    onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                   >
                     <span>Ver todas</span>
                     <ChevronRight size={14} />
@@ -1609,28 +1603,7 @@ export function PublicMenu() {
             </>
           )}
 
-          {/* TAB 3: PROMOS */}
-          {currentTab === 'promos' && (
-            <section className="public-content">
-              <div className="public-list-header">
-                <div className="public-category-title-group">
-                  <span className="public-cat-section-bar" />
-                  <div>
-                    <span className="public-list-title-badge"><Flame size={18} aria-hidden="true" /> COMBOS Y PROMOCIONES</span>
-                    <span className="public-list-title-sub">Más comida y mejor precio para compartir</span>
-                  </div>
-                </div>
-              </div>
-
-
-
-              <div className="public-category-grid">
-                {promoGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < 6))}
-              </div>
-            </section>
-          )}
-
-          {/* TAB 4: CONTACTO */}
+          {/* TAB 3: CONTACTO */}
           {currentTab === 'contacto' && (
             <section className="public-contact-view public-contact-page">
               <section className="public-cinematic-hero public-contact-hero">

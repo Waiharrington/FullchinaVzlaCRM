@@ -6,6 +6,7 @@ import {
 } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { SearchSelect } from '../components/SearchSelect'
+import { PageSkeleton } from '../components/PageSkeleton'
 import {
   Flame, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ChevronUp,
 } from 'lucide-react'
@@ -124,13 +125,7 @@ export function ProduccionReal() {
   }
 
   if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
-          <Loader2 size={32} className="animate-spin" style={{ color: '#ef4444' }} />
-        </div>
-      </div>
-    )
+    return <PageSkeleton cards={3} rows={4} />
   }
 
   return (

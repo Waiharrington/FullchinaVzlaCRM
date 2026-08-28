@@ -152,6 +152,33 @@
   align-items: center;
 }
 
+/* Notification Dropdown */
+.topbar-notifications {
+  position: absolute; right: 24px; top: 62px; z-index: 50;
+  width: 280px; padding: 0;
+  background: linear-gradient(170deg, #1c1c22 0%, #141418 100%);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  animation: notif-enter 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+  overflow: hidden;
+}
+.topbar-notifications-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px; font-weight: 700; color: #d4d4d8;
+}
+.topbar-notifications-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 16px; gap: 10px; color: #52525b;
+}
+.topbar-notifications-empty svg { opacity: 0.4; }
+.topbar-notifications-empty p { font-size: 13px; margin: 0; text-align: center; }
+@keyframes notif-enter {
+  from { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .mobile-only {
   display: none;
 }

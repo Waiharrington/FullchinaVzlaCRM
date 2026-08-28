@@ -5,10 +5,11 @@ import {
   type RecipeComponent, type SellableProduct, type Ingredient, type RecipeSummary,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes } from '../lib/money'
 import {
-  Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, Search, ChevronLeft, ChevronRight,
+  Plus, Trash2, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
 } from 'lucide-react'
 import './RecetasReal.css'
@@ -178,13 +179,7 @@ export function RecetasReal() {
   }
 
   if (loading) {
-    return (
-      <div className="page animate-fade-in">
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}>
-          <Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} />
-        </div>
-      </div>
-    )
+    return <PageSkeleton cards={3} rows={5} />
   }
 
   const bs = (usd: number) => (bcvRate && bcvRate > 0 ? formatVes(usd * bcvRate) : 'Bs. —')

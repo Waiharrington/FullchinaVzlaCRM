@@ -4,11 +4,12 @@ import {
   type FullOrder, type Expense, type RecipeSummary, type FinancialOperation,
 } from '../lib/dataService'
 import { useRates } from '../context/rates-context'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { formatUsd, formatVes } from '../lib/money'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import {
-  Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent, Loader2,
+  Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
   Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download,
 } from 'lucide-react'
 import './Finanzas.css'
@@ -106,7 +107,7 @@ export function Finanzas() {
     semana: computePL(...ranges.semana), mes: computePL(...ranges.mes),
   }), [loading, computePL, ranges])
 
-  if (loading || !pls) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
+  if (loading || !pls) return <PageSkeleton cards={4} rows={6} />
 
   const cur = period === 'hoy' ? pls.hoy : period === 'semana' ? pls.semana : pls.mes
   const prev = pls.ayer // referencia de comparación para las tarjetas

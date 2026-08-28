@@ -3,6 +3,7 @@ import { Building2, CalendarDays, Eye, Loader2, Mail, Phone, Plus, Search, Shopp
 import { createSupplier, getPurchases, getSuppliers, type Purchase, type Supplier } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import './Proveedores.css'
+import { PageSkeleton } from '../components/PageSkeleton'
 
 type SupplierDraft = { name: string; contact: string; phone: string; email: string; notes: string }
 const EMPTY_DRAFT: SupplierDraft = { name: '', contact: '', phone: '', email: '', notes: '' }
@@ -82,7 +83,7 @@ export function Proveedores() {
     }
   }
 
-  if (loading) return <div className="page prv-loading"><Loader2 className="animate-spin" size={32} /></div>
+  if (loading) return <div className="page prv-loading"><PageSkeleton cards={2} rows={4} /></div>
 
   return (
     <div className="page prv-page animate-fade-in">

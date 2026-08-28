@@ -81,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
     setUser({ id: data.user.id, email: data.user.email || email, role: profile.role, allowedModules: profile.allowedModules })
-    setSplashDone(false)
     return {}
   }
 
@@ -116,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     setUser({ id: data.user.id, email: data.user.email || pinData.email, role: profile.role, allowedModules: profile.allowedModules })
-    setSplashDone(false)
     return {}
   }
 

@@ -5,6 +5,7 @@ import {
   type DeliveryConfigRow, type DeliveryZoneRow,
 } from '../lib/dataService'
 import { estimateDelivery } from '../lib/delivery'
+import { PageSkeleton } from './PageSkeleton'
 
 /** Configuración administrable del delivery por distancia (origen + zonas). */
 export function DeliverySettings() {
@@ -90,7 +91,7 @@ export function DeliverySettings() {
     )
   })()
 
-  if (loading) return <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Loader2 className="animate-spin" style={{ color: '#e11d2a' }} /></div>
+  if (loading) return <div className="card"><PageSkeleton cards={2} rows={3} /></div>
 
   return (
     <div className="card">

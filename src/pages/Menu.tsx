@@ -4,9 +4,10 @@ import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
   LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2, CheckSquare, Square,
-  ChevronUp, ChevronDown, Check,
+  ChevronUp, ChevronDown, Check, Camera,
 } from 'lucide-react'
 import './Menu.css'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
@@ -58,23 +59,18 @@ export function Menu() {
   const [menuCats, setMenuCats] = useState<MenuCategoryRow[]>([])
   const [catManagerOpen, setCatManagerOpen] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const [catalog, fetchedCats] = await Promise.all([
         getAllSellableProducts(),
         getMenuCategories().catch(() => [] as MenuCategoryRow[]),
       ])
-      // Si la tabla aún no existe (migración sin aplicar), usamos las por defecto
-      // para que el panel siga funcionando.
       const cats: MenuCategoryRow[] = fetchedCats.length
         ? fetchedCats
         : defaultMenuCategories().map((d) => ({ id: d.key, key: d.key, label: d.label, sortOrder: d.sortOrder, isActive: true }))
       hydrateMenuCategories(cats)
       setMenuCats(cats)
-      // Respetamos la categoría guardada si ya es una categoría válida y
-      // específica (una edición manual). Solo auto-clasificamos por nombre los
-      // platos sin categoría útil ("otros") o con valores heredados/desconocidos.
       const resolveCategory = (product: SellableProduct) =>
         product.category !== 'otros' && isKnownCategory(product.category)
           ? product.category
@@ -84,7 +80,6 @@ export function Menu() {
         const extras = product.categories.filter((c) => c !== product.category)
         return { ...product, category: primary, categories: Array.from(new Set([primary, ...extras])) }
       }
-      // El producto de sistema "Delivery" (cargo variable) no es un plato: se oculta.
       setProducts(catalog.filter(product => !product.isDelivery).map(resolveAll)
         .sort((a, b) => {
           const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
@@ -92,7 +87,7 @@ export function Menu() {
         }))
     }
     catch (e) { setError(e instanceof Error ? e.message : 'Error cargando el menú') }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
 
@@ -218,7 +213,6 @@ export function Menu() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.name.trim() || !(parseFloat(form.price) >= 0)) { setError('Nombre y precio son obligatorios'); return }
-    // Al menos una categoría; la principal es la de mayor prioridad en el orden del menú.
     const chosen = form.categories.length ? form.categories : ['otros']
     const primary = [...chosen].sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b))[0]
     setSaving(true); setError('')
@@ -233,12 +227,23 @@ export function Menu() {
       else if (editing) { productId = editing.id; await updateProduct(editing.id, payload); flash(`"${payload.name}" actualizado`) }
       else { productId = '' }
       if (productId) await setProductExtraCategories(productId, chosen, payload.category)
-      setEditing(null); await load()
+
+      // Optimistic update: add/update product in local state immediately
+      if (productId) {
+        const updated: SellableProduct = editing === 'new'
+          ? { id: productId, isDelivery: false, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive }
+          : { ...(editing as SellableProduct), id: productId, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive }
+        setProducts(prev => editing === 'new' ? [...prev, updated] : prev.map(p => p.id === productId ? updated : p))
+      }
+
+      setEditing(null)
+      // Silent background refresh to stay in sync (no loading spinner)
+      void load(true)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al guardar el plato') }
     finally { setSaving(false) }
   }
 
-  if (loading) return <div className="page"><div style={{ display: 'flex', justifyContent: 'center', padding: '64px 0' }}><Loader2 size={32} className="animate-spin" style={{ color: '#e11d2a' }} /></div></div>
+  if (loading) return <PageSkeleton cards={4} rows={6} hasTable={false} />
 
   const thumb = (p: SellableProduct, cls: string) => p.imageUrl ? <img className={cls} src={p.imageUrl} alt={p.name} loading="lazy" /> : <span className={cls}>{p.emoji || '🍽️'}</span>
 
@@ -290,10 +295,10 @@ export function Menu() {
         <div className="mnu-table-wrap" style={{ textAlign: 'center', color: '#71717a', padding: 30 }}>No hay platos que coincidan.</div>
       ) : view === 'grid' ? (
         <div className="mnu-grid">
-          {filtered.map((p) => {
+          {filtered.map((p, i) => {
             const selected = selectedIds.has(p.id)
             return (
-            <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}${selectMode ? ' selectable' : ''}${selected ? ' selected' : ''}`} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
+            <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}${selectMode ? ' selectable' : ''}${selected ? ' selected' : ''}`} style={{ animationDelay: `${i * 40}ms` }} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
               {selectMode && <span className="mnu-check" aria-hidden>{selected ? <CheckSquare size={20} /> : <Square size={20} />}</span>}
               {thumb(p, 'mnu-thumb')}
               <div className="mnu-card-body">
@@ -338,50 +343,64 @@ export function Menu() {
       {editing && (
         <div className="mnu-modal-overlay" onClick={() => setEditing(null)}>
           <form className="mnu-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3>{editing === 'new' ? 'Nuevo plato' : 'Editar plato'}</h3>
-              <button type="button" className="mnu-cancel" style={{ padding: 6 }} onClick={() => setEditing(null)}><X size={16} /></button>
+            <div className="mnu-modal-header">
+              <h3><UtensilsCrossed size={20} style={{ color: '#e11d2a' }} />{editing === 'new' ? 'Nuevo plato' : 'Editar plato'}</h3>
+              <button type="button" className="mnu-modal-close" onClick={() => setEditing(null)}><X size={16} /></button>
             </div>
 
-            <div className="mnu-field">
-              <label>Foto del plato</label>
-              <div className="mnu-img-pick">
-                <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }} /> : (form.emoji || '🍽️')}</span>
-                <label className="mnu-upload"><ImagePlus size={14} /> Subir foto<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
-                {form.imageUrl && <button type="button" className="mnu-cancel" style={{ padding: '8px 12px' }} onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}>Quitar</button>}
+            <div className="mnu-modal-body">
+              <div className="mnu-field">
+                <label>Foto del plato</label>
+                <div className="mnu-img-pick">
+                  <div className="mnu-img-prev-wrap">
+                    <span className="mnu-img-prev">{form.imageUrl ? <img src={form.imageUrl} alt="" /> : (form.emoji || '🍽️')}</span>
+                    <div className="mnu-img-overlay">
+                      <label className="mnu-upload" style={{ border: 0, padding: '6px 10px', margin: 0 }}><Camera size={12} /> Cambiar<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
+                      {form.imageUrl && <button type="button" className="mnu-img-overlay-danger" onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}>Quitar</button>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label className="mnu-upload"><ImagePlus size={14} /> Subir foto<input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => pickImage(e.target.files?.[0])} /></label>
+                    {form.imageUrl && <button type="button" className="mnu-cancel" style={{ padding: '8px 12px', fontSize: 12 }} onClick={() => setForm((f) => ({ ...f, imageUrl: null }))}>Quitar foto</button>}
+                  </div>
+                </div>
               </div>
-            </div>
 
-            <div className="mnu-row2">
-              <div className="mnu-field" style={{ maxWidth: 90 }}><label>Emoji</label><input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} style={{ textAlign: 'center', fontSize: 20 }} /></div>
-              <div className="mnu-field"><label>Nombre *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Arroz Frito Especial" required /></div>
-            </div>
+              <div className="mnu-modal-divider" />
 
-            <div className="mnu-field"><label>Descripción</label><textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción para el cliente" /></div>
-
-            <div className="mnu-field"><label>Categorías (elige una o varias)</label>
-              <div className="mnu-cat-chips">
-                {menuCats.map((c) => {
-                  const on = form.categories.includes(c.key)
-                  return (
-                    <button type="button" key={c.key} className={`mnu-cat-chip ${on ? 'on' : ''}`}
-                      onClick={() => setForm((f) => ({ ...f, categories: on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key] }))}>
-                      {on && <Check size={13} />}{c.label}
-                    </button>
-                  )
-                })}
+              <div className="mnu-row2">
+                <div className="mnu-field" style={{ maxWidth: 90 }}><label>Emoji</label><input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} style={{ textAlign: 'center', fontSize: 20 }} /></div>
+                <div className="mnu-field"><label>Nombre *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Arroz Frito Especial" required /></div>
               </div>
-            </div>
 
-            <div className="mnu-row2">
-              <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
-              <div className="mnu-field"><label>Costo estimado ($)</label><input type="number" step="0.01" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Opcional" /></div>
-            </div>
+              <div className="mnu-field"><label>Descripción</label><textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción para el cliente" /></div>
 
-            <div className="mnu-field"><label>Estado</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 6 }}>
-                <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
-                <span style={{ fontSize: 13, color: '#d4d4d8' }}>{form.isActive ? 'Activo (en venta)' : 'Inactivo'}</span>
+              <div className="mnu-modal-divider" />
+
+              <div className="mnu-field"><label>Categorías (elige una o varias)</label>
+                <div className="mnu-cat-chips">
+                  {menuCats.map((c) => {
+                    const on = form.categories.includes(c.key)
+                    return (
+                      <button type="button" key={c.key} className={`mnu-cat-chip ${on ? 'on' : ''}`}
+                        onClick={() => setForm((f) => ({ ...f, categories: on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key] }))}>
+                        {on && <Check size={13} />}{c.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="mnu-row2">
+                <div className="mnu-field"><label>Precio de venta ($) *</label><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div>
+                <div className="mnu-field"><label>Costo estimado ($)</label><input type="number" step="0.01" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Opcional" /></div>
+              </div>
+
+              <div className="mnu-field"><label>Estado</label>
+                <div className="mnu-status-row">
+                  <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
+                  <span className="mnu-status-label">{form.isActive ? 'Activo (en venta)' : 'Inactivo'}</span>
+                </div>
               </div>
             </div>
 
@@ -438,9 +457,9 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
   return (
     <div className="mnu-modal-overlay" onClick={onClose}>
       <div className="mnu-modal mnu-cat-modal" onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3><Tag size={18} style={{ verticalAlign: '-3px', marginRight: 6 }} />Categorías del menú</h3>
-          <button type="button" className="mnu-cancel" style={{ padding: 6 }} onClick={onClose}><X size={16} /></button>
+        <div className="mnu-modal-header">
+          <h3><Tag size={18} style={{ color: '#e11d2a' }} />Categorías del menú</h3>
+          <button type="button" className="mnu-modal-close" onClick={onClose}><X size={16} /></button>
         </div>
         <p className="page-subtitle" style={{ margin: '4px 0 12px' }}>Crea, renombra y reordena las categorías. Los cambios se ven en el menú y en el sitio de clientes.</p>
 
