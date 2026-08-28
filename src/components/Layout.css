@@ -37,7 +37,7 @@
 /* ═══ DESKTOP (≥ 1025px) ═══ */
 @media (min-width: 1025px) {
   .sidebar-container {
-    width: 260px;
+    width: 242px;
     flex-shrink: 0;
     transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: visible;
@@ -48,7 +48,7 @@
   }
   
   .main-content-wrapper {
-    width: calc(100% - 260px);
+    width: calc(100% - 242px);
   }
 
   .main-content-wrapper.sidebar-collapsed {
@@ -56,7 +56,7 @@
   }
 
   .app-main {
-    padding: calc(2rem + env(safe-area-inset-top, 0px)) 2rem 2rem 2rem;
+    padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.5rem 1.5rem 1.5rem;
   }
 }
 

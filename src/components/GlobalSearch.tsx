@@ -37,7 +37,7 @@ import {
   type FullOrder,
   type Supplier,
 } from '../lib/dataService'
-import { allNavItems, canAccessModule } from './navItems'
+import { allNavItems, type Role } from './navItems'
 import { useAuth } from '../context/auth-context'
 import './GlobalSearch.css'
 
@@ -86,6 +86,34 @@ const MODULE_ICONS: Record<string, typeof Home> = {
 
 const MAX_PER_GROUP = 5
 
+interface SearchableModule {
+  path: string
+  label: string
+  icon: typeof Home
+  roles: Role[]
+  group: string
+  keywords?: string[]
+}
+
+const SEARCH_ONLY_MODULES: SearchableModule[] = [
+  { path: '/menu-semanal', label: 'Menú semanal', icon: Utensils, roles: ['owner', 'manager'], group: 'Operación', keywords: ['planificación', 'semana', 'platos de la semana'] },
+  { path: '/cocina', label: 'Cocina', icon: UtensilsCrossed, roles: ['owner', 'manager'], group: 'Operación', keywords: ['preparación', 'pedidos en cocina'] },
+  { path: '/auditoria', label: 'Auditoría', icon: BarChart3, roles: ['owner'], group: 'Configuración', keywords: ['actividad', 'historial', 'seguridad'] },
+]
+
+const SEARCHABLE_MODULES: SearchableModule[] = [...allNavItems, ...SEARCH_ONLY_MODULES]
+
+function normalizeSearchText(value: string | number | null | undefined) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+}
+
+function includesSearchTerm(query: string, ...values: Array<string | number | null | undefined>) {
+  return values.some(value => normalizeSearchText(value).includes(query))
+}
+
 export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const [query, setQuery] = useState('')
   const { isOpen, open: ctxOpen, close: ctxClose } = useSearch()
@@ -99,17 +127,24 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
 
   const allResults = useMemo(() => results.flatMap(g => g.items), [results])
   const totalResults = allResults.length
-  const showDropdown = inline ? query.trim().length > 0 || isOpen : isOpen
+  const showDropdown = inline ? query.trim().length > 0 : isOpen
 
   const close = useCallback(() => {
-    ctxClose()
+    if (!inline) ctxClose()
     setQuery('')
     setResults([])
     setActiveIndex(0)
-  }, [ctxClose])
+  }, [ctxClose, inline])
+
+  const canAccessPath = useCallback((path: string, roles: Role[]) => {
+    if (!user?.role || user.role === 'owner') return true
+    if (user.allowedModules) return user.allowedModules.includes(path)
+    return roles.includes(user.role)
+  }, [user?.role, user?.allowedModules])
 
   // Keyboard shortcut: Cmd+K / Ctrl+K
   useEffect(() => {
+    if (inline) return
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
@@ -119,7 +154,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [ctxOpen])
+  }, [ctxOpen, inline])
 
   // Click outside to close
   useEffect(() => {
@@ -138,25 +173,23 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
     if (!query.trim() || query.trim().length < 1) {
       setResults([])
       setActiveIndex(0)
+      setIsLoading(false)
       return
     }
 
     let cancelled = false
-    const q = query.trim().toLowerCase()
+    const q = normalizeSearchText(query.trim())
 
     const searchAll = async () => {
       setIsLoading(true)
       const groups: ResultGroup[] = []
 
       // 1. Modules — instant, no async
-      const moduleMatches = allNavItems
-        .filter(item => canAccessModule(item.path, user?.role, user?.allowedModules))
+      const moduleMatches = SEARCHABLE_MODULES
+        .filter(item => canAccessPath(item.path, item.roles))
         .filter(item => {
-          const label = item.label.toLowerCase()
-          const path = item.path.toLowerCase()
-          return label.includes(q) || path.includes(q)
+          return includesSearchTerm(q, item.label, item.path, item.group, ...(item.keywords ?? []))
         })
-        .slice(0, MAX_PER_GROUP)
         .map(item => ({
           id: `mod-${item.path}`,
           title: item.label,
@@ -173,16 +206,18 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
       // 2. Fetch data in parallel
       try {
         const [products, customers, orders, suppliers] = await Promise.all([
-          getProducts().catch(() => [] as Product[]),
-          getCustomers().catch(() => [] as Customer[]),
-          getOrdersWithItems().catch(() => [] as FullOrder[]),
-          getSuppliers().catch(() => [] as Supplier[]),
+          canAccessPath('/menu', ['owner', 'manager']) ? getProducts().catch(() => [] as Product[]) : Promise.resolve([] as Product[]),
+          canAccessPath('/clientes', ['owner', 'manager']) ? getCustomers().catch(() => [] as Customer[]) : Promise.resolve([] as Customer[]),
+          canAccessPath('/comandas', ['owner', 'manager', 'cashier']) || canAccessPath('/caja', ['owner', 'manager', 'cashier'])
+            ? getOrdersWithItems().catch(() => [] as FullOrder[])
+            : Promise.resolve([] as FullOrder[]),
+          canAccessPath('/proveedores', ['owner', 'manager']) ? getSuppliers().catch(() => [] as Supplier[]) : Promise.resolve([] as Supplier[]),
         ])
 
         if (cancelled) return
 
-        const productMatches = products
-          .filter(p => p.name.toLowerCase().includes(q))
+        const productMatches = canAccessPath('/menu', ['owner', 'manager']) ? products
+          .filter(p => includesSearchTerm(q, p.name, p.description, p.category, ...(p.categories ?? [])))
           .slice(0, MAX_PER_GROUP)
           .map(p => ({
             id: `prod-${p.id}`,
@@ -192,14 +227,14 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
             path: '/menu',
             type: 'product' as const,
             accentColor: '#22c55e',
-          }))
+          })) : []
 
         if (productMatches.length) {
           groups.push({ title: 'Productos', items: productMatches })
         }
 
-        const customerMatches = customers
-          .filter(c => c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)))
+        const customerMatches = canAccessPath('/clientes', ['owner', 'manager']) ? customers
+          .filter(c => includesSearchTerm(q, c.name, c.identification, c.phone, c.email, c.favoriteProduct))
           .slice(0, MAX_PER_GROUP)
           .map(c => ({
             id: `cust-${c.id}`,
@@ -209,7 +244,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
             path: '/clientes',
             type: 'customer' as const,
             accentColor: '#3b82f6',
-          }))
+          })) : []
 
         if (customerMatches.length) {
           groups.push({ title: 'Clientes', items: customerMatches })
@@ -218,9 +253,9 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
         const recentOrders = orders.slice(0, 100)
         const orderMatches = recentOrders
           .filter(o => {
-            const num = `#${o.orderNumber}`.toLowerCase()
-            const name = (o.customerName || '').toLowerCase()
-            return num.includes(q) || name.includes(q)
+            const destination = o.orderType === 'delivery' ? '/comandas' : '/caja'
+            return canAccessPath(destination, ['owner', 'manager', 'cashier'])
+              && includesSearchTerm(q, `#${o.orderNumber}`, o.orderNumber, o.customerName, o.orderType, o.status, o.fulfillmentStatus, o.notes, ...o.items.map(item => item.productName))
           })
           .slice(0, MAX_PER_GROUP)
           .map(o => ({
@@ -237,8 +272,8 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
           groups.push({ title: 'Órdenes recientes', items: orderMatches })
         }
 
-        const supplierMatches = suppliers
-          .filter(s => s.name.toLowerCase().includes(q) || (s.contact && s.contact.toLowerCase().includes(q)))
+        const supplierMatches = canAccessPath('/proveedores', ['owner', 'manager']) ? suppliers
+          .filter(s => includesSearchTerm(q, s.name, s.contact, s.phone, s.email, s.notes))
           .slice(0, MAX_PER_GROUP)
           .map(s => ({
             id: `sup-${s.id}`,
@@ -248,7 +283,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
             path: '/proveedores',
             type: 'supplier' as const,
             accentColor: '#8b5cf6',
-          }))
+          })) : []
 
         if (supplierMatches.length) {
           groups.push({ title: 'Proveedores', items: supplierMatches })
@@ -266,7 +301,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
 
     searchAll()
     return () => { cancelled = true }
-  }, [query, user?.role])
+  }, [query, canAccessPath])
 
   const navigateTo = useCallback((path: string) => {
     navigate(path)
@@ -306,8 +341,11 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
           placeholder="Buscar..."
           value={query}
           onChange={e => setQuery(e.target.value)}
-          onFocus={() => { if (query.trim()) ctxOpen() }}
           onKeyDown={handleKeyDown}
+          aria-label="Buscar en el sistema"
+          role="combobox"
+          aria-expanded={showDropdown}
+          aria-controls="global-search-inline-results"
         />
         {query && (
           <button className="gs-inline-clear" onClick={() => { setQuery(''); inputRef.current?.focus() }} aria-label="Limpiar">
@@ -316,7 +354,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
         )}
 
         {showDropdown && (
-          <div className="gs-inline-dropdown">
+          <div className="gs-inline-dropdown" id="global-search-inline-results">
             {query.trim().length === 0 && (
               <div className="gs-empty-inline">Escribe para buscar...</div>
             )}

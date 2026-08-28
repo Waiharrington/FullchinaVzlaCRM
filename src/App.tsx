@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { RatesProvider } from './context/RatesProvider'
@@ -49,21 +49,50 @@ const forModule = (path: string, element: React.ReactNode, fallbackRoles?: Role[
   <ModuleRoute path={path} fallbackRoles={fallbackRoles}>{element}</ModuleRoute>
 )
 
+function InitialRouteContent({ children, onReady }: { children: React.ReactNode; onReady: () => void }) {
+  useEffect(() => {
+    onReady()
+  }, [onReady])
+
+  return <>{children}</>
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
   const location = useLocation()
+  const [initialRouteReady, setInitialRouteReady] = useState(false)
 
   const handleSplashDone = useCallback(() => {
     setSplashDone(true)
   }, [setSplashDone])
 
-  if (!splashDone || loading) return <SplashScreen onDone={handleSplashDone} minDuration={2800} />
-  if (!user) {
-    // Un visitante sin sesión que entra a la raíz es un cliente: lo llevamos al
-    // menú público. Los enlaces internos (ej. /caja) sí van al login.
-    return <Navigate to={location.pathname === '/' ? '/pedir' : '/login'} replace />
-  }
-  return <Suspense fallback={<SplashScreen onDone={() => {}} persist />}>{children}</Suspense>
+  const handleInitialRouteReady = useCallback(() => {
+    setInitialRouteReady(true)
+  }, [])
+
+  const splashReady = !loading && (!user || initialRouteReady)
+
+  return (
+    <>
+      {!splashDone ? (
+        <SplashScreen onDone={handleSplashDone} minDuration={2800} ready={splashReady} />
+      ) : null}
+
+      {!loading && user ? (
+        <Suspense fallback={initialRouteReady ? <ModuleLoader /> : null}>
+          <InitialRouteContent onReady={handleInitialRouteReady}>
+            {children}
+          </InitialRouteContent>
+        </Suspense>
+      ) : null}
+
+      {!loading && !user && splashDone ? (
+        // Un visitante sin sesión que entra a la raíz es un cliente: lo llevamos al
+        // menú público. Los enlaces internos (ej. /caja) sí van al login.
+        <Navigate to={location.pathname === '/' ? '/pedir' : '/login'} replace />
+      ) : null}
+    </>
+  )
 }
 
 /**

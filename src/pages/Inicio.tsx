@@ -1,8 +1,10 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
+import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { GlobalSearch } from '../components/GlobalSearch'
+import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getExpenses, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type Expense } from '../lib/dataService'
@@ -11,12 +13,10 @@ import { Line, Doughnut } from 'react-chartjs-2'
 import {
   Flame,
   Calendar,
-  ChevronDown,
   Bell,
-  Plus,
+  RefreshCw,
   TrendingUp,
   DollarSign,
-  ChefHat,
   ClipboardList,
   CreditCard,
   Users,
@@ -53,6 +53,7 @@ const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '
 
 export function Inicio() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const [stats, setStats] = useState<TodayStats | null>(inicioCache?.stats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(inicioCache?.todayOrders ?? [])
@@ -63,36 +64,76 @@ export function Inicio() {
   const [productionStats, setProductionStats] = useState<ProductionStats | null>(inicioCache?.productionStats ?? null)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [todayExpenses, setTodayExpenses] = useState<Expense[]>([])
-  const [, setLoading] = useState(!inicioCache)
+  const [loading, setLoading] = useState(!inicioCache)
+  const [chartLoading, setChartLoading] = useState(false)
+  const [salesRange, setSalesRange] = useState(7)
+  const [dashboardError, setDashboardError] = useState('')
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (days: number = 7) => {
+    setLoading(true)
+    setDashboardError('')
     try {
       const today = dateKeyInTimeZone()
-      const [statsData, ordersData, salesData, rankingData, creditsData, paymentData, productionData, ingredientsData, expensesData] = await Promise.all([
+      const [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult, expensesResult] = await Promise.allSettled([
         getTodayStats(),
         getOrdersWithItems(),
-        getDailySales(7),
+        getDailySales(days),
         getProductRanking(),
         getCredits(),
         getPaymentMethodSales(),
         getProductionStats(),
-        getIngredients().catch(() => []),
-        getExpenses(today, today).catch(() => []),
+        getIngredients(),
+        getExpenses(today, today),
       ])
-      setStats(statsData)
-      setTodayOrders(ordersData)
-      setDailySales(salesData)
-      setProductRanking(rankingData)
-      setCredits(creditsData)
-      setPaymentMethods(paymentData)
-      setProductionStats(productionData)
-      setIngredients(ingredientsData)
-      setTodayExpenses(expensesData)
-      inicioCache = { stats: statsData, todayOrders: ordersData, dailySales: salesData, productRanking: rankingData, credits: creditsData, paymentMethods: paymentData, productionStats: productionData }
+
+      if (statsResult.status === 'fulfilled') setStats(statsResult.value)
+      if (ordersResult.status === 'fulfilled') setTodayOrders(ordersResult.value)
+      if (salesResult.status === 'fulfilled') setDailySales(salesResult.value)
+      if (rankingResult.status === 'fulfilled') setProductRanking(rankingResult.value)
+      if (creditsResult.status === 'fulfilled') setCredits(creditsResult.value)
+      if (paymentResult.status === 'fulfilled') setPaymentMethods(paymentResult.value)
+      if (productionResult.status === 'fulfilled') setProductionStats(productionResult.value)
+      if (ingredientsResult.status === 'fulfilled') setIngredients(ingredientsResult.value)
+      if (expensesResult.status === 'fulfilled') setTodayExpenses(expensesResult.value)
+
+      inicioCache = {
+        stats: statsResult.status === 'fulfilled' ? statsResult.value : inicioCache?.stats ?? null,
+        todayOrders: ordersResult.status === 'fulfilled' ? ordersResult.value : inicioCache?.todayOrders ?? [],
+        dailySales: salesResult.status === 'fulfilled' ? salesResult.value : inicioCache?.dailySales ?? [],
+        productRanking: rankingResult.status === 'fulfilled' ? rankingResult.value : inicioCache?.productRanking ?? [],
+        credits: creditsResult.status === 'fulfilled' ? creditsResult.value : inicioCache?.credits ?? [],
+        paymentMethods: paymentResult.status === 'fulfilled' ? paymentResult.value : inicioCache?.paymentMethods ?? [],
+        productionStats: productionResult.status === 'fulfilled' ? productionResult.value : inicioCache?.productionStats ?? null,
+      }
+
+      const failedResults = [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult, expensesResult]
+        .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+      if (failedResults.length > 0) {
+        console.error('Errores parciales del dashboard:', failedResults.map(result => result.reason))
+        setDashboardError(`${failedResults.length} sección${failedResults.length === 1 ? '' : 'es'} no ${failedResults.length === 1 ? 'pudo' : 'pudieron'} actualizarse. El resto de la información sigue disponible.`)
+      }
     } catch (e) {
       console.error('Error:', e)
+      setDashboardError('No pudimos actualizar todos los datos del dashboard. Puedes reintentar sin perder la información visible.')
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const handleSalesRangeChange = useCallback(async (days: number) => {
+    setSalesRange(days)
+    setChartLoading(true)
+    setDashboardError('')
+    try {
+      const salesData = await getDailySales(days)
+      setDailySales(salesData)
+      if (days === 7 && inicioCache) inicioCache = { ...inicioCache, dailySales: salesData }
+    } catch (e) {
+      console.error('Error actualizando el rango de ventas:', e)
+      setDashboardError('No pudimos actualizar el período de ventas. Intenta nuevamente.')
+    } finally {
+      setChartLoading(false)
     }
   }, [])
 
@@ -109,6 +150,30 @@ export function Inicio() {
   const operatingBalance = totalSales - todayExpensesTotal
   const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
   const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
+  const hasAccess = useCallback((path: string) => canAccessModule(path, user?.role, user?.allowedModules), [user?.role, user?.allowedModules])
+  const notifications = useMemo(() => {
+    const items: Array<{ id: string; title: string; detail: string; path: string; tone: 'critical' | 'warning' }> = []
+    const unavailableItems = lowStockItems.filter(item => item.currentStock <= 0)
+    if (unavailableItems.length > 0 && hasAccess('/inventario')) {
+      items.push({
+        id: 'inventory',
+        title: 'Inventario requiere atención',
+        detail: `${unavailableItems.length} producto${unavailableItems.length === 1 ? '' : 's'} agotado${unavailableItems.length === 1 ? '' : 's'} o con saldo negativo`,
+        path: '/inventario',
+        tone: 'critical',
+      })
+    }
+    if (pendingCredits.length > 0 && hasAccess('/clientes')) {
+      items.push({
+        id: 'credits',
+        title: 'Cobros pendientes',
+        detail: `${pendingCredits.length} crédito${pendingCredits.length === 1 ? '' : 's'} por revisar`,
+        path: '/clientes',
+        tone: 'warning',
+      })
+    }
+    return items
+  }, [hasAccess, lowStockItems, pendingCredits.length])
 
   const paidOrdersToday = useMemo(() =>
     todayOrders.filter(o => o.status === 'paid'),
@@ -171,10 +236,10 @@ export function Inicio() {
       }
     },
     scales: {
-      x: { grid: { display: false }, ticks: { color: '#52525b', font: { size: 9 } } },
+      x: { grid: { display: false }, ticks: { color: '#8b8b95', font: { size: 10 } } },
       y: {
-        grid: { color: 'rgba(255,255,255,0.03)' },
-        ticks: { color: '#52525b', font: { size: 9 }, callback: (v: number | string) => `$${Number(v) >= 1000 ? (Number(v)/1000)+'K' : v}` },
+        grid: { color: 'rgba(255,255,255,0.055)' },
+        ticks: { color: '#8b8b95', font: { size: 10 }, callback: (v: number | string) => `$${Number(v) >= 1000 ? (Number(v)/1000)+'K' : v}` },
         beginAtZero: true
       }
     }
@@ -195,6 +260,7 @@ export function Inicio() {
   }, [productionStats])
 
   const doughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '72%' }
+  const paymentDoughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: '72%' }
 
   return (
     <div className="db-page animate-fade-in">
@@ -211,26 +277,45 @@ export function Inicio() {
           </div>
         </div>
         <div className="db-header-right">
-          <span className="db-header-pill" aria-label="Período actual">
-            <Calendar size={14} /><span>Hoy</span><ChevronDown size={14} />
-          </span>
+          <button className="db-header-pill" type="button" onClick={() => void fetchData(salesRange)} disabled={loading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
+            <Calendar size={14} /><span>{loading ? 'Actualizando…' : 'Hoy'}</span><RefreshCw size={13} className={loading ? 'is-spinning' : ''} />
+          </button>
           <div className="db-header-search">
             <GlobalSearch inline />
           </div>
-          <span className="db-header-icon-btn" aria-label="Notificaciones">
+          <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
             <Bell size={18} />
-          </span>
-          <button className="db-primary-btn" onClick={() => navigate('/comandas')}>
-            <Plus size={16} /><span>Nueva comanda</span><ChefHat size={16} />
+            {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
           </button>
+          {notificationsOpen ? (
+            <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
+              <div className="db-notifications-head"><strong>Alertas operativas</strong><span>{notifications.length}</span></div>
+              {notifications.length === 0 ? (
+                <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas pendientes</span></div>
+              ) : notifications.map(notification => (
+                <button key={notification.id} type="button" className={`db-notification-item ${notification.tone}`} onClick={() => { setNotificationsOpen(false); navigate(notification.path) }}>
+                  <span className="db-notification-dot" />
+                  <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
       </header>
+
+      {dashboardError ? (
+        <div className="db-error-banner" role="alert">
+          <AlertTriangle size={17} />
+          <span>{dashboardError}</span>
+          <button type="button" onClick={() => void fetchData(salesRange)}>Reintentar</button>
+        </div>
+      ) : null}
 
       <div className="kpi-banner">
         <div className="kpi-banner-content">
           <div className="db-section-label">
             <Flame size={14} className="section-label-icon" />
-            <span>RESUMEN DEL DÍA</span>
+            <span>Resumen del día</span>
           </div>
           <div className="kpi-row">
             <div className="kpi-card">
@@ -273,17 +358,29 @@ export function Inicio() {
       <div className="db-grid-4">
         <div className="db-card">
           <div className="db-card-head">
-            <h3>RESUMEN DE VENTAS</h3>
-            <span className="db-card-pill-sm">Últimos 7 días</span>
+            <h3>Resumen de ventas</h3>
+            <label className="db-period-control">
+              <span className="sr-only">Período de ventas</span>
+              <select aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
+                <option value={7}>Últimos 7 días</option>
+                <option value={14}>Últimos 14 días</option>
+                <option value={30}>Últimos 30 días</option>
+              </select>
+              {chartLoading ? <RefreshCw size={12} className="is-spinning" /> : null}
+            </label>
           </div>
           <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>
         </div>
 
         <div className="db-card">
-          <div className="db-card-head"><h3>MÉTODO DE PAGO</h3></div>
+          <div className="db-card-head"><h3>Método de pago</h3></div>
           <div className="db-pago-layout">
             <div className="db-donut-wrap">
-              <Doughnut data={paymentData} options={doughnutOptions} />
+              <Doughnut data={paymentData} options={paymentDoughnutOptions} />
+              <div className="db-donut-center" aria-hidden="true">
+                <span>Total</span>
+                <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              </div>
             </div>
             <div className="db-pago-legend">
               {paymentMethods.length === 0 ? (
@@ -302,11 +399,13 @@ export function Inicio() {
 
         <div className="db-card">
           <div className="db-card-head">
-            <h3>ÚLTIMAS COMANDAS</h3>
-            <button className="db-link-btn" onClick={() => navigate('/comandas')}>Ver todas</button>
+            <h3>Últimas comandas</h3>
+            {hasAccess('/comandas') ? <button className="db-link-btn" onClick={() => navigate('/comandas')}>Ver todas</button> : null}
           </div>
           <div className="db-orders-list">
-            {recentOrders.map((o) => (
+            {recentOrders.length === 0 ? (
+              <div className="db-empty-state"><ClipboardList size={20} /><span>Sin comandas pagadas hoy</span></div>
+            ) : recentOrders.map((o) => (
               <div key={o.id} className="db-order-row">
                 <span className="ord-time">{new Date(o.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
                 <span className="ord-folio">#{String(o.orderNumber).padStart(4, '0')}</span>
@@ -319,10 +418,12 @@ export function Inicio() {
 
         <div className="db-card">
           <div className="db-card-head">
-            <h3>PLATOS MÁS VENDIDOS</h3>
+            <h3>Platos más vendidos</h3>
           </div>
           <div className="db-sellers-list">
-            {productRanking.slice(0, 5).map((d, i) => (
+            {productRanking.length === 0 ? (
+              <div className="db-empty-state"><UtensilsCrossed size={20} /><span>Aún no hay platos vendidos</span></div>
+            ) : productRanking.slice(0, 5).map((d, i) => (
               <div key={d.name} className="seller-row-v2">
                 <span className={`seller-rank r${i + 1}`}>{i + 1}</span>
                 <div className="seller-meta">
@@ -339,7 +440,7 @@ export function Inicio() {
       <div className="db-grid-3">
         <div className="db-card">
           <div className="db-card-head">
-            <h3>EXISTENCIAS MÁS BAJAS</h3>
+            <h3>Alertas de inventario</h3>
           </div>
           <div className="db-inv-alerts">
             {lowStockItems.length === 0 ? (
@@ -358,11 +459,11 @@ export function Inicio() {
               )
             })}
           </div>
-          <button className="db-link-btn full-w mt" onClick={() => navigate('/inventario')}>Ir a inventario</button>
+          {hasAccess('/inventario') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/inventario')}>Ir a inventario</button> : null}
         </div>
 
         <div className="db-card">
-          <div className="db-card-head"><h3>PRODUCCIÓN DE HOY</h3></div>
+          <div className="db-card-head"><h3>Producción de hoy</h3></div>
           <div className="db-prod-layout">
             <div className="db-prod-donut-wrap">
               <Doughnut data={productionData} options={doughnutOptions} />
@@ -384,11 +485,11 @@ export function Inicio() {
               )}
             </div>
           </div>
-          <button className="db-link-btn full-w mt" onClick={() => navigate('/produccion')}>Ver plan de producción</button>
+          {hasAccess('/produccion') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/produccion')}>Ver plan de producción</button> : null}
         </div>
 
         <div className="db-card">
-          <div className="db-card-head"><h3>CUENTAS POR COBRAR</h3></div>
+          <div className="db-card-head"><h3>Cuentas por cobrar</h3></div>
           <div className="db-cobrar-summary">
             <div className="cobrar-icon-wrap"><CreditCard size={22} /></div>
             <div className="cobrar-data">
@@ -407,18 +508,18 @@ export function Inicio() {
               </div>
             ))}
           </div>
-          <button className="db-link-btn full-w mt" onClick={() => navigate('/clientes')}>Ver todas las cuentas</button>
+          {hasAccess('/clientes') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/clientes')}>Ver todas las cuentas</button> : null}
         </div>
       </div>
 
       <div className="db-card db-actions-card">
-        <div className="db-card-head"><h3>ACCIONES RÁPIDAS</h3></div>
+        <div className="db-card-head"><h3>Acciones rápidas</h3></div>
         <div className="db-quick-actions">
-          <button className="qa-btn" onClick={() => navigate('/caja')}><div className="qa-icon-wrap"><ShoppingCart size={22} /></div><span>Caja</span></button>
-          <button className="qa-btn" onClick={() => navigate('/comandas')}><div className="qa-icon-wrap"><FileText size={22} /></div><span>Comandas</span></button>
-          <button className="qa-btn" onClick={() => navigate('/clientes')}><div className="qa-icon-wrap"><Users size={22} /></div><span>Clientes</span></button>
-          <button className="qa-btn" onClick={() => navigate('/reportes')}><div className="qa-icon-wrap"><BarChart3 size={22} /></div><span>Reportes</span></button>
-          <button className="qa-btn" onClick={() => navigate('/inventario')}><div className="qa-icon-wrap"><Package size={22} /></div><span>Inventario</span></button>
+          {hasAccess('/caja') ? <button className="qa-btn" onClick={() => navigate('/caja')}><div className="qa-icon-wrap"><ShoppingCart size={22} /></div><span>Caja</span></button> : null}
+          {hasAccess('/comandas') ? <button className="qa-btn" onClick={() => navigate('/comandas')}><div className="qa-icon-wrap"><FileText size={22} /></div><span>Comandas</span></button> : null}
+          {hasAccess('/clientes') ? <button className="qa-btn" onClick={() => navigate('/clientes')}><div className="qa-icon-wrap"><Users size={22} /></div><span>Clientes</span></button> : null}
+          {hasAccess('/reportes') ? <button className="qa-btn" onClick={() => navigate('/reportes')}><div className="qa-icon-wrap"><BarChart3 size={22} /></div><span>Reportes</span></button> : null}
+          {hasAccess('/inventario') ? <button className="qa-btn" onClick={() => navigate('/inventario')}><div className="qa-icon-wrap"><Package size={22} /></div><span>Inventario</span></button> : null}
         </div>
       </div>
 
@@ -435,9 +536,9 @@ export function Inicio() {
           <div className="fm-icon"><Receipt size={16} /></div>
           <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><MoneyWithBcv usd={todayExpensesTotal} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
         </div>
-        <div className="db-footer-metric highlight-green">
+        <div className={`db-footer-metric ${operatingBalance > 0 ? 'highlight-green' : operatingBalance < 0 ? 'highlight-negative' : 'highlight-neutral'}`}>
           <div className="fm-icon green-glow"><TrendingUp size={16} /></div>
-          <div className="fm-text"><span className="fm-label">SALDO OPERATIVO PARCIAL</span><MoneyWithBcv usd={operatingBalance} className="fm-val green-text" align="start" compact /><span className="fm-sub">Ventas − gastos; no incluye insumos</span></div>
+          <div className="fm-text"><span className="fm-label">SALDO OPERATIVO PARCIAL</span><MoneyWithBcv usd={operatingBalance} className={`fm-val ${operatingBalance > 0 ? 'green-text' : operatingBalance < 0 ? 'negative-text' : ''}`} align="start" compact /><span className="fm-sub">Ventas − gastos; no incluye insumos</span></div>
         </div>
       </div>
     </div>
