@@ -105,11 +105,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <NavLink
                     to={parent.path}
                     className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      toggleGroup(group)
-                    }}
+                    onClick={(event) => event.stopPropagation()}
                   >
                     <span>{group}</span>
                   </NavLink>
@@ -118,7 +114,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     className="sidebar-group-toggle"
                     aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} ${group}`}
                     aria-expanded={isOpen}
-                    onClick={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      toggleGroup(group)
+                    }}
                   >
                     {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </button>
