@@ -211,23 +211,25 @@
 /* ═══ Inline mode (dashboard search bar) ═══ */
 .gs-inline-wrapper {
   position: relative;
-  flex: 1;
-  max-width: 320px;
+  display: contents;
 }
 
-.gs-inline-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
-  cursor: text;
-  transition: border-color 0.15s;
+.gs-inline-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e4e4e7;
+  font-size: 0.78rem;
+  width: 100%;
+  font-family: inherit;
 }
-.gs-inline-input:focus-within {
-  border-color: rgba(225, 29, 72, 0.4);
+.gs-inline-field:focus {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.gs-inline-field::placeholder {
+  color: #52525b;
 }
 
 .gs-inline-icon {
@@ -235,25 +237,12 @@
   flex-shrink: 0;
 }
 
-.gs-inline-field {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  color: #d4d4d8;
-  font-size: 13px;
-  font-family: inherit;
-}
-.gs-inline-field::placeholder {
-  color: #3f3f46;
-}
-
 .gs-inline-clear {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border: none;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.08);

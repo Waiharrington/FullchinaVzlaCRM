@@ -295,34 +295,25 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
     el?.scrollIntoView({ block: 'nearest' })
   }, [activeIndex, showDropdown])
 
-  const focusInput = () => {
-    if (inline) {
-      ctxOpen()
-      setTimeout(() => inputRef.current?.focus(), 10)
-    }
-  }
-
   // ── Inline mode: input + dropdown in a relative wrapper ──
   if (inline) {
     return (
       <div className="gs-inline-wrapper" ref={wrapperRef}>
-        <div className="gs-inline-input" onClick={focusInput}>
-          <Search size={16} className="gs-inline-icon" />
-          <input
-            ref={inputRef}
-            className="gs-inline-field"
-            placeholder="Buscar..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            onFocus={() => { if (query.trim()) ctxOpen() }}
-            onKeyDown={handleKeyDown}
-          />
-          {query && (
-            <button className="gs-inline-clear" onClick={() => { setQuery(''); inputRef.current?.focus() }} aria-label="Limpiar">
-              <X size={13} />
-            </button>
-          )}
-        </div>
+        <Search size={16} className="gs-inline-icon" />
+        <input
+          ref={inputRef}
+          className="gs-inline-field"
+          placeholder="Buscar..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          onFocus={() => { if (query.trim()) ctxOpen() }}
+          onKeyDown={handleKeyDown}
+        />
+        {query && (
+          <button className="gs-inline-clear" onClick={() => { setQuery(''); inputRef.current?.focus() }} aria-label="Limpiar">
+            <X size={13} />
+          </button>
+        )}
 
         {showDropdown && (
           <div className="gs-inline-dropdown">
