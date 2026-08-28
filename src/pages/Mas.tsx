@@ -18,7 +18,7 @@ import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
-import { Beef, BookOpen, ShoppingBag, TrendingUp, Wallet, CreditCard, BarChart3, Bike, Loader2, Lock, FileText } from 'lucide-react'
+import { CreditCard, BarChart3, Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -225,41 +225,10 @@ export function Mas() {
       </header>
 
       <div className="module-shortcuts-grid mb-6">
-        <a href="/produccion" className="card shortcut-card">
-          <span className="shortcut-icon"><Beef size={28} /></span>
-          <div className="shortcut-info">
-            <span className="shortcut-title">Producción y Porcionado</span>
-            <span className="shortcut-desc">Transformación de carnes y bonos por lumpias</span>
-          </div>
-        </a>
-        <a href="/recetas" className="card shortcut-card">
-          <span className="shortcut-icon"><BookOpen size={28} /></span>
-          <div className="shortcut-info">
-            <span className="shortcut-title">Recetas y Costeo</span>
-            <span className="shortcut-desc">Cálculo de costo de plato y margen %</span>
-          </div>
-        </a>
-        <a href="/compras" className="card shortcut-card">
-          <span className="shortcut-icon"><ShoppingBag size={28} /></span>
-          <div className="shortcut-info">
-            <span className="shortcut-title">Compras de Insumos</span>
-            <span className="shortcut-desc">Facturación y proveedores</span>
-          </div>
-        </a>
-        <a href="/finanzas" className="card shortcut-card">
-          <span className="shortcut-icon"><TrendingUp size={28} /></span>
-          <div className="shortcut-info">
-            <span className="shortcut-title">Finanzas y P&L</span>
-            <span className="shortcut-desc">Ventas, costos, gastos y utilidad neta</span>
-          </div>
-        </a>
-        <a href="/nomina" className="card shortcut-card">
-          <span className="shortcut-icon"><Wallet size={28} /></span>
-          <div className="shortcut-info">
-            <span className="shortcut-title">Nómina y Bonos</span>
-            <span className="shortcut-desc">Sueldos base, adelantos y comisiones</span>
-          </div>
-        </a>
+        <a href="/equipo" className="card shortcut-card"><span className="shortcut-icon"><Users size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Equipo y Usuarios</span><span className="shortcut-desc">Roles y accesos del personal</span></div></a>
+        <a href="/fidelizacion" className="card shortcut-card"><span className="shortcut-icon"><Award size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Fidelización</span><span className="shortcut-desc">Clientes frecuentes y beneficios</span></div></a>
+        <a href="/marketing" className="card shortcut-card"><span className="shortcut-icon"><MessageSquare size={28} /></span><div className="shortcut-info"><span className="shortcut-title">WhatsApp Bot</span><span className="shortcut-desc">Mensajes y automatizaciones</span></div></a>
+        <a href="/promociones" className="card shortcut-card"><span className="shortcut-icon"><Tag size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Promociones</span><span className="shortcut-desc">Ofertas y campañas activas</span></div></a>
       </div>
 
       <div className="tabs">

@@ -14,7 +14,6 @@ import {
   Building2,
   Award,
   MessageSquare,
-  Utensils,
   UtensilsCrossed,
   Receipt,
   BadgeDollarSign,
@@ -45,17 +44,16 @@ export const allNavItems: NavItem[] = [
   { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/menu', label: 'Menú', icon: UtensilsCrossed, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'], group: 'Operación' },
-  { path: '/menu-semanal', label: 'Menú Semanal', icon: Utensils, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/compras', label: 'Compras', icon: ShoppingCart, roles: ['owner', 'manager'], group: 'Operación' },
-  { path: '/gastos', label: 'Gastos', icon: Receipt, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Gestión' },
-  { path: '/fidelizacion', label: 'Fidelización', icon: Award, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/promociones', label: 'Promociones', icon: Tag, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Gestión' },
-  { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Gestión' },
-  { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Gestión' }
+  { path: '/finanzas', label: 'Finanzas', icon: PiggyBank, roles: ['owner'], group: 'Finanzas' },
+  { path: '/gastos', label: 'Gastos', icon: Receipt, roles: ['owner', 'manager'], group: 'Finanzas' },
+  { path: '/nomina', label: 'Nómina', icon: DollarSign, roles: ['owner'], group: 'Finanzas' },
+  { path: '/fidelizacion', label: 'Fidelización', icon: Award, roles: ['owner', 'manager'], group: 'Configuración' },
+  { path: '/promociones', label: 'Promociones', icon: Tag, roles: ['owner', 'manager'], group: 'Configuración' },
+  { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Configuración' },
+  { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Configuración' },
+  { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Configuración' },
+  { path: '/mas', label: 'Configuración general', icon: Settings, roles: ['owner', 'manager'], group: 'Configuración' }
 ]
 
 /**
