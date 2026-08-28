@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
-import { LogOut, ChevronLeft } from 'lucide-react'
+import { LogOut, ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react'
 import { allNavItems, canAccessModule } from './navItems'
 import './Sidebar.css'
 
@@ -20,6 +20,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const navItems = allNavItems.filter(item =>
@@ -40,6 +41,18 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     tooltipTimer.current = setTimeout(() => setTooltip(null), 100)
   }, [])
 
+  const groupedItems = navItems.reduce<Array<{ group: string; items: typeof navItems }>>((groups, item) => {
+    const current = groups[groups.length - 1]
+    if (current?.group === item.group) current.items.push(item)
+    else groups.push({ group: item.group, items: [item] })
+    return groups
+  }, [])
+
+  const groupParents: Record<string, string> = {
+    Finanzas: '/finanzas',
+    Configuración: '/mas'
+  }
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
@@ -55,25 +68,52 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </div>
 
       <nav className="sidebar-nav">
-        {navItems.map((item, index) => {
-          const Icon = item.icon
-          const isActive = isActiveItem(item.path, location.pathname)
-          const showGroup = index === 0 || item.group !== navItems[index - 1].group
+        {groupedItems.map(({ group, items }) => {
+          const parentPath = groupParents[group]
+          const parent = parentPath ? items.find(item => item.path === parentPath) : undefined
+          const children = parent ? items.filter(item => item.path !== parent.path) : items
+          const isOpen = !collapsedGroups[group]
 
           return (
-            <React.Fragment key={item.path}>
-              {showGroup && !collapsed && (
-                <div className="sidebar-group-title">{item.group.toUpperCase()}</div>
+            <React.Fragment key={group}>
+              {!collapsed && parent && (
+                <div className="sidebar-group-header">
+                  <NavLink
+                    to={parent.path}
+                    className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
+                  >
+                    <span>{group}</span>
+                  </NavLink>
+                  <button
+                    type="button"
+                    className="sidebar-group-toggle"
+                    aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} ${group}`}
+                    aria-expanded={isOpen}
+                    onClick={() => setCollapsedGroups(prev => ({ ...prev, [group]: !isOpen }))}
+                  >
+                    {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
+                </div>
               )}
-              <NavLink
-                to={item.path}
-                className={`sidebar-link ${isActive ? 'active' : ''}`}
-                onMouseEnter={(e) => collapsed && showTooltip(item.label, e)}
-                onMouseLeave={hideTooltip}
-              >
-                <Icon size={18} strokeWidth={1.8} className="sidebar-icon" />
-                <span className="sidebar-label">{item.label}</span>
-              </NavLink>
+              {(!parent || isOpen || collapsed) && (collapsed && parent ? [parent, ...children] : children).map(item => {
+                const Icon = item.icon
+                const isActive = isActiveItem(item.path, location.pathname)
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={`sidebar-link ${isActive ? 'active' : ''}`}
+                    onMouseEnter={(e) => collapsed && showTooltip(item.label, e)}
+                    onMouseLeave={hideTooltip}
+                  >
+                    <Icon size={18} strokeWidth={1.8} className="sidebar-icon" />
+                    <span className="sidebar-label">{item.label}</span>
+                  </NavLink>
+                )
+              })}
+              {!collapsed && !parent && group !== 'Operación' && (
+                <div className="sidebar-group-title">{group.toUpperCase()}</div>
+              )}
             </React.Fragment>
           )
         })}

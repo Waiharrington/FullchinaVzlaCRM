@@ -880,7 +880,7 @@ export function PublicMenu() {
     )
   }
 
-  const renderDesktopProductCard = (group: MenuProductGroup, _index: number) => {
+  const renderDesktopProductCard = (group: MenuProductGroup) => {
     const qty = getCardQty(group.key)
 
     return (
@@ -938,7 +938,7 @@ export function PublicMenu() {
     )
   }
 
-  const renderDesktopPromoCard = (group: MenuProductGroup, _index: number) => {
+  const renderDesktopPromoCard = (group: MenuProductGroup) => {
     return (
       <article className="public-home-promo-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-home-promo-top">

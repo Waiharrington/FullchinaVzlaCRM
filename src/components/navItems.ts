@@ -53,7 +53,7 @@ export const allNavItems: NavItem[] = [
   { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Configuración' },
   { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Configuración' },
   { path: '/reportes', label: 'Reportes', icon: BarChart3, roles: ['owner', 'manager'], group: 'Configuración' },
-  { path: '/mas', label: 'Configuración general', icon: Settings, roles: ['owner', 'manager'], group: 'Configuración' }
+  { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Configuración' }
 ]
 
 /**
