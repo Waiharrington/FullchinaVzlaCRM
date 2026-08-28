@@ -338,6 +338,19 @@ export interface PayrollEntry {
   notes: string | null
 }
 
+export interface PayrollPayment {
+  id: string
+  employeeId: string
+  employeeName: string
+  amount: number
+  currency: 'USD' | 'Bs'
+  exchangeRate: number | null
+  paymentAccount: string | null
+  paymentDate: string
+  reference: string | null
+  notes: string | null
+}
+
 export interface Advance {
   id: string
   employeeId: string
@@ -2617,6 +2630,34 @@ export async function upsertPayrollEntry(params: {
       deductions: params.deductions,
       notes: params.notes ?? null,
     }, { onConflict: 'payroll_period_id,employee_id' })
+  if (error) throw error
+}
+
+export async function getPayrollPayments(): Promise<PayrollPayment[]> {
+  const { data, error } = await client().from('payroll_payments')
+    .select('id,employee_id,amount,currency,exchange_rate,payment_account,payment_date,reference,notes,employees(full_name)')
+    .order('payment_date', { ascending: false }).order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((r) => ({
+    id: r.id as string, employeeId: r.employee_id as string,
+    employeeName: Array.isArray(r.employees) ? String((r.employees[0] as Record<string, unknown>)?.full_name ?? '') : '',
+    amount: Number(r.amount), currency: r.currency as 'USD' | 'Bs',
+    exchangeRate: r.exchange_rate == null ? null : Number(r.exchange_rate),
+    paymentAccount: (r.payment_account as string) ?? null, paymentDate: r.payment_date as string,
+    reference: (r.reference as string) ?? null, notes: (r.notes as string) ?? null,
+  }))
+}
+
+export async function createPayrollPayment(params: {
+  employeeId: string; amount: number; currency?: 'USD' | 'Bs'; exchangeRate?: number | null
+  paymentAccount?: string | null; paymentDate?: string; reference?: string | null; notes?: string | null
+}): Promise<void> {
+  const { error } = await client().from('payroll_payments').insert({
+    employee_id: params.employeeId, amount: params.amount, currency: params.currency ?? 'USD',
+    exchange_rate: params.exchangeRate ?? null, payment_account: params.paymentAccount ?? null,
+    payment_date: params.paymentDate ?? dateKeyInTimeZone(), reference: params.reference ?? null,
+    notes: params.notes ?? null,
+  })
   if (error) throw error
 }
 

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
   getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
-  type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord,
+  getPayrollPayments, createPayrollPayment,
+  type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment,
 } from '../lib/dataService'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -20,6 +21,7 @@ export function Nomina() {
   const [entriesByPeriod, setEntriesByPeriod] = useState<Record<string, PayrollEntry[]>>({})
   const [advances, setAdvances] = useState<Advance[]>([])
   const [bonuses, setBonuses] = useState<ProductionBonusRecord[]>([])
+  const [payments, setPayments] = useState<PayrollPayment[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -35,13 +37,15 @@ export function Nomina() {
   const [showAdvance, setShowAdvance] = useState(false)
   const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advDate, setAdvDate] = useState(dateKeyInTimeZone()); const [advNotes, setAdvNotes] = useState('')
   const [showBonus, setShowBonus] = useState(false)
+  const [showPayment, setShowPayment] = useState(false)
+  const [payEmp, setPayEmp] = useState(''); const [payAmt, setPayAmt] = useState(''); const [payAccount, setPayAccount] = useState(''); const [payRef, setPayRef] = useState(''); const [payNotes, setPayNotes] = useState('')
   const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
 
   const load = useCallback(async () => {
     try {
       setLoading(true); setError('')
-      const [emp, per, adv, bon] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords()])
-      setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon)
+      const [emp, per, adv, bon, pays] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords(), getPayrollPayments()])
+      setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon); setPayments(pays)
       const byPeriod: Record<string, PayrollEntry[]> = {}
       await Promise.all(per.map(async (p) => { byPeriod[p.id] = await getPayrollEntries(p.id).catch(() => []) }))
       setEntriesByPeriod(byPeriod)
@@ -54,6 +58,7 @@ export function Nomina() {
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
+  const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + p.amount), new Map<string, number>()), [payments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
 
   // Bonos de un empleado dentro del período seleccionado
@@ -121,6 +126,11 @@ export function Nomina() {
     try { await createProductionBonus({ employeeId: bonEmp, amount: parseFloat(bonAmt) || 0, bonusDate: bonDate, reason: bonReason.trim() || undefined }); setShowBonus(false); setBonEmp(''); setBonAmt(''); setBonReason(''); await load(); flash('Bono registrado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando bono') }
   }
+  const submitPayment = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!payEmp || !payAmt) return
+    try { await createPayrollPayment({ employeeId: payEmp, amount: parseFloat(payAmt) || 0, paymentAccount: payAccount.trim() || null, reference: payRef.trim() || null, notes: payNotes.trim() || null }); setShowPayment(false); setPayEmp(''); setPayAmt(''); setPayAccount(''); setPayRef(''); setPayNotes(''); await load(); flash('Pago registrado') }
+    catch (e) { setError(e instanceof Error ? e.message : 'Error registrando pago') }
+  }
 
   if (loading) return <PageSkeleton cards={3} rows={5} />
 
@@ -165,6 +175,14 @@ export function Nomina() {
           <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}><Hourglass size={20} /></span>
             <div><div className="nom-sum-lbl">Adelantos pendientes</div><div className="nom-sum-val">{formatUsd(pendingAdvances)}</div><div className="nom-sum-sub">{pendingCount} adelanto{pendingCount === 1 ? '' : 's'} pendiente{pendingCount === 1 ? '' : 's'}</div></div></div>
         </div>
+      </div>
+
+      <div className="nom-card">
+        <div className="nom-card-head"><div><h2>Personal y pagos directos</h2><p>Registra pagos sin crear un período. Los períodos quedan disponibles para reportes.</p></div><button className="nom-btn" onClick={() => setShowPayment(true)}><Plus size={16} /> Registrar pago</button></div>
+        <div className="nom-periods">
+          {activeEmployees.map((emp) => <div className="nom-period" key={emp.id}><div className="nom-period-top"><strong>{emp.fullName}</strong><span className="nom-status open">{emp.position || 'Empleado'}</span></div><div className="liq">Pagado acumulado: {formatUsd(paidByEmployee.get(emp.id) ?? 0)}</div><small>{payments.filter((p) => p.employeeId === emp.id).length} pagos registrados · {emp.hourlyRate ? `Tarifa ${formatUsd(emp.hourlyRate)}/h` : 'Pago directo o comisión'}</small></div>)}
+        </div>
+        {payments.length > 0 && <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Cuenta</th><th>Referencia</th></tr></thead><tbody>{payments.slice(0, 8).map((p) => <tr key={p.id}><td>{new Date(p.paymentDate).toLocaleDateString('es-VE')}</td><td>{p.employeeName}</td><td><strong>{formatUsd(p.amount)}</strong></td><td>{p.paymentAccount || '—'}</td><td>{p.reference || '—'}</td></tr>)}</tbody></table></div>}
       </div>
 
       {/* Períodos */}
@@ -302,6 +320,7 @@ export function Nomina() {
           </form>
         </div>
       )}
+      {showPayment && <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}><form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}><div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowPayment(false)}><X size={16} /></button></div><div className="nom-field"><label>Empleado *</label><select value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</select></div><div className="nom-row2"><div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} required /></div><div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div></div><div className="nom-row2"><div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div><div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div></div><div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div></form></div>}
     </div>
   )
 }
