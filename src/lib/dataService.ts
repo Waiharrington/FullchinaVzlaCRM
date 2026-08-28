@@ -2643,6 +2643,14 @@ export async function upsertPayrollEntry(params: {
   if (error) throw error
 }
 
+export async function deleteCredit(creditId: string): Promise<void> {
+  const { error } = await client()
+    .from('credits')
+    .delete()
+    .eq('id', creditId)
+  if (error) throw error
+}
+
 export async function getPayrollPayments(): Promise<PayrollPayment[]> {
   const { data, error } = await client().from('payroll_payments')
     .select('id,employee_id,amount,currency,exchange_rate,payment_account,payment_date,reference,notes,employees(full_name)')

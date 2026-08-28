@@ -5,6 +5,8 @@ import jsPDF from 'jspdf'
 import {
   getCredits,
   addCreditPayment,
+  deleteCredit,
+  getCreditPayments,
   createCredit,
   getCustomers,
   getTodayStats,
@@ -16,12 +18,13 @@ import {
   type TodayStats,
   type FullOrder,
   type Customer,
+  type CreditPayment,
 } from '../lib/dataService'
 import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
-import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
+import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2 } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -56,6 +59,8 @@ export function Mas() {
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
+  const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [closing, setClosing] = useState(false)
 
   const fetchAll = useCallback(async () => {
@@ -126,6 +131,43 @@ export function Mas() {
       fetchAll()
     } catch (e) {
       console.error('Error:', e)
+    }
+  }
+
+  const handleToggleHistory = async (credit: CreditType) => {
+    if (selectedCredit?.id === credit.id) {
+      setSelectedCredit(null)
+      setCreditPayments([])
+      return
+    }
+    setSelectedCredit(credit)
+    setLoadingHistory(true)
+    try {
+      setCreditPayments(await getCreditPayments(credit.id))
+    } catch (e) {
+      console.error('Error cargando historial:', e)
+      alert('No se pudo cargar el historial de abonos')
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleDeleteCredit = async (credit: CreditType) => {
+    if (credit.orderId || credit.totalPaid > 0) {
+      alert('Este crédito no se puede borrar porque está vinculado a una comanda o ya tiene abonos. Puedes conservarlo como historial.')
+      return
+    }
+    if (!window.confirm(`¿Borrar el crédito de ${credit.customerName} por $${credit.totalAmount.toFixed(2)}?`)) return
+    try {
+      await deleteCredit(credit.id)
+      if (selectedCredit?.id === credit.id) {
+        setSelectedCredit(null)
+        setCreditPayments([])
+      }
+      await fetchAll()
+    } catch (e) {
+      console.error('Error borrando crédito:', e)
+      alert('No se pudo borrar el crédito')
     }
   }
 
@@ -352,10 +394,24 @@ export function Mas() {
                             <button className="btn-accent btn-sm" onClick={() => setPaymentModal(credit)}>
                               Abonar
                             </button>
-                            <button className="btn-ghost btn-sm" onClick={() => setSelectedCredit(selectedCredit?.id === credit.id ? null : credit)}>
+                            <button className="btn-ghost btn-sm" onClick={() => handleToggleHistory(credit)}>
                               Historial
                             </button>
+                            <button className="btn-ghost btn-sm credit-delete-btn" title="Borrar crédito" onClick={() => handleDeleteCredit(credit)}>
+                              <Trash2 size={15} />
+                            </button>
                           </div>
+                          {selectedCredit?.id === credit.id && (
+                            <div className="credit-history">
+                              <strong>Historial de abonos</strong>
+                              {loadingHistory ? <span>Cargando...</span> : creditPayments.length === 0 ? <span>Sin abonos registrados</span> : creditPayments.map(payment => (
+                                <div className="credit-history-row" key={payment.id}>
+                                  <span>{new Date(payment.createdAt).toLocaleString('es')}</span>
+                                  <span className="text-success">${payment.amount.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
