@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import jsPDF from 'jspdf'
 import {
@@ -34,12 +35,13 @@ let masCache: {
 
 export function Mas() {
   const { user } = useAuth()
+  const location = useLocation()
   const [credits, setCredits] = useState<CreditType[]>(masCache?.credits ?? [])
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
   const [, setLoading] = useState(!masCache)
-  const [tab, setTab] = useState<Tab>('delivery')
+  const [tab, setTab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
   const [newAmount, setNewAmount] = useState('')
@@ -232,9 +234,9 @@ export function Mas() {
       </div>
 
       <div className="tabs">
-        <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
+        {tab !== 'credits' && <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
           <Bike size={14} /> Delivery
-        </button>
+        </button>}
       </div>
 
       {tab === 'delivery' && <DeliverySettings />}
