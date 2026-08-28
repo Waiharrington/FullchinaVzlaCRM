@@ -104,8 +104,9 @@ describe('Dashboard Inicio', () => {
   it('permite cambiar el período de la gráfica de ventas', async () => {
     render(<Inicio />)
 
-    const period = await screen.findByLabelText('Período de ventas')
-    fireEvent.change(period, { target: { value: '30' } })
+    const period = await screen.findByRole('button', { name: 'Período de ventas' })
+    fireEvent.click(period)
+    fireEvent.click(screen.getByRole('option', { name: 'Últimos 30 días' }))
 
     await waitFor(() => expect(mocks.getDailySales).toHaveBeenCalledWith(30))
     fireEvent.click(screen.getByRole('button', { name: /actualizar datos de hoy/i }))

@@ -1,55 +1,384 @@
-/* Sistema de movimiento compartido: breve, funcional y respetuoso con el rendimiento. */
+/* ============================================================
+   Full China Motion System
+   Una sola gramática de movimiento para páginas, controles y capas.
+   ============================================================ */
+
 :root {
-  --app-motion-fast: 160ms;
-  --app-motion-base: 240ms;
-  --app-motion-ease: cubic-bezier(.16, 1, .3, 1);
+  --motion-instant: 120ms;
+  --motion-fast: 180ms;
+  --motion-base: 260ms;
+  --motion-slow: 380ms;
+  --motion-enter: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-exit: cubic-bezier(0.7, 0, 0.84, 0);
+  --motion-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes app-page-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+@keyframes fc-page-enter {
+  from { opacity: 0; transform: translate3d(0, 10px, 0); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: none; }
 }
 
+@keyframes fc-surface-enter {
+  from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fc-overlay-enter {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; }
+}
+
+@keyframes fc-overlay-exit {
+  from { opacity: 1; }
+  to { opacity: 0; backdrop-filter: blur(0); }
+}
+
+@keyframes fc-dialog-enter {
+  from { opacity: 0.45; transform: translate3d(0, 12px, 0) scale(0.975); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes fc-dialog-exit {
+  from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 0; transform: translate3d(0, 10px, 0) scale(0.97); }
+}
+
+@keyframes fc-popover-enter {
+  from { opacity: 0; transform: translate3d(0, -6px, 0) scale(0.97); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes fc-tab-enter {
+  from { opacity: 0; transform: translate3d(8px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Cada ruta entra como una unidad; evita una cascada lenta en pantallas densas. */
 .app-main > * {
-  animation: app-page-in 280ms var(--app-motion-ease) both;
+  animation: fc-page-enter var(--motion-slow) var(--motion-enter) both;
 }
 
-.app-main button,
-.app-main a,
-.app-main [role='button'] {
-  transition: transform var(--app-motion-fast) var(--app-motion-ease),
-    opacity var(--app-motion-fast) ease,
-    background-color var(--app-motion-fast) ease,
-    border-color var(--app-motion-fast) ease,
-    color var(--app-motion-fast) ease,
-    box-shadow var(--app-motion-fast) ease;
+/* Superficies que aparecen dinámicamente. */
+:where(
+  .card,
+  .glass-card,
+  [class$="-card"],
+  [class*="-card "],
+  [class$="-panel"],
+  [class*="-panel "]
+) {
+  animation: fc-surface-enter var(--motion-base) var(--motion-enter) both;
 }
 
-.app-main button:not(:disabled):hover,
-.app-main a:hover,
-.app-main [role='button']:hover {
-  transform: translateY(-1px);
+/* Botones, enlaces de acción y controles: respuesta táctil consistente. */
+:where(button, a, [role="button"], [role="tab"]):not(:disabled) {
+  transition-property: transform, translate, scale, opacity, color, background-color, border-color, box-shadow, filter;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--motion-standard);
 }
 
-.app-main button:not(:disabled):active,
-.app-main a:active,
-.app-main [role='button']:active {
-  transform: translateY(0) scale(.97);
+:where(button, [role="button"], [role="tab"]):not(:disabled):active {
+  transform: translateY(1px) scale(0.975);
+  transition-duration: var(--motion-instant);
 }
 
-.app-main button:focus-visible,
-.app-main a:focus-visible,
-.app-main [role='button']:focus-visible {
-  outline: 2px solid rgba(255, 214, 102, .75);
-  outline-offset: 3px;
+:where(button, a, [role="button"], [role="tab"]):focus-visible {
+  transition-duration: var(--motion-instant);
 }
 
+/* En pantallas amplias los diálogos usan el viewport disponible; el scroll
+   queda como salvaguarda dentro del contenido, nunca en la página de fondo. */
+@media (min-width: 768px) {
+  :where(
+    .client-modal-box, .payment-modal-box, .variant-selector-modal,
+    .cmd-modal-container, .cmd-history-modal, .cash-close-modal,
+    .cmp-modal, .modal-content-custom, .ws-modal, .nom-modal,
+    .promo-form-modal, .prv-modal, .rec-modal, .mesas-modal, .aito-modal
+  ) {
+    max-height: calc(100dvh - 40px);
+  }
+
+  :where(
+    .modal-overlay, .modal-overlay-dark, .cmd-modal-overlay,
+    .cash-modal-backdrop, .cmp-modal-overlay, .ws-modal-overlay,
+    .nom-modal-overlay, .prv-overlay, .rec-modal-overlay, .mesas-modal-overlay,
+    .aito-overlay
+  ) {
+    padding: 20px;
+    overflow: hidden;
+  }
+}
+
+/* Pestañas: el indicador y el contenido cambian sin saltos. */
+:where([role="tab"], [class$="-tab"], [class*="-tab "]) {
+  position: relative;
+}
+
+:where([role="tab"], [class$="-tab"], [class*="-tab "]).active {
+  animation: fc-surface-enter var(--motion-fast) var(--motion-enter) both;
+}
+
+:where(
+  [role="tabpanel"],
+  [class$="-tab-content"],
+  [class*="-tab-content "],
+  [class$="-tab-panel"],
+  [class*="-tab-panel "]
+) {
+  animation: fc-tab-enter var(--motion-base) var(--motion-enter) both;
+}
+
+/* Capas oscuras de modales, drawers y buscadores. */
+:where(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .gs-overlay,
+  .bottom-nav-overlay,
+  .sidebar-overlay
+) {
+  animation: fc-overlay-enter var(--motion-base) ease-out both;
+}
+
+/* La primera superficie dentro de una capa se comporta como diálogo. */
+:where(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .gs-overlay,
+  .bottom-nav-overlay
+) > :where(div, section, article, aside, form) {
+  transform-origin: center center;
+  animation: fc-dialog-enter var(--motion-base) var(--motion-enter) both;
+}
+
+/* El editor de Menú tenía una animación local que partía totalmente invisible.
+   Esta regla sincroniza la tarjeta con su backdrop y evita el fotograma vacío. */
+.mnu-modal-overlay > .mnu-modal {
+  opacity: 1;
+  visibility: visible;
+  animation: fc-dialog-enter 340ms var(--motion-enter) both;
+  will-change: opacity, transform;
+}
+
+.mnu-modal-overlay.closing {
+  pointer-events: none;
+  animation: fc-overlay-exit 300ms var(--motion-standard) both;
+}
+
+.mnu-modal-overlay.closing > .mnu-modal {
+  animation: fc-dialog-exit 280ms var(--motion-standard) both;
+}
+
+/* Mientras exista una capa modal, ningún contenedor del fondo puede desplazarse.
+   :has() permite cubrir también los modales antiguos sin cambiar su lógica. */
+:root:has(:is(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .aito-overlay,
+  .prv-overlay,
+  .gs-overlay,
+  .bottom-nav-overlay,
+  .gst-form-col.open
+)) {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+:root:has(:is(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .aito-overlay,
+  .prv-overlay,
+  .gs-overlay,
+  .bottom-nav-overlay,
+  .gst-form-col.open
+)) body,
+:root:has(:is(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .aito-overlay,
+  .prv-overlay,
+  .gs-overlay,
+  .bottom-nav-overlay,
+  .gst-form-col.open
+)) .app-main {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+:where(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .aito-overlay,
+  .prv-overlay,
+  .gs-overlay,
+  .bottom-nav-overlay,
+  .gst-form-col.open
+) {
+  overscroll-behavior: contain;
+}
+
+:where(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "],
+  .aito-overlay,
+  .prv-overlay,
+  .gs-overlay,
+  .bottom-nav-overlay,
+  .gst-form-col.open
+) > :where(div, section, article, aside, form) {
+  overscroll-behavior: contain;
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  :where(
+    .modal-overlay,
+    .modal-overlay-dark,
+    [class$="-modal-overlay"],
+    [class*="-modal-overlay "],
+    [class$="-modal-backdrop"],
+    [class*="-modal-backdrop "],
+    .aito-overlay,
+    .prv-overlay,
+    .gs-overlay
+  ) { padding: 16px; }
+
+  :where(
+    .modal-overlay,
+    .modal-overlay-dark,
+    [class$="-modal-overlay"],
+    [class*="-modal-overlay "],
+    [class$="-modal-backdrop"],
+    [class*="-modal-backdrop "],
+    .aito-overlay,
+    .prv-overlay,
+    .gs-overlay
+  ) > :where(div, section, article, aside, form) {
+    max-width: calc(100vw - 32px);
+    max-height: calc(100dvh - 32px);
+  }
+}
+
+/* Componentes que conservan la capa durante su cierre usan la salida común. */
+:where(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "]
+):where(.closing, .is-closing, [data-state="closed"]) {
+  pointer-events: none;
+  animation: fc-overlay-exit var(--motion-fast) var(--motion-exit) both;
+}
+
+:where(
+  .modal-overlay,
+  .modal-overlay-dark,
+  [class$="-modal-overlay"],
+  [class*="-modal-overlay "],
+  [class$="-modal-backdrop"],
+  [class*="-modal-backdrop "],
+  [class$="-drawer-backdrop"],
+  [class*="-drawer-backdrop "]
+):where(.closing, .is-closing, [data-state="closed"]) > :where(div, section, article, aside, form) {
+  animation: fc-dialog-exit var(--motion-fast) var(--motion-exit) both;
+}
+
+/* Menús, sugerencias, popovers y listas flotantes. */
+:where(
+  [role="listbox"],
+  [role="menu"],
+  [class$="-dropdown"],
+  [class*="-dropdown "],
+  [class$="-dropdown-menu"],
+  [class*="-dropdown-menu "],
+  [class$="-popover"],
+  [class*="-popover "],
+  .fc-select-menu
+) {
+  transform-origin: top center;
+  animation: fc-popover-enter var(--motion-fast) var(--motion-enter) both;
+}
+
+/* Filas y elementos que se agregan dinámicamente. */
+:where(
+  [class$="-row"],
+  [class*="-row "],
+  [class$="-item"],
+  [class*="-item "]
+) {
+  transition: background-color var(--motion-fast) var(--motion-standard),
+              border-color var(--motion-fast) var(--motion-standard),
+              opacity var(--motion-fast) var(--motion-standard),
+              transform var(--motion-fast) var(--motion-standard);
+}
+
+/* Feedback pequeño: badges, mensajes y avisos aparecen con suavidad. */
+:where(
+  [role="alert"],
+  [class$="-toast"],
+  [class*="-toast "],
+  [class$="-message"],
+  [class*="-message "],
+  [class$="-feedback"],
+  [class*="-feedback "]
+) {
+  animation: fc-surface-enter var(--motion-base) var(--motion-enter) both;
+}
+
+/* El movimiento nunca debe ser obligatorio para comprender la interfaz. */
 @media (prefers-reduced-motion: reduce) {
-  .app-main > *,
-  .app-main button,
-  .app-main a,
-  .app-main [role='button'] {
-    animation: none !important;
-    transition-duration: .01ms !important;
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
   }
 }

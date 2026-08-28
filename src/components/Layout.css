@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .app-main {
@@ -19,6 +19,10 @@
   padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem 5rem 1rem;
   width: 100%;
   overflow-y: auto;
+}
+
+@media (min-width: 768px) {
+  .app-main { scrollbar-gutter: stable; }
 }
 
 /* Sidebar overlay for mobile */
@@ -39,7 +43,7 @@
   .sidebar-container {
     width: 242px;
     flex-shrink: 0;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
     overflow: visible;
   }
 
@@ -66,7 +70,7 @@
     width: 80px;
     flex-shrink: 0;
     overflow: visible;
-    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .sidebar-container.collapsed {

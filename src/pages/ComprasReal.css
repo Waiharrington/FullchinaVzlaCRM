@@ -85,3 +85,17 @@
 .cmp-modal h3 { font-size: 18px; font-weight: 700; margin: 0 0 12px; }
 .cmp-detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
 .cmp-detail-row .k { color: #a1a1aa; }
+
+@media (max-width: 767px) {
+  .cmp-modal-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
+  .cmp-modal {
+    max-width: none;
+    max-height: calc(100dvh - 6px);
+    overflow-y: auto;
+    padding: 18px 16px;
+    border-radius: 18px 18px 10px 10px;
+  }
+  .cmp-detail-row { gap: 16px; align-items: flex-start; }
+  .cmp-detail-row > * { min-width: 0; overflow-wrap: anywhere; }
+  .cmp-detail-row > :last-child { text-align: right; }
+}

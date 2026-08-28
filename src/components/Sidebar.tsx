@@ -66,13 +66,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     })
   }
 
+  const handleToggle = useCallback(() => {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
+    setTooltip(null)
+    onToggle()
+  }, [onToggle])
+
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-brand">
         <img src="/optimized/root/logo.webp" alt="Full China" className="sidebar-logo-img" />
         <button
           className="sidebar-toggle"
-          onClick={onToggle}
+          type="button"
+          aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}
+          onClick={handleToggle}
           onMouseEnter={(e) => showTooltip(collapsed ? 'Expandir menú' : 'Contraer menú', e)}
           onMouseLeave={hideTooltip}
         >
@@ -163,8 +171,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
 
 
-      {!collapsed && (
-        <div className="sidebar-user-profile">
+      <div className="sidebar-user-profile" aria-hidden={collapsed}>
           <img 
             src="/optimized/login-carousel/slide7.webp" 
             alt="Avatar" 
@@ -174,8 +181,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             <span className="sidebar-user-name">{user?.email || 'Admin'}</span>
             <span className="sidebar-user-sub">Full China</span>
           </div>
-        </div>
-      )}
+      </div>
 
       {tooltip && (
         <div 

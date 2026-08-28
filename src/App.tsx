@@ -8,8 +8,8 @@ import { SplashScreen } from './components/SplashScreen'
 import { ModuleLoader } from './components/ModuleLoader'
 import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
 import { Layout } from './components/Layout'
+import { Login } from './pages/Login'
 import { canAccessModule, type Role } from './components/navItems'
-const Login = lazy(() => import('./pages/Login').then(module => ({ default: module.Login })))
 const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
 const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))
 const CajaOperativa = lazy(() => import('./pages/CajaOperativa').then(module => ({ default: module.CajaOperativa })))

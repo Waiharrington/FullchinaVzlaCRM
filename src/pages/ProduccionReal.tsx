@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../context/auth-context'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import {
   Flame, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ChevronUp, Package, DollarSign,
 } from 'lucide-react'
@@ -206,9 +207,9 @@ export function ProduccionReal() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px', display: 'block' }}>Unidad</label>
-                <select value={unitId} onChange={e => setUnitId(e.target.value)}>
+                <StyledSelect value={unitId} onChange={e => setUnitId(e.target.value)}>
                   {units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
-                </select>
+                </StyledSelect>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px', display: 'block' }}>Merma</label>
@@ -238,9 +239,9 @@ export function ProduccionReal() {
                     emptyText="Sin ingredientes"
                   />
                   <input type="number" step="any" min="0" placeholder="Cantidad" value={item.quantityUsed} onChange={e => handleItemChange(idx, 'quantityUsed', e.target.value)} />
-                  <select value={item.unitId} onChange={e => handleItemChange(idx, 'unitId', e.target.value)}>
+                  <StyledSelect value={item.unitId} onChange={e => handleItemChange(idx, 'unitId', e.target.value)}>
                     {units.map(u => <option key={u.id} value={u.id}>{u.symbol}</option>)}
-                  </select>
+                  </StyledSelect>
                   <button type="button" onClick={() => handleRemoveItem(idx)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
                     <Trash2 size={16} />
                   </button>

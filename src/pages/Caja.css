@@ -1281,6 +1281,21 @@
   .client-modal-box .btn-modal-submit-red { width: 100%; min-width: 0; padding-inline: 10px; }
 }
 
+@media (min-width: 768px) {
+  .client-modal-box:has(.crm-form > .field:nth-of-type(4)) {
+    width: min(760px, calc(100vw - 40px));
+    max-height: calc(100vh - 40px);
+  }
+  .client-modal-box:has(.crm-form > .field:nth-of-type(4)) .crm-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+  }
+  .client-modal-box:has(.crm-form > .field:nth-of-type(4)) .crm-form > .field { margin-top: 0; min-width: 0; }
+  .client-modal-box:has(.crm-form > .field:nth-of-type(4)) .crm-form > .modal-actions-row-right,
+  .client-modal-box:has(.crm-form > .field:nth-of-type(4)) .crm-form > .client-modal-error { grid-column: 1 / -1; }
+}
+
 .payment-modal-box {
   background: #18181b;
   border: 1px solid rgba(255, 255, 255, 0.12);

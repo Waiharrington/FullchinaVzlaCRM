@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getCustomers, getWhatsAppMessages, queueWhatsAppMessage, type Customer, type WhatsAppMessage } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
+import { StyledSelect } from '../components/StyledSelect'
 import { dateKeyInTimeZone } from '../lib/money'
 import { MessageSquare, Cake, Sparkles, Send, Users, CheckCircle2, Clock } from 'lucide-react'
 import './MarketingWhatsApp.css'
@@ -221,7 +222,7 @@ export function MarketingWhatsApp() {
           <form onSubmit={handleSendMessage} className="transfer-form-box">
             <div className="select-field-group">
               <label className="field-label">Seleccionar Segmento de Clientes</label>
-              <select 
+              <StyledSelect
                 className="field-select"
                 value={selectedSegment}
                 onChange={e => setSelectedSegment(e.target.value as 'all' | 'loyal' | 'inactive' | 'birthday')}
@@ -230,12 +231,12 @@ export function MarketingWhatsApp() {
                 <option value="loyal">Clientes Fieles / VIP ({loyalCustomers.length})</option>
                 <option value="inactive">Clientes Inactivos &gt; 21 días ({inactiveCustomers.length})</option>
                 <option value="all">Todos los Clientes ({customers.length})</option>
-              </select>
+              </StyledSelect>
             </div>
 
             <div className="select-field-group">
               <label className="field-label">Cliente Específico Destino</label>
-              <select 
+              <StyledSelect
                 className="field-select"
                 value={targetCustomer}
                 onChange={e => setTargetCustomer(e.target.value)}
@@ -245,7 +246,7 @@ export function MarketingWhatsApp() {
                     {c.name} ({c.phone}) - {c.totalVisits} visitas
                   </option>
                 ))}
-              </select>
+              </StyledSelect>
             </div>
 
             <div className="select-field-group">

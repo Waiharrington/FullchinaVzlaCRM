@@ -256,4 +256,27 @@
   .promo-price-block { order: 3; align-items: flex-start; margin-left: 68px; }
   .promo-actions { width: 100%; justify-content: flex-end; }
   .promo-form-grid { grid-template-columns: 1fr; }
+  .promo-form-modal {
+    width: calc(100% - 12px);
+    max-width: none;
+    max-height: calc(100dvh - 6px);
+    margin-top: auto;
+    border-radius: 18px 18px 10px 10px;
+  }
+  .promo-form-header { padding: 16px; }
+  .promo-form-body { padding: 16px; }
+  .promo-form-footer { display: grid; grid-template-columns: 1fr 1.2fr; padding: 14px 16px; }
+  .promo-form-footer button { width: 100%; min-height: 44px; }
+}
+
+@media (min-width: 768px) {
+  .promo-form-modal { max-width: 820px; max-height: calc(100vh - 40px); }
+  .promo-form-body { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px 16px; }
+  .promo-form-body > .promo-form-row:first-child,
+  .promo-form-body > .promo-form-row:nth-child(4),
+  .promo-form-body > .promo-form-row:nth-child(6),
+  .promo-form-body > .promo-form-row:last-child,
+  .promo-form-body > .promo-form-grid { grid-column: 1 / -1; }
+  .promo-form-body > .promo-form-row,
+  .promo-form-body > .promo-form-grid { min-width: 0; }
 }

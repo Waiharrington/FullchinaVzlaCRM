@@ -125,3 +125,52 @@
 .ws-check input { width: 18px; height: 18px; accent-color: #e11d2a; }
 .ws-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .ws-cancel { background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 12px; padding: 11px 18px; font-size: 14px; cursor: pointer; }
+
+@media (min-width: 768px) {
+  .ws-modal:has(> .ws-row2) {
+    max-width: 760px;
+    max-height: calc(100vh - 40px);
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    column-gap: 22px;
+    align-items: start;
+  }
+  .ws-modal:has(> .ws-row2) > h3,
+  .ws-modal:has(> .ws-row2) > .sub,
+  .ws-modal:has(> .ws-row2) > .ws-modal-heading,
+  .ws-modal:has(> .ws-row2) > .ws-modal-actions { grid-column: 1 / -1; }
+  .ws-modal:has(> .ws-row2) > .ws-image-field { grid-column: 1; grid-row: span 4; margin: 0; }
+  .ws-modal:has(> .ws-row2) > .ws-row2,
+  .ws-modal:has(> .ws-row2) > .ws-field:not(.ws-image-field),
+  .ws-modal:has(> .ws-row2) > .ws-check { grid-column: 2; }
+  .ws-modal:has(> .ws-row2) > .ws-check { margin: 0; }
+  .ws-modal:has(> .ws-row2) > .ws-modal-actions { padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.07); }
+  .ws-modal:has(> .ws-row2) .ws-image-field > div { flex-direction: column; align-items: stretch !important; }
+  .ws-modal:has(> .ws-row2) .ws-image-field .ws-card-thumb { width: 100% !important; height: 150px !important; }
+  .ws-modal:has(> .ws-row2) .ws-image-field .ws-btn-sm { justify-content: center; }
+}
+
+@media (max-width: 767px) {
+  .ws-modal-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
+  .ws-modal {
+    max-width: none;
+    max-height: calc(100dvh - 6px);
+    overflow-y: auto;
+    padding: 18px 16px;
+    border-radius: 18px 18px 10px 10px;
+  }
+  .ws-row2 { grid-template-columns: 1fr; gap: 0; }
+  .ws-modal-actions {
+    position: sticky;
+    bottom: -18px;
+    z-index: 2;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    margin: 16px -16px -18px;
+    padding: 14px 16px;
+    background: #141419;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .ws-modal-actions button { width: 100%; min-height: 44px; }
+  .ws-image-field > div { flex-wrap: wrap; }
+}

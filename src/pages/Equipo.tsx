@@ -5,6 +5,7 @@ import {
   KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2,
 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import {
   getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
@@ -501,7 +502,7 @@ export function Equipo() {
               )}
               <div className="form-group">
                 <label>Rol / accesos</label>
-                <select
+                <StyledSelect
                   value={uRole}
                   onChange={e => {
                     const r = e.target.value as Role
@@ -512,7 +513,7 @@ export function Equipo() {
                   <option value="owner">Dueño (acceso total)</option>
                   <option value="manager">Gerente (gestión operativa)</option>
                   <option value="cashier">Cajero (sólo ventas)</option>
-                </select>
+                </StyledSelect>
               </div>
 
               {userModalMode === 'edit' && uRole !== 'owner' && (

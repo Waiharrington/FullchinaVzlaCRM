@@ -226,7 +226,22 @@
 .aito-opt-add { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #f87171; white-space: nowrap; }
 
 @media (max-width: 680px) {
-  .aito-modal { width: 100%; max-height: 94vh; }
+  .aito-overlay { align-items: flex-end; padding: 6px; }
+  .aito-modal {
+    width: 100%;
+    max-height: calc(100dvh - 6px);
+    border-radius: 18px 18px 10px 10px;
+  }
+  .aito-header { padding: 16px; }
+  .aito-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .aito-pending { max-height: 28dvh; }
+  .aito-pending-row { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .aito-pending-price { display: none; }
+  .aito-footer { gap: 10px; padding: 12px 16px; }
   .aito-total-money .money-usd { font-size: 19px; }
-  .aito-cta { padding: 11px 16px; font-size: 14px; }
+  .aito-cta { min-height: 44px; padding: 11px 14px; font-size: 13px; }
+}
+
+@media (max-width: 380px) {
+  .aito-grid { grid-template-columns: 1fr; }
 }

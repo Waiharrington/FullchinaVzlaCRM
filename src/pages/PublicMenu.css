@@ -635,6 +635,15 @@ button.mobile-only {
   object-fit: cover;
   background: linear-gradient(135deg, #24100d 0%, #0b0b0d 60%, #190705 100%);
 }
+.public-prod-img--beverage {
+  object-position: center 28%;
+}
+.public-prod-img--tall-bottle {
+  object-position: center 14%;
+}
+.public-prod-img--lipton {
+  object-position: center 20%;
+}
 .public-prod-info {
   flex: 1;
   min-width: 0;

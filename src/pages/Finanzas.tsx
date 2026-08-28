@@ -5,6 +5,7 @@ import {
 } from '../lib/dataService'
 import { useRates } from '../context/rates-context'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import { formatUsd, formatVes } from '../lib/money'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
@@ -164,9 +165,9 @@ export function Finanzas() {
         </div>
         <div className="fin-head-actions">
           <span className="fin-period"><CalendarDays size={15} />
-            <select value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+            <StyledSelect value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
               <option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option>
-            </select>
+            </StyledSelect>
           </span>
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>

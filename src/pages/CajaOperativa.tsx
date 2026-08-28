@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Banknote, CheckCircle2, Clock3, LockKeyhole, RefreshCw, WalletCards } from 'lucide-react'
 import { useAuth } from '../context/auth-context'
+import { StyledSelect } from '../components/StyledSelect'
 import {
   addCashMovement,
   closeCashSession,
@@ -207,9 +208,9 @@ export function CajaOperativa() {
               <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary" onClick={() => setShowMovement(value => !value)}>+ Movimiento</button></div>
               {showMovement && (
                 <form className="cash-inline-form" onSubmit={handleMovement}>
-                  <label>Dirección<select value={direction} onChange={event => setDirection(event.target.value as 'in' | 'out')}><option value="in">Entrada</option><option value="out">Salida</option></select></label>
-                  <label>Tipo<select value={movementType} onChange={event => setMovementType(event.target.value as CashMovement['movementType'])}><option value="cash_in">Ingreso de efectivo</option><option value="cash_out">Salida de efectivo</option><option value="withdrawal">Retiro</option><option value="expense">Gasto</option><option value="adjustment">Ajuste</option></select></label>
-                  <label>Moneda<select value={currency} onChange={event => setCurrency(event.target.value as 'USD' | 'VES')}><option value="USD">USD</option><option value="VES">Bolívares</option></select></label>
+                  <label>Dirección<StyledSelect value={direction} onChange={event => setDirection(event.target.value as 'in' | 'out')}><option value="in">Entrada</option><option value="out">Salida</option></StyledSelect></label>
+                  <label>Tipo<StyledSelect value={movementType} onChange={event => setMovementType(event.target.value as CashMovement['movementType'])}><option value="cash_in">Ingreso de efectivo</option><option value="cash_out">Salida de efectivo</option><option value="withdrawal">Retiro</option><option value="expense">Gasto</option><option value="adjustment">Ajuste</option></StyledSelect></label>
+                  <label>Moneda<StyledSelect value={currency} onChange={event => setCurrency(event.target.value as 'USD' | 'VES')}><option value="USD">USD</option><option value="VES">Bolívares</option></StyledSelect></label>
                   <label>Monto<input type="number" min="0.01" step="0.01" value={movementAmount} onChange={event => setMovementAmount(event.target.value)} required /></label>
                   <label className="cash-field-wide">Descripción<input value={movementDescription} onChange={event => setMovementDescription(event.target.value.slice(0, 120))} minLength={3} required /></label>
                   <button className="cash-primary cash-field-wide" disabled={saving}>Registrar movimiento</button>
