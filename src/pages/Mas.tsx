@@ -218,7 +218,7 @@ export function Mas() {
   const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
 
   return (
-    <div className="page animate-fade-in">
+    <div className="page mas-page animate-fade-in">
       <header className="page-header">
         <h1 className="page-title text-gradient">Más Módulos y Administración</h1>
         <p className="page-subtitle">Créditos, cierre de caja, finanzas, recetas y auditoría</p>
