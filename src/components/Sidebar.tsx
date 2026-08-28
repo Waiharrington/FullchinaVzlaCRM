@@ -57,7 +57,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   }
 
   const toggleGroup = (group: string) => {
-    setCollapsedGroups(prev => ({ ...prev, [group]: !prev[group] }))
+    setCollapsedGroups(prev => {
+      const shouldOpen = Boolean(prev[group])
+      return Object.keys(prev).reduce<Record<string, boolean>>((next, key) => {
+        next[key] = key === group ? !shouldOpen : true
+        return next
+      }, { ...prev })
+    })
   }
 
   return (
@@ -99,7 +105,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <NavLink
                     to={parent.path}
                     className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
-                    onClick={(event) => event.stopPropagation()}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      event.stopPropagation()
+                      toggleGroup(group)
+                    }}
                   >
                     <span>{group}</span>
                   </NavLink>
