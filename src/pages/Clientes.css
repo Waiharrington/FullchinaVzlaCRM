@@ -758,6 +758,8 @@
   padding: 24px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
   position: relative;
+  z-index: 1001;
+  opacity: 1;
 }
 
 .modal-header-line {
