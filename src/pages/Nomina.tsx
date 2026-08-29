@@ -8,10 +8,12 @@ import {
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
+import NumberStepper from '../components/NumberStepper'
 import {
-  Plus, CheckCircle2, AlertTriangle, Loader2, Users, Banknote, Gift, Hourglass,
-  HelpCircle, Save, X,
+  Plus, Loader2, Users, Banknote, Gift, Hourglass,
+  HelpCircle, Save,
 } from 'lucide-react'
+import Toast from '../components/Toast'
 import './Nomina.css'
 
 const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
@@ -155,8 +157,8 @@ export function Nomina() {
         </div>
       </header>
 
-      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}><AlertTriangle size={18} /> {error}</div>}
-      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={18} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
       <div className="nom-summary">
@@ -221,9 +223,9 @@ export function Nomina() {
                       <td><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
                       <td><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
                       <td>{formatUsd(r.emp.hourlyRate)}</td>
-                      <td><input type="number" step="any" min="0" value={edit[r.emp.id]?.hours ?? '0'} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], hours: e.target.value } }))} /></td>
+                      <td><NumberStepper step={0.01} min={0} value={edit[r.emp.id]?.hours ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], hours: v } }))} /></td>
                       <td><strong>{formatUsd(r.bruto)}</strong></td>
-                      <td><input type="number" step="any" min="0" value={edit[r.emp.id]?.deductions ?? '0'} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], deductions: e.target.value } }))} /></td>
+                      <td><NumberStepper step={0.01} min={0} value={edit[r.emp.id]?.deductions ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], deductions: v } }))} /></td>
                       <td style={{ color: '#22c55e' }}>{formatUsd(r.bon)}</td>
                       <td className="nom-net">{formatUsd(r.neto)}</td>
                     </tr>
@@ -283,7 +285,7 @@ export function Nomina() {
       {showPeriod && (
         <div className="nom-modal-overlay" onClick={() => setShowPeriod(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPeriod}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo período de nómina</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowPeriod(false)}><X size={16} /></button></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo período de nómina</h3></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Inicio *</label><input type="date" value={pStart} onChange={(e) => setPStart(e.target.value)} required /></div>
               <div className="nom-field"><label>Fin *</label><input type="date" value={pEnd} onChange={(e) => setPEnd(e.target.value)} required /></div>
@@ -296,10 +298,10 @@ export function Nomina() {
       {showAdvance && (
         <div className="nom-modal-overlay" onClick={() => setShowAdvance(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitAdvance}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo adelanto</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowAdvance(false)}><X size={16} /></button></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo adelanto</h3></div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
-              <div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={advAmt} onChange={(e) => setAdvAmt(e.target.value)} required /></div>
+              <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={advAmt} onChange={(v) => setAdvAmt(v)} required /></div>
               <div className="nom-field"><label>Fecha</label><input type="date" value={advDate} onChange={(e) => setAdvDate(e.target.value)} /></div>
             </div>
             <div className="nom-field"><label>Notas</label><input value={advNotes} onChange={(e) => setAdvNotes(e.target.value)} placeholder="Opcional" /></div>
@@ -310,10 +312,10 @@ export function Nomina() {
       {showBonus && (
         <div className="nom-modal-overlay" onClick={() => setShowBonus(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitBonus}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo bono de producción</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowBonus(false)}><X size={16} /></button></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo bono de producción</h3></div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
-              <div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={bonAmt} onChange={(e) => setBonAmt(e.target.value)} required /></div>
+              <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={bonAmt} onChange={(v) => setBonAmt(v)} required /></div>
               <div className="nom-field"><label>Fecha</label><input type="date" value={bonDate} onChange={(e) => setBonDate(e.target.value)} /></div>
             </div>
             <div className="nom-field"><label>Motivo</label><input value={bonReason} onChange={(e) => setBonReason(e.target.value)} placeholder="Ej: Ventas destacadas" /></div>
@@ -321,7 +323,7 @@ export function Nomina() {
           </form>
         </div>
       )}
-      {showPayment && <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}><form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}><div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3><button type="button" className="nom-cancel" style={{ padding: 6 }} onClick={() => setShowPayment(false)}><X size={16} /></button></div><div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div><div className="nom-row2"><div className="nom-field"><label>Monto ($) *</label><input type="number" step="any" min="0.01" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} required /></div><div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div></div><div className="nom-row2"><div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div><div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div></div><div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div></form></div>}
+      {showPayment && <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}><form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}><div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3></div><div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div><div className="nom-row2"><div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={payAmt} onChange={(v) => setPayAmt(v)} required /></div><div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div></div><div className="nom-row2"><div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div><div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div></div><div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div></form></div>}
     </div>
   )
 }

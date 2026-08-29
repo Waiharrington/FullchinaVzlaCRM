@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/auth-context'
 import { ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Grid3X3 } from 'lucide-react'
+import Toast from '../components/Toast'
 import './Login.css'
 
 const CAROUSEL_IMAGES = [
@@ -355,7 +356,7 @@ export function Login() {
               </div>
 
 
-              {error && <p className="error-message">{error}</p>}
+              {error && <Toast type="error" message={error} onClose={() => setError('')} />}
 
               <button type="submit" className="btn-primary" disabled={loading}>
                 {loading ? 'Ingresando...' : 'Iniciar sesión'}

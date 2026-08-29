@@ -95,3 +95,13 @@ export function formatProductTitle(name: string) {
     return lower.charAt(0).toLocaleUpperCase('es-VE') + lower.slice(1)
   }).join(' ')
 }
+
+// Quita tildes/diacríticos para que buscar "clasico" encuentre "Clásico", "menu" encuentre "menú", etc.
+export function normalizeForSearch(value: string): string {
+  return value
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[’'‘`´]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLocaleLowerCase('es-VE')
+    .trim()
+}

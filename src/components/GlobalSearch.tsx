@@ -39,6 +39,7 @@ import {
 } from '../lib/dataService'
 import { allNavItems, type Role } from './navItems'
 import { useAuth } from '../context/auth-context'
+import { EmptyState } from './EmptyState'
 import './GlobalSearch.css'
 
 interface ResultGroup {
@@ -360,7 +361,9 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
             )}
 
             {query.trim().length > 0 && totalResults === 0 && !isLoading && (
-              <div className="gs-empty-inline">Sin resultados para "{query}"</div>
+              <div className="gs-empty-inline">
+                <EmptyState compact title="Sin resultados" description={`No encontramos nada para "${query}"`} />
+              </div>
             )}
 
             {isLoading && <div className="gs-empty-inline"><div className="gs-spinner" /> Buscando...</div>}
@@ -430,7 +433,9 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
                 <div className="gs-empty"><span>Escribe para buscar en todo el sistema</span></div>
               )}
               {query.trim().length > 0 && totalResults === 0 && !isLoading && (
-                <div className="gs-empty"><span>No se encontraron resultados para "{query}"</span></div>
+                <div className="gs-empty">
+                  <EmptyState compact title="Sin resultados" description={`No encontramos nada para "${query}"`} />
+                </div>
               )}
               {isLoading && <div className="gs-empty"><div className="gs-spinner" /> <span>Buscando...</span></div>}
 

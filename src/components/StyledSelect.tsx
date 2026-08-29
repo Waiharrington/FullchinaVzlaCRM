@@ -15,6 +15,7 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Search } from 'lucide-react'
+import { normalizeForSearch } from '../lib/textFormat'
 import './StyledSelect.css'
 
 interface SelectOption {
@@ -73,8 +74,8 @@ export function StyledSelect({
   const selectedOption = options.find(option => option.value === selectedValue) || options[0]
   const searchable = options.length >= 8
   const filteredOptions = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('es-VE')
-    return term ? options.filter(option => option.label.toLocaleLowerCase('es-VE').includes(term)) : options
+    const term = normalizeForSearch(query)
+    return term ? options.filter(option => normalizeForSearch(option.label).includes(term)) : options
   }, [options, query])
 
   const positionMenu = useCallback(() => {

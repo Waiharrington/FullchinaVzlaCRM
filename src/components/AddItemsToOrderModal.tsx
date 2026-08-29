@@ -12,6 +12,8 @@ import {
   type ProductModifierGroup,
   type SelectedModifier,
 } from '../lib/dataService'
+import { normalizeForSearch } from '../lib/textFormat'
+import { EmptyState } from './EmptyState'
 import './AddItemsToOrderModal.css'
 
 const genLineId = () =>
@@ -64,9 +66,9 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
   }, [])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeForSearch(search)
     if (!q) return products
-    return products.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+    return products.filter((p) => normalizeForSearch(p.name).includes(q) || normalizeForSearch(p.category).includes(q))
   }, [products, search])
 
   const pendingTotal = pending.reduce((s, i) => s + i.price * i.quantity, 0)
@@ -315,7 +317,9 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                   ))}
                 </div>
               )}
-              {!loading && !loadError && filtered.length === 0 && <p className="aito-muted">Sin resultados.</p>}
+              {!loading && !loadError && filtered.length === 0 && (
+                <EmptyState compact title="Sin resultados" description="Prueba con otro nombre o categoría." />
+              )}
             </div>
 
             {pending.length > 0 && (

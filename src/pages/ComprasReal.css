@@ -58,7 +58,7 @@
 /* Historial */
 .cmp-hist-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
 .cmp-search { position: relative; flex: 1 1 200px; max-width: 300px; }
-.cmp-search input { width: 100%; padding: 9px 12px 9px 34px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-size: 13px; }
+.cmp-search input { width: 100%; padding: 9px 30px 9px 34px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-size: 13px; }
 .cmp-search .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #71717a; }
 .cmp-tool { display: inline-flex; align-items: center; gap: 7px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 10px; padding: 9px 13px; font-size: 13px; cursor: pointer; }
 

@@ -8,6 +8,8 @@ import { useAuth } from '../context/auth-context'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
+import Toast from '../components/Toast'
+import NumberStepper from '../components/NumberStepper'
 import {
   Flame, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ChevronUp, Package, DollarSign,
 } from 'lucide-react'
@@ -145,16 +147,8 @@ export function ProduccionReal() {
         </button>
       </header>
 
-      {error && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-          <AlertTriangle size={18} /> {error}
-        </div>
-      )}
-      {notice && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-          <CheckCircle2 size={18} /> {notice}
-        </div>
-      )}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Stats */}
       <div className="stats-grid">
@@ -203,7 +197,7 @@ export function ProduccionReal() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px', display: 'block' }}>Cantidad producida *</label>
-                <input type="number" step="any" min="0" value={quantityProduced} onChange={e => setQuantityProduced(e.target.value)} placeholder="0" required />
+                <NumberStepper step={0.01} min={0} value={quantityProduced} onChange={v => setQuantityProduced(v)} placeholder="0" required />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px', display: 'block' }}>Unidad</label>
@@ -213,7 +207,7 @@ export function ProduccionReal() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px', display: 'block' }}>Merma</label>
-                <input type="number" step="any" min="0" value={wasteQuantity} onChange={e => setWasteQuantity(e.target.value)} />
+                <NumberStepper step={0.01} min={0} value={wasteQuantity} onChange={v => setWasteQuantity(v)} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ color: '#a1a1aa', fontSize: '12px', marginBottom: '4px', display: 'block' }}>Notas</label>
@@ -238,7 +232,7 @@ export function ProduccionReal() {
                     placeholder="Buscar ingrediente..."
                     emptyText="Sin ingredientes"
                   />
-                  <input type="number" step="any" min="0" placeholder="Cantidad" value={item.quantityUsed} onChange={e => handleItemChange(idx, 'quantityUsed', e.target.value)} />
+                  <NumberStepper step={0.01} min={0} placeholder="Cantidad" value={item.quantityUsed} onChange={v => handleItemChange(idx, 'quantityUsed', v)} />
                   <StyledSelect value={item.unitId} onChange={e => handleItemChange(idx, 'unitId', e.target.value)}>
                     {units.map(u => <option key={u.id} value={u.id}>{u.symbol}</option>)}
                   </StyledSelect>

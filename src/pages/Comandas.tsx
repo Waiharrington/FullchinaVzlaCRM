@@ -17,8 +17,10 @@ import {
   type CartItem,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
+import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
+import { normalizeForSearch } from '../lib/textFormat'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
 import {
@@ -61,6 +63,7 @@ import {
   DollarSign,
   Flame,
 } from 'lucide-react'
+import { EmptyState } from '../components/EmptyState'
 import './Comandas.css'
 
 const PAYMENT_METHODS = [
@@ -254,7 +257,8 @@ export function Comandas() {
   }
 
   const handleRemoveItem = async (itemId: string) => {
-    if (!window.confirm('¿Quitar este producto de la comanda? Se revertirá su inventario.')) return
+    const ok = await confirmDialog({ title: 'Quitar producto', message: '¿Quitar este producto de la comanda? Se revertirá su inventario.', confirmText: 'Quitar', danger: true })
+    if (!ok) return
     setRemovingItemId(itemId)
     setRemoveError('')
     try {
@@ -666,7 +670,7 @@ export function Comandas() {
       setReloadToken(value => value + 1)
     } catch (cause) {
       console.error('Error confirmando pedido web:', cause)
-      window.alert(cause instanceof Error ? cause.message : 'No se pudo confirmar el pedido web')
+      void alertDialog({ message: cause instanceof Error ? cause.message : 'No se pudo confirmar el pedido web', danger: true })
     } finally {
       setConfirmingWebId(null)
     }
@@ -752,11 +756,11 @@ export function Comandas() {
 
   const filteredHistoryOrders = useMemo(() => {
     if (!historySearch) return historyOrders
-    const q = historySearch.toLowerCase()
+    const q = normalizeForSearch(historySearch)
     return historyOrders.filter(c =>
-      c.orderNumber.toLowerCase().includes(q) ||
-      c.customerName.toLowerCase().includes(q) ||
-      c.items.some(i => i.name.toLowerCase().includes(q))
+      normalizeForSearch(c.orderNumber).includes(q) ||
+      normalizeForSearch(c.customerName).includes(q) ||
+      c.items.some(i => normalizeForSearch(i.name).includes(q))
     )
   }, [historyOrders, historySearch])
 
@@ -771,11 +775,12 @@ export function Comandas() {
   }, [])
 
   const filteredComandas = useMemo(() => {
+    const q = normalizeForSearch(searchQuery)
     return comandas.filter(c => {
       const matchSearch =
-        c.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.items.some(i => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        normalizeForSearch(c.orderNumber).includes(q) ||
+        normalizeForSearch(c.customerName).includes(q) ||
+        c.items.some(i => normalizeForSearch(i.name).includes(q))
       return matchSearch
     })
   }, [comandas, searchQuery])
@@ -917,6 +922,11 @@ export function Comandas() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
           />
+          {searchQuery && (
+            <button type="button" className="search-clear-btn" onClick={() => setSearchQuery('')} aria-label="Borrar búsqueda">
+              <X size={13} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -1093,7 +1103,6 @@ export function Comandas() {
                 <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
                   <Trash2 size={18} />
                 </button>
-                <button className="cmd-close-btn" onClick={() => setSelectedOrder(null)}><X size={20} /></button>
               </div>
             </header>
 
@@ -1454,9 +1463,6 @@ export function Comandas() {
               <h2 className="payment-modal-title">
                 Cobrar pedido <span className="payment-order-tag">{paymentOrder.orderNumber}</span>
               </h2>
-              <button className="payment-modal-close" onClick={() => setShowPaymentModal(false)}>
-                <X size={18} />
-              </button>
             </div>
 
             {/* Payment Method Tabs */}
@@ -1730,6 +1736,11 @@ export function Comandas() {
                   onChange={e => setHistorySearch(e.target.value)}
                   autoFocus
                 />
+                {historySearch && (
+                  <button type="button" className="search-clear-btn" onClick={() => setHistorySearch('')} aria-label="Borrar búsqueda">
+                    <X size={13} />
+                  </button>
+                )}
               </div>
               <button className="cmd-close-btn" onClick={() => { setShowHistoryModal(false); setHistorySearch('') }}>
                 <X size={20} />
@@ -1743,10 +1754,11 @@ export function Comandas() {
                   <span>Cargando historial...</span>
                 </div>
               ) : filteredHistoryOrders.length === 0 ? (
-                <div className="cmd-history-empty">
-                  <Package size={40} />
-                  <p>No se encontraron comandas</p>
-                </div>
+                <EmptyState
+                  compact
+                  title="No se encontraron comandas"
+                  description="Prueba con otro número, cliente o filtro."
+                />
               ) : (
                 <div className="cmd-history-list">
                   {filteredHistoryOrders.map(order => (

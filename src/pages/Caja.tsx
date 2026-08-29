@@ -70,7 +70,7 @@ import {
   User,
 } from 'lucide-react'
 import './Caja.css'
-import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 
 type ViewMode = 'grid' | 'list'
 
@@ -216,8 +216,9 @@ export function Caja() {
 
   const filteredCustomers = useMemo(() => {
     if (!customerName.trim()) return customerList
+    const q = normalizeForSearch(customerName)
     return customerList.filter(c =>
-      c.name.toLowerCase().includes(customerName.toLowerCase()) ||
+      normalizeForSearch(c.name).includes(q) ||
       c.phone.includes(customerName)
     )
   }, [customerList, customerName])
@@ -390,14 +391,14 @@ export function Caja() {
       return matchCat && product.active
     })
     let result = groupMenuProducts(categoryProducts)
-    const query = searchTerm.trim().toLowerCase()
+    const query = normalizeForSearch(searchTerm)
     if (query) {
       result = result.filter(group =>
-        group.name.toLowerCase().includes(query) ||
+        normalizeForSearch(group.name).includes(query) ||
         group.variants.some(({ product, label }) =>
-          label.toLowerCase().includes(query) ||
-          product.name.toLowerCase().includes(query) ||
-          product.description?.toLowerCase().includes(query)
+          normalizeForSearch(label).includes(query) ||
+          normalizeForSearch(product.name).includes(query) ||
+          (product.description && normalizeForSearch(product.description).includes(query))
         )
       )
     }
@@ -1025,6 +1026,11 @@ export function Caja() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input-caja"
               />
+              {searchTerm && (
+                <button type="button" className="search-clear-btn" onClick={() => setSearchTerm('')} aria-label="Borrar búsqueda">
+                  <X size={13} />
+                </button>
+              )}
             </div>
             <StyledSelect
               className="sort-select"
@@ -1498,9 +1504,6 @@ export function Caja() {
               <h2 className="payment-modal-title">
                 Cobrar pedido <span className="payment-order-tag">Nueva venta</span>
               </h2>
-              <button className="payment-modal-close" onClick={() => setShowPaymentModal(false)}>
-                <X size={18} />
-              </button>
             </div>
 
             {/* Payment Method Tabs */}
@@ -1854,7 +1857,6 @@ export function Caja() {
                 <h3 className="modal-title" id="new-client-title">Nuevo cliente</h3>
                 <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
               </div>
-              <button type="button" className="modal-close-btn" aria-label="Cerrar ventana" disabled={creatingCustomer} onClick={() => setShowNewClientModal(false)}><X size={18} /></button>
             </div>
 
             <form onSubmit={handleCreateNewClientFromCaja} className="crm-form mt-3">

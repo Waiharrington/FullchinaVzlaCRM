@@ -7,15 +7,19 @@ import {
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
+import NumberStepper from '../components/NumberStepper'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes } from '../lib/money'
 import {
   Plus, Trash2, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
-  UtensilsCrossed,
+  UtensilsCrossed, X,
 } from 'lucide-react'
 import './RecetasReal.css'
-import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import Toast from '../components/Toast'
+import { confirmDialog } from '../components/ConfirmDialog'
+import { EmptyState } from '../components/EmptyState'
+import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 
 const PAGE_SIZE = 8
 type Tab = 'todas' | 'completas' | 'faltan'
@@ -113,9 +117,9 @@ export function RecetasReal() {
   }, [products, summaryOf])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeForSearch(search)
     let list = products.filter((p) => {
-      if (q && !p.name.toLowerCase().includes(q)) return false
+      if (q && !normalizeForSearch(p.name).includes(q)) return false
       if (category !== 'all' && p.category !== category) return false
       const has = summaryOf(p.id).componentCount > 0
       if (tab === 'completas' && !has) return false
@@ -167,7 +171,8 @@ export function RecetasReal() {
   }
 
   const handleDeleteComponent = async (componentId: string) => {
-    if (!confirm('¿Eliminar este ingrediente de la receta?')) return
+    const ok = await confirmDialog({ title: 'Eliminar ingrediente', message: '¿Eliminar este ingrediente de la receta?', confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     try {
       setError('')
       await deleteRecipeComponent(componentId)
@@ -207,16 +212,8 @@ export function RecetasReal() {
         </button>
       </header>
 
-      {error && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-          <AlertTriangle size={18} /> {error}
-        </div>
-      )}
-      {notice && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}>
-          <CheckCircle2 size={18} /> {notice}
-        </div>
-      )}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <div className="rec-layout">
         {/* ============ Lista ============ */}
@@ -224,7 +221,9 @@ export function RecetasReal() {
           <div className="rec-search">
             <Search size={16} className="rec-search-ic" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar receta..." />
-            <span className="rec-kbd">⌘K</span>
+            {search
+              ? <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>
+              : <span className="rec-kbd">⌘K</span>}
           </div>
 
           <div className="rec-tabs">
@@ -283,7 +282,14 @@ export function RecetasReal() {
                 </button>
               )
             })}
-            {pageItems.length === 0 && <p className="rec-empty-list">No hay recetas que coincidan.</p>}
+            {pageItems.length === 0 && (
+              <EmptyState
+                title="No hay recetas que coincidan"
+                description="Prueba con otro nombre o crea una receta nueva."
+                actionLabel="Agregar receta"
+                onAction={() => { setNewRecipeProductId(''); setShowNewRecipe(true) }}
+              />
+            )}
           </div>
 
           {totalPages > 1 && (
@@ -352,7 +358,7 @@ export function RecetasReal() {
                         placeholder="Buscar ingrediente..."
                         emptyText="Sin ingredientes"
                       />
-                      <input type="number" step="any" min="0.01" placeholder="Cant." value={addQuantity} onChange={(e) => setAddQuantity(e.target.value)} required />
+                      <NumberStepper step={0.01} min={0.01} placeholder="Cant." value={addQuantity} onChange={(v) => setAddQuantity(v)} required />
                       <StyledSelect value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
                         {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
                       </StyledSelect>

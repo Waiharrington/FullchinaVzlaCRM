@@ -4,7 +4,10 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { StyledSelect } from '../components/StyledSelect'
-import { formatProductTitle } from '../lib/textFormat'
+import NumberStepper from '../components/NumberStepper'
+import { formatProductTitle, normalizeForSearch } from '../lib/textFormat'
+import { alertDialog } from '../components/ConfirmDialog'
+import { EmptyState } from '../components/EmptyState'
 import {
   getCredits,
   getCreditPayments,
@@ -247,7 +250,7 @@ export function Clientes() {
       })
     } catch (err) {
       console.error('Error guardando cliente:', err)
-      alert('No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.')
+      void alertDialog({ message: 'No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.', danger: true })
       return
     }
     const newClientObj: CustomerRow = {
@@ -338,7 +341,7 @@ export function Clientes() {
         fetchCredits()
       } catch (e) {
         console.error('Error registrando abono:', e)
-        alert('Error al registrar abono')
+        void alertDialog({ message: 'Error al registrar abono', danger: true })
       }
     }
   }
@@ -362,7 +365,7 @@ export function Clientes() {
     })
 
     return rows.filter((r) => {
-      const matchSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) || r.phone.includes(searchTerm) || r.identification.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchSearch = normalizeForSearch(r.name).includes(normalizeForSearch(searchTerm)) || r.phone.includes(searchTerm) || normalizeForSearch(r.identification).includes(normalizeForSearch(searchTerm))
       const matchStatus = statusFilter === 'all' || r.status.toLowerCase() === statusFilter.toLowerCase()
       const matchIdentity = identityFilter === 'all' || r.identificationStatus === identityFilter
       return matchSearch && matchStatus && matchIdentity
@@ -830,6 +833,11 @@ export function Clientes() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="filter-search-input"
               />
+              {searchTerm && (
+                <button type="button" className="search-clear-btn" onClick={() => setSearchTerm('')} aria-label="Borrar búsqueda">
+                  <X size={13} />
+                </button>
+              )}
             </div>
 
             <div className="filter-dropdown-wrap">
@@ -883,7 +891,13 @@ export function Clientes() {
               <tbody>
                 {displayRows.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="empty-td-row">No se encontraron clientes que coincidan con los filtros.</td>
+                    <td colSpan={8}>
+                      <EmptyState
+                        compact
+                        title="No se encontraron clientes"
+                        description="Prueba con otro nombre o ajusta los filtros."
+                      />
+                    </td>
                   </tr>
                 ) : (
                   displayRows.map((row) => (
@@ -956,7 +970,6 @@ export function Clientes() {
                 <h3 className="modal-title">Nuevo cliente</h3>
                 <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setShowNewModal(false)}><X size={18} /></button>
             </div>
 
             <form onSubmit={handleSaveClient} className="crm-form mt-3">
@@ -1068,7 +1081,6 @@ export function Clientes() {
                 <h3 className="modal-title">Editar cliente</h3>
                 <p className="modal-sub-desc">Actualiza los datos del cliente</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setEditClientId(null)}><X size={18} /></button>
             </div>
 
             <form onSubmit={handleUpdateClient} className="crm-form mt-3">
@@ -1139,7 +1151,6 @@ export function Clientes() {
           <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-line">
               <h3 className="modal-title">Abonar a Crédito</h3>
-              <button className="modal-close-btn" onClick={() => setPaymentModal(null)}><X size={18} /></button>
             </div>
             <p className="modal-sub-desc mt-2">Cliente: <strong className="text-white">{paymentModal.customerName}</strong></p>
             <p className="birthday-hint">Deuda restante: <MoneyWithBcv usd={paymentModal.balancePending} className="text-red" usdClassName="font-bold" compact /></p>
@@ -1147,13 +1158,12 @@ export function Clientes() {
             <form onSubmit={handlePayment} className="crm-form mt-3">
               <div className="field">
                 <label className="field-label-white">Monto a abonar ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
+                <NumberStepper
+                  step={0.01}
                   max={paymentModal.balancePending}
                   placeholder={`Máximo $${paymentModal.balancePending.toFixed(2)}`}
                   value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  onChange={(v) => setPaymentAmount(v)}
                   className="modal-input-dark"
                   required
                 />

@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
 import {
-  Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3, AlertTriangle,
+  Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3,
   KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2,
 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
+import Toast from '../components/Toast'
+import NumberStepper from '../components/NumberStepper'
+import { confirmDialog } from '../components/ConfirmDialog'
 import {
   getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
@@ -14,6 +17,7 @@ import {
 import { adminSetUserModules } from '../lib/dataService'
 import type { Employee, AuthUser } from '../lib/dataService'
 import { allNavItems, type Role } from '../components/navItems'
+import { EmptyState } from '../components/EmptyState'
 import './Equipo.css'
 
 const ROLE_LABEL: Record<Role, string> = { owner: 'Dueño', manager: 'Gerente', cashier: 'Cajero' }
@@ -127,7 +131,8 @@ export function Equipo() {
   }
 
   const handleDelete = async (emp: Employee) => {
-    if (!window.confirm(`¿Eliminar a "${emp.fullName}" de la nómina?`)) return
+    const ok = await confirmDialog({ title: 'Eliminar empleado', message: `¿Eliminar a "${emp.fullName}" de la nómina?`, confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     try {
       await deleteEmployee(emp.id)
       flash(`"${emp.fullName}" eliminado`)
@@ -276,15 +281,8 @@ export function Equipo() {
         )}
       </div>
 
-      {error && (
-        <div className="equipo-banner error">
-          <AlertTriangle size={18} /> {error}
-          <button onClick={() => setError('')} className="equipo-banner-close">✕</button>
-        </div>
-      )}
-      {notice && (
-        <div className="equipo-banner ok"><CheckCircle2 size={18} /> {notice}</div>
-      )}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* ===================== USUARIOS DE ACCESO ===================== */}
       {isOwner && (
@@ -299,12 +297,7 @@ export function Equipo() {
             Estos son los usuarios que pueden iniciar sesión en el sistema. Cambia su correo, contraseña o rol.
           </p>
 
-          {usersError && (
-            <div className="equipo-banner error" style={{ marginTop: 12 }}>
-              <AlertTriangle size={16} /> {usersError}
-              <button onClick={() => setUsersError('')} className="equipo-banner-close">✕</button>
-            </div>
-          )}
+          {usersError && <Toast type="error" message={usersError} onClose={() => setUsersError('')} />}
 
           {usersLoading ? (
             <div style={{ padding: '24px', textAlign: 'center' }}>
@@ -395,9 +388,13 @@ export function Equipo() {
             </div>
           ))}
           {team.length === 0 && (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '48px 16px', color: '#71717a' }}>
-              <Users size={48} style={{ marginBottom: '12px', opacity: 0.3 }} />
-              <p>No hay empleados registrados. Crea el primero con el botón de arriba.</p>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <EmptyState
+                title="No hay empleados registrados"
+                description="Crea el primero para empezar a gestionar tu equipo."
+                actionLabel="Nuevo empleado"
+                onAction={() => handleOpenModal()}
+              />
             </div>
           )}
         </div>
@@ -455,7 +452,6 @@ export function Equipo() {
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>{editingId ? 'Editar Miembro' : 'Crear Nuevo Miembro del Equipo'}</h3>
-              <button className="close-btn" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSave} className="modal-form">
               <div className="form-group">
@@ -464,7 +460,7 @@ export function Equipo() {
               </div>
               <div className="form-group">
                 <label>Salario mensual (USD)</label>
-                <input type="number" min="0" step="1" value={hourlyRate} onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)} />
+                <NumberStepper min={0} step={1} value={String(hourlyRate)} onChange={(v) => setHourlyRate(parseFloat(v) || 0)} />
               </div>
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancelar</button>
@@ -481,7 +477,6 @@ export function Equipo() {
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>{userModalMode === 'create' ? 'Crear usuario de acceso' : 'Editar usuario'}</h3>
-              <button className="close-btn" onClick={() => setShowUserModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSaveUser} className="modal-form">
               {userModalMode === 'create' && (
@@ -568,7 +563,6 @@ export function Equipo() {
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>Cambiar PIN de acceso</h3>
-              <button className="close-btn" onClick={() => setShowPinModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSavePin} className="modal-form">
               <p className="equipo-section-hint" style={{ margin: 0 }}>
@@ -607,7 +601,6 @@ export function Equipo() {
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>Cambiar contraseña</h3>
-              <button className="close-btn" onClick={() => setShowPwModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSavePw} className="modal-form">
               <p className="equipo-section-hint" style={{ margin: 0 }}>

@@ -29,6 +29,7 @@ import {
   Receipt,
   UtensilsCrossed
 } from 'lucide-react'
+import Toast from '../components/Toast'
 import './Inicio.css'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
@@ -304,13 +305,15 @@ export function Inicio() {
         </div>
       </header>
 
-      {dashboardError ? (
-        <div className="db-error-banner" role="alert">
-          <AlertTriangle size={17} />
-          <span>{dashboardError}</span>
-          <button type="button" onClick={() => void fetchData(salesRange)}>Reintentar</button>
-        </div>
-      ) : null}
+      {dashboardError && (
+        <Toast
+          type="error"
+          message={dashboardError}
+          onClose={() => setDashboardError('')}
+          actionLabel="Reintentar"
+          onAction={() => void fetchData(salesRange)}
+        />
+      )}
 
       <div className="kpi-banner">
         <div className="kpi-banner-content">

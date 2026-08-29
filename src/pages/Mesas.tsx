@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LayoutGrid, Plus, Pencil, Trash2, X, Users, Clock, UtensilsCrossed } from 'lucide-react'
+import Toast from '../components/Toast'
+import NumberStepper from '../components/NumberStepper'
+import { confirmDialog } from '../components/ConfirmDialog'
 import { useAuth } from '../context/auth-context'
 import {
   getFloorTables,
@@ -185,7 +188,8 @@ export function Mesas() {
       setFormError('No puedes eliminar una mesa con un pedido abierto')
       return
     }
-    if (!window.confirm(`¿Eliminar la mesa ${table.number}?`)) return
+    const ok = await confirmDialog({ title: 'Eliminar mesa', message: `¿Eliminar la mesa ${table.number}?`, confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     setSaving(true)
     try {
       await deleteFloorTable(table.id)
@@ -226,7 +230,7 @@ export function Mesas() {
         )}
       </header>
 
-      {error && <div className="mesas-error-banner">{error}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
 
       {zones.length > 2 && (
         <div className="mesas-zone-tabs">
@@ -321,12 +325,11 @@ export function Mesas() {
 
             <label className="mesas-form-field">
               <span>Número de mesa</span>
-              <input
-                type="number"
+              <NumberStepper
                 min={1}
                 max={50}
                 value={formState.number}
-                onChange={e => setFormState(f => f && { ...f, number: e.target.value })}
+                onChange={v => setFormState(f => f && { ...f, number: v })}
                 required
               />
             </label>
@@ -344,11 +347,10 @@ export function Mesas() {
 
             <label className="mesas-form-field">
               <span>Puestos</span>
-              <input
-                type="number"
+              <NumberStepper
                 min={1}
                 value={formState.seats}
-                onChange={e => setFormState(f => f && { ...f, seats: e.target.value })}
+                onChange={v => setFormState(f => f && { ...f, seats: v })}
                 required
               />
             </label>

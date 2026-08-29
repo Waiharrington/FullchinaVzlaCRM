@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Loader2, MapPin, Plus, Save, Trash2, CheckCircle2, AlertTriangle, Bike } from 'lucide-react'
+import { Loader2, MapPin, Plus, Save, Trash2, Bike } from 'lucide-react'
+import Toast from './Toast'
+import NumberStepper from './NumberStepper'
 import {
   getDeliverySettings, updateDeliveryConfig, createDeliveryZone, updateDeliveryZone, deleteDeliveryZone,
   type DeliveryConfigRow, type DeliveryZoneRow,
 } from '../lib/dataService'
 import { estimateDelivery } from '../lib/delivery'
 import { PageSkeleton } from './PageSkeleton'
+import { confirmDialog } from './ConfirmDialog'
 
 /** Configuración administrable del delivery por distancia (origen + zonas). */
 export function DeliverySettings() {
@@ -75,7 +78,8 @@ export function DeliverySettings() {
   }
 
   const removeZone = async (zone: DeliveryZoneRow) => {
-    if (!window.confirm('¿Eliminar esta zona de delivery?')) return
+    const ok = await confirmDialog({ title: 'Eliminar zona', message: '¿Eliminar esta zona de delivery?', confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     setError('')
     try { await deleteDeliveryZone(zone.id); await load() }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar la zona') }
@@ -106,8 +110,8 @@ export function DeliverySettings() {
         </label>
       </div>
 
-      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)', marginBottom: 12 }}><AlertTriangle size={16} /> {error}</div>}
-      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)', marginBottom: 12 }}><CheckCircle2 size={16} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <div className="ds-section">
         <h3 className="ds-h3"><MapPin size={15} style={{ verticalAlign: -2, marginRight: 5 }} />Ubicación de Full China (origen)</h3>
@@ -127,9 +131,9 @@ export function DeliverySettings() {
           <div className="ds-zone-head"><span>Desde (km)</span><span>Hasta (km)</span><span>Precio ($)</span><span></span></div>
           {zones.map((z) => (
             <div className="ds-zone-row" key={z.id}>
-              <input type="number" step="0.1" min="0" value={z.minKm} onChange={(e) => patchZone(z.id, { minKm: parseFloat(e.target.value) || 0 })} />
-              <input type="number" step="0.1" min="0" value={z.maxKm ?? ''} placeholder="sin tope" onChange={(e) => patchZone(z.id, { maxKm: e.target.value.trim() ? parseFloat(e.target.value) : null })} />
-              <input type="number" step="0.01" min="0" value={z.price} onChange={(e) => patchZone(z.id, { price: parseFloat(e.target.value) || 0 })} />
+              <NumberStepper step={0.1} min={0} value={String(z.minKm)} onChange={(v) => patchZone(z.id, { minKm: parseFloat(v) || 0 })} />
+              <NumberStepper step={0.1} min={0} value={z.maxKm != null ? String(z.maxKm) : ''} placeholder="sin tope" onChange={(v) => patchZone(z.id, { maxKm: v.trim() ? parseFloat(v) : null })} />
+              <NumberStepper step={0.01} min={0} value={String(z.price)} onChange={(v) => patchZone(z.id, { price: parseFloat(v) || 0 })} />
               <div className="ds-zone-actions">
                 <button className="btn-ghost btn-sm" onClick={() => saveZone(z)} title="Guardar"><Save size={14} /></button>
                 <button className="btn-ghost btn-sm" onClick={() => removeZone(z)} title="Eliminar" style={{ color: '#f87171' }}><Trash2 size={14} /></button>

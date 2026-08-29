@@ -3,14 +3,18 @@ import { createPortal } from 'react-dom'
 import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, type SellableProduct, type MenuCategoryRow } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
-  UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2, AlertTriangle,
+  UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2,
   LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2, CheckSquare, Square,
   ChevronUp, ChevronDown, Check,
 } from 'lucide-react'
 import './Menu.css'
 import { PageSkeleton } from '../components/PageSkeleton'
+import Toast from '../components/Toast'
+import NumberStepper from '../components/NumberStepper'
+import { confirmDialog } from '../components/ConfirmDialog'
+import { EmptyState } from '../components/EmptyState'
 import { StyledSelect } from '../components/StyledSelect'
-import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
 
@@ -119,9 +123,9 @@ export function Menu() {
   }), [products, categories])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeForSearch(search)
     return products.filter((p) => {
-      if (q && !p.name.toLowerCase().includes(q)) return false
+      if (q && !normalizeForSearch(p.name).includes(q)) return false
       if (catFilter !== 'all' && !p.categories.includes(catFilter)) return false
       if (statusFilter === 'active' && !p.isActive) return false
       if (statusFilter === 'inactive' && p.isActive) return false
@@ -162,7 +166,8 @@ export function Menu() {
   }
 
   const handleDelete = async (p: SellableProduct) => {
-    if (!window.confirm(`¿Eliminar "${p.name}" del menú de forma permanente?\n\nSi el plato tiene ventas registradas no se podrá eliminar; en ese caso usa "Ocultar".`)) return
+    const ok = await confirmDialog({ title: 'Eliminar plato', message: `¿Eliminar "${p.name}" del menú de forma permanente?\n\nSi el plato tiene ventas registradas no se podrá eliminar; en ese caso usa "Ocultar".`, confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     setError('')
     try { await deleteProduct(p.id); flash(`"${p.name}" eliminado`); await load() }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar el plato') }
@@ -183,7 +188,8 @@ export function Menu() {
   const handleBulkDelete = async () => {
     const targets = products.filter((p) => selectedIds.has(p.id))
     if (targets.length === 0) return
-    if (!window.confirm(`¿Eliminar ${targets.length} plato${targets.length === 1 ? '' : 's'} de forma permanente?\n\nLos platos con ventas registradas no se podrán eliminar; se omitirán.`)) return
+    const confirmed = await confirmDialog({ title: 'Eliminar platos', message: `¿Eliminar ${targets.length} plato${targets.length === 1 ? '' : 's'} de forma permanente?\n\nLos platos con ventas registradas no se podrán eliminar; se omitirán.`, confirmText: 'Eliminar', danger: true })
+    if (!confirmed) return
     setBulkDeleting(true); setError('')
     let ok = 0; const failed: string[] = []
     for (const p of targets) {
@@ -234,7 +240,8 @@ export function Menu() {
   const handleDeleteCategory = async (cat: MenuCategoryRow) => {
     const inUse = products.filter((p) => p.categories.includes(cat.key)).length
     if (inUse > 0) { setError(`No se puede eliminar "${cat.label}": tiene ${inUse} plato${inUse === 1 ? '' : 's'}. Muévelos a otra categoría primero.`); return }
-    if (!window.confirm(`¿Eliminar la categoría "${cat.label}"?`)) return
+    const ok = await confirmDialog({ title: 'Eliminar categoría', message: `¿Eliminar la categoría "${cat.label}"?`, confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     setError('')
     try { await deleteMenuCategory(cat.id); flash(`Categoría "${cat.label}" eliminada`); await reloadCategories() }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar la categoría') }
@@ -290,18 +297,22 @@ export function Menu() {
         </div>
       </header>
 
-      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}><AlertTriangle size={18} /> {error}</div>}
-      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={18} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <div className="mnu-summary">
-        <div className="mnu-sum"><span className="mnu-sum-ic" style={{ background: 'rgba(225,29,42,0.15)', color: '#e11d2a' }}><Package size={20} /></span><div><div className="mnu-sum-lbl">Total platos</div><div className="mnu-sum-val">{summary.total}</div></div></div>
-        <div className="mnu-sum"><span className="mnu-sum-ic" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}><Eye size={20} /></span><div><div className="mnu-sum-lbl">Activos (en venta)</div><div className="mnu-sum-val">{summary.active}</div></div></div>
-        <div className="mnu-sum"><span className="mnu-sum-ic" style={{ background: 'rgba(113,113,122,0.2)', color: '#a1a1aa' }}><EyeOff size={20} /></span><div><div className="mnu-sum-lbl">Inactivos</div><div className="mnu-sum-val">{summary.inactive}</div></div></div>
-        <div className="mnu-sum"><span className="mnu-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><Tag size={20} /></span><div><div className="mnu-sum-lbl">Categorías</div><div className="mnu-sum-val">{summary.cats}</div></div></div>
+        <div className="mnu-sum mnu-sum-primary"><span className="mnu-sum-ic"><Package size={20} /></span><div><div className="mnu-sum-lbl">Total platos</div><div className="mnu-sum-val">{summary.total}</div></div></div>
+        <div className="mnu-sum mnu-sum-success"><span className="mnu-sum-ic"><Eye size={20} /></span><div><div className="mnu-sum-lbl">Activos (en venta)</div><div className="mnu-sum-val">{summary.active}</div></div></div>
+        <div className="mnu-sum mnu-sum-muted"><span className="mnu-sum-ic"><EyeOff size={20} /></span><div><div className="mnu-sum-lbl">Inactivos</div><div className="mnu-sum-val">{summary.inactive}</div></div></div>
+        <div className="mnu-sum mnu-sum-gold"><span className="mnu-sum-ic"><Tag size={20} /></span><div><div className="mnu-sum-lbl">Categorías</div><div className="mnu-sum-val">{summary.cats}</div></div></div>
       </div>
 
       <div className="mnu-tools">
-        <div className="mnu-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar plato..." /></div>
+        <div className="mnu-search">
+          <Search size={15} className="ic" />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar plato..." />
+          {search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}
+        </div>
         <StyledSelect value={catFilter} onChange={(e) => setCatFilter(e.target.value)}><option value="all">Categoría: Todas</option>{categories.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}</StyledSelect>
         <StyledSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}><option value="all">Estado: Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></StyledSelect>
         {selectMode
@@ -322,13 +333,18 @@ export function Menu() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="mnu-table-wrap" style={{ textAlign: 'center', color: '#71717a', padding: 30 }}>No hay platos que coincidan.</div>
+        <EmptyState
+          title="No hay platos que coincidan"
+          description="Prueba con otro nombre, cambia los filtros o crea un plato nuevo."
+          actionLabel="Nuevo plato"
+          onAction={openNew}
+        />
       ) : view === 'grid' ? (
         <div className="mnu-grid">
           {filtered.map((p, i) => {
             const selected = selectedIds.has(p.id)
             return (
-            <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}${selectMode ? ' selectable' : ''}${selected ? ' selected' : ''}`} style={{ animationDelay: `${i * 40}ms` }} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
+            <div key={p.id} className={`mnu-card${p.isActive ? '' : ' off'}${selectMode ? ' selectable' : ''}${selected ? ' selected' : ''}`} style={{ animationDelay: `${i * 40}ms` }} onClick={selectMode ? () => toggleSelect(p.id) : () => openEdit(p)}>
               {selectMode && <span className="mnu-check" aria-hidden>{selected ? <CheckSquare size={20} /> : <Square size={20} />}</span>}
               {thumb(p, 'mnu-thumb')}
               <div className="mnu-card-body">
@@ -341,9 +357,9 @@ export function Menu() {
               </div>
               {!selectMode && (
               <div className="mnu-card-actions">
-                <button className="mnu-act" onClick={() => openEdit(p)}><Pencil size={14} /> Editar</button>
-                <button className="mnu-act" onClick={() => toggleActive(p)}>{p.isActive ? <><EyeOff size={14} /> Ocultar</> : <><Eye size={14} /> Activar</>}</button>
-                <button className="mnu-act mnu-act-danger" onClick={() => handleDelete(p)} title="Eliminar plato" aria-label={`Eliminar ${p.name}`}><Trash2 size={14} /></button>
+                <button className="mnu-act" onClick={(e) => { e.stopPropagation(); openEdit(p) }}><Pencil size={14} /> Editar</button>
+                <button className="mnu-act" onClick={(e) => { e.stopPropagation(); toggleActive(p) }}>{p.isActive ? <><EyeOff size={14} /> Ocultar</> : <><Eye size={14} /> Activar</>}</button>
+                <button className="mnu-act mnu-act-danger" onClick={(e) => { e.stopPropagation(); handleDelete(p) }} title="Eliminar plato" aria-label={`Eliminar ${p.name}`}><Trash2 size={14} /></button>
               </div>
               )}
             </div>
@@ -355,7 +371,7 @@ export function Menu() {
             <thead><tr>{selectMode && <th style={{ width: 40 }}><button className="mnu-icon-btn" onClick={toggleSelectAll} title="Seleccionar todos">{allFilteredSelected ? <CheckSquare size={16} /> : <Square size={16} />}</button></th>}<th>Plato</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
             <tbody>
               {filtered.map((p) => (
-                <tr key={p.id} className={selectMode ? 'selectable' : ''} onClick={selectMode ? () => toggleSelect(p.id) : undefined}>
+                <tr key={p.id} className={selectMode ? 'selectable' : 'mnu-row-clickable'} onClick={selectMode ? () => toggleSelect(p.id) : () => openEdit(p)}>
                   {selectMode && <td><span className="mnu-check-cell">{selectedIds.has(p.id) ? <CheckSquare size={18} /> : <Square size={18} />}</span></td>}
                   <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{formatProductTitle(p.name)}</strong>{(p.description || getEditorialDescription(p.name)) && <><br /><small style={{ color: '#71717a', display: 'block', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(p.name, p.description || '')}</small></>}</div></div></td>
                   <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{p.categories.map(catLabel).join(' · ')}</td>
@@ -375,7 +391,6 @@ export function Menu() {
           <form className="mnu-modal mnu-product-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
             <div className="mnu-modal-header">
               <h3><UtensilsCrossed size={20} style={{ color: '#e11d2a' }} />{editing === 'new' ? 'Nuevo plato' : 'Editar plato'}</h3>
-              <button type="button" className="mnu-modal-close" onClick={closeEditor}><X size={16} /></button>
             </div>
 
             <div className="mnu-modal-body mnu-product-body">
@@ -421,8 +436,8 @@ export function Menu() {
                 <div className="mnu-product-section">
                   <div className="mnu-product-section-title">Precio</div>
                   <div className="mnu-row2">
-                    <div className="mnu-field"><label>Precio de venta *</label><div className="mnu-money-input"><span>$</span><input type="number" step="0.01" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" required /></div></div>
-                    <div className="mnu-field"><label>Costo estimado</label><div className="mnu-money-input"><span>$</span><input type="number" step="0.01" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} placeholder="Opcional" /></div></div>
+                    <div className="mnu-field"><label>Precio de venta *</label><NumberStepper prefix="$" step={0.01} min={0} value={form.price} onChange={(v) => setForm({ ...form, price: v })} placeholder="0.00" required /></div>
+                    <div className="mnu-field"><label>Costo estimado</label><NumberStepper prefix="$" step={0.01} min={0} value={form.cost} onChange={(v) => setForm({ ...form, cost: v })} placeholder="Opcional" /></div>
                   </div>
                 </div>
 
@@ -499,42 +514,44 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
       <div className="mnu-modal mnu-cat-modal" onClick={(e) => e.stopPropagation()}>
         <div className="mnu-modal-header">
           <h3><Tag size={18} style={{ color: '#e11d2a' }} />Categorías del menú</h3>
-          <button type="button" className="mnu-modal-close" onClick={onClose}><X size={16} /></button>
-        </div>
-        <p className="page-subtitle" style={{ margin: '4px 0 12px' }}>Crea, renombra y reordena las categorías. Los cambios se ven en el menú y en el sitio de clientes.</p>
-
-        <div className="mnu-cat-add">
-          <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitNew() }} placeholder="Nueva categoría (ej. Postres)" />
-          <button className="mnu-btn" onClick={() => void submitNew()} disabled={!newLabel.trim() || busy}><Plus size={15} /> Agregar</button>
         </div>
 
-        <div className="mnu-cat-list">
-          {cats.map((cat, index) => (
-            <div key={cat.id} className="mnu-cat-row">
-              <div className="mnu-cat-order">
-                <button className="mnu-icon-btn" onClick={() => void onMove(index, -1)} disabled={index === 0 || busy} title="Subir"><ChevronUp size={15} /></button>
-                <button className="mnu-icon-btn" onClick={() => void onMove(index, 1)} disabled={index === cats.length - 1 || busy} title="Bajar"><ChevronDown size={15} /></button>
-              </div>
-              {editingId === cat.id ? (
-                <input className="mnu-cat-edit" autoFocus value={editLabel} onChange={(e) => setEditLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitRename(cat); if (e.key === 'Escape') setEditingId(null) }} />
-              ) : (
-                <div className="mnu-cat-name"><strong>{cat.label}</strong><span>{countFor(cat.key)} plato{countFor(cat.key) === 1 ? '' : 's'}</span></div>
-              )}
-              <div className="mnu-cat-actions">
+        <div className="mnu-modal-body">
+          <p className="page-subtitle" style={{ margin: '4px 0 12px', whiteSpace: 'nowrap' }}>Crea, renombra y reordena tus categorías.</p>
+
+          <div className="mnu-cat-add">
+            <input value={newLabel} onChange={(e) => setNewLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitNew() }} placeholder="Nueva categoría (ej. Postres)" />
+            <button className="mnu-btn" onClick={() => void submitNew()} disabled={!newLabel.trim() || busy}><Plus size={15} /> Agregar</button>
+          </div>
+
+          <div className="mnu-cat-list">
+            {cats.map((cat, index) => (
+              <div key={cat.id} className="mnu-cat-row">
+                <div className="mnu-cat-order">
+                  <button className="mnu-icon-btn" onClick={() => void onMove(index, -1)} disabled={index === 0 || busy} title="Subir"><ChevronUp size={15} /></button>
+                  <button className="mnu-icon-btn" onClick={() => void onMove(index, 1)} disabled={index === cats.length - 1 || busy} title="Bajar"><ChevronDown size={15} /></button>
+                </div>
                 {editingId === cat.id ? (
-                  <>
-                    <button className="mnu-icon-btn" onClick={() => void submitRename(cat)} title="Guardar"><Check size={16} /></button>
-                    <button className="mnu-icon-btn" onClick={() => setEditingId(null)} title="Cancelar"><X size={16} /></button>
-                  </>
+                  <input className="mnu-cat-edit" autoFocus value={editLabel} onChange={(e) => setEditLabel(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void submitRename(cat); if (e.key === 'Escape') setEditingId(null) }} />
                 ) : (
-                  <>
-                    <button className="mnu-icon-btn" onClick={() => { setEditingId(cat.id); setEditLabel(cat.label) }} title="Renombrar"><Pencil size={16} /></button>
-                    <button className="mnu-icon-btn mnu-icon-danger" onClick={() => void onDelete(cat)} title="Eliminar"><Trash2 size={16} /></button>
-                  </>
+                  <div className="mnu-cat-name"><strong>{cat.label}</strong><span>{countFor(cat.key)} plato{countFor(cat.key) === 1 ? '' : 's'}</span></div>
                 )}
+                <div className="mnu-cat-actions">
+                  {editingId === cat.id ? (
+                    <>
+                      <button className="mnu-icon-btn" onClick={() => void submitRename(cat)} title="Guardar"><Check size={16} /></button>
+                      <button className="mnu-icon-btn" onClick={() => setEditingId(null)} title="Cancelar"><X size={16} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="mnu-icon-btn" onClick={() => { setEditingId(cat.id); setEditLabel(cat.label) }} title="Renombrar"><Pencil size={16} /></button>
+                      <button className="mnu-icon-btn mnu-icon-danger" onClick={() => void onDelete(cat)} title="Eliminar"><Trash2 size={16} /></button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <div className="mnu-modal-actions">
