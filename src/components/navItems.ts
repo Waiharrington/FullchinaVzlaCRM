@@ -40,7 +40,7 @@ export const allNavItems: NavItem[] = [
   { path: '/mesas', label: 'Mesas', icon: LayoutGrid, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager'], group: 'Gestión FullChina' },
   { path: '/proveedores', label: 'Proveedores', icon: Building2, roles: ['owner', 'manager'], group: 'Gestión FullChina' },
-  { path: '/inventario', label: 'Inventario Truck', icon: Package, roles: ['owner', 'manager'], group: 'Gestión FullChina' },
+  { path: '/inventario', label: 'Inventario', icon: Package, roles: ['owner', 'manager'], group: 'Gestión FullChina' },
   { path: '/almacen', label: 'Almacén', icon: Building2, roles: ['owner', 'manager'], group: 'Gestión FullChina' },
   { path: '/recetas', label: 'Recetas', icon: BookOpen, roles: ['owner', 'manager'], group: 'Gestión FullChina' },
   { path: '/produccion', label: 'Producción', icon: Beef, roles: ['owner', 'manager'], group: 'Gestión FullChina' },

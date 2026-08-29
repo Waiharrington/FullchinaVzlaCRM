@@ -21,6 +21,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, signOut } = useAuth()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
+    Operación: false,
     'Gestión FullChina': true,
     Finanzas: true,
     Configuración: true
@@ -135,7 +136,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </button>
                 </div>
               )}
-              {(!parent || isOpen || collapsed) && (collapsed && parent ? [parent, ...children] : children).map(item => {
+              {(isOpen || collapsed) && (collapsed && parent ? [parent, ...children] : children).map(item => {
                 const Icon = item.icon
                 const isActive = isActiveItem(item.path, location.pathname)
                 return (
