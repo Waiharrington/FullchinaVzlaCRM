@@ -1175,12 +1175,12 @@ export function Clientes() {
       {/* Modal Cuentas por cobrar */}
       {showCobrarModal && createPortal((
         <>
-        <div className="modal-overlay-dark" onClick={() => setShowCobrarModal(false)}>
-          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-overlay-dark receivables-modal-overlay" onClick={() => setShowCobrarModal(false)}>
+          <div className="client-modal-box receivables-modal-box animate-pop" role="dialog" aria-modal="true" aria-labelledby="receivables-modal-title" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-line">
               <div className="side-header-title">
                 <DollarSign size={18} className="text-red" />
-                <h3 className="modal-title">Cuentas por cobrar</h3>
+                <h3 id="receivables-modal-title" className="modal-title">Cuentas por cobrar</h3>
               </div>
               <button className="modal-close-btn" onClick={() => setShowCobrarModal(false)}><X size={18} /></button>
             </div>

@@ -748,6 +748,8 @@
   background: rgba(0, 0, 0, 0.78);
   backdrop-filter: blur(4px);
 }
+.receivables-modal-overlay { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+.receivables-modal-box { display: block !important; visibility: visible !important; opacity: 1 !important; min-height: 180px; }
 
 .client-modal-box {
   background: #18181b;
