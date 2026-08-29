@@ -17,10 +17,13 @@ import {
   type FullOrder,
   type Customer,
 } from '../lib/dataService'
+import NumberStepper from '../components/NumberStepper'
 import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
+import { alertDialog } from '../components/ConfirmDialog'
+import { EmptyState } from '../components/EmptyState'
 import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
@@ -88,7 +91,7 @@ export function Mas() {
     try {
       const customer = customers.find(item => item.name.toLocaleLowerCase('es-VE') === newClient.trim().toLocaleLowerCase('es-VE'))
       if (!customer) {
-        alert('Selecciona un cliente registrado')
+        void alertDialog({ message: 'Selecciona un cliente registrado' })
         return
       }
       await createCredit({
@@ -135,7 +138,7 @@ export function Mas() {
       fetchAll()
     } catch (e) {
       console.error('Error:', e)
-      alert('Error al crear cierre: ' + (e instanceof Error ? e.message : 'Error desconocido'))
+      void alertDialog({ message: 'Error al crear cierre: ' + (e instanceof Error ? e.message : 'Error desconocido'), danger: true })
     } finally {
       setClosing(false)
     }
@@ -276,12 +279,11 @@ export function Mas() {
                 <datalist id="credit-customers">{customers.map(customer => <option key={customer.id} value={customer.name}>{customer.phone}</option>)}</datalist>
               </div>
               <div className="form-row">
-                <input
-                  type="number"
-                  step="0.01"
+                <NumberStepper
+                  step={0.01}
                   placeholder="Monto del crédito"
                   value={newAmount}
-                  onChange={(e) => setNewAmount(e.target.value)}
+                  onChange={(v) => setNewAmount(v)}
                 />
                 <label><input type="checkbox" checked={newIndefinite} onChange={e => setNewIndefinite(e.target.checked)} /> Plazo indefinido</label>
                 {!newIndefinite && <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />}
@@ -295,7 +297,10 @@ export function Mas() {
 
           <div className="credits-list">
             {activeCredits.length === 0 && settledCredits.length === 0 ? (
-              <p className="empty-message">No hay créditos registrados</p>
+              <EmptyState
+                title="No hay créditos registrados"
+                description="Los créditos de tus clientes aparecerán aquí."
+              />
             ) : (
               <>
                 {activeCredits.length > 0 && (
@@ -445,13 +450,12 @@ export function Mas() {
             <h3 className="modal-title">Abonar a crédito</h3>
             <p className="modal-subtitle">{paymentModal.customerName}</p>
             <p className="modal-remaining">Pendiente: <span className="text-danger">${paymentModal.balancePending.toFixed(2)}</span></p>
-            <input
-              type="number"
-              step="0.01"
+            <NumberStepper
+              step={0.01}
               max={paymentModal.balancePending}
               placeholder={`Monto (max $${paymentModal.balancePending.toFixed(2)})`}
               value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
+              onChange={(v) => setPaymentAmount(v)}
             />
             <div className="modal-actions">
               <button className="btn-ghost" onClick={() => setPaymentModal(null)}>Cancelar</button>

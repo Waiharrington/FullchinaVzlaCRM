@@ -7,12 +7,16 @@ import {
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
+import NumberStepper from '../components/NumberStepper'
 import { useAuth } from '../context/auth-context'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
+import { normalizeForSearch } from '../lib/textFormat'
 import {
   ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart,
   ClipboardList, Package, CalendarClock, Search, Download, Eye, X,
 } from 'lucide-react'
+import Toast from '../components/Toast'
+import { EmptyState } from '../components/EmptyState'
 import './ComprasReal.css'
 
 interface ItemForm { ingredientId: string; quantity: string; unitId: string; unitCost: string }
@@ -82,9 +86,9 @@ export function ComprasReal() {
   }, [purchases])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeForSearch(search)
     return purchases.filter((p) => {
-      if (q && !(p.supplierName.toLowerCase().includes(q) || (p.invoiceNumber ?? '').toLowerCase().includes(q))) return false
+      if (q && !(normalizeForSearch(p.supplierName).includes(q) || normalizeForSearch(p.invoiceNumber ?? '').includes(q))) return false
       if (paidFilter === 'pagados' && !p.isPaid) return false
       if (paidFilter === 'pendientes' && p.isPaid) return false
       return true
@@ -176,8 +180,8 @@ export function ComprasReal() {
         </button>
       </header>
 
-      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}><AlertTriangle size={18} /> {error}</div>}
-      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={18} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
       <div className="cmp-summary">
@@ -239,9 +243,9 @@ export function ComprasReal() {
               return (
                 <div className="cmp-item-row" key={i}>
                   <SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />
-                  <input type="number" step="any" min="0" value={it.quantity} onChange={(e) => changeItem(i, 'quantity', e.target.value)} />
+                  <NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} />
                   <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
-                  <div className="cmp-cost-wrap"><span>$</span><input type="number" step="any" min="0" value={it.unitCost} onChange={(e) => changeItem(i, 'unitCost', e.target.value)} /></div>
+                  <NumberStepper prefix="$" step={0.01} min={0} value={it.unitCost} onChange={(v) => changeItem(i, 'unitCost', v)} />
                   <span className="cmp-subtotal" style={{ textAlign: 'right' }}>{formatUsd(sub)}</span>
                   <button type="button" className="cmp-del" onClick={() => removeItem(i)}><Trash2 size={16} /></button>
                 </div>
@@ -288,7 +292,7 @@ export function ComprasReal() {
       <div className="cmp-card">
         <h3 className="cmp-card-title">Historial de Compras</h3>
         <div className="cmp-hist-tools">
-          <div className="cmp-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar compra..." /></div>
+          <div className="cmp-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar compra..." />{search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</div>
           <StyledSelect className="cmp-tool" value={paidFilter} onChange={(e) => setPaidFilter(e.target.value as PaidFilter)}>
             <option value="todos">Todas</option><option value="pagados">Pagadas</option><option value="pendientes">Por pagar</option>
           </StyledSelect>
@@ -315,7 +319,17 @@ export function ComprasReal() {
                   <td><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle"><Eye size={16} /></button></td>
                 </tr>
               ))}
-              {pageItems.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', color: '#71717a', padding: 24 }}>No hay compras registradas.</td></tr>}
+              {pageItems.length === 0 && (
+                <tr><td colSpan={8}>
+                  <EmptyState
+                    compact
+                    title="No hay compras registradas"
+                    description="Registra tu primera compra para llevar el control de insumos."
+                    actionLabel="Nueva compra"
+                    onAction={() => { resetForm(); setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }]); setShowForm(true) }}
+                  />
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>

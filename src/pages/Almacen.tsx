@@ -1,7 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowRightLeft, CheckCircle2, DollarSign, Package, Plus, Warehouse } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse } from 'lucide-react'
 import { adjustStock, getIngredients, getStockMovements } from '../lib/dataService'
 import { StyledSelect } from '../components/StyledSelect'
+import Toast from '../components/Toast'
+import NumberStepper from '../components/NumberStepper'
+import { EmptyState } from '../components/EmptyState'
 import './Almacen.css'
 import { dateKeyInTimeZone } from '../lib/money'
 
@@ -199,7 +202,13 @@ export function Almacen() {
               </thead>
               <tbody>
                 {items.length === 0 ? (
-                  <tr><td colSpan={6} className="almacen-empty-cell">No hay insumos registrados en el almacén.</td></tr>
+                  <tr><td colSpan={6}>
+                    <EmptyState
+                      compact
+                      title="No hay insumos registrados"
+                      description="Agrega tu primer insumo para empezar a llevar el inventario."
+                    />
+                  </td></tr>
                 ) : items.map(item => {
                   const isLow = item.quantity <= item.minStock
                   return (
@@ -235,8 +244,8 @@ export function Almacen() {
               </div>
             </div>
 
-            {successMsg && <div className="almacen-feedback success" role="status"><CheckCircle2 size={16} /><span>{successMsg}</span></div>}
-            {errorMsg && <div className="almacen-feedback error" role="alert">{errorMsg}</div>}
+            {successMsg && <Toast type="success" message={successMsg} onClose={() => setSuccessMsg('')} />}
+            {errorMsg && <Toast type="error" message={errorMsg} onClose={() => setErrorMsg('')} />}
 
             <form onSubmit={handleTransfer} className="transfer-form-box">
               <div className="select-field-group">
@@ -249,7 +258,7 @@ export function Almacen() {
               <div className="transfer-fields-grid">
                 <div className="select-field-group">
                   <label className="field-label" htmlFor="transfer-quantity">Cantidad</label>
-                  <input id="transfer-quantity" type="number" min="1" inputMode="numeric" className="field-select" value={transferQty} onChange={event => setTransferQty(event.target.value)} />
+                  <NumberStepper id="transfer-quantity" min={1} step={1} className="field-select" value={transferQty} onChange={(v) => setTransferQty(v)} />
                 </div>
                 <div className="select-field-group">
                   <label className="field-label" htmlFor="transfer-operator">Operador responsable</label>

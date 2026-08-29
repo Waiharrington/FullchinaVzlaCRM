@@ -7,6 +7,7 @@ import {
   type Ingredient,
   type StockMovement,
 } from '../lib/dataService'
+import { normalizeForSearch } from '../lib/textFormat'
 import {
   Package,
   Search,
@@ -23,7 +24,9 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
+  X,
 } from 'lucide-react'
+import { EmptyState } from '../components/EmptyState'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
@@ -74,7 +77,7 @@ export function Inventario() {
         (categoryFilter === 'portions' && category.includes('porcion')) ||
         (categoryFilter === 'packaging' && (category.includes('empaq') || category.includes('envase'))) ||
         (categoryFilter === 'beverages' && (category.includes('bebida') || category.includes('drink')))
-      return matchesCategory && ing.name.toLowerCase().includes(searchTerm.toLowerCase())
+      return matchesCategory && normalizeForSearch(ing.name).includes(normalizeForSearch(searchTerm))
     })
   }, [ingredients, searchTerm, categoryFilter])
 
@@ -228,6 +231,11 @@ export function Inventario() {
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
             />
+            {searchTerm && (
+              <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => { setSearchTerm(''); setCurrentPage(1) }} aria-label="Borrar búsqueda">
+                <X size={13} />
+              </button>
+            )}
           </div>
           <button className="inv-filter-btn" onClick={() => { setCategoryFilter('all'); setSearchTerm(''); setCurrentPage(1) }} title="Limpiar filtros">
             <SlidersHorizontal size={16} />
@@ -256,9 +264,11 @@ export function Inventario() {
                 {paginatedIngredients.length === 0 ? (
                   <tr>
                     <td colSpan={showCosts ? 6 : 5}>
-                      <div className="inv-empty-state">
-                        <p>No se encontraron productos</p>
-                      </div>
+                      <EmptyState
+                        compact
+                        title="No se encontraron productos"
+                        description="Prueba con otro nombre o cambia los filtros."
+                      />
                     </td>
                   </tr>
                 ) : (

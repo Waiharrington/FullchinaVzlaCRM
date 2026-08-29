@@ -7,13 +7,16 @@ import {
 } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
+import NumberStepper from '../components/NumberStepper'
 import {
   Utensils, Plus, Flame, Library, Link2, CalendarDays, Search, Check, AlertTriangle,
-  HelpCircle, Pencil, X, Loader2, ShoppingCart, CheckCircle2, ChevronLeft, ChevronRight, ImagePlus,
+  HelpCircle, Pencil, X, Loader2, ShoppingCart, ChevronLeft, ChevronRight, ImagePlus,
   UtensilsCrossed,
 } from 'lucide-react'
+import Toast from '../components/Toast'
+import { EmptyState } from '../components/EmptyState'
 import './MenuSemanal.css'
-import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -108,9 +111,9 @@ export function MenuSemanal() {
   const thisWeekDishes = isCurrentWeek ? active : dishes.filter((d) => weekActiveIds.has(d.id))
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeForSearch(search)
     return dishes.filter((d) => {
-      if (q && !d.name.toLowerCase().includes(q)) return false
+      if (q && !normalizeForSearch(d.name).includes(q)) return false
       if (catTab === 'activos' && d.status !== 'active') return false
       if (catTab === 'inactivos' && d.status !== 'inactive') return false
       return true
@@ -227,8 +230,8 @@ export function MenuSemanal() {
         </div>
       </header>
 
-      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}><AlertTriangle size={18} /> {error}</div>}
-      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={18} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <div className="ws-summary">
         <div className="ws-sum-card">
@@ -314,7 +317,7 @@ export function MenuSemanal() {
             <button className={`ws-tab${catTab === 'activos' ? ' active' : ''}`} onClick={() => setCatTab('activos')}>Activos <span className="ws-c">{active.length}</span></button>
             <button className={`ws-tab${catTab === 'inactivos' ? ' active' : ''}`} onClick={() => setCatTab('inactivos')}>Inactivos <span className="ws-c">{dishes.length - active.length}</span></button>
           </div>
-          <div className="ws-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar plato..." /></div>
+          <div className="ws-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar plato..." />{search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</div>
         </div>
 
         <div className="ws-table-wrap">
@@ -339,7 +342,15 @@ export function MenuSemanal() {
                   </td>
                 </tr>
               ))}
-              {pageItems.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', color: '#71717a', padding: 24 }}>No hay platos que coincidan.</td></tr>}
+              {pageItems.length === 0 && (
+                <tr><td colSpan={8}>
+                  <EmptyState
+                    compact
+                    title="No hay platos que coincidan"
+                    description="Prueba con otro nombre o cambia los filtros."
+                  />
+                </td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -365,8 +376,8 @@ export function MenuSemanal() {
             </div>
             <div className="ws-field"><label>Descripción para clientes</label><textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej. Pasta salteada con pollo y vegetales." /></div>
             <div className="ws-row2">
-              <div className="ws-field"><label>Precio de venta ($)</label><input type="number" step="0.5" min="0" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} /></div>
-              <div className="ws-field"><label>Costo estimado ($)</label><input type="number" step="0.5" min="0" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} /></div>
+              <div className="ws-field"><label>Precio de venta ($)</label><NumberStepper step={0.5} min={0} value={form.price} onChange={(v) => setForm({ ...form, price: v })} /></div>
+              <div className="ws-field"><label>Costo estimado ($)</label><NumberStepper step={0.5} min={0} value={form.cost} onChange={(v) => setForm({ ...form, cost: v })} /></div>
             </div>
             <label className="ws-check"><input type="checkbox" checked={activateNow} onChange={(e) => setActivateNow(e.target.checked)} /> Activar esta semana</label>
             <label className="ws-check"><input type="checkbox" checked={addToCaja} onChange={(e) => setAddToCaja(e.target.checked)} /> Agregar a Caja (disponible para vender)</label>
@@ -384,7 +395,6 @@ export function MenuSemanal() {
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleEdit}>
             <div className="ws-modal-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3>Editar plato</h3>
-              <button type="button" className="ws-cancel" style={{ padding: 6 }} onClick={() => setEditing(null)}><X size={16} /></button>
             </div>
             {editing.sellableProductId && <p className="sub">Ya está en Caja: los cambios se aplicarán también al catálogo de ventas.</p>}
             <ImagePicker value={editForm.imageUrl} emoji={editForm.emoji} onPick={(f) => pickImage(f, (u) => setEditForm({ ...editForm, imageUrl: u }))} onClear={() => setEditForm({ ...editForm, imageUrl: null })} />
@@ -394,8 +404,8 @@ export function MenuSemanal() {
             </div>
             <div className="ws-field"><label>Descripción</label><textarea rows={2} value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} /></div>
             <div className="ws-row2">
-              <div className="ws-field"><label>Precio de venta ($)</label><input type="number" step="0.5" min="0" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} /></div>
-              <div className="ws-field"><label>Costo estimado ($)</label><input type="number" step="0.5" min="0" value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })} /></div>
+              <div className="ws-field"><label>Precio de venta ($)</label><NumberStepper step={0.5} min={0} value={editForm.price} onChange={(v) => setEditForm({ ...editForm, price: v })} /></div>
+              <div className="ws-field"><label>Costo estimado ($)</label><NumberStepper step={0.5} min={0} value={editForm.cost} onChange={(v) => setEditForm({ ...editForm, cost: v })} /></div>
             </div>
             <div className="ws-modal-actions">
               <button type="button" className="ws-cancel" onClick={() => setEditing(null)}>Cancelar</button>

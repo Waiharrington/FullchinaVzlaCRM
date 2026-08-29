@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowDownLeft, ArrowUpRight, Banknote, CheckCircle2, Clock3, LockKeyhole, RefreshCw, WalletCards } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Banknote, Clock3, LockKeyhole, RefreshCw, WalletCards } from 'lucide-react'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
+import Toast from '../components/Toast'
+import NumberStepper from '../components/NumberStepper'
+import { EmptyState } from '../components/EmptyState'
 import {
   addCashMovement,
   closeCashSession,
@@ -167,8 +170,8 @@ export function CajaOperativa() {
         </button>
       </header>
 
-      {error && <div className="cash-message error" role="alert">{error}</div>}
-      {notice && <div className="cash-message success"><CheckCircle2 size={18} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {!loading && !session && (
         <section className="cash-open-panel">
@@ -179,8 +182,8 @@ export function CajaOperativa() {
             <p>Registra el efectivo físico con el que comienza la Caja principal.</p>
           </div>
           <form className="cash-form" onSubmit={handleOpen}>
-            <label>Fondo inicial en USD<input type="number" min="0" step="0.01" value={openingUsd} onChange={event => setOpeningUsd(event.target.value)} required /></label>
-            <label>Fondo inicial en bolívares<input type="number" min="0" step="0.01" value={openingVes} onChange={event => setOpeningVes(event.target.value)} required /></label>
+            <label>Fondo inicial en USD<NumberStepper min={0} step={0.01} value={openingUsd} onChange={(v) => setOpeningUsd(v)} required /></label>
+            <label>Fondo inicial en bolívares<NumberStepper min={0} step={0.01} value={openingVes} onChange={(v) => setOpeningVes(v)} required /></label>
             <label className="cash-field-wide">Nota de apertura<textarea value={openingNotes} onChange={event => setOpeningNotes(event.target.value.slice(0, 180))} placeholder="Opcional" rows={3} /></label>
             <button className="cash-primary cash-field-wide" disabled={saving}><Banknote size={18} /> {saving ? 'Abriendo…' : 'Abrir Caja principal'}</button>
           </form>
@@ -211,7 +214,7 @@ export function CajaOperativa() {
                   <label>Dirección<StyledSelect value={direction} onChange={event => setDirection(event.target.value as 'in' | 'out')}><option value="in">Entrada</option><option value="out">Salida</option></StyledSelect></label>
                   <label>Tipo<StyledSelect value={movementType} onChange={event => setMovementType(event.target.value as CashMovement['movementType'])}><option value="cash_in">Ingreso de efectivo</option><option value="cash_out">Salida de efectivo</option><option value="withdrawal">Retiro</option><option value="expense">Gasto</option><option value="adjustment">Ajuste</option></StyledSelect></label>
                   <label>Moneda<StyledSelect value={currency} onChange={event => setCurrency(event.target.value as 'USD' | 'VES')}><option value="USD">USD</option><option value="VES">Bolívares</option></StyledSelect></label>
-                  <label>Monto<input type="number" min="0.01" step="0.01" value={movementAmount} onChange={event => setMovementAmount(event.target.value)} required /></label>
+                  <label>Monto<NumberStepper min={0.01} step={0.01} value={movementAmount} onChange={(v) => setMovementAmount(v)} required /></label>
                   <label className="cash-field-wide">Descripción<input value={movementDescription} onChange={event => setMovementDescription(event.target.value.slice(0, 120))} minLength={3} required /></label>
                   <button className="cash-primary cash-field-wide" disabled={saving}>Registrar movimiento</button>
                 </form>
@@ -270,7 +273,9 @@ export function CajaOperativa() {
               </div>
               <div className="cash-tx-list">
                 {transactions.filter(t => txFilter === 'all' || t.direction === txFilter).length === 0 && (
-                  <p className="cash-empty">{txFilter === 'all' ? 'No hay transacciones en este turno.' : txFilter === 'in' ? 'No hay entradas registradas.' : 'No hay salidas registradas.'}</p>
+                  <EmptyState
+                    title={txFilter === 'all' ? 'No hay transacciones en este turno' : txFilter === 'in' ? 'No hay entradas registradas' : 'No hay salidas registradas'}
+                  />
                 )}
                 {transactions.filter(t => txFilter === 'all' || t.direction === txFilter).map(tx => (
                   <div className="cash-tx-row" key={tx.id}>
@@ -310,8 +315,8 @@ export function CajaOperativa() {
             <h2>Cuenta el efectivo físico</h2>
             <p>Compara lo contado con el monto esperado antes de confirmar.</p>
             <div className="cash-close-grid">
-              <label>Contado USD<input type="number" min="0" step="0.01" value={countedUsd} onChange={event => setCountedUsd(event.target.value)} required /><small>Esperado: {money(session.expectedCashUsd)}</small></label>
-              <label>Contado Bs.<input type="number" min="0" step="0.01" value={countedVes} onChange={event => setCountedVes(event.target.value)} required /><small>Esperado: {money(session.expectedCashVes, 'VES')}</small></label>
+              <label>Contado USD<NumberStepper min={0} step={0.01} value={countedUsd} onChange={(v) => setCountedUsd(v)} required /><small>Esperado: {money(session.expectedCashUsd)}</small></label>
+              <label>Contado Bs.<NumberStepper min={0} step={0.01} value={countedVes} onChange={(v) => setCountedVes(v)} required /><small>Esperado: {money(session.expectedCashVes, 'VES')}</small></label>
             </div>
             <div className="cash-difference-grid"><div className={closeDifference.usd === 0 ? 'ok' : closeDifference.usd < 0 ? 'negative' : 'positive'}><span>Diferencia USD</span><strong>{money(closeDifference.usd)}</strong></div><div className={closeDifference.ves === 0 ? 'ok' : closeDifference.ves < 0 ? 'negative' : 'positive'}><span>Diferencia Bs.</span><strong>{money(closeDifference.ves, 'VES')}</strong></div></div>
             <label>Nota del cierre<textarea rows={3} value={closingNotes} onChange={event => setClosingNotes(event.target.value.slice(0, 180))} placeholder="Explica cualquier diferencia" /></label>

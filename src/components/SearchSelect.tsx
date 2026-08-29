@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { normalizeForSearch } from '../lib/textFormat'
 import './SearchSelect.css'
 
 export interface SearchSelectOption {
@@ -38,9 +39,9 @@ export function SearchSelect({
   )
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = normalizeForSearch(query)
     if (!q) return options
-    return options.filter((o) => o.label.toLowerCase().includes(q))
+    return options.filter((o) => normalizeForSearch(o.label).includes(q))
   }, [options, query])
 
   useEffect(() => {

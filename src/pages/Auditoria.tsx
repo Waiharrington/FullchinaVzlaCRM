@@ -3,6 +3,7 @@ import { getAuditLogs, type AuditLog } from '../lib/dataService'
 import { Shield, AlertTriangle, RefreshCw } from 'lucide-react'
 import './Auditoria.css'
 import { PageSkeleton } from '../components/PageSkeleton'
+import Toast from '../components/Toast'
 
 export function Auditoria() {
   const [logs, setLogs] = useState<AuditLog[]>([])
@@ -83,11 +84,7 @@ export function Auditoria() {
         </button>
       </header>
 
-      {error && (
-        <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
-          <AlertTriangle size={18} /> {error}
-        </div>
-      )}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
 
       <div className="card table-card mt-6">
         <div className="card-header">

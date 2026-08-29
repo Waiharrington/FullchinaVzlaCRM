@@ -10,12 +10,16 @@ import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
 import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
-import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
+import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { getEditorialDescription } from '../lib/menuEditorial'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
+import Toast from '../components/Toast'
 import './PublicMenu.css'
 
 declare global { interface Window { __removeFCSplash?: () => void } }
+
+// Selección curada para la sección "Date un banquete en Full China" del inicio.
+const FEATURED_DISH_QUERIES = ['pa ti', 'promo trio', 'vermicelli full', 'pa todos', 'el clasico']
 
 const CATEGORY_ICONS: Record<string, string> = {
   Todos: '/optimized/menu-icons/menu.webp',
@@ -282,6 +286,14 @@ export function PublicMenu() {
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const cartPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const heroSearchRef = useRef<HTMLInputElement>(null)
+  const popularScrollRef = useRef<HTMLDivElement>(null)
+  const scrollPopular = (direction: 1 | -1) => {
+    const el = popularScrollRef.current
+    if (!el) return
+    const card = el.querySelector<HTMLElement>('.public-home-product-card')
+    const step = card ? card.offsetWidth + 16 : el.clientWidth * 0.8
+    el.scrollBy({ left: step * direction, behavior: 'smooth' })
+  }
   const submitLockRef = useRef(false)
   const checkoutAttemptRef = useRef<{ signature: string; key: string } | null>(readCheckoutAttempt())
   const [lastOrder, setLastOrder] = useState<WebOrderCartItem[]>(() => {
@@ -344,13 +356,21 @@ export function PublicMenu() {
   }, [products]);
   const groups = useMemo(() => groupMenuProducts(products.filter(product => {
     const categoryMatch = activeCategory === 'Todos' || product.categories.includes(activeCategory)
-    const term = search.trim().toLowerCase()
-    return categoryMatch && (!term || `${product.name} ${product.description || ''}`.toLowerCase().includes(term))
+    const term = normalizeForSearch(search)
+    return categoryMatch && (!term || normalizeForSearch(`${product.name} ${product.description || ''}`).includes(term))
   })), [products, activeCategory, search])
   const visibleGroups = useMemo(() => showFavorites ? groups.filter(group => favoriteIds.includes(group.key)) : groups, [groups, showFavorites, favoriteIds])
   const popularGroups = useMemo(() => {
     const all = groupMenuProducts(products)
-    return all.slice(0, 4)
+    const stopWords = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'de'])
+    const curated = FEATURED_DISH_QUERIES
+      .map(query => all.find(group => {
+        const haystack = normalizeForSearch(`${group.name} ${group.category} ${group.variants.map(v => `${v.label} ${v.product.name}`).join(' ')}`)
+        const words = normalizeForSearch(query).split(/\s+/).filter(w => w && !stopWords.has(w))
+        return words.length > 0 && words.every(w => haystack.includes(w))
+      }))
+      .filter((group): group is MenuProductGroup => Boolean(group))
+    return curated.length > 0 ? curated : all.slice(0, 4)
   }, [products])
   const promoGroups = useMemo(() => {
     const promoItems = products.filter(p => 
@@ -1148,6 +1168,7 @@ export function PublicMenu() {
             </div>
           </div>
 
+          {error && products.length > 0 && <Toast type="error" message={error} onClose={() => setError('')} />}
           {error && products.length === 0 ? <div className="public-state error">{error}</div> : (
             <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
               {visibleGroups.length === 0 ? (
@@ -1449,7 +1470,7 @@ export function PublicMenu() {
               <section className="public-home-section">
                 <div className="public-home-section-header">
                   <div className="public-home-section-title-wrap">
-                    <h2 className="public-home-section-title"><Flame size={18} aria-hidden="true" /> LO MÁS PEDIDO</h2>
+                    <h2 className="public-home-section-title"><Flame size={18} aria-hidden="true" /> DATE UN BANQUETE EN FULL CHINA</h2>
                     <p className="public-home-section-sub">Los favoritos de nuestros clientes.</p>
                   </div>
                   <button 
@@ -1462,8 +1483,20 @@ export function PublicMenu() {
                   </button>
                 </div>
 
-                <div className="public-home-products-grid">
-                  {popularGroups.map(group => renderDesktopProductCard(group))}
+                <div className="public-home-carousel">
+                  {popularGroups.length > 1 && (
+                    <button type="button" className="public-home-carousel-arrow prev" aria-label="Ver plato anterior" onClick={() => scrollPopular(-1)}>
+                      <ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} />
+                    </button>
+                  )}
+                  <div className="public-home-products-grid" ref={popularScrollRef}>
+                    {popularGroups.map(group => renderDesktopProductCard(group))}
+                  </div>
+                  {popularGroups.length > 1 && (
+                    <button type="button" className="public-home-carousel-arrow next" aria-label="Ver siguiente plato" onClick={() => scrollPopular(1)}>
+                      <ChevronRight size={18} />
+                    </button>
+                  )}
                 </div>
               </section>
 
@@ -1570,6 +1603,7 @@ export function PublicMenu() {
                   </div>
                 </div>
 
+                {error && products.length > 0 && <Toast type="error" message={error} onClose={() => setError('')} />}
                 {error && products.length === 0 ? <div className="public-state error">{error}</div> : (
                   <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
                     {visibleGroups.length === 0 ? (
@@ -2012,7 +2046,7 @@ export function PublicMenu() {
               <strong>¿A nombre de quién?</strong>
               <span>Solo para coordinar tu pedido.</span>
             </div>
-            {error && <p className="public-form-error" role="alert">{error}</p>}
+            {error && <Toast type="error" message={error} onClose={() => setError('')} />}
             <div className="public-data-form-card">
               <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="Nombre y apellido" /></div></span></label>
               <label className="public-data-field"><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></div><small>Te escribiremos aquí para confirmar</small></span></label>
@@ -2045,7 +2079,7 @@ export function PublicMenu() {
         {step === 'confirm' && <div className="public-confirm-page"><div className="public-receipt"><div className="public-receipt-head"><img src="/optimized/root/logo.webp" alt="Full China" /><div><span>Solicitud</span><strong>{orderCode || draftOrderCode || 'WEB-PENDIENTE'}</strong><small>Ahora · pedido web</small></div></div>
           <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b><button type="button" onClick={() => setStep('cart')}>Editar</button></div>)}</div>
           <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><div className="public-delivery-total-label">{orderType === 'delivery' ? 'Delivery' : 'Retiro'}</div><div className={`public-delivery-total-value ${orderType === 'takeaway' ? 'is-pickup' : ''}`}>{orderType === 'delivery' ? deliveryFeeText : 'En el local'}</div><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>
-          <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'delivery')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button></div>{error && <p className="public-form-error">{error}</p>}</div>
+          <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'delivery')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button></div>{error && <Toast type="error" message={error} onClose={() => setError('')} />}</div>
           <button className="public-primary whatsapp public-whatsapp-cta" disabled={submitting} onClick={submitOrder}><span className="public-whatsapp-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="img"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4.4 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span><span className="public-whatsapp-copy"><strong>{submitting ? 'Preparando pedido…' : 'Enviar pedido'}</strong><small>Se abrirá WhatsApp para confirmar</small></span><b className="public-whatsapp-total">{money(total)}{priceBs(total) && <small className="public-whatsapp-total-bs">{priceBs(total)}</small>}</b><span className="public-whatsapp-arrow"><ChevronRight /></span></button><p className="public-order-security">⌕ &nbsp; Tu pedido será confirmado directamente por Full China</p>
         </div>}
         {step === 'preparing' && <div className="public-preparing-page"><img className="preparing-logo" src="/optimized/root/logo.webp" alt="Full China" /><div className="public-preparing-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div><h3>Preparando tu pedido<br />para WhatsApp<span className="preparing-ellipsis">…</span></h3><p>Estamos creando tu solicitud segura.</p><div className="public-preparing-progress" aria-label="Progreso del pedido"><div className="public-progress-rail"><span /></div><div className="public-progress-step progress-step-one"><i><Check size={22} /></i><strong>Solicitud<br />creada</strong></div><div className="public-progress-step progress-step-two"><i><Check size={22} /></i><strong>Armando tu<br />pedido</strong></div><div className="public-progress-step progress-step-three"><i><LoaderCircle size={22} /></i><strong>Abriendo<br />WhatsApp</strong></div></div><div className="public-preparing-security"><ShieldCheck size={20} /><div><strong>Tus datos viajan seguros</strong><span>Solo los usamos para confirmar tu pedido.</span></div></div></div>}

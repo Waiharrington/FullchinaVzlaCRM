@@ -30,7 +30,7 @@
 .gst-card-title p { font-size: 12px; color: #a1a1aa; margin: 2px 0 0; }
 .gst-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .gst-search { position: relative; }
-.gst-search input { width: 180px; padding: 8px 12px 8px 32px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-size: 13px; }
+.gst-search input { width: 180px; padding: 8px 30px 8px 32px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-size: 13px; }
 .gst-search .ic { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #71717a; }
 .gst-tool { display: inline-flex; align-items: center; gap: 6px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
 

@@ -1,0 +1,79 @@
+.num-stepper {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-tertiary, #1c1c1e);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 12px);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.num-stepper:focus-within {
+  border-color: var(--accent-primary, #dc2626);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.num-stepper-prefix {
+  display: flex;
+  align-items: center;
+  padding-left: 13px;
+  color: var(--accent-secondary, #ef4444);
+  font-size: 14px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.num-stepper-input {
+  flex: 1 1 0% !important;
+  min-width: 0;
+  width: auto !important;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  outline: none;
+  box-shadow: none !important;
+  color: var(--text-primary, #fff) !important;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 11px 4px 11px 12px !important;
+}
+.num-stepper-input:focus { box-shadow: none !important; }
+.num-stepper-prefix + .num-stepper-input { padding-left: 6px; }
+
+.num-stepper-input::placeholder { color: var(--text-muted, #71717a); font-weight: 500; }
+
+.num-stepper-input::-webkit-outer-spin-button,
+.num-stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.num-stepper-input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
+
+.num-stepper-controls {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.num-stepper-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #aeaeb2);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.num-stepper-btn:first-child { border-radius: 0 var(--radius-md, 12px) 0 0; border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)); }
+.num-stepper-btn:last-child { border-radius: 0 0 var(--radius-md, 12px) 0; }
+
+.num-stepper-btn:hover:not(:disabled) { background: rgba(220, 38, 38, 0.15); color: var(--accent-secondary, #ef4444); }
+.num-stepper-btn:active:not(:disabled) { background: rgba(220, 38, 38, 0.28); }
+.num-stepper-btn:disabled { color: rgba(255, 255, 255, 0.15); cursor: not-allowed; }
+
+.num-stepper:has(.num-stepper-input:disabled) { opacity: 0.55; }

@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Building2, CalendarDays, Eye, Loader2, Mail, Phone, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
+import Toast from '../components/Toast'
 import { createSupplier, getPurchases, getSuppliers, type Purchase, type Supplier } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
+import { normalizeForSearch } from '../lib/textFormat'
 import './Proveedores.css'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { EmptyState } from '../components/EmptyState'
 
 type SupplierDraft = { name: string; contact: string; phone: string; email: string; notes: string }
 const EMPTY_DRAFT: SupplierDraft = { name: '', contact: '', phone: '', email: '', notes: '' }
@@ -46,10 +49,10 @@ export function Proveedores() {
   })), [purchases, suppliers])
 
   const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase('es')
+    const query = normalizeForSearch(search)
     if (!query) return suppliers
     return suppliers.filter((supplier) => [supplier.name, supplier.contact, supplier.phone, supplier.email]
-      .some((value) => value?.toLocaleLowerCase('es').includes(query)))
+      .some((value) => value && normalizeForSearch(value).includes(query)))
   }, [search, suppliers])
 
   const selected = selectedId ? suppliers.find((supplier) => supplier.id === selectedId) ?? null : null
@@ -95,8 +98,8 @@ export function Proveedores() {
         <button className="prv-primary" onClick={() => setShowForm((visible) => !visible)}><Plus size={17} /> Nuevo proveedor</button>
       </header>
 
-      {error && <div className="prv-alert error">{error}</div>}
-      {notice && <div className="prv-alert success">{notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <section className="prv-kpis" aria-label="Resumen de proveedores">
         <article><span><Building2 size={20} /></span><div><small>Proveedores activos</small><strong>{suppliers.length}</strong></div></article>
@@ -106,7 +109,7 @@ export function Proveedores() {
 
       {showForm && (
         <section className="prv-card">
-          <div className="prv-card-title"><h2>Agregar proveedor</h2><button aria-label="Cerrar formulario" onClick={() => setShowForm(false)}><X size={18} /></button></div>
+          <div className="prv-card-title"><h2>Agregar proveedor</h2></div>
           <form className="prv-form" onSubmit={saveSupplier}>
             <label>Nombre *<input autoFocus value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} required /></label>
             <label>Persona de contacto<input value={draft.contact} onChange={(event) => updateDraft('contact', event.target.value)} /></label>
@@ -121,7 +124,7 @@ export function Proveedores() {
       <section className="prv-card">
         <div className="prv-toolbar">
           <div><h2>Directorio</h2><p>{filtered.length} de {suppliers.length} proveedores</p></div>
-          <label className="prv-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, contacto o teléfono" /></label>
+          <label className="prv-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, contacto o teléfono" />{search && <button type="button" className="search-clear-btn" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</label>
         </div>
 
         <div className="prv-grid">
@@ -143,7 +146,12 @@ export function Proveedores() {
               </article>
             )
           })}
-          {filtered.length === 0 && <div className="prv-empty">No hay proveedores que coincidan con la búsqueda.</div>}
+          {filtered.length === 0 && (
+            <EmptyState
+              title="No hay proveedores que coincidan"
+              description="Prueba con otro nombre o agrega un proveedor nuevo."
+            />
+          )}
         </div>
       </section>
 

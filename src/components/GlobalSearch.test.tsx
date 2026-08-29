@@ -108,7 +108,7 @@ describe('GlobalSearch', () => {
 
     fireEvent.change(screen.getByRole('combobox', { name: 'Buscar en el sistema' }), { target: { value: 'cliente' } })
 
-    await screen.findByText('Sin resultados para "cliente"')
+    await screen.findByText('No encontramos nada para "cliente"')
     expect(mocks.getCustomers).not.toHaveBeenCalled()
     expect(screen.queryByText('Clientes')).not.toBeInTheDocument()
   })

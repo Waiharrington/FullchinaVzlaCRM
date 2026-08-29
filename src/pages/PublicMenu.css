@@ -3272,13 +3272,42 @@ button.mobile-only {
     font-weight: 700 !important;
   }
 
-  /* 3. Lo Más Pedido (4 columns) */
-  .public-home-products-grid {
-    display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
-    gap: 16px !important;
+  /* 3. Date un banquete en Full China — carrusel horizontal (nunca deja una tarjeta sola) */
+  .public-home-carousel {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
     width: 100% !important;
   }
+
+  .public-home-products-grid {
+    display: flex !important;
+    gap: 16px !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    scroll-behavior: smooth !important;
+    scroll-snap-type: x mandatory !important;
+    scrollbar-width: none !important;
+  }
+  .public-home-products-grid::-webkit-scrollbar { display: none !important; }
+
+  .public-home-carousel-arrow {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(20, 22, 28, 0.9) !important;
+    color: #E5E7EB !important;
+    cursor: pointer !important;
+    transition: all 0.18s ease !important;
+    z-index: 2 !important;
+  }
+  .public-home-carousel-arrow:hover { background: #E31B2B !important; border-color: #E31B2B !important; color: #FFF !important; }
 
   .public-home-product-card {
     background: #12141A !important;
@@ -3290,6 +3319,8 @@ button.mobile-only {
     transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1) !important;
     cursor: pointer !important;
     position: relative !important;
+    flex: 0 0 calc((100% - 3 * 16px) / 4) !important;
+    scroll-snap-align: start !important;
   }
 
   .public-home-product-card:hover {

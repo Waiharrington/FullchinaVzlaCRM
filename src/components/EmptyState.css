@@ -1,0 +1,63 @@
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  width: 100%;
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  background: radial-gradient(circle at 50% 42%, rgba(220, 38, 38, 0.18), rgba(20, 20, 24, 0.86) 72%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 10px 28px rgba(0, 0, 0, 0.38), 0 0 24px rgba(220, 38, 38, 0.12);
+}
+.empty-state-icon svg { width: 40px; height: 40px; overflow: visible; }
+
+.empty-state h3 {
+  margin: 0 0 6px;
+  color: var(--text-primary, #fff);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.empty-state p {
+  margin: 0 auto;
+  max-width: 320px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, #aeaeb2);
+}
+
+.empty-state button {
+  margin-top: 18px;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: var(--accent-gradient, linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #dc2626 100%));
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.empty-state button:hover { filter: brightness(1.08); }
+
+/* Compact — for use inside table cells or small panels */
+.empty-state-compact { padding: 28px 16px; }
+.empty-state-compact .empty-state-icon { width: 48px; height: 48px; margin-bottom: 10px; border-radius: 14px; }
+.empty-state-compact .empty-state-icon svg { width: 26px; height: 26px; }
+.empty-state-compact h3 { font-size: 13px; }
+.empty-state-compact p { font-size: 12px; }
+.empty-state-compact button { margin-top: 14px; padding: 8px 14px; font-size: 12px; }
+
+.es-wok-bowl { fill: rgba(220, 38, 38, 0.16); stroke: #ef4444; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.es-wok-handle,
+.es-wok-base { fill: none; stroke: #f59e0b; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.es-wok-steam { fill: none; stroke: #f59e0b; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.85; }
+.es-wok-steam-delay { opacity: 0.65; }
+.es-wok-steam-late { opacity: 0.5; }

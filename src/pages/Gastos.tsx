@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { createExpense, getExpenses } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
+import NumberStepper from '../components/NumberStepper'
 import { getExchangeRates } from '../lib/rates'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
+import { normalizeForSearch } from '../lib/textFormat'
 import {
-  Receipt, Store, Plus, CheckCircle2, TrendingDown, Wallet, Activity,
+  Receipt, Store, Plus, TrendingDown, Wallet, Activity,
   Search, Filter, Download, HelpCircle, X,
 } from 'lucide-react'
+import Toast from '../components/Toast'
+import { EmptyState } from '../components/EmptyState'
 import './Gastos.css'
 
 type ExpenseView = { id: string; description: string; type: 'fixed' | 'variable'; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string }
@@ -69,9 +73,9 @@ export function Gastos() {
   const vendors = useMemo(() => Array.from(new Set(expenses.map((e) => e.vendor).filter((v) => v && v !== 'Sin proveedor'))), [expenses])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeForSearch(search)
     return expenses.filter((e) => {
-      if (q && !(e.description.toLowerCase().includes(q) || e.vendor.toLowerCase().includes(q))) return false
+      if (q && !(normalizeForSearch(e.description).includes(q) || normalizeForSearch(e.vendor).includes(q))) return false
       if (typeFilter !== 'todos' && e.type !== typeFilter) return false
       return true
     })
@@ -122,8 +126,8 @@ export function Gastos() {
         </div>
       </header>
 
-      {error && <div className="whatsapp-notice-banner" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>{error}</div>}
-      {notice && <div className="whatsapp-notice-banner" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981', border: '1px solid rgba(16,185,129,0.3)' }}><CheckCircle2 size={18} /> {notice}</div>}
+      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
       <div className="gst-summary">
@@ -156,7 +160,7 @@ export function Gastos() {
               <div><h2>Registro de Egresos y Gastos Operativos</h2><p>Desglose por tipo, categoría y establecimiento comercial.</p></div>
             </div>
             <div className="gst-tools">
-              <div className="gst-search"><Search size={14} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar gasto..." /></div>
+              <div className="gst-search"><Search size={14} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar gasto..." />{search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</div>
               <button className="gst-tool" onClick={() => setShowFilters(!showFilters)}><Filter size={14} /> Filtros</button>
               <button className="gst-tool" onClick={exportCsv}><Download size={14} /> Exportar</button>
             </div>
@@ -187,7 +191,17 @@ export function Gastos() {
                     <td className="gst-bs">{formatVes(e.amountUsd * rate)}</td>
                   </tr>
                 ))}
-                {pageItems.length === 0 && <tr><td colSpan={7} className="gst-empty">No hay gastos registrados.</td></tr>}
+                {pageItems.length === 0 && (
+                  <tr><td colSpan={7}>
+                    <EmptyState
+                      compact
+                      title="No hay gastos registrados"
+                      description="Registra tu primer gasto para llevar el control de tus finanzas."
+                      actionLabel="Registrar gasto"
+                      onAction={() => setMobileFormOpen(true)}
+                    />
+                  </td></tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -225,7 +239,7 @@ export function Gastos() {
 
             <div className="gst-row2">
               <div className="gst-field"><label>Monto (USD) <span className="gst-req">*</span></label>
-                <input type="number" step="0.5" min="0" value={form.amountUsd} onChange={(e) => setForm({ ...form, amountUsd: e.target.value })} placeholder="0.00" /></div>
+                <NumberStepper step={0.5} min={0} value={form.amountUsd} onChange={(v) => setForm({ ...form, amountUsd: v })} placeholder="0.00" /></div>
               <div className="gst-field"><label>Monto (Bs)</label>
                 <input value={amountNum > 0 ? formatVes(amountNum * rate) : ''} readOnly placeholder="Bs. 0.00" style={{ color: '#a1a1aa' }} /></div>
             </div>

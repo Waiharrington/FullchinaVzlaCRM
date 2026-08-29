@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
-import { Plus, Pencil, Trash2, Eye, EyeOff, X, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
+import NumberStepper from '../components/NumberStepper'
+import { Plus, Pencil, Trash2, Eye, EyeOff, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
 import './Promociones.css'
+import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 
 interface Promotion {
   id: string
@@ -129,7 +131,7 @@ export function Promociones() {
       fetchPromos()
     } catch (e) {
       console.error('Error guardando:', e)
-      alert('Error al guardar: ' + (e instanceof Error ? e.message : 'Error desconocido'))
+      void alertDialog({ message: 'Error al guardar: ' + (e instanceof Error ? e.message : 'Error desconocido'), danger: true })
     } finally {
       setSaving(false)
     }
@@ -146,7 +148,8 @@ export function Promociones() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar esta promoción?')) return
+    const ok = await confirmDialog({ title: 'Eliminar promoción', message: '¿Eliminar esta promoción?', confirmText: 'Eliminar', danger: true })
+    if (!ok) return
     try {
       const { error } = await db().from('promotions').delete().eq('id', id)
       if (error) throw error
@@ -261,7 +264,6 @@ export function Promociones() {
           <div className="modal promo-form-modal animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="promo-form-header">
               <h3>{editing ? 'Editar promoción' : 'Nueva promoción'}</h3>
-              <button className="modal-close" onClick={() => setShowForm(false)}><X size={18} /></button>
             </div>
 
             <div className="promo-form-body">
@@ -316,7 +318,7 @@ export function Promociones() {
                 </div>
                 <div className="promo-form-row">
                   <label>Orden</label>
-                  <input type="number" value={form.sortOrder} onChange={e => setForm(f => ({ ...f, sortOrder: parseInt(e.target.value) || 0 }))} />
+                  <NumberStepper step={1} value={String(form.sortOrder)} onChange={v => setForm(f => ({ ...f, sortOrder: parseInt(v) || 0 }))} />
                 </div>
               </div>
 

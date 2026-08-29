@@ -351,7 +351,31 @@ input:-webkit-autofill:active {
   transition: background-color 50000s ease-in-out 0s !important;
 }
 
-/* Hide sidebar & bottom nav when a modal is open */
-body.modal-open .sidebar-container,
-body.modal-open .bottom-nav { display: none !important; }
-body.modal-open .main-content-wrapper { margin-left: 0 !important; }
+/* Hide the sidebar drawer & bottom nav when a modal is open, mobile only —
+   on tablet/desktop the sidebar is docked in the layout, not an overlay, so it stays visible. */
+@media (max-width: 767px) {
+  body.modal-open .sidebar-container,
+  body.modal-open .bottom-nav { display: none !important; }
+  body.modal-open .main-content-wrapper { margin-left: 0 !important; }
+}
+
+/* Shared "clear search" (X) button — used inside search inputs across the app */
+.search-clear-btn {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; border: none; flex-shrink: 0;
+  background: transparent; color: var(--text-muted); cursor: pointer; padding: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+  z-index: 3;
+  pointer-events: auto;
+}
+.search-clear-btn:hover { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
+/* Invisible hit-area padding so the button is easy to hit without changing its visual size */
+.search-clear-btn::before {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.search-clear-btn--floating {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+}
