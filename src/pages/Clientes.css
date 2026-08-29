@@ -736,6 +736,19 @@
 .receivable-row span, .receivable-row small { color: #a6a6ae; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Modals */
+.modal-overlay-dark {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(4px);
+}
+
 .client-modal-box {
   background: #18181b;
   border: 1px solid rgba(255, 255, 255, 0.12);
