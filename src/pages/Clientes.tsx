@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { StyledSelect } from '../components/StyledSelect'
@@ -1172,7 +1173,8 @@ export function Clientes() {
       )}
 
       {/* Modal Cuentas por cobrar */}
-      {showCobrarModal && (
+      {showCobrarModal && createPortal((
+        <>
         <div className="modal-overlay-dark" onClick={() => setShowCobrarModal(false)}>
           <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-line">
@@ -1210,7 +1212,8 @@ export function Clientes() {
             </div>
           </div>
         </div>
-      )}
+        </>
+      ), document.body)}
     </div>
   )
 }
