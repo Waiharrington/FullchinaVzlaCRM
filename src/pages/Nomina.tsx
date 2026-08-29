@@ -32,7 +32,7 @@ export function Nomina() {
   const [saving, setSaving] = useState(false)
 
   // Edición de horas/deducciones por empleado
-  const [edit, setEdit] = useState<Record<string, { hours: string; deductions: string }>>({})
+  const [edit, setEdit] = useState<Record<string, { bonus: string; overtimeHours: string; transport: string; absenceDays: string; extraDeductions: string }>>({})
 
   // Modales
   const [showPeriod, setShowPeriod] = useState(false)
@@ -74,10 +74,10 @@ export function Nomina() {
   useEffect(() => {
     if (!selected) return
     const selectedEntries = selectedId ? entriesByPeriod[selectedId] ?? [] : []
-    const init: Record<string, { hours: string; deductions: string }> = {}
+    const init: Record<string, { bonus: string; overtimeHours: string; transport: string; absenceDays: string; extraDeductions: string }> = {}
     for (const emp of activeEmployees) {
       const ex = selectedEntries.find((e) => e.employeeId === emp.id)
-      init[emp.id] = { hours: ex ? String(ex.hoursWorked) : '0', deductions: ex ? String(ex.deductions) : '0' }
+      init[emp.id] = { bonus: ex ? String(ex.bonusAmount) : String(bonusForEmp(emp.id)), overtimeHours: ex ? String(ex.overtimeHours) : '0', transport: ex ? String(ex.transportAmount) : '0', absenceDays: ex ? String(ex.absenceDays) : '0', extraDeductions: '0' }
     }
     setEdit(init)
   }, [selectedId, entriesByPeriod, activeEmployees, selected])
@@ -91,21 +91,28 @@ export function Nomina() {
 
   // Totales de la tabla del período seleccionado (desde la edición en vivo)
   const rows = activeEmployees.map((emp) => {
-    const ed = edit[emp.id] ?? { hours: '0', deductions: '0' }
-    const hours = parseFloat(ed.hours) || 0
-    const bruto = emp.hourlyRate * hours
-    const ded = parseFloat(ed.deductions) || 0
-    const bon = bonusForEmp(emp.id)
-    return { emp, hours, bruto, ded, bon, neto: bruto - ded + bon }
+    const ed = edit[emp.id] ?? { bonus: '0', overtimeHours: '0', transport: '0', absenceDays: '0', extraDeductions: '0' }
+    const weekly = emp.weeklySalary || emp.hourlyRate * 48
+    const bonus = parseFloat(ed.bonus) || 0
+    const overtimeHours = parseFloat(ed.overtimeHours) || 0
+    const overtime = overtimeHours * (emp.overtimeRate || emp.hourlyRate)
+    const transport = parseFloat(ed.transport) || 0
+    const absenceDays = parseFloat(ed.absenceDays) || 0
+    const absenceDeduction = weekly / 6 * absenceDays
+    const advance = advances.filter((a) => a.employeeId === emp.id && !a.isDeducted && (!selected || a.advanceDate <= selected.endDate)).reduce((s, a) => s + a.amount, 0)
+    const extra = parseFloat(ed.extraDeductions) || 0
+    const bruto = weekly + bonus + overtime + transport
+    const ded = absenceDeduction + advance + extra
+    return { emp, weekly, bonus, overtimeHours, overtime, transport, absenceDays, absenceDeduction, advance, extra, bruto, ded, neto: bruto - ded }
   })
-  const tot = rows.reduce((a, r) => ({ hours: a.hours + r.hours, bruto: a.bruto + r.bruto, ded: a.ded + r.ded, bon: a.bon + r.bon, neto: a.neto + r.neto }), { hours: 0, bruto: 0, ded: 0, bon: 0, neto: 0 })
+  const tot = rows.reduce((a, r) => ({ hours: a.hours + r.overtimeHours, bruto: a.bruto + r.bruto, ded: a.ded + r.ded, bon: a.bon + r.bonus, neto: a.neto + r.neto }), { hours: 0, bruto: 0, ded: 0, bon: 0, neto: 0 })
 
   const handleSaveAll = async () => {
     if (!selected) return
     setSaving(true); setError('')
     try {
       for (const r of rows) {
-        await upsertPayrollEntry({ payrollPeriodId: selected.id, employeeId: r.emp.id, hoursWorked: r.hours, baseSalary: r.bruto, deductions: r.ded })
+        await upsertPayrollEntry({ payrollPeriodId: selected.id, employeeId: r.emp.id, hoursWorked: r.overtimeHours, baseSalary: r.bruto, deductions: r.ded, weeklySalary: r.weekly, bonusAmount: r.bonus, overtimeHours: r.overtimeHours, overtimeAmount: r.overtime, transportAmount: r.transport, absenceDays: r.absenceDays, absenceDeduction: r.absenceDeduction, advanceDeduction: r.advance })
       }
       const updated = await getPayrollEntries(selected.id)
       setEntriesByPeriod((prev) => ({ ...prev, [selected.id]: updated }))
@@ -152,7 +159,7 @@ export function Nomina() {
           <p className="page-subtitle">Liquida sueldos por período, adelantos y bonos de producción.</p>
         </div>
         <div className="nom-head-actions">
-          <button className="nom-ghost" onClick={() => flash('Crea un período, ingresa las horas de cada empleado (el sueldo se calcula por su tarifa), registra bonos/adelantos y guarda la liquidación.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
+          <button className="nom-ghost" onClick={() => flash('La nómina es semanal: sueldo base + bono + horas extra + transporte - ausencias - adelantos pendientes.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
           <button className="nom-btn" onClick={() => setShowPeriod(true)}><Plus size={16} /> Nuevo Período</button>
         </div>
       </header>
@@ -210,27 +217,27 @@ export function Nomina() {
       {selected && (
         <div className="nom-card">
           <div className="nom-card-head">
-            <div><h2>Liquidación del Período: {fmtRange(selected)} <span className={`nom-status ${statusCls(selected.status)}`}>{statusLbl(selected.status)}</span></h2><p>Ingresa las horas; el sueldo bruto se calcula por la tarifa de cada empleado.</p></div>
+            <div><h2>Liquidación del Período: {fmtRange(selected)} <span className={`nom-status ${statusCls(selected.status)}`}>{statusLbl(selected.status)}</span></h2><p>Sueldo semanal, bonos, extras, transporte, ausencias y adelantos pendientes.</p></div>
             <button className="nom-btn" onClick={handleSaveAll} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>
           </div>
           {activeEmployees.length === 0 ? <p style={{ color: '#71717a' }}>No hay empleados activos. Agrégalos en Equipo / Usuarios.</p> : (
             <div className="nom-table-wrap">
               <table className="nom-table">
-                <thead><tr><th></th><th>Empleado / Cargo</th><th>Tarifa hora</th><th>Horas</th><th>Sueldo bruto</th><th>Deducciones</th><th>Bonos</th><th>Neto a pagar</th></tr></thead>
+                <thead><tr><th></th><th>Empleado / Cargo</th><th>Sueldo semanal</th><th>Bono</th><th>Horas extra</th><th>Ausencias</th><th>Adelantos / desc.</th><th>Neto a pagar</th></tr></thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.emp.id}>
                       <td><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
                       <td><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
-                      <td>{formatUsd(r.emp.hourlyRate)}</td>
-                      <td><NumberStepper step={0.01} min={0} value={edit[r.emp.id]?.hours ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], hours: v } }))} /></td>
-                      <td><strong>{formatUsd(r.bruto)}</strong></td>
-                      <td><NumberStepper step={0.01} min={0} value={edit[r.emp.id]?.deductions ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], deductions: v } }))} /></td>
-                      <td style={{ color: '#22c55e' }}>{formatUsd(r.bon)}</td>
+                      <td><strong>{formatUsd(r.weekly)}</strong></td>
+                      <td><NumberStepper step={0.01} min={0} value={edit[r.emp.id]?.bonus ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: v } }))} /></td>
+                      <td><NumberStepper step={0.5} min={0} value={edit[r.emp.id]?.overtimeHours ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], overtimeHours: v } }))} /><small>{formatUsd(r.overtime)}</small></td>
+                      <td><NumberStepper step={0.5} min={0} value={edit[r.emp.id]?.absenceDays ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], absenceDays: v } }))} /><small>-{formatUsd(r.absenceDeduction)}</small></td>
+                      <td><strong>-{formatUsd(r.advance + r.extra)}</strong></td>
                       <td className="nom-net">{formatUsd(r.neto)}</td>
                     </tr>
                   ))}
-                  <tr className="nom-tot-row"><td></td><td>TOTALES</td><td></td><td>{tot.hours}</td><td>{formatUsd(tot.bruto)}</td><td>{formatUsd(tot.ded)}</td><td>{formatUsd(tot.bon)}</td><td className="nom-net">{formatUsd(tot.neto)}</td></tr>
+                  <tr className="nom-tot-row"><td></td><td>TOTALES</td><td></td><td>{formatUsd(tot.bon)}</td><td>{tot.hours}</td><td>{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</td><td>{formatUsd(tot.ded)}</td><td className="nom-net">{formatUsd(tot.neto)}</td></tr>
                 </tbody>
               </table>
             </div>

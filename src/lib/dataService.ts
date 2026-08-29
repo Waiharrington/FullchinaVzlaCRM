@@ -315,6 +315,8 @@ export interface Employee {
   fullName: string
   position: string | null
   hourlyRate: number
+  weeklySalary: number
+  overtimeRate: number
   isActive: boolean
 }
 
@@ -338,6 +340,14 @@ export interface PayrollEntry {
   deductions: number
   netPay: number
   notes: string | null
+  weeklySalary: number
+  bonusAmount: number
+  overtimeHours: number
+  overtimeAmount: number
+  transportAmount: number
+  absenceDays: number
+  absenceDeduction: number
+  advanceDeduction: number
 }
 
 export interface PayrollPayment {
@@ -2207,7 +2217,7 @@ export async function getRecipeComponents(sellableProductId: string): Promise<Re
 export async function getEmployees(): Promise<Employee[]> {
   const { data, error } = await client()
     .from('employees')
-    .select('id,full_name,position,hourly_rate,is_active')
+    .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .eq('is_active', true)
     .order('full_name', { ascending: true })
 
@@ -2217,6 +2227,8 @@ export async function getEmployees(): Promise<Employee[]> {
     fullName: r.full_name as string,
     position: (r.position as string) ?? null,
     hourlyRate: Number(r.hourly_rate),
+    weeklySalary: Number(r.weekly_salary ?? 0),
+    overtimeRate: Number(r.overtime_rate ?? 0),
     isActive: r.is_active as boolean,
   }))
 }
@@ -2224,7 +2236,7 @@ export async function getEmployees(): Promise<Employee[]> {
 export async function getAllEmployees(): Promise<Employee[]> {
   const { data, error } = await client()
     .from('employees')
-    .select('id,full_name,position,hourly_rate,is_active')
+    .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .order('is_active', { ascending: false })
     .order('full_name', { ascending: true })
 
@@ -2234,6 +2246,8 @@ export async function getAllEmployees(): Promise<Employee[]> {
     fullName: r.full_name as string,
     position: (r.position as string) ?? null,
     hourlyRate: Number(r.hourly_rate),
+    weeklySalary: Number(r.weekly_salary ?? 0),
+    overtimeRate: Number(r.overtime_rate ?? 0),
     isActive: r.is_active as boolean,
   }))
 }
@@ -2251,7 +2265,7 @@ export async function createEmployee(params: {
       hourly_rate: params.hourlyRate ?? 0,
       is_active: true,
     })
-    .select('id,full_name,position,hourly_rate,is_active')
+    .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .single()
   if (error) throw error
   return {
@@ -2259,6 +2273,8 @@ export async function createEmployee(params: {
     fullName: data.full_name as string,
     position: (data.position as string) ?? null,
     hourlyRate: Number(data.hourly_rate),
+    weeklySalary: Number(data.weekly_salary ?? 0),
+    overtimeRate: Number(data.overtime_rate ?? 0),
     isActive: data.is_active as boolean,
   }
 }
@@ -2604,7 +2620,7 @@ export async function updatePayrollPeriodStatus(id: string, status: PayrollPerio
 export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[]> {
   const { data, error } = await client()
     .from('payroll_entries')
-    .select('id,payroll_period_id,employee_id,hours_worked,base_salary,deductions,net_pay,notes,employees(full_name,position)')
+    .select('id,payroll_period_id,employee_id,hours_worked,base_salary,deductions,net_pay,notes,weekly_salary,bonus_amount,overtime_hours,overtime_amount,transport_amount,absence_days,absence_deduction,advance_deduction,employees(full_name,position)')
     .eq('payroll_period_id', periodId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -2619,6 +2635,10 @@ export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[
     deductions: Number(r.deductions),
     netPay: Number(r.net_pay),
     notes: (r.notes as string) ?? null,
+    weeklySalary: Number(r.weekly_salary ?? 0), bonusAmount: Number(r.bonus_amount ?? 0),
+    overtimeHours: Number(r.overtime_hours ?? 0), overtimeAmount: Number(r.overtime_amount ?? 0),
+    transportAmount: Number(r.transport_amount ?? 0), absenceDays: Number(r.absence_days ?? 0),
+    absenceDeduction: Number(r.absence_deduction ?? 0), advanceDeduction: Number(r.advance_deduction ?? 0),
   }))
 }
 
@@ -2628,6 +2648,14 @@ export async function upsertPayrollEntry(params: {
   hoursWorked: number
   baseSalary: number
   deductions: number
+  weeklySalary?: number
+  bonusAmount?: number
+  overtimeHours?: number
+  overtimeAmount?: number
+  transportAmount?: number
+  absenceDays?: number
+  absenceDeduction?: number
+  advanceDeduction?: number
   notes?: string | null
 }): Promise<void> {
   const { error } = await client()
@@ -2638,6 +2666,14 @@ export async function upsertPayrollEntry(params: {
       hours_worked: params.hoursWorked,
       base_salary: params.baseSalary,
       deductions: params.deductions,
+      weekly_salary: params.weeklySalary ?? params.baseSalary,
+      bonus_amount: params.bonusAmount ?? 0,
+      overtime_hours: params.overtimeHours ?? 0,
+      overtime_amount: params.overtimeAmount ?? 0,
+      transport_amount: params.transportAmount ?? 0,
+      absence_days: params.absenceDays ?? 0,
+      absence_deduction: params.absenceDeduction ?? 0,
+      advance_deduction: params.advanceDeduction ?? 0,
       notes: params.notes ?? null,
     }, { onConflict: 'payroll_period_id,employee_id' })
   if (error) throw error
