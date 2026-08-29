@@ -711,6 +711,30 @@
   padding-top: 10px;
 }
 
+.receivables-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 10px;
+  color: #aaaab2;
+  font-size: 13px;
+}
+
+.receivables-list { display: grid; gap: 8px; max-height: 340px; overflow-y: auto; }
+.receivable-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #34343a;
+  border-radius: 10px;
+  background: #202024;
+}
+.receivable-row > div { min-width: 0; display: grid; gap: 3px; }
+.receivable-row strong { color: #f2f2f4; font-size: 14px; }
+.receivable-row span, .receivable-row small { color: #a6a6ae; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Modals */
 .client-modal-box {
   background: #18181b;
