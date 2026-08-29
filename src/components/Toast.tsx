@@ -32,7 +32,7 @@ function getToastRoot() {
 
 export default function Toast({ type, message, onClose, duration = 3000, actionLabel, onAction }: ToastProps) {
   const [closing, setClosing] = useState(false)
-  const closeTimer = useRef<ReturnType<typeof setTimeout>>()
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { setClosing(false) }, [message])
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
