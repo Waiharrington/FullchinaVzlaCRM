@@ -798,13 +798,11 @@ export function Clientes() {
           </div>
         </div>
 
-        <div
+        <button
+          type="button"
           className="kpi-card-dark clickable-kpi"
-          role="button"
-          tabIndex={0}
           title="Ver cuentas por cobrar"
           onClick={() => setShowCobrarModal(true)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCobrarModal(true) } }}
         >
           <div className="kpi-icon-circle-box dark-red">
             <DollarSign size={22} />
@@ -814,7 +812,7 @@ export function Clientes() {
             <MoneyWithBcv usd={totalOutstanding} className="kpi-value-lg" align="start" compact />
             <span className="kpi-sub-tag red-text">De {customersWithDebt} cliente{customersWithDebt === 1 ? '' : 's'}</span>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Main Content Layout: Left Table + Right Sidebar Cards */}

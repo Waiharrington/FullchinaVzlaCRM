@@ -223,7 +223,7 @@
   }
 }
 
-.clickable-kpi { cursor: pointer; }
+.clickable-kpi { cursor: pointer; border: 0; text-align: left; font: inherit; width: 100%; }
 .clickable-kpi:focus-visible { outline: 2px solid #ef4444; outline-offset: 2px; }
 
 /* ─── Left Table Card ─────────────────────────────────────────────────── */
