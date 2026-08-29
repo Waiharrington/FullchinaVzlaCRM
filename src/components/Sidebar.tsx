@@ -21,6 +21,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user, signOut } = useAuth()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
+    Operación: false,
+    'Gestión FullChina': true,
     Finanzas: true,
     Configuración: true
   })
@@ -97,7 +99,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           return (
             <React.Fragment key={group}>
-              {!collapsed && parent && (
+              {!collapsed && (
                 <div
                   className="sidebar-group-header"
                   role="button"
@@ -110,13 +112,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     }
                   }}
                 >
-                  <NavLink
-                    to={parent.path}
-                    className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <span>{group}</span>
-                  </NavLink>
+                  {parent ? (
+                    <NavLink
+                      to={parent.path}
+                      className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <span>{group}</span>
+                    </NavLink>
+                  ) : <span className="sidebar-group-parent"><span>{group}</span></span>}
                   <button
                     type="button"
                     className="sidebar-group-toggle"
@@ -132,7 +136,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </button>
                 </div>
               )}
-              {(!parent || isOpen || collapsed) && (collapsed && parent ? [parent, ...children] : children).map(item => {
+              {(isOpen || collapsed) && (collapsed && parent ? [parent, ...children] : children).map(item => {
                 const Icon = item.icon
                 const isActive = isActiveItem(item.path, location.pathname)
                 return (
@@ -148,9 +152,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   </NavLink>
                 )
               })}
-              {!collapsed && !parent && group !== 'Operación' && (
-                <div className="sidebar-group-title">{group.toUpperCase()}</div>
-              )}
             </React.Fragment>
           )
         })}

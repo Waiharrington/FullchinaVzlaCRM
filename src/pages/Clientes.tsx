@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { StyledSelect } from '../components/StyledSelect'
@@ -157,6 +158,25 @@ export function Clientes() {
   const [customerCreditPayments, setCustomerCreditPayments] = useState<CreditPayment[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState('')
+  const [receivableOrders, setReceivableOrders] = useState<Record<string, CustomerOrderSummary>>({})
+  const [receivablesLoading, setReceivablesLoading] = useState(false)
+
+  useEffect(() => {
+    if (!showCobrarModal) return
+    const linkedCredits = credits.filter((credit) => credit.balancePending > 0 && credit.orderId && credit.customerId)
+    let cancelled = false
+    setReceivablesLoading(true)
+    Promise.all(linkedCredits.map(async (credit) => {
+      const orders = await getCustomerOrders(credit.customerId as string, credit.customerName)
+      return [credit.id, orders.find((order) => order.id === credit.orderId)] as const
+    }))
+      .then((entries) => {
+        if (!cancelled) setReceivableOrders(Object.fromEntries(entries.filter((entry): entry is [string, CustomerOrderSummary] => Boolean(entry[1]))))
+      })
+      .catch((error) => console.error('Error cargando comandas por cobrar:', error))
+      .finally(() => { if (!cancelled) setReceivablesLoading(false) })
+    return () => { cancelled = true }
+  }, [showCobrarModal, credits])
 
   useEffect(() => {
     if (!selectedClient) {
@@ -782,13 +802,11 @@ export function Clientes() {
           </div>
         </div>
 
-        <div
+        <button
+          type="button"
           className="kpi-card-dark clickable-kpi"
-          role="button"
-          tabIndex={0}
           title="Ver cuentas por cobrar"
           onClick={() => setShowCobrarModal(true)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowCobrarModal(true) } }}
         >
           <div className="kpi-icon-circle-box dark-red">
             <DollarSign size={22} />
@@ -798,7 +816,7 @@ export function Clientes() {
             <MoneyWithBcv usd={totalOutstanding} className="kpi-value-lg" align="start" compact />
             <span className="kpi-sub-tag red-text">De {customersWithDebt} cliente{customersWithDebt === 1 ? '' : 's'}</span>
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Main Content Layout: Left Table + Right Sidebar Cards */}
@@ -1165,7 +1183,8 @@ export function Clientes() {
       )}
 
       {/* Modal Cuentas por cobrar */}
-      {showCobrarModal && (
+      {showCobrarModal && createPortal((
+        <>
         <div className="modal-overlay-dark" onClick={() => setShowCobrarModal(false)}>
           <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-line">
@@ -1181,37 +1200,30 @@ export function Clientes() {
               <span className="cobrar-total-sub">Total pendiente</span>
             </div>
 
-            <div className="circular-gauge-area">
-              <div className="ring-gauge-circle">
-                <span className="ring-inner-val">18</span>
-                <span className="ring-inner-label">Clientes</span>
-              </div>
+            <div className="receivables-summary-row">
+              <span>{credits.filter((credit) => credit.balancePending > 0).length} cuentas activas</span>
+              <span>{credits.filter((credit) => credit.balancePending > 0 && credit.orderId).length} comandas pendientes</span>
             </div>
-
-            <div className="gauge-legend-list">
-              <div className="legend-item-row">
-                <div className="legend-left">
-                  <span className="dot-color red" />
-                  <span>Vencido (7)</span>
+            <div className="receivables-list">
+              {receivablesLoading && <p className="modal-sub-desc">Cargando comandas pendientes…</p>}
+              {credits.filter((credit) => credit.balancePending > 0).map((credit) => {
+                const order = receivableOrders[credit.id]
+                const days = Math.max(0, Math.floor((Date.now() - new Date(credit.createdAt).getTime()) / 86400000))
+                return <div className="receivable-row" key={credit.id}>
+                  <div>
+                    <strong>{credit.customerName}</strong>
+                    <span>{order ? `Comanda #${order.orderNumber} · ${order.itemsText || 'Sin detalle'}` : 'Crédito manual'}</span>
+                    <small>Desde hace {days} día{days === 1 ? '' : 's'} · {formatDate(credit.createdAt)}</small>
+                  </div>
+                  <MoneyWithBcv usd={credit.balancePending} className="legend-val font-bold" compact />
                 </div>
-                <MoneyWithBcv usd={12150} className="legend-val font-bold" compact />
-              </div>
-              <div className="legend-item-row">
-                <div className="legend-left">
-                  <span className="dot-color orange" />
-                  <span>Por vencer (11)</span>
-                </div>
-                <MoneyWithBcv usd={12530} className="legend-val font-bold" compact />
-              </div>
-            </div>
-
-            <div className="oldest-due-footer">
-              <span>Más antiguo vencido</span>
-              <span className="text-red font-bold">15/05/2025</span>
+              })}
+              {!receivablesLoading && credits.filter((credit) => credit.balancePending > 0).length === 0 && <p className="modal-sub-desc">No hay cuentas pendientes.</p>}
             </div>
           </div>
         </div>
-      )}
+        </>
+      ), document.body)}
     </div>
   )
 }

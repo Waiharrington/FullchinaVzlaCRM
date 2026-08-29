@@ -5,6 +5,8 @@ import jsPDF from 'jspdf'
 import {
   getCredits,
   addCreditPayment,
+  deleteCredit,
+  getCreditPayments,
   createCredit,
   getCustomers,
   getTodayStats,
@@ -16,15 +18,16 @@ import {
   type TodayStats,
   type FullOrder,
   type Customer,
+  type CreditPayment,
 } from '../lib/dataService'
 import NumberStepper from '../components/NumberStepper'
 import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
 import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
-import { alertDialog } from '../components/ConfirmDialog'
+import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
-import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText } from 'lucide-react'
+import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2 } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -50,6 +53,8 @@ export function Mas() {
   const [tab, setTab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
+  const [showCustomerOptions, setShowCustomerOptions] = useState(false)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [newAmount, setNewAmount] = useState('')
   const [newDueDate, setNewDueDate] = useState('')
@@ -57,6 +62,8 @@ export function Mas() {
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
+  const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
   const [closing, setClosing] = useState(false)
 
   const fetchAll = useCallback(async () => {
@@ -89,7 +96,7 @@ export function Mas() {
   const handleCreateCredit = async () => {
     if (!newClient || !newAmount || !user) return
     try {
-      const customer = customers.find(item => item.name.toLocaleLowerCase('es-VE') === newClient.trim().toLocaleLowerCase('es-VE'))
+      const customer = customers.find(item => item.id === selectedCustomerId)
       if (!customer) {
         void alertDialog({ message: 'Selecciona un cliente registrado' })
         return
@@ -104,6 +111,7 @@ export function Mas() {
         userId: user.id,
       })
       setNewClient('')
+      setSelectedCustomerId(null)
       setNewAmount('')
       setNewDueDate('')
       setShowNewCredit(false)
@@ -126,6 +134,44 @@ export function Mas() {
       fetchAll()
     } catch (e) {
       console.error('Error:', e)
+    }
+  }
+
+  const handleToggleHistory = async (credit: CreditType) => {
+    if (selectedCredit?.id === credit.id) {
+      setSelectedCredit(null)
+      setCreditPayments([])
+      return
+    }
+    setSelectedCredit(credit)
+    setLoadingHistory(true)
+    try {
+      setCreditPayments(await getCreditPayments(credit.id))
+    } catch (e) {
+      console.error('Error cargando historial:', e)
+      alert('No se pudo cargar el historial de abonos')
+    } finally {
+      setLoadingHistory(false)
+    }
+  }
+
+  const handleDeleteCredit = async (credit: CreditType) => {
+    if (credit.orderId || credit.totalPaid > 0) {
+      void alertDialog('Este crédito no se puede borrar porque está vinculado a una comanda o ya tiene abonos. Puedes conservarlo como historial.')
+      return
+    }
+    const ok = await confirmDialog({ title: 'Eliminar crédito', message: `¿Borrar el crédito de ${credit.customerName} por $${credit.totalAmount.toFixed(2)}?`, confirmText: 'Eliminar', danger: true })
+    if (!ok) return
+    try {
+      await deleteCredit(credit.id)
+      if (selectedCredit?.id === credit.id) {
+        setSelectedCredit(null)
+        setCreditPayments([])
+      }
+      await fetchAll()
+    } catch (e) {
+      console.error('Error borrando crédito:', e)
+      alert('No se pudo borrar el crédito')
     }
   }
 
@@ -269,14 +315,21 @@ export function Mas() {
 
           {showNewCredit && (
             <div className="new-credit-form animate-slide-up">
-              <div className="form-row">
-                <input list="credit-customers"
+              <div className="form-row credit-customer-field">
+                <input
                   type="text"
                   placeholder="Buscar cliente registrado"
                   value={newClient}
-                  onChange={(e) => setNewClient(e.target.value)}
+                  onFocus={() => setShowCustomerOptions(true)}
+                  onChange={(e) => { setNewClient(e.target.value); setSelectedCustomerId(null); setShowCustomerOptions(true) }}
                 />
-                <datalist id="credit-customers">{customers.map(customer => <option key={customer.id} value={customer.name}>{customer.phone}</option>)}</datalist>
+                {showCustomerOptions && newClient.trim() && <div className="credit-customer-options">
+                  {customers.filter(customer => `${customer.name} ${customer.phone}`.toLocaleLowerCase('es-VE').includes(newClient.toLocaleLowerCase('es-VE'))).slice(0, 8).map(customer => (
+                    <button type="button" key={customer.id} onMouseDown={(event) => event.preventDefault()} onClick={() => { setNewClient(customer.name); setSelectedCustomerId(customer.id); setShowCustomerOptions(false) }}>
+                      <strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small>
+                    </button>
+                  ))}
+                </div>}
               </div>
               <div className="form-row">
                 <NumberStepper
@@ -347,10 +400,24 @@ export function Mas() {
                             <button className="btn-accent btn-sm" onClick={() => setPaymentModal(credit)}>
                               Abonar
                             </button>
-                            <button className="btn-ghost btn-sm" onClick={() => setSelectedCredit(selectedCredit?.id === credit.id ? null : credit)}>
+                            <button className="btn-ghost btn-sm" onClick={() => handleToggleHistory(credit)}>
                               Historial
                             </button>
+                            <button className="btn-ghost btn-sm credit-delete-btn" title="Borrar crédito" onClick={() => handleDeleteCredit(credit)}>
+                              <Trash2 size={15} />
+                            </button>
                           </div>
+                          {selectedCredit?.id === credit.id && (
+                            <div className="credit-history">
+                              <strong>Historial de abonos</strong>
+                              {loadingHistory ? <span>Cargando...</span> : creditPayments.length === 0 ? <span>Sin abonos registrados</span> : creditPayments.map(payment => (
+                                <div className="credit-history-row" key={payment.id}>
+                                  <span>{new Date(payment.createdAt).toLocaleString('es')}</span>
+                                  <span className="text-success">${payment.amount.toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )
                     })}

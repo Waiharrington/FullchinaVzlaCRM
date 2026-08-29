@@ -156,6 +156,25 @@
   border-color: var(--accent-primary);
 }
 
+.credit-customer-field { position: relative; }
+.credit-customer-options {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px;
+  background: #202024;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(0,0,0,.45);
+}
+.credit-customer-options button { display:flex; flex-direction:column; align-items:flex-start; width:100%; padding:9px 10px; color:#fff; background:transparent; border:0; border-radius:7px; cursor:pointer; text-align:left; }
+.credit-customer-options button:hover { background:rgba(255,255,255,.08); }
+.credit-customer-options small { color:#a1a1aa; margin-top:2px; }
+
 .form-actions-inline {
   display: flex;
   gap: 0.5rem;
