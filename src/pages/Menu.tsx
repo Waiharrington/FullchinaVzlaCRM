@@ -15,7 +15,6 @@ import { confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { StyledSelect } from '../components/StyledSelect'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
-import { getEditorialDescription } from '../lib/menuEditorial'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
 
 const catLabel = categoryLabel
@@ -373,7 +372,7 @@ export function Menu() {
               {filtered.map((p) => (
                 <tr key={p.id} className={selectMode ? 'selectable' : 'mnu-row-clickable'} onClick={selectMode ? () => toggleSelect(p.id) : () => openEdit(p)}>
                   {selectMode && <td><span className="mnu-check-cell">{selectedIds.has(p.id) ? <CheckSquare size={18} /> : <Square size={18} />}</span></td>}
-                  <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{formatProductTitle(p.name)}</strong>{(p.description || getEditorialDescription(p.name)) && <><br /><small style={{ color: '#71717a', display: 'block', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(p.name, p.description || '')}</small></>}</div></div></td>
+                  <td><div className="mnu-row-name">{thumb(p, 'mnu-row-thumb')}<div><strong>{formatProductTitle(p.name)}</strong>{p.description && <><br /><small style={{ color: '#71717a', display: 'block', maxWidth: 280, lineHeight: 1.35 }}>{p.description}</small></>}</div></div></td>
                   <td style={{ textTransform: 'capitalize', color: '#a1a1aa' }}>{p.categories.map(catLabel).join(' · ')}</td>
                   <td className="mnu-price" style={{ fontSize: 15 }}>{formatUsd(p.salePrice)}</td>
                   <td><button className={`mnu-switch ${p.isActive ? 'on' : ''}`} onClick={(e) => { e.stopPropagation(); toggleActive(p) }} title={p.isActive ? 'Activo' : 'Inactivo'} /></td>

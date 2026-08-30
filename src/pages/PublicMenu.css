@@ -47,7 +47,7 @@
   display: none;
 }
 
-/* Mobile-first Defaults (< 1024px) */
+/* Mobile-first Defaults (< 1280px) */
 .desktop-only {
   display: none !important;
 }
@@ -366,20 +366,6 @@ button.mobile-only {
   display: flex;
   animation: public-recommended-enter 420ms cubic-bezier(.22,.8,.3,1) both;
 }
-.public-recommended-entering {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  display: flex;
-  opacity: 0;
-  transform: scale(1.03);
-  transition: opacity 600ms cubic-bezier(.22,.8,.3,1), transform 600ms cubic-bezier(.22,.8,.3,1);
-  pointer-events: none;
-}
-.public-recommended-entering.visible {
-  opacity: 1;
-  transform: scale(1);
-}
 .public-recommended-card::after {
   content: '';
   position: absolute;
@@ -398,6 +384,7 @@ button.mobile-only {
   z-index: 3;
   position: relative;
   transition: transform 500ms cubic-bezier(.4,0,.2,1);
+  animation: public-recommended-copy-in 450ms cubic-bezier(.22,.8,.3,1) both;
 }
 .public-recommended-copy > small {
   color: #FFD666;
@@ -434,7 +421,12 @@ button.mobile-only {
   font-size: 18px;
   font-weight: 800;
   color: #FFD666;
-  margin-bottom: 10px;
+  margin-bottom: 2px;
+}
+.public-recommended-copy .public-prod-price-bs {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0 0 10px;
 }
 .public-recommended-btn {
   background: #E31B2B;
@@ -465,6 +457,7 @@ button.mobile-only {
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 42%);
   z-index: 0;
   transition: transform 500ms cubic-bezier(.4,0,.2,1);
+  animation: public-recommended-image-in 450ms cubic-bezier(.22,.8,.3,1) both;
 }
 .public-recommended-dots-overlay {
   position: absolute;
@@ -835,29 +828,35 @@ button.mobile-only {
   to   { opacity: 1; transform: scale(1); }
 }
 
-/* Add-to-cart mini-toast */
+/* Add-to-cart mini-toast: cápsula flotante centrada arriba, no una barra
+   que atraviesa todo el ancho (se veía mal en pantallas anchas/tablet). */
 .public-add-toast {
   position: fixed;
-  bottom: 100px;
-  left: 20px;
-  right: 20px;
-  background: rgba(20, 22, 28, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 14px;
-  padding: 10px 14px;
+  top: 84px;
+  left: 50%;
+  width: max-content;
+  max-width: min(360px, calc(100vw - 32px));
+  background: rgba(18, 20, 26, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 8px 16px 8px 8px;
   display: flex;
   align-items: center;
   gap: 10px;
-  z-index: 200;
-  animation: public-toast-in 300ms ease both;
+  z-index: 400;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(34, 197, 94, 0.18);
+  animation: public-toast-in 480ms cubic-bezier(.34, 1.56, .64, 1) both;
   pointer-events: none;
 }
+.public-add-toast.closing {
+  animation: public-toast-out 280ms cubic-bezier(.4, 0, 1, 1) both;
+}
 .public-add-toast-img {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
   background: rgba(227, 27, 43, 0.12);
@@ -866,8 +865,20 @@ button.mobile-only {
 }
 .public-add-toast-img img { width: 100%; height: 100%; object-fit: cover; }
 .public-add-toast-img svg { color: #E31B2B; }
+.public-add-toast-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.public-add-toast-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #22C55E;
+}
 .public-add-toast-name {
-  flex: 1;
   font-size: 13px;
   font-weight: 600;
   color: #FFF;
@@ -879,10 +890,16 @@ button.mobile-only {
 .public-add-toast-check {
   color: #22C55E;
   flex-shrink: 0;
+  animation: public-check-pop 420ms 260ms cubic-bezier(.34, 1.56, .64, 1) both;
 }
 @keyframes public-toast-in {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  0% { opacity: 0; transform: translate(-50%, -28px) scale(0.82); }
+  55% { opacity: 1; transform: translate(-50%, 6px) scale(1.04); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes public-toast-out {
+  from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, -22px) scale(0.88); }
 }
 
 /* Modals & Drawers (Dark Theme Adaptation) */
@@ -967,6 +984,15 @@ button.mobile-only {
 .public-drawer-backdrop.closing .public-cart-drawer { animation: public-drawer-exit 240ms ease both; }
 @keyframes public-drawer-exit { from { transform: translateX(0); } to { transform: translateX(100%); } }
 @keyframes public-slide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+/* Los pasos "dirección" y "enviado" eran los únicos sin animación de
+   entrada (cart/delivery/details/confirm/preparing ya la tenían, más
+   abajo). Misma familia de animación para que se sientan consistentes. */
+.public-drawer-backdrop:not(.closing) .public-step-address,
+.public-drawer-backdrop:not(.closing) .public-step-sent {
+  animation: public-step-fade-in 300ms ease both;
+}
+@keyframes public-step-fade-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: translateX(0); } }
 .public-cart-drawer header { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
 .public-cart-drawer header h2 { font: 700 24px 'DM Sans', sans-serif; margin: 5px 0 0; }
 .public-cart-drawer header small { color: #E31B2B; font-weight: 800; letter-spacing: .12em; }
@@ -997,6 +1023,8 @@ button.mobile-only {
 .public-cart-guard strong { color: #FFF2C2; font-size: 13px; line-height: 1.2; }
 .public-cart-guard span { color: #E8D59A; font-size: 12px; line-height: 1.25; }
 @keyframes public-guard-enter { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.public-cart-guard.closing { animation: public-guard-exit 200ms ease both; }
+@keyframes public-guard-exit { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-8px); } }
 .public-cart-drawer .public-review-header > img { position: absolute; top: 0; left: 50%; width: 112px; height: auto; object-fit: contain; transform: translateX(-50%); }
 .public-review-heading { width: 100%; margin-top: 30px; text-align: left; }
 .public-cart-drawer .public-review-heading h2 { margin: 0 0 8px; font: 800 clamp(22px, 5vw, 42px)/1.1 'DM Sans', sans-serif; color: #FFF; white-space: nowrap; letter-spacing: -.4px; }
@@ -1105,7 +1133,7 @@ button.mobile-only {
 .public-address-selected > svg { width: 34px; height: 34px; color: #E31B2B; flex: 0 0 auto; }
 .public-address-selected > div { display: grid; gap: 5px; min-width: 0; flex: 1; }.public-address-selected small { color: #F3F4F6; font-size: 14px; }.public-address-selected strong { font-size: 20px; overflow-wrap: anywhere; }.public-address-selected > div span { color: #51d88a; font-size: 10px; }.public-address-selected button { border: 0; background: transparent; color: #E31B2B; font: 700 16px 'DM Sans'; cursor: pointer; }
 .public-address-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 14px 16px; border: 1px solid rgba(237,27,47,.3); border-radius: 16px; background: linear-gradient(110deg, rgba(237,27,47,.12), rgba(255,255,255,.03)); }.public-address-summary div { display: grid; gap: 3px; }.public-address-summary small { color: #a7aab2; font-size: 10px; }.public-address-summary strong { color: #ffd666; font-size: 17px; }.public-address-summary > span { color: #51d88a; font-size: 11px; font-weight: 700; }.public-address-error { margin: 10px 2px 0; color: #ff9da6; font-size: 11px; line-height: 1.35; }
-.public-address-extra { display: grid; gap: 9px; padding: 18px 24px; }.public-address-extra > span { color: #F3F4F6; font-size: 15px; }.public-address-extra small { color: #E5E7EB; }.public-address-extra input, .public-address-extra textarea { width: 100%; box-sizing: border-box; border: 0; outline: 0; resize: vertical; background: transparent; color: #FFF; font: 600 18px 'DM Sans'; }.public-address-extra input::placeholder, .public-address-extra textarea::placeholder { color: #E5E7EB; font-weight: 400; }
+.public-address-extra { display: grid; gap: 9px; padding: 18px 24px; }.public-address-extra > span { color: #F3F4F6; font-size: 15px; }.public-address-extra small { color: #E5E7EB; }.public-address-extra input, .public-address-extra textarea { width: 100%; box-sizing: border-box; border: 0; outline: 0; resize: vertical; background: transparent; color: #FFF; font: 600 18px 'DM Sans'; }.public-address-extra input:focus, .public-address-extra textarea:focus { border: 0; outline: 0; background: transparent; box-shadow: none; }.public-address-extra input::placeholder, .public-address-extra textarea::placeholder { color: #E5E7EB; font-weight: 400; }
 .public-location-row { display: flex; align-items: center; gap: 16px; padding: 20px 24px; color: #FFF; cursor: pointer; }.public-location-row svg:first-child { color: #E31B2B; }.public-location-row strong { flex: 1; text-align: left; font-size: 18px; }.public-address-continue { min-height: 68px; margin-top: 10px; font-size: 20px; }.public-address-step-suggestions { position: absolute; top: 76px; left: 0; right: 0; }
 .public-data-drawer .public-review-heading { margin-top: 34px; }
 .public-data-drawer .public-checkout { min-height: calc(100dvh - 190px); box-sizing: border-box; padding-top: 20px; gap: 18px; max-width: 900px; margin: 0 auto; width: 100%; }
@@ -1199,6 +1227,7 @@ button.mobile-only {
 .public-data-notes-title strong { color: #fff; font-size: 13px; }
 .public-data-notes-title small { color: #8f949d; font-size: 9px; font-weight: 700; text-transform: uppercase; }
 .public-checkout .public-data-notes textarea { min-height: 54px; box-sizing: border-box; padding: 12px 13px; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.045); font-size: 13px; }
+.public-checkout .public-data-notes textarea:focus { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.045); box-shadow: none; }
 .public-checkout .public-data-notes:focus-within { border-color: rgba(239,51,69,.72); }
 .public-data-privacy { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 8px; color: #9297a0; font-size: 10px; line-height: 1.35; text-align: center; }
 .public-data-privacy svg { width: 16px; height: 16px; flex: 0 0 auto; color: #ffd666; }
@@ -1229,8 +1258,9 @@ button.mobile-only {
 .public-cart-all-extras-head span { color: #ffd666; font-size: 9px; font-weight: 800; letter-spacing: .14em; }
 .public-cart-all-extras-head h3 { margin: 5px 0 0; font-size: clamp(21px, 4vw, 30px); }
 .public-cart-all-extras-head > button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: rgba(255,255,255,.05); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
-.public-cart-extras-search { display: flex; align-items: center; gap: 8px; height: 42px; box-sizing: border-box; margin-bottom: 24px; padding: 0 12px; border: 1px solid rgba(237,27,47,.68); border-radius: 13px; background: rgba(10,11,14,.82); color: #aeb3ba; }
+.public-cart-extras-search { display: flex; align-items: center; gap: 8px; height: 42px; box-sizing: border-box; margin-bottom: 24px; padding: 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 13px; background: rgba(10,11,14,.82); color: #aeb3ba; }
 .public-cart-extras-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #fff; font: 500 13px 'DM Sans'; }
+.public-cart-extras-search input:focus { border: 0; outline: 0; background: transparent; box-shadow: none; }
 .public-cart-extras-search input::placeholder { color: #7f858d; }
 .public-cart-extras-search > button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: #fff; cursor: pointer; }
 .public-cart-extra-sections { display: grid; gap: 24px; }
@@ -1247,6 +1277,8 @@ button.mobile-only {
 .public-cart-all-extras-grid article > button { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; background: #ed1b2f; color: #fff; line-height: 0; cursor: pointer; }
 .public-cart-extras-empty { margin: 34px 0; color: #aeb3ba; text-align: center; font-size: 13px; }
 @keyframes public-extras-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.public-cart-all-extras.closing { animation: public-extras-exit 220ms ease both; }
+@keyframes public-extras-exit { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(12px); } }
 .public-review-total b { grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed #505158; padding-top: 16px; margin-top: 10px; font-size: 22px; }
 .public-review-total em { color: #FFD666; font-style: normal; font-size: 26px; }
 .public-confirm-page { display: grid; gap: 16px; padding: 18px; border-radius: 24px; background: #f5f5f4; color: #141518; }
@@ -1616,7 +1648,8 @@ button.mobile-only {
 .public-geo-btn .is-spinning { animation: geo-spin .8s linear infinite; }
 @keyframes geo-spin { to { transform: rotate(360deg); } }
 .public-geo-coords { display: block; margin-top: 6px; font-size: 12px; color: #23B26D; font-weight: 600; }
-.public-address-suggestions { position: absolute; top: 100%; left: 0; right: 0; margin-top: 6px; background: linear-gradient(180deg, #20232b, #17191f); border: 1px solid rgba(255,255,255,0.16); border-radius: 14px; max-height: 240px; overflow-y: auto; z-index: 20; box-shadow: 0 18px 42px rgba(0,0,0,.62); }
+.public-address-suggestions { position: absolute; top: 100%; left: 0; right: 0; margin-top: 6px; background: linear-gradient(180deg, #20232b, #17191f); border: 1px solid rgba(255,255,255,0.16); border-radius: 14px; max-height: 240px; overflow-y: auto; z-index: 20; box-shadow: 0 18px 42px rgba(0,0,0,.62); animation: public-suggestions-in 180ms ease both; transform-origin: top center; }
+@keyframes public-suggestions-in { from { opacity: 0; transform: translateY(-6px) scaleY(0.96); } to { opacity: 1; transform: translateY(0) scaleY(1); } }
 .public-address-suggestions.public-address-step-suggestions { top: 64px; margin-top: 0; z-index: 1000; }
 .public-suggestion-heading { padding: 10px 14px 7px; color: #8f949f; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .public-suggestion-status { display: flex; align-items: center; gap: 9px; padding: 16px 14px; color: #c5c8cf; font-size: 12px; line-height: 1.35; }
@@ -1835,7 +1868,8 @@ button.mobile-only {
   .public-recommended-copy > small { font-size: 9px; margin-bottom: 5px; }
   .public-recommended-copy h2 { font-size: 20px; margin-bottom: 4px; }
   .public-recommended-copy p { font-size: 10px; line-height: 1.25; margin-bottom: 8px; }
-  .public-recommended-price { font-size: 16px; margin-bottom: 7px; }
+  .public-recommended-price { font-size: 16px; margin-bottom: 1px; }
+  .public-recommended-copy .public-prod-price-bs { font-size: 11px; margin-bottom: 8px; }
   .public-recommended-btn { padding: 7px 10px; border-radius: 8px; font-size: 10px; }
   .public-recommended-img { width: 70%; border-radius: 0 18px 18px 0; }
   .public-recommended-dots-overlay { bottom: 8px; }
@@ -1846,10 +1880,15 @@ button.mobile-only {
 
 /* Desktop & Tablet Layout */
 @media (min-width: 768px) {
-  .public-top-bar, .public-hero-header, .public-recommended-card, 
+  .public-top-bar, .public-hero-header,
   .public-categories-scroll, .public-list-header, .public-product-list {
     max-width: 860px;
     margin-left: auto; margin-right: auto;
+  }
+  .public-recommended-card {
+    width: calc(100% - 40px);
+    max-width: 860px;
+    margin: 0 auto 30px;
   }
   .public-product-list {
     display: grid;
@@ -1886,7 +1925,7 @@ button.mobile-only {
   .public-contact-card { grid-template-columns: min(130px, 20vw) minmax(0, 1fr); }
   .public-contact-card > img { max-width: 130px; }
   .public-estimate-card { width: 150px; }
-  .public-drawer-backdrop .public-cart-drawer { max-width: 560px; }
+  .public-drawer-backdrop .public-cart-drawer { max-width: min(680px, 92vw); }
   .public-cart-fab-tooltip { white-space: normal; max-width: 160px; text-align: center; }
   .public-delivery-choice { min-height: 180px; }
   .public-delivery-choice img { min-height: 180px; }
@@ -1928,9 +1967,107 @@ button.mobile-only {
 .public-empty-explore-btn svg { color: #FFF; }
 
 /* ==========================================================================
-   DESKTOP VIEWPORT (>= 1024px) — MAQUETA FULL CHINA PRO
+   TABLET PORTRAIT — solo iPad y similares en vertical (no teléfono, que
+   ya se ve bien con su propio diseño; no escritorio). Reutiliza el mismo
+   flujo de pedido/carrito, pero como panel centrado y ancho en vez de la
+   "hoja angosta pegada a la derecha" heredada del diseño de teléfono.
+   Va después del bloque de 768px y del de escritorio a propósito, para
+   ganarles en cascada.
    ========================================================================== */
-@media (min-width: 1024px) {
+@media (min-width: 680px) and (max-width: 1023px), (min-width: 680px) and (max-width: 1279px) and (orientation: portrait) {
+  /* Panel centrado tipo diálogo, en vez de hoja pegada al borde derecho.
+     El fondo mantiene la misma imagen decorativa que usan teléfono y
+     computadora (solo oscurecida para que el panel resalte), en vez de un
+     negro plano — antes era la única vista sin la imagen de fondo. */
+  .public-drawer-backdrop {
+    place-items: center !important;
+    padding: 28px !important;
+    background:
+      linear-gradient(rgba(5, 6, 8, 0.15), rgba(5, 6, 8, 0.4)),
+      url('/optimized/fondos/public-flow-bg.webp') center bottom / cover no-repeat !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer {
+    width: min(88vw, 760px) !important;
+    max-width: 760px !important;
+    height: auto !important;
+    max-height: 90vh !important;
+    border-radius: 26px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6) !important;
+    padding: 28px clamp(20px, 4vw, 40px) 36px !important;
+  }
+
+  /* La insignia de "Entrega estimada" se veía apretada/desproporcionada:
+     heredaba un ancho reducido (pensado para el drawer angosto de
+     teléfono) sin achicar su padding ni su texto en consecuencia. */
+  .public-estimate-card {
+    width: auto !important;
+    white-space: nowrap !important;
+    padding: 10px 14px !important;
+  }
+  .public-estimate-card small { font-size: 11px !important; }
+  .public-estimate-card strong { font-size: 15px !important; }
+
+  /* La caja del pedido tenía una altura mínima fija de 340px heredada de
+     un contexto con más productos: con 1-2 platos quedaba con muchísimo
+     espacio vacío alrededor, desproporcionada frente al resto de la
+     pantalla. Que se ajuste al contenido real, como ya pasa en teléfono
+     y escritorio. */
+  .public-review-page .public-cart-items { min-height: 0; padding: 18px 24px; width: 100%; }
+
+  /* El precio flotaba arriba a la derecha (position:absolute), separado
+     del nombre/controles y dejando un hueco vacío raro en tarjetas anchas.
+     Ahora es una columna normal del grid, alineada con el resto. */
+  .public-review-page .public-cart-item {
+    grid-template-columns: 130px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 20px;
+    min-height: 0;
+    padding: 18px 0;
+  }
+  .public-cart-item-image { width: 130px; height: 120px; border-radius: 16px; }
+  .public-cart-item-main { min-width: 0; padding-right: 0; }
+  .public-cart-item-main strong { display: block; max-width: 100%; font-size: 18px; line-height: 1.25; overflow-wrap: anywhere; }
+  .public-cart-item-main span { font-size: 14px; }
+  .public-cart-item-total { position: static; align-self: center; width: max-content; max-width: none; font-size: 16px; line-height: 1.15; text-align: right; white-space: nowrap; overflow-wrap: normal; }
+  .public-review-edit { right: 0; bottom: 18px; }
+
+  /* "¿Algo más?": el layout horizontal (foto + texto al lado) no tenía
+     espacio suficiente en columnas angostas y el precio en Bs. quedaba
+     tapado por el botón "+". Se usa el mismo formato de tarjeta vertical
+     que ya funciona bien en teléfono, con tamaños más generosos. */
+  .public-recommendation-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .public-recommendation-row article { display: block; padding: 8px; border-radius: 14px; }
+  .public-recommendation-row img { width: 100%; height: 92px; }
+  .public-recommendation-row article > div { padding: 6px 0 22px; }
+  .public-recommendation-row strong { font-size: 12px; }
+  .public-recommendation-row b { font-size: 13px; }
+  .public-recommendation-row button { width: 26px; height: 26px; right: 6px; bottom: 6px; }
+  .public-recommendation-row button svg { width: 14px; height: 14px; }
+
+  /* Catálogo completo "Agrega algo más" (Ver todos): mismo problema que
+     arriba — el layout horizontal de 3 columnas dejaba el botón "+"
+     encima del precio en Bs. Se usa el mismo formato de tarjeta vertical. */
+  .public-cart-all-extras-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .public-cart-all-extras-grid article { display: block; min-height: 0; padding: 8px; border-radius: 14px; }
+  .public-cart-all-extras-grid img { width: 100%; height: 92px; }
+  .public-cart-all-extras-grid article > div { padding: 6px 0 22px; }
+  .public-cart-all-extras-grid strong { font-size: 12px; }
+  .public-cart-all-extras-grid b { font-size: 13px; }
+  .public-cart-all-extras-grid article > button { width: 26px; height: 26px; right: 6px; bottom: 6px; }
+  .public-cart-all-extras-grid article > button svg { width: 14px; height: 14px; }
+}
+
+/* ==========================================================================
+   DESKTOP VIEWPORT (>= 1280px, o iPad/tablet >= 1024px en horizontal)
+   — MAQUETA FULL CHINA PRO
+   ========================================================================== */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
   .public-menu-page {
     width: 100%;
     max-width: none !important;
@@ -3147,9 +3284,10 @@ button.mobile-only {
   .public-favorites-inline svg { color: #E31B2B !important; }
   .public-favorite-btn svg,
   .public-home-fav-btn svg { color: #E31B2B !important; }
-  .public-prod-add svg { color: #FFF !important; }
   .public-prod-card svg,
   .public-home-product-card svg { color: #E31B2B !important; }
+  .public-prod-card .public-prod-add svg,
+  .public-home-product-card .public-prod-add svg { color: #FFF !important; }
   .public-empty-explore-btn svg { color: #FFF !important; }
   .public-review-qty svg { color: #E31B2B !important; }
   .public-review-edit { color: #E31B2B !important; }
@@ -3420,18 +3558,6 @@ button.mobile-only {
     line-height: 1.25 !important;
   }
 
-  .public-home-prod-desc {
-    font-size: 0.78rem !important;
-    color: #8B8E96 !important;
-    margin: 0 0 12px 0 !important;
-    line-height: 1.4 !important;
-    display: -webkit-box !important;
-    -webkit-line-clamp: 2 !important;
-    -webkit-box-orient: vertical !important;
-    overflow: hidden !important;
-    flex: 1 !important;
-  }
-
   .public-home-prod-price-wrap {
     display: flex !important;
     align-items: baseline !important;
@@ -3454,6 +3580,7 @@ button.mobile-only {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
+    margin-top: auto !important;
   }
 
   .public-home-stepper {
@@ -4674,6 +4801,10 @@ button.mobile-only {
     letter-spacing: -0.01em !important;
   }
 
+  .public-sidebar-title svg {
+    color: #FF5A52 !important;
+  }
+
   @keyframes badgeBump {
     0% { transform: scale(1); }
     35% { transform: scale(1.35) translateY(-2px); }
@@ -4957,6 +5088,102 @@ button.mobile-only {
     transform: scale(0.88) rotate(-8deg) !important;
   }
 
+  /* "¿Algo más?" en la barra lateral de escritorio: la columna es angosta
+     (350px), así que se reutiliza el layout horizontal compacto en una
+     sola columna en vez de la grilla de 3 columnas del drawer móvil. */
+  .public-sidebar-recommendations {
+    padding: 10px 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    margin-bottom: 4px !important;
+  }
+  .public-sidebar-recommendations .public-cart-recommendations-head {
+    margin-bottom: 8px !important;
+  }
+  .public-sidebar-recommendations .public-cart-recommendations-head h3 {
+    font-size: 13px !important;
+  }
+  .public-sidebar-recommendations .public-cart-recommendations-head button {
+    font-size: 11px !important;
+  }
+  /* Carrusel: una tarjeta ancha a la vez en vez de una lista apilada o
+     una fila de columnas angostas — ninguna de las dos cabía bien en los
+     ~300px de la barra lateral. */
+  .public-sidebar-reco-card {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 64px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 14px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    animation: public-sidebar-reco-in 380ms cubic-bezier(.22,.8,.3,1) both !important;
+  }
+  .public-sidebar-reco-card img {
+    width: 64px !important;
+    height: 58px !important;
+    border-radius: 10px !important;
+    object-fit: cover !important;
+  }
+  .public-sidebar-reco-card > div {
+    display: grid !important;
+    gap: 4px !important;
+    padding-right: 30px !important;
+    min-width: 0 !important;
+  }
+  .public-sidebar-reco-card strong {
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+  }
+  .public-sidebar-reco-card b {
+    color: #FFD666 !important;
+    font-size: 13px !important;
+  }
+  .public-sidebar-reco-card > button {
+    position: absolute !important;
+    right: 8px !important;
+    bottom: 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 26px !important;
+    height: 26px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 50% !important;
+    background: #ed1b2f !important;
+    color: #fff !important;
+    cursor: pointer !important;
+  }
+  .public-sidebar-reco-card > button svg {
+    width: 13px !important;
+    height: 13px !important;
+    color: #FFF !important;
+  }
+  .public-sidebar-reco-dots {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    margin-top: 10px !important;
+  }
+  .public-sidebar-reco-dots span {
+    width: 6px !important;
+    height: 6px !important;
+    border-radius: 50% !important;
+    background: rgba(255, 255, 255, 0.25) !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease !important;
+  }
+  .public-sidebar-reco-dots span.active {
+    background: #ed1b2f !important;
+  }
+  @keyframes public-sidebar-reco-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
   .public-sidebar-summary {
     padding: 6px 0 !important;
     border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -5073,10 +5300,12 @@ button.mobile-only {
     background: rgba(255, 255, 255, 0.06) !important;
   }
 
-  .public-sidebar-address-box input {
+  .public-sidebar-address-box input,
+  .public-sidebar-address-box input:focus {
     background: transparent !important;
     border: none !important;
     outline: none !important;
+    box-shadow: none !important;
     font-size: 12px !important;
     color: #FFF !important;
     flex: 1 !important;
@@ -5327,7 +5556,7 @@ button.mobile-only {
     background: rgba(255, 255, 255, 0.06) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
     color: #FFF !important;
-    transform: none !important;
+    transform: rotate(180deg) !important;
     display: grid !important;
     place-items: center !important;
     cursor: pointer !important;
@@ -5379,6 +5608,50 @@ button.mobile-only {
   .public-recommended-modal {
     background: #0E1015 !important;
     background-image: none !important;
+  }
+
+  /* El título heredaba clamp(21px,4vw,30px): en el panel angosto de
+     escritorio se veía enorme y partido en dos líneas. */
+  .public-cart-all-extras-head h3 {
+    font-size: 20px !important;
+    line-height: 1.15 !important;
+  }
+  .public-cart-all-extras-head span {
+    font-size: 10px !important;
+  }
+
+  /* El catálogo rápido ("Agrega algo más") heredaba la grilla de 3
+     columnas pensada para pantallas anchas: en el panel angosto de
+     escritorio (350px) el texto se salía de las tarjetas. Se usa una
+     sola columna, como una lista, igual que el resto del panel. */
+  .public-cart-all-extras-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .public-cart-all-extras-grid article {
+    grid-template-columns: 56px minmax(0, 1fr) !important;
+    min-height: 0 !important;
+    padding: 8px !important;
+    gap: 10px !important;
+  }
+  .public-cart-all-extras-grid img {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  .public-cart-all-extras-grid article > div {
+    padding-right: 30px !important;
+  }
+  .public-cart-all-extras-grid strong {
+    font-size: 12px !important;
+  }
+  .public-cart-all-extras-grid b {
+    font-size: 12px !important;
+  }
+  .public-cart-all-extras-grid article > button {
+    width: 24px !important;
+    height: 24px !important;
+    right: 8px !important;
+    bottom: 8px !important;
   }
 
   /* === Pulido del panel de escritorio (drawer de pasos) ===
@@ -5775,7 +6048,9 @@ button.mobile-only {
 .public-cart-item:nth-child(3), .public-confirm-info:nth-child(3) { animation-delay: 70ms; }
 .public-cart-item:nth-child(4), .public-confirm-info:nth-child(4) { animation-delay: 105ms; }
 .public-cart-all-extras { animation: public-extras-in 260ms var(--public-ease) both; }
+.public-cart-all-extras.closing { animation: public-extras-out 200ms var(--public-ease) both; }
 @keyframes public-extras-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes public-extras-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(12px) scale(.985); } }
 .public-cart-all-extras article { animation: public-block-in 280ms var(--public-ease) both; }
 .public-cart-all-extras article:nth-child(2) { animation-delay: 30ms; }
 .public-cart-all-extras article:nth-child(3) { animation-delay: 60ms; }
@@ -5918,6 +6193,11 @@ button.mobile-only {
   border-bottom: 0;
 }
 .ppdm-extra-option { position: relative; gap: 10px; }
+.ppdm-extras-skeleton-title { width: 90px; height: 14px; border-radius: 4px !important; }
+.ppdm-extra-option-skeleton { gap: 10px; cursor: default; }
+.ppdm-extras-skeleton-check { width: 18px; height: 18px; border-radius: 5px !important; flex-shrink: 0; }
+.ppdm-extras-skeleton-name { flex: 1; height: 13px; border-radius: 4px !important; max-width: 140px; }
+.ppdm-extras-skeleton-price { width: 44px; height: 13px; border-radius: 4px !important; margin-left: auto; }
 .ppdm-extra-option input {
   position: absolute;
   opacity: 0;
@@ -6051,7 +6331,7 @@ button.mobile-only {
   font: inherit;
   outline: none;
 }
-.ppdm-instructions-field textarea:focus { border-color: rgba(227,27,43,.75); }
+.ppdm-instructions-field textarea:focus { border-color: rgba(227,27,43,.75); box-shadow: none; }
 .ppdm-instructions-field textarea::placeholder { color: #686c75; }
 .ppdm-instructions-field > span { display: block; text-align: right; color: #686c75; font-size: 11px; font-weight: 400; margin-top: 4px; }
 .ppdm-footer {
@@ -6137,9 +6417,10 @@ button.mobile-only {
 }
 
 /* =====================================================================
-   MOBILE CONTACT TAB (< 1024px) — mobile-only, does NOT touch desktop
+   MOBILE CONTACT TAB — complemento exacto del breakpoint desktop de
+   arriba (< 1024px, o < 1280px en vertical) — mobile-only, no toca desktop
    ===================================================================== */
-@media (max-width: 1023px) {
+@media (max-width: 1023px), (max-width: 1279px) and (orientation: portrait) {
 
 .public-menu-page { padding-bottom: 120px; }
 
@@ -6660,4 +6941,4 @@ button.mobile-only {
 .public-skeleton-prod-price { width: 50px !important; height: 14px !important; }
 .public-skeleton-prod-add { width: 70px !important; height: 28px !important; border-radius: 10px !important; }
 
-} /* end @media (max-width: 1023px) */
+} /* end mobile-contact complement media */

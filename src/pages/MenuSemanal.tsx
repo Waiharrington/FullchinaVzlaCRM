@@ -17,7 +17,6 @@ import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import './MenuSemanal.css'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
-import { getEditorialDescription } from '../lib/menuEditorial'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
 const mondayOf = (d: Date) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x }
@@ -280,7 +279,7 @@ export function MenuSemanal() {
                 <div className="ws-card-title">
                   {d.weekTag && <div className="ws-card-week">{d.weekTag}</div>}
                   <h3>{formatProductTitle(d.name)}</h3>
-                  <p className="ws-card-desc">{getEditorialDescription(d.name, d.description || 'Sin descripción')}</p>
+                  <p className="ws-card-desc">{d.description || 'Sin descripción'}</p>
                 </div>
                 {isCurrentWeek && <button className="ws-switch on" title="Desactivar" disabled={busyId === d.id} onClick={() => setActive(d, false)} />}
               </div>
@@ -327,7 +326,7 @@ export function MenuSemanal() {
               {pageItems.map((d) => (
                 <tr key={d.id}>
                   <td><div className="ws-row-name">{thumb(d, 'ws-row-emoji')}<strong>{formatProductTitle(d.name)}</strong></div></td>
-                  <td style={{ color: '#a1a1aa', maxWidth: 280, lineHeight: 1.35 }}>{getEditorialDescription(d.name, d.description || '—')}</td>
+                  <td style={{ color: '#a1a1aa', maxWidth: 280, lineHeight: 1.35 }}>{d.description || '—'}</td>
                   <td style={{ color: '#a1a1aa' }}>{d.lastUsedWeekStart ? shortWeek(d.lastUsedWeekStart) : (d.weekTag || '—')}</td>
                   <td className="ws-row-price">{formatUsd(d.price)}</td>
                   <td style={{ color: '#d4d4d8' }}>{formatUsd(d.cost)}</td>
