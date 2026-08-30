@@ -156,7 +156,7 @@ export function menuItemRank(name: string, category: string) {
     chopsuey: [/chop suey veggie/, /chop suey mixto/, /chop suey full/, /chop suey especial/],
     individuales: [/pa ti/, /plato 1/, /plato 2/, /duo/, /plato 3/, /el trio/, /pa mi/],
     ejecutivos: [/especial de la casa/, /bolonesa artesanal/, /full tentacion/, /pasta con camarones? al ajillo/],
-    raciones: [/teque/, /lumpias sencillas/, /lumpias especiales/, /picadera/, /papas fritas/, /nuggets/, /pollo agridulce/, /costilla agridulce/, /costilla sal y pimienta/],
+    raciones: [/teque/, /^lumpias?\b/, /picadera/, /papas fritas/, /nuggets/, /pollo agridulce/, /costilla/, /camarones salteados/, /camarones crispy/, /sopa de fideos/, /wanton/],
   }
   const patterns = lists[category] || []
   const index = patterns.findIndex(pattern => pattern.test(n))

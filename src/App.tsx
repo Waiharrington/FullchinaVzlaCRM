@@ -113,7 +113,7 @@ function ManifestSwitcher() {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
 
   return (
     <Suspense fallback={<ModuleLoader />}>
@@ -121,7 +121,10 @@ function AppRoutes() {
       <Route path="/pedir" element={<Suspense fallback={<PublicMenuSkeleton />}><PublicOnboarding /></Suspense>} />
       <Route
         path="/login"
-        element={user ? <Navigate to="/" replace /> : <Login />}
+        // Mientras se valida la sesión guardada (loading), no decidir todavía
+        // entre mostrar el login o redirigir — evita el parpadeo del login
+        // en el arranque en frío de la PWA cuando la sesión ya es válida.
+        element={loading ? <ModuleLoader /> : user ? <Navigate to="/" replace /> : <Login />}
       />
       <Route
         element={
