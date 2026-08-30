@@ -8,7 +8,7 @@ export type MenuCategory = typeof MENU_CATEGORY_ORDER[number]
 
 export const MENU_CATEGORY_LABELS: Record<MenuCategory, string> = {
   arroz: 'Arroz',
-  chopsuey: 'Chopsuey',
+  chopsuey: 'Chop Suey',
   tallarines: 'Tallarines',
   pastas: 'Pastas',
   promociones: 'Promociones',

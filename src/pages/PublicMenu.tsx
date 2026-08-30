@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -34,6 +34,12 @@ const CATEGORY_ICONS: Record<string, string> = {
   extras: '/optimized/menu-icons/raciones.webp',
   otros: '/optimized/menu-icons/menu.webp',
 }
+
+// Tinte de fondo (RGB) para el efecto de "profundidad" que acompaña el
+// scroll en la vista "Todos" — sutil, no reemplaza la imagen de fondo de la
+// marca, solo la tiñe levemente según lo que se está viendo. Solo usa los
+// colores de la marca (rojo, dorado, naranja), intercalados por categoría.
+const CATEGORY_ACCENT_CYCLE = ['227, 27, 43', '255, 200, 61', '234, 88, 12']
 
 const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
   promociones: 'Promos',
@@ -219,6 +225,7 @@ export function PublicMenu() {
   })
   const [selectedGroup, setSelectedGroup] = useState<MenuProductGroup | null>(null)
   const [closingDetail, setClosingDetail] = useState(false)
+  const [detailOrigin, setDetailOrigin] = useState<{ x: number; y: number } | null>(null)
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [detailQuantity, setDetailQuantity] = useState(1)
   const [detailNotes, setDetailNotes] = useState('')
@@ -226,6 +233,7 @@ export function PublicMenu() {
   const [loadingModifiers, setLoadingModifiers] = useState(false)
   const [selectedExtras, setSelectedExtras] = useState<string[]>([])
   const [activeCategory, setActiveCategory] = useState('Todos')
+  const [scrollCategory, setScrollCategory] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]') as string[] } catch { return [] }
@@ -412,6 +420,38 @@ export function PublicMenu() {
     .filter(category => category !== 'Todos')
     .map(category => ({ category, groups: visibleGroups.filter(group => group.variants.some(v => v.product.categories.includes(category))) }))
     .filter(section => section.groups.length > 0), [categories, visibleGroups])
+
+  // Fondo dinámico por categoría: mientras se navega "Todos" en scroll, un
+  // IntersectionObserver detecta qué sección de categoría está a la vista y
+  // tiñe el fondo con su color de acento — un efecto de "profundidad" hecho
+  // a propósito, no un adorno genérico. Se desactiva con "reducir movimiento".
+  useEffect(() => {
+    if (activeCategory !== 'Todos' || categorySections.length === 0) {
+      setScrollCategory(null)
+      return
+    }
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('.public-category-section[data-category]'))
+      .filter(el => el.offsetParent !== null)
+    if (sections.length === 0) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const visible = entries.filter(e => e.isIntersecting)
+        if (visible.length === 0) return
+        const topMost = visible.reduce((a, b) => (a.boundingClientRect.top <= b.boundingClientRect.top ? a : b))
+        const category = topMost.target.getAttribute('data-category')
+        if (category) setScrollCategory(category)
+      },
+      { rootMargin: '-35% 0px -55% 0px', threshold: 0 }
+    )
+    sections.forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [activeCategory, categorySections])
+
+  const displayAccentCategory = activeCategory !== 'Todos' ? activeCategory : scrollCategory
+  const orderedCategories = useMemo(() => categories.filter(category => category !== 'Todos'), [categories])
+  const accentIndex = displayAccentCategory ? orderedCategories.indexOf(displayAccentCategory) : -1
+  const accentRgb = accentIndex === -1 ? CATEGORY_ACCENT_CYCLE[0] : CATEGORY_ACCENT_CYCLE[accentIndex % CATEGORY_ACCENT_CYCLE.length]
 
   const recommendedPool = useMemo(() => {
     const source = activeCategory === 'Todos'
@@ -622,7 +662,8 @@ export function PublicMenu() {
     }, 220)
   }
 
-  const openGroup = (group: MenuProductGroup) => {
+  const openGroup = (group: MenuProductGroup, originEvent?: { clientX: number; clientY: number }) => {
+    setDetailOrigin(originEvent ? { x: originEvent.clientX, y: originEvent.clientY } : null)
     setClosingDetail(false)
     setSelectedGroup(group)
     setSelectedVariantId(group.variants[0]?.product.id ?? null)
@@ -902,7 +943,7 @@ export function PublicMenu() {
     const isTallBottle = /^(agua|refresco\s+2\s+litros)$/i.test(group.name.trim())
     const isLiptonBottle = /^lipton\b/i.test(group.name.trim())
     return (
-      <article className="public-prod-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+      <article className="public-prod-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-prod-img-wrap">
           <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
@@ -929,7 +970,7 @@ export function PublicMenu() {
     const qty = getCardQty(group.key)
 
     return (
-      <article className="public-home-product-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+      <article className="public-home-product-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-home-prod-img-wrap">
           <img 
             src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
@@ -982,7 +1023,7 @@ export function PublicMenu() {
 
   const renderDesktopPromoCard = (group: MenuProductGroup) => {
     return (
-      <article className="public-home-promo-card" key={group.key} onClick={() => openGroup(group)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+      <article className="public-home-promo-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-home-promo-top">
           <h3 className="public-home-promo-title">{productTitle(group.name)}</h3>
           <div className="public-home-promo-price-row">
@@ -1015,7 +1056,7 @@ export function PublicMenu() {
   }
 
   return (
-    <main className="public-menu-page">
+    <main className="public-menu-page" style={{ '--cat-accent': accentRgb } as CSSProperties}>
       {/* Top Navbar */}
       <header className="public-top-bar" id="inicio">
           <>
@@ -1179,7 +1220,7 @@ export function PublicMenu() {
                   <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
                 </div>
               ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
-                <section className="public-category-section" key={section.category}>
+                <section className="public-category-section" key={section.category} data-category={section.category}>
                   <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><span>{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span></div>
                   <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < 4))}</div>
                 </section>
@@ -1401,33 +1442,6 @@ export function PublicMenu() {
                 </div>
               </section>
 
-              {/* 2. PEDIR ES MUY FÁCIL */}
-              <section className="public-home-section public-howto-section">
-                <div className="public-howto-banner">
-                  <div className="public-howto-header">
-                    <h2 className="public-howto-title">PEDIR ES MUY FÁCIL</h2>
-                    <p className="public-howto-sub">En solo 3 pasos, tu antojo en camino.</p>
-                  </div>
-                  <div className="public-howto-steps">
-                    <div className="public-howto-step">
-                      <div className="public-howto-step-num"><span>1</span></div>
-                      <h4>Elige tus platos</h4>
-                      <p>Explora el menú y agrega lo que más te guste.</p>
-                    </div>
-                    <div className="public-howto-step">
-                      <div className="public-howto-step-num"><span>2</span></div>
-                      <h4>Arma tu pedido</h4>
-                      <p>Revisa tu carrito y confirma tu selección.</p>
-                    </div>
-                    <div className="public-howto-step">
-                      <div className="public-howto-step-num"><span>3</span></div>
-                      <h4>Confirma por WhatsApp</h4>
-                      <p>Te escribiremos para validar tu pedido.</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
               {/* 3. NUESTRAS CATEGORÍAS */}
               <section className="public-home-section">
                 <div className="public-home-section-header">
@@ -1623,7 +1637,7 @@ export function PublicMenu() {
                         <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
                       </div>
                     ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
-                      <section className="public-category-section" key={section.category}>
+                      <section className="public-category-section" key={section.category} data-category={section.category}>
                         <div className="public-category-section-header">
                           <div className="public-category-title-group">
                             <span className="public-cat-section-bar" />
@@ -2015,16 +2029,22 @@ export function PublicMenu() {
 
       {selectedGroup && selectedProduct && (
         <div className={`public-modal-backdrop ${closingDetail ? 'closing' : ''}`} onClick={closeProductDetail}>
-          <section className="public-product-detail-modal" onClick={event => event.stopPropagation()}>
+          <section
+            className="public-product-detail-modal"
+            onClick={event => event.stopPropagation()}
+            style={detailOrigin ? { transformOrigin: `${detailOrigin.x}px ${detailOrigin.y}px` } : undefined}
+          >
             <div className="ppdm-image">
               <img src={optimizedProductImage(selectedProduct.imageUrl) || productImage(selectedGroup.category)} alt={selectedProduct.name} decoding="async" />
               <button className="ppdm-close" onClick={closeProductDetail} aria-label="Cerrar detalle"><X /></button>
               <div className="ppdm-image-gradient" />
+              <div className="ppdm-hero-copy">
+                <h1>{productTitle(selectedGroup.name)}</h1>
+                <div className="ppdm-price">{money(selectedProduct.price)}{priceBs(selectedProduct.price) && <span className="ppdm-price-bs">{priceBs(selectedProduct.price)}</span>}</div>
+              </div>
             </div>
             <div className="ppdm-content">
-              <h1>{productTitle(selectedGroup.name)}</h1>
               <p className="ppdm-desc">{selectedProduct.description || 'Preparado al momento con el sabor de Full China.'}</p>
-              <div className="ppdm-price">{money(selectedProduct.price)}{priceBs(selectedProduct.price) && <span className="ppdm-price-bs">{priceBs(selectedProduct.price)}</span>}</div>
               {selectedGroup.variants.length > 1 && (
                 <div className="ppdm-section">
                   <div className="ppdm-section-header"><h3>Elige tu presentación</h3><span>Obligatorio</span></div>
@@ -2047,28 +2067,31 @@ export function PublicMenu() {
               {loadingModifiers ? (
                 <div className="ppdm-section ppdm-extras-section">
                   <div className="ppdm-section-header"><h3 className="public-skeleton-block ppdm-extras-skeleton-title">&nbsp;</h3></div>
-                  <div className="ppdm-options">
+                  <div className="ppdm-chip-row">
                     {[0, 1, 2].map(i => (
-                      <div className="ppdm-option ppdm-extra-option-skeleton" key={i}>
-                        <span className="public-skeleton-block ppdm-extras-skeleton-check" />
-                        <span className="public-skeleton-block ppdm-extras-skeleton-name" />
-                        <span className="public-skeleton-block ppdm-extras-skeleton-price" />
-                      </div>
+                      <div className="ppdm-chip ppdm-chip-skeleton public-skeleton-block" key={i} />
                     ))}
                   </div>
                 </div>
               ) : detailModifierGroups.length > 0 && (
                 <div className="ppdm-section ppdm-extras-section">
                   <div className="ppdm-section-header"><h3>Extras <small>(opcionales)</small></h3></div>
-                  <div className="ppdm-options">
-                    {detailModifierGroups.flatMap(group => group.options.map(option => (
-                      <label className="ppdm-option ppdm-extra-option" key={option.id}>
-                        <input type="checkbox" checked={selectedExtras.includes(option.id)} onChange={() => setSelectedExtras(current => current.includes(option.id) ? current.filter(id => id !== option.id) : [...current, option.id])} />
-                        <span className="ppdm-checkbox-mark" />
-                        <span className="ppdm-option-name">{option.name}</span>
-                        {option.price > 0 && <span className="ppdm-option-price">+{money(option.price)}</span>}
-                      </label>
-                    )))}
+                  <div className="ppdm-chip-row">
+                    {detailModifierGroups.flatMap(group => group.options.map(option => {
+                      const active = selectedExtras.includes(option.id)
+                      return (
+                        <button
+                          type="button"
+                          className={`ppdm-chip ${active ? 'active' : ''}`}
+                          key={option.id}
+                          onClick={() => setSelectedExtras(current => current.includes(option.id) ? current.filter(id => id !== option.id) : [...current, option.id])}
+                        >
+                          <span className="ppdm-chip-name">{option.name}</span>
+                          {option.price > 0 && <span className="ppdm-chip-price">+{money(option.price)}</span>}
+                          <span className="ppdm-chip-check"><Check size={12} /></span>
+                        </button>
+                      )
+                    }))}
                   </div>
                 </div>
               )}
@@ -2080,7 +2103,7 @@ export function PublicMenu() {
                 <span>{detailQuantity}</span>
                 <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
               </div>
-              <button type="button" className="ppdm-add-btn" onClick={addSelectedProduct}>Agregar · {money((selectedProduct.price + detailExtrasTotal) * detailQuantity)}</button>
+              <button type="button" className="ppdm-add-btn" onClick={addSelectedProduct}>Agregar · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal) * detailQuantity)}</span></button>
             </footer>
           </section>
         </div>

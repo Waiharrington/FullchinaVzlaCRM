@@ -44,7 +44,16 @@
 }
 .public-menu-page::after {
   z-index: -1;
-  display: none;
+  display: block;
+  background:
+    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(var(--cat-accent, 227, 27, 43), 0.32), transparent 70%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(var(--cat-accent, 227, 27, 43), 0.18), transparent 70%);
+  transition: background 900ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-menu-page::after {
+    transition: none;
+  }
 }
 
 /* Mobile-first Defaults (< 1280px) */
@@ -219,6 +228,7 @@ button.mobile-only {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 1px;
+  white-space: nowrap;
 }
 .public-status {
   display: flex;
@@ -691,6 +701,7 @@ button.mobile-only {
   font-size: 10.5px;
   font-weight: 600;
   margin-top: 1px;
+  white-space: nowrap;
 }
 .ppdm-price-bs {
   display: block;
@@ -698,6 +709,7 @@ button.mobile-only {
   font-size: 12px;
   font-weight: 600;
   margin-top: 2px;
+  white-space: nowrap;
 }
 .public-cart-bar-total-group {
   display: flex;
@@ -2061,6 +2073,20 @@ button.mobile-only {
   .public-cart-all-extras-grid b { font-size: 13px; }
   .public-cart-all-extras-grid article > button { width: 26px; height: 26px; right: 6px; bottom: 6px; }
   .public-cart-all-extras-grid article > button svg { width: 14px; height: 14px; }
+
+  /* Barra "Menú/Contacto": en teléfono se ve bien estirada a todo el
+     ancho, pero en tablet deja un vacío enorme entre los dos botones
+     (cada uno pegado a su extremo). Se mantiene el ancho completo (esa
+     presencia/anclaje abajo de la pantalla es lo que se veía bien), pero
+     los botones se centran juntos en vez de estirarse cada uno a su lado. */
+  .public-mobile-tab-bar {
+    justify-content: center !important;
+    gap: 64px !important;
+  }
+  .public-mobile-tab {
+    flex: 0 0 auto !important;
+    min-width: 96px !important;
+  }
 }
 
 /* ==========================================================================
@@ -3019,6 +3045,7 @@ button.mobile-only {
     color: #717680 !important;
     margin-top: 2px !important;
     font-weight: 600 !important;
+    white-space: nowrap !important;
   }
 
   .public-prod-add {
@@ -3424,6 +3451,12 @@ button.mobile-only {
     gap: 16px !important;
     width: 100% !important;
     overflow-x: auto !important;
+    /* overflow-x:auto obliga a que overflow-y también recorte (no puede
+       quedar "visible" mientras el otro eje sea auto). Las tarjetas
+       quedaban pegadas al borde superior, así que el hover (que las
+       levanta y agranda) se cortaba de inmediato. Se les da margen. */
+    padding: 10px 2px !important;
+    margin: -10px -2px !important;
     scroll-behavior: smooth !important;
     scroll-snap-type: x mandatory !important;
     scrollbar-width: none !important;
@@ -3574,6 +3607,7 @@ button.mobile-only {
   .public-home-prod-price-bs {
     font-size: 0.76rem !important;
     color: #E5E7EB !important;
+    white-space: nowrap !important;
   }
 
   .public-home-prod-actions {
@@ -5236,6 +5270,7 @@ button.mobile-only {
     color: #8B8E96 !important;
     font-weight: 600 !important;
     margin-top: 1px !important;
+    white-space: nowrap !important;
   }
 
   /* Segmented iOS Switcher */
@@ -5471,12 +5506,25 @@ button.mobile-only {
   }
 
   .ppdm-image-gradient {
-    background: linear-gradient(to right, transparent, rgba(14, 16, 21, 0.95)) !important;
+    background:
+      linear-gradient(to right, transparent 60%, rgba(14, 16, 21, 0.95)),
+      linear-gradient(to bottom, transparent 45%, rgba(6,7,9,0.75)) !important;
     height: 100% !important;
-    width: 60px !important;
+    width: 100% !important;
     right: 0 !important;
-    left: auto !important;
+    left: 0 !important;
     top: 0 !important;
+  }
+
+  /* En escritorio la foto es solo la columna izquierda (44%): el nombre
+     y el precio quedan dentro de ese ancho, no del modal completo. */
+  .ppdm-hero-copy {
+    left: 24px !important;
+    right: 24px !important;
+    bottom: 24px !important;
+  }
+  .ppdm-hero-copy h1 {
+    font-size: 24px !important;
   }
 
   .ppdm-content {
@@ -6064,8 +6112,9 @@ button.mobile-only {
 }
 .ppdm-image {
   position: relative;
-  height: clamp(180px, 30dvh, 280px);
-  min-height: 160px;
+  /* La foto domina la apertura del modal en vez de ceder rápido al texto. */
+  height: clamp(320px, 52dvh, 480px);
+  min-height: 260px;
   width: 100%;
   flex: 0 0 auto;
 }
@@ -6073,7 +6122,9 @@ button.mobile-only {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  animation: public-detail-img-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+@keyframes public-detail-img-in { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
 .ppdm-close {
   position: absolute;
   top: 12px;
@@ -6081,16 +6132,21 @@ button.mobile-only {
   background: rgba(0,0,0,0.5);
   backdrop-filter: blur(8px);
   border: none;
+  margin: 0;
+  padding: 0;
+  appearance: none;
   width: 32px;
   height: 32px;
   border-radius: 50%;
   color: #FFF;
   display: grid;
   place-items: center;
+  line-height: 0;
   cursor: pointer;
   z-index: 2;
   transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease;
 }
+.ppdm-close svg { display: block; }
 .ppdm-close:hover { transform: scale(1.1); background: rgba(227, 27, 43, 0.6); }
 .ppdm-close:active { transform: scale(0.9); }
 .ppdm-image-gradient {
@@ -6098,26 +6154,40 @@ button.mobile-only {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
-  background: linear-gradient(to bottom, transparent, #0D0F12);
+  height: 65%;
+  background: linear-gradient(to bottom, transparent, rgba(6,7,9,0.55) 55%, #0D0F12 100%);
+  pointer-events: none;
 }
+/* Nombre y precio flotan sobre la foto (degradado abajo) en vez de un
+   bloque de texto plano después — la foto y el nombre se leen como una
+   sola escena, no como una ficha de datos. */
+.ppdm-hero-copy {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 1;
+}
+.ppdm-hero-copy h1 {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.08;
+  margin: 0 0 8px;
+  color: #FFF;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.5);
+  animation: public-text-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.ppdm-hero-copy .ppdm-price {
+  animation: public-text-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
+}
+@keyframes public-text-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ppdm-content {
-  padding: 0 20px 100px;
+  padding: 20px 20px 100px;
   overflow: visible;
   flex: 1 1 auto;
   min-height: auto;
 }
-.ppdm-content h1 {
-  font-size: 22px;
-  font-weight: 700;
-  margin: 0 0 6px;
-  color: #FFF;
-  animation: public-text-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
-}
-.ppdm-content .ppdm-price {
-  animation: public-text-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
-}
-@keyframes public-text-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 .ppdm-badge {
   display: inline-flex;
   align-items: center;
@@ -6134,10 +6204,20 @@ button.mobile-only {
   margin: 0 0 12px;
 }
 .ppdm-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
   color: #FFD666;
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 16px;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 6px 14px;
+  border-radius: 999px;
+  /* Sin backdrop-filter aquí a propósito: combinado con la animación de
+     entrada (opacity/transform) causaba un destello blanco breve en
+     Safari/WebKit móvil mientras arma la capa de desenfoque en pleno
+     movimiento. Fondo sólido evita el problema sin perder el look. */
+  background: rgba(15, 16, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 .ppdm-section {
   margin-bottom: 16px;
@@ -6192,39 +6272,56 @@ button.mobile-only {
 .ppdm-option:last-child {
   border-bottom: 0;
 }
-.ppdm-extra-option { position: relative; gap: 10px; }
-.ppdm-extras-skeleton-title { width: 90px; height: 14px; border-radius: 4px !important; }
-.ppdm-extra-option-skeleton { gap: 10px; cursor: default; }
-.ppdm-extras-skeleton-check { width: 18px; height: 18px; border-radius: 5px !important; flex-shrink: 0; }
-.ppdm-extras-skeleton-name { flex: 1; height: 13px; border-radius: 4px !important; max-width: 140px; }
-.ppdm-extras-skeleton-price { width: 44px; height: 13px; border-radius: 4px !important; margin-left: auto; }
-.ppdm-extra-option input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
+/* Extras como chips seleccionables en fila — más táctil que un
+   checklist de formulario; se iluminan en rojo al tocarlos. */
+.ppdm-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
-.ppdm-checkbox-mark {
-  width: 18px;
-  height: 18px;
-  flex: 0 0 18px;
-  border: 1px solid #4a4d54;
-  border-radius: 4px;
-  background: #101216;
+.ppdm-chip {
   position: relative;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid #2a2d33;
+  background: #14161C;
+  color: #FFF;
+  font: 600 12.5px 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.18s ease, border-color 0.18s ease;
 }
-.ppdm-extra-option input:checked + .ppdm-checkbox-mark { background: #E31B2B; border-color: #E31B2B; animation: public-check-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes public-check-pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
-.ppdm-extra-option input:checked + .ppdm-checkbox-mark::after {
-  content: '';
-  position: absolute;
-  width: 5px;
-  height: 9px;
-  left: 6px;
-  top: 2px;
-  border: solid #FFF;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+.ppdm-chip:active { transform: scale(0.95); }
+.ppdm-chip-price { color: #9aa0aa; }
+.ppdm-chip-check {
+  display: grid;
+  place-items: center;
+  width: 0;
+  overflow: hidden;
+  color: #FFF;
+  transform: scale(0.5);
+  opacity: 0;
+  transition: width 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+}
+.ppdm-chip.active {
+  background: #E31B2B;
+  border-color: #E31B2B;
+  animation: public-check-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ppdm-chip.active .ppdm-chip-price { color: rgba(255,255,255,0.8); }
+.ppdm-chip.active .ppdm-chip-check {
+  width: 14px;
+  transform: scale(1);
+  opacity: 1;
+}
+@keyframes public-check-pop { 0% { transform: scale(1); } 40% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.ppdm-chip-skeleton {
+  width: 96px;
+  height: 34px;
+  border-radius: 999px !important;
+  cursor: default;
 }
 .ppdm-radio {
   width: 20px;
@@ -6392,6 +6489,11 @@ button.mobile-only {
 }
 .ppdm-add-btn:hover { transform: scale(1.03); box-shadow: 0 4px 16px rgba(227, 27, 43, 0.35); }
 .ppdm-add-btn:active { transform: scale(0.97); }
+.ppdm-add-btn-total {
+  display: inline-block;
+  animation: public-price-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes public-price-pop { 0% { transform: scale(0.8); opacity: 0.4; } 60% { transform: scale(1.12); } 100% { transform: scale(1); opacity: 1; } }
 
 /* Montos en Bs (referencia BCV) dentro del carrito/checkout */
 .public-cart-item-bs {
@@ -6400,6 +6502,7 @@ button.mobile-only {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 1px;
+  white-space: nowrap;
 }
 .public-total-bs {
   display: block;
@@ -6407,6 +6510,7 @@ button.mobile-only {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.55);
   margin-top: 1px;
+  white-space: nowrap;
 }
 .public-whatsapp-total-bs {
   display: block;
@@ -6414,6 +6518,7 @@ button.mobile-only {
   font-weight: 600;
   color: rgba(255, 255, 255, 0.75);
   margin-top: 1px;
+  white-space: nowrap;
 }
 
 /* =====================================================================
