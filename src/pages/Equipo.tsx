@@ -56,6 +56,8 @@ export function Equipo() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [hourlyRate, setHourlyRate] = useState(0)
+  const [weeklySalary, setWeeklySalary] = useState(0)
+  const [overtimeRate, setOvertimeRate] = useState(0)
 
   // --- Usuarios de acceso ---
   const [authUsers, setAuthUsers] = useState<AuthUser[]>([])
@@ -97,8 +99,10 @@ export function Equipo() {
       setEditingId(emp.id)
       setName(emp.fullName)
       setHourlyRate(emp.hourlyRate)
+      setWeeklySalary(emp.weeklySalary)
+      setOvertimeRate(emp.overtimeRate)
     } else {
-      setEditingId(null); setName(''); setHourlyRate(0)
+      setEditingId(null); setName(''); setHourlyRate(0); setWeeklySalary(0); setOvertimeRate(0)
     }
     setShowModal(true)
   }
@@ -108,10 +112,10 @@ export function Equipo() {
     if (!name.trim()) return
     try {
       if (editingId) {
-        await updateEmployee(editingId, { fullName: name.trim(), hourlyRate })
+        await updateEmployee(editingId, { fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
         flash(`"${name.trim()}" actualizado con éxito`)
       } else {
-        await createEmployee({ fullName: name.trim(), hourlyRate })
+        await createEmployee({ fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
         flash(`"${name.trim()}" registrado correctamente`)
       }
       setShowModal(false)
@@ -370,7 +374,7 @@ export function Equipo() {
               <div className="team-card-details">
                 <div className="detail-row">
                   <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Salario mensual:</span>
-                  <span style={{ color: '#fff', fontSize: '13px' }}>${emp.hourlyRate.toFixed(2)}</span>
+                  <span style={{ color: '#fff', fontSize: '13px' }}>${emp.weeklySalary.toFixed(2)} / semana</span>
                 </div>
               </div>
               <div className="team-card-actions">
@@ -459,7 +463,11 @@ export function Equipo() {
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Pedro Pérez" required />
               </div>
               <div className="form-group">
-                <label>Salario mensual (USD)</label>
+                <label>Sueldo semanal (USD)</label>
+                <NumberStepper min={0} step={1} value={String(weeklySalary)} onChange={(v) => setWeeklySalary(parseFloat(v) || 0)} />
+                <label>Tarifa hora extra (USD)</label>
+                <NumberStepper min={0} step={0.5} value={String(overtimeRate)} onChange={(v) => setOvertimeRate(parseFloat(v) || 0)} />
+                <label style={{ color: '#71717a' }}>Tarifa histórica por hora (opcional)</label>
                 <NumberStepper min={0} step={1} value={String(hourlyRate)} onChange={(v) => setHourlyRate(parseFloat(v) || 0)} />
               </div>
               <div className="modal-actions-bar">

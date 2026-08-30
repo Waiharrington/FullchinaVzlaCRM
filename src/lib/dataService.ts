@@ -2256,6 +2256,8 @@ export async function createEmployee(params: {
   fullName: string
   position?: string | null
   hourlyRate?: number
+  weeklySalary?: number
+  overtimeRate?: number
 }): Promise<Employee> {
   const { data, error } = await client()
     .from('employees')
@@ -2263,6 +2265,8 @@ export async function createEmployee(params: {
       full_name: params.fullName,
       position: params.position ?? null,
       hourly_rate: params.hourlyRate ?? 0,
+      weekly_salary: params.weeklySalary ?? 0,
+      overtime_rate: params.overtimeRate ?? 0,
       is_active: true,
     })
     .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
@@ -2283,12 +2287,16 @@ export async function updateEmployee(id: string, updates: {
   fullName?: string
   position?: string | null
   hourlyRate?: number
+  weeklySalary?: number
+  overtimeRate?: number
   isActive?: boolean
 }): Promise<void> {
   const patch: Record<string, unknown> = {}
   if (updates.fullName !== undefined) patch.full_name = updates.fullName
   if (updates.position !== undefined) patch.position = updates.position
   if (updates.hourlyRate !== undefined) patch.hourly_rate = updates.hourlyRate
+  if (updates.weeklySalary !== undefined) patch.weekly_salary = updates.weeklySalary
+  if (updates.overtimeRate !== undefined) patch.overtime_rate = updates.overtimeRate
   if (updates.isActive !== undefined) patch.is_active = updates.isActive
   const { error } = await client()
     .from('employees')
