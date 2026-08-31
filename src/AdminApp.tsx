@@ -62,7 +62,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     <>
       {!splashDone ? <SplashScreen onDone={handleSplashDone} minDuration={2800} ready={splashReady} /> : null}
       {!loading && user ? (
-        <Suspense fallback={initialRouteReady ? <ModuleLoader /> : null}>
+        <Suspense fallback={!splashDone ? null : <ModuleLoader />}>
           <InitialRouteContent onReady={handleInitialRouteReady}>{children}</InitialRouteContent>
         </Suspense>
       ) : null}
@@ -72,11 +72,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AdminRoutes() {
-  const { user, loading } = useAuth()
+  const { user, loading, splashDone } = useAuth()
   return (
-    <Suspense fallback={<ModuleLoader />}>
+    <Suspense fallback={splashDone ? <ModuleLoader /> : null}>
       <Routes>
-        <Route path="/login" element={loading ? <ModuleLoader /> : user ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/login" element={!loading && user ? <Navigate to="/" replace /> : <Login />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/" element={forModule('/', <Inicio />)} />
           <Route path="/caja" element={forModule('/caja', <Caja />)} />

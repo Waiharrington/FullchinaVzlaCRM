@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, useLocation } from 'react-router-dom'
-import { ModuleLoader } from './components/ModuleLoader'
 
 const PublicOnboarding = lazy(() => import('./pages/PublicOnboarding').then(module => ({ default: module.PublicOnboarding })))
 const AdminApp = lazy(() => import('./AdminApp'))
@@ -17,7 +16,12 @@ function AppContent() {
   }, [isPublicMenu])
 
   if (isPublicMenu) return <Suspense fallback={<div style={{ backgroundColor: '#0b0c10', width: '100vw', height: '100dvh' }} />}><PublicOnboarding /></Suspense>
-  return <Suspense fallback={<ModuleLoader />}><AdminApp /></Suspense>
+  // El bundle de AdminApp (login + dashboard + AuthProvider, que es quien
+  // controla el splash real con barra de progreso) se descarga aquí. Antes
+  // de que exista ese AuthProvider no hay forma de mostrar el splash real,
+  // así que este fallback debe ser un fondo liso (nunca el ModuleLoader con
+  // spinner) para no mostrar una "segunda pantalla de carga" distinta.
+  return <Suspense fallback={<div style={{ backgroundColor: '#000', width: '100vw', height: '100dvh' }} />}><AdminApp /></Suspense>
 }
 
 export default function App() {
