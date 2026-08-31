@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
@@ -289,7 +290,7 @@ export function Nomina() {
       </div>
 
       {/* Modales */}
-      {showPeriod && (
+      {showPeriod && createPortal(
         <div className="nom-modal-overlay" onClick={() => setShowPeriod(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPeriod}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo período de nómina</h3></div>
@@ -300,9 +301,10 @@ export function Nomina() {
             <div className="nom-field"><label>Notas</label><input value={pNotes} onChange={(e) => setPNotes(e.target.value)} placeholder="Ej: Semana 3 - Agosto" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPeriod(false)}>Cancelar</button><button type="submit" className="nom-btn">Crear período</button></div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
-      {showAdvance && (
+      {showAdvance && createPortal(
         <div className="nom-modal-overlay" onClick={() => setShowAdvance(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitAdvance}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo adelanto</h3></div>
@@ -314,9 +316,10 @@ export function Nomina() {
             <div className="nom-field"><label>Notas</label><input value={advNotes} onChange={(e) => setAdvNotes(e.target.value)} placeholder="Opcional" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowAdvance(false)}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
-      {showBonus && (
+      {showBonus && createPortal(
         <div className="nom-modal-overlay" onClick={() => setShowBonus(false)}>
           <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitBonus}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo bono de producción</h3></div>
@@ -328,9 +331,27 @@ export function Nomina() {
             <div className="nom-field"><label>Motivo</label><input value={bonReason} onChange={(e) => setBonReason(e.target.value)} placeholder="Ej: Ventas destacadas" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowBonus(false)}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
-      {showPayment && <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}><form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}><div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3></div><div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div><div className="nom-row2"><div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={payAmt} onChange={(v) => setPayAmt(v)} required /></div><div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div></div><div className="nom-row2"><div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div><div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div></div><div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div></form></div>}
+      {showPayment && createPortal(
+        <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}>
+          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3></div>
+            <div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div>
+            <div className="nom-row2">
+              <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={payAmt} onChange={(v) => setPayAmt(v)} required /></div>
+              <div className="nom-field"><label>Cuenta</label><input value={payAccount} onChange={(e) => setPayAccount(e.target.value)} placeholder="Banesco, efectivo..." /></div>
+            </div>
+            <div className="nom-row2">
+              <div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div>
+              <div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div>
+            </div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div>
+          </form>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

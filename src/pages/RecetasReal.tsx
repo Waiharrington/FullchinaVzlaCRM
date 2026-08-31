@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent,
   getIngredients, getUnits, getRecipeSummaries,
@@ -429,7 +430,7 @@ export function RecetasReal() {
         </div>
       </div>
 
-      {showNewRecipe && (
+      {showNewRecipe && createPortal(
         <div className="rec-modal-overlay" onClick={() => setShowNewRecipe(false)}>
           <div className="rec-modal" onClick={(e) => e.stopPropagation()}>
             <h3>Configurar nueva receta</h3>
@@ -470,7 +471,8 @@ export function RecetasReal() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

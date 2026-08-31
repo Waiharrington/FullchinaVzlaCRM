@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { LayoutGrid, Plus, Pencil, Trash2, X, Users, Clock, UtensilsCrossed } from 'lucide-react'
 import Toast from '../components/Toast'
@@ -294,7 +295,7 @@ export function Mesas() {
         {editMode && <span className="mesas-legend-hint">Arrastra una mesa para reubicarla · toca una mesa para editarla</span>}
       </div>
 
-      {selectedTable && (
+      {selectedTable && createPortal(
         <div className="mesas-modal-overlay" onClick={() => setSelectedTable(null)}>
           <div className="mesas-modal" onClick={e => e.stopPropagation()}>
             <button className="mesas-modal-close" onClick={() => setSelectedTable(null)}><X size={18} /></button>
@@ -313,10 +314,11 @@ export function Mesas() {
               Ver en Comandas
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {formState && (
+      {formState && createPortal(
         <div className="mesas-modal-overlay" onClick={() => setFormState(null)}>
           <form className="mesas-modal" onClick={e => e.stopPropagation()} onSubmit={handleSaveForm}>
             <button type="button" className="mesas-modal-close" onClick={() => setFormState(null)}><X size={18} /></button>
@@ -334,7 +336,7 @@ export function Mesas() {
             </label>
 
             <label className="mesas-form-field">
-              <span>Zona</span>
+              <span>Zona / Ambiente</span>
               <input
                 type="text"
                 value={formState.zone}
@@ -395,7 +397,8 @@ export function Mesas() {
               </button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

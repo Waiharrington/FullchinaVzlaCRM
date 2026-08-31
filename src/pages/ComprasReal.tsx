@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid,
   getIngredients, getUnits, createIngredient,
@@ -343,7 +344,7 @@ export function ComprasReal() {
       </div>
 
       {/* Detalle */}
-      {detail && (
+      {detail && createPortal(
         <div className="cmp-modal-overlay" onClick={() => setDetail(null)}>
           <div className="cmp-modal" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -365,7 +366,8 @@ export function ComprasReal() {
               <span className="cmp-total"><span className="val" style={{ fontSize: 20 }}>{formatUsd(detail.totalAmount)}</span></span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

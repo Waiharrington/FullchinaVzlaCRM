@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -422,7 +423,7 @@ export function Inventario() {
           </div>
         </div>
       </div>
-      {selectedIngredient && (
+      {selectedIngredient && createPortal(
         <div className="cmd-modal-overlay" onClick={() => setSelectedIngredient(null)}>
           <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
             <button className="modal-close-btn" onClick={() => setSelectedIngredient(null)} aria-label="Cerrar">×</button>
@@ -432,7 +433,8 @@ export function Inventario() {
             {showCosts && <p>Costo por unidad: {selectedIngredient.pricePerUnit === null ? 'No disponible' : `$${selectedIngredient.pricePerUnit.toFixed(2)}`}</p>}
             <button className="inv-generate-order-btn" onClick={() => { setSelectedIngredient(null); navigate('/compras') }}>Gestionar desde Compras</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

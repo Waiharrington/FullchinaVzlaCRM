@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import {
   createWeeklyDish, getWeeklyDishes, setWeeklyDishActive, syncWeeklyDishToCatalog,
@@ -363,7 +364,7 @@ export function MenuSemanal() {
       </div>
 
       {/* Modal crear */}
-      {showCreate && (
+      {showCreate && createPortal(
         <div className="ws-modal-overlay" onClick={() => setShowCreate(false)}>
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreate}>
             <h3>Nuevo plato especial</h3>
@@ -385,11 +386,12 @@ export function MenuSemanal() {
               <button type="submit" className="ws-create-btn" disabled={saving || !form.name.trim()}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Guardar plato</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal editar */}
-      {editing && (
+      {editing && createPortal(
         <div className="ws-modal-overlay" onClick={() => setEditing(null)}>
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleEdit}>
             <div className="ws-modal-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -411,11 +413,12 @@ export function MenuSemanal() {
               <button type="submit" className="ws-create-btn" disabled={saving || !editForm.name.trim()}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Guardar cambios</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal calendario */}
-      {showCalendar && (
+      {showCalendar && createPortal(
         <div className="ws-modal-overlay" onClick={() => setShowCalendar(false)}>
           <div className="ws-modal" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -432,7 +435,8 @@ export function MenuSemanal() {
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
