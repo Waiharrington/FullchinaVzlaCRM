@@ -27,7 +27,7 @@ import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
-import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2 } from 'lucide-react'
+import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -282,7 +282,10 @@ export function Mas() {
   return (
     <div className="page mas-page animate-fade-in">
       <header className="page-header">
-        <h1 className="page-title text-gradient">{isCreditsModule ? 'Cuentas por cobrar' : 'Más Módulos y Administración'}</h1>
+        <h1 className="page-title">
+          {isCreditsModule ? <CreditCard size={22} className="page-title-icon" /> : <Settings size={22} className="page-title-icon" />}
+          {isCreditsModule ? 'Cuentas por cobrar' : 'Más Módulos y Administración'}
+        </h1>
         <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : 'Configuración administrativa y Delivery'}</p>
       </header>
 

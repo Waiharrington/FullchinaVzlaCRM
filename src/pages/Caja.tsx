@@ -982,9 +982,8 @@ export function Caja() {
           {/* Hero Wok Flame Banner */}
           <div className="caja-hero-banner">
             <div className="hero-banner-left">
-              <div className="hero-cart-icon"><ShoppingCart size={28} /></div>
               <div>
-                <h1 className="hero-title">Nueva venta</h1>
+                <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> Nueva venta</h1>
                 <p className="hero-subtitle">Crea pedidos, cobra y envía a cocina.</p>
               </div>
             </div>

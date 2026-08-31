@@ -24,15 +24,6 @@
   flex-shrink: 0;
 }
 
-.inv-header-text h1 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  margin: 0;
-  background: linear-gradient(135deg, #ffffff 0%, #a1a1aa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.5px;
-}
 
 .inv-header-text p {
   font-size: 0.9375rem;

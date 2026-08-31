@@ -160,7 +160,7 @@ export function Finanzas() {
     <div className="page fin-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient">Finanzas & Cierre Financiero Automático</h1>
+          <h1 className="page-title"><TrendingUp size={22} className="page-title-icon" /> Finanzas & Cierre Financiero Automático</h1>
           <p className="page-subtitle">Consolidado sin planillas de Excel. Punto de equilibrio y rentabilidad real del negocio.</p>
         </div>
         <div className="fin-head-actions">

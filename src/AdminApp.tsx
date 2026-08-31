@@ -76,7 +76,7 @@ function AdminRoutes() {
   return (
     <Suspense fallback={splashDone ? <ModuleLoader /> : null}>
       <Routes>
-        <Route path="/login" element={!loading && user ? <Navigate to="/" replace /> : <Login />} />
+        <Route path="/login" element={loading ? null : user ? <Navigate to="/" replace /> : <Login />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/" element={forModule('/', <Inicio />)} />
           <Route path="/caja" element={forModule('/caja', <Caja />)} />

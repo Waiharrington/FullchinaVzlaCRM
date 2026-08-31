@@ -201,7 +201,7 @@ export function RecetasReal() {
     <div className="page rec-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient">Recetas</h1>
+          <h1 className="page-title"><BookOpen size={22} className="page-title-icon" /> Recetas</h1>
           <p className="page-subtitle">Gestiona todas las recetas y sus componentes por producto vendible.</p>
         </div>
         <button

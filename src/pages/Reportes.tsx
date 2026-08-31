@@ -5,7 +5,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import './Reportes.css'
 import { formatProductTitle } from '../lib/textFormat'
-import { UtensilsCrossed } from 'lucide-react'
+import { UtensilsCrossed, BarChart3 } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -157,7 +157,7 @@ export function Reportes() {
     return (
       <div className="page animate-fade-in">
         <header className="page-header">
-          <h1 className="page-title text-gradient">Reportes</h1>
+          <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
           <p className="page-subtitle">Acceso restringido</p>
         </header>
         <div className="card restricted-card">
@@ -170,7 +170,7 @@ export function Reportes() {
   return (
     <div className="page animate-fade-in">
       <header className="page-header">
-        <h1 className="page-title text-gradient">Reportes</h1>
+        <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
         <p className="page-subtitle">Análisis de ventas y rendimiento</p>
       </header>
 

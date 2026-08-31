@@ -65,6 +65,13 @@ export function Fidelizacion() {
 
   return (
     <div className="fidel-page">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title"><Award size={22} className="page-title-icon" /> Fidelización</h1>
+          <p className="page-subtitle">Premia las visitas recurrentes y sigue a tus clientes VIP.</p>
+        </div>
+      </header>
+
       {/* Métricas */}
       <div className="fidel-metrics">
         {METRICS.map((m, i) => (

@@ -162,11 +162,8 @@ export function Inventario() {
     <div className="inv-page">
       {/* Header */}
       <header className="inv-header">
-        <div className="inv-header-icon">
-          <Package size={24} />
-        </div>
         <div className="inv-header-text">
-          <h1>Inventario</h1>
+          <h1 className="page-title"><Package size={22} className="page-title-icon" /> Inventario</h1>
           <p>Gestiona tu inventario en tiempo real y controla tus existencias.</p>
         </div>
       </header>

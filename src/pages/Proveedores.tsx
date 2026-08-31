@@ -92,7 +92,7 @@ export function Proveedores() {
     <div className="page prv-page animate-fade-in">
       <header className="page-header prv-header">
         <div>
-          <h1 className="page-title text-gradient"><Building2 size={23} /> Proveedores</h1>
+          <h1 className="page-title"><Building2 size={22} className="page-title-icon" /> Proveedores</h1>
           <p className="page-subtitle">Directorio, contactos e historial de compras con cada proveedor.</p>
         </div>
         <button className="prv-primary" onClick={() => setShowForm((visible) => !visible)}><Plus size={17} /> Nuevo proveedor</button>

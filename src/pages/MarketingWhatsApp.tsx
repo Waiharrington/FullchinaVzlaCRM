@@ -53,6 +53,13 @@ export function MarketingWhatsApp() {
 
   return (
     <div className="whatsapp-page">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title"><MessageSquare size={22} className="page-title-icon" /> Marketing por WhatsApp</h1>
+          <p className="page-subtitle">Campañas y mensajes directos a tus clientes por WhatsApp.</p>
+        </div>
+      </header>
+
       {/* Metrics Banner */}
       <div className="almacen-metrics-grid">
         <div className="almacen-metric-card accent-green">

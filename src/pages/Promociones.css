@@ -19,11 +19,7 @@
 }
 .promo-hero-text { position: relative; z-index: 2; }
 .promo-hero-title {
-  font-size: 34px;
-  font-weight: 900;
   letter-spacing: -.02em;
-  margin: 0;
-  color: #fff;
 }
 .promo-hero-title span {
   background: linear-gradient(90deg, #f97316, #E31B2B);
@@ -248,7 +244,6 @@
 @media (max-width: 700px) {
   .promo-page { padding: 0 12px 20px; }
   .promo-hero { padding: 22px 20px; }
-  .promo-hero-title { font-size: 26px; }
   .promo-hero-fire { font-size: 80px; right: 10px; opacity: .5; }
   .promo-glow { display: none; }
   .promo-item { flex-wrap: wrap; gap: 12px; }

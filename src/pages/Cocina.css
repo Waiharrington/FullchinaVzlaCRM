@@ -30,9 +30,7 @@
   gap: 12px;
 }
 
-.kds-header-title h1 {
-  font-size: 24px;
-  font-weight: 800;
+.kds-header-title h1.page-title {
   margin: 0;
 }
 

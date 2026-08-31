@@ -186,7 +186,7 @@ export function Promociones() {
       {/* Hero */}
       <header className="promo-hero">
         <div className="promo-hero-text">
-          <h1 className="promo-hero-title">Promociones <span>del Menú</span></h1>
+          <h1 className="page-title promo-hero-title">Promociones <span>del Menú</span></h1>
           <p className="promo-hero-sub">Gestiona las ofertas que se ven en /pedir</p>
         </div>
         <div className="promo-hero-fire" aria-hidden><Flame size={28} /></div>

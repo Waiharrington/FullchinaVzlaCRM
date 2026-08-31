@@ -135,7 +135,7 @@ export function ProduccionReal() {
     <div className="page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient">Producción</h1>
+          <h1 className="page-title"><Flame size={22} className="page-title-icon" /> Producción</h1>
           <p className="page-subtitle">Lotes, rendimiento, merma y bonos de producción</p>
         </div>
         <button

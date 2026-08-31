@@ -268,7 +268,7 @@ export function Inicio() {
     <div className="db-page animate-fade-in">
       <header className="db-header">
         <div className="db-header-left">
-          <h1 className="db-greeting">¡Buen día, Chef! <Flame size={24} className="greeting-flame" /></h1>
+          <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>
           <div className="db-greeting-sub-row">
             <p className="db-greeting-sub">Aquí tienes el resumen de tu food truck.</p>
             <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">

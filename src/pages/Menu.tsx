@@ -287,7 +287,7 @@ export function Menu() {
     <div className="page mnu-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient"><UtensilsCrossed size={22} style={{ verticalAlign: '-3px', marginRight: 8 }} />Menú</h1>
+          <h1 className="page-title"><UtensilsCrossed size={22} className="page-title-icon" /> Menú</h1>
           <p className="page-subtitle">Gestiona tus platos: nombre, precio, categoría, foto y disponibilidad.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

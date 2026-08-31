@@ -79,7 +79,7 @@ export function Cocina() {
     <div className="kds-page animate-fade-in">
       <header className="kds-header">
         <div className="kds-header-title">
-          <h1><ChefHat size={20} style={{ marginRight: 8, verticalAlign: 'middle' }} /> KDS - Pantalla de Cocina</h1>
+          <h1 className="page-title"><ChefHat size={22} className="page-title-icon" /> KDS - Pantalla de Cocina</h1>
           <span className="kds-live-badge"><span className="kds-live-dot" /> EN VIVO</span>
         </div>
 

@@ -18,32 +18,10 @@
   gap: 1rem;
 }
 
-.db-greeting {
-  font-family: var(--font-display, 'Graduate', sans-serif);
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: #fff;
-  margin: 0;
-  letter-spacing: 0.01em;
-}
-
 .db-greeting-sub {
   font-size: 0.82rem;
   color: #71717a;
   margin: 0.15rem 0 0;
-}
-
-.greeting-flame {
-  display: inline-block;
-  vertical-align: middle;
-  color: #FF4D3D;
-  filter: drop-shadow(0 0 6px rgba(255, 77, 61, 0.6)) drop-shadow(0 0 12px rgba(245, 158, 11, 0.3));
-  animation: flamePulse 2s ease-in-out infinite;
-}
-
-@keyframes flamePulse {
-  0%, 100% { filter: drop-shadow(0 0 6px rgba(255, 77, 61, 0.6)) drop-shadow(0 0 12px rgba(245, 158, 11, 0.3)); transform: scale(1); }
-  50% { filter: drop-shadow(0 0 10px rgba(255, 77, 61, 0.8)) drop-shadow(0 0 18px rgba(245, 158, 11, 0.5)); transform: scale(1.1); }
 }
 
 .db-header-right {

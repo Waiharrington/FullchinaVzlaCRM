@@ -124,10 +124,9 @@ export function Almacen() {
     <div className="almacen-page">
       <header className="almacen-page-header">
         <div className="almacen-page-title-wrap">
-          <div className="almacen-page-icon"><Warehouse size={24} /></div>
           <div>
             <p className="almacen-eyebrow">OPERACIÓN · ABASTECIMIENTO</p>
-            <h1>Almacén principal</h1>
+            <h1 className="page-title"><Warehouse size={22} className="page-title-icon" /> Almacén principal</h1>
             <p>Controla la materia prima antes de enviarla al Food Truck.</p>
           </div>
         </div>

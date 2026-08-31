@@ -155,7 +155,7 @@ export function Nomina() {
     <div className="page nom-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient">Nómina y Personal</h1>
+          <h1 className="page-title"><Banknote size={22} className="page-title-icon" /> Nómina y Personal</h1>
           <p className="page-subtitle">Liquida sueldos por período, adelantos y bonos de producción.</p>
         </div>
         <div className="nom-head-actions">

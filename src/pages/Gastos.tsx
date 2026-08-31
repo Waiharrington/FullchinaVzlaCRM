@@ -117,7 +117,7 @@ export function Gastos() {
     <div className="page gst-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient"><Wallet size={22} style={{ verticalAlign: '-3px', marginRight: 8 }} />Gastos</h1>
+          <h1 className="page-title"><Wallet size={22} className="page-title-icon" /> Gastos</h1>
           <p className="page-subtitle">Registra y controla todos los egresos operativos del negocio que no son compras de inventario.</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>

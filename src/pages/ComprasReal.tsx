@@ -172,7 +172,7 @@ export function ComprasReal() {
     <div className="page cmp-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient"><ShoppingCart size={22} style={{ verticalAlign: '-3px', marginRight: 8 }} />Compras e Insumos</h1>
+          <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> Compras e Insumos</h1>
           <p className="page-subtitle">Registra tus compras a proveedores. El inventario se actualiza automáticamente.</p>
         </div>
         <button className="cmp-new-btn" onClick={() => { if (showForm) { setShowForm(false) } else { resetForm(); setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }]); setShowForm(true) } }}>

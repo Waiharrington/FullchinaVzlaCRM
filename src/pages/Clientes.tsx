@@ -754,11 +754,8 @@ export function Clientes() {
       {/* Page Header */}
       <div className="clientes-page-header">
         <div className="header-title-wrap">
-          <div className="header-icon-circle">
-            <User size={22} />
-          </div>
           <div>
-            <h1 className="clientes-title">Clientes</h1>
+            <h1 className="page-title"><User size={22} className="page-title-icon" /> Clientes</h1>
             <p className="clientes-subtitle">Gestiona tu base de clientes, créditos y actividad de compra.</p>
           </div>
         </div>

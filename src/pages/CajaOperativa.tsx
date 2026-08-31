@@ -162,7 +162,7 @@ export function CajaOperativa() {
       <header className="cash-ops-header">
         <div>
           <span className="cash-ops-eyebrow">Control operativo</span>
-          <h1>Apertura y cierre de caja</h1>
+          <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /> Apertura y cierre de caja</h1>
           <p>Fondos iniciales, movimientos, arqueo y diferencias del turno.</p>
         </div>
         <button className="cash-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar caja">

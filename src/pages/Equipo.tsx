@@ -269,9 +269,8 @@ export function Equipo() {
       {/* Encabezado */}
       <div className="equipo-hero">
         <div className="header-title-group">
-          <div className="card-header-icon-red equipo-hero-icon"><Users size={22} /></div>
           <div>
-            <h2 className="prod-card-title">Gestión de Equipo y Personal</h2>
+            <h1 className="page-title"><Users size={22} className="page-title-icon" /> Gestión de Equipo y Personal</h1>
             <span className="metric-sub-text">
               {team.length} empleados · {team.filter(e => e.isActive).length} activos
               {isOwner && ` · ${authUsers.length} usuarios de acceso`}

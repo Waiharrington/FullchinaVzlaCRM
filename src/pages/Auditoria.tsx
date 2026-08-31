@@ -54,7 +54,7 @@ export function Auditoria() {
       <div className="page animate-fade-in">
         <header className="page-header">
           <div>
-            <h1 className="page-title text-gradient">Registro de Actividad y Auditoría</h1>
+            <h1 className="page-title"><Shield size={22} className="page-title-icon" /> Registro de Actividad y Auditoría</h1>
             <p className="page-subtitle">Bitácora de acciones sensibles del sistema</p>
           </div>
         </header>
@@ -74,7 +74,7 @@ export function Auditoria() {
     <div className="page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient">Registro de Actividad y Auditoría</h1>
+          <h1 className="page-title"><Shield size={22} className="page-title-icon" /> Registro de Actividad y Auditoría</h1>
           <p className="page-subtitle">
             {logs.length} registros · Solo el rol Owner tiene acceso
           </p>

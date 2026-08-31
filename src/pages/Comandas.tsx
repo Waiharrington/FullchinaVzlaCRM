@@ -833,9 +833,8 @@ export function Comandas() {
       {/* Comandas Header + Stat Cards Row */}
       <div className="comandas-header-row">
         <div className="comandas-header-left">
-          <div className="header-icon-box red"><ClipboardList size={20} /></div>
           <div>
-            <h1 className="comandas-title">Comandas</h1>
+            <h1 className="page-title"><ClipboardList size={22} className="page-title-icon" /> Comandas</h1>
             <p className="comandas-subtitle">Gestiona el estado de tus pedidos en tiempo real.</p>
           </div>
         </div>

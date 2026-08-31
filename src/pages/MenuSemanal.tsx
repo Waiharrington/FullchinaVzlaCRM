@@ -216,7 +216,7 @@ export function MenuSemanal() {
     <div className="page ws-page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title text-gradient"><Utensils size={22} style={{ verticalAlign: '-3px', marginRight: 8 }} />Menú Semanal</h1>
+          <h1 className="page-title"><Utensils size={22} className="page-title-icon" /> Menú Semanal</h1>
           <p className="page-subtitle">Administra los especiales rotativos y decide cuáles están disponibles esta semana.</p>
         </div>
         <div className="ws-head-actions">
