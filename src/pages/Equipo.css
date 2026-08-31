@@ -224,7 +224,7 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   width: 100%;
-  max-width: 480px;
+  max-width: 500px;
   max-height: min(90vh, 700px);
   max-height: min(90dvh, 700px);
   display: flex;
@@ -270,31 +270,48 @@
 
 .form-row-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-row-2 > .form-group {
+  min-width: 0;
 }
 
 .form-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .form-group label {
   color: #a1a1aa;
   font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.form-group input,
-.form-group select {
-  width: 100%; font-size: 14px;
+.form-group > input,
+.form-group > select {
+  width: 100%;
+  font-size: 14px;
+  box-sizing: border-box;
 }
 
-.form-group input:focus,
-.form-group select:focus {
+.form-group > input:focus,
+.form-group > select:focus {
   border-color: #E31B2B;
   box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
+}
+
+.form-group .num-stepper {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .modal-actions-bar {
