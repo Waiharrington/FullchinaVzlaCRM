@@ -40,17 +40,62 @@
 .nom-period .liq { color: #22c55e; font-weight: 700; font-size: 13px; margin-top: 4px; }
 
 /* Tabla liquidación */
-.nom-table-wrap { overflow-x: auto; border-radius: 12px; }
-.nom-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 960px; }
-.nom-table th { color: #a1a1aa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
-.nom-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+.nom-table-wrap { overflow-x: auto; border-radius: 14px; }
+.nom-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 980px; }
+.nom-table th { color: #a1a1aa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
+.nom-table tbody tr { transition: background 0.15s ease; }
+.nom-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.nom-table td { padding: 14px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
 .nom-col-left { text-align: left !important; }
 .nom-col-center { text-align: center !important; }
 .nom-col-right { text-align: right !important; }
-.nom-col-avatar { width: 36px; padding-right: 0 !important; text-align: center !important; }
+.nom-col-avatar { width: 42px; padding-right: 0 !important; text-align: center !important; }
 
-.nom-emp { display: flex; align-items: center; gap: 9px; }
-.nom-avatar { width: 32px; height: 32px; border-radius: 50%; background: #7c3aed; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.nom-emp { display: flex; align-items: center; gap: 10px; }
+.nom-avatar { width: 36px; height: 36px; border-radius: 50%; background: #7c3aed; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+
+/* Envoltorio consistente para alinear todos los campos a la misma altura exacta */
+.nom-cell-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  height: 52px;
+  min-height: 52px;
+  box-sizing: border-box;
+}
+
+.nom-cell-wrap.nom-cell-emp {
+  justify-content: center;
+}
+
+.nom-cell-wrap.nom-cell-amount {
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.nom-cell-wrap.nom-cell-right {
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.nom-cell-wrap strong {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.nom-cell-sub {
+  display: block;
+  height: 14px;
+  line-height: 14px;
+  font-size: 11px;
+  color: #71717a;
+  margin-top: 3px;
+  white-space: nowrap;
+}
 
 .nom-stepper-cell {
   display: inline-flex;
@@ -58,16 +103,17 @@
   align-items: center;
   justify-content: flex-start;
   gap: 3px;
-  width: 80px;
-  max-width: 80px;
-  height: 50px;
-  min-height: 50px;
+  width: 82px;
+  max-width: 82px;
+  height: 52px;
+  min-height: 52px;
   margin: 0 auto;
+  box-sizing: border-box;
 }
 
 .nom-stepper-cell .num-stepper {
   width: 100%;
-  max-width: 80px;
+  max-width: 82px;
   height: 32px;
   border-radius: 8px;
   background: #18181f;
@@ -108,10 +154,11 @@
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
+  margin-top: 0;
 }
 
-.nom-net { color: #22c55e; font-weight: 800; font-size: 14px; }
-.nom-tot-row td { font-weight: 700; border-top: 2px solid rgba(255,255,255,0.08); border-bottom: 0; padding-top: 12px; color: #fff; vertical-align: middle; }
+.nom-net { color: #22c55e !important; font-weight: 800 !important; font-size: 15px !important; }
+.nom-tot-row td { font-weight: 700; border-top: 2px solid rgba(255, 255, 255, 0.1); border-bottom: 0; padding: 16px 10px; color: #fff; vertical-align: middle; }
 
 /* Sub-grid inferior */
 .nom-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }

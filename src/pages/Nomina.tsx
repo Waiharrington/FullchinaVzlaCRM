@@ -241,12 +241,25 @@ export function Nomina() {
                   {rows.map((r) => (
                     <tr key={r.emp.id}>
                       <td className="nom-col-avatar"><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
-                      <td className="nom-col-left"><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
-                      <td className="nom-col-center"><strong>{formatUsd(r.weekly)}</strong></td>
+                      <td className="nom-col-left">
+                        <div className="nom-cell-wrap nom-cell-emp">
+                          <strong style={{ fontSize: 14 }}>{r.emp.fullName}</strong>
+                          <small className="nom-cell-sub">{r.emp.position || 'Empleado'}</small>
+                        </div>
+                      </td>
                       <td className="nom-col-center">
-                        <span style={{ color: r.advance > 0 ? '#ef4444' : '#71717a', fontWeight: r.advance > 0 ? 700 : 500 }}>
-                          {r.advance > 0 ? `-${formatUsd(r.advance)}` : '$0,00'}
-                        </span>
+                        <div className="nom-cell-wrap nom-cell-amount">
+                          <strong>{formatUsd(r.weekly)}</strong>
+                          <small className="nom-cell-sub">base</small>
+                        </div>
+                      </td>
+                      <td className="nom-col-center">
+                        <div className="nom-cell-wrap nom-cell-amount">
+                          <strong style={{ color: r.advance > 0 ? '#ef4444' : '#a1a1aa' }}>
+                            {r.advance > 0 ? `-${formatUsd(r.advance)}` : '$0,00'}
+                          </strong>
+                          <small className="nom-cell-sub">{r.advance > 0 ? 'pendiente' : 'sin adelanto'}</small>
+                        </div>
                       </td>
                       <td className="nom-col-center">
                         <div className="nom-stepper-cell">
@@ -292,19 +305,64 @@ export function Nomina() {
                           <small className="nom-stepper-hint" style={{ color: '#ef4444' }}>-{formatUsd(r.absenceDeduction)}</small>
                         </div>
                       </td>
-                      <td className="nom-col-right nom-net">{formatUsd(r.neto)}</td>
+                      <td className="nom-col-right">
+                        <div className="nom-cell-wrap nom-cell-right">
+                          <strong className="nom-net">{formatUsd(r.neto)}</strong>
+                          <small className="nom-cell-sub" style={{ color: '#22c55e' }}>a liquidar</small>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   <tr className="nom-tot-row">
                     <td className="nom-col-avatar"></td>
-                    <td className="nom-col-left">TOTALES</td>
-                    <td className="nom-col-center">{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</td>
-                    <td className="nom-col-center" style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</td>
-                    <td className="nom-col-center" style={{ color: '#22c55e' }}>+{formatUsd(tot.bon)}</td>
-                    <td className="nom-col-center" style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.overtime, 0))} ({tot.hours}h)</td>
-                    <td className="nom-col-center" style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</td>
-                    <td className="nom-col-center" style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</td>
-                    <td className="nom-col-right nom-net">{formatUsd(tot.neto)}</td>
+                    <td className="nom-col-left">
+                      <div className="nom-cell-wrap nom-cell-emp">
+                        <strong style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5 }}>TOTALES</strong>
+                        <small className="nom-cell-sub">{rows.length} empleados</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-center">
+                      <div className="nom-cell-wrap nom-cell-amount">
+                        <strong>{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</strong>
+                        <small className="nom-cell-sub">total base</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-center">
+                      <div className="nom-cell-wrap nom-cell-amount">
+                        <strong style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</strong>
+                        <small className="nom-cell-sub">adelantos</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-center">
+                      <div className="nom-cell-wrap nom-cell-amount">
+                        <strong style={{ color: '#22c55e' }}>+{formatUsd(tot.bon)}</strong>
+                        <small className="nom-cell-sub">bonos</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-center">
+                      <div className="nom-cell-wrap nom-cell-amount">
+                        <strong style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.overtime, 0))}</strong>
+                        <small className="nom-cell-sub">{tot.hours}h extra</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-center">
+                      <div className="nom-cell-wrap nom-cell-amount">
+                        <strong style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</strong>
+                        <small className="nom-cell-sub">transporte</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-center">
+                      <div className="nom-cell-wrap nom-cell-amount">
+                        <strong style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</strong>
+                        <small className="nom-cell-sub">ausencias</small>
+                      </div>
+                    </td>
+                    <td className="nom-col-right">
+                      <div className="nom-cell-wrap nom-cell-right">
+                        <strong className="nom-net" style={{ fontSize: 16 }}>{formatUsd(tot.neto)}</strong>
+                        <small className="nom-cell-sub" style={{ color: '#22c55e' }}>gran total</small>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
