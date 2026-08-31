@@ -39,7 +39,7 @@
   left: 50%;
   width: 180px;
   height: 180px;
-  background: radial-gradient(circle, rgba(220, 38, 38, 0.28) 0%, rgba(220, 38, 38, 0) 70%);
+  background: radial-gradient(circle, rgba(227, 27, 43, 0.28) 0%, rgba(227, 27, 43, 0) 70%);
   transform: translate(-50%, -50%);
   filter: blur(6px);
   pointer-events: none;
@@ -71,7 +71,7 @@
 
 .sidebar-logo-collapsed {
   max-width: 50px;
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.4));
+  filter: drop-shadow(0 0 8px rgba(255, 77, 61, 0.4));
 }
 
 .sidebar-toggle {
@@ -271,7 +271,7 @@
 }
 
 .sidebar-link.active {
-  background: rgba(220, 38, 38, 0.15);
+  background: rgba(227, 27, 43, 0.15);
   color: #ffffff;
   font-weight: 600;
   border-color: transparent;
@@ -284,13 +284,13 @@
   top: 10%;
   bottom: 10%;
   width: 3px;
-  background: #ef4444;
+  background: #FF4D3D;
   border-radius: 0 4px 4px 0;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.45);
+  box-shadow: 0 0 6px rgba(255, 77, 61, 0.45);
 }
 
 .sidebar-link.active .sidebar-icon {
-  color: #ef4444;
+  color: #FF4D3D;
 }
 
 @keyframes sidebarActivePop {
@@ -351,7 +351,7 @@
   text-align: left;
   font-family: inherit;
   cursor: pointer;
-  color: #ef4444;
+  color: #FF4D3D;
 }
 
 .sidebar.collapsed .sidebar-logout-btn-item {
@@ -362,7 +362,7 @@
 }
 
 .sidebar-logout-btn-item:hover {
-  background-color: rgba(239, 68, 68, 0.06);
+  background-color: rgba(255, 77, 61, 0.06);
   color: #f87171;
 }
 
@@ -380,8 +380,8 @@
 }
 
 .orders-card-icon-wrapper {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: rgba(255, 77, 61, 0.15);
+  color: #FF4D3D;
   width: 36px;
   height: 36px;
   border-radius: 8px;
@@ -389,11 +389,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 12px rgba(255, 77, 61, 0.25);
 }
 
 .orders-card-icon {
-  color: #ef4444;
+  color: #FF4D3D;
 }
 
 .orders-card-content {

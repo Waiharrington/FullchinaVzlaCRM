@@ -31,7 +31,7 @@
 .fin-kpi-lbl { font-size: 11px; color: #a1a1aa; }
 .fin-kpi-val { font-size: 20px; font-weight: 800; }
 .fin-kpi-sub { font-size: 11px; margin-top: 8px; color: #71717a; }
-.fin-up { color: #22c55e; } .fin-down { color: #ef4444; }
+.fin-up { color: #22c55e; } .fin-down { color: #FF4D3D; }
 
 /* Grid inferior */
 .fin-grid { display: grid; grid-template-columns: 1fr 1.3fr; gap: 16px; align-items: start; }
@@ -67,7 +67,7 @@
 .fin-pl-table td:nth-child(2), .fin-pl-table td:nth-child(3) { text-align: right; font-weight: 700; }
 .fin-pl-table tr.sumline td { background: rgba(255,255,255,0.03); }
 .fin-pl-table tr.final td { font-size: 15px; }
-.fin-danger { color: #ef4444; } .fin-success { color: #22c55e; }
+.fin-danger { color: #FF4D3D; } .fin-success { color: #22c55e; }
 .fin-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; color: #71717a; font-size: 11px; flex-wrap: wrap; }
 .fin-ops { display: grid; gap: 8px; }
 .fin-op { display: grid; grid-template-columns: minmax(180px,1fr) minmax(130px,.7fr) auto; gap: 14px; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.06); }

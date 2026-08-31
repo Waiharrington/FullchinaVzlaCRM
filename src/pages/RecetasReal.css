@@ -150,7 +150,7 @@
 .rec-ing-name { flex: 1; font-size: 14px; }
 .rec-ing-qty { color: #a1a1aa; font-size: 13px; }
 .rec-ing-cost { color: #d4d4d8; font-size: 13px; min-width: 70px; text-align: right; }
-.rec-ing-del { background: none; border: 0; color: #ef4444; cursor: pointer; padding: 4px; }
+.rec-ing-del { background: none; border: 0; color: #FF4D3D; cursor: pointer; padding: 4px; }
 
 .rec-add-form {
   display: grid; grid-template-columns: 1fr 90px 80px auto; gap: 8px; align-items: center;

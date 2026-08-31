@@ -37,9 +37,9 @@
 }
 
 .header-icon-box.red {
-  background: #dc2626;
+  background: #E31B2B;
   color: #fff;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 4px 12px rgba(227, 27, 43, 0.4);
 }
 
 .comandas-title {
@@ -66,7 +66,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #dc2626;
+  background: #E31B2B;
   color: #fff;
   border: none;
   padding: 10px 18px;
@@ -75,12 +75,12 @@
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+  box-shadow: 0 4px 14px rgba(227, 27, 43, 0.35);
   transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .btn-nueva-comanda:hover {
-  background: #ef4444;
+  background: #FF4D3D;
   transform: translateY(-1px);
 }
 
@@ -142,7 +142,7 @@
   font-weight: 900;
 }
 
-.text-red { color: #ef4444; }
+.text-red { color: #FF4D3D; }
 .text-orange { color: #f97316; }
 .text-green { color: #10b981; }
 .text-white { color: #ffffff; }
@@ -212,8 +212,8 @@
 }
 
 .filter-search-inline:focus-within {
-  border-color: #dc2626;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.2);
+  border-color: #E31B2B;
+  box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
 
 .filter-search-inline input {
@@ -259,7 +259,7 @@
 
 .command-status-error {
   padding: 10px 12px;
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid rgba(255, 77, 61, 0.4);
   border-radius: 9px;
   background: rgba(127, 29, 29, 0.3);
   color: #fecaca;
@@ -434,9 +434,9 @@
 .payment-error-message {
   margin-top: 0.75rem;
   padding: 0.7rem 0.85rem;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(255, 77, 61, 0.35);
   border-radius: 10px;
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(255, 77, 61, 0.1);
   color: #fecaca;
   font-size: 0.82rem;
   font-weight: 600;
@@ -520,13 +520,13 @@
 }
 
 .comanda-card-item:hover {
-  border-color: rgba(220, 38, 38, 0.5);
+  border-color: rgba(227, 27, 43, 0.5);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
 }
 
 .comanda-card-item.has-retraso {
-  border-color: rgba(239, 68, 68, 0.5);
+  border-color: rgba(255, 77, 61, 0.5);
   background: linear-gradient(135deg, #1f1414 0%, #18181b 100%);
 }
 
@@ -554,7 +554,7 @@
 }
 
 .badge-retraso {
-  background: #ef4444;
+  background: #FF4D3D;
   color: #fff;
   font-size: 10px;
   font-weight: 800;
@@ -659,7 +659,7 @@
 }
 
 .text-red-urgent {
-  color: #ef4444;
+  color: #FF4D3D;
 }
 
 .status-ready-group {
@@ -687,8 +687,8 @@
 }
 
 .quick-advance-btn {
-  background: rgba(220, 38, 38, 0.1);
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: rgba(227, 27, 43, 0.1);
+  border: 1px solid rgba(227, 27, 43, 0.3);
   color: #fca5a5;
   padding: 6px;
   border-radius: 6px;
@@ -700,7 +700,7 @@
 }
 
 .quick-advance-btn:hover {
-  background: #dc2626;
+  background: #E31B2B;
   color: #fff;
 }
 
@@ -798,7 +798,7 @@
   min-width: 0;
 }
 
-.payment-order-tag { color: #ef4444; font-size: 15px; }
+.payment-order-tag { color: #FF4D3D; font-size: 15px; }
 
 .payment-modal-close {
   width: 32px;
@@ -837,10 +837,10 @@
 }
 
 .payment-tab-btn.active {
-  background: #dc2626;
-  border-color: #ef4444;
+  background: #E31B2B;
+  border-color: #FF4D3D;
   color: #fff;
-  box-shadow: 0 0 16px rgba(220, 38, 38, 0.45);
+  box-shadow: 0 0 16px rgba(227, 27, 43, 0.45);
 }
 
 .payment-modal-body {
@@ -899,7 +899,7 @@
 }
 .cmd-add-ref-btn:hover { border-color: #16a34a; color: #22c55e; }
 .cmd-remove-ref-btn { border-style: solid; border-color: #444; }
-.cmd-remove-ref-btn:hover { border-color: #ef4444; color: #ef4444; }
+.cmd-remove-ref-btn:hover { border-color: #FF4D3D; color: #FF4D3D; }
 
 .qr-icon-right,
 .currency-tag-right { position: absolute; right: 12px; color: #a1a1aa; }
@@ -935,7 +935,7 @@
 .summary-box-line { color: #a1a1aa; font-size: 12px; }
 .summary-box-total-line { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,.12); }
 .summary-total-label { font-size: 14px; font-weight: 800; }
-.summary-total-val { color: #ef4444; font-size: 22px; font-weight: 900; }
+.summary-total-val { color: #FF4D3D; font-size: 22px; font-weight: 900; }
 .summary-box-customer { margin-top: 12px; }
 .customer-box-label { color: #a1a1aa; font-size: 10px; font-weight: 700; }
 .customer-box-card { margin-top: 5px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.04); }
@@ -995,7 +995,7 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #dc2626;
+  background: #E31B2B;
   display: grid;
   place-items: center;
   font-size: 11px;
@@ -1030,7 +1030,7 @@
   gap: 6px;
 }
 
-.btn-confirm-payment-red { flex: 1; border: 0; background: #dc2626; color: #fff; }
+.btn-confirm-payment-red { flex: 1; border: 0; background: #E31B2B; color: #fff; }
 .btn-confirm-payment-red:disabled { opacity: .55; cursor: not-allowed; }
 .btn-modal-action-dark { border: 1px solid rgba(255,255,255,.08); background: #202024; color: #fff; }
 .btn-modal-action-ghost { border: 1px solid rgba(255,255,255,.1); background: transparent; color: #d4d4d8; }
@@ -1048,9 +1048,9 @@
 }
 
 .pay-pending {
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: rgba(255, 77, 61, 0.15);
+  color: #FF4D3D;
+  border: 1px solid rgba(255, 77, 61, 0.3);
 }
 /* =========================================
    NUEVO MODAL DETALLE DE COMANDA ADAPTATIVO
@@ -1136,9 +1136,9 @@
 .cmd-badge.paid { color: #10b981; border-color: #10b981; background: transparent; }
 .cmd-badge.delivery { color: #3b82f6; border-color: #3b82f6; background: transparent; }
 .cmd-badge.sin-pagar {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.3);
+  color: #FF4D3D;
+  background: rgba(255, 77, 61, 0.15);
+  border-color: rgba(255, 77, 61, 0.3);
 }
 
 .cmd-close-btn {
@@ -1171,7 +1171,7 @@
   cursor: pointer;
   transition: 0.2s;
 }
-.cmd-delete-btn:hover { background: #ef4444; color: #fff; }
+.cmd-delete-btn:hover { background: #FF4D3D; color: #fff; }
 
 /* PIN Modal */
 .cmd-pin-modal {
@@ -1206,11 +1206,11 @@
   box-sizing: border-box;
 }
 .cmd-pin-input:focus { border-color: #f97316; }
-.cmd-pin-error { color: #ef4444; font-size: 12px; margin: 8px 0 0; }
+.cmd-pin-error { color: #FF4D3D; font-size: 12px; margin: 8px 0 0; }
 .cmd-pin-actions { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
 
 .cmd-btn-danger {
-  background: #ef4444;
+  background: #FF4D3D;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -1223,7 +1223,7 @@
   gap: 6px;
   transition: 0.2s;
 }
-.cmd-btn-danger:hover { background: #dc2626; }
+.cmd-btn-danger:hover { background: #E31B2B; }
 .cmd-btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Meta Bar */
@@ -1290,14 +1290,14 @@
   font-size: 12px;
   font-weight: 700;
   color: #fff;
-  background: #dc2626;
+  background: #E31B2B;
   border: none;
   border-radius: 9px;
   cursor: pointer;
-  box-shadow: 0 5px 14px rgba(220, 38, 38, 0.24);
+  box-shadow: 0 5px 14px rgba(227, 27, 43, 0.24);
   transition: background 0.16s ease, transform 0.12s ease;
 }
-.cmd-add-item-btn:hover { background: #ef4444; }
+.cmd-add-item-btn:hover { background: #FF4D3D; }
 .cmd-add-item-btn:active { transform: scale(0.97); }
 .cmd-item-actions { text-align: right; width: 44px; }
 .cmd-item-remove {
@@ -1306,13 +1306,13 @@
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.28);
+  background: rgba(255, 77, 61, 0.1);
+  border: 1px solid rgba(255, 77, 61, 0.28);
   color: #f87171;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.cmd-item-remove:hover:not(:disabled) { background: rgba(239, 68, 68, 0.22); color: #fca5a5; }
+.cmd-item-remove:hover:not(:disabled) { background: rgba(255, 77, 61, 0.22); color: #fca5a5; }
 .cmd-item-remove:disabled { opacity: 0.5; cursor: not-allowed; }
 .cmd-item-remove-error { color: #f87171; font-size: 12px; margin: 8px 2px 0; }
 
@@ -1337,11 +1337,11 @@
   align-items: center;
   gap: 8px;
   background: #0f0f12;
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(255, 77, 61, 0.35);
   border-radius: 10px;
   padding: 6px 8px 6px 12px;
 }
-.cmd-delivery-fee-row:focus-within { border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
+.cmd-delivery-fee-row:focus-within { border-color: #FF4D3D; box-shadow: 0 0 0 3px rgba(255, 77, 61, 0.15); }
 .cmd-delivery-fee-currency { color: #a1a1aa; font-weight: 700; }
 .cmd-delivery-fee-input {
   flex: 1;
@@ -1355,7 +1355,7 @@
 }
 .cmd-delivery-fee-input::placeholder { color: #52525b; font-weight: 500; }
 .cmd-delivery-fee-save {
-  background: #dc2626;
+  background: #E31B2B;
   border: none;
   color: #fff;
   font-weight: 700;
@@ -1384,14 +1384,14 @@
   background: #2a2a2a;
   border-radius: 6px;
   display: flex; align-items: center; justify-content: center;
-  color: #ef4444; flex-shrink: 0;
+  color: #FF4D3D; flex-shrink: 0;
 }
 .cmd-map-link {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 9px 14px;
-  background: #dc2626;
+  background: #E31B2B;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
@@ -1399,10 +1399,10 @@
   border-radius: 9px;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 5px 14px rgba(220, 38, 38, 0.24);
+  box-shadow: 0 5px 14px rgba(227, 27, 43, 0.24);
   transition: background 0.16s ease, transform 0.12s ease;
 }
-.cmd-map-link:hover { background: #ef4444; }
+.cmd-map-link:hover { background: #FF4D3D; }
 .cmd-map-link:active { transform: scale(0.97); }
 
 /* Items Table */
@@ -1466,7 +1466,7 @@
 }
 .cmd-summary-total > span { font-weight: 700; font-size: 14px; }
 .cmd-total-amounts { text-align: right; }
-.cmd-total-usd { display: block; color: #ef4444; font-size: 18px; font-weight: 700; }
+.cmd-total-usd { display: block; color: #FF4D3D; font-size: 18px; font-weight: 700; }
 .cmd-total-bs { display: block; color: #9ca3af; font-size: 11px; margin-top: 2px; }
 
 .cmd-payment-method-row {
@@ -1487,8 +1487,8 @@
 
 .cmd-pref-pay-row { margin-top: 6px; }
 .cmd-pref-pay-badge {
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  background: rgba(255, 77, 61, 0.12);
+  border: 1px solid rgba(255, 77, 61, 0.4);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 12px;
@@ -1684,7 +1684,7 @@
   width: 32px;
   height: 32px;
   border: 3px solid #333;
-  border-top-color: #dc2626;
+  border-top-color: #E31B2B;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

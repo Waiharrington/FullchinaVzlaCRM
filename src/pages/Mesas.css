@@ -24,7 +24,7 @@
   display: grid;
   place-items: center;
   color: #fca5a5;
-  background: linear-gradient(145deg, rgba(220, 38, 38, 0.28), rgba(127, 29, 29, 0.18));
+  background: linear-gradient(145deg, rgba(227, 27, 43, 0.28), rgba(127, 29, 29, 0.18));
   border: 1px solid rgba(248, 113, 113, 0.24);
   border-radius: 15px;
   box-shadow: 0 10px 26px rgba(127, 29, 29, 0.18);
@@ -53,16 +53,16 @@
 .mesas-btn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.2); }
 .mesas-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .mesas-btn-ghost { background: rgba(255, 255, 255, 0.03); }
-.mesas-btn-active { background: #dc2626; border-color: #dc2626; color: #fff; }
-.mesas-btn-primary { background: #dc2626; border-color: #dc2626; color: #fff; width: 100%; justify-content: center; }
-.mesas-btn-primary:hover { background: #ef4444; }
-.mesas-btn-danger { background: rgba(220, 38, 38, 0.1); border-color: rgba(220, 38, 38, 0.4); color: #f87171; }
+.mesas-btn-active { background: #E31B2B; border-color: #E31B2B; color: #fff; }
+.mesas-btn-primary { background: #E31B2B; border-color: #E31B2B; color: #fff; width: 100%; justify-content: center; }
+.mesas-btn-primary:hover { background: #FF4D3D; }
+.mesas-btn-danger { background: rgba(227, 27, 43, 0.1); border-color: rgba(227, 27, 43, 0.4); color: #f87171; }
 
 .mesas-error-banner {
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(220, 38, 38, 0.12);
-  border: 1px solid rgba(220, 38, 38, 0.3);
+  background: rgba(227, 27, 43, 0.12);
+  border: 1px solid rgba(227, 27, 43, 0.3);
   color: #fca5a5;
   font-size: 0.85rem;
 }
@@ -78,7 +78,7 @@
   font-weight: 600;
   cursor: pointer;
 }
-.mesas-zone-tab.active { background: #dc2626; border-color: #dc2626; color: #fff; }
+.mesas-zone-tab.active { background: #E31B2B; border-color: #E31B2B; color: #fff; }
 
 .mesas-empty {
   padding: 48px 20px;
@@ -107,7 +107,7 @@
   overflow: hidden;
   touch-action: none;
 }
-.mesas-canvas.edit-mode { border-color: rgba(220, 38, 38, 0.4); }
+.mesas-canvas.edit-mode { border-color: rgba(227, 27, 43, 0.4); }
 
 .mesas-tile {
   position: absolute;
@@ -200,7 +200,7 @@
   display: grid;
   place-items: center;
   color: #fca5a5;
-  background: rgba(220, 38, 38, 0.15);
+  background: rgba(227, 27, 43, 0.15);
   border-radius: 12px;
 }
 .mesas-modal h3 { margin: 0; color: var(--text-primary); font-size: 1.15rem; }
@@ -223,7 +223,7 @@
   font-size: 0.95rem;
   font-weight: 500;
 }
-.mesas-form-field input:focus { outline: none; border-color: #dc2626; }
+.mesas-form-field input:focus { outline: none; border-color: #E31B2B; }
 
 .mesas-shape-picker { display: flex; gap: 8px; }
 .mesas-shape-picker button {
@@ -236,9 +236,9 @@
   font-weight: 600;
   cursor: pointer;
 }
-.mesas-shape-picker button.active { background: #dc2626; border-color: #dc2626; color: #fff; }
+.mesas-shape-picker button.active { background: #E31B2B; border-color: #E31B2B; color: #fff; }
 
-.mesas-form-error { color: #fca5a5; font-size: 0.82rem; background: rgba(220,38,38,0.1); border-radius: 8px; padding: 8px 10px; }
+.mesas-form-error { color: #fca5a5; font-size: 0.82rem; background: rgba(227, 27, 43,0.1); border-radius: 8px; padding: 8px 10px; }
 
 .mesas-form-actions { display: flex; gap: 10px; margin-top: 6px; }
 .mesas-form-actions .mesas-btn-primary { flex: 1; }

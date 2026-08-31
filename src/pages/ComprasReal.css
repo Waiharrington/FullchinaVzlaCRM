@@ -20,7 +20,7 @@
 .cmp-sum-val { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 2px 0; }
 .cmp-sum-sub { font-size: 11px; color: #71717a; }
 .cmp-sum-sub.up { color: #22c55e; }
-.cmp-sum-sub.down { color: #ef4444; }
+.cmp-sum-sub.down { color: #FF4D3D; }
 
 /* Tarjetas */
 .cmp-card { background: #141419; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; margin-bottom: 18px; }
@@ -45,7 +45,7 @@
 .cmp-cost-wrap span { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #71717a; font-size: 13px; }
 .cmp-cost-wrap input { padding-left: 24px; }
 .cmp-subtotal { font-weight: 700; font-size: 14px; }
-.cmp-del { background: none; border: 0; color: #ef4444; cursor: pointer; padding: 4px; justify-self: center; }
+.cmp-del { background: none; border: 0; color: #FF4D3D; cursor: pointer; padding: 4px; justify-self: center; }
 .cmp-add-item { display: inline-flex; align-items: center; gap: 6px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
 
 .cmp-form-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.07); flex-wrap: wrap; }

@@ -9,15 +9,15 @@
 }
 
 .num-stepper:focus-within {
-  border-color: var(--accent-primary, #dc2626);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+  border-color: var(--accent-primary, #E31B2B);
+  box-shadow: 0 0 0 3px rgba(227, 27, 43, 0.15);
 }
 
 .num-stepper-prefix {
   display: flex;
   align-items: center;
   padding-left: 13px;
-  color: var(--accent-secondary, #ef4444);
+  color: var(--accent-secondary, #FF4D3D);
   font-size: 14px;
   font-weight: 800;
   pointer-events: none;
@@ -72,8 +72,8 @@
 .num-stepper-btn:first-child { border-radius: 0 var(--radius-md, 12px) 0 0; border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)); }
 .num-stepper-btn:last-child { border-radius: 0 0 var(--radius-md, 12px) 0; }
 
-.num-stepper-btn:hover:not(:disabled) { background: rgba(220, 38, 38, 0.15); color: var(--accent-secondary, #ef4444); }
-.num-stepper-btn:active:not(:disabled) { background: rgba(220, 38, 38, 0.28); }
+.num-stepper-btn:hover:not(:disabled) { background: rgba(227, 27, 43, 0.15); color: var(--accent-secondary, #FF4D3D); }
+.num-stepper-btn:active:not(:disabled) { background: rgba(227, 27, 43, 0.28); }
 .num-stepper-btn:disabled { color: rgba(255, 255, 255, 0.15); cursor: not-allowed; }
 
 .num-stepper:has(.num-stepper-input:disabled) { opacity: 0.55; }

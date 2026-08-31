@@ -30,7 +30,7 @@
 }
 
 .search-bar:focus-within {
-  border-color: #ef4444;
+  border-color: #FF4D3D;
   background-color: #0b0b0c;
 }
 
@@ -90,7 +90,7 @@
   position: absolute;
   top: -5px;
   right: -5px;
-  background-color: #ef4444;
+  background-color: #FF4D3D;
   color: white;
   font-size: 0.65rem;
   font-weight: 700;

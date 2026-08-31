@@ -13,7 +13,7 @@
   border-radius: 20px;
   padding: 30px 28px;
   background:
-    radial-gradient(120% 160% at 100% 0%, rgba(249,115,22,.28) 0%, rgba(220,38,38,.12) 32%, transparent 60%),
+    radial-gradient(120% 160% at 100% 0%, rgba(249,115,22,.28) 0%, rgba(227, 27, 43,.12) 32%, transparent 60%),
     linear-gradient(135deg, #17120f 0%, #0c0a09 100%);
   border: 1px solid rgba(249,115,22,.18);
 }
@@ -26,7 +26,7 @@
   color: #fff;
 }
 .promo-hero-title span {
-  background: linear-gradient(90deg, #f97316, #dc2626);
+  background: linear-gradient(90deg, #f97316, #E31B2B);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -76,7 +76,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  background: linear-gradient(135deg, #FF4D3D, #b91c1c);
   border: none;
   color: #fff;
   padding: 13px 24px;
@@ -84,10 +84,10 @@
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
-  box-shadow: 0 8px 22px rgba(220,38,38,.4);
+  box-shadow: 0 8px 22px rgba(227, 27, 43,.4);
   transition: transform .1s ease, box-shadow .15s ease;
 }
-.promo-new-btn:hover { box-shadow: 0 10px 28px rgba(220,38,38,.55); }
+.promo-new-btn:hover { box-shadow: 0 10px 28px rgba(227, 27, 43,.55); }
 .promo-new-btn:active { transform: scale(.97); }
 
 /* ─── Lista ──────────────────────────────────────────────────────────── */
@@ -108,11 +108,11 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(60% 120% at 4% 50%, color-mix(in srgb, var(--pc, #dc2626) 45%, transparent) 0%, transparent 55%);
+  background: radial-gradient(60% 120% at 4% 50%, color-mix(in srgb, var(--pc, #E31B2B) 45%, transparent) 0%, transparent 55%);
   opacity: .35;
   pointer-events: none;
 }
-.promo-item:hover { border-color: color-mix(in srgb, var(--pc, #dc2626) 55%, transparent); transform: translateY(-2px); }
+.promo-item:hover { border-color: color-mix(in srgb, var(--pc, #E31B2B) 55%, transparent); transform: translateY(-2px); }
 .promo-item.inactive { opacity: .45; border-style: dashed; }
 
 /* emoji gigante fantasma a la derecha (evoca el silueteado del mockup) */
@@ -129,11 +129,11 @@
 
 .promo-drag { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 2px; }
 .promo-move {
-  background: none; border: 0; cursor: pointer; color: #dc2626;
+  background: none; border: 0; cursor: pointer; color: #E31B2B;
   display: grid; place-items: center; padding: 2px 3px; border-radius: 6px;
   transition: all .15s;
 }
-.promo-move:hover:not(:disabled) { background: rgba(220,38,38,.15); }
+.promo-move:hover:not(:disabled) { background: rgba(227, 27, 43,.15); }
 .promo-move:disabled { opacity: .22; cursor: default; }
 
 .promo-icon-preview {
@@ -141,13 +141,13 @@
   width: 62px; height: 62px; border-radius: 15px;
   display: grid; place-items: center; font-size: 30px;
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--pc, #dc2626) 22%, #0b0a0c);
-  border: 1.5px solid color-mix(in srgb, var(--pc, #dc2626) 70%, transparent);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--pc, #dc2626) 55%, transparent);
+  background: color-mix(in srgb, var(--pc, #E31B2B) 22%, #0b0a0c);
+  border: 1.5px solid color-mix(in srgb, var(--pc, #E31B2B) 70%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--pc, #E31B2B) 55%, transparent);
 }
 
 .promo-info { position: relative; z-index: 1; flex: 1; min-width: 0; }
-.promo-tag { font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--pc, #dc2626); filter: brightness(1.5); }
+.promo-tag { font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--pc, #E31B2B); filter: brightness(1.5); }
 .promo-info strong { display: block; font-weight: 800; font-size: 18px; color: #fafafa; margin: 4px 0 2px; }
 .promo-subtitle { font-size: 13px; color: #a1a1aa; display: block; }
 .promo-note-badge {
@@ -176,8 +176,8 @@
 .promo-btn-toggle:hover { background: rgba(16,185,129,.9); color: #fff; }
 .promo-btn-edit { color: #fbbf24; border-color: rgba(217,119,6,.28); }
 .promo-btn-edit:hover { background: rgba(217,119,6,.9); color: #fff; }
-.promo-btn-delete { color: #f87171; border-color: rgba(220,38,38,.28); }
-.promo-btn-delete:hover { background: rgba(220,38,38,.9); color: #fff; }
+.promo-btn-delete { color: #f87171; border-color: rgba(227, 27, 43,.28); }
+.promo-btn-delete:hover { background: rgba(227, 27, 43,.9); color: #fff; }
 
 .promo-empty { text-align: center; color: #71717a; padding: 48px 16px; }
 .promo-footer-note {
@@ -215,7 +215,7 @@
   border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px 12px;
   font-size: 14px; color: #fff; background: #09090b; outline: none;
 }
-.promo-form-row input:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.18); }
+.promo-form-row input:focus { border-color: #E31B2B; box-shadow: 0 0 0 3px rgba(227, 27, 43,.18); }
 .promo-form-row input::placeholder { color: #52525b; }
 
 .promo-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -226,8 +226,8 @@
   background: #09090b; font-size: 20px; cursor: pointer; display: grid; place-items: center;
   transition: all .15s;
 }
-.promo-emoji-btn:hover { border-color: rgba(220,38,38,.5); }
-.promo-emoji-btn.selected { border-color: #dc2626; background: rgba(220,38,38,.15); }
+.promo-emoji-btn:hover { border-color: rgba(227, 27, 43,.5); }
+.promo-emoji-btn.selected { border-color: #E31B2B; background: rgba(227, 27, 43,.15); }
 
 .promo-color-row { display: flex; align-items: center; gap: 10px; }
 .promo-color-input {
@@ -237,7 +237,7 @@
 .promo-color-hex { font-size: 13px; color: #a1a1aa; }
 
 .promo-toggle-label { display: flex !important; align-items: center; gap: 8px; cursor: pointer; color: #e4e4e7; font-size: 13px; }
-.promo-toggle-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #dc2626; }
+.promo-toggle-label input[type="checkbox"] { width: 18px; height: 18px; accent-color: #E31B2B; }
 
 .promo-form-footer {
   display: flex; justify-content: flex-end; gap: 10px;

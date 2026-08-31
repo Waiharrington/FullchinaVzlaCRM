@@ -37,8 +37,8 @@
 }
 
 .kds-live-badge {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  background: rgba(255, 77, 61, 0.2);
+  color: #FF4D3D;
   padding: 4px 10px;
   border-radius: 20px;
   font-size: 12px;
@@ -52,7 +52,7 @@
 .kds-live-dot {
   width: 8px;
   height: 8px;
-  background: #ef4444;
+  background: #FF4D3D;
   border-radius: 50%;
   display: inline-block;
   animation: blink-red 1s infinite;
@@ -197,7 +197,7 @@
 }
 
 .kds-timer-urgent {
-  background: #ef4444;
+  background: #FF4D3D;
   color: #fff;
   animation: pulse-red 1s infinite;
 }

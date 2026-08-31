@@ -7,17 +7,18 @@
   --bg-tertiary: #1c1c1e;
   --bg-card: rgba(28, 28, 30, 0.98);
   
-  --accent-primary: #dc2626;
-  --accent-secondary: #ef4444;
-  --accent-gradient: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #dc2626 100%);
-  --accent-glow: 0 0 20px rgba(220, 38, 38, 0.4);
+  --accent-primary: #E31B2B;
+  --accent-secondary: #FF4D3D;
+  --accent-gradient: linear-gradient(135deg, #E31B2B 0%, #FF9E1B 50%, #E31B2B 100%);
+  --accent-glow: 0 0 20px rgba(227, 27, 43, 0.4);
+  --accent-gold: #FFC83D;
 
   --text-primary: #ffffff;
   --text-secondary: #aeaeb2;
   --text-muted: rgba(255, 255, 255, 0.55);
 
   --border-color: rgba(255, 255, 255, 0.1);
-  --border-glow: rgba(220, 38, 38, 0.3);
+  --border-glow: rgba(227, 27, 43, 0.3);
   
   --glass-bg: rgba(28, 28, 30, 0.7);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);

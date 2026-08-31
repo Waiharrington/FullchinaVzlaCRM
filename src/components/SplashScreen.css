@@ -27,7 +27,7 @@
   opacity: 0;
   transform: scale(0.7) translateY(30px);
   animation: splashLogoIn 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
-  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.4));
+  filter: drop-shadow(0 0 40px rgba(227, 27, 43, 0.4));
 }
 
 @keyframes splashLogoIn {
@@ -80,9 +80,9 @@
   height: 100%;
   width: 0%;
   border-radius: 100px;
-  background: linear-gradient(90deg, #dc2626 0%, #ef4444 40%, #f97316 100%);
+  background: linear-gradient(90deg, #E31B2B 0%, #FF4D3D 40%, #f97316 100%);
   animation: splashBarFill 2.2s cubic-bezier(0.4, 0, 0.2, 1) 1.6s forwards;
-  box-shadow: 0 0 16px rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 16px rgba(255, 77, 61, 0.5);
 }
 
 @keyframes splashBarFill {

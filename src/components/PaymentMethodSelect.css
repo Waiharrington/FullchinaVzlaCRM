@@ -98,7 +98,7 @@
 }
 
 .payment-method-select-option.is-selected > svg {
-  color: #ef4444;
+  color: #FF4D3D;
 }
 
 .payment-method-select-option:disabled {

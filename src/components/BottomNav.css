@@ -58,7 +58,7 @@
 
 .bottom-nav-item.active {
   color: #ffffff;
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(255, 77, 61, 0.12);
 }
 
 .bottom-nav-icon-wrap {
@@ -70,15 +70,15 @@
 }
 
 .bottom-nav-item.active .bottom-nav-icon-wrap {
-  filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+  filter: drop-shadow(0 0 8px rgba(255, 77, 61, 0.5));
 }
 
 .bottom-nav-active-dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
+  background: #FF4D3D;
+  box-shadow: 0 0 6px rgba(255, 77, 61, 0.8);
   animation: dotPulse 2s ease-in-out infinite;
 }
 
@@ -208,7 +208,7 @@
 }
 
 .bottom-nav-drawer-item.active {
-  background: rgba(239, 68, 68, 0.15);
+  background: rgba(255, 77, 61, 0.15);
   color: #fff;
   font-weight: 600;
 }
@@ -231,9 +231,9 @@
   gap: 0.75rem;
   width: 100%;
   padding: 1rem;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
+  background: rgba(255, 77, 61, 0.1);
+  color: #FF4D3D;
+  border: 1px solid rgba(255, 77, 61, 0.2);
   border-radius: 14px;
   font-size: 1rem;
   font-weight: 600;
@@ -242,6 +242,6 @@
 }
 
 .bottom-nav-logout:active {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(255, 77, 61, 0.2);
   transform: scale(0.98);
 }

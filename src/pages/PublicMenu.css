@@ -4424,6 +4424,7 @@ button.mobile-only {
     color: #fff !important;
     font-family: var(--font-display, 'Graduate', sans-serif) !important;
     font-size: 20px !important;
+    font-weight: 900 !important;
     letter-spacing: 0.025em !important;
     line-height: 1.1 !important;
     text-shadow: 0 4px 14px rgba(0, 0, 0, 0.55) !important;
@@ -6711,6 +6712,7 @@ button.mobile-only {
   letter-spacing: 0.04em;
   color: #FFF;
   margin: 0 0 4px;
+  -webkit-text-stroke: 0 !important;
   text-shadow: 0 4px 18px rgba(0,0,0,0.8);
 }
 .public-contact-hero .public-hero-gold,
@@ -6807,6 +6809,7 @@ button.mobile-only {
   color: #fff;
   font-family: var(--font-display, 'Graduate', sans-serif);
   font-size: 20px;
+  font-weight: 900;
   letter-spacing: 0.025em;
   line-height: 1.1;
   text-shadow: 0 4px 14px rgba(0,0,0,0.55);

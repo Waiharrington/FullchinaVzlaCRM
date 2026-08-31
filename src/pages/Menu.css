@@ -10,7 +10,7 @@
 /* --- Buttons --- */
 .mnu-btn {
   display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
-  background: linear-gradient(135deg, #e11d2a, #dc2626); color: #fff; border: 0;
+  background: linear-gradient(135deg, #e11d2a, #E31B2B); color: #fff; border: 0;
   border-radius: 12px; padding: 11px 18px; font-size: 14px; font-weight: 700;
   cursor: pointer; transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: 0 4px 15px rgba(225,29,42,0.25);
@@ -33,7 +33,7 @@
   width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   color: #fff;
   box-shadow: 0 4px 16px var(--sum-glow, rgba(225,29,42,0.5)), inset 0 1px 0 rgba(255,255,255,0.3);
-  background: var(--sum-icon-grad, linear-gradient(135deg, #dc2626 0%, #ef4444 55%, #f59e0b 100%));
+  background: var(--sum-icon-grad, linear-gradient(135deg, #E31B2B 0%, #FF4D3D 55%, #f59e0b 100%));
 }
 .mnu-sum-lbl { font-size: 12px; color: #a1a1aa; font-weight: 500; }
 .mnu-sum-val { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
@@ -51,7 +51,7 @@
 .mnu-sum-primary {
   --sum-tint: rgba(225,29,42,0.16); --sum-border: rgba(225,29,42,0.32); --sum-border-hover: rgba(225,29,42,0.5);
   --sum-inset: rgba(225,29,42,0.08); --sum-shadow: rgba(225,29,42,0.1); --sum-shadow-hover: rgba(225,29,42,0.18);
-  --sum-icon-grad: linear-gradient(135deg, #dc2626 0%, #ef4444 55%, #f59e0b 100%); --sum-glow: rgba(225,29,42,0.5);
+  --sum-icon-grad: linear-gradient(135deg, #E31B2B 0%, #FF4D3D 55%, #f59e0b 100%); --sum-glow: rgba(225,29,42,0.5);
   --sum-label: #f4a3a8;
 }
 .mnu-sum-success {
@@ -96,7 +96,7 @@
   color: #71717a; border-radius: 10px; padding: 8px; cursor: pointer; display: inline-flex; transition: all 0.2s;
 }
 .mnu-view button:hover { color: #d4d4d8; border-color: rgba(255,255,255,0.2); }
-.mnu-view button.active { background: linear-gradient(135deg, #e11d2a, #dc2626); border-color: transparent; color: #fff; box-shadow: 0 2px 8px rgba(225,29,42,0.3); }
+.mnu-view button.active { background: linear-gradient(135deg, #e11d2a, #E31B2B); border-color: transparent; color: #fff; box-shadow: 0 2px 8px rgba(225,29,42,0.3); }
 
 /* --- Selection --- */
 .mnu-select-btn {
@@ -116,7 +116,7 @@
 .mnu-bulk-count { font-size: 13px; color: #a1a1aa; }
 .mnu-bulk-delete {
   display: inline-flex; align-items: center; gap: 7px; margin-left: auto;
-  background: linear-gradient(135deg, #e11d2a, #dc2626); color: #fff; border: 0;
+  background: linear-gradient(135deg, #e11d2a, #E31B2B); color: #fff; border: 0;
   border-radius: 12px; padding: 10px 18px; font-size: 13px; font-weight: 700; cursor: pointer;
   transition: all 0.2s; box-shadow: 0 4px 12px rgba(225,29,42,0.3);
 }
@@ -177,8 +177,8 @@
 .mnu-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 700; letter-spacing: 0.2px; }
 .mnu-badge.on { color: #22c55e; background: rgba(34,197,94,0.12); }
 .mnu-badge.off { color: #71717a; background: rgba(255,255,255,0.06); }
-.mnu-act-danger { flex: 0 0 auto; width: 40px; padding: 9px; color: #f87171; border-color: rgba(239,68,68,0.2); background: rgba(239,68,68,0.06); }
-.mnu-act-danger:hover { color: #fff; background: rgba(239,68,68,0.85); border-color: rgba(239,68,68,0.85); transform: scale(1.02); }
+.mnu-act-danger { flex: 0 0 auto; width: 40px; padding: 9px; color: #f87171; border-color: rgba(255, 77, 61,0.2); background: rgba(255, 77, 61,0.06); }
+.mnu-act-danger:hover { color: #fff; background: rgba(255, 77, 61,0.85); border-color: rgba(255, 77, 61,0.85); transform: scale(1.02); }
 .mnu-icon-danger { color: #f87171; }
 .mnu-icon-danger:hover { color: #fca5a5; }
 
@@ -324,7 +324,7 @@
 .mnu-photo-change:hover { color: #fff; background: rgba(225,29,42,0.1); border-color: rgba(225,29,42,0.38); }
 .mnu-photo-delete {
   width: 36px; height: 36px; padding: 0; display: grid; place-items: center; align-self: start;
-  border-radius: 10px; border: 1px solid rgba(239,68,68,0.18); background: rgba(239,68,68,0.07);
+  border-radius: 10px; border: 1px solid rgba(255, 77, 61,0.18); background: rgba(255, 77, 61,0.07);
   color: #ef6a73; cursor: pointer; transition: color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
 }
 .mnu-photo-delete:hover { color: #fff; background: rgba(225,29,42,0.8); border-color: #e11d2a; }
@@ -421,8 +421,8 @@
   animation: mnu-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .mnu-notice-error {
-  background: rgba(239,68,68,0.1); color: #f87171;
-  border: 1px solid rgba(239,68,68,0.2);
+  background: rgba(255, 77, 61,0.1); color: #f87171;
+  border: 1px solid rgba(255, 77, 61,0.2);
 }
 .mnu-notice-success {
   background: rgba(34,197,94,0.1); color: #34d399;

@@ -45,7 +45,7 @@
   background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
 }
-.confirm-icon.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.confirm-icon.danger { background: rgba(255, 77, 61, 0.15); color: #FF4D3D; }
 
 .confirm-title {
   margin: 0 0 8px;
@@ -90,11 +90,11 @@
 .confirm-btn-cancel:hover { background: rgba(255, 255, 255, 0.08); color: #d4d4d8; border-color: rgba(255, 255, 255, 0.2); }
 
 .confirm-btn-ok {
-  background: var(--accent-gradient, linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #dc2626 100%));
+  background: var(--accent-gradient, linear-gradient(135deg, #E31B2B 0%, #FF4D3D 50%, #E31B2B 100%));
   color: #fff;
 }
 .confirm-btn-ok:hover { filter: brightness(1.08); }
-.confirm-btn-ok.danger { background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); }
+.confirm-btn-ok.danger { background: linear-gradient(135deg, #E31B2B 0%, #b91c1c 100%); }
 .confirm-btn-ok:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 
 @media (max-width: 480px) {

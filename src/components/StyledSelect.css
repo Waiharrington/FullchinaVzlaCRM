@@ -49,10 +49,10 @@
 
 .fc-select-trigger .is-placeholder { color: #777782; }
 .fc-select-trigger svg { flex: 0 0 auto; color: #85858f; transition: transform 0.18s ease, color 0.18s ease; }
-.fc-select-trigger:hover { border-color: rgba(239,68,68,0.36); background: linear-gradient(180deg, #242428, #19191c); }
+.fc-select-trigger:hover { border-color: rgba(255, 77, 61,0.36); background: linear-gradient(180deg, #242428, #19191c); }
 .fc-select-trigger:focus-visible,
-.fc-select.is-open .fc-select-trigger { outline: none; border-color: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.14), 0 8px 22px rgba(0,0,0,0.28); }
-.fc-select.is-open .fc-select-trigger svg { color: #ef4444; transform: rotate(180deg); }
+.fc-select.is-open .fc-select-trigger { outline: none; border-color: #FF4D3D; box-shadow: 0 0 0 3px rgba(255, 77, 61,0.14), 0 8px 22px rgba(0,0,0,0.28); }
+.fc-select.is-open .fc-select-trigger svg { color: #FF4D3D; transform: rotate(180deg); }
 .fc-select.is-disabled { opacity: 0.55; }
 .fc-select.is-disabled .fc-select-trigger { cursor: not-allowed; }
 
@@ -93,7 +93,7 @@
 
 .fc-select.filter-select .fc-select-trigger:hover,
 .fc-select.filter-select.is-open .fc-select-trigger {
-  border-color: rgba(239,68,68,0.3);
+  border-color: rgba(255, 77, 61,0.3);
   background: rgba(255,255,255,0.035);
 }
 
@@ -113,7 +113,7 @@
 .db-period-control .fc-select-trigger:hover,
 .fin-period .fc-select.is-open .fc-select-trigger,
 .db-period-control .fc-select.is-open .fc-select-trigger {
-  border-color: rgba(239,68,68,0.28);
+  border-color: rgba(255, 77, 61,0.28);
   background: rgba(255,255,255,0.035);
 }
 
@@ -124,7 +124,7 @@
   flex-direction: column;
   padding: 6px;
   overflow: hidden;
-  border: 1px solid rgba(239,68,68,0.24);
+  border: 1px solid rgba(255, 77, 61,0.24);
   border-radius: 12px;
   background: rgba(20,20,23,0.985);
   color: #f4f4f5;
@@ -187,9 +187,9 @@
 }
 .fc-select-option span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .fc-select-option:hover,
-.fc-select-option.is-active { background: rgba(239,68,68,0.09); color: #fff; }
+.fc-select-option.is-active { background: rgba(255, 77, 61,0.09); color: #fff; }
 .fc-select-option.is-selected { color: #ff6565; font-weight: 700; }
-.fc-select-option.is-selected svg { flex: 0 0 auto; color: #ef4444; }
+.fc-select-option.is-selected svg { flex: 0 0 auto; color: #FF4D3D; }
 .fc-select-option:disabled { opacity: 0.38; cursor: not-allowed; }
 .fc-select-empty { padding: 24px 12px; color: #777782; font-size: 0.8rem; text-align: center; }
 

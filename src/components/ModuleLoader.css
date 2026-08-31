@@ -17,7 +17,7 @@
 .module-loader-logo {
   width: clamp(180px, 32vw, 320px);
   height: auto;
-  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.4));
+  filter: drop-shadow(0 0 40px rgba(227, 27, 43, 0.4));
 }
 
 .module-loader-spinner {
@@ -25,7 +25,7 @@
   height: 38px;
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.12);
-  border-top-color: #ef4444;
+  border-top-color: #FF4D3D;
   animation: moduleLoaderSpin 0.8s linear infinite;
 }
 
