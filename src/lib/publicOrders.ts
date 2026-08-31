@@ -147,6 +147,9 @@ export async function createWebOrder(params: {
   items: WebOrderCartItem[]
   bcvRate: number | null
   idempotencyKey: string
+  deliveryFee?: number
+  deliveryLat?: number | null
+  deliveryLng?: number | null
 }): Promise<WebOrderResult> {
   const { data, error } = await db().rpc('fn_create_web_order', {
     p_customer_name: params.customerName,
@@ -157,6 +160,9 @@ export async function createWebOrder(params: {
     p_items: params.items.map(item => ({ productId: item.productId, quantity: item.quantity, notes: item.notes || undefined })),
     p_bcv_rate: params.bcvRate,
     p_idempotency_key: params.idempotencyKey,
+    p_delivery_fee: params.deliveryFee ?? 0,
+    p_delivery_lat: params.deliveryLat ?? null,
+    p_delivery_lng: params.deliveryLng ?? null,
   })
   if (error) throw error
   const result = data as Record<string, unknown>

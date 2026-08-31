@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, 
 import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
-import { estimateDeliveryAsync, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
+import { estimateDelivery, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -563,20 +563,19 @@ export function PublicMenu() {
   })()
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+  const deliveryFee = orderType === 'delivery' && deliveryEstimate?.fee != null ? deliveryEstimate.fee : 0
+  const orderTotal = total + deliveryFee
   useEffect(() => {
     if (orderType !== 'delivery' || !geoCoords || !deliverySettings?.enabled) {
       setDeliveryEstimate(null)
       return
     }
-    let cancelled = false
-    estimateDeliveryAsync(deliverySettings, geoCoords.lat, geoCoords.lng)
-      .then(est => { if (!cancelled) setDeliveryEstimate(est) })
-    return () => { cancelled = true }
+    setDeliveryEstimate(estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng))
   }, [orderType, geoCoords, deliverySettings])
   const deliveryFeeText = orderType !== 'delivery'
     ? 'No aplica'
     : deliveryEstimate && deliveryEstimate.fee != null
-      ? `$${deliveryEstimate.fee.toFixed(2)} (a confirmar)`
+      ? `$${deliveryEstimate.fee.toFixed(2)}`
       : 'Por confirmar'
   const cartProductIds = useMemo(() => new Set(cart.map(item => item.productId)), [cart])
   const recommendations = groups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))).slice(0, 3)
@@ -956,7 +955,7 @@ export function PublicMenu() {
       const result = await createWebOrder({
         customerName: name.trim(), customerPhone: phone.trim(), orderType,
         deliveryAddress: address.trim(), notes: orderNotes, items: cart, bcvRate,
-        idempotencyKey,
+        idempotencyKey, deliveryFee, deliveryLat: geoCoords?.lat, deliveryLng: geoCoords?.lng,
       })
       localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(cart))
       checkoutAttemptRef.current = null
@@ -989,9 +988,9 @@ export function PublicMenu() {
         separator,
         '*💰 RESUMEN DE PAGO*',
         '',
-        `Subtotal: ${money(result.total)}`,
+        `Subtotal productos: ${money(total)}`,
         `Delivery: ${deliveryFeeText}`,
-        `*Total productos: ${money(result.total)}*`,
+        `*Total del pedido: ${money(result.total)}*`,
         ...(bcvRate ? [`*Referencia BCV: Bs. ${(result.total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*`] : []),
         '',
         separator,
@@ -2037,8 +2036,8 @@ export function PublicMenu() {
                   <div className="public-sidebar-row total">
                     <span>Total</span>
                     <div className="public-sidebar-total-val">
-                      <em key={total}>{money(total)}</em>
-                      {priceBs(total) && <small className="public-sidebar-total-bs">{priceBs(total)}</small>}
+                      <em key={orderTotal}>{money(orderTotal)}</em>
+                      {priceBs(orderTotal) && <small className="public-sidebar-total-bs">{priceBs(orderTotal)}</small>}
                     </div>
                   </div>
                 </div>
@@ -2252,7 +2251,7 @@ export function PublicMenu() {
         )}
         {step === 'confirm' && <div className="public-confirm-page"><div className="public-receipt"><div className="public-receipt-head"><img src="/optimized/root/logo.webp" alt="Full China" /><div><span>Solicitud</span><strong>{orderCode || draftOrderCode || 'WEB-PENDIENTE'}</strong><small>Ahora · pedido web</small></div></div>
           <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b><button type="button" onClick={() => setStep('cart')}>Editar</button></div>)}</div>
-          <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><div className="public-delivery-total-label">{orderType === 'delivery' ? 'Delivery' : 'Retiro'}</div><div className={`public-delivery-total-value ${orderType === 'takeaway' ? 'is-pickup' : ''}`}>{orderType === 'delivery' ? deliveryFeeText : 'En el local'}</div><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>
+          <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><div className="public-delivery-total-label">{orderType === 'delivery' ? 'Delivery' : 'Retiro'}</div><div className={`public-delivery-total-value ${orderType === 'takeaway' ? 'is-pickup' : ''}`}>{orderType === 'delivery' ? deliveryFeeText : 'En el local'}</div><b>Total del pedido <em>{money(orderTotal)}{priceBs(orderTotal) && <small className="public-total-bs">{priceBs(orderTotal)}</small>}</em></b></div>
           <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'delivery')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button></div>{error && <Toast type="error" message={error} onClose={() => setError('')} />}</div>
           <button className="public-primary whatsapp public-whatsapp-cta" disabled={submitting} onClick={submitOrder}><span className="public-whatsapp-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="img"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4.4 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span><span className="public-whatsapp-copy"><strong>{submitting ? 'Preparando pedido…' : 'Enviar pedido'}</strong><small>Se abrirá WhatsApp para confirmar</small></span><b className="public-whatsapp-total">{money(total)}{priceBs(total) && <small className="public-whatsapp-total-bs">{priceBs(total)}</small>}</b><span className="public-whatsapp-arrow"><ChevronRight /></span></button><p className="public-order-security">⌕ &nbsp; Tu pedido será confirmado directamente por Full China</p>
         </div>}
