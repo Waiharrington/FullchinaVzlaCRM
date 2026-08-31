@@ -256,6 +256,7 @@ export function Nomina() {
                             value={edit[r.emp.id]?.bonus ?? '0'}
                             onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: v } }))}
                           />
+                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{formatUsd(r.bonus)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
@@ -266,7 +267,7 @@ export function Nomina() {
                             value={edit[r.emp.id]?.overtimeHours ?? '0'}
                             onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], overtimeHours: v } }))}
                           />
-                          <small style={{ color: '#22c55e' }}>+{formatUsd(r.overtime)}</small>
+                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{formatUsd(r.overtime)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
@@ -277,7 +278,7 @@ export function Nomina() {
                             value={edit[r.emp.id]?.transport ?? '0'}
                             onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], transport: v } }))}
                           />
-                          <small style={{ color: '#22c55e' }}>+{formatUsd(r.transport)}</small>
+                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{formatUsd(r.transport)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
@@ -288,7 +289,7 @@ export function Nomina() {
                             value={edit[r.emp.id]?.absenceDays ?? '0'}
                             onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], absenceDays: v } }))}
                           />
-                          <small style={{ color: '#ef4444' }}>-{formatUsd(r.absenceDeduction)}</small>
+                          <small className="nom-stepper-hint" style={{ color: '#ef4444' }}>-{formatUsd(r.absenceDeduction)}</small>
                         </div>
                       </td>
                       <td className="nom-col-right nom-net">{formatUsd(r.neto)}</td>
