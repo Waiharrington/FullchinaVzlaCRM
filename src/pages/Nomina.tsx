@@ -224,21 +224,87 @@ export function Nomina() {
           {activeEmployees.length === 0 ? <p style={{ color: '#71717a' }}>No hay empleados activos. Agrégalos en Equipo / Usuarios.</p> : (
             <div className="nom-table-wrap">
               <table className="nom-table">
-                <thead><tr><th></th><th>Empleado / Cargo</th><th>Sueldo semanal</th><th>Bono</th><th>Horas extra</th><th>Ausencias</th><th>Adelantos / desc.</th><th>Neto a pagar</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th style={{ width: 36 }}></th>
+                    <th>Empleado / Cargo</th>
+                    <th>Sueldo semanal</th>
+                    <th>Adelanto</th>
+                    <th>Bono</th>
+                    <th>Horas extra</th>
+                    <th>Transporte</th>
+                    <th>Día no laborado</th>
+                    <th>Neto a pagar</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.emp.id}>
                       <td><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
                       <td><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
                       <td><strong>{formatUsd(r.weekly)}</strong></td>
-                      <td><NumberStepper step={0.01} min={0} value={edit[r.emp.id]?.bonus ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: v } }))} /></td>
-                      <td><NumberStepper step={0.5} min={0} value={edit[r.emp.id]?.overtimeHours ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], overtimeHours: v } }))} /><small>{formatUsd(r.overtime)}</small></td>
-                      <td><NumberStepper step={0.5} min={0} value={edit[r.emp.id]?.absenceDays ?? '0'} onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], absenceDays: v } }))} /><small>-{formatUsd(r.absenceDeduction)}</small></td>
-                      <td><strong>-{formatUsd(r.advance + r.extra)}</strong></td>
+                      <td>
+                        <span style={{ color: r.advance > 0 ? '#ef4444' : '#71717a', fontWeight: r.advance > 0 ? 700 : 500 }}>
+                          {r.advance > 0 ? `-${formatUsd(r.advance)}` : '$0,00'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="nom-stepper-cell">
+                          <NumberStepper
+                            step={1}
+                            min={0}
+                            value={edit[r.emp.id]?.bonus ?? '0'}
+                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: v } }))}
+                          />
+                        </div>
+                      </td>
+                      <td>
+                        <div className="nom-stepper-cell">
+                          <NumberStepper
+                            step={0.5}
+                            min={0}
+                            value={edit[r.emp.id]?.overtimeHours ?? '0'}
+                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], overtimeHours: v } }))}
+                          />
+                          <small style={{ color: '#22c55e' }}>+{formatUsd(r.overtime)}</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="nom-stepper-cell">
+                          <NumberStepper
+                            step={1}
+                            min={0}
+                            value={edit[r.emp.id]?.transport ?? '0'}
+                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], transport: v } }))}
+                          />
+                          <small style={{ color: '#22c55e' }}>+{formatUsd(r.transport)}</small>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="nom-stepper-cell">
+                          <NumberStepper
+                            step={1}
+                            min={0}
+                            value={edit[r.emp.id]?.absenceDays ?? '0'}
+                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], absenceDays: v } }))}
+                          />
+                          <small style={{ color: '#ef4444' }}>-{formatUsd(r.absenceDeduction)}</small>
+                        </div>
+                      </td>
                       <td className="nom-net">{formatUsd(r.neto)}</td>
                     </tr>
                   ))}
-                  <tr className="nom-tot-row"><td></td><td>TOTALES</td><td></td><td>{formatUsd(tot.bon)}</td><td>{tot.hours}</td><td>{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</td><td>{formatUsd(tot.ded)}</td><td className="nom-net">{formatUsd(tot.neto)}</td></tr>
+                  <tr className="nom-tot-row">
+                    <td></td>
+                    <td>TOTALES</td>
+                    <td>{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</td>
+                    <td style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</td>
+                    <td style={{ color: '#22c55e' }}>+{formatUsd(tot.bon)}</td>
+                    <td style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.overtime, 0))} ({tot.hours}h)</td>
+                    <td style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</td>
+                    <td style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</td>
+                    <td className="nom-net">{formatUsd(tot.neto)}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
@@ -281,9 +347,12 @@ export function Nomina() {
         <div className="nom-card">
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Resumen del Período</h2>
           <p style={{ fontSize: 12, color: '#a1a1aa', margin: '0 0 12px' }}>{selected ? fmtRange(selected) : 'Sin período'}</p>
-          <div className="nom-res-row"><span className="k">Total Sueldos Brutos</span><span>{formatUsd(tot.bruto)}</span></div>
-          <div className="nom-res-row"><span className="k">Total Deducciones</span><span style={{ color: '#ef4444' }}>- {formatUsd(tot.ded)}</span></div>
+          <div className="nom-res-row"><span className="k">Total Sueldos Base</span><span>{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</span></div>
           <div className="nom-res-row"><span className="k">Total Bonos</span><span style={{ color: '#22c55e' }}>+ {formatUsd(tot.bon)}</span></div>
+          <div className="nom-res-row"><span className="k">Total Horas Extras</span><span style={{ color: '#22c55e' }}>+ {formatUsd(rows.reduce((s, r) => s + r.overtime, 0))}</span></div>
+          <div className="nom-res-row"><span className="k">Total Transporte</span><span style={{ color: '#22c55e' }}>+ {formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</span></div>
+          <div className="nom-res-row"><span className="k">Total Adelantos</span><span style={{ color: '#ef4444' }}>- {formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</span></div>
+          <div className="nom-res-row"><span className="k">Total Días no laborados</span><span style={{ color: '#ef4444' }}>- {formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</span></div>
           <div className="nom-res-row total"><span>TOTAL NETO A PAGAR</span><span className="nom-net">{formatUsd(tot.neto)}</span></div>
           <p style={{ fontSize: 11, color: '#71717a', marginTop: 10 }}>{activeEmployees.length} empleados a liquidar</p>
         </div>

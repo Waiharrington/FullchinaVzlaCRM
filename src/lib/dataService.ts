@@ -2737,28 +2737,57 @@ export async function updatePayrollPeriodStatus(id: string, status: PayrollPerio
 }
 
 export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[]> {
-  const { data, error } = await client()
-    .from('payroll_entries')
-    .select('id,payroll_period_id,employee_id,hours_worked,base_salary,deductions,net_pay,notes,weekly_salary,bonus_amount,overtime_hours,overtime_amount,transport_amount,absence_days,absence_deduction,advance_deduction,employees(full_name,position)')
-    .eq('payroll_period_id', periodId)
-    .order('created_at', { ascending: true })
-  if (error) throw error
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    payrollPeriodId: r.payroll_period_id as string,
-    employeeId: r.employee_id as string,
-    employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
-    position: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.position as string ?? null : null,
-    hoursWorked: Number(r.hours_worked),
-    baseSalary: Number(r.base_salary),
-    deductions: Number(r.deductions),
-    netPay: Number(r.net_pay),
-    notes: (r.notes as string) ?? null,
-    weeklySalary: Number(r.weekly_salary ?? 0), bonusAmount: Number(r.bonus_amount ?? 0),
-    overtimeHours: Number(r.overtime_hours ?? 0), overtimeAmount: Number(r.overtime_amount ?? 0),
-    transportAmount: Number(r.transport_amount ?? 0), absenceDays: Number(r.absence_days ?? 0),
-    absenceDeduction: Number(r.absence_deduction ?? 0), advanceDeduction: Number(r.advance_deduction ?? 0),
-  }))
+  try {
+    const { data, error } = await client()
+      .from('payroll_entries')
+      .select('id,payroll_period_id,employee_id,hours_worked,base_salary,deductions,net_pay,notes,weekly_salary,bonus_amount,overtime_hours,overtime_amount,transport_amount,absence_days,absence_deduction,advance_deduction,employees(full_name,position)')
+      .eq('payroll_period_id', periodId)
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    return (data ?? []).map((r) => ({
+      id: r.id as string,
+      payrollPeriodId: r.payroll_period_id as string,
+      employeeId: r.employee_id as string,
+      employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
+      position: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.position as string ?? null : null,
+      hoursWorked: Number(r.hours_worked),
+      baseSalary: Number(r.base_salary),
+      deductions: Number(r.deductions),
+      netPay: Number(r.net_pay),
+      notes: (r.notes as string) ?? null,
+      weeklySalary: Number(r.weekly_salary ?? 0), bonusAmount: Number(r.bonus_amount ?? 0),
+      overtimeHours: Number(r.overtime_hours ?? 0), overtimeAmount: Number(r.overtime_amount ?? 0),
+      transportAmount: Number(r.transport_amount ?? 0), absenceDays: Number(r.absence_days ?? 0),
+      absenceDeduction: Number(r.absence_deduction ?? 0), advanceDeduction: Number(r.advance_deduction ?? 0),
+    }))
+  } catch (err: unknown) {
+    const isColErr = err && typeof err === 'object' && ('code' in err) && ((err as { code: string }).code === '42703' || (err as { code: string }).code === 'PGRST204')
+    if (isColErr) {
+      const { data, error } = await client()
+        .from('payroll_entries')
+        .select('id,payroll_period_id,employee_id,hours_worked,base_salary,deductions,net_pay,notes,employees(full_name,position)')
+        .eq('payroll_period_id', periodId)
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return (data ?? []).map((r) => ({
+        id: r.id as string,
+        payrollPeriodId: r.payroll_period_id as string,
+        employeeId: r.employee_id as string,
+        employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
+        position: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.position as string ?? null : null,
+        hoursWorked: Number(r.hours_worked),
+        baseSalary: Number(r.base_salary),
+        deductions: Number(r.deductions),
+        netPay: Number(r.net_pay),
+        notes: (r.notes as string) ?? null,
+        weeklySalary: Number(r.base_salary ?? 0), bonusAmount: 0,
+        overtimeHours: Number(r.hours_worked ?? 0), overtimeAmount: 0,
+        transportAmount: 0, absenceDays: 0,
+        absenceDeduction: 0, advanceDeduction: Number(r.deductions ?? 0),
+      }))
+    }
+    throw err
+  }
 }
 
 export async function upsertPayrollEntry(params: {
@@ -2777,25 +2806,44 @@ export async function upsertPayrollEntry(params: {
   advanceDeduction?: number
   notes?: string | null
 }): Promise<void> {
-  const { error } = await client()
-    .from('payroll_entries')
-    .upsert({
-      payroll_period_id: params.payrollPeriodId,
-      employee_id: params.employeeId,
-      hours_worked: params.hoursWorked,
-      base_salary: params.baseSalary,
-      deductions: params.deductions,
-      weekly_salary: params.weeklySalary ?? params.baseSalary,
-      bonus_amount: params.bonusAmount ?? 0,
-      overtime_hours: params.overtimeHours ?? 0,
-      overtime_amount: params.overtimeAmount ?? 0,
-      transport_amount: params.transportAmount ?? 0,
-      absence_days: params.absenceDays ?? 0,
-      absence_deduction: params.absenceDeduction ?? 0,
-      advance_deduction: params.advanceDeduction ?? 0,
-      notes: params.notes ?? null,
-    }, { onConflict: 'payroll_period_id,employee_id' })
-  if (error) throw error
+  try {
+    const { error } = await client()
+      .from('payroll_entries')
+      .upsert({
+        payroll_period_id: params.payrollPeriodId,
+        employee_id: params.employeeId,
+        hours_worked: params.hoursWorked,
+        base_salary: params.baseSalary,
+        deductions: params.deductions,
+        weekly_salary: params.weeklySalary ?? params.baseSalary,
+        bonus_amount: params.bonusAmount ?? 0,
+        overtime_hours: params.overtimeHours ?? 0,
+        overtime_amount: params.overtimeAmount ?? 0,
+        transport_amount: params.transportAmount ?? 0,
+        absence_days: params.absenceDays ?? 0,
+        absence_deduction: params.absenceDeduction ?? 0,
+        advance_deduction: params.advanceDeduction ?? 0,
+        notes: params.notes ?? null,
+      }, { onConflict: 'payroll_period_id,employee_id' })
+    if (error) throw error
+  } catch (err: unknown) {
+    const isColErr = err && typeof err === 'object' && ('code' in err) && ((err as { code: string }).code === '42703' || (err as { code: string }).code === 'PGRST204')
+    if (isColErr) {
+      const { error } = await client()
+        .from('payroll_entries')
+        .upsert({
+          payroll_period_id: params.payrollPeriodId,
+          employee_id: params.employeeId,
+          hours_worked: params.hoursWorked,
+          base_salary: params.baseSalary,
+          deductions: params.deductions,
+          notes: params.notes ?? null,
+        }, { onConflict: 'payroll_period_id,employee_id' })
+      if (error) throw error
+      return
+    }
+    throw err
+  }
 }
 
 export async function deleteCredit(creditId: string): Promise<void> {

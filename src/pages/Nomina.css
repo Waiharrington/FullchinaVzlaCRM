@@ -40,17 +40,22 @@
 .nom-period .liq { color: #22c55e; font-weight: 700; font-size: 13px; margin-top: 4px; }
 
 /* Tabla liquidación */
-.nom-table-wrap { overflow-x: auto; }
-.nom-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 820px; }
-.nom-table th { text-align: right; color: #71717a; font-weight: 600; font-size: 11px; text-transform: uppercase; padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.nom-table-wrap { overflow-x: auto; border-radius: 12px; }
+.nom-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 920px; }
+.nom-table th { text-align: right; color: #a1a1aa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
 .nom-table th:first-child, .nom-table th:nth-child(2) { text-align: left; }
-.nom-table td { padding: 9px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; }
+.nom-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; vertical-align: middle; }
 .nom-table td:first-child, .nom-table td:nth-child(2) { text-align: left; }
 .nom-emp { display: flex; align-items: center; gap: 9px; }
-.nom-avatar { width: 30px; height: 30px; border-radius: 50%; background: #7c3aed; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-.nom-table input { width: 80px; background: #17171d; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; padding: 7px; font-size: 13px; text-align: right; }
-.nom-net { color: #22c55e; font-weight: 700; }
-.nom-tot-row td { font-weight: 700; border-top: 2px solid rgba(255,255,255,0.08); border-bottom: 0; }
+.nom-avatar { width: 32px; height: 32px; border-radius: 50%; background: #7c3aed; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.nom-stepper-cell { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; width: 76px; max-width: 76px; }
+.nom-stepper-cell .num-stepper { width: 100%; max-width: 76px; height: 32px; border-radius: 8px; background: #18181f; border: 1px solid rgba(255,255,255,0.1); }
+.nom-stepper-cell .num-stepper-input { font-size: 13px !important; font-weight: 600 !important; padding: 4px 2px 4px 6px !important; text-align: right; }
+.nom-stepper-cell .num-stepper-controls { width: 20px; }
+.nom-stepper-cell .num-stepper-btn { width: 20px; }
+.nom-stepper-cell small { font-size: 11px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+.nom-net { color: #22c55e; font-weight: 800; font-size: 14px; }
+.nom-tot-row td { font-weight: 700; border-top: 2px solid rgba(255,255,255,0.08); border-bottom: 0; padding-top: 12px; color: #fff; }
 
 /* Sub-grid inferior */
 .nom-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; }
