@@ -275,6 +275,7 @@ export function PublicMenu() {
   const [step, setStep] = useState<'cart' | 'delivery' | 'address' | 'details' | 'confirm' | 'preparing' | 'sent'>('cart')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [identification, setIdentification] = useState('')
   const [email, setEmail] = useState('')
   const [orderType, setOrderType] = useState<'takeaway' | 'delivery'>('takeaway')
   const [payMode, setPayMode] = useState<'single' | 'mixed'>('single')
@@ -619,10 +620,11 @@ export function PublicMenu() {
         restoringFlow.current = false
         return
       }
-      const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
+      const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
       if (saved && cart.length > 0) {
         setName(saved.name || '')
         setPhone(saved.phone || '')
+        setIdentification(saved.identification || '')
         setEmail(saved.email || '')
         setOrderType(saved.orderType === 'delivery' ? 'delivery' : 'takeaway')
         setDeliveryChosen(Boolean(saved.deliveryChosen))
@@ -643,8 +645,8 @@ export function PublicMenu() {
   useEffect(() => { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds)) }, [favoriteIds])
   useEffect(() => {
     if (restoringFlow.current) return
-    localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, name, phone, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
-  }, [cartOpen, step, name, phone, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod])
+    localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
+  }, [cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod])
 
   const toggleFavorite = (groupKey: string) => setFavoriteIds(current => current.includes(groupKey) ? current.filter(id => id !== groupKey) : [...current, groupKey])
   const repeatLastOrder = () => {
@@ -658,6 +660,7 @@ export function PublicMenu() {
     setCart([])
     setName('')
     setPhone('')
+    setIdentification('')
     setEmail('')
     setOrderType('takeaway')
     setDeliveryChosen(false)
@@ -900,6 +903,7 @@ export function PublicMenu() {
     setError('')
     if (name.trim().length < 2) return setError('Escribe tu nombre.')
     if (phone.replace(/\D/g, '').length < 7) return setError('Escribe un teléfono válido.')
+    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) return setError('Escribe una cédula válida, por ejemplo V-12345678.')
     if (orderType === 'delivery' && address.trim().length < 8) return setError('Escribe la dirección de entrega.')
     if (orderType === 'delivery' && !geoCoords) return setError('Confirma la ubicación tocando el mapa o eligiendo una sugerencia.')
     if (orderType === 'delivery' && !addressReference.trim()) return setError('Agrega una referencia para que el repartidor encuentre el lugar fácilmente.')
@@ -920,6 +924,7 @@ export function PublicMenu() {
     setError('')
     if (name.trim().length < 2) return setError('Escribe tu nombre.')
     if (phone.replace(/\D/g, '').length < 7) return setError('Escribe un teléfono válido.')
+    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) return setError('Escribe una cédula válida, por ejemplo V-12345678.')
     if (orderType === 'delivery' && address.trim().length < 8) return setError('Escribe la dirección de entrega.')
     if (!cart.length) return setError('Tu carrito está vacío.')
 
@@ -937,7 +942,7 @@ export function PublicMenu() {
     const orderNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ').slice(0, 400) + mapsLine + payLine
     const checkoutSignature = JSON.stringify({
       cart: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: item.price, notes: item.notes || '' })),
-      name: name.trim(), phone: phone.trim(), orderType, address: address.trim(), orderNotes,
+      name: name.trim(), phone: phone.trim(), identification: identification.trim().toUpperCase(), orderType, address: address.trim(), orderNotes,
     })
     const savedAttempt = checkoutAttemptRef.current?.signature === checkoutSignature ? checkoutAttemptRef.current : null
     const idempotencyKey = savedAttempt?.key || crypto.randomUUID()
@@ -953,7 +958,7 @@ export function PublicMenu() {
     const whatsappWindow = window.open('about:blank', '_blank')
     try {
       const result = await createWebOrder({
-        customerName: name.trim(), customerPhone: phone.trim(), orderType,
+        customerName: name.trim(), customerPhone: phone.trim(), customerIdentification: identification.trim().toUpperCase(), orderType,
         deliveryAddress: address.trim(), notes: orderNotes, items: cart, bcvRate,
         idempotencyKey, deliveryFee, deliveryLat: geoCoords?.lat, deliveryLng: geoCoords?.lng,
       })
@@ -971,6 +976,7 @@ export function PublicMenu() {
       const customerLines = [
         `Nombre: ${name.trim()}`,
         `Teléfono: ${phone.trim()}`,
+        `Cédula: ${identification.trim().toUpperCase()}`,
         `💳 Pago: ${paymentLabels}`,
         `Modalidad: ${orderType === 'delivery' ? '🛵 Delivery' : '🥡 Retiro en el local'}`,
         ...(orderType === 'delivery' ? ['', `🏠 ${address.trim()}`] : []),
@@ -2222,6 +2228,7 @@ export function PublicMenu() {
             {error && <Toast type="error" message={error} onClose={() => setError('')} />}
             <div className="public-data-form-card">
               <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="Nombre y apellido" /></div></span></label>
+              <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula</span><div className="public-data-input"><input inputMode="text" autoComplete="off" value={identification} maxLength={12} onChange={event => setIdentification(event.target.value.toUpperCase().replace(/[^VE0-9-]/g, ''))} placeholder="V-12345678" /></div><small>La usaremos para conservar tu historial de pedidos</small></span></label>
               <label className="public-data-field"><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></div><small>Te escribiremos aquí para confirmar</small></span></label>
             </div>
             <div className="public-pay-card">

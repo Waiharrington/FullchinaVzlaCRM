@@ -111,6 +111,7 @@ export interface ComandaOrder {
   isRetraso?: boolean
   customerName: string
   customerPhone?: string
+  customerIdentification?: string
   address?: string
   reference?: string
   paymentReference?: string
@@ -633,6 +634,7 @@ export function Comandas() {
               isRetraso: elapsed > 10,
               customerName: order.customerName,
               customerPhone: order.customerPhone,
+              customerIdentification: order.customerIdentification,
               address: order.deliveryAddress || '',
               orderType: order.orderType === 'delivery' ? 'Delivery' : 'Para llevar',
               items: order.items.map(item => ({ id: item.id, name: item.productName, quantity: item.quantity, unitPrice: item.price, subtotal: item.price * item.quantity })),
@@ -1118,6 +1120,13 @@ export function Comandas() {
                 <div>
                   <span className="cmd-meta-label">Teléfono</span>
                   <span className="cmd-meta-val">{selectedOrder.customerPhone || '-'}</span>
+                </div>
+              </div>
+              <div className="cmd-meta-item">
+                <User size={14} className="cmd-meta-icon" />
+                <div>
+                  <span className="cmd-meta-label">Cédula</span>
+                  <span className="cmd-meta-val">{selectedOrder.customerIdentification || '-'}</span>
                 </div>
               </div>
               <div className="cmd-meta-item">

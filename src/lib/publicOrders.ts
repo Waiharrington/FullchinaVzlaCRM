@@ -35,6 +35,7 @@ export interface PendingWebOrder {
   code: string
   customerName: string
   customerPhone: string
+  customerIdentification: string
   orderType: 'takeaway' | 'delivery'
   deliveryAddress: string | null
   notes: string | null
@@ -141,6 +142,7 @@ export async function getPublicPromotions(): Promise<Promotion[]> {
 export async function createWebOrder(params: {
   customerName: string
   customerPhone: string
+  customerIdentification: string
   orderType: 'takeaway' | 'delivery'
   deliveryAddress: string
   notes: string
@@ -154,6 +156,7 @@ export async function createWebOrder(params: {
   const { data, error } = await db().rpc('fn_create_web_order', {
     p_customer_name: params.customerName,
     p_customer_phone: params.customerPhone,
+    p_customer_identification: params.customerIdentification,
     p_order_type: params.orderType,
     p_delivery_address: params.deliveryAddress || null,
     p_notes: params.notes || null,
@@ -172,7 +175,7 @@ export async function createWebOrder(params: {
 export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
   const { data, error } = await db()
     .from('web_order_requests')
-    .select('id,request_number,customer_name,customer_phone,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price)')
+    .select('id,request_number,customer_name,customer_phone,customer_identification,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price)')
     .eq('status', 'pending_confirmation')
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -182,6 +185,7 @@ export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
     code: `WEB-${String(row.request_number).padStart(6, '0')}`,
     customerName: String(row.customer_name),
     customerPhone: String(row.customer_phone),
+    customerIdentification: String(row.customer_identification ?? ''),
     orderType: row.order_type as 'takeaway' | 'delivery',
     deliveryAddress: row.delivery_address ? String(row.delivery_address) : null,
     notes: row.notes ? String(row.notes) : null,
