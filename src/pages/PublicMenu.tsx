@@ -131,7 +131,6 @@ const PAY_OPTIONS = [
   { code: 'mobile', label: 'Pago móvil' },
   { code: 'transfer', label: 'Transferencia' },
   { code: 'card', label: 'Punto' },
-  { code: 'zelle', label: 'Zelle' },
   { code: 'binance', label: 'Binance' },
 ] as const
 type PayMethod = (typeof PAY_OPTIONS)[number]['code']
