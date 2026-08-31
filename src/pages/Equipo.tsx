@@ -12,7 +12,7 @@ import { confirmDialog } from '../components/ConfirmDialog'
 import {
   getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
-  adminSetUserRole, adminSetUserActive, adminSetUserPin,
+  adminSetUserRole, adminSetUserActive, adminSetUserPin, getErrorMessage,
 } from '../lib/dataService'
 import { adminSetUserModules } from '../lib/dataService'
 import type { Employee, AuthUser } from '../lib/dataService'
@@ -72,7 +72,7 @@ export function Equipo() {
       setError('')
       setTeam(await getAllEmployees())
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error cargando empleados')
+      setError(getErrorMessage(e, 'Error cargando empleados'))
     } finally {
       setLoading(false)
     }
@@ -85,7 +85,7 @@ export function Equipo() {
       setUsersError('')
       setAuthUsers(await listAuthUsers())
     } catch (e) {
-      setUsersError(e instanceof Error ? e.message : 'Error cargando usuarios de acceso')
+      setUsersError(getErrorMessage(e, 'Error cargando usuarios de acceso'))
     } finally {
       setUsersLoading(false)
     }
@@ -121,7 +121,7 @@ export function Equipo() {
       setShowModal(false)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error guardando')
+      setError(getErrorMessage(e, 'Error guardando miembro del equipo'))
     }
   }
 
@@ -130,7 +130,7 @@ export function Equipo() {
       await updateEmployee(emp.id, { isActive: !emp.isActive })
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error actualizando')
+      setError(getErrorMessage(e, 'Error actualizando'))
     }
   }
 
@@ -142,7 +142,7 @@ export function Equipo() {
       flash(`"${emp.fullName}" eliminado`)
       await load()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error eliminando empleado')
+      setError(getErrorMessage(e, 'Error eliminando empleado'))
     }
   }
 
@@ -210,7 +210,7 @@ export function Equipo() {
       setShowUserModal(false)
       await loadUsers()
     } catch (e) {
-      setUsersError(e instanceof Error ? e.message : 'Error guardando usuario')
+      setUsersError(getErrorMessage(e, 'Error guardando usuario'))
     } finally {
       setUSaving(false)
     }
@@ -227,7 +227,7 @@ export function Equipo() {
       flash(`Contraseña de "${pwUser.email}" actualizada`)
       setShowPwModal(false)
     } catch (e) {
-      setUsersError(e instanceof Error ? e.message : 'Error cambiando contraseña')
+      setUsersError(getErrorMessage(e, 'Error cambiando contraseña'))
     } finally {
       setPwSaving(false)
     }
@@ -244,7 +244,7 @@ export function Equipo() {
       flash(`PIN de "${pinUser.email}" actualizado`)
       setShowPinModal(false)
     } catch (e) {
-      setUsersError(e instanceof Error ? e.message : 'Error cambiando el PIN')
+      setUsersError(getErrorMessage(e, 'Error cambiando el PIN'))
     } finally {
       setPinSaving(false)
     }
@@ -256,7 +256,7 @@ export function Equipo() {
       await adminSetUserActive(u.id, !u.isActive)
       await loadUsers()
     } catch (e) {
-      setUsersError(e instanceof Error ? e.message : 'Error actualizando acceso')
+      setUsersError(getErrorMessage(e, 'Error actualizando acceso'))
     }
   }
 

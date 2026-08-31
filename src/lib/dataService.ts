@@ -2214,42 +2214,103 @@ export async function getRecipeComponents(sellableProductId: string): Promise<Re
   })
 }
 
+export function getErrorMessage(e: unknown, fallback = 'Error inesperado'): string {
+  if (!e) return fallback
+  if (typeof e === 'string') return e
+  if (e instanceof Error && e.message) return e.message
+  const obj = e as Record<string, unknown>
+  if (typeof obj.message === 'string' && obj.message) return obj.message
+  if (typeof obj.error_description === 'string' && obj.error_description) return obj.error_description
+  if (typeof obj.details === 'string' && obj.details) return `${obj.message ? `${obj.message}: ` : ''}${obj.details}`
+  return fallback
+}
+
 export async function getEmployees(): Promise<Employee[]> {
-  const { data, error } = await client()
+  const sb = client()
+  const { data, error } = await sb
     .from('employees')
     .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .eq('is_active', true)
     .order('full_name', { ascending: true })
 
+  if (!error && data) {
+    return data.map((r) => ({
+      id: r.id as string,
+      fullName: r.full_name as string,
+      position: (r.position as string) ?? null,
+      hourlyRate: Number(r.hourly_rate),
+      weeklySalary: Number(r.weekly_salary ?? 0),
+      overtimeRate: Number(r.overtime_rate ?? 0),
+      isActive: r.is_active as boolean,
+    }))
+  }
+
+  // Fallback si weekly_salary o overtime_rate aún no existen en la BD
+  if (error && (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204')) {
+    const { data: fallbackData, error: fallbackError } = await sb
+      .from('employees')
+      .select('id,full_name,position,hourly_rate,is_active')
+      .eq('is_active', true)
+      .order('full_name', { ascending: true })
+
+    if (fallbackError) throw fallbackError
+    return (fallbackData ?? []).map((r) => ({
+      id: r.id as string,
+      fullName: r.full_name as string,
+      position: (r.position as string) ?? null,
+      hourlyRate: Number(r.hourly_rate),
+      weeklySalary: 0,
+      overtimeRate: 0,
+      isActive: r.is_active as boolean,
+    }))
+  }
+
   if (error) throw error
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    fullName: r.full_name as string,
-    position: (r.position as string) ?? null,
-    hourlyRate: Number(r.hourly_rate),
-    weeklySalary: Number(r.weekly_salary ?? 0),
-    overtimeRate: Number(r.overtime_rate ?? 0),
-    isActive: r.is_active as boolean,
-  }))
+  return []
 }
 
 export async function getAllEmployees(): Promise<Employee[]> {
-  const { data, error } = await client()
+  const sb = client()
+  const { data, error } = await sb
     .from('employees')
     .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .order('is_active', { ascending: false })
     .order('full_name', { ascending: true })
 
+  if (!error && data) {
+    return data.map((r) => ({
+      id: r.id as string,
+      fullName: r.full_name as string,
+      position: (r.position as string) ?? null,
+      hourlyRate: Number(r.hourly_rate),
+      weeklySalary: Number(r.weekly_salary ?? 0),
+      overtimeRate: Number(r.overtime_rate ?? 0),
+      isActive: r.is_active as boolean,
+    }))
+  }
+
+  // Fallback si weekly_salary o overtime_rate aún no existen en la BD
+  if (error && (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204')) {
+    const { data: fallbackData, error: fallbackError } = await sb
+      .from('employees')
+      .select('id,full_name,position,hourly_rate,is_active')
+      .order('is_active', { ascending: false })
+      .order('full_name', { ascending: true })
+
+    if (fallbackError) throw fallbackError
+    return (fallbackData ?? []).map((r) => ({
+      id: r.id as string,
+      fullName: r.full_name as string,
+      position: (r.position as string) ?? null,
+      hourlyRate: Number(r.hourly_rate),
+      weeklySalary: 0,
+      overtimeRate: 0,
+      isActive: r.is_active as boolean,
+    }))
+  }
+
   if (error) throw error
-  return (data ?? []).map((r) => ({
-    id: r.id as string,
-    fullName: r.full_name as string,
-    position: (r.position as string) ?? null,
-    hourlyRate: Number(r.hourly_rate),
-    weeklySalary: Number(r.weekly_salary ?? 0),
-    overtimeRate: Number(r.overtime_rate ?? 0),
-    isActive: r.is_active as boolean,
-  }))
+  return []
 }
 
 export async function createEmployee(params: {
@@ -2259,7 +2320,8 @@ export async function createEmployee(params: {
   weeklySalary?: number
   overtimeRate?: number
 }): Promise<Employee> {
-  const { data, error } = await client()
+  const sb = client()
+  const { data, error } = await sb
     .from('employees')
     .insert({
       full_name: params.fullName,
@@ -2271,16 +2333,46 @@ export async function createEmployee(params: {
     })
     .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .single()
-  if (error) throw error
-  return {
-    id: data.id as string,
-    fullName: data.full_name as string,
-    position: (data.position as string) ?? null,
-    hourlyRate: Number(data.hourly_rate),
-    weeklySalary: Number(data.weekly_salary ?? 0),
-    overtimeRate: Number(data.overtime_rate ?? 0),
-    isActive: data.is_active as boolean,
+
+  if (!error && data) {
+    return {
+      id: data.id as string,
+      fullName: data.full_name as string,
+      position: (data.position as string) ?? null,
+      hourlyRate: Number(data.hourly_rate),
+      weeklySalary: Number(data.weekly_salary ?? 0),
+      overtimeRate: Number(data.overtime_rate ?? 0),
+      isActive: data.is_active as boolean,
+    }
   }
+
+  // Si falló por columnas que aún no existen en la BD, reintentar sin ellas
+  if (error && (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204')) {
+    const { data: fallbackData, error: fallbackError } = await sb
+      .from('employees')
+      .insert({
+        full_name: params.fullName,
+        position: params.position ?? null,
+        hourly_rate: params.hourlyRate ?? 0,
+        is_active: true,
+      })
+      .select('id,full_name,position,hourly_rate,is_active')
+      .single()
+
+    if (fallbackError) throw fallbackError
+    return {
+      id: fallbackData.id as string,
+      fullName: fallbackData.full_name as string,
+      position: (fallbackData.position as string) ?? null,
+      hourlyRate: Number(fallbackData.hourly_rate),
+      weeklySalary: params.weeklySalary ?? 0,
+      overtimeRate: params.overtimeRate ?? 0,
+      isActive: fallbackData.is_active as boolean,
+    }
+  }
+
+  if (error) throw error
+  throw new Error('No se pudo crear el empleado')
 }
 
 export async function updateEmployee(id: string, updates: {
@@ -2298,11 +2390,26 @@ export async function updateEmployee(id: string, updates: {
   if (updates.weeklySalary !== undefined) patch.weekly_salary = updates.weeklySalary
   if (updates.overtimeRate !== undefined) patch.overtime_rate = updates.overtimeRate
   if (updates.isActive !== undefined) patch.is_active = updates.isActive
-  const { error } = await client()
+
+  const sb = client()
+  const { error } = await sb
     .from('employees')
     .update(patch)
     .eq('id', id)
-  if (error) throw error
+
+  if (error) {
+    if (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204') {
+      delete patch.weekly_salary
+      delete patch.overtime_rate
+      const { error: retryErr } = await sb
+        .from('employees')
+        .update(patch)
+        .eq('id', id)
+      if (retryErr) throw retryErr
+      return
+    }
+    throw error
+  }
 }
 
 export async function deleteEmployee(id: string): Promise<void> {
