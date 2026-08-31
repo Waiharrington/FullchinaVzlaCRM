@@ -1,7 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDeliveryAsync, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
@@ -56,39 +54,7 @@ const INSTAGRAM_REELS = [
 ] as const
 
 type MapCoordinates = { lat: number; lng: number }
-
-function AddressMap({ coordinates, onPick }: { coordinates: MapCoordinates | null; onPick: (coordinates: MapCoordinates) => void }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const mapRef = useRef<L.Map | null>(null)
-  const markerRef = useRef<L.Marker | null>(null)
-  const initialCoordinatesRef = useRef(coordinates)
-  const onPickRef = useRef(onPick)
-  onPickRef.current = onPick
-
-  useEffect(() => {
-    if (!containerRef.current || mapRef.current) return
-    const defaultCenter: L.LatLngExpression = [10.2447, -67.5958]
-    const initialCoordinates = initialCoordinatesRef.current
-    const map = L.map(containerRef.current, { zoomControl: false, attributionControl: true }).setView(initialCoordinates ? [initialCoordinates.lat, initialCoordinates.lng] : defaultCenter, initialCoordinates ? 16 : 13)
-    L.control.zoom({ position: 'bottomright' }).addTo(map)
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(map)
-    map.on('click', event => onPickRef.current({ lat: event.latlng.lat, lng: event.latlng.lng }))
-    mapRef.current = map
-    setTimeout(() => map.invalidateSize(), 0)
-    return () => { map.remove(); mapRef.current = null; markerRef.current = null }
-  }, [])
-
-  useEffect(() => {
-    if (!mapRef.current || !coordinates) return
-    const point: L.LatLngExpression = [coordinates.lat, coordinates.lng]
-    mapRef.current.setView(point, Math.max(mapRef.current.getZoom(), 16), { animate: true })
-    if (!markerRef.current) {
-      markerRef.current = L.marker(point, { title: 'Ubicación seleccionada', icon: L.divIcon({ className: 'public-leaflet-pin', html: '<span></span>', iconSize: [30, 38], iconAnchor: [15, 38] }) }).addTo(mapRef.current)
-    } else markerRef.current.setLatLng(point)
-  }, [coordinates])
-
-  return <div ref={containerRef} className="public-address-map" aria-label="Mapa interactivo. Toca para elegir tu ubicación" />
-}
+const AddressMap = lazy(() => import('../components/PublicAddressMap').then(module => ({ default: module.PublicAddressMap })))
 
 const CATEGORY_IMAGES = [
   '/optimized/login-carousel/slide1.webp', '/optimized/login-carousel/slide2.webp', '/optimized/login-carousel/slide3.webp',
@@ -100,6 +66,10 @@ const LAST_ORDER_KEY = 'fullchina_public_last_order'
 const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
+// v2 intentionally drops caches created while the public RPC still returned
+// inline Base64 images (those entries could occupy several megabytes).
+const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v2'
+const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // Debe coincidir exactamente con el breakpoint de PublicMenu.css: escritorio
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
 const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orientation: landscape)'
@@ -114,6 +84,44 @@ const readDesktopTab = (): DesktopTab => {
   } catch {
     return 'inicio'
   }
+}
+
+type PublicMenuCategory = { key: string; label: string; sortOrder: number }
+type CatalogCache = { products: Product[]; categories: PublicMenuCategory[]; savedAt: number }
+
+function readCatalogCache(): CatalogCache | null {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || 'null') as CatalogCache | null
+    if (!cached || !Array.isArray(cached.products) || cached.products.length === 0 || !Number.isFinite(cached.savedAt)) return null
+    if (Date.now() - cached.savedAt > CATALOG_CACHE_MAX_AGE_MS) return null
+    return cached
+  } catch {
+    return null
+  }
+}
+
+function saveCatalogCache(products: Product[], categories: PublicMenuCategory[]) {
+  try {
+    localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ products, categories, savedAt: Date.now() } satisfies CatalogCache))
+  } catch {
+    // El catálogo sigue funcionando aunque el navegador no permita almacenamiento.
+  }
+}
+
+function prepareCatalog(catalog: Product[]) {
+  const resolveCategory = (product: { name: string; category: string }) =>
+    product.category !== 'otros' && isKnownCategory(product.category)
+      ? product.category
+      : classifyMenuCategory(product.name, product.category)
+
+  return catalog.map(product => {
+    const primary = resolveCategory(product)
+    const extras = (product.categories ?? []).filter(category => category !== product.category)
+    return { ...product, category: primary, categories: Array.from(new Set([primary, ...extras])) }
+  }).sort((a, b) => {
+    const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
+    return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
+  })
 }
 
 // Métodos de pago que el cliente puede indicar en la web. Los códigos coinciden
@@ -180,6 +188,11 @@ function optimizedProductImage(imageUrl: string | null | undefined) {
   return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imageUrl
 }
 
+function previewImageSource(source: string) {
+  const match = source.match(/^\/optimized\/(productos|fondos|login-carousel)\/([^?#]+\.webp)([?#].*)?$/i)
+  return match ? `/optimized/previews/${match[1]}/${match[2]}${match[3] || ''}` : null
+}
+
 function money(value: number) {
   return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(value)
 }
@@ -215,11 +228,18 @@ function readCheckoutAttempt(): { signature: string; key: string } | null {
 }
 
 export function PublicMenu() {
+  const pageRef = useRef<HTMLElement>(null)
   const designMode = new URLSearchParams(window.location.search).get('modo') === 'diseno'
-  const [products, setProducts] = useState<Product[]>([])
+  const isDesktopViewport = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+  const initialCatalog = useMemo(() => {
+    const cached = designMode ? null : readCatalogCache()
+    if (cached?.categories.length) hydrateMenuCategories(cached.categories)
+    return cached
+  }, [designMode])
+  const [products, setProducts] = useState<Product[]>(() => initialCatalog?.products.filter(product => !product.categories.includes('extras')) ?? [])
   // Los productos de categoría "extras" no se muestran como tarjeta en el menú;
   // solo se ofrecen como add-on dentro del detalle de cada plato (el check).
-  const [extrasProducts, setExtrasProducts] = useState<Product[]>([])
+  const [extrasProducts, setExtrasProducts] = useState<Product[]>(() => initialCatalog?.products.filter(product => product.categories.includes('extras')) ?? [])
   const [cart, setCart] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
@@ -277,7 +297,7 @@ export function PublicMenu() {
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null)
   const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !initialCatalog)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
@@ -317,6 +337,73 @@ export function PublicMenu() {
   })
   const [currentTab, setCurrentTab] = useState<DesktopTab>(readDesktopTab)
 
+  const revealDecodedImage = (image: HTMLImageElement) => {
+    const source = image.currentSrc || image.src
+    const reveal = () => {
+      if ((image.currentSrc || image.src) !== source) return
+      image.dataset.revealedSrc = source
+      image.classList.add('public-image-ready')
+    }
+    if (typeof image.decode === 'function') void image.decode().then(reveal, reveal)
+    else reveal()
+  }
+
+  const prepareImage = (image: HTMLImageElement) => {
+    const domSource = image.getAttribute('src') || ''
+    const trackedSource = image.dataset.fullSrc
+
+    if (trackedSource && image.dataset.imageQuality === 'preview' && domSource === image.dataset.previewSrc) return
+    if (trackedSource && image.dataset.imageQuality === 'full' && domSource === trackedSource) return
+
+    const fullSource = domSource
+    const previewSource = previewImageSource(fullSource)
+    if (!previewSource || previewSource === fullSource) {
+      image.dataset.fullSrc = fullSource
+      image.dataset.imageQuality = 'full'
+      if (image.complete && image.naturalWidth > 0) revealDecodedImage(image)
+      return
+    }
+
+    image.dataset.fullSrc = fullSource
+    image.dataset.previewSrc = previewSource
+    image.dataset.imageQuality = 'preview'
+    image.classList.remove('public-image-ready', 'public-image-error')
+    image.src = previewSource
+
+    const fullImage = new Image()
+    fullImage.decoding = 'async'
+    fullImage.src = fullSource
+    fullImage.onload = () => {
+      const decoded = typeof fullImage.decode === 'function' ? fullImage.decode() : Promise.resolve()
+      void decoded.catch(() => undefined).then(() => {
+        if (image.dataset.fullSrc !== fullSource) return
+        image.dataset.imageQuality = 'full'
+        image.src = fullSource
+      })
+    }
+  }
+
+  const handleImageLoad = (event: SyntheticEvent<HTMLElement>) => {
+    const image = event.target
+    if (image instanceof HTMLImageElement) revealDecodedImage(image)
+  }
+
+  const handleImageError = (event: SyntheticEvent<HTMLElement>) => {
+    const image = event.target
+    if (image instanceof HTMLImageElement) image.classList.add('public-image-error')
+  }
+
+  // Before every paint, hide any node whose src changed. It becomes visible
+  // only after the browser confirms the replacement image is fully decoded.
+  useLayoutEffect(() => {
+    const images = pageRef.current?.querySelectorAll('img') ?? []
+    images.forEach(image => {
+      const source = image.currentSrc || image.src
+      if (image.dataset.revealedSrc !== source) image.classList.remove('public-image-ready', 'public-image-error')
+      prepareImage(image)
+    })
+  })
+
   useEffect(() => {
     if (typeof window.matchMedia !== 'function' || !window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return
     try { localStorage.setItem(DESKTOP_TAB_KEY, currentTab) } catch { /* storage unavailable */ }
@@ -338,31 +425,24 @@ export function PublicMenu() {
       return
     }
     getPublicDeliverySettings().then(setDeliverySettings).catch(() => setDeliverySettings(null))
-    Promise.all([getPublicCatalog(), getExchangeRates(), getPublicMenuCategories().catch(() => [])])
-      .then(([catalog, rates, cats]) => {
+    // La tasa es información secundaria: nunca debe bloquear la aparición del menú.
+    getExchangeRates().then(rates => setBcvRate(rates.bcv || null)).catch(() => setBcvRate(null))
+    Promise.all([getPublicCatalog(), getPublicMenuCategories().catch(() => [] as PublicMenuCategory[])])
+      .then(([catalog, cats]) => {
         if (cats.length) hydrateMenuCategories(cats)
-        // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
-        const resolveCategory = (p: { name: string; category: string }) =>
-          p.category !== 'otros' && isKnownCategory(p.category) ? p.category : classifyMenuCategory(p.name, p.category)
-        const resolved = catalog.map(p => {
-          const primary = resolveCategory(p)
-          const extras = (p.categories ?? []).filter(c => c !== p.category)
-          return { ...p, category: primary, categories: Array.from(new Set([primary, ...extras])) }
-        })
-          .sort((a, b) => {
-            const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
-            return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
-          })
+        const resolved = prepareCatalog(catalog)
+        saveCatalogCache(resolved, cats)
         setExtrasProducts(resolved.filter(p => p.categories.includes('extras')))
         setProducts(resolved.filter(p => !p.categories.includes('extras')))
-        setBcvRate(rates.bcv || null)
       })
-      .catch(() => setError('No pudimos cargar el menú. Intenta nuevamente.'))
+      .catch(() => {
+        if (!initialCatalog) setError('No pudimos cargar el menú. Intenta nuevamente.')
+      })
       .finally(() => {
         setLoading(false)
         window.__removeFCSplash?.()
       })
-  }, [designMode])
+  }, [designMode, initialCatalog])
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
@@ -1056,7 +1136,13 @@ export function PublicMenu() {
   }
 
   return (
-    <main className="public-menu-page" style={{ '--cat-accent': accentRgb } as CSSProperties}>
+    <main
+      ref={pageRef}
+      className="public-menu-page"
+      style={{ '--cat-accent': accentRgb } as CSSProperties}
+      onLoadCapture={handleImageLoad}
+      onErrorCapture={handleImageError}
+    >
       {/* Top Navbar */}
       <header className="public-top-bar" id="inicio">
           <>
@@ -1432,10 +1518,11 @@ export function PublicMenu() {
                 <div className="public-hero-right">
                   <span className="public-hero-glow-aura" aria-hidden="true" />
                   <img 
-                    src="/fondos/hero-banner-food.png" 
+                    src="/optimized/fondos/hero-banner-food.webp"
                     alt="Full China Wok y Arroz Chaufa" 
                     className="public-hero-dish-img" 
-                    fetchPriority="high" 
+                    loading={isDesktopViewport ? 'eager' : 'lazy'}
+                    fetchPriority={isDesktopViewport ? 'high' : 'low'}
                     decoding="async" 
                   />
                   <div className="public-hero-gradient-overlay" />
@@ -1815,7 +1902,7 @@ export function PublicMenu() {
               <div className="public-sidebar-empty">
                 <div className="public-empty-box-art">
                   <img 
-                    src="/fondos/carrito-vacio.png" 
+                    src="/optimized/fondos/carrito-vacio.webp"
                     alt="Tu pedido está vacío" 
                     className="public-empty-cart-img"
                   />
@@ -2112,9 +2199,9 @@ export function PublicMenu() {
       {cartOpen && <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
         <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { if (isDesktop) { if (orderType === 'delivery') { setStep('address'); } else { closeCart(); } } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { if (isDesktop) { closeCart(); } else { setStep('delivery'); } } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing' || step === 'sent') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
-        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/fondos/carrito-vacio.png" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
+        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
-        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<AddressMap coordinates={geoCoords} onPick={selectMapLocation} /><div className="public-address-selected"><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span></div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className="public-address-extra"><span>Casa / edificio / referencia</span><input value={addressReference} onChange={event => setAddressReference(event.target.value)} placeholder="Ej. Torre B, Piso 4, Apt. 4B" /></label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div>{addressError && <p className="public-address-error" role="alert">{addressError}</p>}<button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
+        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className="public-address-selected"><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span></div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className="public-address-extra"><span>Casa / edificio / referencia</span><input value={addressReference} onChange={event => setAddressReference(event.target.value)} placeholder="Ej. Torre B, Piso 4, Apt. 4B" /></label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div>{addressError && <p className="public-address-error" role="alert">{addressError}</p>}<button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
         {step === 'details' && (
           <div className="public-checkout">
             <div className="public-data-intro">

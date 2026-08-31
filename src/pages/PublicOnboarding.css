@@ -7,8 +7,6 @@
    pantallas anchas para que no se vea roto mientras tanto.
    =================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
-
 .onb-page {
   position: fixed;
   inset: 0;
@@ -25,7 +23,13 @@
 .onb-bg-img {
   position: absolute;
   inset: 0;
-  background: url('/optimized/fondos/onboarding-bg-phone.webp') center top / cover no-repeat;
+  background-position: center top;
+  background-size: cover;
+  background-repeat: no-repeat;
+  visibility: hidden;
+}
+.onb-bg-img.is-ready {
+  visibility: visible;
   animation: onb-bg-drift 26s ease-in-out infinite alternate;
   transform-origin: 50% 30%;
 }
@@ -412,9 +416,7 @@
 /* --- Pantallas anchas intermedias (tablet) -- */
 @media (min-width: 620px) and (max-width: 1279px) {
   .onb-bg-img {
-    background-image: url('/optimized/fondos/onboarding-bg-phone.webp');
     background-position: center top;
-    animation: onb-bg-drift 26s ease-in-out infinite alternate;
     transform-origin: 50% 30%;
   }
 
@@ -625,11 +627,10 @@
 
 @media (min-width: 1280px) {
   .onb-bg-img {
-    background-image: url('/optimized/fondos/onboarding-bg-desktop.webp');
     background-position: center center;
-    animation: onb-bg-drift-desktop 32s ease-in-out infinite alternate;
     transform-origin: center center;
   }
+  .onb-bg-img.is-ready { animation: onb-bg-drift-desktop 32s ease-in-out infinite alternate; }
 
   .onb-scroll { align-items: center; justify-content: center; padding: 72px 0 56px; box-sizing: border-box; }
   .onb-hero-spacer { display: none; }

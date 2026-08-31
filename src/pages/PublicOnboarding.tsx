@@ -1,8 +1,10 @@
-import { useCallback, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { BookOpen, Flame, MapPin, Utensils, ShoppingBag, Send } from 'lucide-react'
-import { PublicMenu } from './PublicMenu'
+import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import './PublicOnboarding.css'
+
+const PublicMenu = lazy(() => import('./PublicMenu').then(module => ({ default: module.PublicMenu })))
 
 function WhatsAppIcon({ size = 15 }: { size?: number }) {
   return (
@@ -23,7 +25,36 @@ const STEPS = [
 
 function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const [isExiting, setIsExiting] = useState(false)
+  const desktop = window.matchMedia('(min-width: 1280px)').matches
+  const fullBackgroundAsset = desktop
+    ? '/optimized/fondos/onboarding-bg-desktop.webp'
+    : '/optimized/fondos/onboarding-bg-phone.webp'
+  const previewBackgroundAsset = desktop
+    ? '/optimized/previews/fondos/onboarding-bg-desktop.webp'
+    : '/optimized/previews/fondos/onboarding-bg-phone.webp'
+  const [backgroundAsset, setBackgroundAsset] = useState(previewBackgroundAsset)
   const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
+
+  useEffect(() => {
+    const image = new Image()
+    let active = true
+
+    image.decoding = 'async'
+    image.fetchPriority = 'high'
+    image.src = fullBackgroundAsset
+
+    const reveal = () => {
+      const decoded = typeof image.decode === 'function' ? image.decode() : Promise.resolve()
+      void decoded.catch(() => undefined).then(() => {
+        if (active) setBackgroundAsset(fullBackgroundAsset)
+      })
+    }
+
+    if (image.complete) reveal()
+    else image.onload = reveal
+
+    return () => { active = false }
+  }, [fullBackgroundAsset])
 
   const goToMenu = useCallback(() => {
     localStorage.setItem(STORAGE_KEY, 'true')
@@ -33,7 +64,10 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className={`onb-page ${isExiting ? 'exiting' : ''}`}>
-      <div className="onb-bg-img" />
+      <div
+        className="onb-bg-img is-ready"
+        style={{ backgroundImage: `url("${backgroundAsset}")` } as CSSProperties}
+      />
       <div className="onb-bg-scrim" />
       <HeroWokEmbers />
 
@@ -119,7 +153,7 @@ export function PublicOnboarding() {
   const [seen, setSeen] = useState(() => !forceOnboarding && localStorage.getItem(STORAGE_KEY) === 'true')
 
   if (seen) {
-    return <PublicMenu />
+    return <Suspense fallback={<PublicMenuSkeleton />}><PublicMenu /></Suspense>
   }
 
   return <OnboardingScreen onComplete={() => setSeen(true)} />

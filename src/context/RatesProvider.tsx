@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { getExchangeRates } from '../lib/rates'
 import { RatesContext } from './rates-context'
 
 export function RatesProvider({ children }: { children: ReactNode }) {
+  const location = useLocation()
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -20,8 +22,14 @@ export function RatesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // El menú público obtiene la tasa sin bloquear el catálogo. Evita una
+    // segunda solicitud simultánea desde el proveedor global de la app interna.
+    if (location.pathname.toLowerCase().startsWith('/pedir')) {
+      setLoading(false)
+      return
+    }
     void loadRates()
-  }, [loadRates])
+  }, [loadRates, location.pathname])
 
   const refresh = useCallback(async () => {
     await loadRates(true)

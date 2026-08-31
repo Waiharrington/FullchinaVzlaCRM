@@ -16,6 +16,10 @@ export default defineConfig({
         // Las fotos de productos NO van al precache (pesan ~5.5 MB); se cachean
         // en tiempo de ejecución la primera vez que se muestran.
         globIgnores: [
+          // Los módulos se guardan cuando realmente se usan. Precargar aquí
+          // todo el panel administrativo hacía que el service worker bajara
+          // varios MB y compitiera con el menú en conexiones móviles lentas.
+          '**/assets/**',
           '**/productos/**',
           '**/menu-icons/**',
           '**/fondos/**',
@@ -25,6 +29,14 @@ export default defineConfig({
           '**/optimized/**',
         ],
         runtimeCaching: [
+          {
+            urlPattern: /\/assets\/.*\.(?:js|css)$/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'app-assets',
+              expiration: { maxEntries: 250, maxAgeSeconds: 60 * 60 * 24 * 60 },
+            },
+          },
           {
             urlPattern: /\/(?:optimized\/.*|productos\/.*)\.(?:png|jpg|jpeg|webp)$/i,
             handler: 'StaleWhileRevalidate',
@@ -41,6 +53,10 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // Mantén el helper de imports dinámicos en un chunk diminuto. Si
+          // Rollup lo agrupa con jsPDF, hasta la ruta pública termina
+          // descargando toda la librería de reportes antes de necesitarla.
+          if (id.includes('vite/preload-helper')) return 'vite-runtime'
           if (!id.includes('node_modules')) return undefined
           if (id.includes('jspdf')) return 'jspdf-vendor'
           if (id.includes('html2canvas')) return 'canvas-vendor'

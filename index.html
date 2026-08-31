@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#000000" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -10,8 +10,9 @@
     <meta name="description" content="Full China - Sistema Operativo de Food Truck" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Graduate&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
-    <link rel="apple-touch-icon" href="/pwa-logo.png" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Graduate&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Graduate&family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" /></noscript>
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <link rel="manifest" id="pwa-manifest" href="/manifest-admin.webmanifest" />
     <script>
       // Elige el manifest correcto en la primera carga: menú de clientes (/pedir)
@@ -24,6 +25,8 @@
       })();
     </script>
     <link rel="preload" as="image" href="/optimized/root/logo.webp" type="image/webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/optimized/previews/fondos/onboarding-bg-phone.webp" type="image/webp" fetchpriority="high" media="(max-width: 1279px)" />
+    <link rel="preload" as="image" href="/optimized/previews/fondos/onboarding-bg-desktop.webp" type="image/webp" fetchpriority="high" media="(min-width: 1280px)" />
     <link rel="preload" as="image" href="/optimized/fondos/fondo-pagina-carga.webp" type="image/webp" fetchpriority="high" />
     <title>Full China</title>
     <style>
