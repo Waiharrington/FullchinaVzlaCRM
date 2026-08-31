@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import {
   Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3,
@@ -450,7 +451,7 @@ export function Equipo() {
       </div>
 
       {/* Modal empleado */}
-      {showModal && (
+      {showModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
@@ -459,13 +460,19 @@ export function Equipo() {
             <form onSubmit={handleSave} className="modal-form">
               <div className="form-group">
                 <label>Nombre completo</label>
-                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Pedro Pérez" required />
+                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Pedro Pérez" required autoFocus />
+              </div>
+              <div className="form-row-2">
+                <div className="form-group">
+                  <label>Sueldo semanal (USD)</label>
+                  <NumberStepper min={0} step={1} value={String(weeklySalary)} onChange={(v) => setWeeklySalary(parseFloat(v) || 0)} />
+                </div>
+                <div className="form-group">
+                  <label>Tarifa hora extra (USD)</label>
+                  <NumberStepper min={0} step={0.5} value={String(overtimeRate)} onChange={(v) => setOvertimeRate(parseFloat(v) || 0)} />
+                </div>
               </div>
               <div className="form-group">
-                <label>Sueldo semanal (USD)</label>
-                <NumberStepper min={0} step={1} value={String(weeklySalary)} onChange={(v) => setWeeklySalary(parseFloat(v) || 0)} />
-                <label>Tarifa hora extra (USD)</label>
-                <NumberStepper min={0} step={0.5} value={String(overtimeRate)} onChange={(v) => setOvertimeRate(parseFloat(v) || 0)} />
                 <label style={{ color: '#71717a' }}>Tarifa histórica por hora (opcional)</label>
                 <NumberStepper min={0} step={1} value={String(hourlyRate)} onChange={(v) => setHourlyRate(parseFloat(v) || 0)} />
               </div>
@@ -475,11 +482,12 @@ export function Equipo() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal usuario de acceso (crear / editar) */}
-      {showUserModal && (
+      {showUserModal && createPortal(
         <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
@@ -561,11 +569,12 @@ export function Equipo() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal cambiar PIN */}
-      {showPinModal && pinUser && (
+      {showPinModal && pinUser && createPortal(
         <div className="modal-overlay" onClick={() => setShowPinModal(false)}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
@@ -599,11 +608,12 @@ export function Equipo() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal cambiar contraseña */}
-      {showPwModal && pwUser && (
+      {showPwModal && pwUser && createPortal(
         <div className="modal-overlay" onClick={() => setShowPwModal(false)}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
@@ -625,7 +635,8 @@ export function Equipo() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
