@@ -41,19 +41,70 @@
 
 /* Tabla liquidación */
 .nom-table-wrap { overflow-x: auto; border-radius: 12px; }
-.nom-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 920px; }
-.nom-table th { text-align: right; color: #a1a1aa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
-.nom-table th:first-child, .nom-table th:nth-child(2) { text-align: left; }
-.nom-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); text-align: right; vertical-align: middle; }
-.nom-table td:first-child, .nom-table td:nth-child(2) { text-align: left; }
+.nom-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 960px; }
+.nom-table th { color: #a1a1aa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 10px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
+.nom-table td { padding: 8px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+.nom-col-left { text-align: left !important; }
+.nom-col-center { text-align: center !important; }
+.nom-col-right { text-align: right !important; }
+.nom-col-avatar { width: 36px; padding-right: 0 !important; text-align: center !important; }
+
 .nom-emp { display: flex; align-items: center; gap: 9px; }
 .nom-avatar { width: 32px; height: 32px; border-radius: 50%; background: #7c3aed; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
-.nom-stepper-cell { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 2px; width: 76px; max-width: 76px; }
-.nom-stepper-cell .num-stepper { width: 100%; max-width: 76px; height: 32px; border-radius: 8px; background: #18181f; border: 1px solid rgba(255,255,255,0.1); }
-.nom-stepper-cell .num-stepper-input { font-size: 13px !important; font-weight: 600 !important; padding: 4px 2px 4px 6px !important; text-align: right; }
-.nom-stepper-cell .num-stepper-controls { width: 20px; }
-.nom-stepper-cell .num-stepper-btn { width: 20px; }
-.nom-stepper-cell small { font-size: 11px; font-weight: 600; line-height: 1.1; white-space: nowrap; }
+
+.nom-stepper-cell {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  width: 80px;
+  max-width: 80px;
+  margin: 0 auto;
+}
+
+.nom-stepper-cell .num-stepper {
+  width: 100%;
+  max-width: 80px;
+  height: 32px;
+  border-radius: 8px;
+  background: #18181f;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+.nom-stepper-cell .num-stepper-input {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  color: #fff !important;
+  padding: 0 !important;
+  height: 100% !important;
+  line-height: 30px !important;
+  min-width: 0 !important;
+}
+
+.nom-stepper-cell .num-stepper-controls {
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.nom-stepper-cell .num-stepper-btn {
+  width: 22px;
+}
+
+.nom-stepper-cell small {
+  display: block;
+  text-align: center;
+  width: 100%;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
 .nom-net { color: #22c55e; font-weight: 800; font-size: 14px; }
 .nom-tot-row td { font-weight: 700; border-top: 2px solid rgba(255,255,255,0.08); border-bottom: 0; padding-top: 12px; color: #fff; }
 

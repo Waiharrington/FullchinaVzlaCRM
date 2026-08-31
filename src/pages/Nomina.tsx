@@ -226,29 +226,29 @@ export function Nomina() {
               <table className="nom-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 36 }}></th>
-                    <th>Empleado / Cargo</th>
-                    <th>Sueldo semanal</th>
-                    <th>Adelanto</th>
-                    <th>Bono</th>
-                    <th>Horas extra</th>
-                    <th>Transporte</th>
-                    <th>Día no laborado</th>
-                    <th>Neto a pagar</th>
+                    <th className="nom-col-avatar" style={{ width: 36 }}></th>
+                    <th className="nom-col-left">Empleado / Cargo</th>
+                    <th className="nom-col-center">Sueldo semanal</th>
+                    <th className="nom-col-center">Adelanto</th>
+                    <th className="nom-col-center">Bono</th>
+                    <th className="nom-col-center">Horas extra</th>
+                    <th className="nom-col-center">Transporte</th>
+                    <th className="nom-col-center">Día no laborado</th>
+                    <th className="nom-col-right">Neto a pagar</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.emp.id}>
-                      <td><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
-                      <td><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
-                      <td><strong>{formatUsd(r.weekly)}</strong></td>
-                      <td>
+                      <td className="nom-col-avatar"><span className="nom-avatar">{initials(r.emp.fullName)}</span></td>
+                      <td className="nom-col-left"><div className="nom-emp"><div><strong>{r.emp.fullName}</strong><br /><small style={{ color: '#71717a' }}>{r.emp.position || '—'}</small></div></div></td>
+                      <td className="nom-col-center"><strong>{formatUsd(r.weekly)}</strong></td>
+                      <td className="nom-col-center">
                         <span style={{ color: r.advance > 0 ? '#ef4444' : '#71717a', fontWeight: r.advance > 0 ? 700 : 500 }}>
                           {r.advance > 0 ? `-${formatUsd(r.advance)}` : '$0,00'}
                         </span>
                       </td>
-                      <td>
+                      <td className="nom-col-center">
                         <div className="nom-stepper-cell">
                           <NumberStepper
                             step={1}
@@ -258,7 +258,7 @@ export function Nomina() {
                           />
                         </div>
                       </td>
-                      <td>
+                      <td className="nom-col-center">
                         <div className="nom-stepper-cell">
                           <NumberStepper
                             step={0.5}
@@ -269,7 +269,7 @@ export function Nomina() {
                           <small style={{ color: '#22c55e' }}>+{formatUsd(r.overtime)}</small>
                         </div>
                       </td>
-                      <td>
+                      <td className="nom-col-center">
                         <div className="nom-stepper-cell">
                           <NumberStepper
                             step={1}
@@ -280,7 +280,7 @@ export function Nomina() {
                           <small style={{ color: '#22c55e' }}>+{formatUsd(r.transport)}</small>
                         </div>
                       </td>
-                      <td>
+                      <td className="nom-col-center">
                         <div className="nom-stepper-cell">
                           <NumberStepper
                             step={1}
@@ -291,19 +291,19 @@ export function Nomina() {
                           <small style={{ color: '#ef4444' }}>-{formatUsd(r.absenceDeduction)}</small>
                         </div>
                       </td>
-                      <td className="nom-net">{formatUsd(r.neto)}</td>
+                      <td className="nom-col-right nom-net">{formatUsd(r.neto)}</td>
                     </tr>
                   ))}
                   <tr className="nom-tot-row">
-                    <td></td>
-                    <td>TOTALES</td>
-                    <td>{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</td>
-                    <td style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</td>
-                    <td style={{ color: '#22c55e' }}>+{formatUsd(tot.bon)}</td>
-                    <td style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.overtime, 0))} ({tot.hours}h)</td>
-                    <td style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</td>
-                    <td style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</td>
-                    <td className="nom-net">{formatUsd(tot.neto)}</td>
+                    <td className="nom-col-avatar"></td>
+                    <td className="nom-col-left">TOTALES</td>
+                    <td className="nom-col-center">{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</td>
+                    <td className="nom-col-center" style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</td>
+                    <td className="nom-col-center" style={{ color: '#22c55e' }}>+{formatUsd(tot.bon)}</td>
+                    <td className="nom-col-center" style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.overtime, 0))} ({tot.hours}h)</td>
+                    <td className="nom-col-center" style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</td>
+                    <td className="nom-col-center" style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</td>
+                    <td className="nom-col-right nom-net">{formatUsd(tot.neto)}</td>
                   </tr>
                 </tbody>
               </table>
