@@ -268,7 +268,34 @@ export function Inicio() {
     <div className="db-page animate-fade-in">
       <header className="db-header">
         <div className="db-header-left">
-          <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>
+          <div className="db-header-title-row">
+            <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>
+            <div className="db-header-right">
+              <button className="db-header-pill" type="button" onClick={() => void fetchData(salesRange)} disabled={loading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
+                <Calendar size={14} /><span>{loading ? 'Actualizando…' : 'Hoy'}</span><RefreshCw size={13} className={loading ? 'is-spinning' : ''} />
+              </button>
+              <div className="db-header-search">
+                <GlobalSearch inline />
+              </div>
+              <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
+                <Bell size={18} />
+                {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
+              </button>
+              {notificationsOpen ? (
+                <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
+                  <div className="db-notifications-head"><strong>Alertas operativas</strong><span>{notifications.length}</span></div>
+                  {notifications.length === 0 ? (
+                    <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas pendientes</span></div>
+                  ) : notifications.map(notification => (
+                    <button key={notification.id} type="button" className={`db-notification-item ${notification.tone}`} onClick={() => { setNotificationsOpen(false); navigate(notification.path) }}>
+                      <span className="db-notification-dot" />
+                      <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
           <div className="db-greeting-sub-row">
             <p className="db-greeting-sub">Aquí tienes el resumen de tu food truck.</p>
             <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">
@@ -277,31 +304,6 @@ export function Inicio() {
               {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : formatRateDate(bcvUpdatedAt)}</span>}
             </button>
           </div>
-        </div>
-        <div className="db-header-right">
-          <button className="db-header-pill" type="button" onClick={() => void fetchData(salesRange)} disabled={loading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
-            <Calendar size={14} /><span>{loading ? 'Actualizando…' : 'Hoy'}</span><RefreshCw size={13} className={loading ? 'is-spinning' : ''} />
-          </button>
-          <div className="db-header-search">
-            <GlobalSearch inline />
-          </div>
-          <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
-            <Bell size={18} />
-            {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
-          </button>
-          {notificationsOpen ? (
-            <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
-              <div className="db-notifications-head"><strong>Alertas operativas</strong><span>{notifications.length}</span></div>
-              {notifications.length === 0 ? (
-                <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas pendientes</span></div>
-              ) : notifications.map(notification => (
-                <button key={notification.id} type="button" className={`db-notification-item ${notification.tone}`} onClick={() => { setNotificationsOpen(false); navigate(notification.path) }}>
-                  <span className="db-notification-dot" />
-                  <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
       </header>
 
