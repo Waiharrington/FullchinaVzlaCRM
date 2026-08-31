@@ -25,12 +25,12 @@ const STEPS = [
 
 function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const [isExiting, setIsExiting] = useState(false)
-  const desktop = window.matchMedia('(min-width: 1280px)').matches
+  const desktop = window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches
   const fullBackgroundAsset = desktop
-    ? '/optimized/fondos/onboarding-bg-desktop.webp'
+    ? '/fondos/fondo_onboarding_compu.png'
     : '/optimized/fondos/onboarding-bg-phone.webp'
   const previewBackgroundAsset = desktop
-    ? '/optimized/previews/fondos/onboarding-bg-desktop.webp'
+    ? '/fondos/fondo_onboarding_compu.png'
     : '/optimized/previews/fondos/onboarding-bg-phone.webp'
   const [backgroundAsset, setBackgroundAsset] = useState(previewBackgroundAsset)
   const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
@@ -75,8 +75,14 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
         <div className="onb-hero-spacer" />
 
         <section className="onb-card">
+          <img src="/optimized/root/logo.webp" alt="Full China" className="onb-card-logo-img" />
+
           <h1 className="onb-card-title">
-            Bienvenido a<br /><span className="onb-card-brand">Full China</span>
+            <span className="onb-brand-welcome">BIENVENIDO A</span>
+            <div className="onb-brand-logo">
+              <span className="onb-brand-full">FULL</span>
+              <span className="onb-brand-china">CHINA</span>
+            </div>
           </h1>
 
           <div className="onb-divider">
@@ -96,19 +102,19 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
             <li>Más</li>
           </ul>
 
-          <button className="onb-cta" onClick={goToMenu} type="button">
+          <button className="onb-cta onb-cta--block" onClick={goToMenu} type="button">
             <BookOpen size={18} strokeWidth={2.3} />
-            <span>Ver menú</span>
+            <span>VER MENÚ</span>
           </button>
 
           {configuredPhone && (
             <a
-              className="onb-whatsapp-link"
+              className="onb-whatsapp-link onb-whatsapp-link--secondary"
               href={`https://wa.me/${configuredPhone}`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              <WhatsAppIcon size={15} />
+              <WhatsAppIcon size={13} />
               <span>¿Necesitas ayuda? WhatsApp</span>
             </a>
           )}

@@ -1,7 +1,73 @@
 @keyframes public-menu-enter {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
+
+/* Staggered entry transitions for key components */
+.public-top-bar {
+  opacity: 0;
+  animation: public-slide-down 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
+
+.public-hero-header, .public-hero-title-row {
+  opacity: 0;
+  animation: public-fade-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+}
+
+.public-categories-bar, .public-categories-nav {
+  opacity: 0;
+  animation: public-fade-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s forwards;
+}
+
+.public-home-promo-card, 
+.public-prod-card, 
+.public-home-product-card, 
+.public-home-section-title {
+  opacity: 0;
+  transform: translateY(15px);
+  animation: public-card-fade-slide 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Stagger card animation delays to make them pop in progressively */
+.public-home-promo-card:nth-child(1), .public-prod-card:nth-child(1), .public-home-product-card:nth-child(1) { animation-delay: 0.3s; }
+.public-home-promo-card:nth-child(2), .public-prod-card:nth-child(2), .public-home-product-card:nth-child(2) { animation-delay: 0.38s; }
+.public-home-promo-card:nth-child(3), .public-prod-card:nth-child(3), .public-home-product-card:nth-child(3) { animation-delay: 0.46s; }
+.public-home-promo-card:nth-child(4), .public-prod-card:nth-child(4), .public-home-product-card:nth-child(4) { animation-delay: 0.54s; }
+.public-home-promo-card:nth-child(n+5), .public-prod-card:nth-child(n+5), .public-home-product-card:nth-child(n+5) { animation-delay: 0.6s; }
+
+@keyframes public-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes public-fade-slide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes public-card-fade-slide {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 :root {
   --public-motion-fast: 160ms;
   --public-motion-base: 240ms;
@@ -920,6 +986,7 @@ button.mobile-only {
   display: grid; place-items: center; padding: 18px;
 }
 .public-modal-backdrop {
+  z-index: 170;
   padding: 0;
   place-items: stretch;
   background: url('/optimized/fondos/public-flow-bg.webp') center bottom / cover no-repeat;
@@ -1256,7 +1323,9 @@ button.mobile-only {
 .public-cart-recommendations-head h3 { margin: 0; font-size: 22px; }
 .public-cart-recommendations-head button { display: inline-flex; align-items: center; gap: 3px; padding: 0; border: 0; background: transparent; color: #ed1b2f; font: 700 13px 'DM Sans'; cursor: pointer; }
 .public-recommendation-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.public-recommendation-row article { position: relative; display: grid; grid-template-columns: 72px minmax(0,1fr); align-items: center; gap: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(0,0,0,.3); }
+.public-recommendation-row article { position: relative; display: grid; grid-template-columns: 72px minmax(0,1fr); align-items: center; gap: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(0,0,0,.3); cursor: pointer; }
+.public-recommendation-row article:focus-visible,
+.public-cart-all-extras-grid article:focus-visible { outline: 2px solid #ffcf55; outline-offset: 2px; }
 .public-recommendation-row img { width: 72px; height: 66px; border-radius: 10px; object-fit: cover; }
 .public-recommendation-row article > div { display: grid; gap: 5px; padding-right: 22px; }
 .public-recommendation-row strong { font-size: 12px; line-height: 1.15; }
@@ -1279,7 +1348,7 @@ button.mobile-only {
 .public-cart-extra-section-head h4::before { content: ''; display: inline-block; width: 3px; height: 17px; margin-right: 8px; vertical-align: -2px; border-radius: 2px; background: #ed1b2f; }
 .public-cart-extra-section-head span { color: #878c94; font-size: 11px; }
 .public-cart-all-extras-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
-.public-cart-all-extras-grid article { position: relative; display: grid; grid-template-columns: 84px minmax(0,1fr); align-items: center; gap: 10px; min-height: 84px; padding: 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(0,0,0,.35); }
+.public-cart-all-extras-grid article { position: relative; display: grid; grid-template-columns: 84px minmax(0,1fr); align-items: center; gap: 10px; min-height: 84px; padding: 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 16px; background: rgba(0,0,0,.35); cursor: pointer; }
 .public-cart-all-extras-grid img { width: 84px; height: 74px; border-radius: 11px; object-fit: cover; }
 .public-cart-all-extras-grid article > div { display: grid; gap: 5px; padding-right: 20px; }
 .public-cart-all-extras-grid strong { font-size: 12px; line-height: 1.18; }
@@ -1912,7 +1981,7 @@ button.mobile-only {
     height: 6px;
   }
   .public-categories-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.2);
+    background: #E31B2B;
     border-radius: 4px;
   }
   .public-prod-img { height: 140px; }
@@ -2097,7 +2166,7 @@ button.mobile-only {
     max-width: none !important;
     margin: 0 !important;
     padding: 0 0 80px 0 !important;
-    background: url('/optimized/fondos/fondo-compu.webp') center center / cover fixed no-repeat !important;
+    background: url('/fondos/fondo_menu_compu.png') center center / cover fixed no-repeat !important;
   }
 
   /* Top Navbar */
@@ -7052,4 +7121,45 @@ button.mobile-only {
 }
 .public-menu-page img.public-image-error {
   visibility: hidden !important;
+}
+
+/* Custom Red Scrollbar for Public Menu */
+.public-menu-page::-webkit-scrollbar {
+  display: block !important;
+  width: 6px !important;
+  height: 6px !important;
+}
+.public-menu-page::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1) !important;
+}
+.public-menu-page::-webkit-scrollbar-thumb {
+  background: #E31B2B !important;
+  border-radius: 10px !important;
+}
+.public-menu-page::-webkit-scrollbar-thumb:hover {
+  background: #C81321 !important;
+}
+
+.public-img--top-align {
+  object-position: center top !important;
+}
+
+.public-img--beverage-recommended-align {
+  object-position: center top !important;
+  transform: translateY(15px) scale(1.15) !important;
+}
+
+.public-menu-page .public-categories-scroll::-webkit-scrollbar {
+  display: none !important;
+}
+
+/* El bloque "DESKTOP VIEWPORT" de arriba trata como escritorio a
+   cualquier tablet en horizontal (>=1024px), para heredar esa maqueta.
+   Pero un iPad no es una computadora: debe seguir usando el fondo de
+   teléfono (liviano, sin el riesgo de pixelado del fondo de compu). */
+@media (min-width: 1280px) and (pointer: coarse),
+       (min-width: 1024px) and (orientation: landscape) and (pointer: coarse) {
+  .public-menu-page {
+    background: url('/optimized/fondos/public-flow-bg.webp') center bottom / cover fixed no-repeat !important;
+  }
 }

@@ -1066,6 +1066,7 @@ export function PublicMenu() {
           <img 
             src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
             alt={group.name} 
+            className={(group.name.toLowerCase().includes('agua') || group.name.toLowerCase().includes('2l') || group.name.toLowerCase().includes('2 l') || group.name.toLowerCase().includes('lipton')) ? 'public-img--beverage-recommended-align' : (group.category === 'bebidas' ? 'public-img--top-align' : '')}
             loading="lazy" 
             decoding="async" 
           />
@@ -1127,6 +1128,7 @@ export function PublicMenu() {
           <img 
             src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
             alt={group.name} 
+            className={(group.name.toLowerCase().includes('agua') || group.name.toLowerCase().includes('2l') || group.name.toLowerCase().includes('2 l') || group.name.toLowerCase().includes('lipton')) ? 'public-img--beverage-recommended-align' : (group.category === 'bebidas' ? 'public-img--top-align' : '')}
             loading="lazy" 
             decoding="async" 
           />

@@ -61,17 +61,22 @@
   display: flex;
   flex-direction: column;
   -webkit-overflow-scrolling: touch;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.onb-scroll::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
 }
 
 .onb-hero-spacer {
   flex: 0 0 auto;
-  min-height: 208px;
-  height: 29dvh;
+  min-height: 150px;
+  height: 20dvh;
 }
 
 .onb-mid-spacer {
   flex: 0 0 auto;
-  height: 110px;
+  height: 20px;
 }
 
 /* --- Tarjeta principal --------------------------------------------- */
@@ -79,14 +84,12 @@
 .onb-card {
   position: relative;
   flex: 0 0 auto;
-  margin: 0 56px;
-  padding: 22px 18px 16px;
-  border-radius: 20px;
-  background: rgba(10, 11, 14, 0.55);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(227, 27, 43, 0.45);
-  box-shadow: 0 0 40px rgba(227, 27, 43, 0.18), 0 25px 60px rgba(0, 0, 0, 0.6);
+  margin: 0 36px;
+  padding: 32px 24px 24px;
+  border-radius: 24px;
+  background: #0e0f12; /* Elegant matte black */
+  border: 1px solid rgba(227, 27, 43, 0.4);
+  box-shadow: 0 0 35px rgba(227, 27, 43, 0.15), 0 20px 50px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -122,26 +125,72 @@
 
 .onb-card-title {
   margin: 0;
-  font-family: var(--font-display, 'Graduate', sans-serif);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.25;
-  color: #FFF;
-  letter-spacing: 0.02em;
-  -webkit-text-stroke: 0.9px #FFF;
-  paint-order: stroke fill;
   animation: onb-title-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+}
+
+.onb-brand-welcome {
+  font-family: var(--font-display, 'Graduate', sans-serif);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #FFFFFF;
+  -webkit-text-stroke: 0.6px #FFFFFF;
+  text-shadow: 
+    -1.5px -1.5px 0 #E31B2B,  
+     1.5px -1.5px 0 #E31B2B,
+    -1.5px  1.5px 0 #E31B2B,
+     1.5px  1.5px 0 #E31B2B,
+    -1.5px  0px   0 #E31B2B,
+     1.5px  0px   0 #E31B2B,
+     0px   -1.5px 0 #E31B2B,
+     0px    1.5px 0 #E31B2B,
+     0 3px 6px rgba(0, 0, 0, 0.5);
 }
 @keyframes onb-title-in {
   from { opacity: 0; transform: translateY(15px); filter: blur(3px); }
   to { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
-.onb-card-brand {
-  display: inline-block;
+
+.onb-brand-logo {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 0px;
+}
+
+.onb-brand-full,
+.onb-brand-china {
+  font-family: var(--font-display, 'Graduate', sans-serif);
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+  text-shadow: 
+    -2.5px -2.5px 0 #E31B2B,  
+     2.5px -2.5px 0 #E31B2B,
+    -2.5px  2.5px 0 #E31B2B,
+     2.5px  2.5px 0 #E31B2B,
+    -2.5px  0px   0 #E31B2B,
+     2.5px  0px   0 #E31B2B,
+     0px   -2.5px 0 #E31B2B,
+     0px    2.5px 0 #E31B2B,
+     0 4px 10px rgba(0, 0, 0, 0.8);
+}
+
+.onb-brand-full {
+  color: #FFFFFF;
+  -webkit-text-stroke: 2px #FFFFFF; /* Makes the font bolder */
+}
+
+.onb-brand-china {
   color: #FFC83D;
-  font-size: 1.55em;
-  -webkit-text-stroke: 0.9px #FFC83D;
-  paint-order: stroke fill;
+  -webkit-text-stroke: 2px #FFC83D; /* Makes the font bolder */
 }
 
 .onb-divider {
@@ -149,7 +198,7 @@
   align-items: center;
   gap: 10px;
   width: 100%;
-  max-width: 220px;
+  max-width: 260px;
   margin: 8px 0;
 }
 .onb-divider-line {
@@ -167,13 +216,13 @@
   50% { transform: scale(1.05) rotate(1deg); filter: drop-shadow(0 0 8px rgba(255, 200, 61, 0.85)); }
   100% { transform: scale(0.98) rotate(-0.5deg); filter: drop-shadow(0 0 3px rgba(227, 27, 43, 0.7)); }
 }
-.onb-divider-plain { max-width: 160px; margin: 10px 0; }
+.onb-divider-plain { max-width: 180px; margin: 10px 0; }
 .onb-divider-plain .onb-divider-line { background: rgba(255, 255, 255, 0.14); }
 
 .onb-tagline {
   margin: 0;
   color: #E5E7EB;
-  font-size: 12.5px;
+  font-size: 15px;
   font-weight: 500;
 }
 .onb-tagline-accent { color: #E31B2B; font-weight: 700; }
@@ -183,16 +232,16 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin: 0 0 14px;
+  gap: 8px;
+  margin: 0 0 16px;
   padding: 0;
   list-style: none;
   color: #A7ABB2;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
-.onb-categories li { display: flex; align-items: center; gap: 6px; }
+.onb-categories li { display: flex; align-items: center; gap: 8px; }
 .onb-categories li:not(:first-child)::before {
   content: '';
   width: 4px;
@@ -200,22 +249,35 @@
   border-radius: 50%;
   background: #E31B2B;
 }
+/* --- Logo en tarjeta ------------------------------------------------- */
+.onb-card-logo-img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 4px 16px rgba(227, 27, 43, 0.5));
+  animation: onb-logo-in 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+@keyframes onb-logo-in {
+  from { opacity: 0; transform: translateY(-16px) scale(0.8); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 .onb-cta {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: fit-content;
-  padding: 11px 41px;
+  width: 100%;
+  padding: 15px 48px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: linear-gradient(135deg, #E31B2B, #C81321);
   color: #FFF;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   cursor: pointer;
   box-shadow: 0 10px 26px rgba(227, 27, 43, 0.35);
   transition: transform 0.18s ease, box-shadow 0.18s ease;
@@ -238,11 +300,28 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 9px;
+  margin-top: 24px;
   color: #25D366;
-  font-size: 11px;
+  font-size: 12.5px;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* Variante secundaria — visualmente subordinada al botón principal */
+.onb-whatsapp-link--secondary {
+  color: #6B7280 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  opacity: 0.85;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+.onb-whatsapp-link--secondary:hover {
+  opacity: 1;
+  color: #9CA3AF !important;
+}
+.onb-whatsapp-link--secondary svg {
+  color: #25D366;
+  opacity: 0.7;
 }
 
 /* --- "¿Cómo pedir?" -------------------------------------------------- */
@@ -272,6 +351,7 @@
   margin-bottom: 14px;
   white-space: nowrap;
   text-shadow: 0 2px 10px rgba(0,0,0,0.85);
+  animation: onb-step-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
 }
 .onb-how-heading-line {
   flex: 1;
@@ -297,6 +377,25 @@
   text-align: center;
   color: #FFF;
 }
+.onb-step:nth-child(1) {
+  animation: onb-step-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.0s both;
+}
+.onb-step:nth-child(2) {
+  animation: onb-step-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.2s both;
+}
+.onb-step:nth-child(3) {
+  animation: onb-step-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.4s both;
+}
+@keyframes onb-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .onb-step:not(:last-child)::after {
   content: '';
   position: absolute;
@@ -309,16 +408,16 @@
 }
 .onb-step-num {
   position: absolute;
-  transform: translate(-8px, -6px);
-  width: 19px;
-  height: 19px;
+  transform: translate(-10px, -8px);
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
   border-radius: 50%;
   background: #E31B2B;
   border: 2px solid #0a0b0d;
   color: #FFF;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   z-index: 1;
   animation: step-num-ripple 3s infinite ease-in-out;
@@ -343,8 +442,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   background: rgba(10, 8, 8, 0.45);
   border: 1.5px solid rgba(227, 27, 43, 0.6);
@@ -352,7 +451,7 @@
   box-shadow: 0 4px 14px rgba(0,0,0,0.5);
 }
 .onb-step-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #C7CAD1;
   line-height: 1.25;
@@ -441,10 +540,8 @@
     max-width: 520px;
     padding: 32px 36px 24px;
     border-radius: 24px;
-    background: rgba(10, 11, 14, 0.55);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(227, 27, 43, 0.45);
+    background: #0e0f12; /* Elegant matte black */
+    border: 1px solid rgba(227, 27, 43, 0.4);
     box-shadow: 0 0 40px rgba(227, 27, 43, 0.2), 0 25px 60px rgba(0, 0, 0, 0.7);
     flex: 0 0 auto;
   }
@@ -632,58 +729,59 @@
   }
   .onb-bg-img.is-ready { animation: onb-bg-drift-desktop 32s ease-in-out infinite alternate; }
 
-  .onb-scroll { align-items: center; justify-content: center; padding: 72px 0 56px; box-sizing: border-box; }
+  .onb-scroll { align-items: center; justify-content: center; padding: 48px 0 120px; box-sizing: border-box; }
   .onb-hero-spacer { display: none; }
-  .onb-mid-spacer { height: 24px; }
+  .onb-mid-spacer { height: 20px; }
 
   .onb-card {
-    max-width: 580px;
+    max-width: 460px;
     width: 100%;
-    padding: 46px 44px 36px;
-    border-radius: 28px;
-    background: rgba(10, 11, 14, 0.55);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(227, 27, 43, 0.45);
-    box-shadow: 0 0 50px rgba(227, 27, 43, 0.25), 0 30px 80px rgba(0, 0, 0, 0.8);
+    padding: 64px 56px 56px;
+    border-radius: 32px;
+    background: #0e0f12;
+    border: 1px solid rgba(227, 27, 43, 0.4);
+    box-shadow: 0 0 60px rgba(227, 27, 43, 0.28), 0 40px 100px rgba(0, 0, 0, 0.85);
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease, border-color 0.4s ease;
   }
   .onb-card:hover {
     transform: translateY(-6px);
-    box-shadow: 0 0 60px rgba(227, 27, 43, 0.35), 0 35px 90px rgba(0, 0, 0, 0.85);
+    box-shadow: 0 0 70px rgba(227, 27, 43, 0.38), 0 45px 110px rgba(0, 0, 0, 0.9);
     border-color: rgba(227, 27, 43, 0.65);
   }
   .onb-card-title {
     font-family: var(--font-display, 'Graduate', sans-serif);
-    font-size: 38px;
+    font-size: 52px;
     font-weight: 700;
     line-height: 1.15;
     letter-spacing: 0.04em;
-    -webkit-text-stroke: 1.8px #FFFFFF;
+    -webkit-text-stroke: 2px #FFFFFF;
     paint-order: stroke fill;
     text-shadow: 0 4px 18px rgba(0,0,0,0.85);
     color: #fff;
   }
   .onb-card-brand {
     font-family: var(--font-display, 'Graduate', sans-serif);
-    font-size: 56px;
+    font-size: 80px;
     font-weight: 700;
     letter-spacing: 0.04em;
-    -webkit-text-stroke: 1.8px #FFC83D;
+    -webkit-text-stroke: 2px #FFC83D;
     paint-order: stroke fill;
     color: #FFC83D;
-    text-shadow: 0 0 22px rgba(255, 200, 61, 0.7), 0 0 45px rgba(227, 27, 43, 0.45);
-    margin-top: 4px;
+    text-shadow: 0 0 28px rgba(255, 200, 61, 0.75), 0 0 55px rgba(227, 27, 43, 0.5);
+    margin-top: 8px;
   }
-  .onb-divider { max-width: 320px; margin: 16px 0; }
-  .onb-divider-icon svg { width: 22px; height: 22px; }
-  .onb-divider-plain { max-width: 240px; margin: 18px 0; }
-  .onb-tagline { font-size: 19px; }
-  .onb-categories { font-size: 15px; gap: 10px; margin: 0 0 24px; }
-  .onb-categories li { gap: 10px; transition: transform 0.25s ease, color 0.25s ease; cursor: default; }
+  /* ---- Espaciado vertical generoso entre elementos del card ---- */
+  .onb-brand-logo { margin-top: 10px; gap: 18px; }
+  .onb-brand-full, .onb-brand-china { font-size: 64px; }
+  .onb-divider { max-width: 380px; margin: 32px 0; }
+  .onb-divider-icon svg { width: 28px; height: 28px; }
+  .onb-divider-plain { max-width: 300px; margin: 32px 0; }
+  .onb-tagline { font-size: 24px; margin-bottom: 6px; }
+  .onb-categories { font-size: 18px; gap: 14px; margin: 0 0 40px; }
+  .onb-categories li { gap: 14px; transition: transform 0.25s ease, color 0.25s ease; cursor: default; }
   .onb-categories li:hover { transform: translateY(-2px); color: #FFC83D; }
-  .onb-categories li:not(:first-child)::before { width: 5px; height: 5px; }
-  .onb-cta { padding: 17px 60px; font-size: 16px; border-radius: 14px; position: relative; overflow: hidden; }
+  .onb-categories li:not(:first-child)::before { width: 6px; height: 6px; }
+  .onb-cta { padding: 22px 80px; font-size: 19px; border-radius: 16px; position: relative; overflow: hidden; }
   .onb-cta::after {
     content: '';
     position: absolute;
@@ -695,22 +793,31 @@
     transform: skewX(-25deg);
     animation: button-shine 4s infinite ease-in-out;
   }
-  .onb-cta svg { width: 22px; height: 22px; }
-  .onb-whatsapp-link { font-size: 14px; margin-top: 16px; }
-  .onb-whatsapp-link svg { width: 18px; height: 18px; }
+  .onb-cta svg { width: 26px; height: 26px; }
+  .onb-whatsapp-link { font-size: 13px !important; margin-top: 20px; opacity: 0.7; }
+  .onb-whatsapp-link svg { width: 16px; height: 16px; }
 
+  /* Logo en desktop */
+  .onb-card-logo-img { width: 96px; height: 96px; margin-bottom: 12px; }
+
+  /* "BIENVENIDO A" más grande y legible */
+  .onb-brand-welcome { font-size: 26px; letter-spacing: 0.12em; }
+
+  /* ¿Cómo pedir? — sin tarjeta, texto flotante con sombras */
   .onb-how {
     flex: 0 0 auto;
-    max-width: 720px;
-    padding: 24px 0 0;
+    max-width: 560px;
+    width: 100%;
+    padding: 20px 40px 16px;
     background: none;
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     border: none;
+    border-radius: 0;
     box-shadow: none;
   }
-  .onb-how-heading { font-size: 15px; max-width: 440px; margin-bottom: 26px; }
-  .onb-steps { max-width: 600px; gap: 48px; }
+  .onb-how-heading { font-size: 13px; max-width: 440px; margin-bottom: 24px; color: #E5E7EB; }
+  .onb-steps { max-width: 480px; gap: 40px; }
   .onb-step {
     display: grid;
     grid-template-areas:
@@ -723,29 +830,48 @@
   }
   .onb-step-icon {
     grid-area: icon;
-    background: none;
-    border: none;
+    background: rgba(227, 27, 43, 0.12);
+    border: 1.5px solid rgba(227, 27, 43, 0.4);
     box-shadow: none;
-    width: auto;
-    height: auto;
+    width: 52px;
+    height: 52px;
     padding: 0;
   }
-  .onb-step-icon svg { width: 28px; height: 28px; }
+  .onb-step-icon svg { width: 24px; height: 24px; }
   .onb-step-num {
     grid-area: num;
     position: static;
     transform: none;
     margin: 0;
-    width: 24px;
-    height: 24px;
-    font-size: 12px;
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
   }
   .onb-step:not(:last-child)::after { display: none !important; }
-  .onb-step-label { grid-area: label; text-align: center; font-size: 15px; max-width: 130px; margin-top: 4px; }
+  .onb-step-label { grid-area: label; text-align: center; font-size: 14px; color: #E5E7EB; max-width: 130px; margin-top: 6px; }
+
+  /* Pill de ubicación — más contraste */
   .onb-location { font-size: 14px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
   .onb-location svg { width: 16px; height: 16px; color: #E31B2B; animation: pin-pulse 2s infinite ease-in-out; }
   .onb-location a { color: #E31B2B; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; }
-  .onb-location-line { max-width: 360px; margin-top: 36px; }
+  .onb-location-line { display: none; }
+
+  .onb-location {
+    position: fixed !important;
+    bottom: 28px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    white-space: nowrap !important;
+    z-index: 10 !important;
+    background: rgba(8, 9, 12, 0.82) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    padding: 10px 24px !important;
+    border-radius: 999px !important;
+    border: 1px solid rgba(227, 27, 43, 0.45) !important;
+    font-size: 14px !important;
+    color: #E5E7EB !important;
+  }
 
   .onb-divider-icon {
     animation: brasa-pulse 3s ease-in-out infinite alternate;
@@ -815,7 +941,7 @@
    (iPhone 13/15 Pro Max, 812px+); sin este ajuste el grupo "¿Cómo
    pedir?" queda demasiado abajo en este rango intermedio. */
 @media (min-height: 701px) and (max-height: 810px) {
-  .onb-mid-spacer { height: 72px; }
+  .onb-mid-spacer { height: 20px; }
 }
 
 /* --- Pantallas bajas (iPhone SE y similares, <700px de alto) -------
@@ -824,7 +950,7 @@
    comprimen aparte en vez de tocar el layout ya afinado arriba. */
 @media (max-height: 700px) {
   .onb-hero-spacer { min-height: 172px; height: 24dvh; }
-  .onb-mid-spacer { height: 68px; }
+  .onb-mid-spacer { height: 20px; }
   .onb-card { padding: 14px 18px 11px; }
   .onb-card-title { font-size: 16px; }
   .onb-divider { margin: 6px 0; }
