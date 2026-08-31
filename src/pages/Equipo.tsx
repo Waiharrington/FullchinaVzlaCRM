@@ -373,7 +373,7 @@ export function Equipo() {
               </div>
               <div className="team-card-details">
                 <div className="detail-row">
-                  <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Salario mensual:</span>
+                  <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Sueldo semanal:</span>
                   <span style={{ color: '#fff', fontSize: '13px' }}>${emp.weeklySalary.toFixed(2)} / semana</span>
                 </div>
               </div>

@@ -2259,7 +2259,7 @@ export async function getEmployees(): Promise<Employee[]> {
       fullName: r.full_name as string,
       position: (r.position as string) ?? null,
       hourlyRate: Number(r.hourly_rate),
-      weeklySalary: 0,
+      weeklySalary: Number(r.hourly_rate ?? 0),
       overtimeRate: 0,
       isActive: r.is_active as boolean,
     }))
@@ -2303,7 +2303,7 @@ export async function getAllEmployees(): Promise<Employee[]> {
       fullName: r.full_name as string,
       position: (r.position as string) ?? null,
       hourlyRate: Number(r.hourly_rate),
-      weeklySalary: 0,
+      weeklySalary: Number(r.hourly_rate ?? 0),
       overtimeRate: 0,
       isActive: r.is_active as boolean,
     }))
@@ -2346,14 +2346,15 @@ export async function createEmployee(params: {
     }
   }
 
-  // Si falló por columnas que aún no existen en la BD, reintentar sin ellas
+  // Si falló por columnas que aún no existen en la BD, reintentar sin ellas persistiendo el sueldo en hourly_rate
   if (error && (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204')) {
+    const salaryToStore = params.weeklySalary ?? params.hourlyRate ?? 0
     const { data: fallbackData, error: fallbackError } = await sb
       .from('employees')
       .insert({
         full_name: params.fullName,
         position: params.position ?? null,
-        hourly_rate: params.hourlyRate ?? 0,
+        hourly_rate: salaryToStore,
         is_active: true,
       })
       .select('id,full_name,position,hourly_rate,is_active')
@@ -2365,7 +2366,7 @@ export async function createEmployee(params: {
       fullName: fallbackData.full_name as string,
       position: (fallbackData.position as string) ?? null,
       hourlyRate: Number(fallbackData.hourly_rate),
-      weeklySalary: params.weeklySalary ?? 0,
+      weeklySalary: Number(fallbackData.hourly_rate),
       overtimeRate: params.overtimeRate ?? 0,
       isActive: fallbackData.is_active as boolean,
     }
@@ -2401,6 +2402,9 @@ export async function updateEmployee(id: string, updates: {
     if (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204') {
       delete patch.weekly_salary
       delete patch.overtime_rate
+      if (updates.weeklySalary !== undefined && updates.hourlyRate === undefined) {
+        patch.hourly_rate = updates.weeklySalary
+      }
       const { error: retryErr } = await sb
         .from('employees')
         .update(patch)
