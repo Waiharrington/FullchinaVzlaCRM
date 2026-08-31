@@ -579,7 +579,7 @@ export function PublicMenu() {
     : deliveryEstimate && deliveryEstimate.fee != null
       ? `$${deliveryEstimate.fee.toFixed(2)} (a confirmar)`
       : 'Por confirmar'
-  const cartProductIds = new Set(cart.map(item => item.productId))
+  const cartProductIds = useMemo(() => new Set(cart.map(item => item.productId)), [cart])
   const recommendations = groups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))).slice(0, 3)
 
   useEffect(() => {
@@ -593,13 +593,24 @@ export function PublicMenu() {
     }, 4500)
     return () => { if (sidebarRecoTimer.current) clearInterval(sidebarRecoTimer.current) }
   }, [recommendations.length])
-  const allExtras = groups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id)))
+  // "Ver todos" belongs to the cart, not to the currently selected menu tab.
+  // Build it from the complete catalog so a mobile category filter cannot leak
+  // into the quick catalog (e.g. Promociones showing only more promotions).
+  const allCatalogGroups = useMemo(() => groupMenuProducts(products), [products])
+  const allExtras = useMemo(
+    () => allCatalogGroups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))),
+    [allCatalogGroups, cartProductIds],
+  )
   const extrasSections = useMemo(() => {
-    const query = extrasSearch.trim().toLocaleLowerCase()
-    const filtered = allExtras.filter(group => !query || `${group.name} ${group.category}`.toLocaleLowerCase().includes(query))
+    const query = normalizeForSearch(extrasSearch.trim())
+    const filtered = allExtras.filter(group => !query || normalizeForSearch([
+      group.name,
+      group.category,
+      ...group.variants.flatMap(variant => [variant.label, variant.product.name, variant.product.description || '']),
+    ].join(' ')).includes(query))
     const sections = new Map<string, MenuProductGroup[]>()
     filtered.forEach(group => sections.set(group.category, [...(sections.get(group.category) || []), group]))
-    return Array.from(sections.entries())
+    return Array.from(sections.entries()).sort(([categoryA], [categoryB]) => menuCategoryRank(categoryA) - menuCategoryRank(categoryB))
   }, [allExtras, extrasSearch])
 
   useEffect(() => {
