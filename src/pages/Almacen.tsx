@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse } from 'lucide-react'
-import { adjustStock, getIngredients, getStockMovements } from '../lib/dataService'
+import { createPortal } from 'react-dom'
+import { useAuth } from '../context/auth-context'
+import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2 } from 'lucide-react'
+import { adjustStock, getIngredients, getStockMovements, getUnits, updateIngredient, updateIngredientCost, type Ingredient, type StockMovement } from '../lib/dataService'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
@@ -17,7 +19,9 @@ type WarehouseItem = {
   costPerUnit: number
   minStock: number
   unit: string
+  inventoryClass: Ingredient['inventoryClass']
 }
+type WarehouseModal = 'view' | 'edit' | 'adjust' | null
 
 type WarehouseTransfer = {
   id: string
@@ -31,6 +35,7 @@ type WarehouseTransfer = {
 }
 
 export function Almacen() {
+  const { user } = useAuth()
   const [items, setItems] = useState<WarehouseItem[]>([])
   const [transfers, setTransfers] = useState<WarehouseTransfer[]>([])
   const [selectedItemId, setSelectedItemId] = useState('')
@@ -38,6 +43,21 @@ export function Almacen() {
   const [operator, setOperator] = useState('Usuario del sistema')
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
+  const [selectedItem, setSelectedItem] = useState<WarehouseItem | null>(null)
+  const [modalMode, setModalMode] = useState<WarehouseModal>(null)
+  const [itemMovements, setItemMovements] = useState<StockMovement[]>([])
+  const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
+  const [editForm, setEditForm] = useState({ name: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
+  const [adjustment, setAdjustment] = useState({ direction: 1 as 1 | -1, quantity: '', notes: '' })
+  const [modalLoading, setModalLoading] = useState(false)
+
+  const closeModal = () => { if (!modalLoading) { setSelectedItem(null); setModalMode(null) } }
+  const openView = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('view'); setModalLoading(true); try { setItemMovements(await getStockMovements(item.id)) } catch { setErrorMsg('No se pudieron cargar los movimientos.') } finally { setModalLoading(false) } }
+  const openEdit = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('edit'); setEditForm({ name: item.name, inventoryClass: item.inventoryClass, price: String(item.costPerUnit) }); if (!units.length) setUnits(await getUnits()) }
+  const openAdjustment = (item: WarehouseItem, direction: 1 | -1) => { setSelectedItem(item); setModalMode('adjust'); setAdjustment({ direction, quantity: '', notes: '' }) }
+  const refreshItems = async () => { const ingredients = await getIngredients(); setItems(ingredients.map(item => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass }))) }
+  const saveEdit = async (event: FormEvent) => { event.preventDefault(); if (!selectedItem || !user) return; const name = editForm.name.trim(); const price = Number(editForm.price); if (!name || !Number.isFinite(price) || price < 0) { setErrorMsg('Indica nombre y costo válidos.'); return } setModalLoading(true); try { await updateIngredient(selectedItem.id, { name, inventory_class: editForm.inventoryClass }); await updateIngredientCost(selectedItem.id, price, user.id); await refreshItems(); setSuccessMsg(`${name} actualizado correctamente.`); setSelectedItem(null); setModalMode(null) } catch (error) { setErrorMsg(error instanceof Error ? error.message : 'No se pudo actualizar el insumo.') } finally { setModalLoading(false) } }
+  const saveAdjustment = async (event: FormEvent) => { event.preventDefault(); if (!selectedItem) return; const quantity = Number(adjustment.quantity); if (!Number.isFinite(quantity) || quantity <= 0 || !adjustment.notes.trim()) { setErrorMsg('Indica una cantidad válida y el motivo del ajuste.'); return } setModalLoading(true); try { await adjustStock({ ingredientId: selectedItem.id, quantity: quantity * adjustment.direction, unitId: selectedItem.unitId, movementType: 'adjustment', referenceType: 'manual', notes: adjustment.notes.trim() }); await refreshItems(); setSuccessMsg(`${adjustment.direction > 0 ? 'Entrada' : 'Salida'} registrada para ${selectedItem.name}.`); setSelectedItem(null); setModalMode(null) } catch (error) { setErrorMsg(error instanceof Error ? error.message : 'No se pudo registrar el ajuste.') } finally { setModalLoading(false) } }
 
   const totalValuation = items.reduce((sum, item) => sum + item.quantity * item.costPerUnit, 0)
   const criticalItems = items.filter(item => item.quantity <= item.minStock).length
@@ -52,7 +72,8 @@ export function Almacen() {
         quantity: item.currentStock,
         costPerUnit: item.pricePerUnit ?? 0,
         minStock: 0,
-        unit: item.unitSymbol
+        unit: item.unitSymbol,
+        inventoryClass: item.inventoryClass
       })))
       setSelectedItemId(current => current || ingredients[0]?.id || '')
       setTransfers(movements
@@ -197,11 +218,12 @@ export function Almacen() {
                   <th>Costo / unidad</th>
                   <th>Valor total</th>
                   <th>Estado</th>
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
-                  <tr><td colSpan={6}>
+                  <tr><td colSpan={7}>
                     <EmptyState
                       compact
                       title="No hay insumos registrados"
@@ -223,6 +245,7 @@ export function Almacen() {
                           {isLow ? 'Crítico' : 'Suficiente'}
                         </span>
                       </td>
+                      <td><div className="almacen-actions"><button type="button" className="almacen-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${item.name}`} onClick={() => openView(item)}><Eye size={14} /></button><button type="button" className="almacen-action-btn" title="Editar insumo" aria-label={`Editar ${item.name}`} onClick={() => openEdit(item)}><Pencil size={14} /></button><button type="button" className="almacen-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${item.name}`} onClick={() => openAdjustment(item, 1)}><Plus size={14} /></button><button type="button" className="almacen-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${item.name}`} onClick={() => openAdjustment(item, -1)}><Minus size={14} /></button></div></td>
                     </tr>
                   )
                 })}
@@ -298,6 +321,11 @@ export function Almacen() {
           </section>
         </aside>
       </div>
+      {selectedItem && modalMode && createPortal(<div className="almacen-modal-overlay" onClick={closeModal}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} /></button>
+        {modalMode === 'view' && <><div className="almacen-modal-heading"><span><Eye size={18} /></span><div><small>Historial del insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div>{modalLoading ? <p className="almacen-modal-empty">Cargando movimientos…</p> : itemMovements.length === 0 ? <p className="almacen-modal-empty">Este insumo todavía no tiene movimientos.</p> : <div className="almacen-history-list">{itemMovements.map(movement => <div className="almacen-history-row" key={movement.id}><div><strong>{movement.movementType === 'purchase' ? 'Entrada' : movement.movementType === 'consumption' ? 'Salida' : 'Ajuste'}</strong><small>{movement.notes || movement.referenceType || 'Sin motivo'}</small></div><b className={movement.quantity > 0 ? 'positive' : 'negative'}>{movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unitSymbol}</b></div>)}</div>}</>}
+        {modalMode === 'edit' && <form onSubmit={saveEdit}><div className="almacen-modal-heading"><span><Pencil size={18} /></span><div><small>Editar insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-fields"><label>Nombre<input value={editForm.name} onChange={event => setEditForm(form => ({ ...form, name: event.target.value }))} /></label><label>Costo por unidad (USD)<input type="number" min="0" step="0.01" value={editForm.price} onChange={event => setEditForm(form => ({ ...form, price: event.target.value }))} /></label><label>Clasificación<select value={editForm.inventoryClass} onChange={event => setEditForm(form => ({ ...form, inventoryClass: event.target.value as Ingredient['inventoryClass'] }))}><option value="raw_material">Materia prima</option><option value="packaging">Empaque</option><option value="beverage">Bebida</option><option value="non_inventory">No inventariable</option></select></label></div><button className="btn-primary-red" disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : <Save size={17} />} Guardar cambios</button></form>}
+        {modalMode === 'adjust' && <form onSubmit={saveAdjustment}><div className="almacen-modal-heading"><span className={adjustment.direction > 0 ? 'positive' : 'negative'}>{adjustment.direction > 0 ? <Plus size={18} /> : <Minus size={18} />}</span><div><small>{adjustment.direction > 0 ? 'Agregar al inventario' : 'Descontar del inventario'}</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div><div className="almacen-modal-fields"><label>Cantidad ({selectedItem.unit})<input autoFocus type="number" min="0.001" step="0.001" value={adjustment.quantity} onChange={event => setAdjustment(value => ({ ...value, quantity: event.target.value }))} placeholder="0.000" /></label><label>Motivo del ajuste<textarea value={adjustment.notes} onChange={event => setAdjustment(value => ({ ...value, notes: event.target.value }))} placeholder="Ej. conteo físico, merma, recepción manual…" /></label></div><button className={`btn-primary-red ${adjustment.direction < 0 ? 'danger' : ''}`} disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : adjustment.direction > 0 ? <Plus size={17} /> : <Minus size={17} />} {adjustment.direction > 0 ? 'Registrar entrada' : 'Registrar salida'}</button></form>}
+      </div></div>, document.body)}
     </div>
   )
 }
