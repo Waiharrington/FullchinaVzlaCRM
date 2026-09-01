@@ -114,13 +114,19 @@ export function Equipo() {
     try {
       if (editingId) {
         await updateEmployee(editingId, { fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
+        const refreshedTeam = await getAllEmployees()
+        const savedEmployee = refreshedTeam.find(employee => employee.id === editingId)
+        if (!savedEmployee || Math.abs(savedEmployee.weeklySalary - weeklySalary) > 0.005) {
+          throw new Error('El sueldo no quedó guardado. Intenta nuevamente.')
+        }
+        setTeam(refreshedTeam)
         flash(`"${name.trim()}" actualizado con éxito`)
       } else {
         await createEmployee({ fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
+        setTeam(await getAllEmployees())
         flash(`"${name.trim()}" registrado correctamente`)
       }
       setShowModal(false)
-      await load()
     } catch (e) {
       setError(getErrorMessage(e, 'Error guardando miembro del equipo'))
     }
