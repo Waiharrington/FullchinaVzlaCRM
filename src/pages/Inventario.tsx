@@ -545,7 +545,7 @@ export function Inventario() {
       </div>
       {successMessage && <div className="inv-success" role="status">{successMessage}<button onClick={() => setSuccessMessage('')} aria-label="Cerrar mensaje">×</button></div>}
       {selectedIngredient && modalMode && createPortal(
-        <div className="cmd-modal-overlay" onClick={closeModal}>
+        <div className="inv-modal-overlay" onClick={closeModal}>
           <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
             <button className="modal-close-btn" onClick={closeModal} aria-label="Cerrar">×</button>
             {modalMode === 'view' && <>

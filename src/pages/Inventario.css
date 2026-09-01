@@ -533,6 +533,23 @@
   overflow-y: auto;
 }
 
+/* Diálogo propio del inventario: no hereda el layout de los modales de
+   Comandas, que puede quedar detrás del menú lateral en móvil. */
+.inv-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, .86);
+  backdrop-filter: blur(8px);
+}
+.inv-modal-overlay .inv-detail-modal { flex: 0 1 420px; margin: auto; }
+
 .inv-modal-heading { display: flex; align-items: center; gap: 12px; margin: 0 36px 18px 0; }
 .inv-modal-heading > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: #ff4d3d; background: rgba(255,77,61,.13); flex: 0 0 auto; }
 .inv-modal-heading > span.positive { color: #22c55e; background: rgba(34,197,94,.13); }
@@ -566,7 +583,7 @@
 .inv-success button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; }
 
 @media (max-width: 767px) {
-  .cmd-modal-overlay:has(.inv-detail-modal) { align-items: flex-end; padding: 6px; overflow: hidden; }
+  .inv-modal-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
   .inv-detail-modal {
     width: 100%;
     max-height: calc(100dvh - 6px);
