@@ -532,6 +532,25 @@
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
 }
+.inv-modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  background: #29292d;
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease, border-color .16s ease, transform .16s ease;
+}
+.inv-modal-close:hover { background: #ff4d3d; border-color: #ff4d3d; color: #fff; transform: scale(1.04); }
+.inv-modal-close:focus-visible { outline: 2px solid #ff9b91; outline-offset: 2px; }
 
 /* Diálogo propio del inventario: no hereda el layout de los modales de
    Comandas, que puede quedar detrás del menú lateral en móvil. */

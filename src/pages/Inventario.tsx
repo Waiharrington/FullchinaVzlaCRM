@@ -547,7 +547,7 @@ export function Inventario() {
       {selectedIngredient && modalMode && createPortal(
         <div className="inv-modal-overlay" onClick={closeModal}>
           <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
-            <button className="modal-close-btn" onClick={closeModal} aria-label="Cerrar">×</button>
+            <button className="inv-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
             {modalMode === 'view' && <>
               <div className="inv-modal-heading"><span><Eye size={18} /></span><div><small>Historial del artículo</small><h3>{selectedIngredient.name}</h3></div></div>
               <div className="inv-current-stock"><small>Stock actual</small><strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></div>
