@@ -1,7 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
-import { LogOut, ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react'
+import { LogOut, ChevronLeft, ChevronDown, Flame, Boxes, Landmark, SlidersHorizontal } from 'lucide-react'
 import { allNavItems, canAccessModule } from './navItems'
 import './Sidebar.css'
 
@@ -16,21 +16,28 @@ interface TooltipState {
   left: number
 }
 
+const GROUP_ICONS: Record<string, typeof Flame> = {
+  Operación: Flame,
+  'Gestión FullChina': Boxes,
+  Finanzas: Landmark,
+  Configuración: SlidersHorizontal
+}
+
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const [tooltip, setTooltip] = useState<TooltipState | null>(null)
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({
-    Operación: false,
-    'Gestión FullChina': true,
-    Finanzas: true,
-    Configuración: true
-  })
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const navItems = allNavItems.filter(item =>
     canAccessModule(item.path, user?.role, user?.allowedModules)
   )
+  const activeGroup = navItems.find(item => isActiveItem(item.path, location.pathname))?.group
+  const [openGroup, setOpenGroup] = useState(activeGroup ?? 'Operación')
+
+  useEffect(() => {
+    if (activeGroup) setOpenGroup(activeGroup)
+  }, [activeGroup])
 
   const showTooltip = useCallback((text: string, e: React.MouseEvent) => {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
@@ -53,19 +60,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     return groups
   }, [])
 
-  const groupParents: Record<string, string> = {
-    Finanzas: '/finanzas',
-    Configuración: '/mas'
-  }
-
   const toggleGroup = (group: string) => {
-    setCollapsedGroups(prev => {
-      const shouldOpen = Boolean(prev[group])
-      return Object.keys(prev).reduce<Record<string, boolean>>((next, key) => {
-        next[key] = key === group ? !shouldOpen : true
-        return next
-      }, { ...prev })
-    })
+    setOpenGroup(current => current === group ? '' : group)
   }
 
   const handleToggle = useCallback(() => {
@@ -92,67 +88,64 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <nav className="sidebar-nav">
         {groupedItems.map(({ group, items }) => {
-          const parentPath = groupParents[group]
-          const parent = parentPath ? items.find(item => item.path === parentPath) : undefined
-          const children = parent ? items.filter(item => item.path !== parent.path) : items
-          const isOpen = !collapsedGroups[group]
+          const GroupIcon = GROUP_ICONS[group] ?? Boxes
+          const isOpen = openGroup === group
+          const hasActiveItem = items.some(item => isActiveItem(item.path, location.pathname))
+
+          if (collapsed) {
+            return (
+              <button
+                key={group}
+                type="button"
+                className={`sidebar-group-compact ${hasActiveItem ? 'active' : ''}`}
+                aria-label={`Abrir ${group}`}
+                onClick={() => {
+                  setOpenGroup(group)
+                  handleToggle()
+                }}
+                onMouseEnter={(event) => showTooltip(group, event)}
+                onMouseLeave={hideTooltip}
+              >
+                <GroupIcon size={19} strokeWidth={1.8} />
+              </button>
+            )
+          }
 
           return (
-            <React.Fragment key={group}>
-              {!collapsed && (
+            <section key={group} className={`sidebar-group ${isOpen ? 'open' : ''} ${hasActiveItem ? 'has-active' : ''}`}>
+              <button
+                type="button"
+                className="sidebar-group-header"
+                aria-expanded={isOpen}
+                aria-controls={`sidebar-group-${group.replace(/\s+/g, '-').toLowerCase()}`}
+                onClick={() => toggleGroup(group)}
+              >
+                <span className="sidebar-group-icon"><GroupIcon size={18} strokeWidth={1.8} /></span>
+                <span className="sidebar-group-copy">
+                  <strong>{group}</strong>
+                  <small>{items.length} módulo{items.length === 1 ? '' : 's'}</small>
+                </span>
+                <ChevronDown size={16} className="sidebar-group-chevron" />
+              </button>
+
+              {isOpen ? (
                 <div
-                  className="sidebar-group-header"
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => toggleGroup(group)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      toggleGroup(group)
-                    }
-                  }}
+                  className="sidebar-group-items"
+                  id={`sidebar-group-${group.replace(/\s+/g, '-').toLowerCase()}`}
                 >
-                  {parent ? (
-                    <NavLink
-                      to={parent.path}
-                      className={`sidebar-group-parent ${isActiveItem(parent.path, location.pathname) ? 'active' : ''}`}
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <span>{group}</span>
-                    </NavLink>
-                  ) : <span className="sidebar-group-parent"><span>{group}</span></span>}
-                  <button
-                    type="button"
-                    className="sidebar-group-toggle"
-                    aria-label={`${isOpen ? 'Ocultar' : 'Mostrar'} ${group}`}
-                    aria-expanded={isOpen}
-                    onClick={(event) => {
-                      event.preventDefault()
-                      event.stopPropagation()
-                      toggleGroup(group)
-                    }}
-                  >
-                    {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                  </button>
+                  {items.map(item => {
+                    const Icon = item.icon
+                    const isActive = isActiveItem(item.path, location.pathname)
+                    return (
+                      <NavLink key={item.path} to={item.path} className={`sidebar-link ${isActive ? 'active' : ''}`}>
+                        <Icon size={17} strokeWidth={1.8} className="sidebar-icon" />
+                        <span className="sidebar-label">{item.label}</span>
+                      </NavLink>
+                    )
+                  })}
                 </div>
-              )}
-              {(isOpen || collapsed) && (collapsed && parent ? [parent, ...children] : children).map(item => {
-                const Icon = item.icon
-                const isActive = isActiveItem(item.path, location.pathname)
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    className={`sidebar-link ${isActive ? 'active' : ''}`}
-                    onMouseEnter={(e) => collapsed && showTooltip(item.label, e)}
-                    onMouseLeave={hideTooltip}
-                  >
-                    <Icon size={18} strokeWidth={1.8} className="sidebar-icon" />
-                    <span className="sidebar-label">{item.label}</span>
-                  </NavLink>
-                )
-              })}
-            </React.Fragment>
+              ) : null}
+            </section>
           )
         })}
 

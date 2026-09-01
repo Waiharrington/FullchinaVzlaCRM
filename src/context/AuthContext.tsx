@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AuthContext } from './auth-context'
 import type { User } from './auth-context'
 import { supabase } from '../lib/supabase'
@@ -21,6 +22,7 @@ async function fetchUserProfile(userId: string): Promise<Profile | null> {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const navigate = useNavigate()
   const [session, setSession] = useState<import('@supabase/supabase-js').Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -125,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     if (!supabase) return
     await supabase.auth.signOut()
+    navigate('/login', { replace: true })
   }
 
   return (

@@ -54,6 +54,15 @@ export function Equipo() {
 
   // --- Empleados (nómina) ---
   const [showModal, setShowModal] = useState(false)
+  const [closingModal, setClosingModal] = useState(false)
+  const closeModal = () => {
+    if (closingModal) return
+    setClosingModal(true)
+    window.setTimeout(() => {
+      setShowModal(false)
+      setClosingModal(false)
+    }, 200)
+  }
   const [editingId, setEditingId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [hourlyRate, setHourlyRate] = useState(0)
@@ -119,7 +128,7 @@ export function Equipo() {
         await createEmployee({ fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
         flash(`"${name.trim()}" registrado correctamente`)
       }
-      setShowModal(false)
+      closeModal()
       await load()
     } catch (e) {
       setError(getErrorMessage(e, 'Error guardando miembro del equipo'))
@@ -149,6 +158,15 @@ export function Equipo() {
 
   // --- Handlers usuarios de acceso ---
   const [showUserModal, setShowUserModal] = useState(false)
+  const [closingUserModal, setClosingUserModal] = useState(false)
+  const closeUserModal = () => {
+    if (closingUserModal) return
+    setClosingUserModal(true)
+    window.setTimeout(() => {
+      setShowUserModal(false)
+      setClosingUserModal(false)
+    }, 200)
+  }
   const [userModalMode, setUserModalMode] = useState<'create' | 'edit'>('create')
   const [uEditing, setUEditing] = useState<AuthUser | null>(null)
   const [uEmail, setUEmail] = useState('')
@@ -160,11 +178,29 @@ export function Equipo() {
   const [uModules, setUModules] = useState<string[]>([])
 
   const [showPwModal, setShowPwModal] = useState(false)
+  const [closingPwModal, setClosingPwModal] = useState(false)
+  const closePwModal = () => {
+    if (closingPwModal) return
+    setClosingPwModal(true)
+    window.setTimeout(() => {
+      setShowPwModal(false)
+      setClosingPwModal(false)
+    }, 200)
+  }
   const [pwUser, setPwUser] = useState<AuthUser | null>(null)
   const [pwValue, setPwValue] = useState('')
   const [pwSaving, setPwSaving] = useState(false)
 
   const [showPinModal, setShowPinModal] = useState(false)
+  const [closingPinModal, setClosingPinModal] = useState(false)
+  const closePinModal = () => {
+    if (closingPinModal) return
+    setClosingPinModal(true)
+    window.setTimeout(() => {
+      setShowPinModal(false)
+      setClosingPinModal(false)
+    }, 200)
+  }
   const [pinUser, setPinUser] = useState<AuthUser | null>(null)
   const [pinValue, setPinValue] = useState('')
   const [pinSaving, setPinSaving] = useState(false)
@@ -208,7 +244,7 @@ export function Equipo() {
         }
         flash(`Usuario "${uEmail.trim()}" actualizado`)
       }
-      setShowUserModal(false)
+      closeUserModal()
       await loadUsers()
     } catch (e) {
       setUsersError(getErrorMessage(e, 'Error guardando usuario'))
@@ -226,7 +262,7 @@ export function Equipo() {
     try {
       await adminSetUserPassword(pwUser.id, pwValue)
       flash(`Contraseña de "${pwUser.email}" actualizada`)
-      setShowPwModal(false)
+      closePwModal()
     } catch (e) {
       setUsersError(getErrorMessage(e, 'Error cambiando contraseña'))
     } finally {
@@ -243,7 +279,7 @@ export function Equipo() {
     try {
       await adminSetUserPin(pinUser.id, pinValue)
       flash(`PIN de "${pinUser.email}" actualizado`)
-      setShowPinModal(false)
+      closePinModal()
     } catch (e) {
       setUsersError(getErrorMessage(e, 'Error cambiando el PIN'))
     } finally {
@@ -452,7 +488,7 @@ export function Equipo() {
 
       {/* Modal empleado */}
       {showModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className={`modal-overlay ${closingModal ? 'closing' : ''}`} onClick={() => closeModal()}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>{editingId ? 'Editar Miembro' : 'Crear Nuevo Miembro del Equipo'}</h3>
@@ -477,7 +513,7 @@ export function Equipo() {
                 <NumberStepper min={0} step={1} value={String(hourlyRate)} onChange={(v) => setHourlyRate(parseFloat(v) || 0)} />
               </div>
               <div className="modal-actions-bar">
-                <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancelar</button>
+                <button type="button" className="btn-cancel" onClick={() => closeModal()}>Cancelar</button>
                 <button type="submit" className="btn-save">{editingId ? 'Guardar Cambios' : 'Crear Miembro'}</button>
               </div>
             </form>
@@ -488,7 +524,7 @@ export function Equipo() {
 
       {/* Modal usuario de acceso (crear / editar) */}
       {showUserModal && createPortal(
-        <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
+        <div className={`modal-overlay ${closingUserModal ? 'closing' : ''}`} onClick={() => closeUserModal()}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>{userModalMode === 'create' ? 'Crear usuario de acceso' : 'Editar usuario'}</h3>
@@ -562,7 +598,7 @@ export function Equipo() {
               )}
 
               <div className="modal-actions-bar">
-                <button type="button" className="btn-cancel" onClick={() => setShowUserModal(false)}>Cancelar</button>
+                <button type="button" className="btn-cancel" onClick={() => closeUserModal()}>Cancelar</button>
                 <button type="submit" className="btn-save" disabled={uSaving}>
                   {uSaving ? 'Guardando…' : userModalMode === 'create' ? 'Crear usuario' : 'Guardar cambios'}
                 </button>
@@ -575,7 +611,7 @@ export function Equipo() {
 
       {/* Modal cambiar PIN */}
       {showPinModal && pinUser && createPortal(
-        <div className="modal-overlay" onClick={() => setShowPinModal(false)}>
+        <div className={`modal-overlay ${closingPinModal ? 'closing' : ''}`} onClick={() => closePinModal()}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>Cambiar PIN de acceso</h3>
@@ -601,7 +637,7 @@ export function Equipo() {
                 />
               </div>
               <div className="modal-actions-bar">
-                <button type="button" className="btn-cancel" onClick={() => setShowPinModal(false)}>Cancelar</button>
+                <button type="button" className="btn-cancel" onClick={() => closePinModal()}>Cancelar</button>
                 <button type="submit" className="btn-save" disabled={pinSaving || pinValue.length !== 4}>
                   {pinSaving ? 'Guardando…' : 'Guardar PIN'}
                 </button>
@@ -614,7 +650,7 @@ export function Equipo() {
 
       {/* Modal cambiar contraseña */}
       {showPwModal && pwUser && createPortal(
-        <div className="modal-overlay" onClick={() => setShowPwModal(false)}>
+        <div className={`modal-overlay ${closingPwModal ? 'closing' : ''}`} onClick={() => closePwModal()}>
           <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
             <div className="modal-header-custom">
               <h3>Cambiar contraseña</h3>
@@ -628,7 +664,7 @@ export function Equipo() {
                 <input type="text" value={pwValue} onChange={e => setPwValue(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required autoFocus />
               </div>
               <div className="modal-actions-bar">
-                <button type="button" className="btn-cancel" onClick={() => setShowPwModal(false)}>Cancelar</button>
+                <button type="button" className="btn-cancel" onClick={() => closePwModal()}>Cancelar</button>
                 <button type="submit" className="btn-save" disabled={pwSaving}>
                   {pwSaving ? 'Guardando…' : 'Cambiar contraseña'}
                 </button>

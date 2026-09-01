@@ -121,6 +121,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [results, setResults] = useState<ResultGroup[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [closingSearch, setClosingSearch] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -131,11 +132,22 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const showDropdown = inline ? query.trim().length > 0 : isOpen
 
   const close = useCallback(() => {
-    if (!inline) ctxClose()
-    setQuery('')
-    setResults([])
-    setActiveIndex(0)
-  }, [ctxClose, inline])
+    if (inline) {
+      setQuery('')
+      setResults([])
+      setActiveIndex(0)
+      return
+    }
+    if (!isOpen || closingSearch) return
+    setClosingSearch(true)
+    window.setTimeout(() => {
+      ctxClose()
+      setClosingSearch(false)
+      setQuery('')
+      setResults([])
+      setActiveIndex(0)
+    }, 200)
+  }, [ctxClose, inline, isOpen, closingSearch])
 
   const canAccessPath = useCallback((path: string, roles: Role[]) => {
     if (!user?.role || user.role === 'owner') return true
@@ -407,7 +419,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   return (
     <>
       {isOpen && (
-        <div className="gs-overlay" onClick={close}>
+        <div className={`gs-overlay ${closingSearch ? 'closing' : ''}`} onClick={close}>
           <div className="gs-dropdown" ref={wrapperRef} onClick={e => e.stopPropagation()}>
             <div className="gs-input-row">
               <Search size={18} className="gs-input-icon" />

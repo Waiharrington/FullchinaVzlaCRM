@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import NumberStepper from '../components/NumberStepper'
 import { Plus, Pencil, Trash2, Eye, EyeOff, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
@@ -58,6 +59,17 @@ export function Promociones() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [closingForm, setClosingForm] = useState(false)
+
+  const closeForm = (then?: () => void) => {
+    if (!showForm || closingForm) return
+    setClosingForm(true)
+    window.setTimeout(() => {
+      setShowForm(false)
+      setClosingForm(false)
+      then?.()
+    }, 200)
+  }
 
   const fetchPromos = useCallback(async () => {
     try {
@@ -125,9 +137,7 @@ export function Promociones() {
         const { error } = await db().from('promotions').insert(row)
         if (error) throw error
       }
-      setShowForm(false)
-      setEditing(null)
-      setForm(EMPTY_FORM)
+      closeForm(() => { setEditing(null); setForm(EMPTY_FORM) })
       fetchPromos()
     } catch (e) {
       console.error('Error guardando:', e)
@@ -259,8 +269,8 @@ export function Promociones() {
 
       <p className="promo-footer-note"><Lock size={13} /> Las promociones visibles aparecerán en tu menú público (/pedir)</p>
 
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+      {showForm && createPortal(
+        <div className={`modal-overlay ${closingForm ? 'closing' : ''}`} onClick={() => closeForm()}>
           <div className="modal promo-form-modal animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="promo-form-header">
               <h3>{editing ? 'Editar promoción' : 'Nueva promoción'}</h3>
@@ -331,13 +341,14 @@ export function Promociones() {
             </div>
 
             <div className="promo-form-footer">
-              <button className="btn-ghost" onClick={() => setShowForm(false)}>Cancelar</button>
+              <button className="btn-ghost" onClick={() => closeForm()}>Cancelar</button>
               <button className="btn-accent" onClick={handleSave} disabled={saving || !form.tag.trim() || !form.title.trim()}>
                 <Check size={16} /> {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

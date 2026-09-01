@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Caja } from './Caja'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
@@ -62,6 +62,7 @@ import {
   Timer,
   DollarSign,
   Flame,
+  Sparkles,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import './Comandas.css'
@@ -136,10 +137,106 @@ export interface ComandaOrder {
 
 const MOCK_COMANDAS: ComandaOrder[] = []
 
+const DEMO_CUSTOMERS = [
+  'María González', 'Carlos Ramírez', 'Andrea Pérez', 'José Martínez', 'Valentina Rojas',
+  'Luis Hernández', 'Gabriela Silva', 'Miguel Torres', 'Daniela Vargas', 'Ricardo Mendoza',
+  'Paola Castillo', 'Santiago Núñez', 'Camila Ortega', 'Diego Salazar', 'Natalia Romero',
+]
+
+const DEMO_PRODUCTS = [
+  { name: 'Arroz Camarón y Pollo', price: 6 },
+  { name: 'Arroz Frito Especial', price: 7 },
+  { name: 'Tallarín de Arroz Mixto', price: 8 },
+  { name: 'Lumpias', price: 3 },
+  { name: 'Costillas Agridulces', price: 9 },
+  { name: 'Chop Suey Mixto', price: 8.5 },
+  { name: 'Wonton', price: 3 },
+  { name: 'Papas Fritas', price: 3 },
+]
+
+function createDemoComandas(): ComandaOrder[] {
+  const now = Date.now()
+  const statusGroups: Array<{ status: ComandaOrder['status']; count: number; baseMinutes: number }> = [
+    { status: 'new', count: 9, baseMinutes: 3 },
+    { status: 'preparing', count: 8, baseMinutes: 9 },
+    { status: 'ready', count: 7, baseMinutes: 16 },
+    { status: 'delivered', count: 3, baseMinutes: 28 },
+  ]
+  let orderIndex = 0
+
+  return statusGroups.flatMap(({ status, count, baseMinutes }) =>
+    Array.from({ length: count }, (_, statusIndex) => {
+      const index = orderIndex++
+      const elapsedMins = baseMinutes + statusIndex * (status === 'preparing' ? 4 : 3)
+      const createdAt = new Date(now - elapsedMins * 60_000)
+      const itemCount = 2 + (index % 3)
+      const items = Array.from({ length: itemCount }, (__, itemIndex) => {
+        const product = DEMO_PRODUCTS[(index + itemIndex * 2) % DEMO_PRODUCTS.length]
+        const quantity = itemIndex === 0 && index % 4 === 0 ? 2 : 1
+        return {
+          id: `demo-item-${index}-${itemIndex}`,
+          name: product.name,
+          quantity,
+          unitPrice: product.price,
+          subtotal: product.price * quantity,
+          observations: itemIndex === 0 && index % 5 === 0 ? 'Sin cebollín' : undefined,
+        }
+      })
+      const orderType = index % 3 === 0 ? `Mesa ${(index % 8) + 1}` : index % 3 === 1 ? 'Para llevar' : 'Delivery'
+      const isPaid = index % 4 !== 0
+      const totalAmount = items.reduce((total, item) => total + (item.subtotal ?? 0), 0) + (orderType === 'Delivery' ? 2 : 0)
+
+      return {
+        id: `demo-order-${index + 1}`,
+        orderNumber: `#FC-D${String(index + 1).padStart(3, '0')}`,
+        time: createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        date: createdAt.toLocaleDateString('es-VE'),
+        isRetraso: status !== 'ready' && status !== 'delivered' && elapsedMins >= 20,
+        customerName: DEMO_CUSTOMERS[index % DEMO_CUSTOMERS.length],
+        customerPhone: `0414-${String(1200000 + index * 731).slice(0, 7)}`,
+        address: orderType === 'Delivery' ? `Sector ${index % 2 === 0 ? 'La Floresta' : 'Centro'}, punto de referencia demo` : '',
+        reference: orderType === 'Delivery' ? 'Frente a la plaza' : '',
+        orderType,
+        items,
+        notes: index % 6 === 0 ? 'Empacar salsas por separado.' : '',
+        paymentMethod: isPaid ? (index % 2 === 0 ? 'Pago: Pago móvil' : 'Pago: Efectivo $') : '⚠️ Sin pagar',
+        paymentType: isPaid ? (index % 2 === 0 ? 'app' : 'cash') : 'pending',
+        isPaid,
+        totalAmount,
+        serviceCharge: 0,
+        discount: 0,
+        bcvRate: 798.33,
+        elapsedMins,
+        status,
+        deliveredTime: status === 'delivered' ? createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+        attendedBy: index % 2 === 0 ? 'Ana · Caja' : 'Luis · Caja',
+        source: 'pos',
+      }
+    })
+  )
+}
+
 // La ubicación GPS del cliente llega dentro de las notas del pedido web como un
 // link de Google Maps. Estos helpers la extraen para mostrar un botón de mapa y
 // limpian esa línea del texto de notas visible.
 const MAPS_URL_RE = /https?:\/\/(?:maps\.google\.[a-z.]+|www\.google\.[a-z.]+\/maps|maps\.app\.goo\.gl|goo\.gl\/maps)\S*/i
+
+function formatElapsed(mins: number): string {
+  if (mins < 60) return `${mins} min`
+  const hours = Math.floor(mins / 60)
+  const rest = mins % 60
+  if (hours < 24) return rest > 0 ? `${hours}h ${rest}min` : `${hours}h`
+  const days = Math.floor(hours / 24)
+  const restHours = hours % 24
+  return restHours > 0 ? `${days}d ${restHours}h` : `${days}d`
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+}
 
 function extractMapsUrl(notes?: string): string | null {
   if (!notes) return null
@@ -178,7 +275,7 @@ function extractPreferredPayment(notes?: string | null): { methods: SplitPayment
 }
 
 const COLUMNS = [
-  { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#38bdf8' },
+  { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#ff4d3d' },
   { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316' },
   { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981' },
   { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6' },
@@ -189,12 +286,15 @@ const COLUMN_PREVIEW_LIMIT = 6
 
 export function Comandas() {
   const { bcvRate } = useRates()
-  const [comandas, setComandas] = useState<ComandaOrder[]>(MOCK_COMANDAS)
+  const isDemoMode = new URLSearchParams(window.location.search).get('demo') === '1'
+  const [comandas, setComandas] = useState<ComandaOrder[]>(() => isDemoMode ? createDemoComandas() : MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
+  const [closingSelectedOrder, setClosingSelectedOrder] = useState(false)
 
   // Modal de cobro directo desde Comandas
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [closingPayment, setClosingPayment] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<ComandaOrder | null>(null)
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<SplitPaymentMethod | 'split'>('cash')
   const [refNumber, setRefNumber] = useState('')
@@ -211,28 +311,41 @@ export function Comandas() {
   const [statusError, setStatusError] = useState('')
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
-  const [expandedCols, setExpandedCols] = useState<Record<string, boolean>>({})
+  const [expandedCols, setExpandedCols] = useState<Record<string, boolean>>(
+    isDemoMode ? { new: true, preparing: true, ready: true } : {}
+  )
   const [showAddItems, setShowAddItems] = useState(false)
   const [removingItemId, setRemovingItemId] = useState<string | null>(null)
   const [removeError, setRemoveError] = useState('')
   const [deliveryFeeInput, setDeliveryFeeInput] = useState('')
   const [savingDelivery, setSavingDelivery] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [closingDelete, setClosingDelete] = useState(false)
   const [deletePin, setDeletePin] = useState('')
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
+  const [closingHistory, setClosingHistory] = useState(false)
   const [historyOrders, setHistoryOrders] = useState<ComandaOrder[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+  const [closingNewOrder, setClosingNewOrder] = useState(false)
+  const closeNewOrderModal = () => {
+    if (!showNewOrderModal || closingNewOrder) return
+    setClosingNewOrder(true)
+    window.setTimeout(() => {
+      setShowNewOrderModal(false)
+      setClosingNewOrder(false)
+    }, 200)
+  }
 
   useEffect(() => {
     if (!showNewOrderModal) return
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setShowNewOrderModal(false)
+      if (event.key === 'Escape') closeNewOrderModal()
     }
     window.addEventListener('keydown', handleEscape)
     return () => {
@@ -240,6 +353,50 @@ export function Comandas() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [showNewOrderModal])
+
+  const [historyRange, setHistoryRange] = useState<'today' | 'yesterday' | '7d' | '30d'>('7d')
+
+  // Filtros de la barra superior (antes eran decorativos, sin lógica).
+  const [dateFilter, setDateFilter] = useState<'today' | 'yesterday'>('today')
+  const [statusFilter, setStatusFilter] = useState<'all' | ComandaOrder['status']>('all')
+  const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'Delivery' | 'Para llevar' | 'Mesa'>('all')
+  const [openFilterMenu, setOpenFilterMenu] = useState<'date' | 'status' | 'type' | null>(null)
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const filtersBarRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!openFilterMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filtersBarRef.current && !filtersBarRef.current.contains(e.target as Node)) {
+        setOpenFilterMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openFilterMenu])
+
+  const hasActiveFilters = statusFilter !== 'all' || orderTypeFilter !== 'all' || dateFilter !== 'today' || searchQuery !== ''
+  const clearFilters = () => {
+    setStatusFilter('all')
+    setOrderTypeFilter('all')
+    setDateFilter('today')
+    setSearchQuery('')
+    setOpenFilterMenu(null)
+  }
+
+  const STATUS_FILTER_OPTIONS: Array<{ value: 'all' | ComandaOrder['status']; label: string }> = [
+    { value: 'all', label: 'Todos los estados' },
+    { value: 'new', label: 'Nuevas' },
+    { value: 'preparing', label: 'En preparación' },
+    { value: 'ready', label: 'Listas' },
+    { value: 'delivered', label: 'Entregadas' },
+  ]
+  const ORDER_TYPE_FILTER_OPTIONS: Array<{ value: 'all' | 'Delivery' | 'Para llevar' | 'Mesa'; label: string }> = [
+    { value: 'all', label: 'Todos los tipos' },
+    { value: 'Delivery', label: 'Delivery' },
+    { value: 'Para llevar', label: 'Para llevar' },
+    { value: 'Mesa', label: 'Mesa' },
+  ]
 
   // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
   useEffect(() => {
@@ -312,9 +469,8 @@ export function Comandas() {
       } else {
         await deleteOrder(selectedOrder.id)
       }
-      setSelectedOrder(null)
-      setShowDeleteModal(false)
-      setDeletePin('')
+      closeDeleteModal()
+      closeSelectedOrder()
       setReloadToken((value) => value + 1)
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la comanda')
@@ -527,8 +683,7 @@ export function Comandas() {
         } : null)
       }
 
-      setShowPaymentModal(false)
-      setPaymentOrder(null)
+      closePaymentModal()
     } catch (e) {
       console.error('Error al confirmar pago:', e)
       setPaymentError(e instanceof Error ? e.message : 'No se pudo registrar el pago')
@@ -539,16 +694,22 @@ export function Comandas() {
 
   // Fetch real orders from Supabase / dataService
   useEffect(() => {
+    if (isDemoMode) {
+      setComandas(createDemoComandas())
+      return
+    }
+
     let active = true
     const loadRealOrders = async () => {
       try {
         // El "día" del negocio se calcula en horario de Venezuela (UTC-4), no en
         // UTC: de lo contrario las comandas creadas después de las 8pm local
         // caen en el día UTC siguiente y desaparecen del tablero.
-        const { start, end } = dayRangeInTimeZone()
+        const targetDate = dateFilter === 'yesterday' ? new Date(Date.now() - 24 * 60 * 60 * 1000) : new Date()
+        const { start, end } = dayRangeInTimeZone(targetDate)
         const [realOrders, webOrders] = await Promise.all([
           getOrdersWithItems(start, end),
-          getPendingWebOrders(),
+          dateFilter === 'today' ? getPendingWebOrders() : Promise.resolve([]),
         ])
 
         const creatorNames = new Map<string, string>()
@@ -601,9 +762,10 @@ export function Comandas() {
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
               isRetraso: elapsed > 15 && status !== 'delivered',
               customerName: o.customerName || 'Cliente general',
-              customerPhone: '0412-1234567',
-              address: o.orderType === 'delivery' ? 'Av. Principal, Edificio Central' : '',
-              reference: o.orderType === 'delivery' ? 'Dejar en recepción' : '',
+              customerPhone: o.customerPhone || undefined,
+              customerIdentification: o.customerIdentification || undefined,
+              address: o.orderType === 'delivery' ? (o.customerAddress || '') : '',
+              reference: '',
               paymentReference: persistedReference,
               orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? (o.tableNumber ? `Mesa ${o.tableNumber}` : 'Mesa') : 'Para llevar',
               items: o.items.map((item) => ({
@@ -675,14 +837,14 @@ export function Comandas() {
     loadRealOrders()
     const interval = setInterval(loadRealOrders, 10000)
     return () => { active = false; clearInterval(interval) }
-  }, [reloadToken])
+  }, [reloadToken, dateFilter, isDemoMode])
 
   const handleConfirmWebOrder = async (order: ComandaOrder) => {
     if (!order.webRequestId) return
     setConfirmingWebId(order.webRequestId)
     try {
       await confirmWebOrder(order.webRequestId)
-      setSelectedOrder(null)
+      closeSelectedOrder()
       setReloadToken(value => value + 1)
     } catch (cause) {
       console.error('Error confirmando pedido web:', cause)
@@ -690,6 +852,50 @@ export function Comandas() {
     } finally {
       setConfirmingWebId(null)
     }
+  }
+
+  const closeSelectedOrder = (then?: () => void) => {
+    if (!selectedOrder || closingSelectedOrder) return
+    setClosingSelectedOrder(true)
+    window.setTimeout(() => {
+      setSelectedOrder(null)
+      setClosingSelectedOrder(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeDeleteModal = (then?: () => void) => {
+    if (!showDeleteModal || closingDelete) return
+    setClosingDelete(true)
+    window.setTimeout(() => {
+      setShowDeleteModal(false)
+      setClosingDelete(false)
+      setDeletePin('')
+      setDeleteError('')
+      then?.()
+    }, 200)
+  }
+
+  const closePaymentModal = (then?: () => void) => {
+    if (!showPaymentModal || closingPayment) return
+    setClosingPayment(true)
+    window.setTimeout(() => {
+      setShowPaymentModal(false)
+      setClosingPayment(false)
+      setPaymentOrder(null)
+      then?.()
+    }, 200)
+  }
+
+  const closeHistoryModal = (then?: () => void) => {
+    if (!showHistoryModal || closingHistory) return
+    setClosingHistory(true)
+    window.setTimeout(() => {
+      setShowHistoryModal(false)
+      setClosingHistory(false)
+      setHistorySearch('')
+      then?.()
+    }, 200)
   }
 
   const loadHistoryOrders = async () => {
@@ -780,6 +986,53 @@ export function Comandas() {
     )
   }, [historyOrders, historySearch])
 
+  const historyGroups = useMemo(() => {
+    const parseDdMmYyyy = (str?: string): Date | null => {
+      if (!str) return null
+      const [d, m, y] = str.split('/').map(Number)
+      if (!d || !m || !y) return null
+      return new Date(y, m - 1, d)
+    }
+
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startOfYesterday = new Date(startOfToday)
+    startOfYesterday.setDate(startOfYesterday.getDate() - 1)
+    const rangeCutoff = new Date(startOfToday)
+    if (historyRange === '7d') rangeCutoff.setDate(rangeCutoff.getDate() - 6)
+    else if (historyRange === '30d') rangeCutoff.setDate(rangeCutoff.getDate() - 29)
+
+    const filtered = filteredHistoryOrders.filter(order => {
+      const d = parseDdMmYyyy(order.date)
+      if (!d) return true
+      if (historyRange === 'today') return d.getTime() === startOfToday.getTime()
+      if (historyRange === 'yesterday') return d.getTime() === startOfYesterday.getTime()
+      return d.getTime() >= rangeCutoff.getTime()
+    })
+
+    const map = new Map<string, ComandaOrder[]>()
+    for (const order of filtered) {
+      const key = order.date || ''
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(order)
+    }
+
+    return [...map.entries()].map(([key, orders]) => {
+      const d = parseDdMmYyyy(key)
+      let label = key || 'Sin fecha'
+      if (d) {
+        const diffDays = Math.round((startOfToday.getTime() - d.getTime()) / 86400000)
+        if (diffDays === 0) label = 'Hoy'
+        else if (diffDays === 1) label = 'Ayer'
+        else {
+          const raw = d.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })
+          label = raw.charAt(0).toUpperCase() + raw.slice(1)
+        }
+      }
+      return { key, label, orders }
+    })
+  }, [filteredHistoryOrders, historyRange])
+
   // Simulation timer for elapsed mins
   useEffect(() => {
     const timer = setInterval(() => {
@@ -797,9 +1050,12 @@ export function Comandas() {
         normalizeForSearch(c.orderNumber).includes(q) ||
         normalizeForSearch(c.customerName).includes(q) ||
         c.items.some(i => normalizeForSearch(i.name).includes(q))
-      return matchSearch
+      const matchStatus = statusFilter === 'all' || c.status === statusFilter
+      const matchType = orderTypeFilter === 'all'
+        || (orderTypeFilter === 'Mesa' ? c.orderType.startsWith('Mesa') : c.orderType === orderTypeFilter)
+      return matchSearch && matchStatus && matchType
     })
-  }, [comandas, searchQuery])
+  }, [comandas, searchQuery, statusFilter, orderTypeFilter])
 
   const getOrdersByStatus = (statusKey: string) => {
     return filteredComandas.filter(c => c.status === statusKey)
@@ -825,6 +1081,8 @@ export function Comandas() {
       )
     )
 
+    if (isDemoMode) return
+
     try {
       await updateOrderStatus(orderId, nextStatus)
     } catch (e) {
@@ -837,84 +1095,106 @@ export function Comandas() {
   }
 
   const totalComandasCount = comandas.length
-  const pendientesCount = comandas.filter(c => c.status === 'new' || c.status === 'preparing').length
+  const nuevasCount = comandas.filter(c => c.status === 'new').length
+  const preparandoCount = comandas.filter(c => c.status === 'preparing').length
+  const pendientesCount = nuevasCount + preparandoCount
   const listasCount = comandas.filter(c => c.status === 'ready').length
   const activeComandas = comandas.filter(c => c.status !== 'delivered')
   const avgMins = activeComandas.length > 0
     ? Math.round(activeComandas.reduce((sum, comanda) => sum + comanda.elapsedMins, 0) / activeComandas.length)
     : 0
+  const kitchenPulse = pendientesCount === 0
+    ? { tone: 'calm', label: 'Todo bajo control', message: 'La cocina está lista para recibir nuevos pedidos.' }
+    : pendientesCount >= 8 || avgMins >= 20
+      ? { tone: 'critical', label: 'Requiere atención', message: 'La carga está alta. Prioriza las comandas con mayor espera.' }
+      : pendientesCount >= 4 || avgMins >= 12
+        ? { tone: 'busy', label: 'Cocina con movimiento', message: 'Hay buen ritmo, pero conviene vigilar los tiempos.' }
+        : { tone: 'steady', label: 'Operación fluida', message: 'Las comandas avanzan dentro de un ritmo saludable.' }
 
   return (
     <div className="comandas-page animate-fade-in">
-      {/* Comandas Header + Stat Cards Row */}
-      <div className="comandas-header-row">
-        <div className="comandas-header-left">
-          <div>
-            <h1 className="page-title"><ClipboardList size={22} className="page-title-icon" /> Comandas</h1>
-            <p className="comandas-subtitle">Gestiona el estado de tus pedidos en tiempo real.</p>
-          </div>
-        </div>
-
-        <div className="comandas-header-right">
-          <div className="comandas-stats-row">
-            <div className="stat-card-mini">
-              <span className="stat-number text-red">{totalComandasCount}</span>
-              <div className="stat-info">
-                <span className="stat-title">Total comandas</span>
-                <span className="stat-sub">Hoy</span>
-              </div>
-            </div>
-
-            <div className="stat-card-mini">
-              <span className="stat-number text-orange">{pendientesCount}</span>
-              <div className="stat-info">
-                <span className="stat-title">Pendientes</span>
-                <span className="stat-sub">Nuevas + En preparación</span>
-              </div>
-            </div>
-
-            <div className="stat-card-mini">
-              <span className="stat-number text-green">{listasCount}</span>
-              <div className="stat-info">
-                <span className="stat-title">Listas</span>
-                <span className="stat-sub">Para entrega</span>
-              </div>
-            </div>
-
-            <div className="stat-card-mini">
-              <div className="stat-time-group">
-                <Clock size={16} className="text-blue" />
-                <span className="stat-number text-white">{avgMins > 0 ? `${avgMins} min` : '--'}</span>
-              </div>
-              <div className="stat-info">
-                <span className="stat-title">Tiempo promedio</span>
-                <span className="stat-sub">Hoy</span>
+      <section className={`comandas-pulse comandas-pulse--${kitchenPulse.tone}`} aria-labelledby="comandas-title">
+        <div className="comandas-pulse-top">
+          <div className="comandas-pulse-heading">
+            <div className="comandas-pulse-title-row">
+              <span className="comandas-pulse-icon" aria-hidden="true"><ClipboardList size={22} /></span>
+              <div>
+                <h1 id="comandas-title">Comandas</h1>
+                <p><strong>{kitchenPulse.label}.</strong> {kitchenPulse.message}</p>
               </div>
             </div>
           </div>
 
-          <button className="btn-nueva-comanda" onClick={() => setShowNewOrderModal(true)}>
-            <Plus size={16} />
-            <span>Nueva comanda</span>
-          </button>
-          <button className="btn-nueva-comanda btn-historial" onClick={() => { setShowHistoryModal(true); loadHistoryOrders() }}>
-            <Clock size={16} />
-            <span>Historial de comandas</span>
-          </button>
+          <div className="comandas-actions-row">
+            <button className="btn-nueva-comanda btn-historial" disabled={isDemoMode} title={isDemoMode ? 'No disponible en la vista demo' : undefined} onClick={() => { setShowHistoryModal(true); loadHistoryOrders() }}>
+              <Clock size={16} />
+              <span>Historial</span>
+            </button>
+            <button className="btn-nueva-comanda" disabled={isDemoMode} title={isDemoMode ? 'No disponible en la vista demo' : undefined} onClick={() => setShowNewOrderModal(true)}>
+              <Plus size={16} />
+              <span>Nueva comanda</span>
+            </button>
+          </div>
         </div>
-      </div>
+
+        <div className="comandas-pulse-grid">
+          <div className="comandas-pulse-primary">
+            <div className="comandas-pulse-primary-icon"><Flame size={20} /></div>
+            <div className="comandas-pulse-primary-copy">
+              <span>Pendientes ahora</span>
+              <strong>{pendientesCount}</strong>
+              <small>{pendientesCount === 1 ? 'comanda requiere atención' : 'comandas requieren atención'}</small>
+            </div>
+          </div>
+
+          <div className="comandas-pulse-metric comandas-pulse-metric--total">
+            <span className="comandas-pulse-metric-icon"><Package size={18} /></span>
+            <div><strong>{totalComandasCount}</strong><span>Total hoy</span></div>
+          </div>
+          <div className="comandas-pulse-metric comandas-pulse-metric--ready">
+            <span className="comandas-pulse-metric-icon"><CheckCircle2 size={18} /></span>
+            <div><strong>{listasCount}</strong><span>Listas</span></div>
+          </div>
+          <div className="comandas-pulse-metric comandas-pulse-metric--time">
+            <span className="comandas-pulse-metric-icon"><Timer size={18} /></span>
+            <div><strong>{avgMins > 0 ? `${avgMins} min` : '—'}</strong><span>Tiempo promedio</span></div>
+          </div>
+        </div>
+
+        <div className="comandas-flow" aria-label={`Flujo actual: ${nuevasCount} nuevas, ${preparandoCount} preparando y ${listasCount} listas`}>
+          <div className="comandas-flow-step comandas-flow-step--new">
+            <span><Package size={14} /> Nuevas</span><strong>{nuevasCount}</strong>
+          </div>
+          <span className="comandas-flow-line" aria-hidden="true" />
+          <div className="comandas-flow-step comandas-flow-step--preparing">
+            <span><ChefHat size={14} /> Preparando</span><strong>{preparandoCount}</strong>
+          </div>
+          <span className="comandas-flow-line" aria-hidden="true" />
+          <div className="comandas-flow-step comandas-flow-step--ready">
+            <span><CheckCircle2 size={14} /> Listas</span><strong>{listasCount}</strong>
+          </div>
+        </div>
+      </section>
+
+      {isDemoMode ? (
+        <div className="comandas-demo-banner" role="status">
+          <span className="comandas-demo-icon"><Sparkles size={16} /></span>
+          <span><strong>Vista demo</strong> · 27 comandas ficticias para revisar el tablero con alta carga.</span>
+          <small>No modifica información real</small>
+        </div>
+      ) : null}
 
       {showNewOrderModal && createPortal(
-        <div className="cmd-sales-overlay" role="dialog" aria-modal="true" aria-label="Nueva comanda">
+        <div className={`cmd-sales-overlay ${closingNewOrder ? 'closing' : ''}`} role="dialog" aria-modal="true" aria-label="Nueva comanda">
           <div className="cmd-sales-modal">
             <div className="cmd-sales-modal-head">
               <div><small>Comandas</small><strong>Nueva venta</strong></div>
-              <button type="button" onClick={() => setShowNewOrderModal(false)} aria-label="Cerrar nueva comanda"><X size={20}/></button>
+              <button type="button" onClick={closeNewOrderModal} aria-label="Cerrar nueva comanda"><X size={20}/></button>
             </div>
             <div className="cmd-sales-modal-body">
               <Caja
                 embedded
-                onClose={() => setShowNewOrderModal(false)}
+                onClose={closeNewOrderModal}
                 onOrderCreated={() => setReloadToken(token => token + 1)}
               />
             </div>
@@ -924,43 +1204,123 @@ export function Comandas() {
       )}
 
       {/* Filter Bar */}
-      <div className="comandas-filters">
-        <div className="filter-group-item">
-          <Calendar size={14} />
-          <span>Hoy</span>
-          <ChevronDown size={12} />
+      <div className="comandas-filters" ref={filtersBarRef}>
+        <div className="comandas-filters-toprow">
+          <button
+            type="button"
+            className={`comandas-mobile-filters-toggle ${hasActiveFilters ? 'filter-active' : ''}`}
+            onClick={() => setMobileFiltersOpen(prev => !prev)}
+          >
+            <Filter size={14} />
+            <span>Filtros</span>
+            {hasActiveFilters && <span className="filter-dot" />}
+            <ChevronDown size={12} className={mobileFiltersOpen ? 'rotated' : ''} />
+          </button>
+
+          <div className="filter-search-inline">
+            <Search size={14} />
+            <input
+              type="text"
+              placeholder="Buscar por número, cliente o teléfono..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button type="button" className="search-clear-btn" onClick={() => setSearchQuery('')} aria-label="Borrar búsqueda">
+                <X size={13} />
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="filter-group-item">
-          <Filter size={14} />
-          <span>Estado</span>
-          <ChevronDown size={12} />
-        </div>
-
-        <div className="filter-group-item">
-          <Package size={14} />
-          <span>Tipo de pedido</span>
-          <ChevronDown size={12} />
-        </div>
-
-        <button className="filter-group-item filter-btn-dark">
-          <Filter size={14} />
-          <span>Filtros</span>
-        </button>
-
-        <div className="filter-search-inline">
-          <Search size={14} />
-          <input
-            type="text"
-            placeholder="Buscar por número, cliente o teléfono..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
-            <button type="button" className="search-clear-btn" onClick={() => setSearchQuery('')} aria-label="Borrar búsqueda">
-              <X size={13} />
-            </button>
+        <div className={`comandas-filter-chips ${mobileFiltersOpen ? 'mobile-open' : ''}`}>
+        <div className="filter-dropdown-wrap">
+          <button
+            type="button"
+            className={`filter-group-item ${dateFilter !== 'today' ? 'filter-active' : ''}`}
+            onClick={() => setOpenFilterMenu(prev => (prev === 'date' ? null : 'date'))}
+          >
+            <Calendar size={14} />
+            <span>{dateFilter === 'today' ? 'Hoy' : 'Ayer'}</span>
+            <ChevronDown size={12} />
+          </button>
+          {openFilterMenu === 'date' && (
+            <div className="filter-dropdown-menu">
+              {(['today', 'yesterday'] as const).map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  className={dateFilter === value ? 'active' : ''}
+                  onClick={() => { setDateFilter(value); setOpenFilterMenu(null) }}
+                >
+                  {value === 'today' ? 'Hoy' : 'Ayer'}
+                </button>
+              ))}
+            </div>
           )}
+        </div>
+
+        <div className="filter-dropdown-wrap">
+          <button
+            type="button"
+            className={`filter-group-item ${statusFilter !== 'all' ? 'filter-active' : ''}`}
+            onClick={() => setOpenFilterMenu(prev => (prev === 'status' ? null : 'status'))}
+          >
+            <Filter size={14} />
+            <span>{STATUS_FILTER_OPTIONS.find(o => o.value === statusFilter)?.label || 'Estado'}</span>
+            <ChevronDown size={12} />
+          </button>
+          {openFilterMenu === 'status' && (
+            <div className="filter-dropdown-menu">
+              {STATUS_FILTER_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={statusFilter === opt.value ? 'active' : ''}
+                  onClick={() => { setStatusFilter(opt.value); setOpenFilterMenu(null) }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="filter-dropdown-wrap">
+          <button
+            type="button"
+            className={`filter-group-item ${orderTypeFilter !== 'all' ? 'filter-active' : ''}`}
+            onClick={() => setOpenFilterMenu(prev => (prev === 'type' ? null : 'type'))}
+          >
+            <Package size={14} />
+            <span>{ORDER_TYPE_FILTER_OPTIONS.find(o => o.value === orderTypeFilter)?.label || 'Tipo de pedido'}</span>
+            <ChevronDown size={12} />
+          </button>
+          {openFilterMenu === 'type' && (
+            <div className="filter-dropdown-menu">
+              {ORDER_TYPE_FILTER_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={orderTypeFilter === opt.value ? 'active' : ''}
+                  onClick={() => { setOrderTypeFilter(opt.value); setOpenFilterMenu(null) }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button
+          type="button"
+          className="filter-group-item filter-btn-dark"
+          onClick={clearFilters}
+          disabled={!hasActiveFilters}
+        >
+          <Filter size={14} />
+          <span>Limpiar filtros</span>
+        </button>
         </div>
       </div>
 
@@ -1043,7 +1403,7 @@ export function Comandas() {
                         {order.status === 'ready' ? (
                           <div className="status-ready-group">
                             <span className="badge-ready-tag">✓ Listo</span>
-                            <span className="timer-mins text-green"><Timer size={12} /> {order.elapsedMins} min</span>
+                            <span className="timer-mins text-green"><Timer size={12} /> {formatElapsed(order.elapsedMins)}</span>
                           </div>
                         ) : order.status === 'delivered' ? (
                           <span className="badge-delivered-tag">
@@ -1051,7 +1411,7 @@ export function Comandas() {
                           </span>
                         ) : (
                           <span className={`timer-mins ${order.isRetraso ? 'text-red-urgent' : 'text-orange'}`}>
-                            {order.isRetraso ? <Clock size={12} /> : <Timer size={12} />} {order.elapsedMins} min
+                            {order.isRetraso ? <Clock size={12} /> : <Timer size={12} />} {formatElapsed(order.elapsedMins)}
                           </span>
                         )}
                       </div>
@@ -1113,7 +1473,7 @@ export function Comandas() {
 
       {/* Modal detail */}
       {selectedOrder && createPortal(
-        <div className="cmd-modal-overlay" onClick={() => setSelectedOrder(null)}>
+        <div className={`cmd-modal-overlay ${closingSelectedOrder ? 'closing' : ''}`} onClick={() => closeSelectedOrder()}>
           <div className="cmd-modal-container animate-pop" onClick={e => e.stopPropagation()}>
             <header className="cmd-modal-header">
               <div className="cmd-modal-title">
@@ -1131,7 +1491,7 @@ export function Comandas() {
                 ) : (
                   <div className="cmd-badge sin-pagar"><AlertTriangle size={14} /> Sin cobrar</div>
                 )}
-                <div className="cmd-badge delivery">{selectedOrder.orderType}</div>
+                <div className={`cmd-badge ${selectedOrder.orderType === 'Delivery' ? 'type-delivery' : selectedOrder.orderType.startsWith('Mesa') ? 'type-mesa' : 'type-takeaway'}`}>{selectedOrder.orderType}</div>
               </div>
               <div className="cmd-header-actions">
                 <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
@@ -1141,60 +1501,54 @@ export function Comandas() {
             </header>
 
             <div className="cmd-modal-meta">
-              <div className="cmd-meta-item">
-                <User size={14} className="cmd-meta-icon" />
-                <div>
+              <div className="cmd-meta-cluster cmd-meta-customer">
+                <span className="cmd-customer-avatar">{getInitials(selectedOrder.customerName)}</span>
+                <div className="cmd-customer-info">
                   <span className="cmd-meta-label">Cliente</span>
-                  <span className="cmd-meta-val">{selectedOrder.customerName}</span>
+                  <span className="cmd-customer-name">{selectedOrder.customerName}</span>
+                  <div className="cmd-customer-sub">
+                    <span><Phone size={11} /> {selectedOrder.customerPhone || 'Sin teléfono'}</span>
+                    <span><User size={11} /> {selectedOrder.customerIdentification || 'Sin cédula'}</span>
+                  </div>
                 </div>
               </div>
-              <div className="cmd-meta-item">
-                <Phone size={14} className="cmd-meta-icon" />
-                <div>
-                  <span className="cmd-meta-label">Teléfono</span>
-                  <span className="cmd-meta-val">{selectedOrder.customerPhone || '-'}</span>
+
+              <span className="cmd-meta-divider" />
+
+              <div className="cmd-meta-cluster">
+                <div className="cmd-meta-item">
+                  <Calendar size={14} className="cmd-meta-icon cmd-icon-time" />
+                  <div>
+                    <span className="cmd-meta-label">Fecha</span>
+                    <span className="cmd-meta-val">{selectedOrder.date || '24/05/2025'}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="cmd-meta-item">
-                <User size={14} className="cmd-meta-icon" />
-                <div>
-                  <span className="cmd-meta-label">Cédula</span>
-                  <span className="cmd-meta-val">{selectedOrder.customerIdentification || '-'}</span>
+                <div className="cmd-meta-item">
+                  <Clock size={14} className="cmd-meta-icon cmd-icon-time" />
+                  <div>
+                    <span className="cmd-meta-label">Hora</span>
+                    <span className="cmd-meta-val">{selectedOrder.time}</span>
+                  </div>
                 </div>
+                <span className="cmd-elapsed-chip"><Clock size={12} /> {formatElapsed(selectedOrder.elapsedMins)}</span>
               </div>
-              <div className="cmd-meta-item">
-                <Calendar size={14} className="cmd-meta-icon" />
-                <div>
-                  <span className="cmd-meta-label">Fecha</span>
-                  <span className="cmd-meta-val">{selectedOrder.date || '24/05/2025'}</span>
+
+              <span className="cmd-meta-divider" />
+
+              <div className="cmd-meta-cluster">
+                <div className="cmd-meta-item">
+                  <User size={14} className="cmd-meta-icon cmd-icon-ops" />
+                  <div>
+                    <span className="cmd-meta-label">Atendido por</span>
+                    <span className="cmd-meta-val">{selectedOrder.attendedBy || 'Admin'}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="cmd-meta-item">
-                <Clock size={14} className="cmd-meta-icon" />
-                <div>
-                  <span className="cmd-meta-label">Hora</span>
-                  <span className="cmd-meta-val">{selectedOrder.time}</span>
-                </div>
-              </div>
-              <div className="cmd-meta-item">
-                <User size={14} className="cmd-meta-icon" />
-                <div>
-                  <span className="cmd-meta-label">Atendido por</span>
-                  <span className="cmd-meta-val">{selectedOrder.attendedBy || 'Admin'}</span>
-                </div>
-              </div>
-              <div className="cmd-meta-item">
-                <Hash size={14} className="cmd-meta-icon" />
-                <div>
-                  <span className="cmd-meta-label">Nº de pedido</span>
-                  <span className="cmd-meta-val">{selectedOrder.orderNumber.replace('#FC-', '')}</span>
-                </div>
-              </div>
-              <div className="cmd-meta-item cmd-time-elapsed">
-                <Clock size={14} className="cmd-meta-icon text-orange" />
-                <div>
-                  <span className="cmd-meta-label text-orange">Tiempo transcurrido</span>
-                  <span className="cmd-meta-val text-orange font-bold">{selectedOrder.elapsedMins} min</span>
+                <div className="cmd-meta-item">
+                  <Hash size={14} className="cmd-meta-icon cmd-icon-ops" />
+                  <div>
+                    <span className="cmd-meta-label">Nº de pedido</span>
+                    <span className="cmd-meta-val">{selectedOrder.orderNumber.replace('#FC-', '')}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1203,7 +1557,7 @@ export function Comandas() {
               <div className="cmd-col-left">
                 {selectedOrder.orderType === 'Delivery' && (
                   <div className="cmd-section cmd-address-section">
-                    <div className="cmd-section-title"><MapPin size={16} /> Dirección de entrega</div>
+                    <div className="cmd-section-title"><MapPin size={16} className="cmd-icon-address" /> Dirección de entrega</div>
                     <div className="cmd-address-content">
                       <div className="cmd-address-text">
                         <p>{selectedOrder.address || 'Sin dirección registrada'}</p>
@@ -1260,9 +1614,9 @@ export function Comandas() {
                   </div>
                 )}
 
-                <div className="cmd-section">
+                <div className="cmd-section cmd-production-section">
                   <div className="cmd-section-title cmd-section-title-row">
-                    <span className="cmd-section-title-text"><ShoppingBag size={16} /> Producción del pedido</span>
+                    <span className="cmd-section-title-text"><ShoppingBag size={16} className="cmd-icon-production" /> Producción del pedido</span>
                     {!selectedOrder.isPaid && (
                       <button type="button" className="cmd-add-item-btn" onClick={() => setShowAddItems(true)}>
                         <Plus size={14} /> Agregar producto
@@ -1286,7 +1640,7 @@ export function Comandas() {
                           <tr key={item.id}>
                             <td>
                               <div className="cmd-product-cell">
-                                <div className="cmd-product-img">{item.name === 'Delivery' ? <Bike size={16} /> : <Utensils size={16} />}</div>
+                                <div className={`cmd-product-img ${item.name === 'Delivery' ? 'is-delivery' : 'is-food'}`}>{item.name === 'Delivery' ? <Bike size={16} /> : <Utensils size={16} />}</div>
                                 <span>{item.name}</span>
                               </div>
                             </td>
@@ -1317,7 +1671,7 @@ export function Comandas() {
                 </div>
 
                 <div className="cmd-section cmd-notes-section">
-                  <div className="cmd-section-title"><FileText size={16} /> Notas del pedido</div>
+                  <div className="cmd-section-title"><FileText size={16} className="cmd-icon-notes" /> Notas del pedido</div>
                   <div className="cmd-notes-content">
                     {cleanNotes(selectedOrder.notes) ? cleanNotes(selectedOrder.notes).split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
                   </div>
@@ -1326,7 +1680,7 @@ export function Comandas() {
 
               <div className="cmd-col-right">
                 <div className="cmd-section cmd-payment-section">
-                  <div className="cmd-section-title"><CreditCard size={16} /> Resumen de pago</div>
+                  <div className="cmd-section-title"><CreditCard size={16} className="cmd-icon-payment" /> Resumen de pago</div>
                   
                   <div className="cmd-summary-row">
                     <span>Subtotal</span>
@@ -1451,12 +1805,12 @@ export function Comandas() {
                   className="cmd-btn-primary"
                   onClick={() => {
                     handleAdvanceStatus(selectedOrder.id, selectedOrder.status)
-                    setSelectedOrder(null)
+                    closeSelectedOrder()
                   }}
                 >
                   <CheckCircle size={16} /> Marcar como {selectedOrder.status === 'new' ? 'preparación' : selectedOrder.status === 'preparing' ? 'lista' : 'entregada'}
                 </button>}
-                <button className="cmd-btn-secondary" onClick={() => setSelectedOrder(null)}>Cerrar</button>
+                <button className="cmd-btn-secondary" onClick={() => closeSelectedOrder()}>Cerrar</button>
               </div>
             </footer>
           </div>
@@ -1465,7 +1819,7 @@ export function Comandas() {
       )}
       {/* Modal PIN para eliminar comanda */}
       {showDeleteModal && createPortal(
-        <div className="cmd-modal-overlay" onClick={() => { setShowDeleteModal(false); setDeletePin(''); setDeleteError('') }}>
+        <div className={`cmd-modal-overlay ${closingDelete ? 'closing' : ''}`} onClick={() => closeDeleteModal()}>
           <div className="cmd-pin-modal animate-pop" onClick={e => e.stopPropagation()}>
             <div className="cmd-pin-header">
               <ShieldCheck size={24} className="cmd-pin-icon" />
@@ -1486,7 +1840,7 @@ export function Comandas() {
             />
             {deleteError && <p className="cmd-pin-error">{deleteError}</p>}
             <div className="cmd-pin-actions">
-              <button className="cmd-btn-secondary" onClick={() => { setShowDeleteModal(false); setDeletePin(''); setDeleteError('') }}>Cancelar</button>
+              <button className="cmd-btn-secondary" onClick={() => closeDeleteModal()}>Cancelar</button>
               <button className="cmd-btn-danger" onClick={handleDeleteOrder} disabled={deleting || deletePin.length < 4}>
                 <Trash2 size={16} /> {deleting ? 'Eliminando…' : 'Eliminar comanda'}
               </button>
@@ -1497,7 +1851,7 @@ export function Comandas() {
       )}
       {/* Modal Cobrar Pedido Directo desde Comandas */}
       {showPaymentModal && paymentOrder && createPortal(
-        <div className="modal-overlay-dark" onClick={() => setShowPaymentModal(false)}>
+        <div className={`modal-overlay-dark ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
           <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="payment-modal-header">
@@ -1751,7 +2105,7 @@ export function Comandas() {
               <button className="btn-modal-action-dark" onClick={() => window.print()}>
                 <Printer size={18} /> Imprimir recibo
               </button>
-              <button className="btn-modal-action-ghost" onClick={() => setShowPaymentModal(false)}>
+              <button className="btn-modal-action-ghost" onClick={() => closePaymentModal()}>
                 <X size={18} /> Cancelar
               </button>
             </div>
@@ -1761,13 +2115,24 @@ export function Comandas() {
       )}
       {/* Modal Historial de Comandas */}
       {showHistoryModal && createPortal(
-        <div className="cmd-modal-overlay" onClick={() => setShowHistoryModal(false)}>
-          <div className="cmd-history-modal animate-pop" onClick={e => e.stopPropagation()}>
+        <div className={`cmd-modal-overlay ${closingHistory ? 'closing' : ''}`} onClick={() => closeHistoryModal()}>
+          <div className={`cmd-history-modal ${closingHistory ? 'animate-pop-out' : 'animate-pop'}`} onClick={e => e.stopPropagation()}>
             <header className="cmd-history-header">
               <div className="cmd-history-title">
-                <Clock size={20} />
-                <h2>Historial de comandas</h2>
+                <span className="cmd-history-icon"><Clock size={18} /></span>
+                <div className="cmd-history-title-text">
+                  <h2>Historial de comandas</h2>
+                  <span className="cmd-history-subtitle">
+                    {historyLoading ? 'Cargando…' : `${filteredHistoryOrders.length} comanda${filteredHistoryOrders.length !== 1 ? 's' : ''}`}
+                  </span>
+                </div>
               </div>
+              <button className="cmd-close-btn" onClick={() => closeHistoryModal()}>
+                <X size={20} />
+              </button>
+            </header>
+
+            <div className="cmd-history-toolbar">
               <div className="cmd-history-search">
                 <Search size={16} />
                 <input
@@ -1783,10 +2148,26 @@ export function Comandas() {
                   </button>
                 )}
               </div>
-              <button className="cmd-close-btn" onClick={() => { setShowHistoryModal(false); setHistorySearch('') }}>
-                <X size={20} />
-              </button>
-            </header>
+              <div className="cmd-history-range" role="tablist" aria-label="Rango de fechas">
+                {([
+                  { value: 'today', label: 'Hoy' },
+                  { value: 'yesterday', label: 'Ayer' },
+                  { value: '7d', label: '7 días' },
+                  { value: '30d', label: '30 días' },
+                ] as const).map(r => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={historyRange === r.value}
+                    className={`cmd-history-range-btn ${historyRange === r.value ? 'active' : ''}`}
+                    onClick={() => setHistoryRange(r.value)}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="cmd-history-body">
               {historyLoading ? (
@@ -1794,55 +2175,58 @@ export function Comandas() {
                   <div className="cmd-history-spinner"></div>
                   <span>Cargando historial...</span>
                 </div>
-              ) : filteredHistoryOrders.length === 0 ? (
+              ) : historyGroups.length === 0 ? (
                 <EmptyState
                   compact
                   title="No se encontraron comandas"
-                  description="Prueba con otro número, cliente o filtro."
+                  description="Prueba con otro número, cliente o rango de fechas."
                 />
               ) : (
-                <div className="cmd-history-list">
-                  {filteredHistoryOrders.map(order => (
-                    <div
-                      key={order.id}
-                      className={`cmd-history-item ${order.isPaid ? 'paid' : 'unpaid'}`}
-                      onClick={() => { setShowHistoryModal(false); setSelectedOrder(order) }}
-                    >
-                      <div className="cmd-history-item-left">
-                        <span className="cmd-history-order-no">{order.orderNumber}</span>
-                        <span className="cmd-history-customer">{order.customerName}</span>
-                        <span className="cmd-history-type">
-                          {order.orderType === 'Delivery' ? <Bike size={14} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={14} /> : <ShoppingBag size={14} />} {order.orderType}
-                        </span>
-                      </div>
-                      <div className="cmd-history-item-center">
-                        {order.items.slice(0, 3).map(item => (
-                          <span key={item.id} className="cmd-history-item-tag">{item.name} ×{item.quantity}</span>
-                        ))}
-                        {order.items.length > 3 && <span className="cmd-history-item-more">+{order.items.length - 3} más</span>}
-                      </div>
-                      <div className="cmd-history-item-right">
-                        <span className="cmd-history-date">{order.date}</span>
-                        <span className="cmd-history-time">{order.time}</span>
-                        <span className={`cmd-history-status ${order.status}`}>
-                          {order.status === 'delivered' ? '✓ Entregada' : order.status === 'ready' ? '✓ Lista' : order.status === 'preparing' ? <><Flame size={12} /> Preparando</> : <><Package size={12} /> Nueva</>}
-                        </span>
-                      </div>
-                      <div className="cmd-history-item-total">
-                        <MoneyWithBcv usd={order.totalAmount || 0} compact />
-                        <span className={`cmd-history-paid-badge ${order.isPaid ? 'paid' : 'unpaid'}`}>
-                          {order.isPaid ? order.paymentMethod : <><AlertTriangle size={12} /> Sin cobrar</>}
-                        </span>
-                      </div>
+                historyGroups.map(group => (
+                  <section className="cmd-history-group" key={group.key}>
+                    <h3 className="cmd-history-group-label">{group.label}</h3>
+                    <div className="cmd-history-list">
+                      {group.orders.map(order => (
+                        <div
+                          key={order.id}
+                          className={`cmd-history-item ${order.isPaid ? 'paid' : 'unpaid'}`}
+                          onClick={() => closeHistoryModal(() => setSelectedOrder(order))}
+                        >
+                          <span className="cmd-history-item-icon">
+                            {order.orderType === 'Delivery' ? <Bike size={16} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={16} /> : <ShoppingBag size={16} />}
+                          </span>
+                          <div className="cmd-history-item-main">
+                            <div className="cmd-history-item-row">
+                              <span className="cmd-history-customer">{order.customerName}</span>
+                              <span className="cmd-history-order-no">{order.orderNumber}</span>
+                            </div>
+                            <div className="cmd-history-item-tags">
+                              <span className="cmd-history-type">{order.orderType}</span>
+                              {order.items.slice(0, 2).map(item => (
+                                <span key={item.id} className="cmd-history-item-tag">{item.name} ×{item.quantity}</span>
+                              ))}
+                              {order.items.length > 2 && <span className="cmd-history-item-more">+{order.items.length - 2}</span>}
+                            </div>
+                          </div>
+                          <div className="cmd-history-item-right">
+                            <span className="cmd-history-time">{order.time}</span>
+                            <span className={`cmd-history-status ${order.status}`}>
+                              {order.status === 'delivered' ? '✓ Entregada' : order.status === 'ready' ? '✓ Lista' : order.status === 'preparing' ? <><Flame size={11} /> Preparando</> : <><Package size={11} /> Nueva</>}
+                            </span>
+                          </div>
+                          <div className="cmd-history-item-total">
+                            <MoneyWithBcv usd={order.totalAmount || 0} compact />
+                            <span className={`cmd-history-paid-badge ${order.isPaid ? 'paid' : 'unpaid'}`}>
+                              {order.isPaid ? order.paymentMethod : <><AlertTriangle size={11} /> Sin cobrar</>}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </section>
+                ))
               )}
             </div>
-
-            <footer className="cmd-history-footer">
-              <span>{filteredHistoryOrders.length} comanda{filteredHistoryOrders.length !== 1 ? 's' : ''} en los últimos 30 días</span>
-            </footer>
           </div>
         </div>,
         document.body

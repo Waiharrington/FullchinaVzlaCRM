@@ -24,8 +24,10 @@
 .prv-form .wide { grid-column: 1 / -1; }
 .prv-form-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .prv-toolbar { margin-bottom: 15px; }
-.prv-search { display: flex; align-items: center; gap: 8px; width: min(380px,100%); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; background: #19191f; color: #777781; padding: 0 11px; }
+.prv-search { display: flex; align-items: center; gap: 8px; width: min(380px,100%); border: 1px solid transparent; border-radius: 999px; background: #19191f; color: #777781; padding: 0 11px; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.prv-search:focus-within { border-color: #e11d2a; box-shadow: 0 0 0 3px rgba(225,29,42,0.1); }
 .prv-search input { flex: 1; border: 0; outline: 0; background: transparent; color: #fff; padding: 10px 0; }
+.prv-search input:focus { box-shadow: none; }
 .prv-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
 .prv-supplier { display: grid; grid-template-columns: auto 1fr; gap: 12px; border: 1px solid rgba(255,255,255,.065); border-radius: 14px; background: #18181e; padding: 15px; }
 .prv-avatar { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; background: linear-gradient(135deg,#e11d2a,#7f1d1d); font-weight: 800; }

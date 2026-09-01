@@ -14,7 +14,6 @@ const mocks = vi.hoisted(() => ({
   getPaymentMethodSales: vi.fn(),
   getProductionStats: vi.fn(),
   getIngredients: vi.fn(),
-  getExpenses: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -66,7 +65,6 @@ vi.mock('../lib/dataService', () => ({
   getPaymentMethodSales: mocks.getPaymentMethodSales,
   getProductionStats: mocks.getProductionStats,
   getIngredients: mocks.getIngredients,
-  getExpenses: mocks.getExpenses,
 }))
 
 describe('Dashboard Inicio', () => {
@@ -81,17 +79,15 @@ describe('Dashboard Inicio', () => {
     mocks.getPaymentMethodSales.mockResolvedValue([])
     mocks.getProductionStats.mockResolvedValue({ batchesToday: 0, avgYield: 0, totalWaste: 0, avgCostPerPortion: 0 })
     mocks.getIngredients.mockResolvedValue([{ id: 'ingredient-1', name: 'Aceite', currentStock: -2, unitSymbol: 'L', stockValue: 0 }])
-    mocks.getExpenses.mockResolvedValue([])
   })
 
-  it('oculta nueva comanda y conserva el acceso normal a Caja', async () => {
+  it('no muestra el bloque de accesos rápidos eliminado', async () => {
     render(<Inicio />)
 
-    const cajaButton = await screen.findByRole('button', { name: /^caja$/i })
+    await screen.findByText('Resumen del día')
+    expect(screen.queryByText('Acciones rápidas')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^caja$/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /nueva comanda/i })).not.toBeInTheDocument()
-    fireEvent.click(cajaButton)
-
-    expect(mocks.navigate).toHaveBeenCalledWith('/caja')
   })
 
   it('evita que el tooltip tape el total del método de pago', async () => {

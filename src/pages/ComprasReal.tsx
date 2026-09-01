@@ -59,6 +59,15 @@ export function ComprasReal() {
   const [paidFilter, setPaidFilter] = useState<PaidFilter>('todos')
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState<Purchase | null>(null)
+  const [closingDetail, setClosingDetail] = useState(false)
+  const closeDetail = () => {
+    if (closingDetail) return
+    setClosingDetail(true)
+    window.setTimeout(() => {
+      setDetail(null)
+      setClosingDetail(false)
+    }, 200)
+  }
 
   const load = useCallback(async () => {
     try {
@@ -352,11 +361,11 @@ export function ComprasReal() {
 
       {/* Detalle */}
       {detail && createPortal(
-        <div className="cmp-modal-overlay" onClick={() => setDetail(null)}>
+        <div className={`cmp-modal-overlay ${closingDetail ? 'closing' : ''}`} onClick={() => closeDetail()}>
           <div className="cmp-modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="cmp-modal-header">
               <h3>Compra · {detail.supplierName}</h3>
-              <button className="cmp-icon-btn" onClick={() => setDetail(null)}><X size={18} /></button>
+              <button className="cmp-icon-btn" onClick={() => closeDetail()}><X size={18} /></button>
             </div>
             <div className="cmp-detail-row"><span className="k">Fecha</span><span>{new Date(detail.purchaseDate).toLocaleDateString('es-VE')}</span></div>
             <div className="cmp-detail-row"><span className="k">Factura</span><span>{detail.invoiceNumber || '—'}</span></div>
@@ -368,9 +377,9 @@ export function ComprasReal() {
                 <span className="cmp-subtotal">{formatUsd(it.total)}</span>
               </div>
             ))}
-            <div className="cmp-detail-row" style={{ borderBottom: 0, marginTop: 6 }}>
-              <span className="k" style={{ fontWeight: 700, color: '#fff' }}>Total</span>
-              <span className="cmp-total"><span className="val" style={{ fontSize: 20 }}>{formatUsd(detail.totalAmount)}</span></span>
+            <div className="cmp-modal-total-row">
+              <span className="k">Total</span>
+              <span className="cmp-total"><span className="val">{formatUsd(detail.totalAmount)}</span></span>
             </div>
           </div>
         </div>,

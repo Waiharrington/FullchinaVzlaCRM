@@ -22,6 +22,17 @@ export function Proveedores() {
   const [showForm, setShowForm] = useState(false)
   const [draft, setDraft] = useState<SupplierDraft>(EMPTY_DRAFT)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [closingSelected, setClosingSelected] = useState(false)
+
+  const closeSelected = (then?: () => void) => {
+    if (closingSelected) return
+    setClosingSelected(true)
+    window.setTimeout(() => {
+      setSelectedId(null)
+      setClosingSelected(false)
+      then?.()
+    }, 200)
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -156,9 +167,9 @@ export function Proveedores() {
       </section>
 
       {selected && (
-        <div className="prv-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedId(null) }}>
+        <div className={`prv-overlay ${closingSelected ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSelected() }}>
           <section className="prv-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-history-title">
-            <div className="prv-card-title"><div><h2 id="supplier-history-title">{selected.name}</h2><p>Historial completo de compras</p></div><button aria-label="Cerrar historial" onClick={() => setSelectedId(null)}><X size={19} /></button></div>
+            <div className="prv-card-title"><div><h2 id="supplier-history-title">{selected.name}</h2><p>Historial completo de compras</p></div><button aria-label="Cerrar historial" onClick={() => closeSelected()}><X size={19} /></button></div>
             <div className="prv-modal-summary"><span>{selectedActivity?.history.length ?? 0} compras</span><strong>{formatUsd(selectedActivity?.total ?? 0)}</strong></div>
             <div className="prv-purchases">
               {selectedActivity?.history.map((purchase) => (

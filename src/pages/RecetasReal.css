@@ -13,8 +13,9 @@
 .rec-search input {
   width: 100%; padding: 11px 40px 11px 40px;
   background: #17171d; border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 12px; color: #fff; font-size: 14px;
+  border-radius: 999px; color: #fff; font-size: 14px;
 }
+.rec-search input:focus { border-color: rgba(225,29,42,0.5); background: rgba(225,29,42,0.04); box-shadow: 0 0 0 3px rgba(225,29,42,0.1); outline: none; }
 .rec-search .rec-search-ic { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #71717a; }
 .rec-search .rec-kbd {
   position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
@@ -186,9 +187,21 @@
 }
 .rec-modal {
   width: 100%; max-width: 440px; background: #141419;
-  border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;
+  border: 1px solid rgba(225,29,42,0.25); border-radius: 16px; padding: 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.9), 0 0 0 1px rgba(225,29,42,0.06);
 }
-.rec-modal h3 { font-size: 18px; font-weight: 700; margin: 0 0 6px; }
+.rec-modal h3 { font-size: 18px; font-weight: 700; margin: 0; }
+.rec-modal-header {
+  display: flex; align-items: center; gap: 10px;
+  margin: -20px -20px 14px; padding: 18px 20px 14px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(135deg, rgba(225,29,42,0.14) 0%, rgba(225,29,42,0.02) 45%, transparent 70%);
+  border-bottom: 1px solid rgba(225,29,42,0.18);
+}
+.rec-modal-header-icon {
+  width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center;
+  border-radius: 10px; color: #fca5a5; background: rgba(225,29,42,0.15);
+}
 .rec-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 .rec-modal-cancel {
   background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8;
@@ -204,6 +217,11 @@
     overflow-y: auto;
     padding: 18px 16px;
     border-radius: 18px 18px 10px 10px;
+  }
+  .rec-modal-header {
+    margin: -18px -16px 14px;
+    padding: 16px 16px 12px;
+    border-radius: 18px 18px 0 0;
   }
   .rec-modal-actions { display: grid; grid-template-columns: 1fr 1.2fr; }
   .rec-modal-actions button { width: 100%; min-height: 44px; }

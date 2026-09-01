@@ -63,20 +63,28 @@ export function Inventario() {
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [closingIngredient, setClosingIngredient] = useState(false)
+  const closeIngredientModal = (then?: () => void) => {
+    if (closingIngredient) return
+    setClosingIngredient(true)
+    window.setTimeout(() => {
+      setSelectedIngredient(null)
+      setModalMode(null)
+      setModalError('')
+      setClosingIngredient(false)
+      then?.()
+    }, 200)
+  }
 
   const showCosts = user?.role === 'owner' || user?.role === 'manager'
 
   const closeModal = () => {
     if (modalLoading) return
-    setSelectedIngredient(null)
-    setModalMode(null)
-    setModalError('')
+    closeIngredientModal()
   }
 
   const finishModal = () => {
-    setSelectedIngredient(null)
-    setModalMode(null)
-    setModalError('')
+    closeIngredientModal()
   }
 
   const openView = async (ingredient: Ingredient) => {
@@ -539,7 +547,7 @@ export function Inventario() {
       </div>
       {successMessage && <div className="inv-success" role="status">{successMessage}<button onClick={() => setSuccessMessage('')} aria-label="Cerrar mensaje">×</button></div>}
       {selectedIngredient && modalMode && createPortal(
-        <div className="inv-modal-overlay" onClick={closeModal}>
+        <div className={`inv-modal-overlay ${closingIngredient ? 'closing' : ''}`} onClick={closeModal}>
           <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
             <button className="inv-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
             {modalMode === 'view' && <>

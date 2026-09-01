@@ -140,7 +140,9 @@
   [class*="-drawer-backdrop "],
   .gs-overlay,
   .bottom-nav-overlay,
-  .sidebar-overlay
+  .sidebar-overlay,
+  .prv-overlay,
+  .aito-overlay
 ) {
   animation: fc-overlay-enter var(--motion-base) ease-out both;
 }
@@ -156,7 +158,9 @@
   [class$="-drawer-backdrop"],
   [class*="-drawer-backdrop "],
   .gs-overlay,
-  .bottom-nav-overlay
+  .bottom-nav-overlay,
+  .prv-overlay,
+  .aito-overlay
 ) > :where(div, section, article, aside, form) {
   transform-origin: center center;
   animation: fc-dialog-enter var(--motion-base) var(--motion-enter) both;
@@ -382,3 +386,13 @@
     transition-delay: 0ms !important;
   }
 }
+/* Spinner compartido: vive en el bundle base para que los módulos lazy no
+   dependan de haber cargado primero la hoja de estilos de otra pantalla. */
+@keyframes fc-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Fix for modal exit animations not overriding entrance animations */
+.modal-overlay-dark.closing, .modal-overlay.closing { animation: fc-overlay-exit var(--motion-fast) var(--motion-exit) both !important; }
+.modal-overlay-dark.closing > div, .modal-overlay.closing > div { animation: fc-dialog-exit var(--motion-fast) var(--motion-exit) both !important; }

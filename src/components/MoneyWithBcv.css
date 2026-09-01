@@ -14,11 +14,11 @@
 
 .money-with-bcv .money-ves {
   color: #9ca3af;
-  font-size: 0.68em;
+  font-size: 0.76em;
   font-weight: 650;
   letter-spacing: 0;
   white-space: nowrap;
 }
 
-.money-with-bcv.compact .money-ves { font-size: 0.62em; }
+.money-with-bcv.compact .money-ves { font-size: 0.72em; }
 .money-with-bcv .money-ves.unavailable { color: #f59e0b; }

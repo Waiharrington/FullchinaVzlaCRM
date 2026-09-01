@@ -22,7 +22,7 @@ describe('SplashScreen', () => {
     rerender(<SplashScreen onDone={onDone} minDuration={100} ready />)
     expect(splash).toHaveClass('splash-exit')
 
-    act(() => vi.advanceTimersByTime(599))
+    act(() => vi.advanceTimersByTime(399))
     expect(onDone).not.toHaveBeenCalled()
 
     act(() => vi.advanceTimersByTime(1))

@@ -604,6 +604,107 @@
 .inv-success { position: fixed; z-index: 10020; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 14px; max-width: min(420px, calc(100vw - 24px)); padding: 13px 15px; border: 1px solid rgba(34,197,94,.35); border-radius: 12px; background: #122219; color: #7ee7a2; box-shadow: 0 18px 48px rgba(0,0,0,.4); }
 .inv-success button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; }
 
+/* Branded modal treatment for the ingredient detail modal */
+.inv-modal-card {
+  border: 1px solid rgba(255, 77, 61, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 77, 61, 0.06);
+}
+
+.inv-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -1.25rem -1.25rem 1rem;
+  padding: 14px 1.25rem;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid rgba(255, 77, 61, 0.18);
+  background: linear-gradient(135deg, rgba(255, 77, 61, 0.14) 0%, rgba(255, 77, 61, 0.02) 45%, transparent 70%);
+}
+
+.inv-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.inv-modal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #FF4D3D, #7f1d1d);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(255, 77, 61, 0.3);
+}
+
+.inv-modal-title h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inv-modal-close {
+  flex-shrink: 0;
+}
+
+.inv-modal-stock-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 77, 61, 0.14), rgba(255, 77, 61, 0.03));
+  border: 1px solid rgba(255, 77, 61, 0.25);
+}
+
+.inv-modal-stock-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.inv-modal-stock-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #FF4D3D;
+  text-shadow: 0 0 20px rgba(255, 77, 61, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.inv-modal-stock-value small {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.inv-modal-meta-row {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0 0 8px;
+}
+
+.inv-modal-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 @media (max-width: 767px) {
   .inv-modal-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
   .inv-detail-modal {
@@ -616,6 +717,11 @@
   .inv-form-grid { grid-template-columns: 1fr; }
   .inv-form-grid label.wide { grid-column: auto; }
   .inv-history-list { max-height: 55dvh; }
+  .inv-modal-header {
+    margin: -20px -16px 1rem;
+    padding: 14px 16px;
+    border-radius: 18px 18px 0 0;
+  }
 }
 
 .inv-sidebar-header {
@@ -931,12 +1037,7 @@
   font-size: 0.9375rem;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
 .spin {
-  animation: spin 1s linear infinite;
+  animation: fc-spin 1s linear infinite;
   color: var(--accent-primary);
 }

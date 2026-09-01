@@ -60,7 +60,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {!splashDone ? <SplashScreen onDone={handleSplashDone} minDuration={2800} ready={splashReady} /> : null}
+      {!splashDone ? <SplashScreen onDone={handleSplashDone} minDuration={1200} ready={splashReady} /> : null}
       {!loading && user ? (
         <Suspense fallback={!splashDone ? null : <ModuleLoader />}>
           <InitialRouteContent onReady={handleInitialRouteReady}>{children}</InitialRouteContent>

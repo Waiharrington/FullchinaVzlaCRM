@@ -37,13 +37,38 @@ export function Nomina() {
 
   // Modales
   const [showPeriod, setShowPeriod] = useState(false)
+  const [closingPeriod, setClosingPeriod] = useState(false)
   const [pStart, setPStart] = useState(''); const [pEnd, setPEnd] = useState(''); const [pNotes, setPNotes] = useState('')
   const [showAdvance, setShowAdvance] = useState(false)
+  const [closingAdvance, setClosingAdvance] = useState(false)
   const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advDate, setAdvDate] = useState(dateKeyInTimeZone()); const [advNotes, setAdvNotes] = useState('')
   const [showBonus, setShowBonus] = useState(false)
+  const [closingBonus, setClosingBonus] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
+  const [closingPayment, setClosingPayment] = useState(false)
   const [payEmp, setPayEmp] = useState(''); const [payAmt, setPayAmt] = useState(''); const [payAccount, setPayAccount] = useState(''); const [payRef, setPayRef] = useState(''); const [payNotes, setPayNotes] = useState('')
   const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
+
+  const closePeriod = (then?: () => void) => {
+    if (closingPeriod) return
+    setClosingPeriod(true)
+    window.setTimeout(() => { setShowPeriod(false); setClosingPeriod(false); then?.() }, 200)
+  }
+  const closeAdvance = (then?: () => void) => {
+    if (closingAdvance) return
+    setClosingAdvance(true)
+    window.setTimeout(() => { setShowAdvance(false); setClosingAdvance(false); then?.() }, 200)
+  }
+  const closeBonus = (then?: () => void) => {
+    if (closingBonus) return
+    setClosingBonus(true)
+    window.setTimeout(() => { setShowBonus(false); setClosingBonus(false); then?.() }, 200)
+  }
+  const closePayment = (then?: () => void) => {
+    if (closingPayment) return
+    setClosingPayment(true)
+    window.setTimeout(() => { setShowPayment(false); setClosingPayment(false); then?.() }, 200)
+  }
 
   const load = useCallback(async () => {
     try {
@@ -124,22 +149,22 @@ export function Nomina() {
 
   const submitPeriod = async (e: React.FormEvent) => {
     e.preventDefault(); if (!pStart || !pEnd) return
-    try { await createPayrollPeriod({ startDate: pStart, endDate: pEnd, notes: pNotes.trim() || undefined }); setShowPeriod(false); setPStart(''); setPEnd(''); setPNotes(''); await load(); flash('Período creado') }
+    try { await createPayrollPeriod({ startDate: pStart, endDate: pEnd, notes: pNotes.trim() || undefined }); closePeriod(() => { setPStart(''); setPEnd(''); setPNotes('') }); await load(); flash('Período creado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error creando período') }
   }
   const submitAdvance = async (e: React.FormEvent) => {
     e.preventDefault(); if (!advEmp || !advAmt) return
-    try { await createAdvance({ employeeId: advEmp, amount: parseFloat(advAmt) || 0, advanceDate: advDate, notes: advNotes.trim() || undefined }); setShowAdvance(false); setAdvEmp(''); setAdvAmt(''); setAdvNotes(''); await load(); flash('Adelanto registrado') }
+    try { await createAdvance({ employeeId: advEmp, amount: parseFloat(advAmt) || 0, advanceDate: advDate, notes: advNotes.trim() || undefined }); closeAdvance(() => { setAdvEmp(''); setAdvAmt(''); setAdvNotes('') }); await load(); flash('Adelanto registrado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando adelanto') }
   }
   const submitBonus = async (e: React.FormEvent) => {
     e.preventDefault(); if (!bonEmp || !bonAmt) return
-    try { await createProductionBonus({ employeeId: bonEmp, amount: parseFloat(bonAmt) || 0, bonusDate: bonDate, reason: bonReason.trim() || undefined }); setShowBonus(false); setBonEmp(''); setBonAmt(''); setBonReason(''); await load(); flash('Bono registrado') }
+    try { await createProductionBonus({ employeeId: bonEmp, amount: parseFloat(bonAmt) || 0, bonusDate: bonDate, reason: bonReason.trim() || undefined }); closeBonus(() => { setBonEmp(''); setBonAmt(''); setBonReason('') }); await load(); flash('Bono registrado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando bono') }
   }
   const submitPayment = async (e: React.FormEvent) => {
     e.preventDefault(); if (!payEmp || !payAmt) return
-    try { await createPayrollPayment({ employeeId: payEmp, amount: parseFloat(payAmt) || 0, paymentAccount: payAccount.trim() || null, reference: payRef.trim() || null, notes: payNotes.trim() || null }); setShowPayment(false); setPayEmp(''); setPayAmt(''); setPayAccount(''); setPayRef(''); setPayNotes(''); await load(); flash('Pago registrado') }
+    try { await createPayrollPayment({ employeeId: payEmp, amount: parseFloat(payAmt) || 0, paymentAccount: payAccount.trim() || null, reference: payRef.trim() || null, notes: payNotes.trim() || null }); closePayment(() => { setPayEmp(''); setPayAmt(''); setPayAccount(''); setPayRef(''); setPayNotes('') }); await load(); flash('Pago registrado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando pago') }
   }
 
@@ -419,53 +444,65 @@ export function Nomina() {
 
       {/* Modales */}
       {showPeriod && createPortal(
-        <div className="nom-modal-overlay" onClick={() => setShowPeriod(false)}>
-          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPeriod}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo período de nómina</h3></div>
+        <div className={`nom-modal-overlay ${closingPeriod ? 'closing' : ''}`} onClick={() => closePeriod()}>
+          <form className="nom-modal nom-modal--period" onClick={(e) => e.stopPropagation()} onSubmit={submitPeriod}>
+            <div className="nom-modal-header">
+              <div className="nom-modal-header-icon"><Hourglass size={18} /></div>
+              <h3>Nuevo período de nómina</h3>
+            </div>
             <div className="nom-row2">
               <div className="nom-field"><label>Inicio *</label><input type="date" value={pStart} onChange={(e) => setPStart(e.target.value)} required /></div>
               <div className="nom-field"><label>Fin *</label><input type="date" value={pEnd} onChange={(e) => setPEnd(e.target.value)} required /></div>
             </div>
             <div className="nom-field"><label>Notas</label><input value={pNotes} onChange={(e) => setPNotes(e.target.value)} placeholder="Ej: Semana 3 - Agosto" /></div>
-            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPeriod(false)}>Cancelar</button><button type="submit" className="nom-btn">Crear período</button></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closePeriod()}>Cancelar</button><button type="submit" className="nom-btn">Crear período</button></div>
           </form>
         </div>,
         document.body
       )}
       {showAdvance && createPortal(
-        <div className="nom-modal-overlay" onClick={() => setShowAdvance(false)}>
-          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitAdvance}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo adelanto</h3></div>
+        <div className={`nom-modal-overlay ${closingAdvance ? 'closing' : ''}`} onClick={() => closeAdvance()}>
+          <form className="nom-modal nom-modal--advance" onClick={(e) => e.stopPropagation()} onSubmit={submitAdvance}>
+            <div className="nom-modal-header">
+              <div className="nom-modal-header-icon"><Banknote size={18} /></div>
+              <h3>Nuevo adelanto</h3>
+            </div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={advAmt} onChange={(v) => setAdvAmt(v)} required /></div>
               <div className="nom-field"><label>Fecha</label><input type="date" value={advDate} onChange={(e) => setAdvDate(e.target.value)} /></div>
             </div>
             <div className="nom-field"><label>Notas</label><input value={advNotes} onChange={(e) => setAdvNotes(e.target.value)} placeholder="Opcional" /></div>
-            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowAdvance(false)}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closeAdvance()}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
           </form>
         </div>,
         document.body
       )}
       {showBonus && createPortal(
-        <div className="nom-modal-overlay" onClick={() => setShowBonus(false)}>
-          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitBonus}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Nuevo bono de producción</h3></div>
+        <div className={`nom-modal-overlay ${closingBonus ? 'closing' : ''}`} onClick={() => closeBonus()}>
+          <form className="nom-modal nom-modal--bonus" onClick={(e) => e.stopPropagation()} onSubmit={submitBonus}>
+            <div className="nom-modal-header">
+              <div className="nom-modal-header-icon"><Gift size={18} /></div>
+              <h3>Nuevo bono de producción</h3>
+            </div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={bonAmt} onChange={(v) => setBonAmt(v)} required /></div>
               <div className="nom-field"><label>Fecha</label><input type="date" value={bonDate} onChange={(e) => setBonDate(e.target.value)} /></div>
             </div>
             <div className="nom-field"><label>Motivo</label><input value={bonReason} onChange={(e) => setBonReason(e.target.value)} placeholder="Ej: Ventas destacadas" /></div>
-            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowBonus(false)}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closeBonus()}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
           </form>
         </div>,
         document.body
       )}
       {showPayment && createPortal(
-        <div className="nom-modal-overlay" onClick={() => setShowPayment(false)}>
-          <form className="nom-modal" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><h3>Registrar pago directo</h3></div>
+        <div className={`nom-modal-overlay ${closingPayment ? 'closing' : ''}`} onClick={() => closePayment()}>
+          <form className="nom-modal nom-modal--payment" onClick={(e) => e.stopPropagation()} onSubmit={submitPayment}>
+            <div className="nom-modal-header">
+              <div className="nom-modal-header-icon"><Banknote size={18} /></div>
+              <h3>Registrar pago directo</h3>
+            </div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={payAmt} onChange={(v) => setPayAmt(v)} required /></div>
@@ -475,7 +512,7 @@ export function Nomina() {
               <div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div>
               <div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div>
             </div>
-            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowPayment(false)}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closePayment()}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div>
           </form>
         </div>,
         document.body

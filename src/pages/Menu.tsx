@@ -426,13 +426,13 @@ export function Menu() {
               </aside>
 
               <section className="mnu-product-main">
-                <div className="mnu-product-section">
+                <div className="mnu-product-section mnu-info-section">
                   <div className="mnu-product-section-title">Información del plato</div>
                   <div className="mnu-field"><label>Nombre del plato *</label><input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Arroz Frito Especial" required /></div>
                   <div className="mnu-field"><label>Descripción</label><textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe los ingredientes o qué incluye" /></div>
                 </div>
 
-                <div className="mnu-product-section">
+                <div className="mnu-product-section mnu-price-section">
                   <div className="mnu-product-section-title">Precio</div>
                   <div className="mnu-row2">
                     <div className="mnu-field"><label>Precio de venta *</label><NumberStepper prefix="$" step={0.01} min={0} value={form.price} onChange={(v) => setForm({ ...form, price: v })} placeholder="0.00" required /></div>
@@ -496,6 +496,15 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editLabel, setEditLabel] = useState('')
   const [busy, setBusy] = useState(false)
+  const [closing, setClosing] = useState(false)
+
+  const requestClose = () => {
+    if (closing) return
+    setClosing(true)
+    window.setTimeout(() => {
+      onClose()
+    }, 200)
+  }
 
   const countFor = (key: string) => products.filter((p) => p.category === key).length
 
@@ -509,7 +518,7 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
   }
 
   return createPortal(
-    <div className="mnu-modal-overlay" onClick={onClose}>
+    <div className={`mnu-modal-overlay ${closing ? 'closing' : ''}`} onClick={requestClose}>
       <div className="mnu-modal mnu-cat-modal" onClick={(e) => e.stopPropagation()}>
         <div className="mnu-modal-header">
           <h3><Tag size={18} style={{ color: '#e11d2a' }} />Categorías del menú</h3>
@@ -554,7 +563,7 @@ function CategoryManager({ cats, products, onClose, onAdd, onRename, onMove, onD
         </div>
 
         <div className="mnu-modal-actions">
-          <button type="button" className="mnu-btn" onClick={onClose}>Listo</button>
+          <button type="button" className="mnu-btn" onClick={requestClose}>Listo</button>
         </div>
       </div>
     </div>,

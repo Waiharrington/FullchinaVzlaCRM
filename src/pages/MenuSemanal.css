@@ -91,7 +91,8 @@
 .ws-tab.active { background: #e11d2a; border-color: #e11d2a; color: #fff; }
 .ws-tab.active .ws-c { background: rgba(0,0,0,0.25); }
 .ws-search { position: relative; margin-left: auto; flex: 1 1 220px; max-width: 300px; }
-.ws-search input { width: 100%; padding: 9px 30px 9px 34px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; font-size: 13px; }
+.ws-search input { width: 100%; padding: 9px 30px 9px 34px; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 999px; color: #fff; font-size: 13px; }
+.ws-search input:focus { border-color: rgba(225,29,42,0.5); background: rgba(225,29,42,0.04); box-shadow: 0 0 0 3px rgba(225,29,42,0.1); outline: none; }
 .ws-search .ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #71717a; }
 
 .ws-table-wrap { overflow-x: auto; }
@@ -114,9 +115,28 @@
 
 /* Modal */
 .ws-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
-.ws-modal { width: 100%; max-width: 480px; background: #141419; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px; }
+.ws-modal {
+  width: 100%; max-width: 480px; background: #141419;
+  border: 1px solid rgba(225, 29, 42, 0.25); border-radius: 16px; padding: 20px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(225, 29, 42, 0.06);
+}
 .ws-modal h3 { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
 .ws-modal .sub { color: #a1a1aa; font-size: 13px; margin: 0 0 14px; }
+
+.ws-modal-heading {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin: -20px -20px 14px; padding: 14px 20px;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid rgba(225, 29, 42, 0.18);
+  background: linear-gradient(135deg, rgba(225, 29, 42, 0.14) 0%, rgba(225, 29, 42, 0.02) 45%, transparent 70%);
+}
+.ws-modal-heading h3 { margin: 0; }
+.ws-modal-close {
+  width: 32px; height: 32px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+  color: #a1a1aa; cursor: pointer; transition: all 0.2s ease;
+}
+.ws-modal-close:hover { background: rgba(225, 29, 42, 0.16); border-color: rgba(225, 29, 42, 0.35); color: #fff; }
 .ws-field { margin-bottom: 12px; }
 .ws-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
 .ws-field input, .ws-field textarea { width: 100%; background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; }
@@ -173,4 +193,5 @@
   }
   .ws-modal-actions button { width: 100%; min-height: 44px; }
   .ws-image-field > div { flex-wrap: wrap; }
+  .ws-modal-heading { margin: -18px -16px 12px; padding: 12px 16px; border-radius: 18px 18px 0 0; }
 }

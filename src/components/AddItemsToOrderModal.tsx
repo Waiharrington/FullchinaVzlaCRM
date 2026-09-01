@@ -38,6 +38,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
   const [pending, setPending] = useState<CartItem[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [closing, setClosing] = useState(false)
 
   // Selector de modificadores (sub-vista dentro del mismo modal)
   const [modProduct, setModProduct] = useState<Product | null>(null)
@@ -198,6 +199,14 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
 
   const removePending = (lineId: string) => setPending((prev) => prev.filter((i) => i.lineId !== lineId))
 
+  const requestClose = () => {
+    if (closing) return
+    setClosing(true)
+    window.setTimeout(() => {
+      onClose()
+    }, 200)
+  }
+
   const handleSave = async () => {
     if (pending.length === 0) return
     setSaving(true)
@@ -205,7 +214,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
     try {
       await addItemsToOrder(orderId, pending)
       onAdded(pending)
-      onClose()
+      requestClose()
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : 'No se pudieron agregar los productos')
     } finally {
@@ -214,14 +223,14 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
   }
 
   return createPortal(
-    <div className="aito-overlay" onClick={onClose}>
+    <div className={`aito-overlay ${closing ? 'closing' : ''}`} onClick={requestClose}>
       <section className="aito-modal" role="dialog" aria-modal="true" aria-label="Agregar productos al pedido" onClick={(e) => e.stopPropagation()}>
         <header className="aito-header">
           <div>
             <span className="aito-eyebrow">Agregar productos</span>
             <h2>Pedido {orderNumber}</h2>
           </div>
-          <button type="button" className="aito-close" onClick={onClose} aria-label="Cerrar">
+          <button type="button" className="aito-close" onClick={requestClose} aria-label="Cerrar">
             <X size={18} />
           </button>
         </header>

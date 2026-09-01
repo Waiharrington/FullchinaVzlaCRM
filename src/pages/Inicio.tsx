@@ -6,9 +6,9 @@ import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { GlobalSearch } from '../components/GlobalSearch'
 import { StyledSelect } from '../components/StyledSelect'
 import { canAccessModule } from '../components/navItems'
-import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
+import { formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
-import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getExpenses, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type Expense } from '../lib/dataService'
+import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
@@ -20,13 +20,7 @@ import {
   DollarSign,
   ClipboardList,
   CreditCard,
-  Users,
-  ShoppingCart,
-  BarChart3,
-  Package,
-  FileText,
   AlertTriangle,
-  Receipt,
   UtensilsCrossed
 } from 'lucide-react'
 import Toast from '../components/Toast'
@@ -65,7 +59,6 @@ export function Inicio() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(inicioCache?.paymentMethods ?? [])
   const [productionStats, setProductionStats] = useState<ProductionStats | null>(inicioCache?.productionStats ?? null)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
-  const [todayExpenses, setTodayExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(!inicioCache)
   const [chartLoading, setChartLoading] = useState(false)
   const [salesRange, setSalesRange] = useState(7)
@@ -76,8 +69,7 @@ export function Inicio() {
     setLoading(true)
     setDashboardError('')
     try {
-      const today = dateKeyInTimeZone()
-      const [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult, expensesResult] = await Promise.allSettled([
+      const [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult] = await Promise.allSettled([
         getTodayStats(),
         getOrdersWithItems(),
         getDailySales(days),
@@ -86,7 +78,6 @@ export function Inicio() {
         getPaymentMethodSales(),
         getProductionStats(),
         getIngredients(),
-        getExpenses(today, today),
       ])
 
       if (statsResult.status === 'fulfilled') setStats(statsResult.value)
@@ -97,7 +88,6 @@ export function Inicio() {
       if (paymentResult.status === 'fulfilled') setPaymentMethods(paymentResult.value)
       if (productionResult.status === 'fulfilled') setProductionStats(productionResult.value)
       if (ingredientsResult.status === 'fulfilled') setIngredients(ingredientsResult.value)
-      if (expensesResult.status === 'fulfilled') setTodayExpenses(expensesResult.value)
 
       inicioCache = {
         stats: statsResult.status === 'fulfilled' ? statsResult.value : inicioCache?.stats ?? null,
@@ -109,7 +99,7 @@ export function Inicio() {
         productionStats: productionResult.status === 'fulfilled' ? productionResult.value : inicioCache?.productionStats ?? null,
       }
 
-      const failedResults = [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult, expensesResult]
+      const failedResults = [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult]
         .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
       if (failedResults.length > 0) {
         console.error('Errores parciales del dashboard:', failedResults.map(result => result.reason))
@@ -145,11 +135,11 @@ export function Inicio() {
 
   const totalSales = stats?.totalSales ?? 0
   const ordersCount = stats?.ordersCount ?? 0
-  const pendingCredits = credits.filter(c => c.status !== 'paid')
+  const pendingCredits = useMemo(
+    () => credits.filter(c => c.status !== 'paid').sort((a, b) => b.balancePending - a.balancePending),
+    [credits]
+  )
   const totalPendingCredits = pendingCredits.reduce((s, c) => s + c.balancePending, 0)
-  const inventoryTotal = useMemo(() => ingredients.reduce((s, i) => s + (i.stockValue ?? 0), 0), [ingredients])
-  const todayExpensesTotal = useMemo(() => todayExpenses.reduce((s, e) => s + e.amount, 0), [todayExpenses])
-  const operatingBalance = totalSales - todayExpensesTotal
   const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
   const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
   const hasAccess = useCallback((path: string) => canAccessModule(path, user?.role, user?.allowedModules), [user?.role, user?.allowedModules])
@@ -267,43 +257,47 @@ export function Inicio() {
   return (
     <div className="db-page animate-fade-in">
       <header className="db-header">
-        <div className="db-header-left">
-          <div className="db-header-title-row">
-            <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>
-            <div className="db-header-right">
+        <div className="db-header-copy">
+          <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>
+          <p className="db-greeting-sub">Así marcha Full China hoy.</p>
+        </div>
+
+        <div className="db-header-tools">
+          <div className="db-header-search-row">
+            <div className="db-header-search">
+              <GlobalSearch inline />
+            </div>
+            <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
+              <Bell size={18} />
+              {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
+            </button>
+          </div>
+
+          <div className="db-header-meta-row">
               <button className="db-header-pill" type="button" onClick={() => void fetchData(salesRange)} disabled={loading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
                 <Calendar size={14} /><span>{loading ? 'Actualizando…' : 'Hoy'}</span><RefreshCw size={13} className={loading ? 'is-spinning' : ''} />
               </button>
-              <div className="db-header-search">
-                <GlobalSearch inline />
-              </div>
-              <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
-                <Bell size={18} />
-                {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
+              <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">
+                <DollarSign size={12} />
+                <span>BCV</span>
+                <strong>{bcvRate ? `$1 = ${formatVes(bcvRate)}` : bcvLoading ? 'Consultando…' : 'No disponible'}</strong>
+                {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : formatRateDate(bcvUpdatedAt)}</span>}
               </button>
-              {notificationsOpen ? (
-                <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
-                  <div className="db-notifications-head"><strong>Alertas operativas</strong><span>{notifications.length}</span></div>
-                  {notifications.length === 0 ? (
-                    <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas pendientes</span></div>
-                  ) : notifications.map(notification => (
-                    <button key={notification.id} type="button" className={`db-notification-item ${notification.tone}`} onClick={() => { setNotificationsOpen(false); navigate(notification.path) }}>
-                      <span className="db-notification-dot" />
-                      <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+          </div>
+
+          {notificationsOpen ? (
+            <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
+              <div className="db-notifications-head"><strong>Alertas operativas</strong><span>{notifications.length}</span></div>
+              {notifications.length === 0 ? (
+                <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas pendientes</span></div>
+              ) : notifications.map(notification => (
+                <button key={notification.id} type="button" className={`db-notification-item ${notification.tone}`} onClick={() => { setNotificationsOpen(false); navigate(notification.path) }}>
+                  <span className="db-notification-dot" />
+                  <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
+                </button>
+              ))}
             </div>
-          </div>
-          <div className="db-greeting-sub-row">
-            <p className="db-greeting-sub">Aquí tienes el resumen de tu food truck.</p>
-            <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">
-              <DollarSign size={12} /> BCV
-              <strong>{bcvRate ? `$1 = ${formatVes(bcvRate)}` : bcvLoading ? 'Consultando…' : 'No disponible'}</strong>
-              {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : formatRateDate(bcvUpdatedAt)}</span>}
-            </button>
-          </div>
+          ) : null}
         </div>
       </header>
 
@@ -378,27 +372,49 @@ export function Inicio() {
           <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>
         </div>
 
-        <div className="db-card">
-          <div className="db-card-head"><h3>Método de pago</h3></div>
+        <div className="db-card db-payment-card">
+          <div className="db-card-head db-payment-head">
+            <div>
+              <h3>Método de pago</h3>
+              <span className="db-card-support">Distribución de los cobros de hoy</span>
+            </div>
+            <span className="db-payment-count">{paymentMethods.length} medio{paymentMethods.length === 1 ? '' : 's'}</span>
+          </div>
           <div className="db-pago-layout">
-            <div className="db-donut-wrap">
-              <Doughnut data={paymentData} options={paymentDoughnutOptions} />
-              <div className="db-donut-center" aria-hidden="true">
-                <span>Total</span>
-                <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+            <div className="db-pago-chart" aria-label={`Total cobrado hoy: ${paymentTotal.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}`}>
+              <div className="db-donut-wrap">
+                <Doughnut data={paymentData} options={paymentDoughnutOptions} />
+                <div className="db-donut-center" aria-hidden="true">
+                  <span>Total cobrado</span>
+                  <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                </div>
               </div>
+              <span className="db-pago-caption">Ingresos recibidos hoy</span>
             </div>
             <div className="db-pago-legend">
               {paymentMethods.length === 0 ? (
-                <div className="pago-legend-row"><span className="pago-name">Sin ventas registradas hoy</span></div>
-              ) : paymentMethods.map((m, i) => (
-                <div key={m.method} className="pago-legend-row">
-                  <span className="pago-dot" style={{ background: PAYMENT_COLORS[i % PAYMENT_COLORS.length] }}></span>
-                  <span className="pago-name">{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>
-                  <span className="pago-pct">{paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0}%</span>
-                  <MoneyWithBcv usd={m.total} compact />
+                <div className="db-pago-empty">
+                  <CreditCard size={22} />
+                  <span>Sin cobros registrados hoy</span>
+                  <small>El desglose aparecerá con la primera venta.</small>
                 </div>
-              ))}
+              ) : paymentMethods.map((m, i) => {
+                const share = paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0
+                const color = PAYMENT_COLORS[i % PAYMENT_COLORS.length]
+                return (
+                  <div key={m.method} className="pago-legend-row">
+                    <div className="pago-method">
+                      <span className="pago-dot" style={{ background: color }} />
+                      <span className="pago-name">{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>
+                    </div>
+                    <span className="pago-pct">{share}%</span>
+                    <MoneyWithBcv usd={m.total} className="pago-amount" compact />
+                    <span className="pago-progress" aria-hidden="true">
+                      <span style={{ width: `${share}%`, background: color }} />
+                    </span>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
@@ -494,59 +510,39 @@ export function Inicio() {
           {hasAccess('/produccion') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/produccion')}>Ver plan de producción</button> : null}
         </div>
 
-        <div className="db-card">
-          <div className="db-card-head"><h3>Cuentas por cobrar</h3></div>
-          <div className="db-cobrar-summary">
-            <div className="cobrar-icon-wrap"><CreditCard size={22} /></div>
-            <div className="cobrar-data">
-              <span className="cobrar-label">Total por cobrar</span>
-              <MoneyWithBcv usd={totalPendingCredits} className="cobrar-big-value" align="start" />
-              <span className="cobrar-sub">{pendingCredits.length} crédito{pendingCredits.length === 1 ? '' : 's'} pendiente{pendingCredits.length === 1 ? '' : 's'}</span>
+        <div className="db-card db-credit-card">
+          <div className="db-card-head db-credit-head">
+            <div>
+              <h3>Clientes con saldo pendiente</h3>
+              <span className="db-card-support">Prioriza los cobros que requieren seguimiento</span>
             </div>
+            <span className="db-credit-count">{pendingCredits.length}</span>
           </div>
           <div className="db-cobrar-list">
             {pendingCredits.length === 0 ? (
-              <div className="cobrar-row"><span className="cobrar-row-id">Sin cuentas por cobrar</span></div>
-            ) : pendingCredits.slice(0, 4).map((c) => (
-              <div key={c.id} className="cobrar-row">
-                <span className="cobrar-row-id">{c.customerName}</span>
-                <MoneyWithBcv usd={c.balancePending} className="cobrar-row-val" compact />
+              <div className="db-credit-empty">
+                <CreditCard size={20} />
+                <span>Todos los saldos están al día</span>
               </div>
-            ))}
+            ) : pendingCredits.slice(0, 3).map((c) => {
+              const createdAtTime = new Date(c.createdAt).getTime()
+              const ageInDays = Number.isNaN(createdAtTime) ? 0 : Math.max(0, Math.floor((Date.now() - createdAtTime) / 86_400_000))
+              return (
+                <div key={c.id} className="cobrar-row">
+                  <span className="cobrar-avatar" aria-hidden="true">{c.customerName.trim().charAt(0).toUpperCase() || '?'}</span>
+                  <span className="cobrar-customer">
+                    <strong>{c.customerName}</strong>
+                    <small>{ageInDays === 0 ? 'Crédito de hoy' : `${ageInDays} día${ageInDays === 1 ? '' : 's'} pendiente`}</small>
+                  </span>
+                  <MoneyWithBcv usd={c.balancePending} className="cobrar-row-val" compact />
+                </div>
+              )
+            })}
           </div>
           {hasAccess('/clientes') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/clientes')}>Ver todas las cuentas</button> : null}
         </div>
       </div>
 
-      <div className="db-card db-actions-card">
-        <div className="db-card-head"><h3>Acciones rápidas</h3></div>
-        <div className="db-quick-actions">
-          {hasAccess('/caja') ? <button className="qa-btn" onClick={() => navigate('/caja')}><div className="qa-icon-wrap"><ShoppingCart size={22} /></div><span>Caja</span></button> : null}
-          {hasAccess('/comandas') ? <button className="qa-btn" onClick={() => navigate('/comandas')}><div className="qa-icon-wrap"><FileText size={22} /></div><span>Comandas</span></button> : null}
-          {hasAccess('/clientes') ? <button className="qa-btn" onClick={() => navigate('/clientes')}><div className="qa-icon-wrap"><Users size={22} /></div><span>Clientes</span></button> : null}
-          {hasAccess('/reportes') ? <button className="qa-btn" onClick={() => navigate('/reportes')}><div className="qa-icon-wrap"><BarChart3 size={22} /></div><span>Reportes</span></button> : null}
-          {hasAccess('/inventario') ? <button className="qa-btn" onClick={() => navigate('/inventario')}><div className="qa-icon-wrap"><Package size={22} /></div><span>Inventario</span></button> : null}
-        </div>
-      </div>
-
-      <div className="db-footer-strip">
-        <div className="db-footer-metric">
-          <div className="fm-icon"><Package size={16} /></div>
-          <div className="fm-text"><span className="fm-label">INVENTARIO TOTAL</span><MoneyWithBcv usd={inventoryTotal} className="fm-val" align="start" compact /><span className="fm-sub">Valor a costo</span></div>
-        </div>
-        <div className="db-footer-metric">
-          <div className="fm-icon"><DollarSign size={16} /></div>
-          <div className="fm-text"><span className="fm-label">VENTAS DE HOY</span><MoneyWithBcv usd={totalSales} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
-        </div>
-        <div className="db-footer-metric">
-          <div className="fm-icon"><Receipt size={16} /></div>
-          <div className="fm-text"><span className="fm-label">GASTOS OPERATIVOS</span><MoneyWithBcv usd={todayExpensesTotal} className="fm-val" align="start" compact /><span className="fm-sub">Hoy</span></div>
-        </div>
-        <div className={`db-footer-metric ${operatingBalance > 0 ? 'highlight-green' : operatingBalance < 0 ? 'highlight-negative' : 'highlight-neutral'}`}>
-          <div className="fm-icon green-glow"><TrendingUp size={16} /></div>
-          <div className="fm-text"><span className="fm-label">SALDO OPERATIVO PARCIAL</span><MoneyWithBcv usd={operatingBalance} className={`fm-val ${operatingBalance > 0 ? 'green-text' : operatingBalance < 0 ? 'negative-text' : ''}`} align="start" compact /><span className="fm-sub">Ventas − gastos; no incluye insumos</span></div>
-        </div>
-      </div>
     </div>
   )
 }

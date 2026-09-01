@@ -211,6 +211,56 @@
   margin: 0 0 14px;
 }
 
+.nom-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -20px -20px 16px;
+  padding: 18px 20px 14px;
+  border-radius: 16px 16px 0 0;
+  background: linear-gradient(135deg, rgba(225, 29, 42, 0.14) 0%, rgba(225, 29, 42, 0.02) 45%, transparent 70%);
+  border-bottom: 1px solid rgba(225, 29, 42, 0.18);
+}
+.nom-modal-header h3 { margin: 0; }
+.nom-modal-header-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #fca5a5;
+  background: rgba(225, 29, 42, 0.15);
+}
+
+.nom-modal--period.nom-modal { border-color: rgba(56, 189, 248, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(56, 189, 248, 0.06); }
+.nom-modal--period .nom-modal-header {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.14) 0%, rgba(56, 189, 248, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(56, 189, 248, 0.18);
+}
+.nom-modal--period .nom-modal-header-icon { color: #7dd3fc; background: rgba(56, 189, 248, 0.15); }
+
+.nom-modal--advance.nom-modal { border-color: rgba(234, 179, 8, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(234, 179, 8, 0.06); }
+.nom-modal--advance .nom-modal-header {
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.14) 0%, rgba(234, 179, 8, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(234, 179, 8, 0.18);
+}
+.nom-modal--advance .nom-modal-header-icon { color: #fde047; background: rgba(234, 179, 8, 0.15); }
+
+.nom-modal--bonus.nom-modal { border-color: rgba(34, 197, 94, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(34, 197, 94, 0.06); }
+.nom-modal--bonus .nom-modal-header {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.14) 0%, rgba(34, 197, 94, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(34, 197, 94, 0.18);
+}
+.nom-modal--bonus .nom-modal-header-icon { color: #86efac; background: rgba(34, 197, 94, 0.15); }
+
+.nom-modal--payment.nom-modal { border-color: rgba(124, 58, 237, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(124, 58, 237, 0.08); }
+.nom-modal--payment .nom-modal-header {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16) 0%, rgba(124, 58, 237, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(124, 58, 237, 0.2);
+}
+.nom-modal--payment .nom-modal-header-icon { color: #c4b5fd; background: rgba(124, 58, 237, 0.18); }
+
 .nom-field {
   margin-bottom: 12px;
   min-width: 0;
@@ -273,6 +323,11 @@
     overflow-y: auto;
     padding: 18px 16px;
     border-radius: 18px 18px 10px 10px;
+  }
+  .nom-modal-header {
+    margin: -18px -16px 14px;
+    padding: 16px 16px 12px;
+    border-radius: 18px 18px 0 0;
   }
   .nom-row2 { grid-template-columns: 1fr; gap: 0; }
   .nom-modal-actions {

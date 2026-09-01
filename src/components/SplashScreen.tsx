@@ -23,7 +23,7 @@ export function SplashScreen({ onDone, minDuration = 2800, ready = true }: Splas
 
   useEffect(() => {
     if (phase === 'exit') {
-      const timer = setTimeout(onDone, 600)
+      const timer = setTimeout(onDone, 400)
       return () => clearTimeout(timer)
     }
   }, [phase, onDone])

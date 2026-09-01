@@ -249,23 +249,40 @@
   display: flex;
   align-items: center;
   background: #202024;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   padding: 8px 12px;
   gap: 8px;
   flex: 1;
   min-width: 220px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filter-search-box:focus-within {
+  border-color: #E31B2B;
+  box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
 
 .filter-search-icon { color: #71717a; }
 
 .filter-search-input {
-  background: transparent;
-  border: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent !important;
+  border: none !important;
   color: #fff;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
   font-size: 13px;
   width: 100%;
+}
+
+.filter-search-input:focus {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .filter-dropdown-wrap {
@@ -880,6 +897,12 @@
   font-size: 13px;
   width: 100%;
   outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.modal-input-dark:focus {
+  border-color: #E31B2B;
+  box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
 
 .modal-actions-row {
@@ -1852,4 +1875,107 @@
   gap: 6px;
   cursor: pointer;
   width: fit-content;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL VISUAL POLISH (Nuevo/Editar cliente, Abonar a Crédito, Cuentas por cobrar)
+   Scoped with clientes- prefix so nothing leaks into other pages that reuse
+   .client-modal-box / .modal-header-line (e.g. Caja.tsx).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.client-modal-box.clientes-modal-glow {
+  border: 1px solid rgba(227, 27, 43, 0.25);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(227, 27, 43, 0.06);
+}
+
+.modal-header-line.clientes-modal-header-glow {
+  margin: -24px -24px 16px;
+  padding: 18px 24px 14px;
+  background: linear-gradient(135deg, rgba(227, 27, 43, 0.14) 0%, rgba(227, 27, 43, 0.02) 45%, transparent 70%);
+  border-bottom: 1px solid rgba(227, 27, 43, 0.18);
+  border-radius: 16px 16px 0 0;
+}
+
+@media (max-width: 767px) {
+  .modal-header-line.clientes-modal-header-glow {
+    margin: -18px -16px 14px;
+    padding: 16px 16px 12px;
+    border-radius: 18px 18px 0 0;
+  }
+}
+
+/* Abonar a Crédito: customer identity row + highlighted debt total */
+.clientes-modal-customer-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.clientes-modal-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #E31B2B, #7f1d1d);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(227, 27, 43, 0.3);
+}
+
+.clientes-modal-customer-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.clientes-debt-highlight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(227, 27, 43, 0.14), rgba(227, 27, 43, 0.03));
+  border: 1px solid rgba(227, 27, 43, 0.25);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.clientes-debt-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #d1d5db;
+}
+
+.clientes-debt-amount {
+  font-size: 16px;
+  font-weight: 800;
+  color: #FF4D3D;
+  text-shadow: 0 0 20px rgba(227, 27, 43, 0.35);
+}
+
+/* Cuentas por cobrar: highlighted total box + summary chips */
+.cobrar-total-area.clientes-cobrar-total-highlight {
+  background: linear-gradient(135deg, rgba(227, 27, 43, 0.14), rgba(227, 27, 43, 0.03));
+  border: 1px solid rgba(227, 27, 43, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.cobrar-total-area.clientes-cobrar-total-highlight .cobrar-total-val {
+  text-shadow: 0 0 20px rgba(227, 27, 43, 0.35);
+}
+
+.clientes-summary-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(227, 27, 43, 0.12);
+  border: 1px solid rgba(227, 27, 43, 0.28);
+  color: #fca5a5;
+  font-size: 11.5px;
+  font-weight: 700;
 }

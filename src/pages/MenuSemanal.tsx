@@ -80,16 +80,49 @@ export function MenuSemanal() {
 
   // Calendario
   const [showCalendar, setShowCalendar] = useState(false)
+  const [closingCalendar, setClosingCalendar] = useState(false)
   const [weekSummary, setWeekSummary] = useState<Array<{ weekStart: string; weekEnd: string; count: number }>>([])
 
   // Crear / editar
   const [showCreate, setShowCreate] = useState(false)
+  const [closingCreate, setClosingCreate] = useState(false)
   const [form, setForm] = useState<DishForm>(emptyForm)
   const [activateNow, setActivateNow] = useState(true)
   const [addToCaja, setAddToCaja] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<WeeklyDish | null>(null)
+  const [closingEdit, setClosingEdit] = useState(false)
   const [editForm, setEditForm] = useState<DishForm>(emptyForm)
+
+  const closeCreate = (then?: () => void) => {
+    if (closingCreate) return
+    setClosingCreate(true)
+    window.setTimeout(() => {
+      setShowCreate(false)
+      setClosingCreate(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeEditing = (then?: () => void) => {
+    if (closingEdit) return
+    setClosingEdit(true)
+    window.setTimeout(() => {
+      setEditing(null)
+      setClosingEdit(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeCalendar = (then?: () => void) => {
+    if (closingCalendar) return
+    setClosingCalendar(true)
+    window.setTimeout(() => {
+      setShowCalendar(false)
+      setClosingCalendar(false)
+      then?.()
+    }, 200)
+  }
 
   const load = useCallback(async () => {
     try { setLoading(true); setDishes(await getWeeklyDishes()) }
@@ -175,7 +208,7 @@ export function MenuSemanal() {
       if (addToCaja) await syncWeeklyDishToCatalog(dish.id)
       await load()
       flash(`Plato "${dish.name}" guardado${activateNow ? ' y activado' : ''}${addToCaja ? ' · disponible en Caja' : ''}`)
-      setShowCreate(false); setForm(emptyForm); setActivateNow(true); setAddToCaja(true)
+      closeCreate(() => { setForm(emptyForm); setActivateNow(true); setAddToCaja(true) })
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al crear el plato') }
     finally { setSaving(false) }
   }
@@ -196,7 +229,7 @@ export function MenuSemanal() {
       if (editing.sellableProductId) await syncWeeklyDishToCatalog(editing.id)
       await load()
       flash(`"${editForm.name}" actualizado${editing.sellableProductId ? ' (también en Caja)' : ''}`)
-      setEditing(null)
+      closeEditing()
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al actualizar') }
     finally { setSaving(false) }
   }
@@ -365,9 +398,9 @@ export function MenuSemanal() {
 
       {/* Modal crear */}
       {showCreate && createPortal(
-        <div className="ws-modal-overlay" onClick={() => setShowCreate(false)}>
+        <div className={`ws-modal-overlay ${closingCreate ? 'closing' : ''}`} onClick={() => closeCreate()}>
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreate}>
-            <h3>Nuevo plato especial</h3>
+            <div className="ws-modal-heading"><h3>Nuevo plato especial</h3></div>
             <p className="sub">Se guarda en tu catálogo rotativo para reutilizarlo cuando quieras.</p>
             <ImagePicker value={form.imageUrl} emoji={form.emoji} onPick={(f) => pickImage(f, (u) => setForm({ ...form, imageUrl: u }))} onClear={() => setForm({ ...form, imageUrl: null })} />
             <div className="ws-row2">
@@ -382,7 +415,7 @@ export function MenuSemanal() {
             <label className="ws-check"><input type="checkbox" checked={activateNow} onChange={(e) => setActivateNow(e.target.checked)} /> Activar esta semana</label>
             <label className="ws-check"><input type="checkbox" checked={addToCaja} onChange={(e) => setAddToCaja(e.target.checked)} /> Agregar a Caja (disponible para vender)</label>
             <div className="ws-modal-actions">
-              <button type="button" className="ws-cancel" onClick={() => setShowCreate(false)}>Cancelar</button>
+              <button type="button" className="ws-cancel" onClick={() => closeCreate()}>Cancelar</button>
               <button type="submit" className="ws-create-btn" disabled={saving || !form.name.trim()}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />} Guardar plato</button>
             </div>
           </form>
@@ -392,9 +425,9 @@ export function MenuSemanal() {
 
       {/* Modal editar */}
       {editing && createPortal(
-        <div className="ws-modal-overlay" onClick={() => setEditing(null)}>
+        <div className={`ws-modal-overlay ${closingEdit ? 'closing' : ''}`} onClick={() => closeEditing()}>
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleEdit}>
-            <div className="ws-modal-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="ws-modal-heading">
               <h3>Editar plato</h3>
             </div>
             {editing.sellableProductId && <p className="sub">Ya está en Caja: los cambios se aplicarán también al catálogo de ventas.</p>}
@@ -409,7 +442,7 @@ export function MenuSemanal() {
               <div className="ws-field"><label>Costo estimado ($)</label><NumberStepper step={0.5} min={0} value={editForm.cost} onChange={(v) => setEditForm({ ...editForm, cost: v })} /></div>
             </div>
             <div className="ws-modal-actions">
-              <button type="button" className="ws-cancel" onClick={() => setEditing(null)}>Cancelar</button>
+              <button type="button" className="ws-cancel" onClick={() => closeEditing()}>Cancelar</button>
               <button type="submit" className="ws-create-btn" disabled={saving || !editForm.name.trim()}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Guardar cambios</button>
             </div>
           </form>
@@ -419,17 +452,17 @@ export function MenuSemanal() {
 
       {/* Modal calendario */}
       {showCalendar && createPortal(
-        <div className="ws-modal-overlay" onClick={() => setShowCalendar(false)}>
+        <div className={`ws-modal-overlay ${closingCalendar ? 'closing' : ''}`} onClick={() => closeCalendar()}>
           <div className="ws-modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="ws-modal-heading">
               <h3>Calendario de semanas</h3>
-              <button type="button" className="ws-cancel" style={{ padding: 6 }} onClick={() => setShowCalendar(false)}><X size={16} /></button>
+              <button type="button" className="ws-modal-close" onClick={() => closeCalendar()} aria-label="Cerrar"><X size={16} /></button>
             </div>
             <p className="sub">Semanas con platos activos. Toca una para verla.</p>
             {weekSummary.length === 0 && <p style={{ color: '#71717a' }}>Aún no hay historial de semanas.</p>}
             {weekSummary.map((w) => (
               <button key={w.weekStart} className="ws-btn-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}
-                onClick={() => { const [y, m, dd] = w.weekStart.split('-').map(Number); setViewMonday(new Date(y, m - 1, dd)); setShowCalendar(false) }}>
+                onClick={() => { const [y, m, dd] = w.weekStart.split('-').map(Number); closeCalendar(() => setViewMonday(new Date(y, m - 1, dd))) }}>
                 <span>{weekLabel(w.weekStart)}</span>
                 <span className="ws-badge muted">{w.count} plato{w.count === 1 ? '' : 's'}</span>
               </button>

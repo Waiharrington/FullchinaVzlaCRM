@@ -94,6 +94,9 @@ export interface FullOrder {
   orderType: string
   tableNumber: number | null
   customerName: string
+  customerPhone: string | null
+  customerAddress: string | null
+  customerIdentification: string | null
   bcvRate: number | null
   createdBy: string
   createdAt: string
@@ -1026,6 +1029,32 @@ export async function getTodayOrders(): Promise<TodayOrder[]> {
   })
 }
 
+/**
+ * Devuelve un mapa productId → cantidad total vendida hoy.
+ * Query ligera: solo cuenta order_items de órdenes pagadas del día actual.
+ */
+export async function getTopSellingProducts(): Promise<Map<string, number>> {
+  const { start, end } = dayRangeInTimeZone()
+
+  // Supabase JS v2: filtro sobre la relación orders vía !inner join.
+  const { data, error } = await client()
+    .from('order_items')
+    .select('sellable_product_id, quantity, order:orders!inner(status, created_at)')
+    .eq('orders.status', 'paid')
+    .gte('orders.created_at', start)
+    .lt('orders.created_at', end)
+
+  if (error) throw error
+
+  const map = new Map<string, number>()
+  for (const row of data ?? []) {
+    const id = row.sellable_product_id as string
+    const qty = Number(row.quantity)
+    map.set(id, (map.get(id) ?? 0) + qty)
+  }
+  return map
+}
+
 // --- Mapa de mesas (módulo Mesas) --------------------------------------------
 
 export interface FloorTable {
@@ -1155,6 +1184,9 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
     orderType: (o.order_type as string) ?? 'takeaway',
     tableNumber: o.table_number == null ? null : Number(o.table_number),
     customerName: (o.customer_name as string) ?? 'Cliente',
+    customerPhone: (o.customer_phone as string) ?? null,
+    customerAddress: (o.customer_address as string) ?? null,
+    customerIdentification: (o.customer_identification as string) ?? null,
     bcvRate: o.bcv_rate ? Number(o.bcv_rate) : null,
     createdBy: o.created_by as string,
     createdAt: o.created_at as string,
@@ -3274,6 +3306,9 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
     orderType: (data.order_type as string) ?? 'takeaway',
     tableNumber: data.table_number == null ? null : Number(data.table_number),
     customerName: (data.customer_name as string) ?? 'Cliente',
+    customerPhone: (data.customer_phone as string) ?? null,
+    customerAddress: (data.customer_address as string) ?? null,
+    customerIdentification: (data.customer_identification as string) ?? null,
     bcvRate: data.bcv_rate ? Number(data.bcv_rate) : null,
     createdBy: data.created_by as string,
     createdAt: data.created_at as string,

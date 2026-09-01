@@ -57,6 +57,16 @@ export function RecetasReal() {
 
   // Configurar una nueva receta (elegir producto)
   const [showNewRecipe, setShowNewRecipe] = useState(false)
+  const [closingNewRecipe, setClosingNewRecipe] = useState(false)
+  const closeNewRecipe = (then?: () => void) => {
+    if (closingNewRecipe) return
+    setClosingNewRecipe(true)
+    window.setTimeout(() => {
+      setShowNewRecipe(false)
+      setClosingNewRecipe(false)
+      then?.()
+    }, 200)
+  }
   const [newRecipeProductId, setNewRecipeProductId] = useState('')
 
   const loadProducts = useCallback(async () => {
@@ -483,9 +493,12 @@ export function RecetasReal() {
       </div>
 
       {showNewRecipe && createPortal(
-        <div className="rec-modal-overlay" onClick={() => setShowNewRecipe(false)}>
+        <div className={`rec-modal-overlay ${closingNewRecipe ? 'closing' : ''}`} onClick={() => closeNewRecipe()}>
           <div className="rec-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Configurar nueva receta</h3>
+            <div className="rec-modal-header">
+              <div className="rec-modal-header-icon"><UtensilsCrossed size={18} /></div>
+              <h3>Configurar nueva receta</h3>
+            </div>
             <p className="rec-detail-sub" style={{ marginBottom: 14 }}>
               Elige el producto vendible al que le vas a configurar la receta. Los que aún no tienen ingredientes aparecen primero.
             </p>
@@ -506,17 +519,18 @@ export function RecetasReal() {
               emptyText="Sin productos"
             />
             <div className="rec-modal-actions">
-              <button className="rec-modal-cancel" onClick={() => setShowNewRecipe(false)}>Cancelar</button>
+              <button className="rec-modal-cancel" onClick={() => closeNewRecipe()}>Cancelar</button>
               <button
                 className="rec-add-btn"
                 disabled={!newRecipeProductId}
                 onClick={() => {
                   const p = products.find((x) => x.id === newRecipeProductId)
                   if (!p) return
-                  setSelected(p)
-                  setDetailTab('ingredientes')
-                  setShowAdd(true)
-                  setShowNewRecipe(false)
+                  closeNewRecipe(() => {
+                    setSelected(p)
+                    setDetailTab('ingredientes')
+                    setShowAdd(true)
+                  })
                 }}
               >
                 <Plus size={16} /> Configurar receta

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
@@ -13,6 +14,7 @@ import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults
 import {
   getProducts,
   getTodayOrders,
+  getTopSellingProducts,
   getActiveCashSession,
   checkout,
   sendToKitchen,
@@ -73,8 +75,6 @@ import {
 } from 'lucide-react'
 import './Caja.css'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
-
-type ViewMode = 'grid' | 'list'
 
 const BIRTH_MONTHS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -207,20 +207,22 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [products, setProducts] = useState<Product[]>(readCachedProducts)
   const [, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
   const [, setLoading] = useState(!cajaCache)
+  const [salesRank, setSalesRank] = useState<Map<string, number>>(new Map())
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [productsWithModifiers, setProductsWithModifiers] = useState<Set<string>>(new Set())
   // Selector de modificadores
   const [modifierProduct, setModifierProduct] = useState<Product | null>(null)
+  const [closingModifier, setClosingModifier] = useState(false)
   const [modifierGroups, setModifierGroups] = useState<ProductModifierGroup[]>([])
   const [modifierSelections, setModifierSelections] = useState<Record<string, Record<string, number>>>({})
   const [modifierLoading, setModifierLoading] = useState(false)
   const [modifierError, setModifierError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('all')
-  const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [sortBy, setSortBy] = useState<'popular' | 'price' | 'name'>('popular')
   const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
+  const [closingProductGroup, setClosingProductGroup] = useState(false)
 
   const [orderType, setOrderType] = useState<OrderType>('dine-in')
   const [tableNumber, setTableNumber] = useState<number | null>(null)
@@ -237,6 +239,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   // New Client Modal state
   const [showNewClientModal, setShowNewClientModal] = useState(false)
+  const [closingNewClient, setClosingNewClient] = useState(false)
   const [newClientName, setNewClientName] = useState('')
   const [newClientLastName, setNewClientLastName] = useState('')
   const [newClientIdentification, setNewClientIdentification] = useState('')
@@ -294,6 +297,16 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const closeNewClientModal = (then?: () => void) => {
+    if (!showNewClientModal || closingNewClient) return
+    setClosingNewClient(true)
+    window.setTimeout(() => {
+      setShowNewClientModal(false)
+      setClosingNewClient(false)
+      then?.()
+    }, 200)
+  }
+
   const handleCreateNewClientFromCaja = async (e: React.FormEvent) => {
     e.preventDefault()
     const firstName = newClientName.trim()
@@ -328,7 +341,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       setCustomerName(fullName)
       setSelectedCustomer(newCust)
       setShowCustomerDropdown(false)
-      setShowNewClientModal(false)
+      closeNewClientModal()
       setNewClientName('')
       setNewClientLastName('')
       setNewClientIdentification('')
@@ -346,6 +359,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   // Payment Modal State (Matching Image 1)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [closingPayment, setClosingPayment] = useState(false)
   const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>(defaultPaymentForOrderType('dine-in'))
   const [refNumber, setRefNumber] = useState('')
   const [extraRefs, setExtraRefs] = useState<string[]>([])
@@ -374,6 +388,14 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       setTodayOrders(await getTodayOrders())
     } catch (e) {
       console.error('Error:', e)
+    }
+  }, [])
+
+  const refreshSalesRank = useCallback(async () => {
+    try {
+      setSalesRank(await getTopSellingProducts())
+    } catch (e) {
+      console.error('refreshSalesRank error:', e)
     }
   }, [])
 
@@ -414,6 +436,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       if (!cancelled && cats.length) hydrateMenuCategories(cats)
     }).catch((e) => console.error('getMenuCategories error:', e))
     void refreshOccupiedTables()
+    void getTopSellingProducts().then((rank) => {
+      if (!cancelled) setSalesRank(rank)
+    }).catch((e) => console.error('getTopSellingProducts error:', e))
     return () => { cancelled = true }
   }, [refreshOccupiedTables])
 
@@ -474,10 +499,34 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         )
       )
     }
-    if (sortBy === 'price') result = [...result].sort((a, b) => a.minPrice - b.minPrice)
-    else if (sortBy === 'name') result = [...result].sort((a, b) => a.name.localeCompare(b.name))
+    if (sortBy === 'popular' && salesRank.size > 0) {
+      result = [...result].sort((a, b) => {
+        const aCount = a.variants.reduce((sum, v) => sum + (salesRank.get(v.product.id) ?? 0), 0)
+        const bCount = b.variants.reduce((sum, v) => sum + (salesRank.get(v.product.id) ?? 0), 0)
+        return bCount - aCount
+      })
+    } else if (sortBy === 'price') {
+      result = [...result].sort((a, b) => a.minPrice - b.minPrice)
+    } else if (sortBy === 'name') {
+      result = [...result].sort((a, b) => a.name.localeCompare(b.name))
+    }
     return result
-  }, [products, searchTerm, activeCategory, sortBy])
+  }, [products, searchTerm, activeCategory, sortBy, salesRank])
+
+  // Top 5 productos más vendidos hoy (para badge 🔥)
+  const topProductIds = useMemo(() => {
+    if (salesRank.size === 0) return new Set<string>()
+    const ranked = filteredProductGroups
+      .map(g => ({
+        key: g.key,
+        count: g.variants.reduce((sum, v) => sum + (salesRank.get(v.product.id) ?? 0), 0),
+      }))
+      .filter(r => r.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5)
+    return new Set(ranked.map(r => r.key))
+  }, [filteredProductGroups, salesRank])
+
 
   const genLineId = () =>
     (typeof crypto !== 'undefined' && crypto.randomUUID)
@@ -530,11 +579,17 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     }
   }
 
-  const closeModifierPicker = () => {
-    setModifierProduct(null)
-    setModifierGroups([])
-    setModifierSelections({})
-    setModifierError('')
+  const closeModifierPicker = (then?: () => void) => {
+    if (!modifierProduct || closingModifier) return
+    setClosingModifier(true)
+    window.setTimeout(() => {
+      setModifierProduct(null)
+      setModifierGroups([])
+      setModifierSelections({})
+      setModifierError('')
+      setClosingModifier(false)
+      then?.()
+    }, 200)
   }
 
   const toggleModifierOption = (group: ProductModifierGroup, optionId: string) => {
@@ -636,6 +691,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       setDeliveryFee('')
       setTableNumber(null)
       refreshTodayOrders()
+      refreshSalesRank()
       refreshOccupiedTables()
       onOrderCreated?.()
       if (embedded) onClose?.()
@@ -684,14 +740,34 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setShowPaymentModal(true)
   }
 
+  const closePaymentModal = (then?: () => void) => {
+    if (!showPaymentModal || closingPayment) return
+    setClosingPayment(true)
+    window.setTimeout(() => {
+      setShowPaymentModal(false)
+      setClosingPayment(false)
+      then?.()
+    }, 200)
+  }
+
   const selectMenuGroup = (group: MenuProductGroup) => {
     if (group.isGrouped) setSelectedProductGroup(group)
     else addToCart(group.variants[0].product)
   }
 
+  const closeProductGroupModal = (then?: () => void) => {
+    if (!selectedProductGroup || closingProductGroup) return
+    setClosingProductGroup(true)
+    window.setTimeout(() => {
+      setSelectedProductGroup(null)
+      setClosingProductGroup(false)
+      then?.()
+    }, 200)
+  }
+
   const addVariantToCart = (product: Product) => {
     addToCart(product)
-    setSelectedProductGroup(null)
+    closeProductGroupModal()
   }
 
   const handleSelectPaymentTab = (method: PaymentMethod | 'split') => {
@@ -819,10 +895,10 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         payments: paymentComponents,
       })
       setCurrentOrder(order)
-      setShowPaymentModal(false)
-      setShowConfirmation(true)
+      closePaymentModal(() => setShowConfirmation(true))
       setTableNumber(null)
       refreshTodayOrders()
+      refreshSalesRank()
       refreshOccupiedTables()
       onOrderCreated?.()
     } catch (e) {
@@ -1079,12 +1155,6 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 <p className="hero-subtitle">Crea pedidos, cobra y envía a cocina.</p>
               </div>
             </div>
-            <div className="hero-banner-right">
-              <div className="hero-overlay-text">
-                <span className="hero-tagline">Sabor que prende,</span>
-                <span className="hero-tagline-bold">experiencia que deja huella.</span>
-              </div>
-            </div>
           </div>
 
           {/* Category Tabs */}
@@ -1132,26 +1202,19 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               <option value="price">Precio</option>
               <option value="name">Nombre</option>
             </StyledSelect>
-            <div className="view-toggle">
-              <button className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`} onClick={() => setViewMode('grid')}>▦</button>
-              <button className={`view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>☰</button>
-            </div>
           </div>
 
           {/* Products Grid */}
-          <div className={`products-container ${viewMode}`}>
+          <div className="products-container grid">
             {filteredProductGroups.length === 0 ? (
               <p className="empty-message">No hay productos en esta categoría</p>
             ) : (
               filteredProductGroups.map((group, index) => {
                 const product = group.variants[0].product
                 const imgUrl = getProductImage(product)
-                const groupName = group.name.toLowerCase()
-                const isPopular = index === 0 || groupName.includes('chaufa') || groupName.includes('especial')
-                const isLowStock = group.variants.some(({ product: variant }) => /camaron|camarón/i.test(variant.name))
-
+                const isPopular = topProductIds.has(group.key)
                 return (
-                  <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''} ${viewMode}`} onClick={() => selectMenuGroup(group)}>
+                  <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''}`} onClick={() => selectMenuGroup(group)}>
                     <div className="product-image-area">
                       <img
                         className="product-card-image"
@@ -1183,9 +1246,6 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                           {group.isGrouped && group.minPrice !== group.maxPrice && <small>Desde</small>}
                           <MoneyWithBcv usd={group.minPrice} className="product-card-price" align="start" compact />
                         </div>
-                        <span className={`product-stock-status ${isLowStock ? 'low-stock' : 'in-stock'}`}>
-                          <span className="stock-dot" /> {group.isGrouped ? 'Elegir opción' : isLowStock ? 'Pocas piezas' : 'En stock'}
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -1195,44 +1255,48 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           </div>
         </div>
 
-        {selectedProductGroup && (
-          <div className="modal-overlay-dark" onClick={() => setSelectedProductGroup(null)}>
+        {selectedProductGroup && createPortal(
+          <div className={`modal-overlay-dark ${closingProductGroup ? 'closing' : ''}`} onClick={() => closeProductGroupModal()}>
             <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="variant-selector-title" onClick={(event) => event.stopPropagation()}>
               <div className="variant-selector-header">
                 <div>
                   <span className="variant-selector-eyebrow">Selecciona una presentación</span>
                   <h2 id="variant-selector-title">{formatProductTitle(selectedProductGroup.name)}</h2>
                 </div>
-                <button type="button" className="payment-modal-close" onClick={() => setSelectedProductGroup(null)} aria-label="Cerrar selector">
+                <button type="button" className="payment-modal-close" onClick={() => closeProductGroupModal()} aria-label="Cerrar selector">
                   <X size={18} />
                 </button>
               </div>
               <div className="variant-selector-list">
-                {selectedProductGroup.variants.map(({ product, label }) => (
-                  <button key={product.id} type="button" className="variant-option-card" onClick={() => addVariantToCart(product)}>
-                    <span className="variant-option-emoji"><UtensilsCrossed size={16} /></span>
-                    <span className="variant-option-copy">
-                      <strong>{label}</strong>
-                      {product.description && <small>{formatSpanishText(product.description)}</small>}
-                    </span>
-                    <MoneyWithBcv usd={product.price} className="variant-option-price" compact />
-                    <span className="variant-option-add">Agregar</span>
-                  </button>
-                ))}
+                {selectedProductGroup.variants.map(({ product, label }) => {
+                  const imgUrl = getProductImage(product)
+                  return (
+                    <button key={product.id} type="button" className="variant-option-card" onClick={() => addVariantToCart(product)}>
+                      <img src={imgUrl} alt="" className="variant-option-img" />
+                      <span className="variant-option-copy">
+                        <strong>{label}</strong>
+                        {product.description && <small>{formatSpanishText(product.description)}</small>}
+                      </span>
+                      <MoneyWithBcv usd={product.price} className="variant-option-price" compact />
+                      <span className="variant-option-add">Agregar</span>
+                    </button>
+                  )
+                })}
               </div>
             </section>
-          </div>
+          </div>,
+          document.body
         )}
 
-        {modifierProduct && (
-          <div className="modal-overlay-dark" onClick={closeModifierPicker}>
+        {modifierProduct && createPortal(
+          <div className={`modal-overlay-dark ${closingModifier ? 'closing' : ''}`} onClick={() => closeModifierPicker()}>
             <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="modifier-selector-title" onClick={(event) => event.stopPropagation()}>
               <div className="variant-selector-header">
                 <div>
                   <span className="variant-selector-eyebrow">Personaliza el producto</span>
                   <h2 id="modifier-selector-title">{formatProductTitle(modifierProduct.name)}</h2>
                 </div>
-                <button type="button" className="payment-modal-close" onClick={closeModifierPicker} aria-label="Cerrar selector">
+                <button type="button" className="payment-modal-close" onClick={() => closeModifierPicker()} aria-label="Cerrar selector">
                   <X size={18} />
                 </button>
               </div>
@@ -1295,7 +1359,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 </div>
               )}
             </section>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* RIGHT: Cart Sidebar */}
@@ -1311,7 +1376,6 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
-            <span className="cart-edit-btn" aria-label="La edición se realiza modificando las cantidades"><PencilLine size={13} /> Editar cantidades</span>
           </div>
 
           <div className="cart-sidebar-body">
@@ -1598,11 +1662,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       </div>
 
       {/* Image 1 Target: Payment Modal "Cobrar pedido" */}
-      {showPaymentModal && (
-        <div className="modal-overlay-dark" onClick={() => setShowPaymentModal(false)}>
-          <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
+      {showPaymentModal && createPortal(
+        <div className={`modal-overlay-dark ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
+          <div className="payment-modal-box animate-pop caja-payment-modal-glow" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
-            <div className="payment-modal-header">
+            <div className="payment-modal-header caja-payment-header-glow">
               <h2 className="payment-modal-title">
                 Cobrar pedido <span className="payment-order-tag">Nueva venta</span>
               </h2>
@@ -1918,7 +1982,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
               {/* Right Column: Order Summary */}
               <div className="payment-body-right">
-                <div className="order-summary-box">
+                <div className="order-summary-box caja-order-summary-accent">
                   <h3 className="summary-box-title">Resumen del pedido</h3>
 
                   <div className="summary-box-lines mt-3">
@@ -1931,7 +1995,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                       <MoneyWithBcv usd={0} usdClassName="font-bold" compact />
                     </div>
 
-                    <div className="summary-box-total-line mt-3">
+                    <div className="summary-box-total-line caja-summary-total-highlight mt-3">
                       <span className="summary-total-label">Total</span>
                       <MoneyWithBcv usd={total} className="summary-total-val" />
                     </div>
@@ -1963,19 +2027,20 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               <button className="btn-modal-action-dark" onClick={handlePrintReceipt}>
                 <Printer size={18} /> Imprimir recibo
               </button>
-              <button className="btn-modal-action-ghost" onClick={() => setShowPaymentModal(false)}>
+              <button className="btn-modal-action-ghost" onClick={() => closePaymentModal()}>
                 <X size={18} /> Cancelar
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Nuevo Cliente desde Caja */}
-      {showNewClientModal && (
-        <div className="modal-overlay-dark" onClick={() => !creatingCustomer && setShowNewClientModal(false)}>
-          <div className="client-modal-box animate-pop" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line">
+      {showNewClientModal && createPortal(
+        <div className={`modal-overlay-dark ${closingNewClient ? 'closing' : ''}`} onClick={() => !creatingCustomer && closeNewClientModal()}>
+          <div className="client-modal-box animate-pop caja-modal-glow" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line caja-modal-header-glow">
               <div>
                 <span className="client-modal-eyebrow">Directorio de clientes</span>
                 <h3 className="modal-title" id="new-client-title">Nuevo cliente</h3>
@@ -2095,7 +2160,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               {customerCreateError && <div className="client-modal-error" role="alert">{customerCreateError}</div>}
 
               <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" disabled={creatingCustomer} onClick={() => setShowNewClientModal(false)}>
+                <button type="button" className="btn-modal-cancel" disabled={creatingCustomer} onClick={() => closeNewClientModal()}>
                   Cancelar
                 </button>
                 <button type="submit" className="btn-modal-submit-red" disabled={creatingCustomer}>
@@ -2104,7 +2169,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )

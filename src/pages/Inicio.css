@@ -585,7 +585,7 @@
   .db-grid-4 { grid-template-columns: 1fr 1fr; }
   .kpi-row { grid-template-columns: repeat(2, 1fr); }
   .kpi-banner-content { width: 38%; padding: 1rem; }
-  .kpi-banner-img-wrap { width: 62%; display: block; }
+  .kpi-banner-img-wrap { width: 62%; right: -28px; display: block; }
   .kpi-banner-img { object-position: 100% center; opacity: 1; }
   .kpi-banner-gradient {
     background: linear-gradient(
@@ -1240,4 +1240,499 @@
   .animate-fade-in { animation: none; }
   .kpi-card,
   .qa-btn { transition: none; }
+}
+
+/* ─── DASHBOARD INFORMATION HIERARCHY ─── */
+.db-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 520px);
+  align-items: start;
+  gap: clamp(1.25rem, 3vw, 3.5rem);
+  padding: 0.35rem 0.1rem 0.15rem;
+}
+
+.db-header-copy { min-width: 0; }
+
+.db-header-copy .page-title {
+  margin: 0;
+  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+  line-height: 1.05;
+  letter-spacing: -0.045em;
+}
+
+.db-header-copy .db-greeting-sub {
+  margin-top: 0.45rem;
+  color: #8d8d97;
+  font-size: 0.82rem;
+}
+
+.db-header-tools {
+  position: relative;
+  display: grid;
+  justify-items: end;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.db-header-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 0.55rem;
+  width: 100%;
+}
+
+.db-header-search {
+  box-sizing: border-box;
+  width: 100%;
+  height: 42px;
+  padding-inline: 0.85rem;
+  border-radius: 11px;
+  background: rgba(24, 24, 27, 0.9);
+}
+
+.db-header-icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+}
+
+.db-header-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.db-header-pill {
+  height: 31px;
+  padding-inline: 0.75rem;
+  border-radius: 999px;
+  background: rgba(24, 24, 27, 0.72);
+}
+
+.db-greeting-rates {
+  min-height: 31px;
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(255, 77, 61, 0.15);
+  border-radius: 999px;
+  background: rgba(255, 77, 61, 0.055);
+  color: #8f8f99;
+}
+
+.db-greeting-rates svg,
+.db-greeting-rates strong { color: #ff675c; }
+
+.db-greeting-rates:hover {
+  border-color: rgba(255, 77, 61, 0.32);
+  background: rgba(255, 77, 61, 0.09);
+}
+
+.db-notifications {
+  top: calc(100% + 0.65rem);
+  right: 0;
+}
+
+.db-grid-4 {
+  order: 4;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.db-grid-4 > .db-card:nth-child(1) {
+  order: 1;
+  grid-column: span 8;
+}
+
+.db-grid-4 > .db-card:nth-child(3) {
+  order: 2;
+  grid-column: span 4;
+}
+
+.db-grid-4 > .db-card:nth-child(2) {
+  order: 3;
+  grid-column: span 6;
+}
+
+.db-grid-4 > .db-card:nth-child(4) {
+  order: 4;
+  grid-column: span 6;
+}
+
+.db-grid-4 > .db-card:nth-child(4) .db-sellers-list {
+  display: flex;
+  grid-template-columns: none;
+}
+
+.db-grid-3 {
+  order: 5;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 1101px) {
+  .db-header {
+    grid-template-columns: minmax(250px, 0.8fr) minmax(520px, 1.35fr);
+    align-items: center;
+  }
+
+  .db-header-tools {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.55rem;
+  }
+
+  .db-header-search-row { display: contents; }
+
+  .db-header-search {
+    order: 1;
+    flex: 1 1 220px;
+    min-width: 180px;
+  }
+
+  .db-header-meta-row {
+    order: 2;
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .db-header-icon-btn {
+    order: 3;
+    flex: 0 0 42px;
+  }
+
+  .db-header-pill,
+  .db-greeting-rates { height: 42px; }
+
+  .db-grid-3 { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .db-grid-3 > .db-card:nth-child(1) { grid-column: span 6; }
+  .db-grid-3 > .db-card:nth-child(2),
+  .db-grid-3 > .db-card:nth-child(3) { grid-column: span 3; }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .db-header {
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 420px);
+    gap: 1.25rem;
+  }
+
+  .db-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .db-grid-4 > .db-card:nth-child(1) { grid-column: 1 / -1; }
+  .db-grid-4 > .db-card:nth-child(2),
+  .db-grid-4 > .db-card:nth-child(3) { grid-column: span 1; }
+  .db-grid-4 > .db-card:nth-child(4) { grid-column: 1 / -1; }
+
+  .db-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .db-grid-3 > .db-card:first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 767px) {
+  .db-header {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .db-header-tools { justify-items: stretch; }
+  .db-header-meta-row { justify-content: flex-start; }
+  .db-header-search { display: flex; width: 100%; }
+  .db-header-pill,
+  .db-greeting-rates { display: inline-flex; }
+
+  .db-grid-4,
+  .db-grid-3 { grid-template-columns: minmax(0, 1fr); }
+
+  .db-grid-4 > .db-card:nth-child(1),
+  .db-grid-4 > .db-card:nth-child(2),
+  .db-grid-4 > .db-card:nth-child(3),
+  .db-grid-4 > .db-card:nth-child(4),
+  .db-grid-3 > .db-card:first-child { grid-column: auto; }
+}
+
+@media (max-width: 480px) {
+  .db-header-copy .page-title { font-size: 1.7rem; }
+  .db-header-meta-row { justify-content: space-between; }
+  .db-header-pill { flex: 0 0 auto; }
+  .db-greeting-rates { min-width: 0; }
+  .db-rate-date { display: none; }
+}
+
+/* ─── PAYMENT BREAKDOWN WIDGET ─── */
+.db-payment-card {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255, 77, 61, 0.065), transparent 34%),
+    var(--db-surface);
+}
+
+.db-payment-head { align-items: flex-start; }
+
+.db-payment-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.db-card-support {
+  color: #777781;
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+.db-payment-count {
+  padding: 0.28rem 0.5rem;
+  border: 1px solid rgba(255, 77, 61, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 77, 61, 0.07);
+  color: #ff756c;
+  font-size: 0.58rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.db-payment-card .db-pago-layout {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.72fr) minmax(0, 1.55fr);
+  align-items: center;
+  gap: clamp(1rem, 2.2vw, 1.6rem);
+  min-height: 170px;
+}
+
+.db-pago-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.db-payment-card .db-donut-wrap {
+  width: 132px;
+  height: 132px;
+  filter: drop-shadow(0 12px 22px rgba(0, 0, 0, 0.22));
+}
+
+.db-payment-card .db-donut-center span {
+  max-width: 58px;
+  color: #777781;
+  font-size: 0.48rem;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.db-payment-card .db-donut-center strong {
+  margin-top: 0.15rem;
+  color: #fff;
+  font-size: 0.88rem;
+  letter-spacing: -0.025em;
+}
+
+.db-pago-caption {
+  color: #777781;
+  font-size: 0.57rem;
+  font-weight: 600;
+}
+
+.db-payment-card .db-pago-legend {
+  align-self: stretch;
+  justify-content: center;
+  gap: 0.48rem;
+}
+
+.db-payment-card .pago-legend-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(74px, auto);
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.db-payment-card .pago-method {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.db-payment-card .pago-dot {
+  width: 9px;
+  height: 9px;
+  box-shadow: 0 0 10px color-mix(in srgb, currentColor 35%, transparent);
+}
+
+.db-payment-card .pago-name {
+  overflow: hidden;
+  color: #d1d1d6;
+  font-size: 0.7rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-payment-card .pago-pct {
+  padding: 0.18rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(255, 77, 61, 0.09);
+  color: #ff756c;
+  font-size: 0.6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.db-payment-card .pago-amount {
+  justify-self: end;
+  font-size: 0.7rem;
+}
+
+.pago-progress {
+  grid-column: 1 / -1;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.pago-progress > span {
+  display: block;
+  height: 100%;
+  min-width: 3px;
+  border-radius: inherit;
+}
+
+.db-pago-empty {
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  color: #a4a4ad;
+  text-align: center;
+}
+
+.db-pago-empty svg { color: #ff5d52; }
+.db-pago-empty span { font-size: 0.7rem; font-weight: 700; }
+.db-pago-empty small { color: #696973; font-size: 0.58rem; }
+
+/* ─── PENDING CUSTOMER FOLLOW-UP ─── */
+.db-credit-head { align-items: flex-start; }
+
+.db-credit-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.db-credit-count {
+  min-width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 77, 61, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 77, 61, 0.08);
+  color: #ff7167;
+  font-size: 0.62rem;
+  font-weight: 800;
+}
+
+.db-credit-card .db-cobrar-list {
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.db-credit-card .cobrar-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 46px;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.052);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.cobrar-avatar {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: rgba(255, 77, 61, 0.11);
+  color: #ff6b61;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.cobrar-customer {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.cobrar-customer strong {
+  overflow: hidden;
+  color: #e2e2e6;
+  font-size: 0.68rem;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cobrar-customer small {
+  color: #777781;
+  font-size: 0.55rem;
+  white-space: nowrap;
+}
+
+.db-credit-card .cobrar-row-val {
+  font-size: 0.68rem;
+}
+
+.db-credit-empty {
+  min-height: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: #8b8b95;
+  font-size: 0.65rem;
+  text-align: center;
+}
+
+.db-credit-empty svg { color: #4ade80; }
+
+@media (max-width: 1100px) {
+  .db-payment-card .db-pago-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.8rem;
+  }
+
+  .db-payment-card .db-donut-wrap {
+    width: 112px;
+    height: 112px;
+  }
+}
+
+@media (max-width: 480px) {
+  .db-payment-card .pago-legend-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .db-payment-card .pago-pct { justify-self: end; }
+  .db-payment-card .pago-amount { grid-column: 1 / -1; justify-self: start; }
 }

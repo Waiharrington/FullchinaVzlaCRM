@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ArrowDownLeft, ArrowUpRight, Banknote, Clock3, LockKeyhole, RefreshCw, WalletCards } from 'lucide-react'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
@@ -62,6 +63,7 @@ export function CajaOperativa() {
   const [movementDescription, setMovementDescription] = useState('')
 
   const [showClose, setShowClose] = useState(false)
+  const [closingClose, setClosingClose] = useState(false)
   const [countedUsd, setCountedUsd] = useState('')
   const [countedVes, setCountedVes] = useState('')
   const [closingNotes, setClosingNotes] = useState('')
@@ -140,6 +142,16 @@ export function CajaOperativa() {
     setShowClose(true)
   }
 
+  const closeCloseModal = (then?: () => void) => {
+    if (!showClose || closingClose) return
+    setClosingClose(true)
+    window.setTimeout(() => {
+      setShowClose(false)
+      setClosingClose(false)
+      then?.()
+    }, 200)
+  }
+
   const handleClose = async (event: React.FormEvent) => {
     event.preventDefault()
     if (!session) return
@@ -150,7 +162,7 @@ export function CajaOperativa() {
         notes: closingNotes || null,
       })
       setNotice(`Turno #${closed.sessionNumber} cerrado. Diferencia: ${money(closed.differenceUsd ?? 0)}.`)
-      setShowClose(false); setClosingNotes('')
+      closeCloseModal(); setClosingNotes('')
       await refresh()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo cerrar la caja')
@@ -308,8 +320,8 @@ export function CajaOperativa() {
         </>
       )}
 
-      {showClose && session && (
-        <div className="cash-modal-backdrop" onClick={() => setShowClose(false)}>
+      {showClose && session && createPortal(
+        <div className={`cash-modal-backdrop ${closingClose ? 'closing' : ''}`} onClick={() => closeCloseModal()}>
           <form className="cash-close-modal" onSubmit={handleClose} onClick={event => event.stopPropagation()}>
             <span className="cash-ops-eyebrow">Arqueo del turno #{session.sessionNumber}</span>
             <h2>Cuenta el efectivo físico</h2>
@@ -320,9 +332,10 @@ export function CajaOperativa() {
             </div>
             <div className="cash-difference-grid"><div className={closeDifference.usd === 0 ? 'ok' : closeDifference.usd < 0 ? 'negative' : 'positive'}><span>Diferencia USD</span><strong>{money(closeDifference.usd)}</strong></div><div className={closeDifference.ves === 0 ? 'ok' : closeDifference.ves < 0 ? 'negative' : 'positive'}><span>Diferencia Bs.</span><strong>{money(closeDifference.ves, 'VES')}</strong></div></div>
             <label>Nota del cierre<textarea rows={3} value={closingNotes} onChange={event => setClosingNotes(event.target.value.slice(0, 180))} placeholder="Explica cualquier diferencia" /></label>
-            <div className="cash-modal-actions"><button type="button" className="cash-secondary" onClick={() => setShowClose(false)}>Cancelar</button><button className="cash-primary" disabled={saving}>{saving ? 'Cerrando…' : 'Confirmar cierre'}</button></div>
+            <div className="cash-modal-actions"><button type="button" className="cash-secondary" onClick={() => closeCloseModal()}>Cancelar</button><button className="cash-primary" disabled={saving}>{saving ? 'Cerrando…' : 'Confirmar cierre'}</button></div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       <section className="cash-history">

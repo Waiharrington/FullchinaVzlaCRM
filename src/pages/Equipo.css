@@ -221,7 +221,7 @@
 
 .modal-content-custom {
   background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(227, 27, 43, 0.25);
   border-radius: 16px;
   width: 100%;
   max-width: 500px;
@@ -229,15 +229,15 @@
   max-height: min(90dvh, 700px);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(227, 27, 43, 0.06);
   margin: auto;
   overflow: hidden;
 }
 
 .modal-header-custom {
   padding: 16px 20px;
-  background: linear-gradient(135deg, #27272a 0%, #18181b 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(135deg, rgba(227, 27, 43, 0.14) 0%, rgba(227, 27, 43, 0.02) 45%, transparent 70%), #18181b;
+  border-bottom: 1px solid rgba(227, 27, 43, 0.18);
   display: flex;
   justify-content: space-between;
   align-items: center;

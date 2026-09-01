@@ -46,9 +46,31 @@ export function Mesas() {
   const [editMode, setEditMode] = useState(false)
   const [activeZone, setActiveZone] = useState<string>('all')
   const [selectedTable, setSelectedTable] = useState<FloorTable | null>(null)
+  const [closingSelectedTable, setClosingSelectedTable] = useState(false)
   const [formState, setFormState] = useState<TableFormState | null>(null)
+  const [closingFormState, setClosingFormState] = useState(false)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const closeSelectedTable = (then?: () => void) => {
+    if (closingSelectedTable) return
+    setClosingSelectedTable(true)
+    window.setTimeout(() => {
+      setSelectedTable(null)
+      setClosingSelectedTable(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeFormState = (then?: () => void) => {
+    if (closingFormState) return
+    setClosingFormState(true)
+    window.setTimeout(() => {
+      setFormState(null)
+      setClosingFormState(false)
+      then?.()
+    }, 200)
+  }
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<{ id: string; pointerId: number } | null>(null)
@@ -175,7 +197,7 @@ export function Mesas() {
           posY: 10,
         })
       }
-      setFormState(null)
+      closeFormState()
       await refresh()
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'No se pudo guardar la mesa')
@@ -194,7 +216,7 @@ export function Mesas() {
     setSaving(true)
     try {
       await deleteFloorTable(table.id)
-      setFormState(null)
+      closeFormState()
       await refresh()
     } catch (e) {
       setFormError(e instanceof Error ? e.message : 'No se pudo eliminar la mesa')
@@ -296,20 +318,22 @@ export function Mesas() {
       </div>
 
       {selectedTable && createPortal(
-        <div className="mesas-modal-overlay" onClick={() => setSelectedTable(null)}>
+        <div className={`mesas-modal-overlay ${closingSelectedTable ? 'closing' : ''}`} onClick={() => closeSelectedTable()}>
           <div className="mesas-modal" onClick={e => e.stopPropagation()}>
-            <button className="mesas-modal-close" onClick={() => setSelectedTable(null)}><X size={18} /></button>
-            <div className="mesas-modal-icon"><UtensilsCrossed size={20} /></div>
-            <h3>Mesa {selectedTable.number}</h3>
-            <p className="mesas-modal-order">Pedido #FC-{String(selectedTable.openOrderNumber).padStart(6, '0')}</p>
+            <button className="mesas-modal-close" onClick={() => closeSelectedTable()}><X size={18} /></button>
+            <div className="mesas-modal-header">
+              <div className="mesas-modal-icon"><UtensilsCrossed size={20} /></div>
+              <h3>Mesa {selectedTable.number}</h3>
+              <p className="mesas-modal-order">Pedido #FC-{String(selectedTable.openOrderNumber).padStart(6, '0')}</p>
+            </div>
             <div className="mesas-modal-rows">
               <div><span>Cliente</span><span>{selectedTable.openOrderCustomer || 'Cliente general'}</span></div>
               <div><span>Tiempo abierto</span><span>{selectedTable.openOrderCreatedAt ? elapsedLabel(selectedTable.openOrderCreatedAt) : '—'}</span></div>
-              <div><span>Total</span><span>{formatUsd(selectedTable.openOrderTotal)}</span></div>
+              <div className="mesas-modal-total-row"><span>Total</span><span className="mesas-modal-total-value">{formatUsd(selectedTable.openOrderTotal)}</span></div>
             </div>
             <button
               className="mesas-btn mesas-btn-primary mesas-modal-cta"
-              onClick={() => { setSelectedTable(null); navigate('/comandas') }}
+              onClick={() => closeSelectedTable(() => navigate('/comandas'))}
             >
               Ver en Comandas
             </button>
@@ -319,10 +343,12 @@ export function Mesas() {
       )}
 
       {formState && createPortal(
-        <div className="mesas-modal-overlay" onClick={() => setFormState(null)}>
+        <div className={`mesas-modal-overlay ${closingFormState ? 'closing' : ''}`} onClick={() => closeFormState()}>
           <form className="mesas-modal" onClick={e => e.stopPropagation()} onSubmit={handleSaveForm}>
-            <button type="button" className="mesas-modal-close" onClick={() => setFormState(null)}><X size={18} /></button>
-            <h3>{formState.id ? `Editar mesa ${formState.number}` : 'Nueva mesa'}</h3>
+            <button type="button" className="mesas-modal-close" onClick={() => closeFormState()}><X size={18} /></button>
+            <div className="mesas-modal-header">
+              <h3>{formState.id ? `Editar mesa ${formState.number}` : 'Nueva mesa'}</h3>
+            </div>
 
             <label className="mesas-form-field">
               <span>Número de mesa</span>

@@ -79,7 +79,7 @@
 .mnu-search input {
   width: 100%; padding: 10px 30px 10px 38px;
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px; color: #fff; font-size: 13px; transition: all 0.2s;
+  border-radius: 999px; color: #fff; font-size: 13px; transition: all 0.2s;
 }
 .mnu-search input:focus { border-color: rgba(225,29,42,0.5); background: rgba(225,29,42,0.04); box-shadow: 0 0 0 3px rgba(225,29,42,0.1); outline: none; }
 .mnu-search input::placeholder { color: #52525b; }
@@ -363,10 +363,60 @@
 }
 .mnu-cancel:hover { background: rgba(255,255,255,0.08); color: #d4d4d8; border-color: rgba(255,255,255,0.2); }
 
+/* --- Branded accents: product editor & category manager --- */
+.mnu-product-modal {
+  border-color: rgba(225, 29, 42, 0.25);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(225, 29, 42, 0.06);
+}
+.mnu-product-modal .mnu-modal-header {
+  margin: -28px -28px 20px;
+  padding: 16px 28px;
+  border-bottom: 1px solid rgba(225, 29, 42, 0.18);
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(135deg, rgba(225, 29, 42, 0.14) 0%, rgba(225, 29, 42, 0.02) 45%, transparent 70%);
+}
+@media (max-width: 600px) {
+  .mnu-product-modal .mnu-modal-header,
+  .mnu-cat-modal .mnu-modal-header { margin: -22px -22px 12px; padding: 14px 22px; border-radius: 18px 18px 0 0; }
+}
+
+.mnu-product-section { position: relative; }
+.mnu-info-section::before,
+.mnu-price-section::before,
+.mnu-category-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -14px;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+.mnu-info-section::before { background: rgba(56, 189, 248, 0.55); }
+.mnu-price-section::before { background: rgba(16, 185, 129, 0.55); }
+.mnu-category-section::before { background: rgba(167, 139, 250, 0.55); }
+@media (max-width: 700px) {
+  .mnu-info-section::before,
+  .mnu-price-section::before,
+  .mnu-category-section::before { left: -16px; }
+}
+
 /* ============================================================
    Category Manager Modal
    ============================================================ */
-.mnu-cat-modal { max-width: 540px; }
+.mnu-cat-modal {
+  max-width: 540px;
+  border-color: rgba(225, 29, 42, 0.25);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(225, 29, 42, 0.06);
+}
+.mnu-cat-modal .mnu-modal-header {
+  margin: -28px -28px 20px;
+  padding: 16px 28px;
+  border-bottom: 1px solid rgba(225, 29, 42, 0.18);
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(135deg, rgba(225, 29, 42, 0.14) 0%, rgba(225, 29, 42, 0.02) 45%, transparent 70%);
+}
 .mnu-cat-add { display: flex; gap: 10px; margin-bottom: 16px; flex-shrink: 0; }
 .mnu-cat-add input {
   flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);

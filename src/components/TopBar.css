@@ -21,8 +21,8 @@
   display: flex;
   align-items: center;
   background-color: #141416;
-  border: 1px solid #27272a;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   padding: 0.3rem 0.85rem;
   width: 100%;
   max-width: 280px;
@@ -46,6 +46,10 @@
   font-size: 0.85rem;
   width: 100%;
   outline: none;
+}
+
+.search-bar input:focus {
+  box-shadow: none;
 }
 
 .search-bar input::placeholder {

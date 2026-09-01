@@ -154,6 +154,53 @@ export function Clientes() {
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [showCobrarModal, setShowCobrarModal] = useState(false)
+
+  // Closing-delay flags: keep the overlay mounted for the exit animation
+  // before flipping the visibility state to false/null.
+  const [closingNew, setClosingNew] = useState(false)
+  const [closingEdit, setClosingEdit] = useState(false)
+  const [closingPayment, setClosingPayment] = useState(false)
+  const [closingCobrar, setClosingCobrar] = useState(false)
+
+  const closeNewModal = (then?: () => void) => {
+    if (!showNewModal || closingNew) return
+    setClosingNew(true)
+    window.setTimeout(() => {
+      setShowNewModal(false)
+      setClosingNew(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeEditModal = (then?: () => void) => {
+    if (!editClientId || closingEdit) return
+    setClosingEdit(true)
+    window.setTimeout(() => {
+      setEditClientId(null)
+      setClosingEdit(false)
+      then?.()
+    }, 200)
+  }
+
+  const closePaymentModal = (then?: () => void) => {
+    if (!paymentModal || closingPayment) return
+    setClosingPayment(true)
+    window.setTimeout(() => {
+      setPaymentModal(null)
+      setClosingPayment(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeCobrarModal = (then?: () => void) => {
+    if (!showCobrarModal || closingCobrar) return
+    setClosingCobrar(true)
+    window.setTimeout(() => {
+      setShowCobrarModal(false)
+      setClosingCobrar(false)
+      then?.()
+    }, 200)
+  }
   const [customerOrders, setCustomerOrders] = useState<CustomerOrderSummary[]>([])
   const [customerCreditPayments, setCustomerCreditPayments] = useState<CreditPayment[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
@@ -274,8 +321,7 @@ export function Clientes() {
     setNewClientAddress('')
     setBirthMonth('')
     setBirthDay('')
-    setShowNewModal(false)
-    setSelectedClient(newClientObj)
+    closeNewModal(() => setSelectedClient(newClientObj))
   }
 
   const openEditCustomer = (c: Customer) => {
@@ -318,7 +364,7 @@ export function Clientes() {
         identification: updated.identification,
         identificationStatus: classifyIdentification(updated.identification),
       } : prev)
-      setEditClientId(null)
+      closeEditModal()
     } catch (err) {
       console.error('Error actualizando cliente:', err)
       setEditError('No se pudo actualizar el cliente. Revisa los datos e intenta de nuevo.')
@@ -336,7 +382,7 @@ export function Clientes() {
           amount: parseFloat(paymentAmount),
           userId: user.id,
         })
-        setPaymentModal(null)
+        closePaymentModal()
         setPaymentAmount('')
         fetchCredits()
       } catch (e) {
@@ -959,10 +1005,10 @@ export function Clientes() {
       </div>
 
       {/* Modal Nuevo Cliente */}
-      {showNewModal && (
-        <div className="modal-overlay-dark" onClick={() => setShowNewModal(false)}>
-          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line">
+      {showNewModal && createPortal(
+        <div className={`modal-overlay-dark ${closingNew ? 'closing' : ''}`} onClick={() => closeNewModal()}>
+          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line clientes-modal-header-glow">
               <div>
                 <h3 className="modal-title">Nuevo cliente</h3>
                 <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
@@ -1057,7 +1103,7 @@ export function Clientes() {
               </div>
 
               <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => setShowNewModal(false)}>
+                <button type="button" className="btn-modal-cancel" onClick={() => closeNewModal()}>
                   Cancelar
                 </button>
                 <button type="submit" className="btn-modal-submit-red">
@@ -1066,14 +1112,15 @@ export function Clientes() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Editar Cliente */}
-      {editClientId && (
-        <div className="modal-overlay-dark" onClick={() => setEditClientId(null)}>
-          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line">
+      {editClientId && createPortal(
+        <div className={`modal-overlay-dark ${closingEdit ? 'closing' : ''}`} onClick={() => closeEditModal()}>
+          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line clientes-modal-header-glow">
               <div>
                 <h3 className="modal-title">Editar cliente</h3>
                 <p className="modal-sub-desc">Actualiza los datos del cliente</p>
@@ -1134,23 +1181,32 @@ export function Clientes() {
               {editError && <p className="login-error mt-2">{editError}</p>}
 
               <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => setEditClientId(null)}>Cancelar</button>
+                <button type="button" className="btn-modal-cancel" onClick={() => closeEditModal()}>Cancelar</button>
                 <button type="submit" className="btn-modal-submit-red" disabled={editSaving}>{editSaving ? 'Guardando…' : 'Guardar cambios'}</button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Abonar Crédito */}
-      {paymentModal && (
-        <div className="modal-overlay-dark" onClick={() => setPaymentModal(null)}>
-          <div className="client-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line">
+      {paymentModal && createPortal(
+        <div className={`modal-overlay-dark ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
+          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line clientes-modal-header-glow">
               <h3 className="modal-title">Abonar a Crédito</h3>
             </div>
-            <p className="modal-sub-desc mt-2">Cliente: <strong className="text-white">{paymentModal.customerName}</strong></p>
-            <p className="birthday-hint">Deuda restante: <MoneyWithBcv usd={paymentModal.balancePending} className="text-red" usdClassName="font-bold" compact /></p>
+            <div className="clientes-modal-customer-row mt-2">
+              <div className="clientes-modal-avatar">
+                {paymentModal.customerName.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase()}
+              </div>
+              <span className="clientes-modal-customer-name">{paymentModal.customerName}</span>
+            </div>
+            <div className="clientes-debt-highlight mt-2">
+              <span className="clientes-debt-label">Deuda restante</span>
+              <MoneyWithBcv usd={paymentModal.balancePending} className="clientes-debt-amount" usdClassName="font-bold" compact />
+            </div>
 
             <form onSubmit={handlePayment} className="crm-form mt-3">
               <div className="field">
@@ -1167,7 +1223,7 @@ export function Clientes() {
               </div>
 
               <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => setPaymentModal(null)}>
+                <button type="button" className="btn-modal-cancel" onClick={() => closePaymentModal()}>
                   Cancelar
                 </button>
                 <button type="submit" className="btn-modal-submit-red">
@@ -1176,30 +1232,31 @@ export function Clientes() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal Cuentas por cobrar */}
       {showCobrarModal && createPortal((
         <>
-        <div className="modal-overlay-dark receivables-modal-overlay" onClick={() => setShowCobrarModal(false)}>
-          <div className="client-modal-box receivables-modal-box animate-pop" role="dialog" aria-modal="true" aria-labelledby="receivables-modal-title" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line">
+        <div className={`modal-overlay-dark receivables-modal-overlay ${closingCobrar ? 'closing' : ''}`} onClick={() => closeCobrarModal()}>
+          <div className="client-modal-box receivables-modal-box animate-pop clientes-modal-glow" role="dialog" aria-modal="true" aria-labelledby="receivables-modal-title" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-line clientes-modal-header-glow">
               <div className="side-header-title">
                 <DollarSign size={18} className="text-red" />
                 <h3 id="receivables-modal-title" className="modal-title">Cuentas por cobrar</h3>
               </div>
-              <button className="modal-close-btn" onClick={() => setShowCobrarModal(false)}><X size={18} /></button>
+              <button className="modal-close-btn" onClick={() => closeCobrarModal()}><X size={18} /></button>
             </div>
 
-            <div className="cobrar-total-area mt-3">
+            <div className="cobrar-total-area clientes-cobrar-total-highlight mt-3">
               <MoneyWithBcv usd={totalOutstanding} className="cobrar-total-val" align="center" />
               <span className="cobrar-total-sub">Total pendiente</span>
             </div>
 
             <div className="receivables-summary-row">
-              <span>{credits.filter((credit) => credit.balancePending > 0).length} cuentas activas</span>
-              <span>{credits.filter((credit) => credit.balancePending > 0 && credit.orderId).length} comandas pendientes</span>
+              <span className="clientes-summary-chip">{credits.filter((credit) => credit.balancePending > 0).length} cuentas activas</span>
+              <span className="clientes-summary-chip">{credits.filter((credit) => credit.balancePending > 0 && credit.orderId).length} comandas pendientes</span>
             </div>
             <div className="receivables-list">
               {receivablesLoading && <p className="modal-sub-desc">Cargando comandas pendientes…</p>}

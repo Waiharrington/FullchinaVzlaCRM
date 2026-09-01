@@ -9,6 +9,13 @@
   justify-content: center;
   padding: 12px;
 }
+.aito-overlay.closing {
+  pointer-events: none;
+  animation: fc-overlay-exit var(--motion-fast, 180ms) var(--motion-exit, ease) both;
+}
+.aito-overlay.closing > .aito-modal {
+  animation: fc-dialog-exit var(--motion-fast, 180ms) var(--motion-exit, ease) both;
+}
 .aito-modal {
   display: flex;
   flex-direction: column;
@@ -54,11 +61,17 @@
   margin: 14px 16px 0;
   padding: 9px 12px;
   background: #202024;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
   color: #a1a1aa;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.aito-search:focus-within {
+  border-color: #E31B2B;
+  box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
 .aito-search input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 14px; }
+.aito-search input:focus { box-shadow: none; }
 .aito-search input::placeholder { color: #71717a; }
 
 .aito-body {

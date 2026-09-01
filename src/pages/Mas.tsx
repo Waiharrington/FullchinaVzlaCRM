@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import jsPDF from 'jspdf'
@@ -65,6 +66,17 @@ export function Mas() {
   const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [closing, setClosing] = useState(false)
+  const [closingPayment, setClosingPayment] = useState(false)
+
+  const closePaymentModal = (then?: () => void) => {
+    if (!paymentModal || closingPayment) return
+    setClosingPayment(true)
+    window.setTimeout(() => {
+      setPaymentModal(null)
+      setClosingPayment(false)
+      then?.()
+    }, 200)
+  }
 
   const fetchAll = useCallback(async () => {
     try {
@@ -129,7 +141,7 @@ export function Mas() {
         amount: parseFloat(paymentAmount),
         userId: user.id,
       })
-      setPaymentModal(null)
+      closePaymentModal()
       setPaymentAmount('')
       fetchAll()
     } catch (e) {
@@ -514,12 +526,17 @@ export function Mas() {
         </div>
       )}
 
-      {paymentModal && (
-        <div className="modal-overlay" onClick={() => setPaymentModal(null)}>
-          <div className="modal animate-slide-up" onClick={(e) => e.stopPropagation()}>
-            <h3 className="modal-title">Abonar a crédito</h3>
-            <p className="modal-subtitle">{paymentModal.customerName}</p>
-            <p className="modal-remaining">Pendiente: <span className="text-danger">${paymentModal.balancePending.toFixed(2)}</span></p>
+      {paymentModal && createPortal(
+        <div className={`modal-overlay ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
+          <div className="modal animate-slide-up mas-modal-glow" onClick={(e) => e.stopPropagation()}>
+            <div className="mas-modal-header-glow">
+              <h3 className="modal-title">Abonar a crédito</h3>
+              <p className="modal-subtitle">{paymentModal.customerName}</p>
+            </div>
+            <div className="mas-debt-highlight">
+              <span className="modal-remaining">Pendiente</span>
+              <span className="text-danger mas-debt-amount">${paymentModal.balancePending.toFixed(2)}</span>
+            </div>
             <NumberStepper
               step={0.01}
               max={paymentModal.balancePending}
@@ -528,7 +545,7 @@ export function Mas() {
               onChange={(v) => setPaymentAmount(v)}
             />
             <div className="modal-actions">
-              <button className="btn-ghost" onClick={() => setPaymentModal(null)}>Cancelar</button>
+              <button className="btn-ghost" onClick={() => closePaymentModal()}>Cancelar</button>
               <button
                 className="btn-accent"
                 onClick={handlePayment}
@@ -538,7 +555,8 @@ export function Mas() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
