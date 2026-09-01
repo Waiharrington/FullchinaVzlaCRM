@@ -16,7 +16,8 @@ import './PublicMenu.css'
 declare global { interface Window { __removeFCSplash?: () => void } }
 
 // Selección curada para la sección "Date un banquete en Full China" del inicio.
-const FEATURED_DISH_QUERIES = ['pa ti', 'promo trio', 'vermicelli full', 'pa todos', 'el clasico']
+// Curados para no solaparse con "Nuestras Promociones" (categorías promociones/ejecutivos/individuales).
+const FEATURED_DISH_QUERIES = ['arroz frito especial', 'chop suey especial', 'costillas agridulce', 'vermicelli especial']
 
 const CATEGORY_ICONS: Record<string, string> = {
   Todos: '/optimized/menu-icons/menu.webp',
@@ -323,6 +324,7 @@ export function PublicMenu() {
   const cartPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const heroSearchRef = useRef<HTMLInputElement>(null)
   const popularScrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollPopular, setCanScrollPopular] = useState(false)
   const scrollPopular = (direction: 1 | -1) => {
     const el = popularScrollRef.current
     if (!el) return
@@ -468,6 +470,15 @@ export function PublicMenu() {
       .filter((group): group is MenuProductGroup => Boolean(group))
     return curated.length > 0 ? curated : all.slice(0, 4)
   }, [products])
+  useEffect(() => {
+    const el = popularScrollRef.current
+    if (!el) return
+    const check = () => setCanScrollPopular(el.scrollWidth > el.clientWidth + 1)
+    check()
+    const observer = new ResizeObserver(check)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [popularGroups])
   const promoGroups = useMemo(() => {
     const promoItems = products.filter(p => 
       p.category.toLowerCase().includes('promo') || 
@@ -1270,7 +1281,7 @@ export function PublicMenu() {
               aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
             >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
           </div>
-          <img key={`img-${recommendedGroup?.key ?? 'empty'}`} src={optimizedProductImage(recommendedGroup?.variants[0]?.product.imageUrl) || (recommendedGroup ? productImage(recommendedGroup.category) : '/optimized/login-carousel/slide3.webp')} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className="public-recommended-img" fetchPriority="high" decoding="async" />
+          <img key={`img-${recommendedGroup?.key ?? 'empty'}`} src={optimizedProductImage(recommendedGroup?.variants[0]?.product.imageUrl) || (recommendedGroup ? productImage(recommendedGroup.category) : '/optimized/login-carousel/slide3.webp')} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
           <div className="public-recommended-dots-overlay">
             {recommendedPool.map((_, i) => (
               <span key={i} className={i === recommendedIndex ? 'active' : ''} onClick={() => {
@@ -1591,18 +1602,10 @@ export function PublicMenu() {
                     <h2 className="public-home-section-title"><Flame size={18} aria-hidden="true" /> DATE UN BANQUETE EN FULL CHINA</h2>
                     <p className="public-home-section-sub">Los favoritos de nuestros clientes.</p>
                   </div>
-                  <button 
-                    type="button" 
-                    className="public-home-see-all-btn"
-                    onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-                  >
-                    <span>Ver todos</span>
-                    <ChevronRight size={14} />
-                  </button>
                 </div>
 
                 <div className="public-home-carousel">
-                  {popularGroups.length > 1 && (
+                  {canScrollPopular && (
                     <button type="button" className="public-home-carousel-arrow prev" aria-label="Ver plato anterior" onClick={() => scrollPopular(-1)}>
                       <ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} />
                     </button>
@@ -1610,7 +1613,7 @@ export function PublicMenu() {
                   <div className="public-home-products-grid" ref={popularScrollRef}>
                     {popularGroups.map(group => renderDesktopProductCard(group))}
                   </div>
-                  {popularGroups.length > 1 && (
+                  {canScrollPopular && (
                     <button type="button" className="public-home-carousel-arrow next" aria-label="Ver siguiente plato" onClick={() => scrollPopular(1)}>
                       <ChevronRight size={18} />
                     </button>
@@ -1664,10 +1667,10 @@ export function PublicMenu() {
                     <h2 className="public-home-section-title">NUESTRAS PROMOCIONES</h2>
                     <p className="public-home-section-sub">Aprovecha y disfruta más por menos.</p>
                   </div>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     className="public-home-see-all-btn"
-                    onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                    onClick={() => { setCurrentTab('menu'); setActiveCategory('promociones'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
                   >
                     <span>Ver todas</span>
                     <ChevronRight size={14} />

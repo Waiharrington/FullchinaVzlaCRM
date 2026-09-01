@@ -104,7 +104,7 @@
 }
 .public-menu-page::before {
   z-index: -2;
-  background: transparent;
+  background: rgba(5, 6, 8, 0.4);
 }
 .public-menu-page::after {
   z-index: -1;
@@ -1571,11 +1571,11 @@ button.mobile-only {
   .public-recommendation-row { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
   .public-recommendation-row article { display: block; padding: 6px; border-radius: 11px; }
   .public-recommendation-row img { width: 100%; height: 56px; }
-  .public-recommendation-row article > div { padding: 4px 0 18px; }
+  .public-recommendation-row article > div { padding: 4px 0 26px; }
   .public-recommendation-row strong { font-size: 9px; }
   .public-recommendation-row b { font-size: 10px; }
-  .public-recommendation-row button { width: 22px; height: 22px; right: 5px; bottom: 5px; }
-  .public-recommendation-row button svg { width: 13px; height: 13px; }
+  .public-recommendation-row button { width: 36px; height: 36px; right: 2px; bottom: 2px; }
+  .public-recommendation-row button svg { width: 16px; height: 16px; }
   .public-cart-all-extras { inset: 0; padding: 20px 12px 24px; }
   .public-cart-all-extras-head { margin-bottom: 14px; }
   .public-cart-all-extras-head h3 { font-size: 21px; }
@@ -1587,11 +1587,11 @@ button.mobile-only {
   .public-cart-all-extras-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
   .public-cart-all-extras-grid article { display: block; min-height: 0; padding: 7px; border-radius: 12px; }
   .public-cart-all-extras-grid img { width: 100%; height: 76px; }
-  .public-cart-all-extras-grid article > div { padding: 5px 0 18px; }
+  .public-cart-all-extras-grid article > div { padding: 5px 0 26px; }
   .public-cart-all-extras-grid strong { font-size: 10px; }
   .public-cart-all-extras-grid b { font-size: 10px; }
-  .public-cart-all-extras-grid article > button { width: 22px; height: 22px; right: 5px; bottom: 5px; }
-  .public-cart-all-extras-grid article > button svg { width: 13px; height: 13px; }
+  .public-cart-all-extras-grid article > button { width: 36px; height: 36px; right: 3px; bottom: 3px; }
+  .public-cart-all-extras-grid article > button svg { width: 16px; height: 16px; }
   .public-review-page .public-cart-item { grid-template-columns: 86px minmax(0,1fr); gap: 10px; min-height: 0; padding: 12px 0; }
   .public-confirm-items { padding: 6px 12px; border-radius: 18px; }
   .public-confirm-page { padding: 0; gap: 10px; }
@@ -1951,6 +1951,7 @@ button.mobile-only {
   .public-recommended-copy .public-prod-price-bs { font-size: 11px; margin-bottom: 8px; }
   .public-recommended-btn { padding: 7px 10px; border-radius: 8px; font-size: 10px; }
   .public-recommended-img { width: 70%; border-radius: 0 18px 18px 0; }
+  .public-recommended-img--bottle { object-position: center top; }
   .public-recommended-dots-overlay { bottom: 8px; }
   .public-skeleton-recommended { min-height: 156px; }
   .public-skeleton-product-image { height: 120px; }
@@ -2123,11 +2124,11 @@ button.mobile-only {
   .public-recommendation-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .public-recommendation-row article { display: block; padding: 8px; border-radius: 14px; }
   .public-recommendation-row img { width: 100%; height: 92px; }
-  .public-recommendation-row article > div { padding: 6px 0 22px; }
+  .public-recommendation-row article > div { padding: 6px 0 30px; }
   .public-recommendation-row strong { font-size: 12px; }
   .public-recommendation-row b { font-size: 13px; }
-  .public-recommendation-row button { width: 26px; height: 26px; right: 6px; bottom: 6px; }
-  .public-recommendation-row button svg { width: 14px; height: 14px; }
+  .public-recommendation-row button { width: 40px; height: 40px; right: 4px; bottom: 4px; }
+  .public-recommendation-row button svg { width: 17px; height: 17px; }
 
   /* Catálogo completo "Agrega algo más" (Ver todos): mismo problema que
      arriba — el layout horizontal de 3 columnas dejaba el botón "+"
@@ -2135,11 +2136,11 @@ button.mobile-only {
   .public-cart-all-extras-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .public-cart-all-extras-grid article { display: block; min-height: 0; padding: 8px; border-radius: 14px; }
   .public-cart-all-extras-grid img { width: 100%; height: 92px; }
-  .public-cart-all-extras-grid article > div { padding: 6px 0 22px; }
+  .public-cart-all-extras-grid article > div { padding: 6px 0 30px; }
   .public-cart-all-extras-grid strong { font-size: 12px; }
   .public-cart-all-extras-grid b { font-size: 13px; }
-  .public-cart-all-extras-grid article > button { width: 26px; height: 26px; right: 6px; bottom: 6px; }
-  .public-cart-all-extras-grid article > button svg { width: 14px; height: 14px; }
+  .public-cart-all-extras-grid article > button { width: 40px; height: 40px; right: 4px; bottom: 4px; }
+  .public-cart-all-extras-grid article > button svg { width: 17px; height: 17px; }
 
   /* Barra "Menú/Contacto": en teléfono se ve bien estirada a todo el
      ancho, pero en tablet deja un vacío enorme entre los dos botones
