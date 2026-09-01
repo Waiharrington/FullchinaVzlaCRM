@@ -16,7 +16,6 @@ import { normalizeForSearch } from '../lib/textFormat'
 import {
   Package,
   Search,
-  SlidersHorizontal,
   Eye,
   Pencil,
   TrendingUp,
@@ -193,7 +192,6 @@ export function Inventario() {
     return ingredients.filter(ing => {
       const matchesCategory = categoryFilter === 'all' ||
         (categoryFilter === 'raw' && ing.inventoryClass === 'raw_material') ||
-        (categoryFilter === 'portions' && ing.inventoryClass === 'raw_material') ||
         (categoryFilter === 'packaging' && ing.inventoryClass === 'packaging') ||
         (categoryFilter === 'beverages' && ing.inventoryClass === 'beverage')
       return matchesCategory && normalizeForSearch(ing.name).includes(normalizeForSearch(searchTerm))
@@ -334,7 +332,7 @@ export function Inventario() {
       {/* Filters Row */}
       <div className="inv-filters-row">
         <div className="inv-filter-pills">
-          {[['all', 'Todos'], ['raw', 'Materia prima'], ['portions', 'Porciones'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
+          {[['all', 'Todos'], ['raw', 'Materia prima'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
             <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
           ))}
         </div>
@@ -353,10 +351,6 @@ export function Inventario() {
               </button>
             )}
           </div>
-          <button className="inv-filter-btn" onClick={() => { setCategoryFilter('all'); setSearchTerm(''); setCurrentPage(1) }} title="Limpiar filtros">
-            <SlidersHorizontal size={16} />
-            Filtros
-          </button>
         </div>
       </div>
 
