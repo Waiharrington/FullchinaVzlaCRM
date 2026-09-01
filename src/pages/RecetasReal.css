@@ -151,6 +151,12 @@
 .rec-ing-qty { color: #a1a1aa; font-size: 13px; }
 .rec-ing-cost { color: #d4d4d8; font-size: 13px; min-width: 70px; text-align: right; }
 .rec-ing-del { background: none; border: 0; color: #FF4D3D; cursor: pointer; padding: 4px; }
+.rec-ing-action { background: none; border: 0; cursor: pointer; padding: 4px; }
+.rec-ing-edit { color: #a1a1aa; }
+.rec-ing-save { color: #22c55e; }
+.rec-ing-cancel { color: #f59e0b; }
+.rec-ing-edit-fields { display: flex; align-items: center; gap: 6px; }
+.rec-ing-edit-fields input, .rec-ing-edit-fields select { max-width: 92px; }
 
 .rec-add-form {
   display: grid; grid-template-columns: 1fr 90px 80px auto; gap: 8px; align-items: center;

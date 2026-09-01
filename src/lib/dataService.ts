@@ -3044,6 +3044,14 @@ export async function deleteRecipeComponent(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function updateRecipeComponent(id: string, updates: { quantity: number; unitId: string }): Promise<void> {
+  const { error } = await client()
+    .from('recipe_components')
+    .update({ quantity: updates.quantity, unit_id: updates.unitId })
+    .eq('id', id)
+  if (error) throw error
+}
+
 // --- Auditoría ----------------------------------------------------------------
 
 export async function getAuditLogs(limit = 200): Promise<AuditLog[]> {
