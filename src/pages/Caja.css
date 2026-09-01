@@ -12,6 +12,10 @@
   margin: 0 auto;
 }
 
+.caja-embedded { min-height: 0; }
+.caja-embedded .cash-session-strip { margin-top: 0; }
+.caja-embedded .caja-layout { padding-bottom: 10px; }
+
 /* Los items de grid tienen min-width:auto por defecto, así que el contenido
    interno sin wrap (banner, topbar) puede forzar overflow horizontal de toda
    la página. min-width:0 obliga a que respeten el ancho real del track. */
@@ -388,13 +392,22 @@
 
 .product-image-area {
   height: 135px;
-  background-size: cover;
-  background-position: center;
   position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 10px;
+  overflow: hidden;
+  background: #202024;
+}
+
+.product-card-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
 }
 
 .product-badge {
@@ -427,6 +440,7 @@
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(227, 27, 43, 0.4);
+  z-index: 1;
 }
 
 .product-card-body {

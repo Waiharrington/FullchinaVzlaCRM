@@ -1075,6 +1075,60 @@
   overflow-y: auto;
 }
 
+/* POS completo abierto desde Nueva comanda */
+.cmd-sales-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90000;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  background: rgba(0, 0, 0, .82);
+  backdrop-filter: blur(10px);
+}
+.cmd-sales-modal {
+  width: min(1480px, calc(100vw - 24px));
+  height: min(920px, calc(100dvh - 24px));
+  display: grid;
+  grid-template-rows: 58px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  background: #0d0d0f;
+  box-shadow: 0 30px 90px rgba(0,0,0,.72);
+}
+.cmd-sales-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px 0 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, #18181c, #131316);
+}
+.cmd-sales-modal-head > div { display: flex; align-items: baseline; gap: 9px; }
+.cmd-sales-modal-head small { color: #71717a; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.cmd-sales-modal-head strong { color: #fff; font-size: 17px; }
+.cmd-sales-modal-head button {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: rgba(255,255,255,.045);
+  color: #fff;
+  cursor: pointer;
+}
+.cmd-sales-modal-head button:hover { border-color: rgba(255,77,61,.55); color: #ff6257; background: rgba(255,77,61,.1); }
+.cmd-sales-modal-body { min-height: 0; overflow: auto; padding: 14px; }
+@media (max-width: 767px) {
+  .cmd-sales-overlay { padding: 0; }
+  .cmd-sales-modal { width: 100vw; height: 100dvh; border: 0; border-radius: 0; grid-template-rows: 54px minmax(0,1fr); }
+  .cmd-sales-modal-body { padding: 8px; }
+  .cmd-sales-modal-head { padding-inline: 13px 9px; }
+}
+
 .cmd-modal-container {
   background: #111111;
   border: 1px solid #333;

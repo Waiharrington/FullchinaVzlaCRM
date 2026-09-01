@@ -94,3 +94,44 @@
 .fin-date-range { display: flex; align-items: center; gap: 6px; }
 .fin-date-range input { color-scheme: dark; background: #18181d; color: #fff; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 9px; }
 @media (max-width: 760px) { .fin-currency-summary { grid-template-columns: 1fr; } .fin-date-range { width: 100%; } .fin-date-range input { min-width: 0; flex: 1; } }
+
+/* Resumen diario inspirado en la hoja operativa */
+.fin-daily-summary { overflow: hidden; }
+.fin-daily-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.fin-month-nav { display: flex; align-items: center; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; overflow: hidden; background: #19191f; }
+.fin-month-nav button { width: 34px; height: 36px; display: grid; place-items: center; border: 0; background: transparent; color: #fff; cursor: pointer; }
+.fin-month-nav button:disabled { opacity: .3; cursor: not-allowed; }
+.fin-month-nav input { height: 36px; border: 0; border-inline: 1px solid rgba(255,255,255,.08); background: transparent; color: #fff; color-scheme: dark; padding: 0 9px; }
+.fin-daily-layout { display: grid; grid-template-columns: minmax(0, 1fr) 285px; gap: 16px; align-items: start; }
+.fin-daily-table-wrap { overflow: auto; max-height: 590px; border: 1px solid rgba(255,255,255,.07); border-radius: 12px; }
+.fin-daily-table { width: 100%; min-width: 830px; border-collapse: separate; border-spacing: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.fin-daily-table th { position: sticky; top: 0; z-index: 2; padding: 10px 9px; background: #1d1d23; color: #a1a1aa; text-align: right; white-space: nowrap; border-bottom: 1px solid rgba(255,255,255,.09); }
+.fin-daily-table th:first-child { left: 0; text-align: center; }
+.fin-daily-table td { padding: 8px 9px; text-align: right; border-bottom: 1px solid rgba(255,255,255,.045); color: #d4d4d8; cursor: pointer; }
+.fin-daily-table td:first-child { position: sticky; left: 0; background: #15151a; text-align: center; }
+.fin-daily-table td button { width: 27px; height: 27px; border: 0; border-radius: 7px; background: transparent; color: #fff; cursor: pointer; }
+.fin-daily-table tr:hover td { background: rgba(255,255,255,.035); }
+.fin-daily-table tr.selected td { background: rgba(227,27,43,.105); }
+.fin-daily-table tr.selected td:first-child { background: #3a151a; }
+.fin-daily-table tr.selected td button { background: #e31b2b; }
+.fin-daily-table td.sales { color: #6ee7c8; background: rgba(45,212,191,.045); }
+.fin-daily-table td.outflow { color: #fda4af; background: rgba(251,113,133,.045); }
+.fin-daily-table .positive { color: #4ade80; font-weight: 700; }
+.fin-daily-table .negative { color: #fb7185; font-weight: 700; }
+.fin-daily-table tfoot td { position: sticky; bottom: 0; z-index: 2; background: #24242b; color: #fff; font-weight: 800; border-top: 1px solid rgba(255,255,255,.12); }
+.fin-week-summary { overflow: hidden; border: 1px solid rgba(255,255,255,.09); border-radius: 13px; background: #19191f; }
+.fin-week-title { display: flex; justify-content: space-between; gap: 10px; padding: 13px 14px; background: #24242b; font-size: 12px; }
+.fin-week-title span { color: #a1a1aa; }
+.fin-week-primary { display: flex; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,.055); font-size: 13px; }
+.fin-week-primary:first-of-type { background: rgba(45,212,191,.12); }
+.fin-week-primary.difference.negative { background: rgba(239,68,68,.18); color: #fda4af; }
+.fin-week-primary.difference.positive { background: rgba(34,197,94,.16); color: #86efac; }
+.fin-week-summary dl { margin: 8px 14px 14px; }
+.fin-week-summary dl div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; font-size: 12px; }
+.fin-week-summary dt { color: #a1a1aa; }
+.fin-week-summary dd { margin: 0; font-weight: 700; }
+.fin-selected-day { display: flex; flex-direction: column; gap: 4px; margin: 0 10px 10px; padding: 10px; border-radius: 9px; background: rgba(255,255,255,.045); }
+.fin-selected-day small { color: #a1a1aa; }
+.fin-selected-day span { font-size: 11px; }
+@media (max-width: 1050px) { .fin-daily-layout { grid-template-columns: 1fr; } .fin-week-summary { max-width: none; } }
+@media (max-width: 640px) { .fin-daily-head { flex-direction: column; } .fin-month-nav { width: 100%; justify-content: space-between; } .fin-month-nav input { flex: 1; } .fin-daily-summary { padding: 14px; } }
