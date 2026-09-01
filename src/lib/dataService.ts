@@ -54,6 +54,7 @@ export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' 
 export interface OrderPaymentComponent {
   method: PaymentMethod
   amount: number
+  accountId?: string | null
   referenceNumber?: string | null
   receivedAmount?: number | null
   notes?: string | null
@@ -226,6 +227,14 @@ export interface Ingredient {
   pricePerUnit: number | null
   stockValue: number | null
   inventoryClass: 'raw_material' | 'packaging' | 'beverage' | 'non_inventory'
+}
+
+export interface FinancialAccount {
+  id: string
+  name: string
+  accountType: string
+  currency: 'USD' | 'VES'
+  isActive: boolean
 }
 
 export interface StockMovement {
@@ -1157,6 +1166,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
       id: p.id as string,
       method: p.method as PaymentMethod,
       amount: Number(p.amount),
+      accountId: (p.account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
       notes: (p.notes as string) ?? null,
@@ -2030,6 +2040,19 @@ export async function getIngredients(): Promise<Ingredient[]> {
     pricePerUnit: i.price_per_unit !== null ? Number(i.price_per_unit) : null,
     stockValue: i.stock_value !== null ? Number(i.stock_value) : null,
     inventoryClass: inventoryClasses.get(i.ingredient_id as string) ?? 'raw_material',
+  }))
+}
+
+export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
+  const { data, error } = await client()
+    .from('financial_accounts')
+    .select('id,name,account_type,currency,is_active')
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((a) => ({
+    id: String(a.id), name: String(a.name), accountType: String(a.account_type),
+    currency: a.currency as 'USD' | 'VES', isActive: Boolean(a.is_active),
   }))
 }
 
@@ -3246,6 +3269,7 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
       id: p.id as string,
       method: p.method as PaymentMethod,
       amount: Number(p.amount),
+      accountId: (p.account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
       notes: (p.notes as string) ?? null,

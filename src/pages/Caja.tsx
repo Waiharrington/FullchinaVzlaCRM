@@ -22,6 +22,7 @@ import {
   getProductModifiers,
   getOccupiedTables,
   getMenuCategories,
+  getFinancialAccounts,
   type Product,
   type CartItem,
   type OrderResult,
@@ -30,6 +31,7 @@ import {
   type CashSessionSnapshot,
   type ProductModifierGroup,
   type SelectedModifier,
+  type FinancialAccount,
 } from '../lib/dataService'
 import {
   X,
@@ -314,6 +316,10 @@ export function Caja() {
   const [splitPrimaryExtraRefs, setSplitPrimaryExtraRefs] = useState<string[]>([])
   const [splitSecondaryExtraRefs, setSplitSecondaryExtraRefs] = useState<string[]>([])
   const [paymentNote, setPaymentNote] = useState('')
+  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
+  const [paymentAccountId, setPaymentAccountId] = useState('')
+  const [splitPrimaryAccountId, setSplitPrimaryAccountId] = useState('')
+  const [splitSecondaryAccountId, setSplitSecondaryAccountId] = useState('')
 
   const [paying, setPaying] = useState(false)
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
@@ -367,6 +373,23 @@ export function Caja() {
       .then(setCashSession)
       .catch(() => setCashSession(null))
   }, [])
+
+  useEffect(() => {
+    getFinancialAccounts().then(setFinancialAccounts).catch(() => setFinancialAccounts([]))
+  }, [])
+
+  const accountsForMethod = (method: SplitPaymentMethod) => {
+    if (method === 'cash') return financialAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrency)
+    if (method === 'mobile' || method === 'transfer') return financialAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
+    if (method === 'card') return financialAccounts.filter((a) => a.accountType === 'pos' && a.currency === 'VES')
+    if (method === 'zelle' || method === 'binance') return financialAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
+    return financialAccounts
+  }
+
+  const ensureAccountForMethod = (method: SplitPaymentMethod) => {
+    const options = accountsForMethod(method)
+    return options[0]?.id ?? ''
+  }
 
   // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
   const resolveCat = (product: Product) =>
@@ -603,6 +626,9 @@ export function Caja() {
     setSplitSecondaryReference('')
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
+    setPaymentAccountId(initialMethod === 'cash' ? ensureAccountForMethod(cashCurrency === 'USD' ? 'cash' : 'cash') : ensureAccountForMethod(initialMethod))
+    setSplitPrimaryAccountId(ensureAccountForMethod('cash'))
+    setSplitSecondaryAccountId(ensureAccountForMethod('mobile'))
     setPaymentNote('')
     setPayError('')
     setShowPaymentModal(true)
@@ -626,8 +652,14 @@ export function Caja() {
     setSplitSecondaryReference('')
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
-    setPayError('')
     const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method === 'other' ? 'cash' : method
+    if (method === 'split') {
+      setSplitPrimaryAccountId(ensureAccountForMethod(splitPrimaryMethod))
+      setSplitSecondaryAccountId(ensureAccountForMethod(splitSecondaryMethod))
+    } else {
+      setPaymentAccountId(ensureAccountForMethod(inputMethod))
+    }
+    setPayError('')
     setAmountReceived(usdToPaymentInput(method === 'split' ? total / 2 : total, inputMethod, bcvRate))
   }
 
@@ -657,6 +689,9 @@ export function Caja() {
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
+      if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && !paymentAccountId) {
+        throw new Error('Selecciona la cuenta donde ingresó el dinero')
+      }
       const combinedRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
 
       let paymentComponents
@@ -678,6 +713,9 @@ export function Caja() {
         if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
           throw new Error('Ingresa la referencia del segundo método')
         }
+        if (!splitPrimaryAccountId || !splitSecondaryAccountId) {
+          throw new Error('Selecciona la cuenta de cada método de pago')
+        }
         finalMethod = 'other'
         const primaryRefs = [splitPrimaryReference, ...splitPrimaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
         const secondaryRefs = [splitSecondaryReference, ...splitSecondaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
@@ -686,6 +724,7 @@ export function Caja() {
             method: splitPrimaryMethod,
             amount: primaryAmount,
             referenceNumber: primaryRefs || undefined,
+            accountId: splitPrimaryAccountId || null,
             receivedAmount: splitPrimaryMethod === 'cash' ? primaryAmount : undefined,
             notes: paymentNote || undefined,
           },
@@ -693,6 +732,7 @@ export function Caja() {
             method: splitSecondaryMethod,
             amount: secondaryAmount,
             referenceNumber: secondaryRefs || undefined,
+            accountId: splitSecondaryAccountId || null,
             receivedAmount: splitSecondaryMethod === 'cash' ? secondaryAmount : undefined,
             notes: paymentNote || undefined,
           },
@@ -706,6 +746,7 @@ export function Caja() {
           method: selectedPaymentTab,
           amount: total,
           referenceNumber: combinedRefs || undefined,
+          accountId: paymentAccountId || null,
           receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
           notes: paymentNote || undefined,
         }]
@@ -1527,6 +1568,16 @@ export function Caja() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
+                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && (
+                  <div className="payment-field-group mt-2">
+                    <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
+                    <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
+                      <option value="">Selecciona una cuenta</option>
+                      {accountsForMethod(selectedPaymentTab).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                    </StyledSelect>
+                  </div>
+                )}
+
                 {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && requiresPaymentReference(selectedPaymentTab) && (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">{paymentReferenceLabel(selectedPaymentTab)}</label>
@@ -1583,8 +1634,14 @@ export function Caja() {
                           setSplitPrimaryReference('')
                           setSplitPrimaryExtraRefs([])
                           setPayError('')
+                          setSplitPrimaryAccountId(ensureAccountForMethod(nextMethod))
                         }}
                       />
+                      <label className="payment-field-label">Cuenta de ingreso *</label>
+                      <StyledSelect value={splitPrimaryAccountId} onChange={(e) => setSplitPrimaryAccountId(e.target.value)}>
+                        <option value="">Selecciona una cuenta</option>
+                        {accountsForMethod(splitPrimaryMethod).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                      </StyledSelect>
                       <label className="payment-field-label">Monto del primer método</label>
                       <div className="payment-input-wrap">
                         <input
@@ -1651,8 +1708,14 @@ export function Caja() {
                           setSplitSecondaryReference('')
                           setSplitSecondaryExtraRefs([])
                           setPayError('')
+                          setSplitSecondaryAccountId(ensureAccountForMethod(nextMethod))
                         }}
                       />
+                      <label className="payment-field-label">Cuenta de ingreso *</label>
+                      <StyledSelect value={splitSecondaryAccountId} onChange={(e) => setSplitSecondaryAccountId(e.target.value)}>
+                        <option value="">Selecciona una cuenta</option>
+                        {accountsForMethod(splitSecondaryMethod).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                      </StyledSelect>
                       <label className="payment-field-label">Monto del segundo método</label>
                       <div className="split-readonly-amount">
                         <MoneyWithBcv

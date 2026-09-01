@@ -77,3 +77,9 @@
 .fin-op-amount { text-align:right; font-weight:800; }
 .fin-neutral { color:#38bdf8 !important; }
 @media (max-width:640px) { .fin-op { grid-template-columns:1fr auto; } .fin-op-route { grid-column:1/-1; grid-row:2; } }
+.fin-account-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.fin-account-box { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.fin-account-box span { color: #a1a1aa; font-size: 12px; }
+.fin-account-box strong { font-size: 19px; }
+.fin-account-box small { color: #71717a; font-size: 11px; }
+@media (max-width: 760px) { .fin-account-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

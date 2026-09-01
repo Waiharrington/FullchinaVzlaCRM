@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, getFinancialOperations,
-  type FullOrder, type Expense, type RecipeSummary, type FinancialOperation,
+  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts,
+  type FullOrder, type Expense, type RecipeSummary, type FinancialOperation, type FinancialAccount,
 } from '../lib/dataService'
 import { useRates } from '../context/rates-context'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -46,6 +46,7 @@ export function Finanzas() {
   const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
   const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
   const [operations, setOperations] = useState<FinancialOperation[]>([])
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('hoy')
   const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
@@ -55,14 +56,15 @@ export function Finanzas() {
       setLoading(true)
       const now = new Date()
       const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1) // incluye mes anterior para comparativos
-      const [ords, exps, recipes, pay, ops] = await Promise.all([
+      const [ords, exps, recipes, pay, ops, accts] = await Promise.all([
         getOrdersWithItems(monthStart.toISOString()),
         getExpenses(isoDate(monthStart)),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
         getFinancialOperations(isoDate(monthStart)).catch(() => []),
+        getFinancialAccounts().catch(() => []),
       ])
-      setOrders(ords); setExpenses(exps); setRecipeCost(recipes); setPayroll(pay); setOperations(ops)
+      setOrders(ords); setExpenses(exps); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts)
     } catch (e) { console.error(e) } finally { setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
@@ -117,6 +119,16 @@ export function Finanzas() {
   const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
   const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
   const periodLabel = period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Esta semana' : 'Este mes'
+  const accountTotals = useMemo(() => {
+    const totals = new Map<string, number>()
+    const [start, end] = ranges[period]
+    for (const order of orders) {
+      const at = new Date(order.createdAt).getTime()
+      if (order.status !== 'paid' || at < start.getTime() || at > end.getTime()) continue
+      for (const payment of order.payments) if (payment.accountId) totals.set(payment.accountId, (totals.get(payment.accountId) ?? 0) + payment.amount)
+    }
+    return totals
+  }, [orders, period, ranges])
 
   const chartData = {
     labels: ['Ventas Brutas', 'Costo Insumos', 'Ganancia Bruta', 'Gastos Op.', 'Nómina', 'Ganancia Neta'],
@@ -216,6 +228,19 @@ export function Finanzas() {
           <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}><Percent size={18} /></span>
             <div><div className="fin-kpi-lbl">Margen Neto</div><div className="fin-kpi-val">{cur.margin.toFixed(1)}%</div></div></div>
           <div className="fin-kpi-sub"><span className={marginPP >= 0 ? 'fin-up' : 'fin-down'}>{marginPP >= 0 ? '▲' : '▼'} {Math.abs(marginPP).toFixed(1)} pp vs ayer</span></div>
+        </div>
+      </div>
+
+      <div className="fin-card fin-accounts-card">
+        <h2>Cuentas y cajas</h2>
+        <p className="sub">Ingresos cobrados en {periodLabel.toLowerCase()} por cuenta de destino.</p>
+        <div className="fin-account-grid">
+          {accounts.filter((a) => ['Banco Exterior', 'Banesco', 'Efectivo dolares', 'Efectivo bolivares'].includes(a.name)).map((account) => (
+            <div className="fin-account-box" key={account.id}>
+              <span>{account.name}</span><strong>{formatUsd(accountTotals.get(account.id) ?? 0)}</strong>
+              <small>{account.currency === 'VES' && bcvRate ? formatVes((accountTotals.get(account.id) ?? 0) * bcvRate) : account.currency}</small>
+            </div>
+          ))}
         </div>
       </div>
 
