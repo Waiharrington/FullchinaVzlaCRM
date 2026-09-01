@@ -167,6 +167,8 @@ export interface Expense {
   notes: string | null
   createdBy: string
   createdAt: string
+  accountId: string | null
+  exchangeRate: number | null
 }
 
 export interface FinancialOperation {
@@ -235,6 +237,8 @@ export interface FinancialAccount {
   accountType: string
   currency: 'USD' | 'VES'
   isActive: boolean
+  openingBalance: number
+  currentBalance: number
 }
 
 export interface StockMovement {
@@ -274,6 +278,8 @@ export interface Purchase {
   items: PurchaseItem[]
   totalAmount: number
   isPaid: boolean
+  accountId: string | null
+  exchangeRate: number | null
 }
 
 export interface PurchaseItem {
@@ -1664,6 +1670,8 @@ export async function getExpenses(dateStart?: string, dateEnd?: string): Promise
     notes: (e.notes as string) ?? null,
     createdBy: e.created_by as string,
     createdAt: e.created_at as string,
+    accountId: (e.account_id as string) ?? null,
+    exchangeRate: e.exchange_rate == null ? null : Number(e.exchange_rate),
   }))
 }
 
@@ -1673,6 +1681,8 @@ export async function createExpense(params: {
   category: 'fixed' | 'variable' | 'other'
   expenseDate: string
   notes?: string | null
+  accountId?: string | null
+  exchangeRate?: number | null
   userId: string
 }): Promise<Expense> {
   const { data, error } = await client().from('expenses').insert({
@@ -1681,6 +1691,8 @@ export async function createExpense(params: {
     category: params.category,
     expense_date: params.expenseDate,
     notes: params.notes ?? null,
+    account_id: params.accountId ?? null,
+    exchange_rate: params.exchangeRate ?? null,
     created_by: params.userId,
   }).select('*').single()
   if (error) throw error
@@ -1693,6 +1705,8 @@ export async function createExpense(params: {
     notes: (data.notes as string) ?? null,
     createdBy: data.created_by as string,
     createdAt: data.created_at as string,
+    accountId: (data.account_id as string) ?? null,
+    exchangeRate: data.exchange_rate == null ? null : Number(data.exchange_rate),
   }
 }
 
@@ -2044,16 +2058,18 @@ export async function getIngredients(): Promise<Ingredient[]> {
 }
 
 export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
-  const { data, error } = await client()
-    .from('financial_accounts')
-    .select('id,name,account_type,currency,is_active')
-    .eq('is_active', true)
-    .order('name', { ascending: true })
+  const { data, error } = await client().rpc('fn_get_financial_account_balances')
   if (error) throw error
-  return (data ?? []).map((a) => ({
+  return ((data as Array<Record<string, unknown>>) ?? []).map((a) => ({
     id: String(a.id), name: String(a.name), accountType: String(a.account_type),
-    currency: a.currency as 'USD' | 'VES', isActive: Boolean(a.is_active),
+    currency: a.currency as 'USD' | 'VES', isActive: true,
+    openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.current_balance ?? 0),
   }))
+}
+
+export async function updateFinancialAccountOpeningBalance(id: string, openingBalance: number): Promise<void> {
+  const { error } = await client().from('financial_accounts').update({ opening_balance: openingBalance }).eq('id', id)
+  if (error) throw error
 }
 
 export async function getStockMovements(ingredientId?: string): Promise<StockMovement[]> {
@@ -3146,7 +3162,7 @@ export async function getPurchases(): Promise<Purchase[]> {
   const { data, error } = await client()
     .from('purchases')
     .select(`
-      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid,
+      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, account_id, exchange_rate,
       suppliers(name),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
     `)
@@ -3178,6 +3194,8 @@ export async function getPurchases(): Promise<Purchase[]> {
       items,
       totalAmount: items.reduce((sum, i) => sum + i.total, 0),
       isPaid: p.is_paid !== false,
+      accountId: (p.account_id as string) ?? null,
+      exchangeRate: p.exchange_rate == null ? null : Number(p.exchange_rate),
     }
   })
 }
@@ -3194,6 +3212,8 @@ export async function createPurchase(params: {
   notes?: string
   userId: string
   isPaid?: boolean
+  accountId?: string | null
+  exchangeRate?: number | null
   items: Array<{
     ingredientId: string
     quantity: number
@@ -3211,6 +3231,8 @@ export async function createPurchase(params: {
       invoice_number: params.invoiceNumber ?? null,
       notes: params.notes ?? null,
       is_paid: params.isPaid ?? true,
+      account_id: params.accountId ?? null,
+      exchange_rate: params.exchangeRate ?? null,
       created_by: params.userId,
     })
     .select('id')

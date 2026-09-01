@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { createExpense, getExpenses } from '../lib/dataService'
+import { createExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
@@ -27,12 +27,13 @@ const METHODS = [
 ]
 const methodLabel = (v: string) => METHODS.find((m) => m.v === v)?.l ?? v
 const PAGE_SIZE = 8
-const emptyForm = { description: '', type: 'variable' as 'fixed' | 'variable', category: 'supermarket', vendor: '', amountUsd: '', paymentMethod: 'pago_movil', reference: '', notes: '' }
+const emptyForm = { description: '', type: 'variable' as 'fixed' | 'variable', category: 'supermarket', vendor: '', amountUsd: '', paymentMethod: 'pago_movil', accountId: '', reference: '', notes: '' }
 
 export function Gastos() {
   const { user } = useAuth()
   const [expenses, setExpenses] = useState<ExpenseView[]>([])
   const [rate, setRate] = useState(40.56)
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
@@ -48,6 +49,7 @@ export function Gastos() {
 
   useEffect(() => {
     getExchangeRates().then((r) => { if (r.bcv > 0) setRate(r.bcv) }).catch(() => {})
+    getFinancialAccounts().then(setAccounts).catch(() => setAccounts([]))
     getExpenses().then((data) => setExpenses(data.map((item) => {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
@@ -90,11 +92,13 @@ export function Gastos() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user || !form.description.trim() || amountNum <= 0) return
+    if (!form.accountId) { setError('Selecciona la cuenta desde donde salió el dinero'); return }
     setSaving(true); setError('')
     try {
       const saved = await createExpense({
         concept: form.description.trim(), amount: amountNum, category: form.type,
         expenseDate: dateKeyInTimeZone(), userId: user.id,
+        accountId: form.accountId, exchangeRate: rate,
         notes: JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() }),
       })
       setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountNum, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
@@ -248,6 +252,8 @@ export function Gastos() {
             <div className="gst-row2">
               <div className="gst-field"><label>Método de Pago <span className="gst-req">*</span></label>
                 <StyledSelect value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</StyledSelect></div>
+              <div className="gst-field"><label>Cuenta de salida <span className="gst-req">*</span></label>
+                <StyledSelect value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
               <div className="gst-field"><label>N° de Referencia</label>
                 <input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Ej: 8841023" /></div>
             </div>

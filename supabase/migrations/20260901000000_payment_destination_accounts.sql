@@ -2,12 +2,36 @@ BEGIN;
 
 ALTER TABLE fullchinavzla.payments
   ADD COLUMN IF NOT EXISTS account_id UUID REFERENCES fullchinavzla.financial_accounts(id);
+ALTER TABLE fullchinavzla.financial_accounts ADD COLUMN IF NOT EXISTS opening_balance NUMERIC(16,2) NOT NULL DEFAULT 0;
+ALTER TABLE fullchinavzla.expenses
+  ADD COLUMN IF NOT EXISTS account_id UUID REFERENCES fullchinavzla.financial_accounts(id),
+  ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(14,6);
+ALTER TABLE fullchinavzla.purchases
+  ADD COLUMN IF NOT EXISTS account_id UUID REFERENCES fullchinavzla.financial_accounts(id),
+  ADD COLUMN IF NOT EXISTS exchange_rate NUMERIC(14,6);
 
 DROP POLICY IF EXISTS financial_accounts_select ON fullchinavzla.financial_accounts;
 CREATE POLICY financial_accounts_select ON fullchinavzla.financial_accounts FOR SELECT
   USING (fullchinavzla.get_current_user_role() IN ('owner', 'manager', 'cashier'));
 
 CREATE INDEX IF NOT EXISTS idx_payments_account ON fullchinavzla.payments(account_id);
+CREATE INDEX IF NOT EXISTS idx_expenses_account ON fullchinavzla.expenses(account_id);
+CREATE INDEX IF NOT EXISTS idx_purchases_account ON fullchinavzla.purchases(account_id);
+
+CREATE OR REPLACE FUNCTION fullchinavzla.fn_get_financial_account_balances()
+RETURNS TABLE(id UUID,name TEXT,account_type TEXT,currency TEXT,opening_balance NUMERIC,current_balance NUMERIC)
+LANGUAGE sql SECURITY DEFINER SET search_path=fullchinavzla,pg_temp AS $$
+  SELECT a.id,a.name,a.account_type,a.currency,a.opening_balance,
+    a.opening_balance
+    + COALESCE((SELECT sum(CASE WHEN a.currency='VES' THEN p.amount*COALESCE(o.bcv_rate,1) ELSE p.amount END) FROM payments p JOIN orders o ON o.id=p.order_id WHERE p.account_id=a.id),0)
+    - COALESCE((SELECT sum(CASE WHEN a.currency='VES' THEN e.amount*COALESCE(e.exchange_rate,1) ELSE e.amount END) FROM expenses e WHERE e.account_id=a.id),0)
+    - COALESCE((SELECT sum(CASE WHEN a.currency='VES' THEN pi.total*COALESCE(pu.exchange_rate,1) ELSE pi.total END) FROM purchases pu JOIN LATERAL (SELECT sum(quantity*unit_cost) total FROM purchase_items WHERE purchase_id=pu.id) pi ON true WHERE pu.account_id=a.id AND pu.is_paid),0)
+    + COALESCE((SELECT sum(CASE WHEN a.currency=fo.original_currency THEN fo.original_amount ELSE fo.amount_usd END) FROM financial_operations fo WHERE fo.to_account_id=a.id AND fo.status='confirmed'),0)
+    - COALESCE((SELECT sum(CASE WHEN a.currency=fo.original_currency THEN fo.original_amount ELSE fo.amount_usd END) FROM financial_operations fo WHERE fo.from_account_id=a.id AND fo.status='confirmed'),0)
+    AS current_balance
+  FROM financial_accounts a WHERE a.is_active ORDER BY a.name;
+$$;
+GRANT EXECUTE ON FUNCTION fullchinavzla.fn_get_financial_account_balances() TO authenticated,service_role;
 
 CREATE OR REPLACE VIEW fullchinavzla.v_orders_with_items
 WITH (security_invoker = true) AS

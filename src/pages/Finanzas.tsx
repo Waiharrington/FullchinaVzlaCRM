@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts,
+  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance,
   type FullOrder, type Expense, type RecipeSummary, type FinancialOperation, type FinancialAccount,
 } from '../lib/dataService'
 import { useRates } from '../context/rates-context'
@@ -11,13 +11,13 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Lege
 import { Bar } from 'react-chartjs-2'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
-  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download,
+  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
 } from 'lucide-react'
 import './Finanzas.css'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
-type Period = 'hoy' | 'semana' | 'mes'
+type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
 interface PL {
   grossSales: number; cogs: number; opex: number; payroll: number
   grossProfit: number; netProfit: number; margin: number
@@ -49,7 +49,11 @@ export function Finanzas() {
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('hoy')
+  const [rangeStart, setRangeStart] = useState(isoDate(new Date()))
+  const [rangeEnd, setRangeEnd] = useState(isoDate(new Date()))
   const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
+  const [openingBalanceDraft, setOpeningBalanceDraft] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -96,39 +100,41 @@ export function Finanzas() {
     const now = new Date()
     const monday = startOfDay(addDays(now, -((now.getDay() + 6) % 7)))
     const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
+    const customStart = startOfDay(new Date(`${rangeStart}T00:00:00`))
+    const customEnd = endOfDay(new Date(`${rangeEnd}T00:00:00`))
     return {
       hoy: [startOfDay(now), endOfDay(now)] as const,
       ayer: [startOfDay(addDays(now, -1)), endOfDay(addDays(now, -1))] as const,
       semana: [monday, endOfDay(now)] as const,
       mes: [monthStart, endOfDay(now)] as const,
       prevDay2: [startOfDay(addDays(now, -1)), endOfDay(addDays(now, -1))] as const,
+      rango: [customStart, customEnd] as const,
     }
-  }, [])
+  }, [rangeStart, rangeEnd])
 
   const pls = useMemo(() => (loading ? null : {
     hoy: computePL(...ranges.hoy), ayer: computePL(...ranges.ayer),
-    semana: computePL(...ranges.semana), mes: computePL(...ranges.mes),
+    semana: computePL(...ranges.semana), mes: computePL(...ranges.mes), rango: computePL(...ranges.rango),
   }), [loading, computePL, ranges])
 
   if (loading || !pls) return <PageSkeleton cards={4} rows={6} />
 
-  const cur = period === 'hoy' ? pls.hoy : period === 'semana' ? pls.semana : pls.mes
+  const cur = pls[period]
   const prev = pls.ayer // referencia de comparación para las tarjetas
   const breakEven = cur.opex + cur.payroll
   const bePct = breakEven > 0 ? Math.min(100, Math.round((cur.grossSales / breakEven) * 100)) : (cur.grossSales > 0 ? 100 : 0)
   const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
   const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
-  const periodLabel = period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Esta semana' : 'Este mes'
-  const accountTotals = useMemo(() => {
-    const totals = new Map<string, number>()
-    const [start, end] = ranges[period]
-    for (const order of orders) {
-      const at = new Date(order.createdAt).getTime()
-      if (order.status !== 'paid' || at < start.getTime() || at > end.getTime()) continue
-      for (const payment of order.payments) if (payment.accountId) totals.set(payment.accountId, (totals.get(payment.accountId) ?? 0) + payment.amount)
-    }
-    return totals
-  }, [orders, period, ranges])
+  const periodLabel = period === 'hoy' ? 'Hoy' : period === 'ayer' ? 'Ayer' : period === 'semana' ? 'Esta semana' : period === 'mes' ? 'Este mes' : `${rangeStart} al ${rangeEnd}`
+  const salesUsd = Object.entries(cur.payments).filter(([method]) => ['cash','binance','zelle'].includes(method)).reduce((sum,[,amount]) => sum+amount,0)
+  const salesVesUsd = Math.max(cur.grossSales-salesUsd,0)
+  const saveOpeningBalance = async (account: FinancialAccount) => {
+    const value = Number(openingBalanceDraft)
+    if (!Number.isFinite(value)) return
+    await updateFinancialAccountOpeningBalance(account.id, value)
+    setAccounts(await getFinancialAccounts())
+    setEditingAccountId(null)
+  }
 
   const chartData = {
     labels: ['Ventas Brutas', 'Costo Insumos', 'Ganancia Bruta', 'Gastos Op.', 'Nómina', 'Ganancia Neta'],
@@ -178,9 +184,10 @@ export function Finanzas() {
         <div className="fin-head-actions">
           <span className="fin-period"><CalendarDays size={15} />
             <StyledSelect value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-              <option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option>
+              <option value="hoy">Hoy</option><option value="ayer">Ayer</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="rango">Rango personalizado</option>
             </StyledSelect>
           </span>
+          {period === 'rango' && <span className="fin-date-range"><input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} /><span>a</span><input type="date" value={rangeEnd} min={rangeStart} onChange={(e) => setRangeEnd(e.target.value)} /></span>}
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
@@ -232,16 +239,22 @@ export function Finanzas() {
       </div>
 
       <div className="fin-card fin-accounts-card">
-        <h2>Cuentas y cajas</h2>
-        <p className="sub">Ingresos cobrados en {periodLabel.toLowerCase()} por cuenta de destino.</p>
+        <h2>Saldos actuales por cuenta</h2>
+        <p className="sub">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</p>
         <div className="fin-account-grid">
           {accounts.filter((a) => ['Banco Exterior', 'Banesco', 'Efectivo dolares', 'Efectivo bolivares'].includes(a.name)).map((account) => (
             <div className="fin-account-box" key={account.id}>
-              <span>{account.name}</span><strong>{formatUsd(accountTotals.get(account.id) ?? 0)}</strong>
-              <small>{account.currency === 'VES' && bcvRate ? formatVes((accountTotals.get(account.id) ?? 0) * bcvRate) : account.currency}</small>
+              <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
+              <small>{account.currency}</small>
+              {editingAccountId === account.id ? <div className="fin-opening-edit"><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="fin-currency-summary">
+        <div className="fin-card"><span className="sub">Ventas en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia</small></div>
+        <div className="fin-card"><span className="sub">Ventas en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios USD</small></div>
       </div>
 
       <div className="fin-grid">
