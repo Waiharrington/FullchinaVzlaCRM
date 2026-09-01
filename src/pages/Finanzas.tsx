@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, getFinancialOperations,
-  type FullOrder, type Expense, type RecipeSummary, type FinancialOperation,
+  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance,
+  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount,
 } from '../lib/dataService'
+import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { useRates } from '../context/rates-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
@@ -11,13 +12,14 @@ import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Lege
 import { Bar } from 'react-chartjs-2'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
-  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download,
+  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import './Finanzas.css'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
-type Period = 'hoy' | 'semana' | 'mes'
+type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
 interface PL {
   grossSales: number; cogs: number; opex: number; payroll: number
   grossProfit: number; netProfit: number; margin: number
@@ -43,28 +45,41 @@ export function Finanzas() {
   const { bcvRate } = useRates()
   const [orders, setOrders] = useState<FullOrder[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [purchases, setPurchases] = useState<Purchase[]>([])
   const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
   const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
   const [operations, setOperations] = useState<FinancialOperation[]>([])
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('hoy')
+  const [rangeStart, setRangeStart] = useState(isoDate(new Date()))
+  const [rangeEnd, setRangeEnd] = useState(isoDate(new Date()))
   const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
+  const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
+  const [openingBalanceDraft, setOpeningBalanceDraft] = useState('')
+  const currentMonth = isoDate(new Date()).slice(0, 7)
+  const [summaryMonth, setSummaryMonth] = useState(currentMonth)
+  const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
 
   const load = useCallback(async () => {
     try {
       setLoading(true)
       const now = new Date()
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1) // incluye mes anterior para comparativos
-      const [ords, exps, recipes, pay, ops] = await Promise.all([
-        getOrdersWithItems(monthStart.toISOString()),
-        getExpenses(isoDate(monthStart)),
+      const comparisonStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const selectedStart = new Date(`${summaryMonth}-01T00:00:00`)
+      const dataStart = selectedStart < comparisonStart ? selectedStart : comparisonStart
+      const [ords, exps, purchaseData, recipes, pay, ops, accts] = await Promise.all([
+        getOrdersWithItems(dataStart.toISOString()),
+        getExpenses(isoDate(dataStart)),
+        getPurchases(),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
-        getFinancialOperations(isoDate(monthStart)).catch(() => []),
+        getFinancialOperations(isoDate(dataStart)).catch(() => []),
+        getFinancialAccounts().catch(() => []),
       ])
-      setOrders(ords); setExpenses(exps); setRecipeCost(recipes); setPayroll(pay); setOperations(ops)
+      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts)
     } catch (e) { console.error(e) } finally { setLoading(false) }
-  }, [])
+  }, [summaryMonth])
   useEffect(() => { void load() }, [load])
 
   const computePL = useCallback((start: Date, end: Date): PL => {
@@ -94,29 +109,55 @@ export function Finanzas() {
     const now = new Date()
     const monday = startOfDay(addDays(now, -((now.getDay() + 6) % 7)))
     const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1))
+    const customStart = startOfDay(new Date(`${rangeStart}T00:00:00`))
+    const customEnd = endOfDay(new Date(`${rangeEnd}T00:00:00`))
     return {
       hoy: [startOfDay(now), endOfDay(now)] as const,
       ayer: [startOfDay(addDays(now, -1)), endOfDay(addDays(now, -1))] as const,
       semana: [monday, endOfDay(now)] as const,
       mes: [monthStart, endOfDay(now)] as const,
       prevDay2: [startOfDay(addDays(now, -1)), endOfDay(addDays(now, -1))] as const,
+      rango: [customStart, customEnd] as const,
     }
-  }, [])
+  }, [rangeStart, rangeEnd])
 
   const pls = useMemo(() => (loading ? null : {
     hoy: computePL(...ranges.hoy), ayer: computePL(...ranges.ayer),
-    semana: computePL(...ranges.semana), mes: computePL(...ranges.mes),
+    semana: computePL(...ranges.semana), mes: computePL(...ranges.mes), rango: computePL(...ranges.rango),
   }), [loading, computePL, ranges])
+
+  const dailyRows = useMemo(() => buildDailyFinancialRows(summaryMonth, orders, purchases, expenses), [summaryMonth, orders, purchases, expenses])
+  const monthTotals = useMemo(() => sumFinancialRows(dailyRows), [dailyRows])
+  const selectedWeek = useMemo(() => weekRangeFor(selectedSummaryDate), [selectedSummaryDate])
+  const weekRows = useMemo(() => dailyRows.filter(row => row.date >= selectedWeek.start && row.date <= selectedWeek.end), [dailyRows, selectedWeek])
+  const weekTotals = useMemo(() => sumFinancialRows(weekRows), [weekRows])
+  const selectedDay = dailyRows.find(row => row.date === selectedSummaryDate) ?? dailyRows[0]
+  const changeSummaryMonth = (offset: number) => {
+    const [year, month] = summaryMonth.split('-').map(Number)
+    const next = new Date(year, month - 1 + offset, 1)
+    const value = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
+    setSummaryMonth(value)
+    setSelectedSummaryDate(`${value}-01`)
+  }
 
   if (loading || !pls) return <PageSkeleton cards={4} rows={6} />
 
-  const cur = period === 'hoy' ? pls.hoy : period === 'semana' ? pls.semana : pls.mes
+  const cur = pls[period]
   const prev = pls.ayer // referencia de comparación para las tarjetas
   const breakEven = cur.opex + cur.payroll
   const bePct = breakEven > 0 ? Math.min(100, Math.round((cur.grossSales / breakEven) * 100)) : (cur.grossSales > 0 ? 100 : 0)
   const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
   const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
-  const periodLabel = period === 'hoy' ? 'Hoy' : period === 'semana' ? 'Esta semana' : 'Este mes'
+  const periodLabel = period === 'hoy' ? 'Hoy' : period === 'ayer' ? 'Ayer' : period === 'semana' ? 'Esta semana' : period === 'mes' ? 'Este mes' : `${rangeStart} al ${rangeEnd}`
+  const salesUsd = Object.entries(cur.payments).filter(([method]) => ['cash','binance','zelle'].includes(method)).reduce((sum,[,amount]) => sum+amount,0)
+  const salesVesUsd = Math.max(cur.grossSales-salesUsd,0)
+  const saveOpeningBalance = async (account: FinancialAccount) => {
+    const value = Number(openingBalanceDraft)
+    if (!Number.isFinite(value)) return
+    await updateFinancialAccountOpeningBalance(account.id, value)
+    setAccounts(await getFinancialAccounts())
+    setEditingAccountId(null)
+  }
 
   const chartData = {
     labels: ['Ventas Brutas', 'Costo Insumos', 'Ganancia Bruta', 'Gastos Op.', 'Nómina', 'Ganancia Neta'],
@@ -166,9 +207,10 @@ export function Finanzas() {
         <div className="fin-head-actions">
           <span className="fin-period"><CalendarDays size={15} />
             <StyledSelect value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
-              <option value="hoy">Hoy</option><option value="semana">Esta semana</option><option value="mes">Este mes</option>
+              <option value="hoy">Hoy</option><option value="ayer">Ayer</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="rango">Rango personalizado</option>
             </StyledSelect>
           </span>
+          {period === 'rango' && <span className="fin-date-range"><input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} /><span>a</span><input type="date" value={rangeEnd} min={rangeStart} onChange={(e) => setRangeEnd(e.target.value)} /></span>}
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
@@ -218,6 +260,49 @@ export function Finanzas() {
           <div className="fin-kpi-sub"><span className={marginPP >= 0 ? 'fin-up' : 'fin-down'}>{marginPP >= 0 ? '▲' : '▼'} {Math.abs(marginPP).toFixed(1)} pp vs ayer</span></div>
         </div>
       </div>
+
+      <div className="fin-card fin-accounts-card">
+        <h2>Saldos actuales por cuenta</h2>
+        <p className="sub">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</p>
+        <div className="fin-account-grid">
+          {accounts.filter((a) => ['Banco Exterior', 'Banesco', 'Efectivo dolares', 'Efectivo bolivares'].includes(a.name)).map((account) => (
+            <div className="fin-account-box" key={account.id}>
+              <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
+              <small>{account.currency}</small>
+              {editingAccountId === account.id ? <div className="fin-opening-edit"><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="fin-currency-summary">
+        <div className="fin-card"><span className="sub">Ventas en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia</small></div>
+        <div className="fin-card"><span className="sub">Ventas en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios USD</small></div>
+      </div>
+
+      <section className="fin-card fin-daily-summary">
+        <div className="fin-daily-head">
+          <div><h2>Resumen diario de operación</h2><p className="sub">Ventas y egresos reales organizados como el control diario del negocio.</p></div>
+          <div className="fin-month-nav"><button onClick={() => changeSummaryMonth(-1)} aria-label="Mes anterior"><ChevronLeft size={16}/></button><input type="month" value={summaryMonth} max={currentMonth} onChange={event => { setSummaryMonth(event.target.value); setSelectedSummaryDate(`${event.target.value}-01`) }} aria-label="Mes del resumen"/><button onClick={() => changeSummaryMonth(1)} disabled={summaryMonth >= currentMonth} aria-label="Mes siguiente"><ChevronRight size={16}/></button></div>
+        </div>
+        <div className="fin-daily-layout">
+          <div className="fin-daily-table-wrap">
+            <table className="fin-daily-table">
+              <thead><tr><th>Día</th><th>Ventas</th><th>Total egresos</th><th>Compras</th><th>Gastos fijos</th><th>Gastos variables</th><th>Otros</th><th>Diferencia</th></tr></thead>
+              <tbody>{dailyRows.map(row => <tr key={row.date} className={selectedSummaryDate === row.date ? 'selected' : ''} onClick={() => setSelectedSummaryDate(row.date)}><td><button>{row.day}</button></td><td className="sales">{formatUsd(row.sales)}</td><td className="outflow">{formatUsd(row.totalOutflows)}</td><td>{formatUsd(row.purchases)}</td><td>{formatUsd(row.fixedExpenses)}</td><td>{formatUsd(row.variableExpenses)}</td><td>{formatUsd(row.otherExpenses)}</td><td className={row.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(row.difference)}</td></tr>)}</tbody>
+              <tfoot><tr><td>Mes</td><td>{formatUsd(monthTotals.sales)}</td><td>{formatUsd(monthTotals.totalOutflows)}</td><td>{formatUsd(monthTotals.purchases)}</td><td>{formatUsd(monthTotals.fixedExpenses)}</td><td>{formatUsd(monthTotals.variableExpenses)}</td><td>{formatUsd(monthTotals.otherExpenses)}</td><td className={monthTotals.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(monthTotals.difference)}</td></tr></tfoot>
+            </table>
+          </div>
+          <aside className="fin-week-summary">
+            <div className="fin-week-title"><span>Semana seleccionada</span><strong>{selectedWeek.start.slice(8)} al {selectedWeek.end.slice(8)}</strong></div>
+            <div className="fin-week-primary"><span>Ventas</span><strong>{formatUsd(weekTotals.sales)}</strong></div>
+            <div className={`fin-week-primary difference ${weekTotals.difference >= 0 ? 'positive' : 'negative'}`}><span>Diferencia</span><strong>{formatUsd(weekTotals.difference)}</strong></div>
+            <div className="fin-week-primary"><span>Egresos</span><strong>{formatUsd(weekTotals.totalOutflows)}</strong></div>
+            <dl><div><dt>Compras</dt><dd>{formatUsd(weekTotals.purchases)}</dd></div><div><dt>Gastos fijos</dt><dd>{formatUsd(weekTotals.fixedExpenses)}</dd></div><div><dt>Gastos variables</dt><dd>{formatUsd(weekTotals.variableExpenses)}</dd></div><div><dt>Otros</dt><dd>{formatUsd(weekTotals.otherExpenses)}</dd></div></dl>
+            {selectedDay && <div className="fin-selected-day"><small>Día seleccionado · {selectedDay.date}</small><span>Ventas {formatUsd(selectedDay.sales)} · Egresos {formatUsd(selectedDay.totalOutflows)}</span></div>}
+          </aside>
+        </div>
+      </section>
 
       <div className="fin-grid">
         {/* Izquierda: cierre por método + comparativo */}

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, type ReactNode } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
@@ -22,6 +22,7 @@ import {
   getProductModifiers,
   getOccupiedTables,
   getMenuCategories,
+  getFinancialAccounts,
   type Product,
   type CartItem,
   type OrderResult,
@@ -30,6 +31,7 @@ import {
   type CashSessionSnapshot,
   type ProductModifierGroup,
   type SelectedModifier,
+  type FinancialAccount,
 } from '../lib/dataService'
 import {
   X,
@@ -140,7 +142,10 @@ const FOOD_IMAGES: Record<string, string> = {
 }
 
 function getProductImage(product: Product): string {
-  if (product.imageUrl) return product.imageUrl
+  if (product.imageUrl) {
+    const match = product.imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
+    return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : product.imageUrl
+  }
   const nameLower = product.name.toLowerCase()
   if (nameLower.includes('chaufa') || nameLower.includes('arroz')) return FOOD_IMAGES.arroz
   if (nameLower.includes('chow mein') || nameLower.includes('noodle')) return FOOD_IMAGES.noodles
@@ -154,10 +159,31 @@ function getProductImage(product: Product): string {
 // Cache a nivel de módulo: al volver a Ventas se muestra el catálogo de la
 // última visita al instante, sin el parpadeo de "Cargando...", mientras se
 // refresca en segundo plano.
+const CAJA_PRODUCTS_CACHE_KEY = 'fullchina:caja-products:v1'
+
 let cajaCache: {
   products: Product[]
   todayOrders: TodayOrder[]
 } | null = null
+
+function readCachedProducts(): Product[] {
+  if (cajaCache?.products.length) return cajaCache.products
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CAJA_PRODUCTS_CACHE_KEY) || 'null') as { products?: Product[] } | null
+    return Array.isArray(parsed?.products) ? parsed.products : []
+  } catch {
+    return []
+  }
+}
+
+function cacheProducts(products: Product[]) {
+  cajaCache = { products, todayOrders: cajaCache?.todayOrders ?? [] }
+  try {
+    localStorage.setItem(CAJA_PRODUCTS_CACHE_KEY, JSON.stringify({ products, savedAt: Date.now() }))
+  } catch {
+    // El catálogo sigue disponible en memoria cuando el almacenamiento está bloqueado o lleno.
+  }
+}
 
 interface CustomerOption {
   id: string
@@ -166,13 +192,19 @@ interface CustomerOption {
   phone: string
 }
 
-export function Caja() {
+interface CajaProps {
+  embedded?: boolean
+  onClose?: () => void
+  onOrderCreated?: () => void
+}
+
+export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = {}) {
   const { user } = useAuth()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, error: bcvError, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const navigate = useNavigate()
   const location = useLocation()
 
-  const [products, setProducts] = useState<Product[]>(cajaCache?.products ?? [])
+  const [products, setProducts] = useState<Product[]>(readCachedProducts)
   const [, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
   const [, setLoading] = useState(!cajaCache)
 
@@ -199,6 +231,7 @@ export function Caja() {
 
   // Customer Search & Auto-complete state
   const [customerList, setCustomerList] = useState<CustomerOption[]>([])
+  const customersRequested = useRef(false)
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null)
 
@@ -223,14 +256,24 @@ export function Caja() {
     )
   }, [customerList, customerName])
 
-  useEffect(() => {
+  const loadCustomers = useCallback(() => {
+    if (customersRequested.current) return
+    customersRequested.current = true
     getCustomers().then(customers => setCustomerList(customers.map(customer => ({
       id: customer.id,
       name: customer.name,
       initials: customer.name.split(' ').slice(0, 2).map(part => part[0] || '').join('').toUpperCase(),
       phone: customer.phone,
-    })))).catch(error => console.error('getCustomers error:', error))
+    })))).catch(error => {
+      customersRequested.current = false
+      console.error('getCustomers error:', error)
+    })
   }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(loadCustomers, 1500)
+    return () => window.clearTimeout(timer)
+  }, [loadCustomers])
 
   // Cliente pre-seleccionado al venir desde el perfil de un cliente ("Nuevo pedido"),
   // o mesa pre-seleccionada al venir desde el mapa de Mesas.
@@ -314,6 +357,10 @@ export function Caja() {
   const [splitPrimaryExtraRefs, setSplitPrimaryExtraRefs] = useState<string[]>([])
   const [splitSecondaryExtraRefs, setSplitSecondaryExtraRefs] = useState<string[]>([])
   const [paymentNote, setPaymentNote] = useState('')
+  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
+  const [paymentAccountId, setPaymentAccountId] = useState('')
+  const [splitPrimaryAccountId, setSplitPrimaryAccountId] = useState('')
+  const [splitSecondaryAccountId, setSplitSecondaryAccountId] = useState('')
 
   const [paying, setPaying] = useState(false)
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
@@ -340,25 +387,33 @@ export function Caja() {
 
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      setLoading(true)
-      try {
-        const [prods, orders, withMods, cats] = await Promise.all([
-          getProducts().catch((e) => { console.error('getProducts error:', e); return [] as Product[] }),
-          getTodayOrders().catch((e) => { console.error('getTodayOrders error:', e); return [] as TodayOrder[] }),
-          getProductsWithModifiers().catch((e) => { console.error('getProductsWithModifiers error:', e); return new Set<string>() }),
-          getMenuCategories().catch((e) => { console.error('getMenuCategories error:', e); return [] }),
-        ])
-        if (cats.length) hydrateMenuCategories(cats)
+    setLoading(true)
+
+    // El catálogo es la ruta crítica: se pinta desde caché y se refresca sin
+    // esperar comandas, categorías ni modificadores.
+    getProducts()
+      .then((prods) => {
+        if (cancelled) return
         setProducts(prods)
+        cacheProducts(prods)
+      })
+      .catch((e) => console.error('getProducts error:', e))
+      .finally(() => { if (!cancelled) setLoading(false) })
+
+    void getTodayOrders()
+      .then((orders) => {
+        if (cancelled) return
         setTodayOrders(orders)
-        setProductsWithModifiers(withMods)
-        cajaCache = { products: prods, todayOrders: orders }
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    refreshOccupiedTables()
+        cajaCache = { products: cajaCache?.products ?? readCachedProducts(), todayOrders: orders }
+      })
+      .catch((e) => console.error('getTodayOrders error:', e))
+    void getProductsWithModifiers().then((withMods) => {
+      if (!cancelled) setProductsWithModifiers(withMods)
+    }).catch((e) => console.error('getProductsWithModifiers error:', e))
+    void getMenuCategories().then((cats) => {
+      if (!cancelled && cats.length) hydrateMenuCategories(cats)
+    }).catch((e) => console.error('getMenuCategories error:', e))
+    void refreshOccupiedTables()
     return () => { cancelled = true }
   }, [refreshOccupiedTables])
 
@@ -367,6 +422,23 @@ export function Caja() {
       .then(setCashSession)
       .catch(() => setCashSession(null))
   }, [])
+
+  useEffect(() => {
+    getFinancialAccounts().then(setFinancialAccounts).catch(() => setFinancialAccounts([]))
+  }, [])
+
+  const accountsForMethod = (method: SplitPaymentMethod) => {
+    if (method === 'cash') return financialAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrency)
+    if (method === 'mobile' || method === 'transfer') return financialAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
+    if (method === 'card') return financialAccounts.filter((a) => a.accountType === 'pos' && a.currency === 'VES')
+    if (method === 'zelle' || method === 'binance') return financialAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
+    return financialAccounts
+  }
+
+  const ensureAccountForMethod = (method: SplitPaymentMethod) => {
+    const options = accountsForMethod(method)
+    return options[0]?.id ?? ''
+  }
 
   // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
   const resolveCat = (product: Product) =>
@@ -565,8 +637,9 @@ export function Caja() {
       setTableNumber(null)
       refreshTodayOrders()
       refreshOccupiedTables()
-      // Navigate directly to Comandas page
-      navigate('/comandas')
+      onOrderCreated?.()
+      if (embedded) onClose?.()
+      else navigate('/comandas')
     } catch (e) {
       setPayError(e instanceof Error ? e.message : 'Error al enviar a cocina')
     } finally {
@@ -603,6 +676,9 @@ export function Caja() {
     setSplitSecondaryReference('')
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
+    setPaymentAccountId(initialMethod === 'cash' ? ensureAccountForMethod(cashCurrency === 'USD' ? 'cash' : 'cash') : ensureAccountForMethod(initialMethod))
+    setSplitPrimaryAccountId(ensureAccountForMethod('cash'))
+    setSplitSecondaryAccountId(ensureAccountForMethod('mobile'))
     setPaymentNote('')
     setPayError('')
     setShowPaymentModal(true)
@@ -626,8 +702,14 @@ export function Caja() {
     setSplitSecondaryReference('')
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
-    setPayError('')
     const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method === 'other' ? 'cash' : method
+    if (method === 'split') {
+      setSplitPrimaryAccountId(ensureAccountForMethod(splitPrimaryMethod))
+      setSplitSecondaryAccountId(ensureAccountForMethod(splitSecondaryMethod))
+    } else {
+      setPaymentAccountId(ensureAccountForMethod(inputMethod))
+    }
+    setPayError('')
     setAmountReceived(usdToPaymentInput(method === 'split' ? total / 2 : total, inputMethod, bcvRate))
   }
 
@@ -657,6 +739,9 @@ export function Caja() {
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
+      if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && !paymentAccountId) {
+        throw new Error('Selecciona la cuenta donde ingresó el dinero')
+      }
       const combinedRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
 
       let paymentComponents
@@ -678,6 +763,9 @@ export function Caja() {
         if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
           throw new Error('Ingresa la referencia del segundo método')
         }
+        if (!splitPrimaryAccountId || !splitSecondaryAccountId) {
+          throw new Error('Selecciona la cuenta de cada método de pago')
+        }
         finalMethod = 'other'
         const primaryRefs = [splitPrimaryReference, ...splitPrimaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
         const secondaryRefs = [splitSecondaryReference, ...splitSecondaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
@@ -686,6 +774,7 @@ export function Caja() {
             method: splitPrimaryMethod,
             amount: primaryAmount,
             referenceNumber: primaryRefs || undefined,
+            accountId: splitPrimaryAccountId || null,
             receivedAmount: splitPrimaryMethod === 'cash' ? primaryAmount : undefined,
             notes: paymentNote || undefined,
           },
@@ -693,6 +782,7 @@ export function Caja() {
             method: splitSecondaryMethod,
             amount: secondaryAmount,
             referenceNumber: secondaryRefs || undefined,
+            accountId: splitSecondaryAccountId || null,
             receivedAmount: splitSecondaryMethod === 'cash' ? secondaryAmount : undefined,
             notes: paymentNote || undefined,
           },
@@ -706,6 +796,7 @@ export function Caja() {
           method: selectedPaymentTab,
           amount: total,
           referenceNumber: combinedRefs || undefined,
+          accountId: paymentAccountId || null,
           receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
           notes: paymentNote || undefined,
         }]
@@ -733,6 +824,7 @@ export function Caja() {
       setTableNumber(null)
       refreshTodayOrders()
       refreshOccupiedTables()
+      onOrderCreated?.()
     } catch (e) {
       setPayError(e instanceof Error ? e.message : 'Error al confirmar pago')
     } finally {
@@ -775,7 +867,7 @@ export function Caja() {
                   : 'Sin pago'
 
     return (
-      <div className="page animate-fade-in">
+      <div className={`page animate-fade-in ${embedded ? 'caja-embedded' : ''}`}>
         <div className="caja-success-layout">
           {/* LEFT COLUMN: Success Hero Card + Timeline */}
           <div className="success-left-col">
@@ -819,7 +911,7 @@ export function Caja() {
               >
                 <span>+</span> Nueva venta
               </button>
-              <button className="btn-success-secondary" onClick={() => navigate('/comandas')}>
+              <button className="btn-success-secondary" onClick={() => embedded ? onClose?.() : navigate('/comandas')}>
                 <ListOrdered size={16} /> Ver comanda
               </button>
               <button className="btn-success-secondary" onClick={handlePrintReceipt}>
@@ -906,7 +998,7 @@ export function Caja() {
 
                   return (
                     <div key={idx} className="ticket-item-row">
-                      <img src={imgUrl} alt={item.productName} className="ticket-item-thumb" />
+                      <img src={imgUrl} alt={item.productName} className="ticket-item-thumb" loading="lazy" decoding="async" />
                       <div className="ticket-item-info">
                         <span className="ticket-item-name">{formatProductTitle(item.productName)}</span>
                       </div>
@@ -950,7 +1042,7 @@ export function Caja() {
   }
 
   return (
-    <div className="page animate-fade-in">
+    <div className={`page animate-fade-in ${embedded ? 'caja-embedded' : ''}`}>
       <div className={`cash-session-strip ${cashSession ? 'open' : 'closed'}`}>
         <div className="cash-session-info">
           <span className="cash-session-title">
@@ -1060,7 +1152,15 @@ export function Caja() {
 
                 return (
                   <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''} ${viewMode}`} onClick={() => selectMenuGroup(group)}>
-                    <div className="product-image-area" style={{ backgroundImage: `url(${imgUrl})` }}>
+                    <div className="product-image-area">
+                      <img
+                        className="product-card-image"
+                        src={imgUrl}
+                        alt=""
+                        loading={index < 4 ? 'eager' : 'lazy'}
+                        fetchPriority={index < 4 ? 'high' : 'auto'}
+                        decoding="async"
+                      />
                       {isPopular && <span className="product-badge badge-popular"><Flame size={12} /> Más vendido</span>}
                       {group.isGrouped && <span className="product-badge badge-variants">{group.variants.length} opciones</span>}
                       <button
@@ -1234,7 +1334,7 @@ export function Caja() {
                     : null
                   return (
                     <div key={lineKey} className="cart-item-row">
-                      <img src={imgUrl} alt={item.productName} className="cart-item-thumb" />
+                      <img src={imgUrl} alt={item.productName} className="cart-item-thumb" loading="lazy" decoding="async" />
                       <div className="cart-item-details">
                         <span className="cart-item-name">{formatProductTitle(item.productName)}</span>
                         {mods && <span className="cart-item-sub">{mods}</span>}
@@ -1305,7 +1405,10 @@ export function Caja() {
                       setSelectedCustomer(null)
                       setShowCustomerDropdown(true)
                     }}
-                    onFocus={() => setShowCustomerDropdown(true)}
+                    onFocus={() => {
+                      loadCustomers()
+                      setShowCustomerDropdown(true)
+                    }}
                     className="customer-input"
                   />
                   <button
@@ -1527,6 +1630,16 @@ export function Caja() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
+                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && (
+                  <div className="payment-field-group mt-2">
+                    <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
+                    <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
+                      <option value="">Selecciona una cuenta</option>
+                      {accountsForMethod(selectedPaymentTab).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                    </StyledSelect>
+                  </div>
+                )}
+
                 {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && requiresPaymentReference(selectedPaymentTab) && (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">{paymentReferenceLabel(selectedPaymentTab)}</label>
@@ -1583,8 +1696,14 @@ export function Caja() {
                           setSplitPrimaryReference('')
                           setSplitPrimaryExtraRefs([])
                           setPayError('')
+                          setSplitPrimaryAccountId(ensureAccountForMethod(nextMethod))
                         }}
                       />
+                      <label className="payment-field-label">Cuenta de ingreso *</label>
+                      <StyledSelect value={splitPrimaryAccountId} onChange={(e) => setSplitPrimaryAccountId(e.target.value)}>
+                        <option value="">Selecciona una cuenta</option>
+                        {accountsForMethod(splitPrimaryMethod).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                      </StyledSelect>
                       <label className="payment-field-label">Monto del primer método</label>
                       <div className="payment-input-wrap">
                         <input
@@ -1651,8 +1770,14 @@ export function Caja() {
                           setSplitSecondaryReference('')
                           setSplitSecondaryExtraRefs([])
                           setPayError('')
+                          setSplitSecondaryAccountId(ensureAccountForMethod(nextMethod))
                         }}
                       />
+                      <label className="payment-field-label">Cuenta de ingreso *</label>
+                      <StyledSelect value={splitSecondaryAccountId} onChange={(e) => setSplitSecondaryAccountId(e.target.value)}>
+                        <option value="">Selecciona una cuenta</option>
+                        {accountsForMethod(splitSecondaryMethod).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                      </StyledSelect>
                       <label className="payment-field-label">Monto del segundo método</label>
                       <div className="split-readonly-amount">
                         <MoneyWithBcv

@@ -54,6 +54,7 @@ export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' 
 export interface OrderPaymentComponent {
   method: PaymentMethod
   amount: number
+  accountId?: string | null
   referenceNumber?: string | null
   receivedAmount?: number | null
   notes?: string | null
@@ -166,6 +167,8 @@ export interface Expense {
   notes: string | null
   createdBy: string
   createdAt: string
+  accountId: string | null
+  exchangeRate: number | null
 }
 
 export interface FinancialOperation {
@@ -225,6 +228,17 @@ export interface Ingredient {
   currentStock: number
   pricePerUnit: number | null
   stockValue: number | null
+  inventoryClass: 'raw_material' | 'packaging' | 'beverage' | 'non_inventory'
+}
+
+export interface FinancialAccount {
+  id: string
+  name: string
+  accountType: string
+  currency: 'USD' | 'VES'
+  isActive: boolean
+  openingBalance: number
+  currentBalance: number
 }
 
 export interface StockMovement {
@@ -264,6 +278,8 @@ export interface Purchase {
   items: PurchaseItem[]
   totalAmount: number
   isPaid: boolean
+  accountId: string | null
+  exchangeRate: number | null
 }
 
 export interface PurchaseItem {
@@ -1156,6 +1172,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
       id: p.id as string,
       method: p.method as PaymentMethod,
       amount: Number(p.amount),
+      accountId: (p.account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
       notes: (p.notes as string) ?? null,
@@ -1653,6 +1670,8 @@ export async function getExpenses(dateStart?: string, dateEnd?: string): Promise
     notes: (e.notes as string) ?? null,
     createdBy: e.created_by as string,
     createdAt: e.created_at as string,
+    accountId: (e.account_id as string) ?? null,
+    exchangeRate: e.exchange_rate == null ? null : Number(e.exchange_rate),
   }))
 }
 
@@ -1662,6 +1681,8 @@ export async function createExpense(params: {
   category: 'fixed' | 'variable' | 'other'
   expenseDate: string
   notes?: string | null
+  accountId?: string | null
+  exchangeRate?: number | null
   userId: string
 }): Promise<Expense> {
   const { data, error } = await client().from('expenses').insert({
@@ -1670,6 +1691,8 @@ export async function createExpense(params: {
     category: params.category,
     expense_date: params.expenseDate,
     notes: params.notes ?? null,
+    account_id: params.accountId ?? null,
+    exchange_rate: params.exchangeRate ?? null,
     created_by: params.userId,
   }).select('*').single()
   if (error) throw error
@@ -1682,6 +1705,8 @@ export async function createExpense(params: {
     notes: (data.notes as string) ?? null,
     createdBy: data.created_by as string,
     createdAt: data.created_at as string,
+    accountId: (data.account_id as string) ?? null,
+    exchangeRate: data.exchange_rate == null ? null : Number(data.exchange_rate),
   }
 }
 
@@ -2008,12 +2033,15 @@ export async function getLegacyPurchaseOrders(): Promise<LegacyPurchaseOrder[]> 
 // --- Inventario --------------------------------------------------------------
 
 export async function getIngredients(): Promise<Ingredient[]> {
-  const { data, error } = await client()
-    .from('v_current_stock')
-    .select('*')
-    .order('ingredient_name', { ascending: true })
+  const [{ data, error }, { data: metadata, error: metadataError }] = await Promise.all([
+    client().from('v_current_stock').select('*').order('ingredient_name', { ascending: true }),
+    client().from('ingredients').select('id,inventory_class'),
+  ])
 
   if (error) throw error
+  if (metadataError) throw metadataError
+
+  const inventoryClasses = new Map((metadata ?? []).map(row => [row.id as string, row.inventory_class as Ingredient['inventoryClass']]))
 
   return (data ?? []).map((i) => ({
     id: i.ingredient_id as string,
@@ -2023,17 +2051,36 @@ export async function getIngredients(): Promise<Ingredient[]> {
     unitSymbol: i.unit_symbol as string,
     isActive: true,
     currentStock: Number(i.current_stock),
-    pricePerUnit: i.price_per_unit ? Number(i.price_per_unit) : null,
-    stockValue: i.stock_value ? Number(i.stock_value) : null,
+    pricePerUnit: i.price_per_unit !== null ? Number(i.price_per_unit) : null,
+    stockValue: i.stock_value !== null ? Number(i.stock_value) : null,
+    inventoryClass: inventoryClasses.get(i.ingredient_id as string) ?? 'raw_material',
   }))
 }
 
-export async function getStockMovements(): Promise<StockMovement[]> {
-  const { data, error } = await client()
+export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
+  const { data, error } = await client().rpc('fn_get_financial_account_balances')
+  if (error) throw error
+  return ((data as Array<Record<string, unknown>>) ?? []).map((a) => ({
+    id: String(a.id), name: String(a.name), accountType: String(a.account_type),
+    currency: a.currency as 'USD' | 'VES', isActive: true,
+    openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.current_balance ?? 0),
+  }))
+}
+
+export async function updateFinancialAccountOpeningBalance(id: string, openingBalance: number): Promise<void> {
+  const { error } = await client().from('financial_accounts').update({ opening_balance: openingBalance }).eq('id', id)
+  if (error) throw error
+}
+
+export async function getStockMovements(ingredientId?: string): Promise<StockMovement[]> {
+  let query = client()
     .from('stock_movements')
     .select('*, ingredients(name), units(symbol)')
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(ingredientId ? 250 : 100)
+
+  if (ingredientId) query = query.eq('ingredient_id', ingredientId)
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -2101,11 +2148,28 @@ export async function createIngredient(params: {
   return data.id as string
 }
 
-export async function updateIngredient(id: string, updates: { name?: string; is_active?: boolean }): Promise<void> {
+export async function updateIngredient(id: string, updates: {
+  name?: string
+  unit_id?: string
+  inventory_class?: Ingredient['inventoryClass']
+  is_active?: boolean
+}): Promise<void> {
   const { error } = await client()
     .from('ingredients')
     .update(updates)
     .eq('id', id)
+  if (error) throw error
+}
+
+export async function updateIngredientCost(ingredientId: string, pricePerUnit: number, userId: string): Promise<void> {
+  const { error } = await client()
+    .from('ingredient_costs')
+    .upsert({
+      ingredient_id: ingredientId,
+      price_per_unit: pricePerUnit,
+      updated_by: userId,
+      last_updated: new Date().toISOString(),
+    }, { onConflict: 'ingredient_id' })
   if (error) throw error
 }
 
@@ -3019,6 +3083,14 @@ export async function deleteRecipeComponent(id: string): Promise<void> {
   if (error) throw error
 }
 
+export async function updateRecipeComponent(id: string, updates: { quantity: number; unitId: string }): Promise<void> {
+  const { error } = await client()
+    .from('recipe_components')
+    .update({ quantity: updates.quantity, unit_id: updates.unitId })
+    .eq('id', id)
+  if (error) throw error
+}
+
 // --- Auditoría ----------------------------------------------------------------
 
 export async function getAuditLogs(limit = 200): Promise<AuditLog[]> {
@@ -3090,7 +3162,7 @@ export async function getPurchases(): Promise<Purchase[]> {
   const { data, error } = await client()
     .from('purchases')
     .select(`
-      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid,
+      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, account_id, exchange_rate,
       suppliers(name),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
     `)
@@ -3122,6 +3194,8 @@ export async function getPurchases(): Promise<Purchase[]> {
       items,
       totalAmount: items.reduce((sum, i) => sum + i.total, 0),
       isPaid: p.is_paid !== false,
+      accountId: (p.account_id as string) ?? null,
+      exchangeRate: p.exchange_rate == null ? null : Number(p.exchange_rate),
     }
   })
 }
@@ -3138,6 +3212,8 @@ export async function createPurchase(params: {
   notes?: string
   userId: string
   isPaid?: boolean
+  accountId?: string | null
+  exchangeRate?: number | null
   items: Array<{
     ingredientId: string
     quantity: number
@@ -3155,6 +3231,8 @@ export async function createPurchase(params: {
       invoice_number: params.invoiceNumber ?? null,
       notes: params.notes ?? null,
       is_paid: params.isPaid ?? true,
+      account_id: params.accountId ?? null,
+      exchange_rate: params.exchangeRate ?? null,
       created_by: params.userId,
     })
     .select('id')
@@ -3213,6 +3291,7 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
       id: p.id as string,
       method: p.method as PaymentMethod,
       amount: Number(p.amount),
+      accountId: (p.account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
       notes: (p.notes as string) ?? null,

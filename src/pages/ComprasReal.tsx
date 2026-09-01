@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid,
-  getIngredients, getUnits, createIngredient,
-  type Supplier, type Purchase, type Ingredient,
+  getIngredients, getUnits, createIngredient, getFinancialAccounts,
+  type Supplier, type Purchase, type Ingredient, type FinancialAccount,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
 import { useAuth } from '../context/auth-context'
+import { useRates } from '../context/rates-context'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import {
@@ -26,6 +27,7 @@ type PaidFilter = 'todos' | 'pagados' | 'pendientes'
 
 export function ComprasReal() {
   const { user } = useAuth()
+  const { bcvRate } = useRates()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
@@ -40,6 +42,8 @@ export function ComprasReal() {
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [markPaid, setMarkPaid] = useState(true)
+  const [accountId, setAccountId] = useState('')
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [items, setItems] = useState<ItemForm[]>([])
   const [saving, setSaving] = useState(false)
 
@@ -59,10 +63,10 @@ export function ComprasReal() {
   const load = useCallback(async () => {
     try {
       setLoading(true); setError('')
-      const [sup, purch, ingr, un] = await Promise.all([
-        getSuppliers(), getPurchases().catch(() => []), getIngredients(), getUnits(),
+      const [sup, purch, ingr, un, accts] = await Promise.all([
+        getSuppliers(), getPurchases().catch(() => []), getIngredients(), getUnits(), getFinancialAccounts().catch(() => []),
       ])
-      setSuppliers(sup); setPurchases(purch); setIngredients(ingr); setUnits(un)
+      setSuppliers(sup); setPurchases(purch); setIngredients(ingr); setUnits(un); setAccounts(accts)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando datos') }
     finally { setLoading(false) }
   }, [])
@@ -111,16 +115,18 @@ export function ComprasReal() {
     return up
   }))
 
-  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setPurchaseDate(dateKeyInTimeZone()) }
+  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setAccountId(''); setPurchaseDate(dateKeyInTimeZone()) }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supplierId || items.length === 0) return
+    if (markPaid && !accountId) { setError('Selecciona la cuenta desde donde se pagó la compra'); return }
     setSaving(true); setError('')
     try {
       await createPurchase({
         supplierId, purchaseDate, invoiceNumber: invoiceNumber.trim() || undefined,
         notes: notes.trim() || undefined, userId: user?.id ?? '', isPaid: markPaid,
+        accountId: markPaid ? accountId : null, exchangeRate: bcvRate,
         items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0 })),
       })
       flash('Compra registrada · inventario actualizado')
@@ -146,7 +152,7 @@ export function ComprasReal() {
     try {
       const id = await createIngredient({ name: newIngredientName.trim(), unitId })
       const unit = units.find((u) => u.id === unitId)
-      const ing: Ingredient = { id, name: newIngredientName.trim(), unitId, unitName: unit?.name ?? '', unitSymbol: unit?.symbol ?? '', isActive: true, currentStock: 0, pricePerUnit: null, stockValue: null }
+      const ing: Ingredient = { id, name: newIngredientName.trim(), unitId, unitName: unit?.name ?? '', unitSymbol: unit?.symbol ?? '', isActive: true, currentStock: 0, pricePerUnit: null, stockValue: null, inventoryClass: 'raw_material' }
       setIngredients((prev) => [...prev, ing].sort((a, b) => a.name.localeCompare(b.name)))
       setItems((prev) => [...prev, { ingredientId: id, quantity: '1', unitId, unitCost: '0' }])
       setShowIngredientForm(false); setNewIngredientName(''); setNewIngredientUnitId('')
@@ -274,6 +280,7 @@ export function ComprasReal() {
             <label className="cmp-field" style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, fontSize: 13, color: '#d4d4d8', cursor: 'pointer' }}>
               <input type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#e11d2a' }} /> Marcar como pagada
             </label>
+            {markPaid && <div className="cmp-field"><label>Cuenta de salida *</label><StyledSelect value={accountId} onChange={(e) => setAccountId(e.target.value)}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>}
 
             <div className="cmp-form-foot">
               <span style={{ color: '#a1a1aa', fontSize: 13 }}>Total de ítems: <strong style={{ color: '#fff' }}>{items.length}</strong></span>

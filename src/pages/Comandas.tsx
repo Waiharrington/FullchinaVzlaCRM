@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { Caja } from './Caja'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import {
@@ -188,7 +188,6 @@ const COLUMNS = [
 const COLUMN_PREVIEW_LIMIT = 6
 
 export function Comandas() {
-  const navigate = useNavigate()
   const { bcvRate } = useRates()
   const [comandas, setComandas] = useState<ComandaOrder[]>(MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
@@ -226,6 +225,21 @@ export function Comandas() {
   const [historyOrders, setHistoryOrders] = useState<ComandaOrder[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false)
+
+  useEffect(() => {
+    if (!showNewOrderModal) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowNewOrderModal(false)
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [showNewOrderModal])
 
   // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
   useEffect(() => {
@@ -879,7 +893,7 @@ export function Comandas() {
             </div>
           </div>
 
-          <button className="btn-nueva-comanda" onClick={() => navigate('/caja')}>
+          <button className="btn-nueva-comanda" onClick={() => setShowNewOrderModal(true)}>
             <Plus size={16} />
             <span>Nueva comanda</span>
           </button>
@@ -889,6 +903,25 @@ export function Comandas() {
           </button>
         </div>
       </div>
+
+      {showNewOrderModal && createPortal(
+        <div className="cmd-sales-overlay" role="dialog" aria-modal="true" aria-label="Nueva comanda">
+          <div className="cmd-sales-modal">
+            <div className="cmd-sales-modal-head">
+              <div><small>Comandas</small><strong>Nueva venta</strong></div>
+              <button type="button" onClick={() => setShowNewOrderModal(false)} aria-label="Cerrar nueva comanda"><X size={20}/></button>
+            </div>
+            <div className="cmd-sales-modal-body">
+              <Caja
+                embedded
+                onClose={() => setShowNewOrderModal(false)}
+                onOrderCreated={() => setReloadToken(token => token + 1)}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Filter Bar */}
       <div className="comandas-filters">

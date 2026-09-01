@@ -45,6 +45,20 @@ export default defineConfig({
               expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 60 },
             },
           },
+          {
+            // Las fotos remotas del catálogo se reutilizan entre ventas. En
+            // datos móviles, servirlas desde el dispositivo evita descargarlas
+            // nuevamente en cada entrada a Caja.
+            urlPattern: ({ url }) =>
+              url.hostname === 'images.unsplash.com' ||
+              /\/storage\/v1\/(?:object|render\/image)\/public\//i.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'remote-product-images',
+              cacheableResponse: { statuses: [0, 200] },
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
         ],
       },
     })

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent,
+  getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent, updateRecipeComponent,
   getIngredients, getUnits, getRecipeSummaries,
   type RecipeComponent, type SellableProduct, type Ingredient, type RecipeSummary,
 } from '../lib/dataService'
@@ -12,7 +12,7 @@ import NumberStepper from '../components/NumberStepper'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes } from '../lib/money'
 import {
-  Plus, Trash2, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
+  Plus, Trash2, Pencil, Check, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
   UtensilsCrossed, X,
 } from 'lucide-react'
@@ -51,6 +51,9 @@ export function RecetasReal() {
   const [addIngredientId, setAddIngredientId] = useState('')
   const [addQuantity, setAddQuantity] = useState('1')
   const [addUnitId, setAddUnitId] = useState('')
+  const [editingComponentId, setEditingComponentId] = useState<string | null>(null)
+  const [editingQuantity, setEditingQuantity] = useState('')
+  const [editingUnitId, setEditingUnitId] = useState('')
 
   // Configurar una nueva receta (elegir producto)
   const [showNewRecipe, setShowNewRecipe] = useState(false)
@@ -183,6 +186,38 @@ export function RecetasReal() {
       setTimeout(() => setNotice(''), 3000)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error eliminando ingrediente')
+    }
+  }
+
+  const startEditingComponent = (component: RecipeComponent) => {
+    setError('')
+    setEditingComponentId(component.id)
+    setEditingQuantity(String(component.quantity))
+    setEditingUnitId(component.unitId)
+  }
+
+  const cancelEditingComponent = () => {
+    setEditingComponentId(null)
+    setEditingQuantity('')
+    setEditingUnitId('')
+  }
+
+  const handleUpdateComponent = async (component: RecipeComponent) => {
+    const quantity = Number.parseFloat(editingQuantity)
+    if (!Number.isFinite(quantity) || quantity <= 0 || !editingUnitId) {
+      setError('Indica una cantidad válida mayor que cero')
+      return
+    }
+    try {
+      setError('')
+      await updateRecipeComponent(component.id, { quantity, unitId: editingUnitId })
+      setNotice('Ingrediente actualizado')
+      cancelEditingComponent()
+      await loadComponents()
+      await refreshSummaryFor()
+      setTimeout(() => setNotice(''), 3000)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error actualizando ingrediente')
     }
   }
 
@@ -379,10 +414,27 @@ export function RecetasReal() {
                       {components.map((c) => (
                         <div key={c.id} className="rec-ing-row">
                           <span className="rec-ing-name">{c.ingredientName ?? 'Preparación'}</span>
-                          <span className="rec-ing-qty">{c.quantity} {c.unitSymbol}</span>
+                          {editingComponentId === c.id ? (
+                            <div className="rec-ing-edit-fields">
+                              <NumberStepper step={0.01} min={0.01} value={editingQuantity} onChange={setEditingQuantity} />
+                              <StyledSelect value={editingUnitId} onChange={(e) => setEditingUnitId(e.target.value)}>
+                                {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
+                              </StyledSelect>
+                            </div>
+                          ) : <span className="rec-ing-qty">{c.quantity} {c.unitSymbol}</span>}
                           <span className="rec-ing-cost">{c.costPerUnit == null ? 'Sin costo' : formatUsd(c.costPerUnit * c.quantity)}</span>
                           {c.ingredientId && (
-                            <button className="rec-ing-del" onClick={() => handleDeleteComponent(c.id)} title="Eliminar"><Trash2 size={15} /></button>
+                            editingComponentId === c.id ? (
+                              <>
+                                <button className="rec-ing-action rec-ing-save" onClick={() => void handleUpdateComponent(c)} title="Guardar"><Check size={15} /></button>
+                                <button className="rec-ing-action rec-ing-cancel" onClick={cancelEditingComponent} title="Cancelar"><X size={15} /></button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="rec-ing-action rec-ing-edit" onClick={() => startEditingComponent(c)} title="Editar"><Pencil size={15} /></button>
+                                <button className="rec-ing-del" onClick={() => void handleDeleteComponent(c.id)} title="Eliminar"><Trash2 size={15} /></button>
+                              </>
+                            )
                           )}
                         </div>
                       ))}
