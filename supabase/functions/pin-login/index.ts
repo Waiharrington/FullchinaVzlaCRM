@@ -44,11 +44,17 @@ Deno.serve(async (request) => {
     'Content-Type': 'application/json',
   }
 
-  const verificationResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/fn_verify_pin_login`, {
-    method: 'POST',
-    headers: { ...authHeaders, 'Content-Profile': 'fullchinavzla' },
-    body: JSON.stringify({ p_pin: pin, p_client_key: clientKey }),
-  })
+  let verificationResponse: Response
+  try {
+    verificationResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/fn_verify_pin_login`, {
+      method: 'POST',
+      headers: { ...authHeaders, 'Content-Profile': 'fullchinavzla' },
+      body: JSON.stringify({ p_pin: pin, p_client_key: clientKey }),
+    })
+  } catch (error) {
+    console.error('PIN verification request failed:', error instanceof Error ? error.message : 'unknown error')
+    return json({ error: 'login_unavailable' }, 503)
+  }
 
   if (!verificationResponse.ok) {
     console.error('PIN verification failed:', verificationResponse.status)
@@ -66,11 +72,17 @@ Deno.serve(async (request) => {
     return json({ error: 'invalid_pin' }, 401)
   }
 
-  const linkResponse = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
-    method: 'POST',
-    headers: authHeaders,
-    body: JSON.stringify({ type: 'magiclink', email: verification.email }),
-  })
+  let linkResponse: Response
+  try {
+    linkResponse = await fetch(`${supabaseUrl}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({ type: 'magiclink', email: verification.email }),
+    })
+  } catch (error) {
+    console.error('One-time login token request failed:', error instanceof Error ? error.message : 'unknown error')
+    return json({ error: 'login_unavailable' }, 503)
+  }
 
   if (!linkResponse.ok) {
     console.error('One-time login token generation failed:', linkResponse.status)
