@@ -95,7 +95,6 @@ export function Login() {
   useEffect(() => {
     const handleResize = () => {
       setIsMobileViewport(window.innerWidth <= 679)
-      setIsTabletViewport(window.innerWidth >= 680 && window.innerWidth <= 1200)
     }
     window.addEventListener('resize', handleResize)
     // Inicializar valores al montar
@@ -116,8 +115,9 @@ export function Login() {
   }, [currentSlide])
 
   // Tablets en el mostrador funcionan como terminal de caja: PIN es el modo por defecto.
+  // Solo aplica en vertical; en horizontal la tablet usa el diseño de escritorio.
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 680px) and (max-width: 1200px)')
+    const mq = window.matchMedia('(min-width: 680px) and (max-width: 1200px) and (orientation: portrait)')
     const update = () => setIsTabletViewport(mq.matches)
     update()
     mq.addEventListener('change', update)
