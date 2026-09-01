@@ -594,6 +594,9 @@
 .inv-form-grid input, .inv-form-grid select, .inv-form-grid textarea { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 10px; outline: none; background: #151515; color: var(--text-primary); font: inherit; }
 .inv-form-grid textarea { min-height: 92px; resize: vertical; }
 .inv-form-grid input:focus, .inv-form-grid select:focus, .inv-form-grid textarea:focus { border-color: #ff4d3d; box-shadow: 0 0 0 3px rgba(255,77,61,.1); }
+.inv-form-grid input[type="number"] { -moz-appearance: textfield; }
+.inv-form-grid input[type="number"]::-webkit-inner-spin-button,
+.inv-form-grid input[type="number"]::-webkit-outer-spin-button { margin: 0; -webkit-appearance: none; }
 .inv-form-hint { margin: 12px 0 0; color: var(--text-muted); font-size: .76rem; line-height: 1.45; }
 .inv-form-error { margin: 12px 0 0; padding: 10px 12px; border-radius: 9px; background: rgba(255,77,61,.1); color: #ff8177; font-size: .8rem; }
 .inv-generate-order-btn.danger { background: linear-gradient(135deg, #ef4438, #b91422); }
