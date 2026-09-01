@@ -146,7 +146,7 @@ export function ComprasReal() {
     try {
       const id = await createIngredient({ name: newIngredientName.trim(), unitId })
       const unit = units.find((u) => u.id === unitId)
-      const ing: Ingredient = { id, name: newIngredientName.trim(), unitId, unitName: unit?.name ?? '', unitSymbol: unit?.symbol ?? '', isActive: true, currentStock: 0, pricePerUnit: null, stockValue: null }
+      const ing: Ingredient = { id, name: newIngredientName.trim(), unitId, unitName: unit?.name ?? '', unitSymbol: unit?.symbol ?? '', isActive: true, currentStock: 0, pricePerUnit: null, stockValue: null, inventoryClass: 'raw_material' }
       setIngredients((prev) => [...prev, ing].sort((a, b) => a.name.localeCompare(b.name)))
       setItems((prev) => [...prev, { ingredientId: id, quantity: '1', unitId, unitCost: '0' }])
       setShowIngredientForm(false); setNewIngredientName(''); setNewIngredientUnitId('')

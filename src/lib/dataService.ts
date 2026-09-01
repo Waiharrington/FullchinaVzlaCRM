@@ -225,6 +225,7 @@ export interface Ingredient {
   currentStock: number
   pricePerUnit: number | null
   stockValue: number | null
+  inventoryClass: 'raw_material' | 'packaging' | 'beverage' | 'non_inventory'
 }
 
 export interface StockMovement {
@@ -2008,12 +2009,15 @@ export async function getLegacyPurchaseOrders(): Promise<LegacyPurchaseOrder[]> 
 // --- Inventario --------------------------------------------------------------
 
 export async function getIngredients(): Promise<Ingredient[]> {
-  const { data, error } = await client()
-    .from('v_current_stock')
-    .select('*')
-    .order('ingredient_name', { ascending: true })
+  const [{ data, error }, { data: metadata, error: metadataError }] = await Promise.all([
+    client().from('v_current_stock').select('*').order('ingredient_name', { ascending: true }),
+    client().from('ingredients').select('id,inventory_class'),
+  ])
 
   if (error) throw error
+  if (metadataError) throw metadataError
+
+  const inventoryClasses = new Map((metadata ?? []).map(row => [row.id as string, row.inventory_class as Ingredient['inventoryClass']]))
 
   return (data ?? []).map((i) => ({
     id: i.ingredient_id as string,
@@ -2023,17 +2027,21 @@ export async function getIngredients(): Promise<Ingredient[]> {
     unitSymbol: i.unit_symbol as string,
     isActive: true,
     currentStock: Number(i.current_stock),
-    pricePerUnit: i.price_per_unit ? Number(i.price_per_unit) : null,
-    stockValue: i.stock_value ? Number(i.stock_value) : null,
+    pricePerUnit: i.price_per_unit !== null ? Number(i.price_per_unit) : null,
+    stockValue: i.stock_value !== null ? Number(i.stock_value) : null,
+    inventoryClass: inventoryClasses.get(i.ingredient_id as string) ?? 'raw_material',
   }))
 }
 
-export async function getStockMovements(): Promise<StockMovement[]> {
-  const { data, error } = await client()
+export async function getStockMovements(ingredientId?: string): Promise<StockMovement[]> {
+  let query = client()
     .from('stock_movements')
     .select('*, ingredients(name), units(symbol)')
     .order('created_at', { ascending: false })
-    .limit(100)
+    .limit(ingredientId ? 250 : 100)
+
+  if (ingredientId) query = query.eq('ingredient_id', ingredientId)
+  const { data, error } = await query
 
   if (error) throw error
 
@@ -2101,11 +2109,28 @@ export async function createIngredient(params: {
   return data.id as string
 }
 
-export async function updateIngredient(id: string, updates: { name?: string; is_active?: boolean }): Promise<void> {
+export async function updateIngredient(id: string, updates: {
+  name?: string
+  unit_id?: string
+  inventory_class?: Ingredient['inventoryClass']
+  is_active?: boolean
+}): Promise<void> {
   const { error } = await client()
     .from('ingredients')
     .update(updates)
     .eq('id', id)
+  if (error) throw error
+}
+
+export async function updateIngredientCost(ingredientId: string, pricePerUnit: number, userId: string): Promise<void> {
+  const { error } = await client()
+    .from('ingredient_costs')
+    .upsert({
+      ingredient_id: ingredientId,
+      price_per_unit: pricePerUnit,
+      updated_by: userId,
+      last_updated: new Date().toISOString(),
+    }, { onConflict: 'ingredient_id' })
   if (error) throw error
 }
 

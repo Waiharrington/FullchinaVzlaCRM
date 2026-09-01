@@ -457,6 +457,9 @@
   color: var(--text-primary);
 }
 
+.inv-action-btn.positive:hover { color: #22c55e; border-color: rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .1); }
+.inv-action-btn.negative:hover { color: #ff4d3d; border-color: rgba(255, 77, 61, .5); background: rgba(255, 77, 61, .1); }
+
 /* Pagination */
 .inv-pagination {
   display: flex;
@@ -530,6 +533,38 @@
   overflow-y: auto;
 }
 
+.inv-modal-heading { display: flex; align-items: center; gap: 12px; margin: 0 36px 18px 0; }
+.inv-modal-heading > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; color: #ff4d3d; background: rgba(255,77,61,.13); flex: 0 0 auto; }
+.inv-modal-heading > span.positive { color: #22c55e; background: rgba(34,197,94,.13); }
+.inv-modal-heading > span.negative { color: #ff4d3d; background: rgba(255,77,61,.13); }
+.inv-modal-heading small { display: block; margin-bottom: 2px; color: var(--text-muted); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.inv-modal-heading h3 { margin: 0; font-size: 1.25rem; }
+.inv-current-stock { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; margin-bottom: 14px; border: 1px solid var(--border-color); border-radius: 12px; background: rgba(255,255,255,.025); }
+.inv-current-stock small { color: var(--text-muted); }
+.inv-current-stock strong { font-size: 1.1rem; }
+.inv-history-list { max-height: 430px; overflow: auto; margin-right: -6px; padding-right: 6px; }
+.inv-history-row { display: grid; grid-template-columns: 36px minmax(0,1fr) auto; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.055); }
+.inv-history-row > div:nth-child(2) { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.inv-history-row strong { font-size: .86rem; }
+.inv-history-row small, .inv-history-row time { color: var(--text-muted); font-size: .72rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-history-row > b { font-size: .86rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inv-history-row .positive { color: #22c55e; }
+.inv-history-row .negative { color: #ff4d3d; }
+.inv-modal-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 42px 12px; color: var(--text-muted); }
+.inv-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.inv-form-grid label { display: flex; flex-direction: column; gap: 6px; }
+.inv-form-grid label.wide { grid-column: 1 / -1; }
+.inv-form-grid label > span { color: var(--text-secondary); font-size: .78rem; font-weight: 700; }
+.inv-form-grid input, .inv-form-grid select, .inv-form-grid textarea { width: 100%; min-height: 42px; padding: 10px 12px; border: 1px solid var(--border-color); border-radius: 10px; outline: none; background: #151515; color: var(--text-primary); font: inherit; }
+.inv-form-grid textarea { min-height: 92px; resize: vertical; }
+.inv-form-grid input:focus, .inv-form-grid select:focus, .inv-form-grid textarea:focus { border-color: #ff4d3d; box-shadow: 0 0 0 3px rgba(255,77,61,.1); }
+.inv-form-hint { margin: 12px 0 0; color: var(--text-muted); font-size: .76rem; line-height: 1.45; }
+.inv-form-error { margin: 12px 0 0; padding: 10px 12px; border-radius: 9px; background: rgba(255,77,61,.1); color: #ff8177; font-size: .8rem; }
+.inv-generate-order-btn.danger { background: linear-gradient(135deg, #ef4438, #b91422); }
+.inv-generate-order-btn:disabled { opacity: .6; cursor: wait; transform: none; }
+.inv-success { position: fixed; z-index: 10020; right: 22px; bottom: 22px; display: flex; align-items: center; gap: 14px; max-width: min(420px, calc(100vw - 24px)); padding: 13px 15px; border: 1px solid rgba(34,197,94,.35); border-radius: 12px; background: #122219; color: #7ee7a2; box-shadow: 0 18px 48px rgba(0,0,0,.4); }
+.inv-success button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 18px; }
+
 @media (max-width: 767px) {
   .cmd-modal-overlay:has(.inv-detail-modal) { align-items: flex-end; padding: 6px; overflow: hidden; }
   .inv-detail-modal {
@@ -539,6 +574,9 @@
     border-radius: 18px 18px 10px 10px;
   }
   .inv-detail-modal .inv-generate-order-btn { width: 100%; min-height: 44px; }
+  .inv-form-grid { grid-template-columns: 1fr; }
+  .inv-form-grid label.wide { grid-column: auto; }
+  .inv-history-list { max-height: 55dvh; }
 }
 
 .inv-sidebar-header {
