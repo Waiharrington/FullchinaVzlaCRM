@@ -207,7 +207,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const [products, setProducts] = useState<Product[]>(readCachedProducts)
   const [, setTodayOrders] = useState<TodayOrder[]>(cajaCache?.todayOrders ?? [])
-  const [, setLoading] = useState(!cajaCache)
+  const [loading, setLoading] = useState(!cajaCache)
+  const [productsError, setProductsError] = useState('')
   const [salesRank, setSalesRank] = useState<Map<string, number>>(new Map())
 
   const [cart, setCart] = useState<CartItem[]>([])
@@ -418,10 +419,14 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     getProducts()
       .then((prods) => {
         if (cancelled) return
+        setProductsError('')
         setProducts(prods)
         cacheProducts(prods)
       })
-      .catch((e) => console.error('getProducts error:', e))
+      .catch((e) => {
+        console.error('getProducts error:', e)
+        if (!cancelled) setProductsError('No se pudo cargar el menú. Revisa la conexión e inténtalo de nuevo.')
+      })
       .finally(() => { if (!cancelled) setLoading(false) })
 
     void getTodayOrders()
@@ -1226,7 +1231,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
           {/* Products Grid */}
           <div className="products-container grid">
-            {filteredProductGroups.length === 0 ? (
+            {loading && products.length === 0 ? (
+              Array.from({ length: 8 }, (_, index) => <div className="product-card product-card-skeleton" key={`product-skeleton-${index}`} aria-hidden><div className="product-skeleton-image" /><div className="product-skeleton-line wide" /><div className="product-skeleton-line" /></div>)
+            ) : productsError && products.length === 0 ? (
+              <div className="empty-message products-load-error"><strong>{productsError}</strong><button type="button" onClick={() => window.location.reload()}>Reintentar</button></div>
+            ) : filteredProductGroups.length === 0 ? (
               <p className="empty-message">No hay productos en esta categoría</p>
             ) : (
               filteredProductGroups.map((group, index) => {
