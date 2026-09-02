@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import {
-  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance,
+  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer,
   type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount,
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
 import { useRates } from '../context/rates-context'
+import { useAuth } from '../context/auth-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
 import { formatUsd, formatVes } from '../lib/money'
@@ -14,7 +15,7 @@ import { Bar } from 'react-chartjs-2'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
   Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
-  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig,
+  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft,
 } from 'lucide-react'
 import './Finanzas.css'
 
@@ -44,6 +45,7 @@ const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: st
 
 export function Finanzas() {
   const { bcvRate } = useRates()
+  const { user } = useAuth()
   const [orders, setOrders] = useState<FullOrder[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [purchases, setPurchases] = useState<Purchase[]>([])
@@ -61,6 +63,10 @@ export function Finanzas() {
   const currentMonth = isoDate(new Date()).slice(0, 7)
   const [summaryMonth, setSummaryMonth] = useState(currentMonth)
   const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
+  const [showTransfer, setShowTransfer] = useState(false)
+  const [transfer, setTransfer] = useState({ concept: '', from: '', to: '', currency: 'VES' as 'USD' | 'VES', amount: '', rate: '', reference: '', notes: '' })
+  const [transferSaving, setTransferSaving] = useState(false)
+  const [transferError, setTransferError] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -175,6 +181,15 @@ export function Finanzas() {
     await updateFinancialAccountOpeningBalance(account.id, value)
     setAccounts(await getFinancialAccounts())
     setEditingAccountId(null)
+  }
+  const saveTransfer = async () => {
+    setTransferError('')
+    if (!user || !transfer.from || !transfer.to || !transfer.concept) return setTransferError('Completa concepto y cuentas')
+    try {
+      setTransferSaving(true)
+      await createFinancialTransfer({ concept: transfer.concept, operationDate: isoDate(new Date()), fromAccountId: transfer.from, toAccountId: transfer.to, originalCurrency: transfer.currency, originalAmount: Number(transfer.amount), exchangeRate: transfer.currency === 'VES' ? Number(transfer.rate) : null, referenceNumber: transfer.reference, notes: transfer.notes, userId: user.id })
+      setShowTransfer(false); setTransfer({ concept: '', from: '', to: '', currency: 'VES', amount: '', rate: '', reference: '', notes: '' }); await load()
+    } catch (error) { setTransferError(error instanceof Error ? error.message : 'No se pudo guardar la transferencia') } finally { setTransferSaving(false) }
   }
 
   const chartData = {
@@ -410,6 +425,7 @@ export function Finanzas() {
       <div className="fin-card">
         <h2>Movimientos administrativos</h2>
         <p className="sub">Traspasos, cuentas por cobrar, adelantos, préstamos y propinas. Los que no afectan utilidad se muestran sin convertirlos en gastos.</p>
+        <button className="fin-export" onClick={() => setShowTransfer(true)}><ArrowRightLeft size={15} /> Registrar transferencia</button>
         <div className="fin-ops">
           {periodOperations.slice(0, 12).map((op) => (
             <div className="fin-op" key={op.id}>
@@ -421,6 +437,15 @@ export function Finanzas() {
           {periodOperations.length === 0 && <p style={{ color: '#71717a' }}>Sin movimientos administrativos en este período.</p>}
         </div>
       </div>
+      {showTransfer && <div className="modal-overlay-dark" role="dialog" aria-modal="true"><div className="modal-card fin-transfer-modal">
+        <div className="fin-pl-head"><div><h2>Registrar transferencia</h2><p className="sub">Mueve dinero entre cuentas sin afectar la utilidad.</p></div><button className="icon-btn" onClick={() => setShowTransfer(false)}><X size={18}/></button></div>
+        <input placeholder="Concepto (ej. Depósito del punto a Banesco)" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/>
+        <div className="fin-transfer-grid"><label>Desde<select value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value})}><option value="">Selecciona cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label><label>Hacia<select value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})}><option value="">Selecciona cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label></div>
+        <div className="fin-transfer-grid"><label>Moneda<select value={transfer.currency} onChange={e => setTransfer({...transfer, currency: e.target.value as 'USD'|'VES'})}><option value="VES">Bolívares</option><option value="USD">Dólares</option></select></label><label>Monto<input type="number" min="0" step="0.01" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})}/></label></div>
+        {transfer.currency === 'VES' && <label>Tasa de cambio<input type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/></label>}
+        <input placeholder="Referencia (opcional)" value={transfer.reference} onChange={e => setTransfer({...transfer, reference: e.target.value})}/><textarea placeholder="Notas (opcional)" value={transfer.notes} onChange={e => setTransfer({...transfer, notes: e.target.value})}/>
+        {transferError && <p className="fin-down">{transferError}</p>}<div className="fin-modal-actions"><button onClick={() => setShowTransfer(false)}>Cancelar</button><button className="fin-export" disabled={transferSaving} onClick={() => void saveTransfer()}>{transferSaving ? 'Guardando...' : 'Guardar transferencia'}</button></div>
+      </div></div>}
     </div>
   )
 }

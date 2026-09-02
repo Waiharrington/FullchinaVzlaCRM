@@ -83,6 +83,13 @@
 .fin-op-route { color:#a1a1aa; font-size:12px; }
 .fin-op-amount { text-align:right; font-weight:800; }
 .fin-neutral { color:#38bdf8 !important; }
+.fin-transfer-modal { width: min(560px, calc(100vw - 28px)); max-height: min(760px, calc(100vh - 28px)); overflow: auto; }
+.fin-transfer-modal > input, .fin-transfer-modal > textarea, .fin-transfer-modal label input, .fin-transfer-modal label select { width: 100%; box-sizing: border-box; margin: 7px 0 12px; padding: 11px 12px; border-radius: 9px; border: 1px solid rgba(255,255,255,.12); background: #202026; color: #fff; }
+.fin-transfer-modal label { display: block; color: #a1a1aa; font-size: 12px; }
+.fin-transfer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.fin-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+.fin-modal-actions > button { border: 0; border-radius: 8px; padding: 10px 14px; background: #292930; color: #fff; cursor: pointer; }
+@media (max-width: 560px) { .fin-transfer-grid { grid-template-columns: 1fr; gap: 0; } }
 @media (max-width:640px) { .fin-op { grid-template-columns:1fr auto; } .fin-op-route { grid-column:1/-1; grid-row:2; } }
 .fin-account-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
 .fin-account-box { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }

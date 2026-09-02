@@ -41,8 +41,8 @@ function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
   })
 }
 
-interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean }
-const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true }
+interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean; menuLabel: SellableProduct['menuLabel'] }
+const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true, menuLabel: null }
 
 export function Menu() {
   const [products, setProducts] = useState<SellableProduct[]>([])
@@ -149,7 +149,7 @@ export function Menu() {
   const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setEditing('new') }
   const openEdit = (p: SellableProduct) => {
     prepareEditorOpen()
-    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive })
+    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive, menuLabel: p.menuLabel })
     setEditing(p)
   }
 
@@ -256,7 +256,7 @@ export function Menu() {
       const payload = {
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
         price: parseFloat(form.price) || 0, cost: form.cost.trim() ? parseFloat(form.cost) : null,
-        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '', imageUrl: form.imageUrl, isActive: form.isActive,
+        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '', imageUrl: form.imageUrl, isActive: form.isActive, menuLabel: form.menuLabel,
       }
       let productId: string
       if (editing === 'new') { productId = await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
@@ -267,8 +267,8 @@ export function Menu() {
       // Optimistic update: add/update product in local state immediately
       if (productId) {
         const updated: SellableProduct = editing === 'new'
-          ? { id: productId, isDelivery: false, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive }
-          : { ...(editing as SellableProduct), id: productId, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive }
+          ? { id: productId, isDelivery: false, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive, menuLabel: payload.menuLabel }
+          : { ...(editing as SellableProduct), id: productId, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive, menuLabel: payload.menuLabel }
         setProducts(prev => editing === 'new' ? [...prev, updated] : prev.map(p => p.id === productId ? updated : p))
       }
 
@@ -454,6 +454,7 @@ export function Menu() {
                     })}
                   </div>
                 </div>
+                <div className="mnu-product-section"><div className="mnu-product-section-title">Etiqueta del plato <small>Visible para los clientes</small></div><select className="mnu-label-select" value={form.menuLabel ?? ''} onChange={e => setForm({ ...form, menuLabel: (e.target.value || null) as SellableProduct['menuLabel'] })}><option value="">Sin etiqueta</option><option value="top_sales">🔥 Más vendido</option><option value="new">✨ Nuevo</option><option value="recommended">⭐ Recomendado</option><option value="free_drink">🥤 Refresco gratis</option></select></div>
               </section>
             </div>
 

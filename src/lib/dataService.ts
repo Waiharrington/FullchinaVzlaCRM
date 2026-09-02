@@ -12,6 +12,7 @@ export interface Product {
   emoji: string
   active: boolean
   imageUrl: string | null
+  menuLabel?: 'top_sales' | 'new' | 'recommended' | 'free_drink' | null
 }
 
 export interface SelectedModifier {
@@ -313,6 +314,7 @@ export interface SellableProduct {
   isActive: boolean
   imageUrl: string | null
   isDelivery: boolean
+  menuLabel: 'top_sales' | 'new' | 'recommended' | 'free_drink' | null
 }
 
 export interface RecipeSummary {
@@ -491,7 +493,7 @@ export async function getProducts(): Promise<Product[]> {
     const [{ data, error }, extraMap] = await Promise.all([
       supabase
         .from('sellable_products')
-        .select('id,name,description,price,cost,category,emoji,is_active,image_url')
+        .select('id,name,description,price,cost,category,emoji,is_active,image_url,menu_label')
         .eq('is_active', true)
         .order('category', { ascending: true })
         .order('name', { ascending: true }),
@@ -510,6 +512,7 @@ export async function getProducts(): Promise<Product[]> {
       emoji: r.emoji as string,
       active: Boolean(r.is_active),
       imageUrl: (r.image_url as string) ?? null,
+      menuLabel: (r.menu_label as Product['menuLabel']) ?? null,
     }))
   } catch (err) {
     console.error('Error cargando productos de Supabase:', err)
@@ -522,7 +525,7 @@ export async function getAllSellableProducts(): Promise<SellableProduct[]> {
   const [{ data, error }, extraMap] = await Promise.all([
     client()
       .from('sellable_products')
-      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
+      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
       .order('name', { ascending: true }),
     getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
   ])
@@ -533,17 +536,18 @@ export async function getAllSellableProducts(): Promise<SellableProduct[]> {
     category: r.category as string, categories: mergeCategories(r.category as string, extraMap.get(r.id as string)),
     emoji: r.emoji as string, isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null, isDelivery: (r.is_delivery as boolean) ?? false,
+    menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
   }))
 }
 
 export async function createProduct(p: {
   name: string; description?: string | null; price: number; cost?: number | null
-  category: string; emoji?: string; imageUrl?: string | null; isActive?: boolean
+  category: string; emoji?: string; imageUrl?: string | null; isActive?: boolean; menuLabel?: SellableProduct['menuLabel']
 }): Promise<string> {
   const { data, error } = await client().from('sellable_products').insert({
     name: p.name, description: p.description ?? null, price: p.price, cost: p.cost ?? null,
     category: p.category, emoji: p.emoji ?? '🍽️', /* DB default: emoji */ image_url: p.imageUrl ?? null,
-    is_active: p.isActive ?? true,
+    is_active: p.isActive ?? true, menu_label: p.menuLabel ?? null,
   }).select('id').single()
   if (error) throw error
   return data.id as string
@@ -551,7 +555,7 @@ export async function createProduct(p: {
 
 export async function updateProduct(id: string, updates: Partial<{
   name: string; description: string | null; price: number; cost: number | null
-  category: string; emoji: string; imageUrl: string | null; isActive: boolean
+  category: string; emoji: string; imageUrl: string | null; isActive: boolean; menuLabel: SellableProduct['menuLabel']
 }>): Promise<void> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (updates.name !== undefined) payload.name = updates.name
@@ -562,6 +566,7 @@ export async function updateProduct(id: string, updates: Partial<{
   if (updates.emoji !== undefined) payload.emoji = updates.emoji
   if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl
   if (updates.isActive !== undefined) payload.is_active = updates.isActive
+  if (updates.menuLabel !== undefined) payload.menu_label = updates.menuLabel
   const { error } = await client().from('sellable_products').update(payload).eq('id', id)
   if (error) throw error
 }
@@ -2218,7 +2223,7 @@ export async function updateIngredientCost(ingredientId: string, pricePerUnit: n
 export async function getSellableProducts(): Promise<SellableProduct[]> {
   const { data, error } = await client()
     .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
+    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
     .eq('is_active', true)
     .order('name', { ascending: true })
 
@@ -2235,6 +2240,7 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
     isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null,
     isDelivery: (r.is_delivery as boolean) ?? false,
+    menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
   }))
 }
 
@@ -2588,6 +2594,28 @@ export async function adminSetUserActive(userId: string, isActive: boolean): Pro
   if (error) throw error
 }
 
+export async function createFinancialTransfer(params: {
+  concept: string; operationDate: string; fromAccountId: string; toAccountId: string;
+  originalCurrency: 'USD' | 'VES'; originalAmount: number; exchangeRate?: number | null;
+  referenceNumber?: string | null; notes?: string | null; userId: string;
+}): Promise<void> {
+  if (params.fromAccountId === params.toAccountId) throw new Error('Las cuentas deben ser diferentes')
+  if (!Number.isFinite(params.originalAmount) || params.originalAmount <= 0) throw new Error('El monto debe ser mayor que cero')
+  const amountUsd = params.originalCurrency === 'VES'
+    ? params.originalAmount / Number(params.exchangeRate)
+    : params.originalAmount
+  if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new Error('La tasa es obligatoria para transferencias en Bs.')
+  const { error } = await client().from('financial_operations').insert({
+    operation_type: 'transfer', concept: params.concept.trim(), operation_date: params.operationDate,
+    amount_usd: Math.round(amountUsd * 100) / 100, original_currency: params.originalCurrency,
+    original_amount: params.originalAmount, exchange_rate: params.exchangeRate ?? null,
+    from_account_id: params.fromAccountId, to_account_id: params.toAccountId,
+    reference_number: params.referenceNumber?.trim() || null, notes: params.notes?.trim() || null,
+    affects_profit: false, created_by: params.userId,
+  })
+  if (error) throw error
+}
+
 export async function registerStaffMealConsumption(params: {
   mealType: 'lunch' | 'dinner'
   servings: number
@@ -2869,6 +2897,11 @@ export async function createPayrollPeriod(params: {
     .single()
   if (error) throw error
   return data.id as string
+}
+
+export async function deletePayrollPeriod(id: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_payroll_period', { p_period_id: id })
+  if (error) throw error
 }
 
 export async function updatePayrollPeriodStatus(id: string, status: PayrollPeriod['status']): Promise<void> {

@@ -210,6 +210,13 @@ function groupDescription(group: MenuProductGroup) {
   return group.variants[0].product.description || ''
 }
 
+const menuLabelMeta = {
+  top_sales: { text: 'Más vendido', icon: '🔥', className: 'top-sales' },
+  new: { text: 'Nuevo', icon: '✨', className: 'new' },
+  recommended: { text: 'Recomendado', icon: '⭐', className: 'recommended' },
+  free_drink: { text: 'Refresco gratis', icon: '🥤', className: 'free-drink' },
+} as const
+
 function cartProductName(name: string) {
   const parts = productTitle(name).split(/\s+—\s+/)
   if (parts.length > 1) return `${parts[0]}\n${parts.slice(1).join(' — ')}`
@@ -1104,6 +1111,7 @@ export function PublicMenu() {
     return (
       <article className="public-prod-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
         <div className="public-prod-img-wrap">
+          {(() => { const label = menuLabelMeta[group.variants.find(v => v.product.menuLabel)?.product.menuLabel as keyof typeof menuLabelMeta]; return label ? <span className={`public-menu-label ${label.className}`}>{label.icon} {label.text}</span> : null })()}
           <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         </div>

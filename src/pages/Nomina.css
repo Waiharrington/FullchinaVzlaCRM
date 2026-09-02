@@ -343,3 +343,4 @@
   }
   .nom-modal-actions button { width: 100%; min-height: 44px; }
 }
+.nom-period-actions{margin-left:auto;display:inline-flex;align-items:center}.nom-period-delete{display:grid;place-items:center;width:28px;height:28px;border:1px solid #7f1d1d;border-radius:7px;color:#f87171;background:#450a0a;cursor:pointer}.nom-period-delete:hover{background:#7f1d1d;color:#fff}

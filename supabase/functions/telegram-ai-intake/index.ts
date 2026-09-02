@@ -31,7 +31,7 @@ async function extractTextData(text: string, context: Record<string, unknown> = 
       messages: [
         {
           role: 'system',
-          content: 'Eres la inteligencia artificial administrativa de FullChinaVzla, no un chatbot de respuestas prefabricadas. Tu trabajo es entender la intención de la persona, conservar el contexto, relacionar cada mensaje con la operación pendiente, detectar contradicciones y hacer la siguiente pregunta más útil. Habla como una persona competente y cercana, nunca expongas nombres técnicos de campos, JSON, esquemas ni listas internas. Si dicen "compré en Euromercado", entiende que probablemente están iniciando una compra y pregunta qué compraron. Si corrigen un dato, actualízalo sin reiniciar la conversación. Devuelve SOLO JSON válido con type (purchase, expense, inventory, unknown), supplier, date, total, currency, payment_account, concept, items (array de description, quantity, unit, unit_cost), missing_fields, confidence. Para una purchase, considera esenciales supplier, items y total; date, currency y cuenta solo son obligatorios si hacen falta para registrar correctamente. No inventes valores. missing_fields debe contener únicamente información realmente necesaria y en lenguaje humano.',
+          content: 'Eres la inteligencia artificial administrativa de FullChinaVzla, no un chatbot de respuestas prefabricadas. Conserva el contexto y une mensajes relacionados. Devuelve SOLO JSON válido con type (purchase, expense, inventory, staff_meal, unknown), supplier, date, total, currency, payment_account, concept, meal_type (almuerzo/lunch o cena/dinner), servings (personas), recipe_name, items (array de description, quantity, unit, unit_cost), missing_fields, confidence. Para staff_meal son obligatorios meal_type, servings y recipe_name; identifica la receta por el nombre del plato o preparación, sin inventar. Para purchase considera esenciales supplier, items y total. No inventes valores; missing_fields solo debe contener información realmente necesaria y en lenguaje humano.',
         },
         { role: 'user', content: JSON.stringify({ previous_data: context, new_message: text }) },
       ],
@@ -103,6 +103,10 @@ function isGreeting(text: string) {
 
 function isBusinessQuery(text: string) {
   return /(?:c[oó]mo va(?: el)? negocio|cu[aá]ntas? ventas?|cu[aá]ntas? comandas?|ventas? de hoy|comandas? (?:abiertas?|pendientes?)|qu[eé] se vendi[oó]|resumen (?:de hoy|del d[ií]a))/i.test(text);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function businessOverview(supabaseUrl: string, headers: Record<string, string>) {
@@ -181,6 +185,26 @@ Deno.serve(async (request) => {
     return json({ ok: true, action: 'greeting' })
   }
   if (pending && rawText && isConfirmation(rawText)) {
+    const pendingType = (pending.extracted_data as Record<string, unknown> | null)?.type
+    if (pendingType === 'staff_meal') {
+      const identityResponse = await fetch(`${supabaseUrl}/rest/v1/ai_agent_identities?source=eq.telegram&source_user_id=eq.${encodeURIComponent(String(message.from?.id || ''))}&is_active=eq.true&select=profile_id&limit=1`, { headers })
+      const identity = identityResponse.ok ? (await identityResponse.json())?.[0] : null
+      if (!identity?.profile_id) {
+        await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: message.chat.id, text: 'No tienes un usuario autorizado para registrar comidas del personal.' }) })
+        return json({ ok: true, action: 'authorization_required' })
+      }
+      const finalizeResponse = await fetch(`${supabaseUrl}/rest/v1/rpc/fn_ai_finalize_staff_meal`, {
+        method: 'POST', headers: { ...headers, Prefer: 'return=representation' },
+        body: JSON.stringify({ p_draft_id: pending.id, p_profile_id: identity.profile_id }),
+      })
+      if (!finalizeResponse.ok) {
+        const detail = (await finalizeResponse.text()).slice(0, 240)
+        await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: message.chat.id, text: `No pude guardar esa comida todavía: ${detail}` }) })
+        return json({ error: 'staff_meal_finalize_failed' }, 422)
+      }
+      await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: message.chat.id, text: 'Listo. Guardé la comida del personal y desconté los ingredientes de la receta en inventario.' }) })
+      return json({ ok: true, action: 'staff_meal_registered', draft_id: pending.id })
+    }
     await fetch(`${supabaseUrl}/rest/v1/ai_intake_messages?id=eq.${pending.id}`, { method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'approved', approved_at: new Date().toISOString() }) })
     await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: message.chat.id, text: 'Confirmado. Dejé la operación aprobada para registrarla en el sistema.' }) })
     return json({ ok: true, action: 'approved', draft_id: pending.id })
@@ -203,6 +227,62 @@ Deno.serve(async (request) => {
       console.error('AI refinement failed:', error instanceof Error ? error.message : 'unknown')
     }
   }
+
+  // Agrupa mensajes consecutivos antes de llamar al modelo. El último mensaje
+  // de la ventana es el único que responde, evitando contestar al primero.
+  if (!pending && rawText) {
+    const createdAt = new Date().toISOString()
+    const insert = await fetch(`${supabaseUrl}/rest/v1/ai_intake_messages`, {
+      method: 'POST', headers,
+      body: JSON.stringify({
+        source_message_id: String(message.message_id),
+        source_chat_id: String(message.chat.id),
+        source_user_id: message.from?.id ? String(message.from.id) : null,
+        input_kind: classified.inputKind,
+        raw_text: rawText,
+        transcription: classified.inputKind === 'voice' ? rawText : null,
+        media_file_id: classified.fileId,
+        media_mime_type: classified.mimeType,
+        extracted_data: {},
+        status: 'received',
+      }),
+    })
+    if (!insert.ok && insert.status !== 409) return json({ error: 'persistence_failed' }, 503)
+
+    await sleep(Number(Deno.env.get('TELEGRAM_BATCH_WAIT_MS') || 12000))
+    const batchResponse = await fetch(
+      `${supabaseUrl}/rest/v1/ai_intake_messages?source_chat_id=eq.${encodeURIComponent(String(message.chat.id))}&status=eq.received&created_at=gte.${encodeURIComponent(createdAt)}&select=id,source_message_id,raw_text&order=created_at.asc`,
+      { headers },
+    )
+    const batch = batchResponse.ok ? await batchResponse.json() : []
+    const latest = batch.at(-1)
+    if (!latest || String(latest.source_message_id) !== String(message.message_id)) {
+      return json({ ok: true, action: 'batched' })
+    }
+
+    const combinedText = batch.map((item: Record<string, unknown>) => String(item.raw_text || '').trim()).filter(Boolean).join('\n')
+    try {
+      const extraction = await extractTextData(combinedText, {})
+      await fetch(`${supabaseUrl}/rest/v1/ai_intake_messages?id=eq.${latest.id}`, {
+        method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' },
+        body: JSON.stringify({ raw_text: combinedText, extracted_data: extraction.data, confidence: extraction.confidence, status: extraction.status }),
+      })
+      for (const item of batch.slice(0, -1)) {
+        await fetch(`${supabaseUrl}/rest/v1/ai_intake_messages?id=eq.${item.id}`, {
+          method: 'PATCH', headers: { ...headers, Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'processing' }),
+        })
+      }
+      await fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: message.chat.id, text: confirmationMessage(extraction.data) }),
+      })
+      return json({ ok: true, action: 'batch_processed', draft_id: latest.id, messages: batch.length })
+    } catch (error) {
+      console.error('AI batch extraction failed:', error instanceof Error ? error.message : 'unknown')
+    }
+  }
+
   let extraction = { data: {}, confidence: null as number | null, status: 'received' }
   if (rawText) {
     try { extraction = await extractTextData(rawText, applyExplicitFacts(rawText)) } catch (error) {

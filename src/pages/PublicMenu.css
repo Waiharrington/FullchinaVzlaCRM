@@ -3131,7 +3131,7 @@ button.mobile-only {
     transition: transform 0.08s ease !important;
   }
 
-  .public-prod-img-wrap {
+.public-prod-img-wrap {
     position: relative !important;
     width: 100% !important;
     height: 160px !important;
@@ -3141,6 +3141,14 @@ button.mobile-only {
     flex-shrink: 0 !important;
     background: #0B0B0D !important;
   }
+
+.public-menu-label { position: absolute; z-index: 2; top: 10px; left: 10px; padding: 5px 9px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .01em; box-shadow: 0 5px 14px rgba(0,0,0,.28); animation: menu-label-pulse 2.8s ease-in-out infinite; }
+.public-menu-label.top-sales { background: linear-gradient(135deg,#f97316,#dc2626); }
+.public-menu-label.new { background: linear-gradient(135deg,#8b5cf6,#2563eb); }
+.public-menu-label.recommended { background: linear-gradient(135deg,#16a34a,#0f766e); }
+.public-menu-label.free-drink { background: linear-gradient(135deg,#0891b2,#0e7490); }
+@keyframes menu-label-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .public-menu-label { animation: none; } }
 
   .public-prod-img {
     width: 100% !important;

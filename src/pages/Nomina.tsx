@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
+  deletePayrollPeriod,
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
   getPayrollPayments, createPayrollPayment,
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment,
@@ -13,9 +14,11 @@ import NumberStepper from '../components/NumberStepper'
 import {
   Plus, Loader2, Users, Banknote, Gift, Hourglass,
   HelpCircle, Save,
+  Trash2,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import './Nomina.css'
+import { confirmDialog } from '../components/ConfirmDialog'
 
 const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
@@ -106,7 +109,7 @@ export function Nomina() {
       init[emp.id] = { bonus: ex ? String(ex.bonusAmount) : String(bonusForEmp(emp.id)), overtimeHours: ex ? String(ex.overtimeHours) : '0', transport: ex ? String(ex.transportAmount) : '0', absenceDays: ex ? String(ex.absenceDays) : '0', extraDeductions: '0' }
     }
     setEdit(init)
-  }, [selectedId, entriesByPeriod, activeEmployees, selected])
+  }, [selectedId, entriesByPeriod, activeEmployees, selected, bonusForEmp])
 
   const periodNet = useCallback((p: PayrollPeriod) => {
     const ents = entriesByPeriod[p.id] ?? []
@@ -151,6 +154,20 @@ export function Nomina() {
     e.preventDefault(); if (!pStart || !pEnd) return
     try { await createPayrollPeriod({ startDate: pStart, endDate: pEnd, notes: pNotes.trim() || undefined }); closePeriod(() => { setPStart(''); setPEnd(''); setPNotes('') }); await load(); flash('Período creado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error creando período') }
+  }
+  const handleDeletePeriod = async (period: PayrollPeriod) => {
+    const ok = await confirmDialog({
+      title: 'Eliminar período de nómina',
+      message: `¿Eliminar el período ${fmtRange(period)}?\n\nSolo se puede borrar si está abierto y todavía no tiene pagos ni ajustes asociados. Sus liquidaciones se eliminarán junto con el período.`,
+      confirmText: 'Eliminar período', danger: true,
+    })
+    if (!ok) return
+    try {
+      await deletePayrollPeriod(period.id)
+      if (selectedId === period.id) setSelectedId(null)
+      await load()
+      flash('Período eliminado')
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo eliminar el período') }
   }
   const submitAdvance = async (e: React.FormEvent) => {
     e.preventDefault(); if (!advEmp || !advAmt) return
@@ -229,7 +246,7 @@ export function Nomina() {
           <div className="nom-periods">
             {periods.map((p) => (
               <button key={p.id} className={`nom-period${selectedId === p.id ? ' active' : ''}`} onClick={() => setSelectedId(p.id)}>
-                <div className="nom-period-top"><strong>{fmtRange(p)}</strong><span className={`nom-status ${statusCls(p.status)}`}>{statusLbl(p.status)}</span></div>
+                <div className="nom-period-top"><strong>{fmtRange(p)}</strong><span className={`nom-status ${statusCls(p.status)}`}>{statusLbl(p.status)}</span><span className="nom-period-actions"><span className="nom-period-delete" role="button" tabIndex={0} title="Eliminar período" aria-label={`Eliminar período ${fmtRange(p)}`} onClick={(e) => { e.stopPropagation(); void handleDeletePeriod(p) }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); void handleDeletePeriod(p) } }}><Trash2 size={15} /></span></span></div>
                 {p.notes && <small>{p.notes}</small>}
                 <div className="liq">Liquidación: {formatUsd(periodNet(p))}</div>
                 <small>{(entriesByPeriod[p.id] ?? []).length} liquidados · {activeEmployees.length} empleados</small>
