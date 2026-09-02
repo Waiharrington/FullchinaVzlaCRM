@@ -493,7 +493,7 @@ export async function getProducts(): Promise<Product[]> {
     const [{ data, error }, extraMap] = await Promise.all([
       supabase
         .from('sellable_products')
-        .select('id,name,description,price,cost,category,emoji,is_active,image_url,menu_label')
+        .select('id,name,description,price,cost,category,emoji,is_active,image_url')
         .eq('is_active', true)
         .order('category', { ascending: true })
         .order('name', { ascending: true }),
@@ -512,7 +512,7 @@ export async function getProducts(): Promise<Product[]> {
       emoji: r.emoji as string,
       active: Boolean(r.is_active),
       imageUrl: (r.image_url as string) ?? null,
-      menuLabel: (r.menu_label as Product['menuLabel']) ?? null,
+      menuLabel: null,
     }))
   } catch (err) {
     console.error('Error cargando productos de Supabase:', err)
@@ -525,7 +525,7 @@ export async function getAllSellableProducts(): Promise<SellableProduct[]> {
   const [{ data, error }, extraMap] = await Promise.all([
     client()
       .from('sellable_products')
-      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
+      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
       .order('name', { ascending: true }),
     getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
   ])
@@ -536,7 +536,7 @@ export async function getAllSellableProducts(): Promise<SellableProduct[]> {
     category: r.category as string, categories: mergeCategories(r.category as string, extraMap.get(r.id as string)),
     emoji: r.emoji as string, isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null, isDelivery: (r.is_delivery as boolean) ?? false,
-    menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
+    menuLabel: null,
   }))
 }
 
@@ -2223,7 +2223,7 @@ export async function updateIngredientCost(ingredientId: string, pricePerUnit: n
 export async function getSellableProducts(): Promise<SellableProduct[]> {
   const { data, error } = await client()
     .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
+    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery')
     .eq('is_active', true)
     .order('name', { ascending: true })
 
@@ -2240,7 +2240,7 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
     isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null,
     isDelivery: (r.is_delivery as boolean) ?? false,
-    menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
+    menuLabel: null,
   }))
 }
 
