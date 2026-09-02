@@ -456,8 +456,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const accountsForMethod = (method: SplitPaymentMethod) => {
     if (method === 'cash') return financialAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrency)
-    if (method === 'mobile' || method === 'transfer') return financialAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
-    if (method === 'card') return financialAccounts.filter((a) => a.accountType === 'pos' && a.currency === 'VES')
+    if (method === 'mobile') return financialAccounts
+      .filter((a) => a.currency === 'VES' && a.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(a.name))
+      .sort((a, b) => Number(b.name === 'Banco Exterior') - Number(a.name === 'Banco Exterior'))
+    if (method === 'transfer') return financialAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
+    if (method === 'card') return financialAccounts.filter((a) => a.currency === 'VES' && a.name === 'Banesco')
     if (method === 'zelle' || method === 'binance') return financialAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
     return financialAccounts
   }
@@ -513,7 +516,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       result = [...result].sort((a, b) => a.name.localeCompare(b.name))
     }
     return result
-  }, [products, searchTerm, activeCategory, sortBy, salesRank])
+  }, [products, searchTerm, activeCategory, sortBy, salesRank, resolveCats])
 
     // Top 5 productos más vendidos hoy (para rank 1-5)
     const topProductRanks = useMemo(() => {
@@ -1719,9 +1722,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
                     <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
-                      <option value="">Selecciona una cuenta</option>
+                      <option value="">{selectedPaymentTab === 'card' ? 'Banesco' : 'Selecciona una cuenta'}</option>
                       {accountsForMethod(selectedPaymentTab).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
                     </StyledSelect>
+                    {selectedPaymentTab === 'mobile' && <span className="payment-hint-sub">Por defecto: Banco Exterior. Puedes cambiar a Banesco.</span>}
+                    {selectedPaymentTab === 'card' && <span className="payment-hint-sub">Los cobros del punto ingresan en Banesco.</span>}
                   </div>
                 )}
 

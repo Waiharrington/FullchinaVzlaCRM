@@ -7,6 +7,12 @@ import {
   getStockMovements,
   getUnits,
   adjustStock,
+  registerStaffMealConsumption,
+  registerStaffMealRecipeConsumption,
+  getSellableProducts,
+  getRecipeComponents,
+  type RecipeComponent,
+  type SellableProduct,
   updateIngredient,
   updateIngredientCost,
   type Ingredient,
@@ -33,12 +39,13 @@ import {
   Minus,
   Save,
   Loader2,
+  Utensils,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
-type InventoryModal = 'view' | 'edit' | 'adjust' | null
+type InventoryModal = 'view' | 'edit' | 'adjust' | 'staff-meal' | null
 
 // Cache a nivel de módulo: al volver a Inventario se muestran los datos de
 // la última visita al instante, sin el parpadeo de "Cargando...", mientras
@@ -60,6 +67,9 @@ export function Inventario() {
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
   const [editForm, setEditForm] = useState({ name: '', unitId: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
   const [adjustment, setAdjustment] = useState({ direction: 1 as 1 | -1, quantity: '', notes: '' })
+  const [staffMeal, setStaffMeal] = useState({ mode: 'manual' as 'manual' | 'recipe', mealType: 'lunch' as 'lunch' | 'dinner', servings: '1', notes: '', productId: '', items: [{ ingredientId: '', quantity: '' }] })
+  const [staffMealProducts, setStaffMealProducts] = useState<SellableProduct[]>([])
+  const [staffMealComponents, setStaffMealComponents] = useState<RecipeComponent[]>([])
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
@@ -122,6 +132,49 @@ export function Inventario() {
     setModalMode('adjust')
     setModalError('')
     setAdjustment({ direction, quantity: '', notes: '' })
+  }
+
+  const openStaffMeal = () => {
+    setSelectedIngredient(null)
+    setModalMode('staff-meal')
+    setModalError('')
+    setStaffMeal({ mode: 'manual', mealType: 'lunch', servings: '1', notes: '', productId: '', items: [{ ingredientId: '', quantity: '' }] })
+    void getSellableProducts().then(products => setStaffMealProducts(products.filter(product => product.category !== 'bebidas'))).catch(() => setStaffMealProducts([]))
+  }
+
+  const saveStaffMeal = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const servings = Number(staffMeal.servings)
+    if (staffMeal.mode === 'recipe') {
+      if (!staffMeal.productId) return setModalError('Selecciona una receta.')
+      setModalLoading(true); setModalError('')
+      try {
+        await registerStaffMealRecipeConsumption({ mealType: staffMeal.mealType, servings, productId: staffMeal.productId, notes: staffMeal.notes })
+        await fetchAll()
+        setSuccessMessage(`${staffMeal.mealType === 'lunch' ? 'Almuerzo' : 'Cena'} por receta registrado y descontado del inventario.`)
+        closeIngredientModal()
+      } catch (error) { console.error(error); setModalError('No se pudo registrar el consumo de la receta.') }
+      finally { setModalLoading(false) }
+      return
+    }
+    const items = staffMeal.items.map(item => ({
+      ingredientId: item.ingredientId,
+      quantity: Number(item.quantity),
+      unitId: ingredients.find(ingredient => ingredient.id === item.ingredientId)?.unitId ?? '',
+    }))
+    if (!Number.isInteger(servings) || servings <= 0) return setModalError('Indica una cantidad válida de personas.')
+    if (items.some(item => !item.ingredientId || !Number.isFinite(item.quantity) || item.quantity <= 0)) return setModalError('Completa cada ingrediente y su cantidad.')
+    setModalLoading(true)
+    setModalError('')
+    try {
+      await registerStaffMealConsumption({ mealType: staffMeal.mealType, servings, items, notes: staffMeal.notes })
+      await fetchAll()
+      setSuccessMessage(`${staffMeal.mealType === 'lunch' ? 'Almuerzo' : 'Cena'} del personal registrada y descontada del inventario.`)
+      closeIngredientModal()
+    } catch (error) {
+      console.error(error)
+      setModalError('No se pudo registrar la alimentación. Revisa las cantidades e inténtalo de nuevo.')
+    } finally { setModalLoading(false) }
   }
 
   const saveEdit = async (event: React.FormEvent) => {
@@ -291,6 +344,7 @@ export function Inventario() {
           <h1 className="page-title"><Package size={22} className="page-title-icon" /> Inventario</h1>
           <p>Gestiona tu inventario en tiempo real y controla tus existencias.</p>
         </div>
+        <button className="inv-staff-meal-btn" onClick={openStaffMeal}><Utensils size={17} /> Alimentación del personal</button>
       </header>
 
       {/* KPI Cards */}
@@ -574,6 +628,20 @@ export function Inventario() {
               <div className="inv-form-grid"><label className="wide"><span>Cantidad ({selectedIngredient.unitSymbol})</span><input autoFocus type="number" min="0.001" step="0.001" value={adjustment.quantity} onChange={e => setAdjustment(a => ({ ...a, quantity: e.target.value }))} placeholder="0.000" /></label><label className="wide"><span>Motivo del ajuste</span><textarea value={adjustment.notes} onChange={e => setAdjustment(a => ({ ...a, notes: e.target.value }))} placeholder="Ej. conteo físico, merma, recepción manual…" /></label></div>
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
               <button className={`inv-generate-order-btn ${adjustment.direction < 0 ? 'danger' : ''}`} disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : adjustment.direction > 0 ? <Plus size={17} /> : <Minus size={17} />} {adjustment.direction > 0 ? 'Registrar entrada' : 'Registrar salida'}</button>
+            </form>}
+            {modalMode === 'staff-meal' && <form onSubmit={saveStaffMeal}>
+              <div className="inv-modal-heading"><span><Utensils size={18} /></span><div><small>Consumo interno</small><h3>Alimentación del personal</h3></div></div>
+              <p className="inv-form-hint">Descuenta ingredientes del foodtruck sin crear una venta ni afectar la caja. La proteína comprada aparte no debe incluirse aquí.</p>
+              <div className="inv-form-grid">
+                <label><span>Comida</span><select value={staffMeal.mealType} onChange={e => setStaffMeal(value => ({ ...value, mealType: e.target.value as 'lunch' | 'dinner' }))}><option value="lunch">Almuerzo</option><option value="dinner">Cena</option></select></label>
+                <label><span>Personas</span><input type="number" min="1" step="1" value={staffMeal.servings} onChange={e => setStaffMeal(value => ({ ...value, servings: e.target.value }))} /></label>
+              </div>
+              <div className="inv-meal-mode"><button type="button" className={staffMeal.mode === 'recipe' ? 'active' : ''} onClick={() => setStaffMeal(value => ({ ...value, mode: 'recipe' }))}>Usar receta</button><button type="button" className={staffMeal.mode === 'manual' ? 'active' : ''} onClick={() => setStaffMeal(value => ({ ...value, mode: 'manual' }))}>Ingredientes manuales</button></div>
+              {staffMeal.mode === 'recipe' && <div className="inv-meal-recipe"><label><span>Receta / plato</span><select value={staffMeal.productId} onChange={async e => { const productId = e.target.value; setStaffMeal(value => ({ ...value, productId })); if (productId) { try { setStaffMealComponents(await getRecipeComponents(productId)) } catch { setStaffMealComponents([]) } } else setStaffMealComponents([]) }}><option value="">Selecciona una receta</option>{staffMealProducts.map(product => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>{staffMealComponents.length > 0 ? <div className="inv-recipe-preview"><strong>Se descontará por persona:</strong>{staffMealComponents.map(component => <span key={component.id}>{component.ingredientName ?? 'Ingrediente'}: {component.quantity} {component.unitSymbol}</span>)}</div> : staffMeal.productId && <p className="inv-form-hint">Esta receta no tiene ingredientes configurados.</p>}</div>}
+              {staffMeal.mode === 'manual' && <div className="inv-meal-items"><strong>Ingredientes usados</strong>{staffMeal.items.map((item, index) => { const selected = ingredients.find(ingredient => ingredient.id === item.ingredientId); return <div className="inv-meal-item" key={index}><select aria-label={`Ingrediente ${index + 1}`} value={item.ingredientId} onChange={e => setStaffMeal(value => ({ ...value, items: value.items.map((row, rowIndex) => rowIndex === index ? { ...row, ingredientId: e.target.value } : row) }))}><option value="">Selecciona un ingrediente</option>{ingredients.map(ingredient => <option key={ingredient.id} value={ingredient.id}>{ingredient.name} ({ingredient.unitSymbol})</option>)}</select><input aria-label={`Cantidad ${index + 1}`} type="number" min="0.001" step="0.001" placeholder="Cantidad" value={item.quantity} onChange={e => setStaffMeal(value => ({ ...value, items: value.items.map((row, rowIndex) => rowIndex === index ? { ...row, quantity: e.target.value } : row) }))} />{selected && <small>{selected.unitSymbol}</small>}{staffMeal.items.length > 1 && <button type="button" className="inv-meal-remove" onClick={() => setStaffMeal(value => ({ ...value, items: value.items.filter((_, rowIndex) => rowIndex !== index) }))} aria-label="Quitar ingrediente"><X size={15} /></button>}</div>})}<button type="button" className="inv-add-item-btn" onClick={() => setStaffMeal(value => ({ ...value, items: [...value.items, { ingredientId: '', quantity: '' }] }))}><Plus size={15} /> Agregar ingrediente</button></div>}
+              <label className="inv-meal-notes"><span>Nota (opcional)</span><textarea rows={2} value={staffMeal.notes} onChange={e => setStaffMeal(value => ({ ...value, notes: e.target.value }))} placeholder="Ej. almuerzo del turno de hoy" /></label>
+              {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
+              <button className="inv-generate-order-btn" disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : <Utensils size={17} />} Registrar consumo</button>
             </form>}
           </div>
         </div>,

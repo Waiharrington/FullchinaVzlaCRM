@@ -282,6 +282,10 @@ export interface Purchase {
   totalAmount: number
   isPaid: boolean
   accountId: string | null
+  accountName: string | null
+  paymentCurrency: 'USD' | 'VES' | null
+  paymentMethod: string | null
+  paymentReference: string | null
   exchangeRate: number | null
 }
 
@@ -1335,6 +1339,7 @@ export interface CashSessionSnapshot {
   openingCashUsd: number
   openingCashVes: number
   cashSalesUsd: number
+  cashSalesVes: number
   paymentTotal: number
   paymentBreakdown: Record<string, number>
   paymentBreakdownVes: Record<string, number>
@@ -1527,6 +1532,7 @@ function mapCashSession(value: Record<string, unknown>): CashSessionSnapshot {
     openingCashUsd: numberValue('openingCashUsd'),
     openingCashVes: numberValue('openingCashVes'),
     cashSalesUsd: numberValue('cashSalesUsd'),
+    cashSalesVes: numberValue('cashSalesVes'),
     paymentTotal: numberValue('paymentTotal'),
     paymentBreakdown: Object.fromEntries(Object.entries(breakdown).map(([key, amount]) => [key, Number(amount)])),
     paymentBreakdownVes: Object.fromEntries(Object.entries(breakdownVes).map(([key, amount]) => [key, Number(amount)])),
@@ -1631,6 +1637,7 @@ export interface CashTransaction {
   orderType: string | null
   customerName: string | null
   method: string
+  currency: 'USD' | 'VES'
   amount: number
   referenceNumber: string | null
   createdAt: string
@@ -1648,6 +1655,7 @@ export async function getCashSessionTransactions(sessionId: string): Promise<Cas
     orderType: t.orderType as string | null,
     customerName: t.customerName as string | null,
     method: String(t.method),
+    currency: t.currency === 'VES' ? 'VES' : 'USD',
     amount: Number(t.amount),
     referenceNumber: t.referenceNumber as string | null,
     createdAt: String(t.createdAt),
@@ -2580,6 +2588,36 @@ export async function adminSetUserActive(userId: string, isActive: boolean): Pro
   if (error) throw error
 }
 
+export async function registerStaffMealConsumption(params: {
+  mealType: 'lunch' | 'dinner'
+  servings: number
+  items: Array<{ ingredientId: string; unitId: string; quantity: number }>
+  notes?: string
+}): Promise<void> {
+  const { error } = await client().rpc('fn_register_staff_meal_consumption', {
+    p_meal_type: params.mealType,
+    p_servings: params.servings,
+    p_items: params.items,
+    p_notes: params.notes?.trim() || null,
+  })
+  if (error) throw error
+}
+
+export async function registerStaffMealRecipeConsumption(params: {
+  mealType: 'lunch' | 'dinner'
+  servings: number
+  productId: string
+  notes?: string
+}): Promise<void> {
+  const { error } = await client().rpc('fn_register_staff_meal_recipe_consumption', {
+    p_meal_type: params.mealType,
+    p_servings: params.servings,
+    p_product_id: params.productId,
+    p_notes: params.notes?.trim() || null,
+  })
+  if (error) throw error
+}
+
 export async function adminDeleteUser(userId: string): Promise<void> {
   const { error } = await client().rpc('fn_admin_delete_user', { p_user_id: userId })
   if (error) throw error
@@ -3203,8 +3241,9 @@ export async function getPurchases(): Promise<Purchase[]> {
   const { data, error } = await client()
     .from('purchases')
     .select(`
-      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, account_id, exchange_rate,
+      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
       suppliers(name),
+      financial_accounts(name,currency),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
     `)
     .order('purchase_date', { ascending: false })
@@ -3236,6 +3275,10 @@ export async function getPurchases(): Promise<Purchase[]> {
       totalAmount: items.reduce((sum, i) => sum + i.total, 0),
       isPaid: p.is_paid !== false,
       accountId: (p.account_id as string) ?? null,
+      accountName: ((p.financial_accounts as unknown as Record<string, unknown>)?.name as string) ?? null,
+      paymentCurrency: ((p.payment_currency ?? (p.financial_accounts as unknown as Record<string, unknown>)?.currency) as 'USD' | 'VES') ?? null,
+      paymentMethod: (p.payment_method as string) ?? null,
+      paymentReference: (p.payment_reference as string) ?? null,
       exchangeRate: p.exchange_rate == null ? null : Number(p.exchange_rate),
     }
   })
@@ -3254,6 +3297,9 @@ export async function createPurchase(params: {
   userId: string
   isPaid?: boolean
   accountId?: string | null
+  paymentCurrency?: 'USD' | 'VES' | null
+  paymentMethod?: string | null
+  paymentReference?: string | null
   exchangeRate?: number | null
   items: Array<{
     ingredientId: string
@@ -3273,6 +3319,9 @@ export async function createPurchase(params: {
       notes: params.notes ?? null,
       is_paid: params.isPaid ?? true,
       account_id: params.accountId ?? null,
+      payment_currency: params.paymentCurrency ?? null,
+      payment_method: params.paymentMethod ?? null,
+      payment_reference: params.paymentReference ?? null,
       exchange_rate: params.exchangeRate ?? null,
       created_by: params.userId,
     })

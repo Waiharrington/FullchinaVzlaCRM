@@ -19,10 +19,6 @@ import {
 } from '../lib/dataService'
 import './CajaOperativa.css'
 
-const PAYMENT_LABELS: Record<string, string> = {
-  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Combinado',
-}
-
 const MOVEMENT_LABELS: Record<string, string> = {
   cash_in: 'Ingreso', cash_out: 'Salida', withdrawal: 'Retiro', expense: 'Gasto', adjustment: 'Ajuste',
 }
@@ -30,9 +26,6 @@ const MOVEMENT_LABELS: Record<string, string> = {
 const ORDER_TYPE_LABELS: Record<string, string> = {
   'dine-in': 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery',
 }
-
-// Métodos que el cliente paga en bolívares: se muestran con el monto en Bs.
-const BS_METHODS = new Set(['mobile', 'card', 'transfer'])
 
 function money(value: number, currency: 'USD' | 'VES' = 'USD') {
   return new Intl.NumberFormat('es-VE', {
@@ -127,14 +120,6 @@ export function CajaOperativa() {
     } finally { setSaving(false) }
   }
 
-  // La caja física del food truck solo maneja efectivo (USD/Bs) y el punto de
-  // venta; pago móvil, transferencia, etc. no pasan por ahí, así que se
-  // excluyen del desglose y del total cobrado de esta pantalla.
-  const cajaMethods = session
-    ? Object.entries(session.paymentBreakdown).filter(([method]) => method === 'cash' || method === 'card')
-    : []
-  const cajaTotal = cajaMethods.reduce((sum, [, amount]) => sum + amount, 0)
-
   const prepareClose = () => {
     if (!session) return
     setCountedUsd(session.expectedCashUsd.toFixed(2))
@@ -210,12 +195,15 @@ export function CajaOperativa() {
             <span><Clock3 size={15} /> Abierto {new Date(session.openedAt).toLocaleString('es-VE')}</span>
           </section>
 
-          <section className="cash-metric-grid">
-            <article><span>Fondo inicial USD</span><strong>{money(session.openingCashUsd)}</strong></article>
-            <article><span>Ventas en efectivo</span><strong>{money(session.cashSalesUsd)}</strong></article>
-            <article><span>Entradas / salidas</span><strong>{money(session.movementInUsd - session.movementOutUsd)}</strong></article>
-            <article className="featured"><span>Efectivo esperado USD</span><strong>{money(session.expectedCashUsd)}</strong></article>
-            <article><span>Efectivo esperado Bs.</span><strong>{money(session.expectedCashVes, 'VES')}</strong></article>
+          <section className="cash-currency-grid">
+            <article className="cash-currency-card usd">
+              <div className="cash-currency-heading"><span>Efectivo en dólares</span><strong>{money(session.expectedCashUsd)}</strong></div>
+              <div className="cash-currency-details"><div><span>Fondo inicial</span><b>{money(session.openingCashUsd)}</b></div><div><span>Ventas en efectivo</span><b>{money(session.cashSalesUsd)}</b></div><div><span>Entradas / salidas</span><b>{money(session.movementInUsd - session.movementOutUsd)}</b></div></div>
+            </article>
+            <article className="cash-currency-card ves">
+              <div className="cash-currency-heading"><span>Efectivo en bolívares</span><strong>{money(session.expectedCashVes, 'VES')}</strong></div>
+              <div className="cash-currency-details"><div><span>Fondo inicial</span><b>{money(session.openingCashVes, 'VES')}</b></div><div><span>Ventas en efectivo</span><b>{money(session.cashSalesVes, 'VES')}</b></div><div><span>Entradas / salidas</span><b>{money(session.movementInVes - session.movementOutVes, 'VES')}</b></div></div>
+            </article>
           </section>
 
           <section className="cash-content-grid">
@@ -244,27 +232,11 @@ export function CajaOperativa() {
             </article>
 
             <article className="cash-card">
-              <div className="cash-card-heading"><div><span>Cobros registrados</span><h2>Desglose por método</h2></div><WalletCards size={24} /></div>
+              <div className="cash-card-heading"><div><span>Cobros registrados</span><h2>Efectivo recibido</h2></div><Banknote size={24} /></div>
               <div className="cash-payment-list">
-                {cajaMethods.length === 0 && <p className="cash-empty">Aún no hay pagos en este turno.</p>}
-                {cajaMethods.map(([method, amount]) => {
-                  const bsExact = session.paymentBreakdownVes?.[method]
-                  const showBs = BS_METHODS.has(method) && bsExact != null && bsExact > 0
-                  return (
-                    <div key={method}>
-                      <span>{PAYMENT_LABELS[method] ?? method}</span>
-                      {showBs ? (
-                        <div className="cash-amt-dual">
-                          <strong>{money(bsExact, 'VES')}</strong>
-                          <small>{money(amount)}</small>
-                        </div>
-                      ) : (
-                        <strong>{money(amount)}</strong>
-                      )}
-                    </div>
-                  )
-                })}
-                <div className="cash-payment-total"><span>Total cobrado</span><strong>{money(cajaTotal)}</strong></div>
+                <div><span>Dólares en efectivo</span><strong>{money(session.cashSalesUsd)}</strong></div>
+                <div><span>Bolívares en efectivo</span><strong>{money(session.cashSalesVes, 'VES')}</strong></div>
+                <p className="cash-payment-note">Pago móvil, punto, transferencias, Binance y Zelle se concilian en sus cuentas financieras.</p>
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
             </article>
@@ -275,7 +247,7 @@ export function CajaOperativa() {
               <div className="cash-card-heading">
                 <div>
                   <span>Línea de tiempo</span>
-                  <h2>Historial de comandas</h2>
+                  <h2>Movimientos de efectivo</h2>
                 </div>
                 <div className="cash-tx-filters">
                   <button className={`cash-tx-filter${txFilter === 'all' ? ' active' : ''}`} onClick={() => setTxFilter('all')}>Todo</button>
@@ -303,7 +275,7 @@ export function CajaOperativa() {
                       <span className="cash-tx-meta">
                         {tx.kind === 'payment' && (
                           <>
-                            <span className="cash-tx-badge">{PAYMENT_LABELS[tx.method] ?? tx.method}</span>
+                            <span className="cash-tx-badge">Efectivo {tx.currency}</span>
                             {tx.orderType && <span className="cash-tx-badge muted">{ORDER_TYPE_LABELS[tx.orderType] ?? tx.orderType}</span>}
                           </>
                         )}
@@ -311,7 +283,7 @@ export function CajaOperativa() {
                       </span>
                       {tx.itemsSummary && <span className="cash-tx-items">{tx.itemsSummary}</span>}
                     </div>
-                    <b className={tx.direction}>{tx.direction === 'in' ? '+' : '-'}{money(tx.amount)}</b>
+                    <b className={tx.direction}>{tx.direction === 'in' ? '+' : '-'}{money(tx.amount, tx.currency)}</b>
                   </div>
                 ))}
               </div>
@@ -342,7 +314,7 @@ export function CajaOperativa() {
         <div><span className="cash-ops-eyebrow">Historial operativo</span><h2>Turnos cerrados recientemente</h2></div>
         <div className="cash-history-list">
           {history.length === 0 && <p className="cash-empty">No hay turnos cerrados todavía.</p>}
-          {history.map(item => <article key={item.id}><div><strong>Turno #{item.sessionNumber}</strong><span>{item.closedAt ? new Date(item.closedAt).toLocaleString('es-VE') : ''}</span></div><div><span>Esperado</span><b>{money(item.expectedCashUsd)}</b></div><div><span>Contado</span><b>{money(item.countedCashUsd ?? 0)}</b></div><div><span>Diferencia</span><b className={(item.differenceUsd ?? 0) < 0 ? 'negative' : (item.differenceUsd ?? 0) > 0 ? 'positive' : 'ok'}>{money(item.differenceUsd ?? 0)}</b></div></article>)}
+          {history.map(item => <article key={item.id}><div><strong>Turno #{item.sessionNumber}</strong><span>{item.closedAt ? new Date(item.closedAt).toLocaleString('es-VE') : ''}</span></div><div><span>Esperado</span><b>{money(item.expectedCashUsd)} · {money(item.expectedCashVes, 'VES')}</b></div><div><span>Contado</span><b>{money(item.countedCashUsd ?? 0)} · {money(item.countedCashVes ?? 0, 'VES')}</b></div><div><span>Diferencia</span><b className={(item.differenceUsd ?? 0) < 0 || (item.differenceVes ?? 0) < 0 ? 'negative' : (item.differenceUsd ?? 0) > 0 || (item.differenceVes ?? 0) > 0 ? 'positive' : 'ok'}>{money(item.differenceUsd ?? 0)} · {money(item.differenceVes ?? 0, 'VES')}</b></div></article>)}
         </div>
       </section>
     </div>

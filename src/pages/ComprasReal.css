@@ -28,6 +28,7 @@
 
 /* Formulario nueva compra */
 .cmp-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.cmp-payment-grid { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 12px; }
 .cmp-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
 .cmp-field input, .cmp-field select, .cmp-field textarea {
   width: 100%; font-size: 14px;
@@ -82,6 +83,12 @@
 
 /* Modal */
 .cmp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
+.cmp-purchase-overlay { z-index: 1000; background: rgba(0,0,0,0.72); backdrop-filter: blur(5px); overflow: hidden; }
+.cmp-purchase-modal { width: min(1120px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; margin: 0; box-shadow: 0 24px 80px rgba(0,0,0,.65); }
+.cmp-purchase-header { position: sticky; top: -18px; z-index: 4; display: flex; align-items: center; justify-content: space-between; margin: -18px -18px 16px; padding: 16px 18px; background: #141419; border-bottom: 1px solid rgba(255,255,255,.08); }
+.cmp-purchase-header .cmp-card-title { margin: 0; }
+.cmp-paid-amount, .cmp-payment-info { display: flex; flex-direction: column; gap: 2px; min-width: 130px; }
+.cmp-paid-amount small, .cmp-payment-info small, .cmp-payment-ref { color: #a1a1aa; font-size: 11px; font-weight: 500; }
 .cmp-modal {
   width: 100%; max-width: 520px; background: #141419;
   border: 1px solid rgba(225, 29, 42, 0.25); border-radius: 16px; padding: 20px;
@@ -123,4 +130,7 @@
   .cmp-detail-row { gap: 16px; align-items: flex-start; }
   .cmp-detail-row > * { min-width: 0; overflow-wrap: anywhere; }
   .cmp-detail-row > :last-child { text-align: right; }
+  .cmp-purchase-overlay { padding: 6px; }
+  .cmp-purchase-modal { max-height: calc(100dvh - 12px); border-radius: 18px 18px 10px 10px; }
+  .cmp-payment-grid { grid-template-columns: 1fr; }
 }

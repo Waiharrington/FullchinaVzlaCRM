@@ -24,9 +24,9 @@ const activeSession: CashSessionSnapshot = {
   id: 'session-1', sessionNumber: 7, registerId: 'register-1', registerCode: 'caja-principal',
   registerName: 'Caja principal', status: 'open', openedAt: '2026-08-08T12:00:00.000Z',
   openedBy: 'demo-cashier', openingCashUsd: 20, openingCashVes: 100,
-  cashSalesUsd: 35, paymentTotal: 50, paymentBreakdown: { cash: 35, card: 15 }, paymentBreakdownVes: { cash: 0, card: 0 },
+  cashSalesUsd: 35, cashSalesVes: 2500, paymentTotal: 38.12, paymentBreakdown: { cash: 38.12 }, paymentBreakdownVes: { cash: 2500 },
   movementInUsd: 0, movementOutUsd: 5, movementInVes: 0, movementOutVes: 0,
-  expectedCashUsd: 50, expectedCashVes: 100, countedCashUsd: null, countedCashVes: null,
+  expectedCashUsd: 50, expectedCashVes: 2600, countedCashUsd: null, countedCashVes: null,
   differenceUsd: null, differenceVes: null, closedAt: null, movements: [],
 }
 
@@ -54,14 +54,16 @@ describe('CajaOperativa', () => {
     })))
   })
 
-  it('muestra el efectivo esperado y el desglose del turno activo', async () => {
+  it('separa el efectivo físico en USD y bolívares sin incluir el punto', async () => {
     mocks.getActiveCashSession.mockResolvedValue(activeSession)
 
     render(<CajaOperativa />)
 
     expect(await screen.findByText('Turno activo')).toBeInTheDocument()
-    expect(screen.getByText('Efectivo esperado USD')).toBeInTheDocument()
-    expect(screen.getByText('Punto')).toBeInTheDocument()
+    expect(screen.getByText('Efectivo en dólares')).toBeInTheDocument()
+    expect(screen.getByText('Efectivo en bolívares')).toBeInTheDocument()
+    expect(screen.getByText('Efectivo recibido')).toBeInTheDocument()
+    expect(screen.queryByText('Punto')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /iniciar arqueo y cierre/i })).toBeEnabled()
   })
 })
