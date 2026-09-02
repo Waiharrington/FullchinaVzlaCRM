@@ -49,9 +49,7 @@ export default defineConfig({
             // Las fotos remotas del catálogo se reutilizan entre ventas. En
             // datos móviles, servirlas desde el dispositivo evita descargarlas
             // nuevamente en cada entrada a Caja.
-            urlPattern: ({ url }: { url: any }) =>
-              url.hostname === 'images.unsplash.com' ||
-              /\/storage\/v1\/(?:object|render\/image)\/public\//i.test(url.pathname),
+            urlPattern: /(?:^https:\/\/images\.unsplash\.com\/|\/storage\/v1\/(?:object|render\/image)\/public\/)/i,
             handler: 'CacheFirst',
             options: {
               cacheName: 'remote-product-images',
