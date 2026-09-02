@@ -59,6 +59,8 @@ export function Finanzas() {
   const [summaryMonth, setSummaryMonth] = useState(currentMonth)
   const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
   const [showTransfer, setShowTransfer] = useState(false)
+  const [selectedAccount, setSelectedAccount] = useState<FinancialAccount | null>(null)
+  const [selectedLedgerCurrency, setSelectedLedgerCurrency] = useState<'USD' | 'VES' | null>(null)
   const [transfer, setTransfer] = useState({ concept: '', from: '', to: '', currency: 'VES' as 'USD' | 'VES', amount: '', rate: '', reference: '', notes: '' })
   const [transferSaving, setTransferSaving] = useState(false)
   const [transferError, setTransferError] = useState('')
@@ -170,6 +172,39 @@ export function Finanzas() {
   const periodLabel = period === 'hoy' ? 'Hoy' : period === 'ayer' ? 'Ayer' : period === 'semana' ? 'Esta semana' : period === 'mes' ? 'Este mes' : `${rangeStart} al ${rangeEnd}`
   const salesUsd = Object.entries(cur.payments).filter(([method]) => ['cash','binance','zelle'].includes(method)).reduce((sum,[,amount]) => sum+amount,0)
   const salesVesUsd = Math.max(cur.grossSales-salesUsd,0)
+  const buildAccountDay = (account: FinancialAccount) => {
+    const amountFor = (usd: number, rate: number | null) => account.currency === 'VES' ? usd * (rate || bcvRate || 0) : usd
+    const operationAmount = (op: FinancialOperation) => account.currency === op.originalCurrency
+      ? op.originalAmount
+      : account.currency === 'USD' ? op.amountUsd : op.amountUsd * (op.exchangeRate || bcvRate || 0)
+    const day = selectedSummaryDate
+    const sales = orders.filter(order => order.status === 'paid' && isoDate(new Date(order.createdAt)) === day)
+      .flatMap(order => order.payments.map(payment => ({ payment, rate: order.bcvRate })))
+      .filter(row => row.payment.accountId === account.id)
+      .reduce((sum, row) => sum + amountFor(row.payment.amount, row.rate), 0)
+    const expensesDay = expenses.filter(row => row.accountId === account.id && row.expenseDate === day)
+      .reduce((sum, row) => sum + amountFor(row.amount, row.exchangeRate), 0)
+    const purchasesDay = purchases.filter(row => row.isPaid && row.accountId === account.id && row.purchaseDate === day)
+      .reduce((sum, row) => sum + amountFor(row.totalAmount, row.exchangeRate), 0)
+    let collections = 0; let transfers = 0; let others = 0
+    for (const op of operations.filter(row => row.operationDate === day)) {
+      const signed = op.toAccount === account.name ? operationAmount(op) : op.fromAccount === account.name ? -operationAmount(op) : 0
+      if (!signed) continue
+      if (op.type === 'receivable_collection') collections += signed
+      else if (op.type === 'transfer') transfers += signed
+      else others += signed
+    }
+    const dayNet = sales - expensesDay - purchasesDay + collections + transfers + others
+    const tomorrow = isoDate(addDays(new Date(`${day}T12:00:00`), 1))
+    const afterStart = day < isoDate(new Date()) ? tomorrow : '9999-12-31'
+    const afterActivity = buildFinancialAccountActivity(accounts, orders, expenses, purchases, afterStart, '9999-12-31').get(account.id)?.net ?? 0
+    const afterOperations = operations.filter(op => op.operationDate > day).reduce((sum, op) => {
+      const value = operationAmount(op)
+      return sum + (op.toAccount === account.name ? value : op.fromAccount === account.name ? -value : 0)
+    }, 0)
+    const closing = account.currentBalance - afterActivity - afterOperations
+    return { opening: closing - dayNet, sales, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing }
+  }
   const saveOpeningBalance = async (account: FinancialAccount) => {
     const value = Number(openingBalanceDraft)
     if (!Number.isFinite(value)) return
@@ -297,11 +332,11 @@ export function Finanzas() {
                 : `≈ ${formatVes(account.currentBalance * bcvRate)} al BCV de hoy`
               : null
             return (
-            <div className="fin-account-box" key={account.id}>
+            <div className="fin-account-box" key={account.id} role="button" tabIndex={0} onClick={() => setSelectedAccount(account)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelectedAccount(account) }}>
               <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
               <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
               <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
-              {editingAccountId === account.id ? <div className="fin-opening-edit"><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
+              {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={(event) => { event.stopPropagation(); setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
             </div>
           )})}
           {accounts.length === 0 && <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>}
@@ -309,8 +344,8 @@ export function Finanzas() {
       </div>
 
       <div className="fin-currency-summary">
-        <div className="fin-card"><span className="sub">Cobros recibidos en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia contable</small></div>
-        <div className="fin-card"><span className="sub">Cobros recibidos en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios denominados en USD</small></div>
+        <button className="fin-card" onClick={() => setSelectedLedgerCurrency('VES')}><span className="sub">Cobros recibidos en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia contable · Ver control diario</small></button>
+        <button className="fin-card" onClick={() => setSelectedLedgerCurrency('USD')}><span className="sub">Cobros recibidos en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios denominados en USD · Ver control diario</small></button>
       </div>
 
       <section className="fin-card fin-daily-summary">
@@ -369,6 +404,49 @@ export function Finanzas() {
           {periodOperations.length === 0 && <p style={{ color: '#71717a' }}>Sin movimientos administrativos en este período.</p>}
         </div>
       </div>
+      {selectedAccount && (() => {
+        const ledger = buildAccountDay(selectedAccount)
+        const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)
+        return <div className="modal-overlay-dark" role="dialog" aria-modal="true" onClick={() => setSelectedAccount(null)}><div className="modal-card fin-account-modal" onClick={event => event.stopPropagation()}>
+          <div className="fin-account-modal-head"><div><span>CONTROL DIARIO POR CUENTA</span><h2>{selectedAccount.name}</h2><p>{selectedSummaryDate} · {selectedAccount.currency === 'VES' ? `BCV ${formatVes(bcvRate || 0)} por $1` : 'Cuenta en dólares'}</p></div><button className="icon-btn" onClick={() => setSelectedAccount(null)} aria-label="Cerrar"><X size={18}/></button></div>
+          <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
+          <table className="fin-account-ledger"><tbody>
+            <tr><th>Saldo anterior</th><td>{money(ledger.opening)}</td></tr>
+            <tr className="income"><th>Ventas del día</th><td>+ {money(ledger.sales)}</td></tr>
+            <tr className="expense"><th>Gastos del día</th><td>- {money(ledger.expenses)}</td></tr>
+            <tr className="expense"><th>Compras pagadas</th><td>- {money(ledger.purchases)}</td></tr>
+            <tr><th>Cuentas cobradas</th><td>{ledger.collections >= 0 ? '+' : '-'} {money(Math.abs(ledger.collections))}</td></tr>
+            <tr><th>Transferencias / Punto por hacerse efectivo</th><td>{ledger.transfers >= 0 ? '+' : '-'} {money(Math.abs(ledger.transfers))}</td></tr>
+            <tr><th>Otros movimientos</th><td>{ledger.others >= 0 ? '+' : '-'} {money(Math.abs(ledger.others))}</td></tr>
+            <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
+          </tbody></table>
+          <div className="fin-account-modal-foot"><button onClick={() => setSelectedAccount(null)}>Cerrar</button><button className="fin-export" onClick={() => { setSelectedAccount(null); setShowTransfer(true) }}><ArrowRightLeft size={15}/> Registrar movimiento</button></div>
+        </div></div>
+      })()}
+      {selectedLedgerCurrency && (() => {
+        const ledgerAccounts = accounts.filter(account => account.currency === selectedLedgerCurrency)
+        const rows = ledgerAccounts.map(account => ({ account, ledger: buildAccountDay(account) }))
+        const money = (value: number) => selectedLedgerCurrency === 'VES' ? formatVes(value) : formatUsd(value)
+        const cells = (pick: (ledger: ReturnType<typeof buildAccountDay>) => number, sign: 'income' | 'expense' | 'neutral' = 'neutral') => rows.map(({ account, ledger }) => {
+          const value = pick(ledger)
+          const prefix = sign === 'income' && value ? '+' : sign === 'expense' && value ? '-' : ''
+          return <td key={account.id}>{prefix} {money(Math.abs(value))}</td>
+        })
+        return <div className="modal-overlay-dark" role="dialog" aria-modal="true" onClick={() => setSelectedLedgerCurrency(null)}><div className="modal-card fin-account-modal fin-ledger-modal" onClick={event => event.stopPropagation()}>
+          <div className="fin-account-modal-head"><div><span>CONTROL DIARIO DE SALDOS</span><h2>{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</p></div><button className="icon-btn" onClick={() => setSelectedLedgerCurrency(null)} aria-label="Cerrar"><X size={18}/></button></div>
+          {rows.length ? <div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
+            <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
+            <tr className="income"><th>Ventas del día</th>{cells(ledger => ledger.sales, 'income')}</tr>
+            <tr className="expense"><th>Gastos del día</th>{cells(ledger => ledger.expenses, 'expense')}</tr>
+            <tr className="expense"><th>Compras pagadas</th>{cells(ledger => ledger.purchases, 'expense')}</tr>
+            <tr><th>Cuentas cobradas</th>{cells(ledger => ledger.collections)}</tr>
+            <tr><th>Punto / Transferencias</th>{cells(ledger => ledger.transfers)}</tr>
+            <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
+            <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
+          </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}
+          <div className="fin-account-modal-foot"><button onClick={() => setSelectedLedgerCurrency(null)}>Cerrar</button><button className="fin-export" onClick={() => { setSelectedLedgerCurrency(null); setShowTransfer(true) }}><ArrowRightLeft size={15}/> Registrar movimiento</button></div>
+        </div></div>
+      })()}
       {showTransfer && <div className="modal-overlay-dark" role="dialog" aria-modal="true"><div className="modal-card fin-transfer-modal">
         <div className="fin-pl-head"><div><h2>Registrar transferencia</h2><p className="sub">Mueve dinero entre cuentas sin afectar la utilidad.</p></div><button className="icon-btn" onClick={() => setShowTransfer(false)}><X size={18}/></button></div>
         <input placeholder="Concepto (ej. Depósito del punto a Banesco)" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/>

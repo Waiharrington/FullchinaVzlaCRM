@@ -474,14 +474,15 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   }, [])
 
   const accountsForMethod = (method: SplitPaymentMethod) => {
-    if (method === 'cash') return financialAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrency)
-    if (method === 'mobile') return financialAccounts
+    const paymentAccounts = financialAccounts.filter((account) => account.acceptsCustomerPayments)
+    if (method === 'cash') return paymentAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrency)
+    if (method === 'mobile') return paymentAccounts
       .filter((a) => a.currency === 'VES' && a.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(a.name))
       .sort((a, b) => Number(b.name === 'Banco Exterior') - Number(a.name === 'Banco Exterior'))
-    if (method === 'transfer') return financialAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
-    if (method === 'card') return financialAccounts.filter((a) => a.currency === 'VES' && a.name === 'Banesco')
-    if (method === 'zelle' || method === 'binance') return financialAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
-    return financialAccounts
+    if (method === 'transfer') return paymentAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
+    if (method === 'card') return paymentAccounts.filter((a) => a.currency === 'VES' && a.name === 'Banesco')
+    if (method === 'zelle' || method === 'binance') return paymentAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
+    return paymentAccounts
   }
 
   const ensureAccountForMethod = (method: SplitPaymentMethod) => {

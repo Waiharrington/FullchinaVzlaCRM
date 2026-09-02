@@ -183,6 +183,7 @@ export interface FinancialOperation {
   amountUsd: number
   originalCurrency: 'USD' | 'VES'
   originalAmount: number
+  exchangeRate: number | null
   counterparty: string | null
   referenceNumber: string | null
   affectsProfit: boolean
@@ -241,6 +242,7 @@ export interface FinancialAccount {
   accountType: string
   currency: 'USD' | 'VES'
   isActive: boolean
+  acceptsCustomerPayments: boolean
   openingBalance: number
   currentBalance: number
 }
@@ -1763,7 +1765,7 @@ export async function createExpense(params: {
 
 export async function getFinancialOperations(dateStart?: string, dateEnd?: string): Promise<FinancialOperation[]> {
   let query = client().from('financial_operations').select(`
-    id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,
+    id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,
     counterparty,reference_number,affects_profit,
     from_account:financial_accounts!financial_operations_from_account_id_fkey(name),
     to_account:financial_accounts!financial_operations_to_account_id_fkey(name)
@@ -1780,6 +1782,7 @@ export async function getFinancialOperations(dateStart?: string, dateEnd?: strin
     id: String(row.id), type: row.operation_type as FinancialOperation['type'], concept: String(row.concept),
     operationDate: String(row.operation_date), amountUsd: Number(row.amount_usd),
     originalCurrency: row.original_currency as 'USD' | 'VES', originalAmount: Number(row.original_amount),
+    exchangeRate: row.exchange_rate == null ? null : Number(row.exchange_rate),
     counterparty: row.counterparty ? String(row.counterparty) : null,
     referenceNumber: row.reference_number ? String(row.reference_number) : null,
     affectsProfit: Boolean(row.affects_profit), fromAccount: relationName(row.from_account), toAccount: relationName(row.to_account),
@@ -2118,6 +2121,7 @@ export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
   if (!error && data) return (data as Array<Record<string, unknown>>).map((a) => ({
     id: String(a.id), name: String(a.name), accountType: String(a.account_type),
     currency: a.currency as 'USD' | 'VES', isActive: true,
+    acceptsCustomerPayments: a.accepts_customer_payments !== false,
     openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.current_balance ?? 0),
   }))
 
@@ -2126,13 +2130,14 @@ export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
   // existen. El saldo calculado se conserva en la RPC cuando vuelve a estar
   // disponible.
   const fallback = await client().from('financial_accounts')
-    .select('id,name,account_type,currency,opening_balance')
+    .select('id,name,account_type,currency,opening_balance,accepts_customer_payments')
     .eq('is_active', true)
     .order('name', { ascending: true })
   if (fallback.error) throw error ?? fallback.error
   return (fallback.data ?? []).map((a) => ({
     id: String(a.id), name: String(a.name), accountType: String(a.account_type),
     currency: a.currency as 'USD' | 'VES', isActive: true,
+    acceptsCustomerPayments: a.accepts_customer_payments !== false,
     openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.opening_balance ?? 0),
   }))
 }
