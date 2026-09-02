@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { Caja } from './Caja'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
@@ -280,6 +281,195 @@ const COLUMNS = [
   { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981' },
   { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6' },
 ]
+
+interface ComandaCardProps {
+  order: ComandaOrder
+  color: string
+  onOpen: (order: ComandaOrder) => void
+  onAdvance: (orderId: string, status: string) => void
+  onConfirmWeb: (order: ComandaOrder) => void
+  confirmingWebId: string | null
+}
+
+// Tarjeta individual, arrastrable a cualquier columna (excepto pedidos web
+// sin confirmar, que solo se mueven con el botón "Confirmar pedido").
+// Contenido visual puro de la tarjeta, sin lógica de arrastre — se reutiliza
+// tanto en la tarjeta real (dentro de la columna) como en el DragOverlay
+// (la copia flotante que se ve mientras arrastrás, sin que el scroll de la
+// columna de origen la corte).
+function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingWebId }: Omit<ComandaCardProps, 'onOpen'>) {
+  return (
+    <>
+      {/* Top Header line */}
+      <div className="card-top-line">
+        <span className="card-order-no">{order.orderNumber}</span>
+        <div className="card-time-wrap">
+          <span className="card-time-text">{order.time}</span>
+          {order.isRetraso && (
+            <span className="badge-retraso"><Clock size={12} /> Retraso</span>
+          )}
+        </div>
+      </div>
+
+      {/* Customer & Delivery line */}
+      <div className="card-customer-line">
+        <span className="customer-name">
+          <User size={13} className="meta-icon" /> {order.customerName}
+        </span>
+        <span className="order-type-tag">
+          {order.orderType === 'Delivery' ? <Bike size={13} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={13} /> : <ShoppingBag size={13} />} {order.orderType}
+        </span>
+      </div>
+
+      {/* Item list */}
+      <div className="card-items-list">
+        {order.items.map(item => (
+          <div key={item.id} className="card-item-row">
+            <span className="dot-indicator" style={{ backgroundColor: color }}></span>
+            <span className="item-name-text">{item.name}</span>
+            <span className="item-qty-text">× {item.quantity}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer Row */}
+      <div className="card-footer-line">
+        {order.source === 'web' ? (
+          <span className="badge-sin-pagar"><Globe size={12} /> Web · Por confirmar</span>
+        ) : order.isPaid ? (
+          <span className={`payment-type-badge pay-${order.paymentType}`}>
+            {order.paymentMethod}
+          </span>
+        ) : (
+          <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
+        )}
+
+        {order.status === 'ready' ? (
+          <div className="status-ready-group">
+            <span className="badge-ready-tag">✓ Listo</span>
+            <span className="timer-mins text-green"><Timer size={12} /> {formatElapsed(order.elapsedMins)}</span>
+          </div>
+        ) : order.status === 'delivered' ? (
+          <span className="badge-delivered-tag">
+            Entregado {order.deliveredTime} ✓
+          </span>
+        ) : (
+          <span className={`timer-mins ${order.isRetraso ? 'text-red-urgent' : 'text-orange'}`}>
+            {order.isRetraso ? <Clock size={12} /> : <Timer size={12} />} {formatElapsed(order.elapsedMins)}
+          </span>
+        )}
+      </div>
+
+      {/* Quick Advance Status Action */}
+      {order.source === 'web' ? (
+        <button
+          className="quick-advance-btn"
+          disabled={confirmingWebId === order.webRequestId}
+          onClick={e => { e.stopPropagation(); onConfirmWeb(order) }}
+        >
+          {confirmingWebId === order.webRequestId ? 'Confirmando…' : <><CheckCircle2 size={16} /> Confirmar pedido de WhatsApp</>}
+        </button>
+      ) : order.status !== 'delivered' && (
+        <button
+          className="quick-advance-btn"
+          onClick={e => {
+            e.stopPropagation()
+            onAdvance(order.id, order.status)
+          }}
+        >
+          {order.status === 'new'
+            ? <><ChefHat size={16} /> Iniciar preparación</>
+            : order.status === 'preparing'
+            ? <><CheckCircle2 size={16} /> Marcar como lista</>
+            : <><Truck size={16} /> Marcar como entregada</>}
+        </button>
+      )}
+    </>
+  )
+}
+
+// Tarjeta arrastrable real, dentro de la columna. Se oculta (opacity 0)
+// mientras se arrastra en vez de moverse con transform, porque el
+// DragOverlay es el que muestra la copia flotante en su lugar.
+function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, confirmingWebId }: ComandaCardProps) {
+  const isWeb = order.source === 'web'
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: order.id,
+    disabled: isWeb,
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={isDragging ? { opacity: 0 } : undefined}
+      {...(isWeb ? {} : attributes)}
+      {...(isWeb ? {} : listeners)}
+      className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''}`}
+      onClick={() => onOpen(order)}
+    >
+      <ComandaCardContent order={order} color={color} onAdvance={onAdvance} onConfirmWeb={onConfirmWeb} confirmingWebId={confirmingWebId} />
+    </div>
+  )
+}
+
+interface KanbanColumnProps {
+  col: typeof COLUMNS[number]
+  colOrders: ComandaOrder[]
+  visibleOrders: ComandaOrder[]
+  hiddenCount: number
+  isExpanded: boolean
+  onToggleExpand: () => void
+  onOpen: (order: ComandaOrder) => void
+  onAdvance: (orderId: string, status: string) => void
+  onConfirmWeb: (order: ComandaOrder) => void
+  confirmingWebId: string | null
+}
+
+// Columna del tablero, receptora de "drop" para cualquier tarjeta soltada.
+function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, confirmingWebId }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({ id: col.key })
+
+  return (
+    <div className="kanban-column">
+      {/* Column Header */}
+      <div className="kanban-col-header" style={{ borderBottomColor: col.color }}>
+        <div className="col-header-left">
+          <span className="col-icon" style={{ color: col.color }}>{col.icon}</span>
+          <h3 className="col-title">{col.label}</h3>
+        </div>
+        <span className="col-count-badge">{colOrders.length}</span>
+      </div>
+
+      {/* Column Body / Order Cards */}
+      <div ref={setNodeRef} className={`kanban-col-body ${isOver ? 'drag-over' : ''}`}>
+        {colOrders.length === 0 ? (
+          <div className="empty-col">Sin comandas</div>
+        ) : (
+          visibleOrders.map(order => (
+            <ComandaCard
+              key={order.id}
+              order={order}
+              color={col.color}
+              onOpen={onOpen}
+              onAdvance={onAdvance}
+              onConfirmWeb={onConfirmWeb}
+              confirmingWebId={confirmingWebId}
+            />
+          ))
+        )}
+      </div>
+
+      {/* Column Footer */}
+      {(hiddenCount > 0 || isExpanded) && colOrders.length > COLUMN_PREVIEW_LIMIT && (
+        <div className="kanban-col-footer">
+          <button className="ver-todas-btn" onClick={onToggleExpand}>
+            {isExpanded ? 'Ver menos' : `+ Ver todas (${colOrders.length})`}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 // Cuántas comandas se muestran por columna antes de "Ver todas".
 const COLUMN_PREVIEW_LIMIT = 6
@@ -1061,12 +1251,8 @@ export function Comandas() {
     return filteredComandas.filter(c => c.status === statusKey)
   }
 
-  const handleAdvanceStatus = async (orderId: string, currentStatus: string) => {
-    let nextStatus: ComandaOrder['status'] = 'preparing'
-    if (currentStatus === 'new') nextStatus = 'preparing'
-    else if (currentStatus === 'preparing') nextStatus = 'ready'
-    else if (currentStatus === 'ready') nextStatus = 'delivered'
-
+  const handleSetStatus = async (orderId: string, currentStatus: string, nextStatus: ComandaOrder['status']) => {
+    if (nextStatus === currentStatus) return
     setStatusError('')
     setComandas(prev =>
       prev.map(c =>
@@ -1094,6 +1280,37 @@ export function Comandas() {
     }
   }
 
+  const handleAdvanceStatus = (orderId: string, currentStatus: string) => {
+    let nextStatus: ComandaOrder['status'] = 'preparing'
+    if (currentStatus === 'new') nextStatus = 'preparing'
+    else if (currentStatus === 'preparing') nextStatus = 'ready'
+    else if (currentStatus === 'ready') nextStatus = 'delivered'
+    void handleSetStatus(orderId, currentStatus, nextStatus)
+  }
+
+  // Arrastrar una tarjeta a otra columna: soltar en cualquier estado (no
+  // solo el siguiente), como un tablero Trello real.
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const [draggingOrderId, setDraggingOrderId] = useState<string | null>(null)
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setDraggingOrderId(String(event.active.id))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setDraggingOrderId(null)
+    const { active, over } = event
+    if (!over) return
+    const orderId = String(active.id)
+    const targetStatus = String(over.id) as ComandaOrder['status']
+    const order = comandas.find(c => c.id === orderId)
+    if (!order || order.status === targetStatus) return
+    void handleSetStatus(orderId, order.status, targetStatus)
+  }
+
+  const draggingOrder = draggingOrderId ? comandas.find(c => c.id === draggingOrderId) ?? null : null
+  const draggingOrderColor = draggingOrder ? COLUMNS.find(c => c.key === draggingOrder.status)?.color ?? '#ff4d3d' : '#ff4d3d'
+
   const totalComandasCount = comandas.length
   const nuevasCount = comandas.filter(c => c.status === 'new').length
   const preparandoCount = comandas.filter(c => c.status === 'preparing').length
@@ -1119,7 +1336,14 @@ export function Comandas() {
             <div className="comandas-pulse-title-row">
               <span className="comandas-pulse-icon" aria-hidden="true"><ClipboardList size={22} /></span>
               <div>
-                <h1 id="comandas-title">Comandas</h1>
+                <div className="comandas-title-line">
+                  <h1 id="comandas-title">Comandas</h1>
+                  {pendientesCount > 0 && (
+                    <span className="comandas-pending-badge">
+                      <Flame size={12} /> {pendientesCount} pendiente{pendientesCount === 1 ? '' : 's'}
+                    </span>
+                  )}
+                </div>
                 <p><strong>{kitchenPulse.label}.</strong> {kitchenPulse.message}</p>
               </div>
             </div>
@@ -1137,31 +1361,11 @@ export function Comandas() {
           </div>
         </div>
 
-        <div className="comandas-pulse-grid">
-          <div className="comandas-pulse-primary">
-            <div className="comandas-pulse-primary-icon"><Flame size={20} /></div>
-            <div className="comandas-pulse-primary-copy">
-              <span>Pendientes ahora</span>
-              <strong>{pendientesCount}</strong>
-              <small>{pendientesCount === 1 ? 'comanda requiere atención' : 'comandas requieren atención'}</small>
-            </div>
+        <div className="comandas-flow" aria-label={`Resumen: ${totalComandasCount} total, ${nuevasCount} nuevas, ${preparandoCount} preparando, ${listasCount} listas, ${avgMins} minutos de promedio`}>
+          <div className="comandas-flow-step comandas-flow-step--total comandas-flow-step--extra">
+            <span><Package size={14} /> Total hoy</span><strong>{totalComandasCount}</strong>
           </div>
-
-          <div className="comandas-pulse-metric comandas-pulse-metric--total">
-            <span className="comandas-pulse-metric-icon"><Package size={18} /></span>
-            <div><strong>{totalComandasCount}</strong><span>Total hoy</span></div>
-          </div>
-          <div className="comandas-pulse-metric comandas-pulse-metric--ready">
-            <span className="comandas-pulse-metric-icon"><CheckCircle2 size={18} /></span>
-            <div><strong>{listasCount}</strong><span>Listas</span></div>
-          </div>
-          <div className="comandas-pulse-metric comandas-pulse-metric--time">
-            <span className="comandas-pulse-metric-icon"><Timer size={18} /></span>
-            <div><strong>{avgMins > 0 ? `${avgMins} min` : '—'}</strong><span>Tiempo promedio</span></div>
-          </div>
-        </div>
-
-        <div className="comandas-flow" aria-label={`Flujo actual: ${nuevasCount} nuevas, ${preparandoCount} preparando y ${listasCount} listas`}>
+          <span className="comandas-flow-line comandas-flow-line--extra" aria-hidden="true" />
           <div className="comandas-flow-step comandas-flow-step--new">
             <span><Package size={14} /> Nuevas</span><strong>{nuevasCount}</strong>
           </div>
@@ -1172,6 +1376,10 @@ export function Comandas() {
           <span className="comandas-flow-line" aria-hidden="true" />
           <div className="comandas-flow-step comandas-flow-step--ready">
             <span><CheckCircle2 size={14} /> Listas</span><strong>{listasCount}</strong>
+          </div>
+          <span className="comandas-flow-line comandas-flow-line--extra" aria-hidden="true" />
+          <div className="comandas-flow-step comandas-flow-step--time comandas-flow-step--extra">
+            <span><Timer size={14} /> Prom.</span><strong>{avgMins > 0 ? formatElapsed(avgMins) : '—'}</strong>
           </div>
         </div>
       </section>
@@ -1326,140 +1534,49 @@ export function Comandas() {
 
       {statusError && <div className="command-status-error" role="alert">{statusError}</div>}
 
-      {/* 4 Kanban Columns matching Target Mockup */}
-      <div className="kanban-board-grid">
-        {COLUMNS.map(col => {
-          const colOrders = getOrdersByStatus(col.key)
-          const isExpanded = expandedCols[col.key] ?? false
-          const visibleOrders = isExpanded ? colOrders : colOrders.slice(0, COLUMN_PREVIEW_LIMIT)
-          const hiddenCount = colOrders.length - visibleOrders.length
+      {/* 4 Kanban Columns matching Target Mockup — arrastrables tipo Trello */}
+      <DndContext sensors={dndSensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="kanban-board-grid">
+          {COLUMNS.map(col => {
+            const colOrders = getOrdersByStatus(col.key)
+            const isExpanded = expandedCols[col.key] ?? false
+            const visibleOrders = isExpanded ? colOrders : colOrders.slice(0, COLUMN_PREVIEW_LIMIT)
+            const hiddenCount = colOrders.length - visibleOrders.length
 
-          return (
-            <div key={col.key} className="kanban-column">
-              {/* Column Header */}
-              <div className="kanban-col-header" style={{ borderBottomColor: col.color }}>
-                <div className="col-header-left">
-                  <span className="col-icon" style={{ color: col.color }}>{col.icon}</span>
-                  <h3 className="col-title">{col.label}</h3>
-                </div>
-                <span className="col-count-badge">{colOrders.length}</span>
-              </div>
+            return (
+              <KanbanColumn
+                key={col.key}
+                col={col}
+                colOrders={colOrders}
+                visibleOrders={visibleOrders}
+                hiddenCount={hiddenCount}
+                isExpanded={isExpanded}
+                onToggleExpand={() => setExpandedCols(prev => ({ ...prev, [col.key]: !isExpanded }))}
+                onOpen={order => { setShowAddItems(false); setSelectedOrder(order) }}
+                onAdvance={handleAdvanceStatus}
+                onConfirmWeb={handleConfirmWebOrder}
+                confirmingWebId={confirmingWebId}
+              />
+            )
+          })}
+        </div>
 
-              {/* Column Body / Order Cards */}
-              <div className="kanban-col-body">
-                {colOrders.length === 0 ? (
-                  <div className="empty-col">Sin comandas</div>
-                ) : (
-                  visibleOrders.map(order => (
-                    <div
-                      key={order.id}
-                      className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''}`}
-                      onClick={() => { setShowAddItems(false); setSelectedOrder(order) }}
-                    >
-                      {/* Top Header line */}
-                      <div className="card-top-line">
-                        <span className="card-order-no">{order.orderNumber}</span>
-                        <div className="card-time-wrap">
-                          <span className="card-time-text">{order.time}</span>
-                          {order.isRetraso && (
-                            <span className="badge-retraso"><Clock size={12} /> Retraso</span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Customer & Delivery line */}
-                      <div className="card-customer-line">
-                        <span className="customer-name">
-                          <User size={13} className="meta-icon" /> {order.customerName}
-                        </span>
-                        <span className="order-type-tag">
-                          {order.orderType === 'Delivery' ? <Bike size={13} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={13} /> : <ShoppingBag size={13} />} {order.orderType}
-                        </span>
-                      </div>
-
-                      {/* Item list */}
-                      <div className="card-items-list">
-                        {order.items.map(item => (
-                          <div key={item.id} className="card-item-row">
-                            <span className="dot-indicator" style={{ backgroundColor: col.color }}></span>
-                            <span className="item-name-text">{item.name}</span>
-                            <span className="item-qty-text">× {item.quantity}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Footer Row */}
-                      <div className="card-footer-line">
-                        {order.source === 'web' ? (
-                          <span className="badge-sin-pagar"><Globe size={12} /> Web · Por confirmar</span>
-                        ) : order.isPaid ? (
-                          <span className={`payment-type-badge pay-${order.paymentType}`}>
-                            {order.paymentMethod}
-                          </span>
-                        ) : (
-                          <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
-                        )}
-
-                        {order.status === 'ready' ? (
-                          <div className="status-ready-group">
-                            <span className="badge-ready-tag">✓ Listo</span>
-                            <span className="timer-mins text-green"><Timer size={12} /> {formatElapsed(order.elapsedMins)}</span>
-                          </div>
-                        ) : order.status === 'delivered' ? (
-                          <span className="badge-delivered-tag">
-                            Entregado {order.deliveredTime} ✓
-                          </span>
-                        ) : (
-                          <span className={`timer-mins ${order.isRetraso ? 'text-red-urgent' : 'text-orange'}`}>
-                            {order.isRetraso ? <Clock size={12} /> : <Timer size={12} />} {formatElapsed(order.elapsedMins)}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Quick Advance Status Action */}
-                      {order.source === 'web' ? (
-                        <button
-                          className="quick-advance-btn"
-                          disabled={confirmingWebId === order.webRequestId}
-                          onClick={e => { e.stopPropagation(); handleConfirmWebOrder(order) }}
-                        >
-                          {confirmingWebId === order.webRequestId ? 'Confirmando…' : <><CheckCircle2 size={16} /> Confirmar pedido de WhatsApp</>}
-                        </button>
-                      ) : order.status !== 'delivered' && (
-                        <button
-                          className="quick-advance-btn"
-                          onClick={e => {
-                            e.stopPropagation()
-                            handleAdvanceStatus(order.id, order.status)
-                          }}
-                        >
-                          {order.status === 'new'
-                            ? <><ChefHat size={16} /> Iniciar preparación</>
-                            : order.status === 'preparing'
-                            ? <><CheckCircle2 size={16} /> Marcar como lista</>
-                            : <><Truck size={16} /> Marcar como entregada</>}
-                        </button>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-
-              {/* Column Footer */}
-              {(hiddenCount > 0 || isExpanded) && colOrders.length > COLUMN_PREVIEW_LIMIT && (
-                <div className="kanban-col-footer">
-                  <button
-                    className="ver-todas-btn"
-                    onClick={() => setExpandedCols(prev => ({ ...prev, [col.key]: !isExpanded }))}
-                  >
-                    {isExpanded ? 'Ver menos' : `+ Ver todas (${colOrders.length})`}
-                  </button>
-                </div>
-              )}
+        {/* Copia flotante de la tarjeta mientras se arrastra — se renderiza
+            fuera de cualquier columna con scroll, así nunca se corta. */}
+        <DragOverlay>
+          {draggingOrder && (
+            <div className={`comanda-card-item card-${draggingOrder.status} ${draggingOrder.isRetraso ? 'has-retraso' : ''} is-dragging`}>
+              <ComandaCardContent
+                order={draggingOrder}
+                color={draggingOrderColor}
+                onAdvance={handleAdvanceStatus}
+                onConfirmWeb={handleConfirmWebOrder}
+                confirmingWebId={confirmingWebId}
+              />
             </div>
-          )
-        })}
-      </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Agregar productos a una comanda sin cobrar */}
       {showAddItems && selectedOrder && !selectedOrder.isPaid && (

@@ -318,28 +318,28 @@ export function Inicio() {
             <span>Resumen del día</span>
           </div>
           <div className="kpi-row">
-            <div className="kpi-card">
+            <div className="kpi-card red">
               <div className="kpi-icon-circle red"><DollarSign size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">VENTAS DE HOY</span>
                 <MoneyWithBcv usd={totalSales} className="kpi-value" align="start" />
               </div>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card orange">
               <div className="kpi-icon-circle orange"><ClipboardList size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">COMANDAS</span>
                 <span className="kpi-value">{ordersCount}</span>
               </div>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card green">
               <div className="kpi-icon-circle green"><TrendingUp size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">TICKET PROMEDIO</span>
                 <MoneyWithBcv usd={stats?.avgTicket ?? 0} className="kpi-value" align="start" />
               </div>
             </div>
-            <div className="kpi-card">
+            <div className="kpi-card red">
               <div className="kpi-icon-circle red"><CreditCard size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">CUENTAS POR COBRAR</span>

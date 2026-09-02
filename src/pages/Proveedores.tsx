@@ -97,10 +97,10 @@ export function Proveedores() {
     }
   }
 
-  if (loading) return <div className="page prv-loading"><PageSkeleton cards={2} rows={4} /></div>
+  if (loading) return <div className="page prv-loading" key="prv-loading"><PageSkeleton cards={2} rows={4} /></div>
 
   return (
-    <div className="page prv-page animate-fade-in">
+    <div className="page prv-page animate-fade-in" key="prv-full">
       <header className="page-header prv-header">
         <div>
           <h1 className="page-title"><Building2 size={22} className="page-title-icon" /> Proveedores</h1>
@@ -113,9 +113,9 @@ export function Proveedores() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <section className="prv-kpis" aria-label="Resumen de proveedores">
-        <article><span><Building2 size={20} /></span><div><small>Proveedores activos</small><strong>{suppliers.length}</strong></div></article>
-        <article><span><ShoppingBag size={20} /></span><div><small>Compras registradas</small><strong>{purchases.length}</strong></div></article>
-        <article><span><CalendarDays size={20} /></span><div><small>Total comprado</small><strong>{formatUsd(totalPurchased)}</strong></div></article>
+        <article className="prv-kpi-card red"><span><Building2 size={20} /></span><div><small>Proveedores activos</small><strong>{suppliers.length}</strong></div></article>
+        <article className="prv-kpi-card purple"><span><ShoppingBag size={20} /></span><div><small>Compras registradas</small><strong>{purchases.length}</strong></div></article>
+        <article className="prv-kpi-card green"><span><CalendarDays size={20} /></span><div><small>Total comprado</small><strong>{formatUsd(totalPurchased)}</strong></div></article>
       </section>
 
       {showForm && (

@@ -40,7 +40,7 @@ export function Fidelizacion() {
 
   if (!selectedCustomer) {
     return (
-      <div className="fidel-page">
+      <div className="fidel-page" key="fidel-empty">
         <div className="fidel-empty">
           {visitNotice || 'No hay clientes disponibles todavía.'}
         </div>
@@ -64,7 +64,7 @@ export function Fidelizacion() {
   const medal = (idx: number) => (idx === 0 ? <Trophy size={16} /> : idx === 1 ? <Medal size={16} /> : idx === 2 ? <Award size={16} /> : null)
 
   return (
-    <div className="fidel-page">
+    <div className="fidel-page" key="fidel-full">
       <header className="page-header">
         <div>
           <h1 className="page-title"><Award size={22} className="page-title-icon" /> Fidelización</h1>

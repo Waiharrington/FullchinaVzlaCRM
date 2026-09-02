@@ -310,6 +310,7 @@ export function PublicMenu() {
   const [loading, setLoading] = useState(() => !initialCatalog)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [variantHint, setVariantHint] = useState('')
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
   useEffect(() => {
     if (!error) return
@@ -525,6 +526,7 @@ export function PublicMenu() {
   const handleCardAdd = (group: MenuProductGroup) => {
     const qty = getCardQty(group.key)
     if (group.isGrouped && group.variants.length > 1) {
+      setVariantHint(`${productTitle(group.name)} tiene varias opciones — elige la que prefieras`)
       openGroup(group)
     } else {
       const product = group.variants[0]?.product
@@ -1232,6 +1234,8 @@ export function PublicMenu() {
       onLoadCapture={handleImageLoad}
       onErrorCapture={handleImageError}
     >
+      {variantHint && <Toast type="info" message={variantHint} onClose={() => setVariantHint('')} duration={3500} />}
+
       {/* Top Navbar */}
       <header className="public-top-bar" id="inicio">
           <>
@@ -1573,7 +1577,7 @@ export function PublicMenu() {
                     HOY TOCA <br /><span className="public-hero-gold">FULL CHINA</span>
                   </h1>
                   <p className="public-hero-desc">
-                    Arroces, tallarines y más. Hecho al wok, con tradición, sabor y porciones generosas.
+                    Sabor real, recién salido del wok.<span className="public-hero-desc-extra"> Arroces, tallarines y más, con tradición y porciones generosas.</span>
                   </p>
 
                   <div className="public-hero-search-row">

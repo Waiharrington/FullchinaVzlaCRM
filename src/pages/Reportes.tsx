@@ -155,7 +155,7 @@ export function Reportes() {
 
   if (user?.role === 'cashier') {
     return (
-      <div className="page animate-fade-in">
+      <div className="page animate-fade-in" key="reportes-restricted">
         <header className="page-header">
           <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
           <p className="page-subtitle">Acceso restringido</p>
@@ -168,26 +168,26 @@ export function Reportes() {
   }
 
   return (
-    <div className="page animate-fade-in">
+    <div className="page animate-fade-in" key="reportes-full">
       <header className="page-header">
         <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
         <p className="page-subtitle">Análisis de ventas y rendimiento</p>
       </header>
 
       <div className="stats-row">
-        <div className="stat-card">
+        <div className="stat-card red">
           <span className="stat-label">Esta semana</span>
           <span className="stat-value text-gradient">${totalWeek.toFixed(2)}</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card gold">
           <span className="stat-label">Este mes</span>
           <span className="stat-value">${totalMonth.toFixed(2)}</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card green">
           <span className="stat-label">Promedio diario</span>
           <span className="stat-value">${avgDaily.toFixed(2)}</span>
         </div>
-        <div className="stat-card">
+        <div className="stat-card muted">
           <span className="stat-label">Total órdenes</span>
           <span className="stat-value">{dailySales.reduce((s, d) => s + d.count, 0)}</span>
         </div>

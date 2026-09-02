@@ -1804,6 +1804,11 @@ export async function getCustomers(): Promise<Customer[]> {
   }))
 }
 
+export async function setCustomerActive(id: string, isActive: boolean): Promise<void> {
+  const { error } = await client().from('customers').update({ is_active: isActive }).eq('id', id)
+  if (error) throw error
+}
+
 // Órdenes reales de un cliente (para la ficha del cliente).
 export async function getCustomerOrders(customerId: string, customerName: string): Promise<CustomerOrderSummary[]> {
   if (!customerName.trim()) return []

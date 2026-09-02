@@ -163,22 +163,22 @@ export function Gastos() {
 
       {/* Resumen */}
       <div className="gst-summary">
-        <div className="gst-sum">
-          <span className="gst-sum-ic" style={{ background: 'rgba(225,29,42,0.15)', color: '#e11d2a' }}><TrendingDown size={22} /></span>
+        <div className="gst-sum red">
+          <span className="gst-sum-ic"><TrendingDown size={22} /></span>
           <div><div className="gst-sum-lbl">Egresos totales (este mes)</div><div className="gst-sum-val">{formatUsd(summary.total)}</div>
             {summary.pct != null && <div className={`gst-sum-sub ${summary.pct > 0 ? 'up' : 'down'}`}>{summary.pct > 0 ? '▲' : '▼'} {Math.abs(summary.pct).toFixed(0)}% vs. mes anterior</div>}
           </div>
         </div>
-        <div className="gst-sum">
-          <span className="gst-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><Receipt size={22} /></span>
+        <div className="gst-sum purple">
+          <span className="gst-sum-ic"><Receipt size={22} /></span>
           <div><div className="gst-sum-lbl">Gastos Fijos (este mes)</div><div className="gst-sum-val">{formatUsd(summary.fixed)}</div><div className="gst-sum-sub">{summary.pctFixed.toFixed(0)}% del total</div></div>
         </div>
-        <div className="gst-sum">
-          <span className="gst-sum-ic" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316' }}><Activity size={22} /></span>
+        <div className="gst-sum orange">
+          <span className="gst-sum-ic"><Activity size={22} /></span>
           <div><div className="gst-sum-lbl">Gastos Variables (este mes)</div><div className="gst-sum-val">{formatUsd(summary.variable)}</div><div className="gst-sum-sub">{summary.pctVar.toFixed(0)}% del total</div></div>
         </div>
-        <div className="gst-sum">
-          <span className="gst-sum-ic" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><Store size={22} /></span>
+        <div className="gst-sum green">
+          <span className="gst-sum-ic"><Store size={22} /></span>
           <div><div className="gst-sum-lbl">Otros gastos (este mes)</div><div className="gst-sum-val">{formatUsd(summary.other)}</div><div className="gst-sum-sub">{summary.pctOther.toFixed(0)}% del total</div></div>
         </div>
       </div>

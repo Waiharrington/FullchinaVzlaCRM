@@ -1590,4 +1590,38 @@ body:has(.login-page) {
   .input-wrapper input {
     padding: 0.6rem 0.8rem 0.6rem 2.2rem;
   }
+
+  /* El teclado numérico agrega bastante más alto que los 2 campos de
+     email/contraseña, así que en modo PIN hay que apretar más todavía
+     para que todo entre sin scroll a 960x600 (tablet horizontal). */
+  .login-card.pin-active {
+    gap: 0.5rem;
+  }
+  .login-card.pin-active .login-header {
+    margin-bottom: 0;
+  }
+  .login-card.pin-active .login-form {
+    gap: 0.5rem;
+  }
+  .login-card.pin-active .form-section.active {
+    gap: 0.55rem;
+  }
+  .login-card.pin-active .pin-keypad {
+    gap: 0.3rem;
+    margin-top: 0.3rem;
+  }
+  .login-card.pin-active .keypad-btn {
+    height: 36px;
+    font-size: 1rem;
+  }
+  .login-card.pin-active .btn-primary,
+  .login-card.pin-active .btn-secondary {
+    padding: 0.5rem;
+  }
+  .login-card.pin-active .divider-row {
+    margin: -0.15rem 0;
+  }
+  .login-card.pin-active .login-footer {
+    padding-top: 0.15rem;
+  }
 }

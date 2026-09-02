@@ -216,8 +216,11 @@
 .comandas-filters {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
+  width: 100%;
   gap: 10px;
   flex-wrap: wrap;
+  margin-top: 4px;
 }
 
 /* Wrappers agregados solo para reorganizar en móvil (ver max-width: 679px).
@@ -300,8 +303,62 @@
 /* Tablet: permitir envolver para evitar scroll horizontal y comprimido */
 @media (min-width: 680px) and (max-width: 1199px) {
   .comandas-filters {
-    flex-wrap: wrap;
-    overflow-x: visible;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  /* Fila siempre visible: botón "Filtros" + búsqueda. El resto de los
+     filtros (fecha/estado/tipo/limpiar) queda oculto hasta que se abran,
+     para no robarle espacio vertical a las comandas en tablet. */
+  .comandas-filters-toprow {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 8px;
+  }
+
+  .comandas-mobile-filters-toggle {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    background: #18181b;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #aeaeb2;
+    padding: 0 14px;
+    height: 40px;
+    box-sizing: border-box;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .comandas-mobile-filters-toggle.filter-active {
+    border-color: #E31B2B;
+    color: #fff;
+    background: rgba(227, 27, 43, 0.12);
+  }
+
+  .comandas-mobile-filters-toggle .filter-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #E31B2B;
+  }
+
+  .comandas-mobile-filters-toggle svg.rotated {
+    transform: rotate(180deg);
+  }
+
+  .filter-search-inline {
+    flex: 1 1 260px;
+    min-width: 200px;
   }
 
   .filter-group-item,
@@ -309,9 +366,15 @@
     flex-shrink: 0;
   }
 
-  .filter-search-inline {
-    flex: 1 1 260px;
-    min-width: 200px;
+  /* Chips escondidos por defecto: solo aparecen al abrir "Filtros". */
+  .comandas-filter-chips {
+    display: none;
+  }
+
+  .comandas-filter-chips.mobile-open {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 }
 
@@ -469,12 +532,17 @@
   .comandas-filters {
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    width: 100%;
     gap: 8px;
+    margin-top: 4px;
   }
 
   /* Fila siempre visible: botón "Filtros" + búsqueda. */
   .comandas-filters-toprow {
     display: flex;
+    width: 100%;
+    justify-content: flex-start;
     gap: 8px;
   }
 
@@ -666,6 +734,14 @@
   gap: 12px;
   min-height: 400px;
   overflow-y: auto;
+  border-radius: 0 0 12px 12px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Columna resaltada mientras se arrastra una tarjeta encima (drop target). */
+.kanban-col-body.drag-over {
+  background: rgba(227, 27, 43, 0.06);
+  box-shadow: inset 0 0 0 2px rgba(227, 27, 43, 0.35);
 }
 
 .empty-col {
@@ -686,15 +762,27 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  cursor: pointer;
+  cursor: grab;
   transition: all 0.2s ease;
   position: relative;
+  /* Necesario para que dnd-kit reciba el gesto de arrastre táctil en vez de
+     que el navegador lo interprete como scroll de la columna. */
+  touch-action: none;
 }
 
 .comanda-card-item:hover {
   border-color: rgba(227, 27, 43, 0.5);
   transform: translateY(-2px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+/* Tarjeta siendo arrastrada: se destaca y flota por encima de todo. */
+.comanda-card-item.is-dragging {
+  opacity: 0.9;
+  z-index: 50;
+  cursor: grabbing;
+  border-color: #E31B2B;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(227, 27, 43, 0.4);
 }
 
 .comanda-card-item.has-retraso {
@@ -1390,7 +1478,6 @@
 .comandas-pulse--calm { --pulse-rgb: 34, 197, 94; }
 
 .comandas-pulse-top,
-.comandas-pulse-grid,
 .comandas-flow {
   position: relative;
   z-index: 1;
@@ -1422,12 +1509,33 @@
   background: linear-gradient(145deg, rgba(239, 35, 52, 0.2), rgba(239, 35, 52, 0.05));
 }
 
+.comandas-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .comandas-pulse h1 {
   margin: 0;
   color: #fff;
   font-size: clamp(24px, 2.4vw, 32px);
   line-height: 1.05;
   letter-spacing: -0.035em;
+}
+
+.comandas-pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(239, 35, 52, 0.14);
+  border: 1px solid rgba(239, 35, 52, 0.35);
+  color: #ff6b6b;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 .comandas-pulse-title-row p {
@@ -1452,101 +1560,12 @@
 }
 .comandas-pulse .btn-historial:hover { background: rgba(255, 255, 255, 0.09); }
 
-.comandas-pulse-grid {
-  display: grid;
-  grid-template-columns: minmax(245px, 1.55fr) repeat(3, minmax(135px, 1fr));
-  gap: 10px;
-  margin-top: 20px;
-}
-
-.comandas-pulse-primary,
-.comandas-pulse-metric {
-  min-height: 88px;
-  border: 1px solid rgba(255, 255, 255, 0.075);
-  background: rgba(255, 255, 255, 0.035);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
-}
-
-.comandas-pulse-primary {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px 18px;
-  border-color: rgba(239, 35, 52, 0.25);
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(239, 35, 52, 0.16), rgba(239, 35, 52, 0.035));
-}
-
-.comandas-pulse-primary-icon,
-.comandas-pulse-metric-icon { display: grid; place-items: center; }
-
-.comandas-pulse-primary-icon {
-  width: 43px;
-  height: 43px;
-  flex: 0 0 43px;
-  border-radius: 13px;
-  color: #ff3648;
-  background: rgba(239, 35, 52, 0.14);
-  box-shadow: 0 0 24px rgba(239, 35, 52, 0.12);
-}
-
-.comandas-pulse-primary-copy {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: end;
-  column-gap: 11px;
-}
-
-.comandas-pulse-primary-copy > span {
-  grid-column: 1 / -1;
-  color: #d4d4d8;
-  font-size: 12px;
-  font-weight: 750;
-}
-
-.comandas-pulse-primary-copy strong {
-  color: #fff;
-  font-size: 38px;
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.comandas-pulse-primary-copy small {
-  align-self: center;
-  color: #8d8d96;
-  font-size: 10.5px;
-}
-
-.comandas-pulse-metric {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
-}
-
-.comandas-pulse-metric-icon {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 36px;
-  border-radius: 11px;
-  color: #ff4b5c;
-  background: rgba(239, 35, 52, 0.12);
-}
-
-.comandas-pulse-metric--total .comandas-pulse-metric-icon { color: #f97316; background: rgba(249, 115, 22, 0.12); }
-.comandas-pulse-metric--ready .comandas-pulse-metric-icon { color: #34d399; background: rgba(16, 185, 129, 0.12); }
-.comandas-pulse-metric--time .comandas-pulse-metric-icon { color: #3b82f6; background: rgba(59, 130, 246, 0.12); }
-.comandas-pulse-metric > div { display: flex; min-width: 0; flex-direction: column; }
-.comandas-pulse-metric strong { color: #fff; font-size: 21px; line-height: 1.1; white-space: nowrap; }
-.comandas-pulse-metric span:not(.comandas-pulse-metric-icon) { margin-top: 3px; color: #888891; font-size: 10.5px; }
-
 .comandas-flow {
   display: grid;
-  grid-template-columns: auto minmax(20px, 1fr) auto minmax(20px, 1fr) auto;
+  grid-template-columns: auto minmax(16px, 1fr) auto minmax(16px, 1fr) auto minmax(16px, 1fr) auto minmax(16px, 1fr) auto;
   align-items: center;
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 16px;
   padding: 0 4px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
 }
@@ -1557,14 +1576,16 @@
 .comandas-flow-step--new svg { color: #ff4b5c; }
 .comandas-flow-step--preparing svg { color: #fb923c; }
 .comandas-flow-step--ready svg { color: #34d399; }
+.comandas-flow-step--total svg { color: #f97316; }
+.comandas-flow-step--time svg { color: #3b82f6; }
 .comandas-flow-line { height: 1px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.05)); }
 
-@media (min-width: 680px) and (max-width: 1050px) {
-  .comandas-pulse-grid { grid-template-columns: repeat(3, 1fr); }
-  .comandas-pulse-primary { grid-column: 1 / -1; }
-}
-
 @media (max-width: 679px) {
+  .comandas-flow-step--extra,
+  .comandas-flow-line--extra {
+    display: none;
+  }
+
   .comandas-pulse { padding: 0; }
   .comandas-pulse-top { flex-direction: column; gap: 15px; }
   .comandas-pulse-title-row { align-items: flex-start; }
@@ -1573,13 +1594,6 @@
   .comandas-pulse-title-row p { font-size: 11.5px; line-height: 1.45; }
   .comandas-pulse .comandas-actions-row { width: 100%; }
   .comandas-pulse .btn-historial { flex: 0 0 42px; width: 42px; }
-  .comandas-pulse-grid { grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 15px; }
-  .comandas-pulse-primary { grid-column: 1 / -1; min-height: 78px; }
-  .comandas-pulse-metric { min-height: 73px; flex-direction: column; justify-content: center; gap: 6px; padding: 9px 5px; text-align: center; }
-  .comandas-pulse-metric-icon { width: 29px; height: 29px; flex-basis: 29px; border-radius: 9px; }
-  .comandas-pulse-metric-icon svg { width: 15px; height: 15px; }
-  .comandas-pulse-metric strong { font-size: 16px; }
-  .comandas-pulse-metric span:not(.comandas-pulse-metric-icon) { font-size: 9px; }
   .comandas-flow { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
   .comandas-flow-line { display: none; }
   .comandas-flow-step { justify-content: center; gap: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-size: 9px; }

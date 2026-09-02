@@ -349,7 +349,7 @@ export function Inventario() {
 
       {/* KPI Cards */}
       <div className="inv-kpi-row">
-        <div className="inv-kpi-card">
+        <div className="inv-kpi-card red">
           <div className="inv-kpi-icon red">
             <ShoppingBag size={22} />
           </div>
@@ -359,7 +359,7 @@ export function Inventario() {
             <span className="inv-kpi-sub green">+8.2% vs. ayer</span>
           </div>
         </div>
-        <div className="inv-kpi-card">
+        <div className="inv-kpi-card amber">
           <div className="inv-kpi-icon amber">
             <AlertTriangle size={22} />
           </div>
@@ -369,7 +369,7 @@ export function Inventario() {
             <span className="inv-kpi-sub amber">Requieren atención</span>
           </div>
         </div>
-        <div className="inv-kpi-card">
+        <div className="inv-kpi-card green">
           <div className="inv-kpi-icon green">
             <TrendingUp size={22} />
           </div>
@@ -379,7 +379,7 @@ export function Inventario() {
             <span className="inv-kpi-sub">Porciones listas</span>
           </div>
         </div>
-        <div className="inv-kpi-card">
+        <div className="inv-kpi-card orange">
           <div className="inv-kpi-icon orange">
             <Bell size={22} />
           </div>

@@ -907,6 +907,53 @@
   }
 }
 
+/* --- Tablets en horizontal con poca altura (ej. 960x600, 1138x712) ---
+   Entran en el breakpoint "desktop" de arriba (>=620px + landscape),
+   pero ese diseño asume ventanas bastante más altas: textos grandes y
+   la ubicación fijada a 28px del fondo sin importar qué haya ahí. Hasta
+   ~730px de alto eso se superpone con el paso 3 de "¿Cómo pedir?".
+   Aquí se compacta todo y se libera la ubicación del position:fixed
+   para que fluya después de los pasos en vez de flotar encima. */
+@media (orientation: landscape) and (min-width: 620px) and (max-height: 730px) {
+  .onb-scroll { padding: 12px 0 16px; overflow-y: auto; }
+  .onb-mid-spacer { height: 10px; }
+
+  .onb-card { max-width: 420px; padding: 14px 24px 14px; }
+  .onb-card-logo-img { width: 52px; height: 52px; margin-bottom: 6px; }
+  .onb-brand-welcome { font-size: 14px; letter-spacing: 0.1em; }
+  .onb-brand-logo { margin-top: 2px; gap: 6px; }
+  .onb-brand-full, .onb-brand-china { font-size: 32px; }
+  .onb-divider { margin: 6px 0; max-width: 280px; }
+  .onb-divider-icon svg { width: 16px; height: 16px; }
+  .onb-divider-plain { margin: 6px 0; max-width: 220px; }
+  .onb-tagline { font-size: 13px; margin-bottom: 2px; }
+  .onb-categories { font-size: 13px; gap: 8px; margin: 0 0 8px; }
+  .onb-cta { padding: 8px 40px; font-size: 14px; border-radius: 12px; }
+  .onb-cta svg { width: 17px; height: 17px; }
+  .onb-whatsapp-link { font-size: 11px !important; margin-top: 4px; }
+  .onb-whatsapp-link svg { width: 13px; height: 13px; }
+
+  .onb-how { padding: 6px 24px 0; }
+  .onb-how-heading { font-size: 11px; margin-bottom: 6px; }
+  .onb-steps { gap: 20px; }
+  .onb-step-icon { width: 36px; height: 36px; }
+  .onb-step-icon svg { width: 18px; height: 18px; }
+  .onb-step-num { width: 20px; height: 20px; font-size: 11px; }
+  .onb-step-label { font-size: 11px; margin-top: 3px; }
+
+  /* La ubicación deja de ser un pin fijo y vuelve al flujo normal. */
+  .onb-location {
+    position: static !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    white-space: normal !important;
+    margin-top: 24px !important;
+    padding: 6px 14px !important;
+    font-size: 11px !important;
+  }
+}
+
 @keyframes brasa-pulse {
   0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(227, 27, 43, 0.5)); opacity: 0.8; }
   100% { transform: scale(1.25); filter: drop-shadow(0 0 8px rgba(227, 27, 43, 0.9)); opacity: 1; }

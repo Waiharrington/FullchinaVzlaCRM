@@ -51,7 +51,7 @@ export function Auditoria() {
 
   if (migrationNeeded) {
     return (
-      <div className="page animate-fade-in">
+      <div className="page animate-fade-in" key="auditoria-migration-needed">
         <header className="page-header">
           <div>
             <h1 className="page-title"><Shield size={22} className="page-title-icon" /> Registro de Actividad y Auditoría</h1>
@@ -71,7 +71,7 @@ export function Auditoria() {
   }
 
   return (
-    <div className="page animate-fade-in">
+    <div className="page animate-fade-in" key="auditoria-full">
       <header className="page-header">
         <div>
           <h1 className="page-title"><Shield size={22} className="page-title-icon" /> Registro de Actividad y Auditoría</h1>

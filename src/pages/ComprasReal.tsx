@@ -250,22 +250,22 @@ export function ComprasReal() {
 
       {/* Resumen */}
       <div className="cmp-summary">
-        <div className="cmp-sum">
-          <span className="cmp-sum-ic" style={{ background: 'rgba(225,29,42,0.15)', color: '#e11d2a' }}><ShoppingBag size={20} /></span>
+        <div className="cmp-sum red">
+          <span className="cmp-sum-ic"><ShoppingBag size={20} /></span>
           <div><div className="cmp-sum-lbl">Total compras (este mes)</div><div className="cmp-sum-val">{formatUsd(summary.totalThis)}</div>
             {summary.pct != null && <div className={`cmp-sum-sub ${summary.pct >= 0 ? 'up' : 'down'}`}>{summary.pct >= 0 ? '▲' : '▼'} {Math.abs(summary.pct).toFixed(0)}% vs. mes anterior</div>}
           </div>
         </div>
-        <div className="cmp-sum">
-          <span className="cmp-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><ClipboardList size={20} /></span>
+        <div className="cmp-sum purple">
+          <span className="cmp-sum-ic"><ClipboardList size={20} /></span>
           <div><div className="cmp-sum-lbl">Compras realizadas</div><div className="cmp-sum-val">{summary.count}</div><div className="cmp-sum-sub">Este mes</div></div>
         </div>
-        <div className="cmp-sum">
-          <span className="cmp-sum-ic" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><Package size={20} /></span>
+        <div className="cmp-sum green">
+          <span className="cmp-sum-ic"><Package size={20} /></span>
           <div><div className="cmp-sum-lbl">Total ítems comprados</div><div className="cmp-sum-val">{summary.itemsThis}</div><div className="cmp-sum-sub">Este mes</div></div>
         </div>
-        <div className="cmp-sum">
-          <span className="cmp-sum-ic" style={{ background: 'rgba(249,115,22,0.15)', color: '#f97316' }}><CalendarClock size={20} /></span>
+        <div className="cmp-sum orange">
+          <span className="cmp-sum-ic"><CalendarClock size={20} /></span>
           <div><div className="cmp-sum-lbl">Última compra</div>
             <div className="cmp-sum-val" style={{ fontSize: 16 }}>{summary.last ? new Date(summary.last.purchaseDate).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
             <div className="cmp-sum-sub">{summary.last ? `Proveedor: ${summary.last.supplierName}` : 'Sin compras'}</div>

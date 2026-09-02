@@ -2088,7 +2088,7 @@ button.mobile-only {
    Va después del bloque de 768px y del de escritorio a propósito, para
    ganarles en cascada.
    ========================================================================== */
-@media (min-width: 680px) and (max-width: 1023px), (min-width: 680px) and (max-width: 1279px) and (orientation: portrait) {
+@media (min-width: 680px) and (max-width: 899px) and (orientation: landscape), (min-width: 680px) and (max-width: 1279px) and (orientation: portrait) {
   /* Panel centrado tipo diálogo, en vez de hoja pegada al borde derecho.
      El fondo mantiene la misma imagen decorativa que usan teléfono y
      computadora (solo oscurecida para que el panel resalte), en vez de un
@@ -2192,10 +2192,10 @@ button.mobile-only {
 }
 
 /* ==========================================================================
-   DESKTOP VIEWPORT (>= 1280px, o iPad/tablet >= 1024px en horizontal)
+   DESKTOP VIEWPORT (>= 1280px, o iPad/tablet >= 900px en horizontal)
    — MAQUETA FULL CHINA PRO
    ========================================================================== */
-@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .public-menu-page {
     width: 100%;
     max-width: none !important;
@@ -3615,7 +3615,7 @@ button.mobile-only {
   /* 2. Categorías Grid (9 columns) */
   .public-home-categories-grid {
     display: grid !important;
-    grid-template-columns: repeat(9, 1fr) !important;
+    grid-template-columns: repeat(9, minmax(0, 1fr)) !important;
     gap: 10px !important;
     width: 100% !important;
   }
@@ -6779,9 +6779,9 @@ button.mobile-only {
 
 /* =====================================================================
    MOBILE CONTACT TAB — complemento exacto del breakpoint desktop de
-   arriba (< 1024px, o < 1280px en vertical) — mobile-only, no toca desktop
+   arriba (< 900px en horizontal, o < 1280px en vertical) — mobile-only, no toca desktop
    ===================================================================== */
-@media (max-width: 1023px), (max-width: 1279px) and (orientation: portrait) {
+@media (max-width: 899px) and (orientation: landscape), (max-width: 1279px) and (orientation: portrait) {
 
 .public-menu-page { padding-bottom: 120px; }
 
@@ -7345,12 +7345,60 @@ button.mobile-only {
 }
 
 /* El bloque "DESKTOP VIEWPORT" de arriba trata como escritorio a
-   cualquier tablet en horizontal (>=1024px), para heredar esa maqueta.
+   cualquier tablet en horizontal (>=900px), para heredar esa maqueta.
    Pero un iPad no es una computadora: debe seguir usando el fondo de
    teléfono (liviano, sin el riesgo de pixelado del fondo de compu). */
 @media (min-width: 1280px) and (pointer: coarse),
-       (min-width: 1024px) and (orientation: landscape) and (pointer: coarse) {
+       (min-width: 900px) and (orientation: landscape) and (pointer: coarse) {
   .public-menu-page {
     background: url('/optimized/fondos/public-flow-bg.webp') center bottom / cover fixed no-repeat !important;
+  }
+}
+
+/* Tablets en horizontal (heredan el layout desktop desde 900px, ver
+   arriba) tienen menos ancho que una computadora real: la descripción
+   del hero completa se corta feo, la barra lateral fija de 350px deja
+   muy poco espacio a la columna principal, y las tarjetas de producto
+   (pensadas para caber 4 en una fila bien ancha) quedan tan angostas
+   que sus botones se cortan. Se ajusta todo solo en este rango. */
+@media (min-width: 900px) and (max-width: 1279px) and (orientation: landscape) {
+  .public-hero-desc-extra {
+    display: none;
+  }
+
+  .public-desktop-layout {
+    grid-template-columns: minmax(0, 1fr) 300px !important;
+    gap: 18px !important;
+    padding: 0 16px !important;
+  }
+
+  .public-home-product-card {
+    flex: 0 0 200px !important;
+  }
+
+  .public-home-prod-img-wrap {
+    height: 130px !important;
+  }
+
+  .public-sidebar-card {
+    padding: 16px !important;
+  }
+
+  .public-home-categories-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-behavior: smooth !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding: 4px 2px !important;
+    margin: -4px -2px !important;
+  }
+  .public-home-categories-grid::-webkit-scrollbar {
+    display: none !important;
+  }
+  .public-home-category-card {
+    flex: 0 0 90px !important;
   }
 }

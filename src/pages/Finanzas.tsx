@@ -280,28 +280,28 @@ export function Finanzas() {
 
       {/* KPIs */}
       <div className="fin-kpis">
-        <div className="fin-kpi">
-          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}><ShoppingCart size={18} /></span>
+        <div className="fin-kpi green">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic"><ShoppingCart size={18} /></span>
             <div><div className="fin-kpi-lbl">Ventas Brutas Totales</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
           <div className="fin-kpi-sub">{salesDelta != null ? <span className={salesDelta >= 0 ? 'fin-up' : 'fin-down'}>{salesDelta >= 0 ? '▲' : '▼'} {Math.abs(salesDelta).toFixed(0)}% vs ayer</span> : periodLabel}</div>
         </div>
-        <div className="fin-kpi">
-          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}><Wallet size={18} /></span>
+        <div className="fin-kpi red">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic"><Wallet size={18} /></span>
             <div><div className="fin-kpi-lbl">Costo de Insumos (COGS)</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
           <div className="fin-kpi-sub fin-down">{cogsPctSales.toFixed(1)}% de las ventas</div>
         </div>
-        <div className="fin-kpi">
-          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><DollarSign size={18} /></span>
+        <div className="fin-kpi purple">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic"><DollarSign size={18} /></span>
             <div><div className="fin-kpi-lbl">Gastos + Nómina</div><div className="fin-kpi-val">{formatUsd(cur.opex + cur.payroll)}</div></div></div>
           <div className="fin-kpi-sub">{formatUsd(cur.opex)} gastos · {formatUsd(cur.payroll)} nómina</div>
         </div>
-        <div className="fin-kpi">
-          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><TrendingUp size={18} /></span>
+        <div className="fin-kpi green">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic"><TrendingUp size={18} /></span>
             <div><div className="fin-kpi-lbl">Ganancia Neta Estimada</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
           <div className="fin-kpi-sub">{netDelta != null ? <span className={netDelta >= 0 ? 'fin-up' : 'fin-down'}>{netDelta >= 0 ? '▲' : '▼'} {Math.abs(netDelta).toFixed(0)}% vs ayer</span> : `${cur.margin.toFixed(1)}% de las ventas`}</div>
         </div>
-        <div className="fin-kpi">
-          <div className="fin-kpi-top"><span className="fin-kpi-ic" style={{ background: 'rgba(59,130,246,0.15)', color: '#3b82f6' }}><Percent size={18} /></span>
+        <div className="fin-kpi blue">
+          <div className="fin-kpi-top"><span className="fin-kpi-ic"><Percent size={18} /></span>
             <div><div className="fin-kpi-lbl">Margen Neto</div><div className="fin-kpi-val">{cur.margin.toFixed(1)}%</div></div></div>
           <div className="fin-kpi-sub"><span className={marginPP >= 0 ? 'fin-up' : 'fin-down'}>{marginPP >= 0 ? '▲' : '▼'} {Math.abs(marginPP).toFixed(1)} pp vs ayer</span></div>
         </div>
