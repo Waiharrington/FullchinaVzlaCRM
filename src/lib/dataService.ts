@@ -2498,7 +2498,11 @@ export async function updateEmployee(id: string, updates: {
     if (error.message?.includes('weekly_salary') || error.message?.includes('overtime_rate') || error.code === '42703' || error.code === 'PGRST204') {
       delete patch.weekly_salary
       delete patch.overtime_rate
-      if (updates.weeklySalary !== undefined && updates.hourlyRate === undefined) {
+      // En instalaciones anteriores a weekly_salary, hourly_rate es la única
+      // columna disponible para conservar el sueldo. El formulario de Equipo
+      // envía ambos valores, así que el sueldo semanal debe tener prioridad y
+      // no quedar sobrescrito por el hourlyRate predeterminado en cero.
+      if (updates.weeklySalary !== undefined) {
         patch.hourly_rate = updates.weeklySalary
       }
       const { error: retryErr } = await sb
