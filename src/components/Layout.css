@@ -78,7 +78,7 @@
   }
 
   .sidebar-container:not(.collapsed) {
-    width: 260px;
+    width: 210px;
   }
 
   .main-content-wrapper {
@@ -90,7 +90,7 @@
   }
 
   .main-content-wrapper:not(.sidebar-collapsed) {
-    width: calc(100% - 260px);
+    width: calc(100% - 210px);
   }
 
   .app-main {

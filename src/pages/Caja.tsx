@@ -6,6 +6,7 @@ import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { StyledSelect } from '../components/StyledSelect'
+import Toast from '../components/Toast'
 import { downloadReceipt } from '../lib/receipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -220,7 +221,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [modifierError, setModifierError] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('all')
-  const [sortBy, setSortBy] = useState<'popular' | 'price' | 'name'>('popular')
+  const [sortBy, setSortBy] = useState<'popular' | 'price' | 'name'>('name')
   const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
   const [closingProductGroup, setClosingProductGroup] = useState(false)
 
@@ -249,6 +250,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [birthDay, setBirthDay] = useState('')
   const [creatingCustomer, setCreatingCustomer] = useState(false)
   const [customerCreateError, setCustomerCreateError] = useState('')
+  const [bcvSuccessToast, setBcvSuccessToast] = useState('')
 
   const filteredCustomers = useMemo(() => {
     if (!customerName.trim()) return customerList
@@ -466,16 +468,16 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   }
 
   // Respeta la categoría guardada si ya es válida; si no, la deduce por nombre.
-  const resolveCat = (product: Product) =>
+  const resolveCat = useCallback((product: Product) =>
     product.category !== 'otros' && isKnownCategory(product.category)
       ? product.category
-      : classifyMenuCategory(product.name, product.category)
+      : classifyMenuCategory(product.name, product.category), [])
   // Conjunto completo de categorías de un plato (principal resuelta + adicionales).
-  const resolveCats = (product: Product): string[] => {
+  const resolveCats = useCallback((product: Product): string[] => {
     const primary = resolveCat(product)
     const extras = product.categories.filter((c) => c !== product.category)
     return Array.from(new Set([primary, ...extras]))
-  }
+  }, [resolveCat])
 
   const categories = useMemo(() => {
     const present = new Set(products.flatMap((p) => resolveCats(p)))
@@ -513,19 +515,22 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     return result
   }, [products, searchTerm, activeCategory, sortBy, salesRank])
 
-  // Top 5 productos más vendidos hoy (para badge 🔥)
-  const topProductIds = useMemo(() => {
-    if (salesRank.size === 0) return new Set<string>()
-    const ranked = filteredProductGroups
-      .map(g => ({
-        key: g.key,
-        count: g.variants.reduce((sum, v) => sum + (salesRank.get(v.product.id) ?? 0), 0),
-      }))
-      .filter(r => r.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-    return new Set(ranked.map(r => r.key))
-  }, [filteredProductGroups, salesRank])
+    // Top 5 productos más vendidos hoy (para rank 1-5)
+    const topProductRanks = useMemo(() => {
+      if (salesRank.size === 0) return new Map<string, number>()
+      const ranked = filteredProductGroups
+        .map(g => ({
+          key: g.key,
+          count: g.variants.reduce((sum, v) => sum + (salesRank.get(v.product.id) ?? 0), 0),
+        }))
+        .filter(r => r.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5)
+      
+      const ranksMap = new Map<string, number>()
+      ranked.forEach((r, idx) => ranksMap.set(r.key, idx + 1))
+      return ranksMap
+    }, [filteredProductGroups, salesRank])
 
 
   const genLineId = () =>
@@ -1117,8 +1122,20 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     )
   }
 
+  const handleRefreshBcv = async () => {
+    await refreshBcv()
+    setBcvSuccessToast('Tasa BCV actualizada correctamente.')
+  }
+
   return (
     <div className={`page animate-fade-in ${embedded ? 'caja-embedded' : ''}`}>
+      {bcvSuccessToast && (
+        <Toast
+          type="success"
+          message={bcvSuccessToast}
+          onClose={() => setBcvSuccessToast('')}
+        />
+      )}
       <div className={`cash-session-strip ${cashSession ? 'open' : 'closed'}`}>
         <div className="cash-session-info">
           <span className="cash-session-title">
@@ -1134,7 +1151,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           </small>
         </div>
         <div className="cash-session-actions">
-          <button type="button" className="bcv-refresh-btn" onClick={() => void refreshBcv()} disabled={bcvLoading}>
+          <button type="button" className="bcv-refresh-btn" onClick={() => void handleRefreshBcv()} disabled={bcvLoading}>
             <RefreshCw size={15} className={bcvLoading ? 'is-spinning' : ''} aria-hidden="true" />
             {bcvLoading ? 'Actualizando' : 'Actualizar BCV'}
           </button>
@@ -1198,7 +1215,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             >
-              <option value="popular">Más vendidos</option>
+              {salesRank.size > 0 && <option value="popular">Más vendidos</option>}
               <option value="price">Precio</option>
               <option value="name">Nombre</option>
             </StyledSelect>
@@ -1212,7 +1229,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               filteredProductGroups.map((group, index) => {
                 const product = group.variants[0].product
                 const imgUrl = getProductImage(product)
-                const isPopular = topProductIds.has(group.key)
+                const rank = topProductRanks.get(group.key)
                 return (
                   <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''}`} onClick={() => selectMenuGroup(group)}>
                     <div className="product-image-area">
@@ -1224,7 +1241,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         fetchPriority={index < 4 ? 'high' : 'auto'}
                         decoding="async"
                       />
-                      {isPopular && <span className="product-badge badge-popular"><Flame size={12} /> Más vendido</span>}
+                      {rank && sortBy === 'popular' && <span className="product-badge badge-popular"><strong>#{rank}</strong> Más vendido</span>}
                       {group.isGrouped && <span className="product-badge badge-variants">{group.variants.length} opciones</span>}
                       <button
                         className="product-quick-add-btn"
@@ -1404,12 +1421,12 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         {mods && <span className="cart-item-sub">{mods}</span>}
                       </div>
                       <div className="cart-item-controls">
-                        <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(lineKey, -1)}><Minus size={13} /></button>
+                        <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(lineKey, -1)}><Minus size={18} /></button>
                         <span className="qty-display">{item.quantity}</span>
-                        <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(lineKey, 1)}><Plus size={13} /></button>
+                        <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(lineKey, 1)}><Plus size={18} /></button>
                       </div>
                       <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
-                      <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(lineKey)}><Trash2 size={14} /></button>
+                      <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(lineKey)}><Trash2 size={18} /></button>
                     </div>
                   )
                 })}
@@ -1473,6 +1490,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                       loadCustomers()
                       setShowCustomerDropdown(true)
                     }}
+                    onBlur={() => {
+                      setShowCustomerDropdown(false)
+                    }}
                     className="customer-input"
                   />
                   <button
@@ -1484,7 +1504,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                     }}
                     title="Nuevo cliente"
                   >
-                    <Plus size={15} />
+                    <Plus size={18} />
                   </button>
                 </div>
                 )}
@@ -1496,7 +1516,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                       <div
                         key={cust.id}
                         className="customer-dropdown-item"
-                        onClick={() => {
+                        onPointerDown={(e) => {
+                          e.preventDefault(); // prevent blur
                           setCustomerName(cust.name)
                           setSelectedCustomer(cust)
                           setShowCustomerDropdown(false)

@@ -248,6 +248,8 @@
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .filter-search-inline {
@@ -295,12 +297,11 @@
   color: #71717a;
 }
 
-/* Tablet: una sola fila con scroll horizontal, nada queda huérfano al envolver */
+/* Tablet: permitir envolver para evitar scroll horizontal y comprimido */
 @media (min-width: 680px) and (max-width: 1199px) {
   .comandas-filters {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .filter-group-item,

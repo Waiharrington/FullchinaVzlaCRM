@@ -380,3 +380,28 @@ input:-webkit-autofill:active {
 .search-clear-btn--floating {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
 }
+
+/* UNIFIED APP SUBTITLES GLOBALS */
+.page-subtitle, .hero-subtitle, .clientes-subtitle, .comandas-pulse-title-row p, .login-subtitle, .cmd-history-subtitle {
+  font-family: var(--font-sans) !important;
+  font-size: 13.5px !important;
+  color: #9ca3af !important;
+  font-weight: 400 !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* GLOBAL MODAL HEADER VERTICAL CENTERING FIX */
+.mnu-modal-header,
+.modal-header-line,
+.payment-modal-header,
+.mas-modal-header-glow,
+.cmp-modal-header,
+.inv-modal-header,
+.cmd-modal-header,
+.mesas-modal-header,
+.nom-modal-header {
+  align-items: center !important;
+  padding-top: 22px !important;
+  padding-bottom: 14px !important;
+}

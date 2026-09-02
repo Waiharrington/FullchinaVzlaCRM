@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
 import './Toast.css'
 
@@ -37,12 +37,19 @@ export default function Toast({ type, message, onClose, duration = 3000, actionL
   useEffect(() => { setClosing(false) }, [message])
   useEffect(() => () => { if (closeTimer.current) clearTimeout(closeTimer.current) }, [])
 
-  if (!message) return null
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setClosing(true)
     closeTimer.current = setTimeout(() => onClose?.(), 200)
-  }
+  }, [onClose])
+
+  useEffect(() => {
+    if (duration > 0 && message) {
+      const timer = setTimeout(handleClose, duration)
+      return () => clearTimeout(timer)
+    }
+  }, [message, duration, handleClose])
+
+  if (!message) return null
 
   const Icon = ICONS[type]
 

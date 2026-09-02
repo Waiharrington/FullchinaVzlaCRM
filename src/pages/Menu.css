@@ -5,7 +5,9 @@
 
 /* --- Page Layout --- */
 .mnu-page { color: #fff; padding-top: 4px; }
-.mnu-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 4px; }
+.mnu-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 4px; flex-wrap: wrap; }
+.mnu-page .page-header > div:first-child { flex: 1; min-width: 250px; }
+.mnu-page .page-header > div:last-child { flex-shrink: 0; }
 
 /* --- Buttons --- */
 .mnu-btn {
@@ -124,7 +126,7 @@
 .mnu-bulk-delete:disabled { opacity: .45; cursor: default; }
 
 /* --- Grid Cards --- */
-.mnu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.mnu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; }
 .mnu-card {
   position: relative;
   background: linear-gradient(170deg, #1c1c22 0%, #161618 100%);
@@ -721,4 +723,9 @@
   .mnu-money-input { position: relative; }
   .mnu-money-input > span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #ef4c57; font-weight: 800; }
   .mnu-money-input input { padding-left: 30px; }
+}
+
+
+@media (min-width: 600px) {
+  .mnu-page .page-header { flex-wrap: nowrap; }
 }

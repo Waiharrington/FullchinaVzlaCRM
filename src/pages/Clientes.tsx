@@ -394,14 +394,14 @@ export function Clientes() {
 
   // Clientes reales importados, enriquecidos con saldos de crédito actuales.
   const displayRows = useMemo(() => {
-    const rows: CustomerRow[] = customers.map((customer, index) => {
+    const rows: CustomerRow[] = customers.map((customer) => {
       const customerCredits = credits.filter(item => item.customerId === customer.id || (!item.customerId && normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name)))
       const metric = purchaseMetrics.find(item => item.customerId === customer.id || (!item.customerId && normalizeCustomerName(item.customerName) === normalizeCustomerName(customer.name)))
       const pendingBalance = customerCredits.reduce((sum, credit) => sum + credit.balancePending, 0)
       const parts = customer.name.split(' ')
       return {
         id: customer.id, initials: `${parts[0]?.[0] || 'C'}${parts[1]?.[0] || ''}`.toUpperCase(),
-        avatarBg: index % 2 === 0 ? '#dc2626' : '#d97706', name: customer.name,
+        avatarBg: '#3f3f46', name: customer.name,
         phone: customer.phone, identification: customer.identification,
         identificationStatus: classifyIdentification(customer.identification),
         lastPurchase: metric?.lastPurchase ? formatDate(metric.lastPurchase) : customer.lastVisit ? formatDate(customer.lastVisit) : 'Sin compras enlazadas',
@@ -925,8 +925,8 @@ export function Clientes() {
                   <th>Teléfono</th>
                   <th>Identificación</th>
                   <th>Última compra</th>
-                  <th>Total comprado</th>
-                  <th>Saldo pendiente</th>
+                  <th className="amount-th">Total comprado</th>
+                  <th className="amount-th">Saldo pendiente</th>
                   <th>Estado</th>
                   <th style={{ textAlign: 'center' }}>Acciones</th>
                 </tr>
@@ -969,8 +969,8 @@ export function Clientes() {
                         </div>
                       </td>
                       <td className="date-td">{row.lastPurchase}</td>
-                      <td className="amount-td"><MoneyWithBcv usd={row.totalPurchased} usdClassName="font-bold" compact /></td>
-                      <td className="amount-td"><MoneyWithBcv usd={row.pendingBalance} className={row.pendingBalance > 0 ? 'text-red' : 'text-green'} usdClassName="font-bold" compact /></td>
+                      <td className="amount-td"><MoneyWithBcv usd={row.totalPurchased} className={row.totalPurchased === 0 ? "text-muted-amount" : ""} usdClassName="font-bold" compact /></td>
+                      <td className="amount-td"><MoneyWithBcv usd={row.pendingBalance} className={row.pendingBalance > 0 ? "text-red" : "text-muted-amount"} usdClassName="font-bold" compact /></td>
                       <td>
                         <span className={`status-badge-pill ${row.status.toLowerCase()}`}>
                           {row.status}

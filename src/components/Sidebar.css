@@ -509,7 +509,7 @@
   }
   
   .sidebar:not(.collapsed) {
-    width: 250px;
+    width: 210px;
   }
   
   .sidebar-brand {
@@ -792,4 +792,14 @@
 @media (prefers-reduced-motion: reduce) {
   .sidebar-group-items { animation: none; }
   .sidebar-group-chevron { transition: none; }
+}
+
+
+/* Ocultar barra de scroll del menu lateral */
+.sidebar-nav {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.sidebar-nav::-webkit-scrollbar {
+  display: none;
 }

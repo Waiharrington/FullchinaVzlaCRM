@@ -230,7 +230,6 @@ export function Mesas() {
       <header className="mesas-page-header">
         <div className="mesas-page-title-wrap">
           <div>
-            <p className="mesas-eyebrow">OPERACIÓN · SALÓN</p>
             <h1 className="page-title"><LayoutGrid size={22} className="page-title-icon" /> Mapa de mesas</h1>
             <p>{occupiedCount} de {tables.length} mesas ocupadas ahora mismo.</p>
           </div>

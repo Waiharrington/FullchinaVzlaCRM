@@ -385,14 +385,14 @@ export function Comandas() {
   }
 
   const STATUS_FILTER_OPTIONS: Array<{ value: 'all' | ComandaOrder['status']; label: string }> = [
-    { value: 'all', label: 'Todos los estados' },
+    { value: 'all', label: 'Estado' },
     { value: 'new', label: 'Nuevas' },
     { value: 'preparing', label: 'En preparación' },
     { value: 'ready', label: 'Listas' },
     { value: 'delivered', label: 'Entregadas' },
   ]
   const ORDER_TYPE_FILTER_OPTIONS: Array<{ value: 'all' | 'Delivery' | 'Para llevar' | 'Mesa'; label: string }> = [
-    { value: 'all', label: 'Todos los tipos' },
+    { value: 'all', label: 'Tipo' },
     { value: 'Delivery', label: 'Delivery' },
     { value: 'Para llevar', label: 'Para llevar' },
     { value: 'Mesa', label: 'Mesa' },
@@ -1104,12 +1104,12 @@ export function Comandas() {
     ? Math.round(activeComandas.reduce((sum, comanda) => sum + comanda.elapsedMins, 0) / activeComandas.length)
     : 0
   const kitchenPulse = pendientesCount === 0
-    ? { tone: 'calm', label: 'Todo bajo control', message: 'La cocina está lista para recibir nuevos pedidos.' }
+    ? { tone: 'calm', label: 'Todo bajo control', message: 'Cocina libre.' }
     : pendientesCount >= 8 || avgMins >= 20
-      ? { tone: 'critical', label: 'Requiere atención', message: 'La carga está alta. Prioriza las comandas con mayor espera.' }
+      ? { tone: 'critical', label: 'Alta carga', message: 'Prioriza mayor espera.' }
       : pendientesCount >= 4 || avgMins >= 12
-        ? { tone: 'busy', label: 'Cocina con movimiento', message: 'Hay buen ritmo, pero conviene vigilar los tiempos.' }
-        : { tone: 'steady', label: 'Operación fluida', message: 'Las comandas avanzan dentro de un ritmo saludable.' }
+        ? { tone: 'busy', label: 'Buen ritmo', message: 'Vigila los tiempos.' }
+        : { tone: 'steady', label: 'Flujo estable', message: 'Avanzando a buen ritmo.' }
 
   return (
     <div className="comandas-page animate-fade-in">
@@ -1221,7 +1221,7 @@ export function Comandas() {
             <Search size={14} />
             <input
               type="text"
-              placeholder="Buscar por número, cliente o teléfono..."
+              placeholder="Buscar..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -1293,7 +1293,7 @@ export function Comandas() {
             onClick={() => setOpenFilterMenu(prev => (prev === 'type' ? null : 'type'))}
           >
             <Package size={14} />
-            <span>{ORDER_TYPE_FILTER_OPTIONS.find(o => o.value === orderTypeFilter)?.label || 'Tipo de pedido'}</span>
+            <span>{ORDER_TYPE_FILTER_OPTIONS.find(o => o.value === orderTypeFilter)?.label || 'Tipo'}</span>
             <ChevronDown size={12} />
           </button>
           {openFilterMenu === 'type' && (
@@ -1319,7 +1319,7 @@ export function Comandas() {
           disabled={!hasActiveFilters}
         >
           <Filter size={14} />
-          <span>Limpiar filtros</span>
+          <span>Limpiar</span>
         </button>
         </div>
       </div>

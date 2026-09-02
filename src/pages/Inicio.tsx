@@ -350,7 +350,7 @@ export function Inicio() {
           </div>
         </div>
         <div className="kpi-banner-img-wrap">
-          <img src="/optimized/root/kpi-bg.webp" alt="" className="kpi-banner-img" />
+          <img src="/optimized/root/kpi-bg-new.png" alt="" className="kpi-banner-img" />
           <div className="kpi-banner-gradient"></div>
         </div>
       </div>
