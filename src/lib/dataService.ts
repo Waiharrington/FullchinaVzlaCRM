@@ -2104,11 +2104,25 @@ export async function getIngredients(): Promise<Ingredient[]> {
 
 export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
   const { data, error } = await client().rpc('fn_get_financial_account_balances')
-  if (error) throw error
-  return ((data as Array<Record<string, unknown>>) ?? []).map((a) => ({
+  if (!error && data) return (data as Array<Record<string, unknown>>).map((a) => ({
     id: String(a.id), name: String(a.name), accountType: String(a.account_type),
     currency: a.currency as 'USD' | 'VES', isActive: true,
     openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.current_balance ?? 0),
+  }))
+
+  // Si la RPC falla por una política temporal o por caché de PostgREST,
+  // mostramos al menos las cuentas configuradas en lugar de reportar que no
+  // existen. El saldo calculado se conserva en la RPC cuando vuelve a estar
+  // disponible.
+  const fallback = await client().from('financial_accounts')
+    .select('id,name,account_type,currency,opening_balance')
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+  if (fallback.error) throw error ?? fallback.error
+  return (fallback.data ?? []).map((a) => ({
+    id: String(a.id), name: String(a.name), accountType: String(a.account_type),
+    currency: a.currency as 'USD' | 'VES', isActive: true,
+    openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.opening_balance ?? 0),
   }))
 }
 
