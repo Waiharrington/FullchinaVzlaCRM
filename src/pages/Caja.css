@@ -2535,6 +2535,15 @@
 
 .cart-action-buttons { display: flex; gap: 10px; }
 .btn-pay-red, .btn-kitchen-red { flex: 1; min-height: 48px; padding: 10px; border-radius: 12px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; transition: 160ms ease; }
+.cart-action-label-short { display: none; }
+.cart-action-label-full,
+.cart-action-label-short { white-space: nowrap; }
+
+@media (min-width: 768px) and (max-width: 1199px) {
+  .cart-action-label-full { display: none; }
+  .cart-action-label-short { display: inline; }
+}
+
 .btn-pay-red { background: linear-gradient(145deg,#ef2b2d,#cf191c); color: #fff; border: none; box-shadow: 0 10px 24px rgba(227, 27, 43,.25), inset 0 1px 0 rgba(255,255,255,.17); }
 .btn-kitchen-red { border: 1px solid rgba(239,43,45,.3); background: #252528; color: #fff; }
 .btn-pay-red:hover:not(:disabled), .btn-kitchen-red:hover:not(:disabled) { transform: translateY(-1px); }

@@ -192,14 +192,13 @@ export function Promociones() {
   const visibles = promos.filter(p => p.isActive).length
 
   return (
-    <div className="promo-page animate-fade-in">
+    <div className="page promo-page animate-fade-in management-workspace management-workspace--promotions">
       {/* Hero */}
-      <header className="promo-hero">
+      <header className="promo-hero management-workspace-header">
         <div className="promo-hero-text">
-          <h1 className="page-title promo-hero-title">Promociones <span>del Menú</span></h1>
+          <h1 className="page-title promo-hero-title"><Tag size={22} className="page-title-icon" /> Promociones <span>del Menú</span></h1>
           <p className="promo-hero-sub">Gestiona las ofertas que se ven en /pedir</p>
         </div>
-        <div className="promo-hero-fire" aria-hidden><Flame size={28} /></div>
       </header>
 
       {/* Toolbar: stats + acción */}

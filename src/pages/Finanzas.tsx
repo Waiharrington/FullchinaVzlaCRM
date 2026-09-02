@@ -236,8 +236,8 @@ export function Finanzas() {
   )
 
   return (
-    <div className="page fin-page animate-fade-in">
-      <header className="page-header">
+    <div className="page fin-page animate-fade-in management-workspace management-workspace--finance">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><TrendingUp size={22} className="page-title-icon" /> Finanzas & Cierre Financiero Automático</h1>
           <p className="page-subtitle">Consolidado sin planillas de Excel. Punto de equilibrio y rentabilidad real del negocio.</p>
@@ -279,7 +279,7 @@ export function Finanzas() {
       </div>
 
       {/* KPIs */}
-      <div className="fin-kpis">
+      <div className="fin-kpis management-workspace-metrics">
         <div className="fin-kpi green">
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><ShoppingCart size={18} /></span>
             <div><div className="fin-kpi-lbl">Ventas Brutas Totales</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
@@ -307,7 +307,7 @@ export function Finanzas() {
         </div>
       </div>
 
-      <div className="fin-card fin-accounts-card">
+      <div className="fin-card fin-accounts-card management-workspace-panel">
         <h2>Saldos actuales por cuenta</h2>
         <p className="sub">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</p>
         <div className="fin-account-grid">

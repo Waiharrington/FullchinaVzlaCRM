@@ -155,8 +155,8 @@ export function CajaOperativa() {
   }
 
   return (
-    <div className="page cash-ops-page animate-fade-in">
-      <header className="cash-ops-header">
+    <div className="page cash-ops-page animate-fade-in management-workspace management-workspace--cash-ops">
+      <header className="cash-ops-header management-workspace-header">
         <div>
           <span className="cash-ops-eyebrow">Control operativo</span>
           <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /> Apertura y cierre de caja</h1>
@@ -195,7 +195,7 @@ export function CajaOperativa() {
             <span><Clock3 size={15} /> Abierto {new Date(session.openedAt).toLocaleString('es-VE')}</span>
           </section>
 
-          <section className="cash-currency-grid">
+          <section className="cash-currency-grid management-workspace-metrics">
             <article className="cash-currency-card usd">
               <div className="cash-currency-heading"><span>Efectivo en dólares</span><strong>{money(session.expectedCashUsd)}</strong></div>
               <div className="cash-currency-details"><div><span>Fondo inicial</span><b>{money(session.openingCashUsd)}</b></div><div><span>Ventas en efectivo</span><b>{money(session.cashSalesUsd)}</b></div><div><span>Entradas / salidas</span><b>{money(session.movementInUsd - session.movementOutUsd)}</b></div></div>

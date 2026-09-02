@@ -52,228 +52,94 @@ export function MarketingWhatsApp() {
   }
 
   return (
-    <div className="whatsapp-page">
-      <header className="page-header">
+    <div className="page whatsapp-page animate-fade-in management-workspace management-workspace--whatsapp">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><MessageSquare size={22} className="page-title-icon" /> Marketing por WhatsApp</h1>
-          <p className="page-subtitle">Campañas y mensajes directos a tus clientes por WhatsApp.</p>
+          <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
         </div>
+        <span className="wa-provider-state"><span /> Proveedor por conectar</span>
       </header>
 
-      {/* Metrics Banner */}
-      <div className="almacen-metrics-grid">
-        <div className="almacen-metric-card accent-green">
-          <div className="metric-icon-box green">
-            <MessageSquare size={24} />
+      <section className="wa-metrics management-workspace-metrics" aria-label="Resumen de marketing">
+        <article className="wa-metric wa-metric--green"><span className="wa-metric-icon"><MessageSquare size={20} /></span><div><small>Mensajes</small><strong>{messages.length}</strong><span>En el historial</span></div></article>
+        <article className="wa-metric wa-metric--purple"><span className="wa-metric-icon"><Cake size={20} /></span><div><small>Cumpleañeros</small><strong>{birthdayCustomers.length}</strong><span>Hoy</span></div></article>
+        <article className="wa-metric wa-metric--orange"><span className="wa-metric-icon"><Clock size={20} /></span><div><small>Inactivos</small><strong>{inactiveCustomers.length}</strong><span>Más de 21 días</span></div></article>
+        <article className="wa-metric wa-metric--red"><span className="wa-metric-icon"><Users size={20} /></span><div><small>Clientes VIP</small><strong>{loyalCustomers.length}</strong><span>10 o más visitas</span></div></article>
+      </section>
+
+      <main className="wa-studio">
+        <section className="wa-panel wa-automations">
+          <header className="wa-panel-header">
+            <span className="wa-panel-icon"><Sparkles size={19} /></span>
+            <div><span className="wa-eyebrow">Siempre activas</span><h2>Automatizaciones</h2><p>Mensajes preparados para cada momento del cliente.</p></div>
+            <span className="wa-count">3 plantillas</span>
+          </header>
+
+          <div className="wa-template-grid">
+            <article className="wa-template wa-template--birthday">
+              <header><span className="wa-template-icon"><Cake size={17} /></span><span className="wa-template-badge">8:00 a. m.</span></header>
+              <div><small>Cumpleaños</small><h3>Un detalle en su día</h3><p>Se activa automáticamente para los clientes que cumplen años hoy.</p></div>
+              <blockquote>¡Feliz cumpleaños [Nombre]! 🎉 En <strong>Full China</strong> te regalamos una ración de lumpias gratis hoy.</blockquote>
+            </article>
+
+            <article className="wa-template wa-template--thanks">
+              <header><span className="wa-template-icon"><MessageSquare size={17} /></span><span className="wa-template-badge">10 min después</span></header>
+              <div><small>Post-compra</small><h3>Gracias por elegirnos</h3><p>Acompaña cada compra y mantiene presente la marca.</p></div>
+              <blockquote>¡Muchas gracias por tu compra, [Nombre]! 🥡 Esperamos que disfrutes tu pedido. ¡Vuelve pronto!</blockquote>
+            </article>
+
+            <article className="wa-template wa-template--inactive">
+              <header><span className="wa-template-icon"><Clock size={17} /></span><span className="wa-template-badge">21 días</span></header>
+              <div><small>Reactivación</small><h3>Es hora de volver</h3><p>Recupera clientes que llevan más de tres semanas sin visitarnos.</p></div>
+              <blockquote>¡Hola [Nombre]! Te extrañamos en <strong>Full China</strong>. 🍜 Recibe 15% de descuento esta semana.</blockquote>
+            </article>
           </div>
-          <div className="metric-info-group">
-            <span className="metric-label">Mensajes en historial</span>
-            <span className="metric-large-val">{messages.length} Mensajes</span>
-            <span className="metric-sub-text">Campañas de WhatsApp</span>
-          </div>
-        </div>
+        </section>
 
-        <div className="almacen-metric-card accent-purple">
-          <div className="metric-icon-box purple">
-            <Cake size={24} />
-          </div>
-          <div className="metric-info-group">
-            <span className="metric-label">Cumpleañeros Hoy</span>
-            <span className="metric-large-val">{birthdayCustomers.length} Cliente(s)</span>
-            <span className="metric-sub-text">Regalo automático activo</span>
-          </div>
-        </div>
+        <aside className="wa-panel wa-composer">
+          <header className="wa-panel-header">
+            <span className="wa-panel-icon wa-panel-icon--send"><Send size={19} /></span>
+            <div><span className="wa-eyebrow">Campaña manual</span><h2>Crear mensaje</h2><p>Selecciona el público y personaliza el contenido.</p></div>
+          </header>
 
-        <div className="almacen-metric-card accent-orange">
-          <div className="metric-icon-box orange">
-            <Clock size={24} />
-          </div>
-          <div className="metric-info-group">
-            <span className="metric-label">Clientes Inactivos</span>
-            <span className="metric-large-val">{inactiveCustomers.length} Clientes</span>
-            <span className="metric-sub-text">Sin visitar &gt; 21 días</span>
-          </div>
-        </div>
+          {sentNotice && <div className="wa-notice" role="status"><CheckCircle2 size={16} /><span>{sentNotice}</span></div>}
 
-        <div className="almacen-metric-card accent-red">
-          <div className="metric-icon-box red">
-            <Users size={24} />
-          </div>
-          <div className="metric-info-group">
-            <span className="metric-label">Clientes Fieles (VIP)</span>
-            <span className="metric-large-val">{loyalCustomers.length} Fieles</span>
-            <span className="metric-sub-text">&ge; 10 visitas registradas</span>
-          </div>
-        </div>
-      </div>
+          <form onSubmit={handleSendMessage} className="wa-compose-form">
+            <label><span>Segmento</span><StyledSelect value={selectedSegment} onChange={e => setSelectedSegment(e.target.value as 'all' | 'loyal' | 'inactive' | 'birthday')}>
+              <option value="birthday">Cumpleañeros de hoy ({birthdayCustomers.length})</option>
+              <option value="loyal">Clientes fieles / VIP ({loyalCustomers.length})</option>
+              <option value="inactive">Clientes inactivos ({inactiveCustomers.length})</option>
+              <option value="all">Todos los clientes ({customers.length})</option>
+            </StyledSelect></label>
 
-      <div className="whatsapp-grid">
-        {/* Left Column: Templates & Automation Controls */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="whatsapp-card">
-            <div className="prod-card-header-bar">
-              <div className="header-title-group">
-                <div className="card-header-icon-red" style={{ background: '#22c55e' }}>
-                  <Sparkles size={18} />
-                </div>
-                <div>
-                  <h2 className="prod-card-title">Plantillas & Automatizaciones de WhatsApp</h2>
-                  <span className="metric-sub-text">Mensajes predefinidos configurables para la clienta</span>
-                </div>
-              </div>
-              <span className="whatsapp-badge-green">Proveedor pendiente de conexión</span>
-            </div>
+            <label><span>Destinatario</span><StyledSelect value={targetCustomer} onChange={e => setTargetCustomer(e.target.value)}>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone}) · {c.totalVisits} visitas</option>)}
+            </StyledSelect></label>
 
-            {/* Template 1: Cumpleaños */}
-            <div className="template-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 800, color: '#fff', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Cake size={16} color="#ec4899" />
-                  <span>Mensaje de Cumpleaños (Automático 8:00 AM)</span>
-                </span>
-                <span style={{ fontSize: '11px', background: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Auto-Disparador</span>
-              </div>
-              <div className="chat-bubble-mock">
-                ¡Feliz Cumpleaños [Nombre]! 🎉 En <strong>Full China</strong> te regala una ración de lumpias gratis hoy en tu compra. ¡Te esperamos! 🥡
-              </div>
-            </div>
+            <label className="wa-message-field"><span>Mensaje <small>{customMsg.length} caracteres</small></span><textarea rows={5} value={customMsg} onChange={e => setCustomMsg(e.target.value)} /></label>
 
-            {/* Template 2: Agradecimiento */}
-            <div className="template-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 800, color: '#fff', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <MessageSquare size={16} color="#3b82f6" />
-                  <span>Agradecimiento Post-Compra / Delivery</span>
-                </span>
-                <span style={{ fontSize: '11px', background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>10 min post-venta</span>
-              </div>
-              <div className="chat-bubble-mock">
-                ¡Muchas gracias por tu compra en <strong>Full China</strong>, [Nombre]! 🥡 Esperamos que disfrutes tu pedido. ¡Vuelve pronto!
-              </div>
-            </div>
-
-            {/* Template 3: Reactivación 21 Días */}
-            <div className="template-card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 800, color: '#fff', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Clock size={16} color="#f97316" />
-                  <span>Reactivación de Clientes Inactivos (21 días sin ir)</span>
-                </span>
-                <span style={{ fontSize: '11px', background: 'rgba(249, 115, 22, 0.15)', color: '#f97316', padding: '2px 8px', borderRadius: '6px', fontWeight: 700 }}>Configurable</span>
-              </div>
-              <div className="chat-bubble-mock">
-                ¡Hola [Nombre]! Te extrañamos en <strong>Full China</strong>. 🍜 Muestra este mensaje y recibe un 15% de descuento en tu plato favorito esta semana.
-              </div>
-            </div>
-          </div>
-
-          {/* History of Sent Messages */}
-          <div className="whatsapp-card">
-            <h3 className="prod-card-title">Historial de Envíos de WhatsApp</h3>
-            <div className="table-responsive-wrapper">
-              <table className="almacen-table">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Teléfono</th>
-                    <th>Tipo</th>
-                    <th>Enviado</th>
-                    <th>Estado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {messages.map(msg => (
-                    <tr key={msg.id}>
-                      <td style={{ fontWeight: 700, color: '#fff' }}>{msg.customerName}</td>
-                      <td>{msg.phone}</td>
-                      <td>
-                        <span style={{ textTransform: 'capitalize', fontSize: '11px', background: 'rgba(255, 255, 255, 0.08)', padding: '2px 8px', borderRadius: '6px' }}>
-                          {msg.templateType}
-                        </span>
-                      </td>
-                      <td>{msg.sentAt}</td>
-                      <td>
-                        <span style={{ color: '#22c55e', fontWeight: 700, fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <CheckCircle2 size={12} /> {msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Send Campaign / Custom Message Simulator */}
-        <div className="whatsapp-card">
-          <div className="prod-card-header-bar">
-            <div className="header-title-group">
-              <div className="card-header-icon-red" style={{ background: '#25d366' }}>
-                <Send size={18} />
-              </div>
-              <div>
-                <h3 className="prod-card-title">Enviar Mensaje / Promoción</h3>
-                <span className="metric-sub-text">Segmentar y enviar por WhatsApp</span>
-              </div>
-            </div>
-          </div>
-
-          {sentNotice && (
-            <div style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#22c55e', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckCircle2 size={16} />
-              <span>{sentNotice}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleSendMessage} className="transfer-form-box">
-            <div className="select-field-group">
-              <label className="field-label">Seleccionar Segmento de Clientes</label>
-              <StyledSelect
-                className="field-select"
-                value={selectedSegment}
-                onChange={e => setSelectedSegment(e.target.value as 'all' | 'loyal' | 'inactive' | 'birthday')}
-              >
-                <option value="birthday">Cumpleañeros de Hoy ({birthdayCustomers.length})</option>
-                <option value="loyal">Clientes Fieles / VIP ({loyalCustomers.length})</option>
-                <option value="inactive">Clientes Inactivos &gt; 21 días ({inactiveCustomers.length})</option>
-                <option value="all">Todos los Clientes ({customers.length})</option>
-              </StyledSelect>
-            </div>
-
-            <div className="select-field-group">
-              <label className="field-label">Cliente Específico Destino</label>
-              <StyledSelect
-                className="field-select"
-                value={targetCustomer}
-                onChange={e => setTargetCustomer(e.target.value)}
-              >
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.phone}) - {c.totalVisits} visitas
-                  </option>
-                ))}
-              </StyledSelect>
-            </div>
-
-            <div className="select-field-group">
-              <label className="field-label">Mensaje a Enviar</label>
-              <textarea 
-                rows={4}
-                className="field-select"
-                style={{ resize: 'vertical' }}
-                value={customMsg}
-                onChange={e => setCustomMsg(e.target.value)}
-              />
-            </div>
-
-            <button type="submit" className="btn-whatsapp" style={{ marginTop: '8px' }}>
-              <Send size={16} />
-              <span>Enviar por WhatsApp</span>
-            </button>
+            <button type="submit" className="wa-send-button"><Send size={16} /><span>Guardar en cola</span></button>
+            <p className="wa-compose-hint">El envío se habilitará al conectar el proveedor de WhatsApp.</p>
           </form>
-        </div>
-      </div>
+        </aside>
+
+        <section className="wa-panel wa-history">
+          <header className="wa-panel-header">
+            <span className="wa-panel-icon wa-panel-icon--history"><MessageSquare size={19} /></span>
+            <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Mensajes manuales y automatizados registrados.</p></div>
+            <span className="wa-count">{messages.length} envíos</span>
+          </header>
+
+          {messages.length === 0 ? (
+            <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
+          ) : (
+            <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
+              {messages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{msg.sentAt}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
+            </tbody></table></div>
+          )}
+        </section>
+      </main>
     </div>
   )
 }

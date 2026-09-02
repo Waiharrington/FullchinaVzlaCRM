@@ -1225,13 +1225,19 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
 
 // --- Actualizar estado de orden (para Cocina) --------------------------------
 
-export async function updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
-  const { error } = await client()
+export async function updateOrderStatus(
+  orderId: string,
+  newStatus: FullOrder['fulfillmentStatus'],
+): Promise<void> {
+  const { data, error } = await client()
     .from('orders')
     .update({ fulfillment_status: newStatus })
     .eq('id', orderId)
+    .select('id')
+    .maybeSingle()
 
   if (error) throw error
+  if (!data) throw new Error('No se encontró la comanda o no tienes permiso para cambiar su estado')
 }
 
 export async function recordOrderPayments(params: {

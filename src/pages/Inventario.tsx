@@ -337,9 +337,9 @@ export function Inventario() {
   }
 
   return (
-    <div className="inv-page">
+    <div className="inv-page management-workspace management-workspace--inventory">
       {/* Header */}
-      <header className="inv-header">
+      <header className="inv-header management-workspace-header">
         <div className="inv-header-text">
           <h1 className="page-title"><Package size={22} className="page-title-icon" /> Inventario</h1>
           <p>Gestiona tu inventario en tiempo real y controla tus existencias.</p>
@@ -348,7 +348,7 @@ export function Inventario() {
       </header>
 
       {/* KPI Cards */}
-      <div className="inv-kpi-row">
+      <div className="inv-kpi-row management-workspace-metrics">
         <div className="inv-kpi-card red">
           <div className="inv-kpi-icon red">
             <ShoppingBag size={22} />
@@ -392,7 +392,7 @@ export function Inventario() {
       </div>
 
       {/* Filters Row */}
-      <div className="inv-filters-row">
+      <div className="inv-filters-row management-workspace-toolbar">
         <div className="inv-filter-pills">
           {[['all', 'Todos'], ['raw', 'Materia prima'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
             <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
@@ -419,7 +419,7 @@ export function Inventario() {
       {/* Main Content Grid */}
       <div className="inv-content-grid">
         {/* Table */}
-        <div className="inv-table-card">
+        <div className="inv-table-card management-workspace-panel">
           <div className="inv-table-wrapper">
             <table className="inv-table">
               <thead>
@@ -529,7 +529,7 @@ export function Inventario() {
         {/* Right Sidebar */}
         <div className="inv-sidebar">
           {/* Movements Card */}
-          <div className="inv-sidebar-card">
+          <div className="inv-sidebar-card management-workspace-panel">
             <div className="inv-sidebar-header">
               <h3 className="inv-sidebar-title">Movimientos recientes</h3>
               <button className="inv-sidebar-link" onClick={() => setSearchTerm('')}>Ver todos</button>
@@ -562,7 +562,7 @@ export function Inventario() {
           </div>
 
           {/* Alerts Card */}
-          <div className="inv-sidebar-card">
+          <div className="inv-sidebar-card management-workspace-panel">
             <div className="inv-sidebar-header">
               <h3 className="inv-sidebar-title">Alertas de inventario</h3>
               <button className="inv-sidebar-link" onClick={() => setCategoryFilter('all')}>Ver todas</button>

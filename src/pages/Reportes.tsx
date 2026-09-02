@@ -5,7 +5,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import './Reportes.css'
 import { formatProductTitle } from '../lib/textFormat'
-import { UtensilsCrossed, BarChart3 } from 'lucide-react'
+import { UtensilsCrossed, BarChart3, CalendarDays, CalendarRange, Gauge, ShoppingBag } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -155,10 +155,12 @@ export function Reportes() {
 
   if (user?.role === 'cashier') {
     return (
-      <div className="page animate-fade-in" key="reportes-restricted">
-        <header className="page-header">
-          <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
-          <p className="page-subtitle">Acceso restringido</p>
+      <div className="page animate-fade-in management-workspace management-workspace--reports" key="reportes-restricted">
+        <header className="page-header management-workspace-header">
+          <div>
+            <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
+            <p className="page-subtitle">Acceso restringido</p>
+          </div>
         </header>
         <div className="card restricted-card">
           <p>No tiene permisos para ver reportes financieros.</p>
@@ -168,28 +170,30 @@ export function Reportes() {
   }
 
   return (
-    <div className="page animate-fade-in" key="reportes-full">
-      <header className="page-header">
-        <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
-        <p className="page-subtitle">Análisis de ventas y rendimiento</p>
+    <div className="page animate-fade-in management-workspace management-workspace--reports" key="reportes-full">
+      <header className="page-header management-workspace-header">
+        <div>
+          <h1 className="page-title"><BarChart3 size={22} className="page-title-icon" /> Reportes</h1>
+          <p className="page-subtitle">Análisis de ventas y rendimiento</p>
+        </div>
       </header>
 
-      <div className="stats-row">
+      <div className="stats-row management-workspace-metrics">
         <div className="stat-card red">
-          <span className="stat-label">Esta semana</span>
-          <span className="stat-value text-gradient">${totalWeek.toFixed(2)}</span>
+          <span className="management-metric-icon"><CalendarDays size={20} /></span>
+          <span className="management-metric-copy"><span className="stat-label">Esta semana</span><span className="stat-value text-gradient">${totalWeek.toFixed(2)}</span></span>
         </div>
         <div className="stat-card gold">
-          <span className="stat-label">Este mes</span>
-          <span className="stat-value">${totalMonth.toFixed(2)}</span>
+          <span className="management-metric-icon"><CalendarRange size={20} /></span>
+          <span className="management-metric-copy"><span className="stat-label">Este mes</span><span className="stat-value">${totalMonth.toFixed(2)}</span></span>
         </div>
         <div className="stat-card green">
-          <span className="stat-label">Promedio diario</span>
-          <span className="stat-value">${avgDaily.toFixed(2)}</span>
+          <span className="management-metric-icon"><Gauge size={20} /></span>
+          <span className="management-metric-copy"><span className="stat-label">Promedio diario</span><span className="stat-value">${avgDaily.toFixed(2)}</span></span>
         </div>
         <div className="stat-card muted">
-          <span className="stat-label">Total órdenes</span>
-          <span className="stat-value">{dailySales.reduce((s, d) => s + d.count, 0)}</span>
+          <span className="management-metric-icon"><ShoppingBag size={20} /></span>
+          <span className="management-metric-copy"><span className="stat-label">Total órdenes</span><span className="stat-value">{dailySales.reduce((s, d) => s + d.count, 0)}</span></span>
         </div>
       </div>
 

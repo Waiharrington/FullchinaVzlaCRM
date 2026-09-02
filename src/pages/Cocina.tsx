@@ -61,12 +61,12 @@ export function Cocina() {
     return { text: `${minutes} MIN`, class: 'kds-timer-normal' }
   }
 
-  const handleStatusChange = async (orderId: string, newStatus: string) => {
+  const handleStatusChange = async (orderId: string, newStatus: FullOrder['fulfillmentStatus']) => {
     setUpdatingId(orderId)
     try {
       await updateOrderStatus(orderId, newStatus)
       setOrders(prev => prev.map(o =>
-        o.id === orderId ? { ...o, fulfillmentStatus: newStatus as FullOrder['fulfillmentStatus'] } : o
+        o.id === orderId ? { ...o, fulfillmentStatus: newStatus } : o
       ))
     } catch (e) {
       console.error('Error actualizando estado:', e)

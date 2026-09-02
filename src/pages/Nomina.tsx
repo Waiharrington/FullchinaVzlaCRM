@@ -195,8 +195,8 @@ export function Nomina() {
   const fmtRange = (p: PayrollPeriod) => `${new Date(p.startDate).toLocaleDateString('es-VE')} - ${new Date(p.endDate).toLocaleDateString('es-VE')}`
 
   return (
-    <div className="page nom-page animate-fade-in">
-      <header className="page-header">
+    <div className="page nom-page animate-fade-in management-workspace management-workspace--payroll">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Banknote size={22} className="page-title-icon" /> Nómina y Personal</h1>
           <p className="page-subtitle">Liquida sueldos por período, adelantos y bonos de producción.</p>
@@ -211,7 +211,7 @@ export function Nomina() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
-      <div className="nom-summary">
+      <div className="nom-summary management-workspace-metrics">
         <div className="nom-sum">
           <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><Users size={20} /></span>
             <div><div className="nom-sum-lbl">Empleados activos</div><div className="nom-sum-val">{activeEmployees.length}</div><div className="nom-sum-sub">de {employees.length} registrados</div></div></div>

@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
+import { DndContext, DragOverlay, useDraggable, useDroppable, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { Caja } from './Caja'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
@@ -22,6 +22,7 @@ import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
 import { normalizeForSearch } from '../lib/textFormat'
+import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
 import {
@@ -64,6 +65,8 @@ import {
   DollarSign,
   Flame,
   Sparkles,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import './Comandas.css'
@@ -129,7 +132,7 @@ export interface ComandaOrder {
   discount?: number
   bcvRate?: number
   elapsedMins: number
-  status: 'new' | 'preparing' | 'ready' | 'delivered'
+  status: ComandaStatus
   deliveredTime?: string
   attendedBy?: string
   source?: 'pos' | 'web'
@@ -232,6 +235,14 @@ function formatElapsed(mins: number): string {
   return restHours > 0 ? `${days}d ${restHours}h` : `${days}d`
 }
 
+function compactPaymentLabel(label: string): string {
+  return label.replace(/^pago:\s*/i, '')
+}
+
+function compactCardTime(time?: string): string {
+  return (time || '').replace(/\s*[ap]\.\s*m\.$/i, '')
+}
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -275,7 +286,7 @@ function extractPreferredPayment(notes?: string | null): { methods: SplitPayment
   return { methods, label: methods.map((c) => PAY_METHOD_LABELS[c]).join(' + ') }
 }
 
-const COLUMNS = [
+const COLUMNS: Array<{ key: ComandaStatus; label: string; icon: React.ReactNode; color: string }> = [
   { key: 'new', label: 'Nuevas', icon: <Package size={16} />, color: '#ff4d3d' },
   { key: 'preparing', label: 'En preparación', icon: <Clock size={16} />, color: '#f97316' },
   { key: 'ready', label: 'Listas', icon: <CheckCircle size={16} />, color: '#10b981' },
@@ -286,9 +297,10 @@ interface ComandaCardProps {
   order: ComandaOrder
   color: string
   onOpen: (order: ComandaOrder) => void
-  onAdvance: (orderId: string, status: string) => void
+  onAdvance: (orderId: string, status: ComandaStatus) => void
   onConfirmWeb: (order: ComandaOrder) => void
   confirmingWebId: string | null
+  isUpdating: boolean
 }
 
 // Tarjeta individual, arrastrable a cualquier columna (excepto pedidos web
@@ -297,7 +309,7 @@ interface ComandaCardProps {
 // tanto en la tarjeta real (dentro de la columna) como en el DragOverlay
 // (la copia flotante que se ve mientras arrastrás, sin que el scroll de la
 // columna de origen la corte).
-function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingWebId }: Omit<ComandaCardProps, 'onOpen'>) {
+function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingWebId, isUpdating }: Omit<ComandaCardProps, 'onOpen'>) {
   return (
     <>
       {/* Top Header line */}
@@ -337,8 +349,8 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
         {order.source === 'web' ? (
           <span className="badge-sin-pagar"><Globe size={12} /> Web · Por confirmar</span>
         ) : order.isPaid ? (
-          <span className={`payment-type-badge pay-${order.paymentType}`}>
-            {order.paymentMethod}
+          <span className={`payment-type-badge pay-${order.paymentType}`} title={order.paymentMethod}>
+            {compactPaymentLabel(order.paymentMethod)}
           </span>
         ) : (
           <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
@@ -350,8 +362,8 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
             <span className="timer-mins text-green"><Timer size={12} /> {formatElapsed(order.elapsedMins)}</span>
           </div>
         ) : order.status === 'delivered' ? (
-          <span className="badge-delivered-tag">
-            Entregado {order.deliveredTime} ✓
+          <span className="badge-delivered-tag" title={`Entregado ${order.deliveredTime || ''}`}>
+            ✓ Entregado {compactCardTime(order.deliveredTime)}
           </span>
         ) : (
           <span className={`timer-mins ${order.isRetraso ? 'text-red-urgent' : 'text-orange'}`}>
@@ -364,7 +376,10 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
       {order.source === 'web' ? (
         <button
           className="quick-advance-btn"
-          disabled={confirmingWebId === order.webRequestId}
+          disabled={confirmingWebId === order.webRequestId || isUpdating}
+          onMouseDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
+          onKeyDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); onConfirmWeb(order) }}
         >
           {confirmingWebId === order.webRequestId ? 'Confirmando…' : <><CheckCircle2 size={16} /> Confirmar pedido de WhatsApp</>}
@@ -372,6 +387,10 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
       ) : order.status !== 'delivered' && (
         <button
           className="quick-advance-btn"
+          disabled={isUpdating}
+          onMouseDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
+          onKeyDown={e => e.stopPropagation()}
           onClick={e => {
             e.stopPropagation()
             onAdvance(order.id, order.status)
@@ -391,23 +410,27 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
 // Tarjeta arrastrable real, dentro de la columna. Se oculta (opacity 0)
 // mientras se arrastra en vez de moverse con transform, porque el
 // DragOverlay es el que muestra la copia flotante en su lugar.
-function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, confirmingWebId }: ComandaCardProps) {
+function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, confirmingWebId, isUpdating }: ComandaCardProps) {
   const isWeb = order.source === 'web'
+  const isDraggable = !isWeb && !isUpdating && order.status !== 'delivered'
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: order.id,
-    disabled: isWeb,
+    disabled: !isDraggable,
   })
 
   return (
     <div
       ref={setNodeRef}
       style={isDragging ? { opacity: 0 } : undefined}
-      {...(isWeb ? {} : attributes)}
-      {...(isWeb ? {} : listeners)}
-      className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''}`}
+      className={`comanda-card-item card-${order.status} ${order.isRetraso ? 'has-retraso' : ''} ${isUpdating ? 'is-updating' : ''} ${isDraggable ? 'is-draggable' : ''}`}
       onClick={() => onOpen(order)}
+      aria-busy={isUpdating}
+      aria-label={isDraggable ? `${order.orderNumber}. Arrastra esta tarjeta para cambiarla de estado.` : undefined}
+      title={isDraggable ? 'Arrastra desde cualquier parte libre de la tarjeta' : undefined}
+      {...attributes}
+      {...listeners}
     >
-      <ComandaCardContent order={order} color={color} onAdvance={onAdvance} onConfirmWeb={onConfirmWeb} confirmingWebId={confirmingWebId} />
+      <ComandaCardContent order={order} color={color} onAdvance={onAdvance} onConfirmWeb={onConfirmWeb} confirmingWebId={confirmingWebId} isUpdating={isUpdating} />
     </div>
   )
 }
@@ -420,13 +443,15 @@ interface KanbanColumnProps {
   isExpanded: boolean
   onToggleExpand: () => void
   onOpen: (order: ComandaOrder) => void
-  onAdvance: (orderId: string, status: string) => void
+  onAdvance: (orderId: string, status: ComandaStatus) => void
   onConfirmWeb: (order: ComandaOrder) => void
   confirmingWebId: string | null
+  updatingOrderIds: Set<string>
 }
 
-// Columna del tablero, receptora de "drop" para cualquier tarjeta soltada.
-function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, confirmingWebId }: KanbanColumnProps) {
+// Columna del tablero, receptora de la tarjeta; la máquina de estados valida
+// que el destino sea exactamente la siguiente etapa antes de persistirlo.
+function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, confirmingWebId, updatingOrderIds }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key })
 
   return (
@@ -435,7 +460,7 @@ function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, 
       <div className="kanban-col-header" style={{ borderBottomColor: col.color }}>
         <div className="col-header-left">
           <span className="col-icon" style={{ color: col.color }}>{col.icon}</span>
-          <h3 className="col-title">{col.label}</h3>
+          <h2 className="col-title">{col.label}</h2>
         </div>
         <span className="col-count-badge">{colOrders.length}</span>
       </div>
@@ -454,6 +479,7 @@ function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, 
               onAdvance={onAdvance}
               onConfirmWeb={onConfirmWeb}
               confirmingWebId={confirmingWebId}
+              isUpdating={updatingOrderIds.has(order.id)}
             />
           ))
         )}
@@ -499,6 +525,8 @@ export function Comandas() {
   const [paying, setPaying] = useState(false)
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [statusError, setStatusError] = useState('')
+  const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(() => new Set())
+  const pendingStatusRef = useRef(new Map<string, ComandaStatus>())
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
   const [expandedCols, setExpandedCols] = useState<Record<string, boolean>>(
@@ -521,14 +549,14 @@ export function Comandas() {
   const [historySearch, setHistorySearch] = useState('')
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
   const [closingNewOrder, setClosingNewOrder] = useState(false)
-  const closeNewOrderModal = () => {
+  const closeNewOrderModal = useCallback(() => {
     if (!showNewOrderModal || closingNewOrder) return
     setClosingNewOrder(true)
     window.setTimeout(() => {
       setShowNewOrderModal(false)
       setClosingNewOrder(false)
     }, 200)
-  }
+  }, [showNewOrderModal, closingNewOrder])
 
   useEffect(() => {
     if (!showNewOrderModal) return
@@ -542,7 +570,7 @@ export function Comandas() {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleEscape)
     }
-  }, [showNewOrderModal])
+  }, [showNewOrderModal, closeNewOrderModal])
 
   const [historyRange, setHistoryRange] = useState<'today' | 'yesterday' | '7d' | '30d'>('7d')
 
@@ -552,7 +580,13 @@ export function Comandas() {
   const [orderTypeFilter, setOrderTypeFilter] = useState<'all' | 'Delivery' | 'Para llevar' | 'Mesa'>('all')
   const [openFilterMenu, setOpenFilterMenu] = useState<'date' | 'status' | 'type' | null>(null)
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
+  const [boardExpanded, setBoardExpanded] = useState(false)
   const filtersBarRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('comandas-board-focus', boardExpanded)
+    return () => document.documentElement.classList.remove('comandas-board-focus')
+  }, [boardExpanded])
 
   useEffect(() => {
     if (!openFilterMenu) return
@@ -1017,7 +1051,16 @@ export function Comandas() {
               attendedBy: 'Pedido desde la web',
             }
           })
-          setComandas([...pendingWeb, ...mapped])
+          setComandas(previous => {
+            const previousById = new Map(previous.map(order => [order.id, order]))
+            return [...pendingWeb, ...mapped].map(order => {
+              const pendingStatus = pendingStatusRef.current.get(order.id)
+              const optimisticOrder = previousById.get(order.id)
+              return pendingStatus && optimisticOrder
+                ? { ...order, status: pendingStatus, isRetraso: optimisticOrder.isRetraso, deliveredTime: optimisticOrder.deliveredTime }
+                : order
+            })
+          })
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
@@ -1247,13 +1290,22 @@ export function Comandas() {
     })
   }, [comandas, searchQuery, statusFilter, orderTypeFilter])
 
-  const getOrdersByStatus = (statusKey: string) => {
+  const getOrdersByStatus = (statusKey: ComandaStatus) => {
     return filteredComandas.filter(c => c.status === statusKey)
   }
 
-  const handleSetStatus = async (orderId: string, currentStatus: string, nextStatus: ComandaOrder['status']) => {
-    if (nextStatus === currentStatus) return
+  const handleSetStatus = async (orderId: string, nextStatus: ComandaStatus) => {
+    const previousOrder = comandas.find(order => order.id === orderId)
+    if (!previousOrder || previousOrder.source === 'web' || previousOrder.status === nextStatus) return false
+    if (pendingStatusRef.current.has(orderId)) return false
+    if (!canMoveComandaStatus(previousOrder.status, nextStatus)) {
+      setStatusError(getInvalidComandaTransitionMessage(previousOrder.status, nextStatus))
+      return false
+    }
+
     setStatusError('')
+    pendingStatusRef.current.set(orderId, nextStatus)
+    setUpdatingOrderIds(previous => new Set(previous).add(orderId))
     setComandas(prev =>
       prev.map(c =>
         c.id === orderId
@@ -1261,36 +1313,73 @@ export function Comandas() {
               ...c,
               status: nextStatus,
               isRetraso: false,
-              deliveredTime: nextStatus === 'delivered' ? new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : c.deliveredTime
+              deliveredTime: nextStatus === 'delivered' ? new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
             }
           : c
       )
     )
 
-    if (isDemoMode) return
+    if (isDemoMode) {
+      pendingStatusRef.current.delete(orderId)
+      setUpdatingOrderIds(previous => {
+        const next = new Set(previous)
+        next.delete(orderId)
+        return next
+      })
+      return true
+    }
 
     try {
       await updateOrderStatus(orderId, nextStatus)
+      setReloadToken(value => value + 1)
+      return true
     } catch (e) {
       console.error('Error actualizando estado en servidor:', e)
       setComandas(prev => prev.map(comanda => (
-        comanda.id === orderId ? { ...comanda, status: currentStatus as ComandaOrder['status'] } : comanda
+        comanda.id === orderId ? previousOrder : comanda
       )))
       setStatusError('No se pudo guardar el cambio de estado. Intenta nuevamente.')
+      return false
+    } finally {
+      pendingStatusRef.current.delete(orderId)
+      setUpdatingOrderIds(previous => {
+        const next = new Set(previous)
+        next.delete(orderId)
+        return next
+      })
     }
   }
 
-  const handleAdvanceStatus = (orderId: string, currentStatus: string) => {
-    let nextStatus: ComandaOrder['status'] = 'preparing'
-    if (currentStatus === 'new') nextStatus = 'preparing'
-    else if (currentStatus === 'preparing') nextStatus = 'ready'
-    else if (currentStatus === 'ready') nextStatus = 'delivered'
-    void handleSetStatus(orderId, currentStatus, nextStatus)
+  const handleAdvanceStatus = (orderId: string, currentStatus: ComandaStatus) => {
+    const order = comandas.find(item => item.id === orderId)
+    if (!order || order.status !== currentStatus || updatingOrderIds.has(orderId)) return
+    const nextStatus = nextComandaStatus(order.status)
+    if (nextStatus) void requestStatusChange(order, nextStatus)
   }
 
-  // Arrastrar una tarjeta a otra columna: soltar en cualquier estado (no
-  // solo el siguiente), como un tablero Trello real.
-  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  const requestStatusChange = async (order: ComandaOrder, nextStatus: ComandaStatus) => {
+    if (!canMoveComandaStatus(order.status, nextStatus)) {
+      setStatusError(getInvalidComandaTransitionMessage(order.status, nextStatus))
+      return
+    }
+    if (nextStatus === 'delivered' && !order.isPaid) {
+      const confirmed = await confirmDialog({
+        title: 'Entregar comanda sin cobrar',
+        message: 'Esta comanda aún no está pagada. Al entregarla puede generarse una cuenta por cobrar para el cliente. ¿Deseas continuar?',
+        confirmText: 'Sí, entregar',
+      })
+      if (!confirmed) return
+    }
+    await handleSetStatus(order.id, nextStatus)
+  }
+
+  // El mouse arrastra de inmediato tras un pequeño umbral. En pantallas
+  // táctiles se exige una pulsación breve para no secuestrar el scroll.
+  const dndSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
+    useSensor(KeyboardSensor),
+  )
   const [draggingOrderId, setDraggingOrderId] = useState<string | null>(null)
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -1302,11 +1391,14 @@ export function Comandas() {
     const { active, over } = event
     if (!over) return
     const orderId = String(active.id)
-    const targetStatus = String(over.id) as ComandaOrder['status']
+    const targetStatus = String(over.id)
+    if (!isComandaStatus(targetStatus)) return
     const order = comandas.find(c => c.id === orderId)
     if (!order || order.status === targetStatus) return
-    void handleSetStatus(orderId, order.status, targetStatus)
+    void requestStatusChange(order, targetStatus)
   }
+
+  const handleDragCancel = () => setDraggingOrderId(null)
 
   const draggingOrder = draggingOrderId ? comandas.find(c => c.id === draggingOrderId) ?? null : null
   const draggingOrderColor = draggingOrder ? COLUMNS.find(c => c.key === draggingOrder.status)?.color ?? '#ff4d3d' : '#ff4d3d'
@@ -1329,7 +1421,7 @@ export function Comandas() {
         : { tone: 'steady', label: 'Flujo estable', message: 'Avanzando a buen ritmo.' }
 
   return (
-    <div className="comandas-page animate-fade-in">
+    <div className={`comandas-page animate-fade-in ${boardExpanded ? 'is-board-expanded' : ''}`}>
       <section className={`comandas-pulse comandas-pulse--${kitchenPulse.tone}`} aria-labelledby="comandas-title">
         <div className="comandas-pulse-top">
           <div className="comandas-pulse-heading">
@@ -1350,6 +1442,17 @@ export function Comandas() {
           </div>
 
           <div className="comandas-actions-row">
+            <button
+              type="button"
+              className="btn-nueva-comanda btn-historial cmd-board-focus-btn"
+              aria-label={boardExpanded ? 'Salir del tablero ampliado' : 'Ampliar tablero'}
+              aria-pressed={boardExpanded}
+              title={boardExpanded ? 'Mostrar nuevamente el menú lateral' : 'Usar todo el ancho para el tablero'}
+              onClick={() => setBoardExpanded(value => !value)}
+            >
+              {boardExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              <span>{boardExpanded ? 'Salir' : 'Ampliar'}</span>
+            </button>
             <button className="btn-nueva-comanda btn-historial" disabled={isDemoMode} title={isDemoMode ? 'No disponible en la vista demo' : undefined} onClick={() => { setShowHistoryModal(true); loadHistoryOrders() }}>
               <Clock size={16} />
               <span>Historial</span>
@@ -1361,7 +1464,7 @@ export function Comandas() {
           </div>
         </div>
 
-        <div className="comandas-flow" aria-label={`Resumen: ${totalComandasCount} total, ${nuevasCount} nuevas, ${preparandoCount} preparando, ${listasCount} listas, ${avgMins} minutos de promedio`}>
+        <div className="comandas-flow" role="status" aria-label={`Resumen: ${totalComandasCount} total, ${nuevasCount} nuevas, ${preparandoCount} preparando, ${listasCount} listas, ${avgMins} minutos de promedio`}>
           <div className="comandas-flow-step comandas-flow-step--total comandas-flow-step--extra">
             <span><Package size={14} /> Total hoy</span><strong>{totalComandasCount}</strong>
           </div>
@@ -1534,8 +1637,18 @@ export function Comandas() {
 
       {statusError && <div className="command-status-error" role="alert">{statusError}</div>}
 
-      {/* 4 Kanban Columns matching Target Mockup — arrastrables tipo Trello */}
-      <DndContext sensors={dndSensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      {/* 4 columnas Kanban: el flujo operativo avanza una etapa por movimiento. */}
+      <DndContext
+        sensors={dndSensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+        accessibility={{
+          screenReaderInstructions: {
+            draggable: 'Para mover una comanda, presiona espacio. Usa las flechas para elegir la siguiente columna y vuelve a presionar espacio para soltarla. Presiona Escape para cancelar.',
+          },
+        }}
+      >
         <div className="kanban-board-grid">
           {COLUMNS.map(col => {
             const colOrders = getOrdersByStatus(col.key)
@@ -1556,6 +1669,7 @@ export function Comandas() {
                 onAdvance={handleAdvanceStatus}
                 onConfirmWeb={handleConfirmWebOrder}
                 confirmingWebId={confirmingWebId}
+                updatingOrderIds={updatingOrderIds}
               />
             )
           })}
@@ -1572,6 +1686,7 @@ export function Comandas() {
                 onAdvance={handleAdvanceStatus}
                 onConfirmWeb={handleConfirmWebOrder}
                 confirmingWebId={confirmingWebId}
+                isUpdating={updatingOrderIds.has(draggingOrder.id)}
               />
             </div>
           )}

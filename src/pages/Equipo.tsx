@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import {
   Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3,
-  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2,
+  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2, X,
 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
@@ -23,6 +23,16 @@ import { EmptyState } from '../components/EmptyState'
 import './Equipo.css'
 
 const ROLE_LABEL: Record<Role, string> = { owner: 'Dueño', manager: 'Gerente', cashier: 'Cajero' }
+
+const MODULE_GROUPS = allNavItems.reduce<Array<{
+  group: string
+  items: (typeof allNavItems)[number][]
+}>>((groups, item) => {
+  const existingGroup = groups.find(group => group.group === item.group)
+  if (existingGroup) existingGroup.items.push(item)
+  else groups.push({ group: item.group, items: [item] })
+  return groups
+}, [])
 
 // Módulos que un rol ve por defecto (para pre-marcar el selector).
 function defaultModulesForRole(role: Role): string[] {
@@ -229,6 +239,11 @@ export function Equipo() {
   const toggleModule = (path: string) => {
     setUModules(prev => prev.includes(path) ? prev.filter(p => p !== path) : [...prev, path])
   }
+  const toggleModuleGroup = (paths: string[], enable: boolean) => {
+    setUModules(prev => enable
+      ? Array.from(new Set([...prev, ...paths]))
+      : prev.filter(path => !paths.includes(path)))
+  }
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -328,9 +343,9 @@ export function Equipo() {
   }
 
   return (
-    <div className="equipo-page">
+    <div className="page equipo-page animate-fade-in management-workspace management-workspace--team">
       {/* Encabezado */}
-      <div className="equipo-hero">
+      <div className="equipo-hero management-workspace-header">
         <div className="header-title-group">
           <div>
             <h1 className="page-title"><Users size={22} className="page-title-icon" /> Gestión de Equipo y Personal</h1>
@@ -558,83 +573,167 @@ export function Equipo() {
       {/* Modal usuario de acceso (crear / editar) */}
       {showUserModal && createPortal(
         <div className={`modal-overlay ${closingUserModal ? 'closing' : ''}`} onClick={() => closeUserModal()}>
-          <div className="modal-content-custom" onClick={e => e.stopPropagation()}>
-            <div className="modal-header-custom">
-              <h3>{userModalMode === 'create' ? 'Crear usuario de acceso' : 'Editar usuario'}</h3>
+          <div className="modal-content-custom user-access-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-custom user-access-header">
+              <div className="user-access-heading">
+                <span className="user-access-heading-icon"><UserCog size={20} /></span>
+                <div>
+                  <div className="user-access-title-row">
+                    <h3>{userModalMode === 'create' ? 'Crear usuario de acceso' : 'Editar usuario'}</h3>
+                    <span className={`user-role-badge ${uRole}`}>{ROLE_LABEL[uRole]}</span>
+                  </div>
+                  <p>Identidad, rol y módulos disponibles en un solo lugar.</p>
+                </div>
+              </div>
+              <button type="button" className="user-access-close" onClick={() => closeUserModal()} aria-label="Cerrar">
+                <X size={19} />
+              </button>
             </div>
-            <form onSubmit={handleSaveUser} className="modal-form">
-              {userModalMode === 'create' && (
-                <div className="form-group">
-                  <label>Nombre completo</label>
-                  <input type="text" value={uName} onChange={e => setUName(e.target.value)} placeholder="Ej. María Pérez" required />
-                </div>
-              )}
-              <div className="form-group">
-                <label>Correo (usuario de login)</label>
-                <input type="email" value={uEmail} onChange={e => setUEmail(e.target.value)} placeholder="usuario@fullchinavzla.com" required />
-              </div>
-              {userModalMode === 'create' && (
-                <div className="form-group">
-                  <label>Contraseña inicial</label>
-                  <input type="text" value={uPassword} onChange={e => setUPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required />
-                </div>
-              )}
-              <div className="form-group">
-                <label>Rol / accesos</label>
-                <StyledSelect
-                  value={uRole}
-                  onChange={e => {
-                    const r = e.target.value as Role
-                    setURole(r)
-                    if (!uCustomModules) setUModules(defaultModulesForRole(r))
-                  }}
-                >
-                  <option value="owner">Dueño (acceso total)</option>
-                  <option value="manager">Gerente (gestión operativa)</option>
-                  <option value="cashier">Cajero (sólo ventas)</option>
-                </StyledSelect>
-              </div>
 
-              {userModalMode === 'edit' && uRole !== 'owner' && (
-                <div className="form-group">
-                  <label className="promo-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={uCustomModules}
-                      onChange={e => {
-                        setUCustomModules(e.target.checked)
-                        if (!e.target.checked) setUModules(defaultModulesForRole(uRole))
-                      }}
-                    />
-                    <span>Personalizar módulos visibles para este usuario</span>
-                  </label>
-                  {uCustomModules && (
-                    <div className="module-checklist">
-                      {allNavItems.map(item => (
-                        <label key={item.path} className={`module-check ${uModules.includes(item.path) ? 'on' : ''}`}>
-                          <input
-                            type="checkbox"
-                            checked={uModules.includes(item.path)}
-                            onChange={() => toggleModule(item.path)}
-                          />
-                          <span>{item.label}</span>
-                        </label>
-                      ))}
+            <form onSubmit={handleSaveUser} className="modal-form user-access-form">
+              <div className="user-access-body">
+                <section className="user-access-identity" aria-labelledby="user-data-title">
+                  <div className="user-pane-heading">
+                    <span className="user-pane-number">1</span>
+                    <div>
+                      <h4 id="user-data-title">Datos y rol</h4>
+                      <p>Información para iniciar sesión.</p>
                     </div>
-                  )}
-                  {!uCustomModules && (
-                    <p className="equipo-section-hint" style={{ margin: '6px 0 0' }}>
-                      Usa los permisos por defecto del rol. Actívalo para bloquear o habilitar módulos específicos.
-                    </p>
-                  )}
-                </div>
-              )}
+                  </div>
 
-              <div className="modal-actions-bar">
-                <button type="button" className="btn-cancel" onClick={() => closeUserModal()}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={uSaving}>
-                  {uSaving ? 'Guardando…' : userModalMode === 'create' ? 'Crear usuario' : 'Guardar cambios'}
-                </button>
+                  <div className="user-identity-fields">
+                    {userModalMode === 'create' && (
+                      <div className="form-group">
+                        <label>Nombre completo</label>
+                        <input type="text" value={uName} onChange={e => setUName(e.target.value)} placeholder="Ej. María Pérez" required />
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label>Correo de acceso</label>
+                      <input type="email" value={uEmail} onChange={e => setUEmail(e.target.value)} placeholder="usuario@fullchinavzla.com" required />
+                    </div>
+                    {userModalMode === 'create' && (
+                      <div className="form-group">
+                        <label>Contraseña inicial</label>
+                        <input type="text" value={uPassword} onChange={e => setUPassword(e.target.value)} placeholder="Mínimo 6 caracteres" minLength={6} required />
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label>Rol / accesos</label>
+                      <StyledSelect
+                        value={uRole}
+                        onChange={e => {
+                          const r = e.target.value as Role
+                          setURole(r)
+                          if (!uCustomModules) setUModules(defaultModulesForRole(r))
+                        }}
+                      >
+                        <option value="owner">Dueño (acceso total)</option>
+                        <option value="manager">Gerente (gestión operativa)</option>
+                        <option value="cashier">Cajero (sólo ventas)</option>
+                      </StyledSelect>
+                    </div>
+                  </div>
+
+                  <div className={`user-role-summary ${uRole}`}>
+                    <Shield size={18} />
+                    <div>
+                      <strong>{ROLE_LABEL[uRole]}</strong>
+                      <span>{uRole === 'owner' ? 'Control total del sistema' : uRole === 'manager' ? 'Gestión operativa y administrativa' : 'Operación de ventas y caja'}</span>
+                    </div>
+                  </div>
+
+                  {userModalMode === 'edit' && uRole !== 'owner' && (
+                    <label className="user-custom-toggle">
+                      <span>
+                        <strong>Accesos personalizados</strong>
+                        <small>Elige módulos distintos a los del rol.</small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={uCustomModules}
+                        onChange={e => {
+                          setUCustomModules(e.target.checked)
+                          if (!e.target.checked) setUModules(defaultModulesForRole(uRole))
+                        }}
+                      />
+                      <i aria-hidden="true" />
+                    </label>
+                  )}
+                </section>
+
+                <section className="user-access-permissions" aria-labelledby="user-permissions-title">
+                  <div className="user-permissions-top">
+                    <div className="user-pane-heading">
+                      <span className="user-pane-number">2</span>
+                      <div>
+                        <h4 id="user-permissions-title">Módulos visibles</h4>
+                        <p>{uRole === 'owner' ? 'El dueño siempre tiene acceso total.' : uCustomModules && userModalMode === 'edit' ? `${uModules.length} de ${allNavItems.length} módulos habilitados.` : 'Vista previa de los accesos incluidos en el rol.'}</p>
+                      </div>
+                    </div>
+                    {userModalMode === 'edit' && uRole !== 'owner' && uCustomModules && (
+                      <button type="button" className="user-reset-modules" onClick={() => setUModules(defaultModulesForRole(uRole))}>
+                        Restaurar rol
+                      </button>
+                    )}
+                  </div>
+
+                  <div className={`user-permission-groups ${uCustomModules && userModalMode === 'edit' && uRole !== 'owner' ? '' : 'is-preview'}`}>
+                    {MODULE_GROUPS.map(group => {
+                      const groupPaths = group.items.map(item => item.path)
+                      const activeModules = uCustomModules && userModalMode === 'edit' && uRole !== 'owner'
+                        ? uModules
+                        : defaultModulesForRole(uRole)
+                      const selectedCount = groupPaths.filter(path => activeModules.includes(path)).length
+                      const allSelected = selectedCount === groupPaths.length
+
+                      return (
+                        <div className="user-module-group" key={group.group}>
+                          <div className="user-module-group-heading">
+                            <div>
+                              <strong>{group.group}</strong>
+                              <span>{selectedCount}/{group.items.length}</span>
+                            </div>
+                            {uCustomModules && userModalMode === 'edit' && uRole !== 'owner' && (
+                              <button type="button" onClick={() => toggleModuleGroup(groupPaths, !allSelected)}>
+                                {allSelected ? 'Quitar grupo' : 'Elegir grupo'}
+                              </button>
+                            )}
+                          </div>
+                          <div className="user-module-grid">
+                            {group.items.map(item => {
+                              const selected = activeModules.includes(item.path)
+                              const ItemIcon = item.icon
+                              return (
+                                <label key={item.path} className={`user-module-card ${selected ? 'on' : ''}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selected}
+                                    disabled={!(uCustomModules && userModalMode === 'edit' && uRole !== 'owner')}
+                                    onChange={() => toggleModule(item.path)}
+                                  />
+                                  <span className="user-module-icon"><ItemIcon size={15} /></span>
+                                  <span>{item.label}</span>
+                                  {selected && <CheckCircle2 className="user-module-checkmark" size={15} />}
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              </div>
+
+              <div className="modal-actions-bar user-access-actions">
+                <p>Los cambios se aplicarán al próximo acceso del usuario.</p>
+                <div>
+                  <button type="button" className="btn-cancel" onClick={() => closeUserModal()}>Cancelar</button>
+                  <button type="submit" className="btn-save" disabled={uSaving}>
+                    {uSaving ? 'Guardando…' : userModalMode === 'create' ? 'Crear usuario' : 'Guardar cambios'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

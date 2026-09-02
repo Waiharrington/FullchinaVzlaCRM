@@ -292,16 +292,18 @@ export function Mas() {
   const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
 
   return (
-    <div className="page mas-page animate-fade-in">
-      <header className="page-header">
-        <h1 className="page-title">
-          {isCreditsModule ? <CreditCard size={22} className="page-title-icon" /> : <Settings size={22} className="page-title-icon" />}
-          {isCreditsModule ? 'Cuentas por cobrar' : 'Más Módulos y Administración'}
-        </h1>
-        <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : 'Configuración administrativa y Delivery'}</p>
+    <div className={`page mas-page animate-fade-in management-workspace ${isCreditsModule ? 'management-workspace--credits' : 'management-workspace--settings'}`}>
+      <header className="page-header management-workspace-header">
+        <div>
+          <h1 className="page-title">
+            {isCreditsModule ? <CreditCard size={22} className="page-title-icon" /> : <Settings size={22} className="page-title-icon" />}
+            {isCreditsModule ? 'Cuentas por cobrar' : 'Configuración'}
+          </h1>
+          <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : 'Administración general, accesos y servicio de delivery.'}</p>
+        </div>
       </header>
 
-      {!isCreditsModule && <div className="module-shortcuts-grid mb-6">
+      {!isCreditsModule && <div className="module-shortcuts-grid management-workspace-metrics mb-6">
         <a href="/equipo" className="card shortcut-card"><span className="shortcut-icon"><Users size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Equipo y Usuarios</span><span className="shortcut-desc">Roles y accesos del personal</span></div></a>
         <a href="/fidelizacion" className="card shortcut-card"><span className="shortcut-icon"><Award size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Fidelización</span><span className="shortcut-desc">Clientes frecuentes y beneficios</span></div></a>
         <a href="/marketing" className="card shortcut-card"><span className="shortcut-icon"><MessageSquare size={28} /></span><div className="shortcut-info"><span className="shortcut-title">WhatsApp Bot</span><span className="shortcut-desc">Mensajes y automatizaciones</span></div></a>

@@ -97,7 +97,7 @@ function formatTenure(value: string): string {
   if (days < 365) { const m = Math.floor(days / 30); return `${m} mes${m === 1 ? '' : 'es'}` }
   const years = Math.floor(days / 365)
   const months = Math.floor((days % 365) / 30)
-  return months > 0 ? `${years} año${years === 1 ? '' : 's'} y ${months} mes${months === 1 ? '' : 'es'}` : `${years} año${years === 1 ? '' : 's'}`
+  return months > 0 ? `${years} año${years === 1 ? '' : 's'} y ${months} mes${months === 1 ? '' : 'es'}` : `${years} año${years === 1 ? '' : 's'}`
 }
 
 function formatRelativeDays(value: string): string {
@@ -1216,7 +1216,7 @@ export function Clientes() {
     ].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5)
 
     return (
-      <div className="page animate-fade-in" key="client-profile-view">
+      <div className="page animate-fade-in management-workspace management-workspace--customers management-workspace--customer-profile" key="client-profile-view">
 
         {/* Title */}
         <div className="profile-breadcrumb-wrap">
@@ -1542,10 +1542,10 @@ export function Clientes() {
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="page animate-fade-in" key="client-list-view">
+    <div className="page animate-fade-in management-workspace management-workspace--customers" key="client-list-view">
 
       {/* Page Header */}
-      <div className="clientes-page-header">
+      <div className="clientes-page-header management-workspace-header">
         <div className="header-title-wrap">
           <div>
             <h1 className="page-title"><User size={22} className="page-title-icon" /> Clientes</h1>
@@ -1558,7 +1558,7 @@ export function Clientes() {
       </div>
 
       {/* 4 Summary KPI Cards */}
-      <div className="clientes-kpi-grid">
+      <div className="clientes-kpi-grid management-workspace-metrics">
         <div className="kpi-card-dark red">
           <div className="kpi-icon-circle-box red">
             <Users size={22} />
@@ -1611,7 +1611,7 @@ export function Clientes() {
       {/* Main Content Layout: Left Table + Right Sidebar Cards */}
       <div className="clientes-main-layout">
         {/* LEFT COLUMN: Customers Data Table Card */}
-        <div className="clientes-table-card">
+        <div className="clientes-table-card management-workspace-panel">
           <div className="table-filter-bar">
             <div className="filter-search-box">
               <Search size={16} className="filter-search-icon" />

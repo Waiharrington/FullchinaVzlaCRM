@@ -1,0 +1,949 @@
+/* Shared visual contract for the management workspaces.
+   Page-specific CSS keeps ownership of each feature; this layer only aligns
+   density, rhythm and responsive behavior across the management modules. */
+.management-workspace {
+  --workspace-gap: 16px;
+  --workspace-panel-radius: 16px;
+  width: 100%;
+}
+
+.management-workspace-panel {
+  border-radius: var(--workspace-panel-radius);
+}
+
+/* One visual language for every admin heading. It mirrors the compact
+   title/icon/action treatment used by Menu and Comandas. */
+.management-workspace .management-workspace-header {
+  position: relative;
+  min-height: 64px;
+  margin: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 18px;
+}
+
+.management-workspace .management-workspace-header::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: -34px;
+  left: -42px;
+  width: 245px;
+  height: 135px;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(239, 35, 52, 0.09), transparent 68%);
+  filter: blur(8px);
+}
+
+.management-workspace .management-workspace-header > :first-child {
+  min-width: 0;
+}
+
+.management-workspace .management-workspace-header .page-title {
+  gap: 12px;
+  font-size: clamp(1.5rem, 2.1vw, 1.85rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.management-workspace .management-workspace-header .page-title-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  box-sizing: border-box;
+  padding: 11px;
+  overflow: visible;
+  color: #ff3648;
+  background: linear-gradient(145deg, rgba(239, 35, 52, 0.2), rgba(239, 35, 52, 0.05));
+  border: 1px solid rgba(239, 35, 52, 0.3);
+  border-radius: 14px;
+  filter: none;
+  animation: none;
+}
+
+.management-workspace .management-workspace-header .page-subtitle,
+.management-workspace .management-workspace-header p:not(.almacen-eyebrow),
+.management-workspace .management-workspace-header .metric-sub-text {
+  margin: 5px 0 0;
+  color: #9696a0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.management-workspace .management-workspace-header button {
+  min-height: 42px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.management-workspace--warehouse .almacen-eyebrow {
+  display: none;
+}
+
+/* Same proportions and surface treatment for the first summary cards. */
+.management-workspace .management-workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+
+.management-workspace .management-workspace-metrics > * {
+  min-width: 0;
+  min-height: 94px;
+  box-sizing: border-box;
+  padding: 15px 16px;
+  border-radius: 16px;
+  align-items: center;
+}
+
+.management-workspace--suppliers .management-workspace-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.management-workspace--finance .management-workspace-metrics {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.management-workspace--cash-ops .management-workspace-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.management-workspace .management-workspace-metrics :is(
+  .inv-kpi-icon,
+  .metric-icon-box,
+  .stat-icon,
+  .kpi-icon-circle-box,
+  .prv-kpi-card > span,
+  .cmp-sum-ic,
+  .gst-sum-ic,
+  .nom-sum-ic,
+  .fidel-metric-icon,
+  .fin-kpi-ic,
+  .management-metric-icon,
+  .shortcut-icon
+) {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+}
+
+.management-workspace .management-workspace-metrics :is(
+  .inv-kpi-value,
+  .metric-large-val,
+  .stat-value,
+  .kpi-value-lg,
+  .prv-kpi-card strong,
+  .cmp-sum-val,
+  .gst-sum-val,
+  .nom-sum-val,
+  .fidel-metric-value,
+  .fin-kpi-val
+) {
+  font-size: 1.4rem;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.management-workspace .management-workspace-metrics :is(
+  .inv-kpi-label,
+  .metric-label,
+  .stat-label,
+  .kpi-label-sm,
+  .prv-kpi-card small,
+  .cmp-sum-lbl,
+  .gst-sum-lbl,
+  .nom-sum-lbl,
+  .fidel-metric-label,
+  .fin-kpi-lbl
+) {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Warehouse and WhatsApp previously used a separate, flatter card family. */
+.management-workspace .management-workspace-metrics > .accent-red {
+  background: linear-gradient(145deg, rgba(239, 35, 52, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(239, 35, 52, 0.32);
+  box-shadow: inset 0 0 0 1px rgba(239, 35, 52, 0.06), 0 10px 28px rgba(239, 35, 52, 0.1);
+}
+
+.management-workspace .management-workspace-metrics > .accent-green {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(34, 197, 94, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.06), 0 10px 28px rgba(34, 197, 94, 0.1);
+}
+
+.management-workspace .management-workspace-metrics > .accent-purple {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.06), 0 10px 28px rgba(139, 92, 246, 0.1);
+}
+
+.management-workspace .management-workspace-metrics > .accent-orange {
+  background: linear-gradient(145deg, rgba(249, 115, 22, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.06), 0 10px 28px rgba(249, 115, 22, 0.1);
+}
+
+.management-workspace .management-workspace-metrics > .almacen-metric-card::after {
+  display: none;
+}
+
+/* Payroll summary cards now use the same fire-glow family. */
+.management-workspace--payroll .nom-sum:nth-child(1) {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+.management-workspace--payroll .nom-sum:nth-child(2) {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(34, 197, 94, 0.3);
+}
+.management-workspace--payroll .nom-sum:nth-child(3) {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+.management-workspace--payroll .nom-sum:nth-child(4) {
+  background: linear-gradient(145deg, rgba(239, 35, 52, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(239, 35, 52, 0.3);
+}
+
+.management-workspace--payroll .nom-sum:nth-child(1) .nom-sum-ic { background: linear-gradient(135deg, #6d28d9, #a78bfa) !important; }
+.management-workspace--payroll .nom-sum:nth-child(2) .nom-sum-ic { background: linear-gradient(135deg, #15803d, #4ade80) !important; }
+.management-workspace--payroll .nom-sum:nth-child(3) .nom-sum-ic { background: linear-gradient(135deg, #b45309, #fbbf24) !important; }
+.management-workspace--payroll .nom-sum:nth-child(4) .nom-sum-ic { background: linear-gradient(135deg, #b91c1c, #ff4d3d) !important; }
+
+/* Reports gain the icon/value composition used by the other summaries. */
+.management-workspace--reports .stat-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 13px;
+}
+
+.management-metric-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.management-workspace--reports .management-metric-icon {
+  color: var(--kpi-label, #fff);
+  background: color-mix(in srgb, var(--kpi-label, #e11d2a) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--kpi-label, #e11d2a) 34%, transparent);
+}
+
+.management-workspace--cash-ops .cash-currency-card.usd {
+  background: linear-gradient(145deg, rgba(249, 115, 22, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(249,115,22,.06), 0 10px 28px rgba(249,115,22,.1);
+}
+
+.management-workspace--cash-ops .cash-currency-card.ves {
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.16), rgba(20, 20, 22, 0.98) 65%);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(59,130,246,.06), 0 10px 28px rgba(59,130,246,.1);
+}
+
+/* Configuration shortcuts are now real branded summary cards. */
+.management-workspace--settings .module-shortcuts-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.management-workspace--settings .shortcut-card {
+  min-height: 94px;
+  background: linear-gradient(145deg, var(--shortcut-tint), rgba(20, 20, 22, 0.98) 65%);
+  border-color: var(--shortcut-border);
+  box-shadow: inset 0 0 0 1px var(--shortcut-inset), 0 10px 28px var(--shortcut-shadow);
+}
+
+.management-workspace--settings .shortcut-card:nth-child(1) { --shortcut-tint: rgba(239,35,52,.16); --shortcut-border: rgba(239,35,52,.32); --shortcut-inset: rgba(239,35,52,.06); --shortcut-shadow: rgba(239,35,52,.1); --shortcut-icon: linear-gradient(135deg,#b91c1c,#ff4d3d); }
+.management-workspace--settings .shortcut-card:nth-child(2) { --shortcut-tint: rgba(245,158,11,.16); --shortcut-border: rgba(245,158,11,.3); --shortcut-inset: rgba(245,158,11,.06); --shortcut-shadow: rgba(245,158,11,.1); --shortcut-icon: linear-gradient(135deg,#b45309,#fbbf24); }
+.management-workspace--settings .shortcut-card:nth-child(3) { --shortcut-tint: rgba(34,197,94,.16); --shortcut-border: rgba(34,197,94,.3); --shortcut-inset: rgba(34,197,94,.06); --shortcut-shadow: rgba(34,197,94,.1); --shortcut-icon: linear-gradient(135deg,#15803d,#4ade80); }
+.management-workspace--settings .shortcut-card:nth-child(4) { --shortcut-tint: rgba(139,92,246,.16); --shortcut-border: rgba(139,92,246,.3); --shortcut-inset: rgba(139,92,246,.06); --shortcut-shadow: rgba(139,92,246,.1); --shortcut-icon: linear-gradient(135deg,#6d28d9,#a78bfa); }
+
+.management-workspace--settings .shortcut-icon {
+  color: #fff;
+  background: var(--shortcut-icon);
+  box-shadow: 0 4px 16px var(--shortcut-shadow), inset 0 1px 0 rgba(255,255,255,.25);
+}
+
+.management-workspace--settings .shortcut-icon svg { width: 21px; height: 21px; }
+
+/* Remove the two isolated hero treatments so every module starts alike. */
+.management-workspace--promotions .promo-hero,
+.management-workspace--team .equipo-hero {
+  overflow: visible;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.management-workspace--promotions .promo-hero-text { z-index: auto; }
+
+.management-workspace:is(
+  .management-workspace--warehouse,
+  .management-workspace--loyalty,
+  .management-workspace--whatsapp,
+  .management-workspace--team,
+  .management-workspace--promotions
+) {
+  gap: 14px;
+}
+
+.management-workspace:is(
+  .management-workspace--warehouse,
+  .management-workspace--loyalty,
+  .management-workspace--whatsapp,
+  .management-workspace--team,
+  .management-workspace--promotions
+) .management-workspace-header {
+  margin-bottom: 0;
+}
+
+.management-workspace:is(
+  .management-workspace--warehouse,
+  .management-workspace--loyalty,
+  .management-workspace--whatsapp
+) .management-workspace-metrics {
+  margin: 0;
+}
+
+@media (max-width: 767px) {
+  .management-workspace .management-workspace-header {
+    min-height: 0;
+    margin-bottom: 14px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .management-workspace .management-workspace-header .page-title { font-size: 1.3rem; }
+  .management-workspace .management-workspace-header .page-title-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    padding: 9px;
+    border-radius: 12px;
+  }
+
+  .management-workspace .management-workspace-metrics,
+  .management-workspace--finance .management-workspace-metrics,
+  .management-workspace--suppliers .management-workspace-metrics,
+  .management-workspace--cash-ops .management-workspace-metrics,
+  .management-workspace--settings .module-shortcuts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .management-workspace .management-workspace-metrics,
+  .management-workspace--finance .management-workspace-metrics,
+  .management-workspace--suppliers .management-workspace-metrics,
+  .management-workspace--cash-ops .management-workspace-metrics,
+  .management-workspace--settings .module-shortcuts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) and (orientation: landscape) {
+  .management-workspace {
+    --workspace-gap: 12px;
+    --workspace-panel-radius: 14px;
+    max-width: none;
+  }
+
+  .management-workspace .management-workspace-header {
+    min-height: 56px;
+    margin: 0 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 12px;
+  }
+
+  .management-workspace .management-workspace-header > :first-child {
+    min-width: 0;
+  }
+
+  .management-workspace .management-workspace-header .page-title {
+    font-size: 1.45rem;
+    line-height: 1.15;
+  }
+
+  .management-workspace .management-workspace-header .page-title-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+    padding: 9px;
+    border-radius: 11px;
+  }
+
+  .management-workspace .management-workspace-header .page-subtitle,
+  .management-workspace .management-workspace-header p:not(.almacen-eyebrow) {
+    margin-top: 3px;
+    font-size: 0.8rem;
+    line-height: 1.35;
+  }
+
+  .management-workspace .management-workspace-header button {
+    min-height: 38px;
+    padding: 8px 13px;
+    border-radius: 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .management-workspace .management-workspace-header button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+  }
+
+  .management-workspace .management-workspace-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 14px;
+  }
+
+  .management-workspace .management-workspace-panel {
+    border-radius: var(--workspace-panel-radius);
+  }
+
+  /* Inventory */
+  .management-workspace--inventory .inv-kpi-card {
+    min-height: 104px;
+    padding: 13px;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .management-workspace--inventory .inv-kpi-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .management-workspace--inventory .inv-kpi-icon svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .management-workspace--inventory .inv-kpi-label {
+    font-size: 0.66rem;
+    line-height: 1.3;
+  }
+
+  .management-workspace--inventory .inv-kpi-value { font-size: 1.25rem; }
+  .management-workspace--inventory .inv-kpi-sub,
+  .management-workspace--inventory .inv-kpi-link { font-size: 0.7rem; }
+
+  .management-workspace--inventory .management-workspace-toolbar {
+    margin-bottom: 12px;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+
+  .management-workspace--inventory .inv-filter-pills {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .management-workspace--inventory .inv-filter-pill {
+    min-height: 34px;
+    padding: 7px 12px;
+    font-size: 0.75rem;
+  }
+
+  .management-workspace--inventory .inv-search-box { width: 250px; }
+  .management-workspace--inventory .inv-search-box input { height: 40px; }
+
+  /* Warehouse */
+  .management-workspace--warehouse { gap: 14px; }
+  .management-workspace--warehouse .management-workspace-header { margin-bottom: 0; }
+  .management-workspace--warehouse .almacen-eyebrow { display: none; }
+
+  .management-workspace--warehouse .almacen-metric-card {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+
+  .management-workspace--warehouse .metric-icon-box {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .management-workspace--warehouse .metric-icon-box svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .management-workspace--warehouse .metric-label { font-size: 0.68rem; }
+  .management-workspace--warehouse .metric-large-val { font-size: 1.25rem; }
+  .management-workspace--warehouse .metric-sub-text { font-size: 0.64rem; }
+
+  .management-workspace--warehouse .almacen-main-grid {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 12px;
+  }
+
+  .management-workspace--warehouse .almacen-card {
+    padding: 14px;
+    gap: 13px;
+  }
+
+  .management-workspace--warehouse .almacen-side-column { gap: 12px; }
+  .management-workspace--warehouse .card-header-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+  }
+
+  .management-workspace--warehouse .almacen-card-title { font-size: 0.95rem; }
+  .management-workspace--warehouse .almacen-card-description { font-size: 0.68rem; }
+
+  .management-workspace--warehouse .almacen-table th:nth-child(2),
+  .management-workspace--warehouse .almacen-table td:nth-child(2),
+  .management-workspace--warehouse .almacen-table th:nth-child(4),
+  .management-workspace--warehouse .almacen-table td:nth-child(4) {
+    display: none;
+  }
+
+  .management-workspace--warehouse .almacen-table {
+    min-width: 100%;
+  }
+
+  .management-workspace--warehouse .almacen-action-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .management-workspace--warehouse .almacen-actions { gap: 4px; }
+
+  /* Production */
+  .management-workspace--production .stat-card {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+
+  .management-workspace--production .stat-icon {
+    width: 38px;
+    height: 38px;
+  }
+
+  .management-workspace--production .stat-value { font-size: 1.3rem; }
+  .management-workspace--production .stat-label { font-size: 0.68rem; }
+
+  .management-workspace--production > .table-card,
+  .management-workspace--production > .almacen-card {
+    margin-top: 12px !important;
+    border-radius: var(--workspace-panel-radius);
+  }
+
+  .management-workspace--production .table-card {
+    padding: 14px;
+  }
+
+  /* Recipes */
+  .management-workspace--recipes .management-workspace-content {
+    grid-template-columns: minmax(410px, 1.06fr) minmax(0, 0.94fr);
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .management-workspace--recipes .rec-panel { padding: 12px; }
+  .management-workspace--recipes .rec-search { margin-bottom: 10px; }
+  .management-workspace--recipes .rec-search input { height: 40px; }
+  .management-workspace--recipes .rec-tabs { gap: 6px; margin-bottom: 10px; flex-wrap: nowrap; }
+  .management-workspace--recipes .rec-tab { padding: 7px 10px; font-size: 0.72rem; }
+  .management-workspace--recipes .rec-tab .rec-count { padding-inline: 6px; font-size: 0.68rem; }
+  .management-workspace--recipes .rec-filters { margin-bottom: 10px; flex-wrap: nowrap; }
+  .management-workspace--recipes .rec-card { padding: 8px 10px; gap: 10px; }
+  .management-workspace--recipes .rec-thumb { width: 40px; height: 40px; }
+
+  /* Customers */
+  .management-workspace--customers .kpi-card-dark {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+
+  .management-workspace--customers .kpi-icon-circle-box {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+    border-radius: 11px;
+  }
+
+  .management-workspace--customers .kpi-icon-circle-box svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .management-workspace--customers .kpi-label-sm { font-size: 0.68rem; }
+  .management-workspace--customers .kpi-value-lg { font-size: 1.25rem; }
+  .management-workspace--customers .kpi-sub-tag { font-size: 0.66rem; }
+
+  .management-workspace--customers .clientes-table-card {
+    padding: 14px;
+  }
+
+  .management-workspace--customers .table-filter-bar {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .management-workspace--customers .filter-search-box {
+    min-width: 190px;
+    flex: 1 1 260px;
+    min-height: 40px;
+  }
+
+  .management-workspace--customers .filter-dropdown-wrap {
+    min-height: 40px;
+    padding-inline: 8px;
+  }
+
+  .management-workspace--customers .btn-export-dark {
+    min-height: 40px;
+    padding-inline: 11px;
+    white-space: nowrap;
+  }
+
+  .management-workspace--customers .clientes-custom-table th:nth-child(3),
+  .management-workspace--customers .clientes-custom-table td:nth-child(3),
+  .management-workspace--customers .clientes-custom-table th:nth-child(4),
+  .management-workspace--customers .clientes-custom-table td:nth-child(4) {
+    display: none;
+  }
+
+  .management-workspace--customer-profile .profile-breadcrumb-wrap { margin-bottom: 10px; }
+  .management-workspace--customer-profile .profile-page-title { font-size: 1.35rem; }
+  .management-workspace--customer-profile .profile-hero-v2 {
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    border-radius: 16px;
+  }
+
+  .management-workspace--customer-profile .hero-v2-avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 1.5rem;
+  }
+
+  .management-workspace--customer-profile .hero-v2-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 14px;
+  }
+
+  .management-workspace--customer-profile .profile-grid-2cols {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
+  }
+
+  .management-workspace--customer-profile .profile-card-col { padding: 14px; }
+
+  /* Suppliers */
+  .management-workspace--suppliers .management-workspace-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .management-workspace--suppliers .prv-kpi-card {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+
+  .management-workspace--suppliers .prv-kpi-card > span {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .management-workspace--suppliers .prv-kpi-card > span svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .management-workspace--suppliers .prv-kpis small { font-size: 0.68rem; }
+  .management-workspace--suppliers .prv-kpis strong { font-size: 1.25rem; }
+
+  .management-workspace--suppliers .prv-card {
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+
+  .management-workspace--suppliers .prv-toolbar {
+    margin-bottom: 12px;
+    flex-wrap: nowrap;
+  }
+
+  .management-workspace--suppliers .prv-search {
+    min-height: 40px;
+    width: min(390px, 52%);
+  }
+
+  .management-workspace--suppliers .prv-supplier {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  /* Finance */
+  .management-workspace--finance .management-workspace-header .page-subtitle {
+    display: none;
+  }
+
+  .management-workspace--finance .fin-head-actions {
+    flex: 0 0 auto;
+    gap: 8px;
+  }
+
+  .management-workspace--finance .fin-period,
+  .management-workspace--finance .fin-export {
+    min-height: 38px;
+    padding: 8px 11px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+  }
+
+  .management-workspace--finance .management-workspace-metrics {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .management-workspace--finance .fin-kpi {
+    min-height: 88px;
+    padding: 11px;
+  }
+
+  .management-workspace--finance .fin-kpi-ic {
+    width: 34px;
+    height: 34px;
+  }
+
+  .management-workspace--finance .fin-kpi-lbl { font-size: 0.64rem; }
+  .management-workspace--finance .fin-kpi-val { font-size: 1.1rem; }
+  .management-workspace--finance .fin-kpi-sub { margin-top: 5px; font-size: 0.62rem; }
+  .management-workspace--finance .fin-data-status { margin-top: 10px; padding: 10px 12px; }
+  .management-workspace--finance .fin-be { margin: 10px 0 12px; padding: 12px 14px; }
+  .management-workspace--finance .fin-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
+  .management-workspace--finance .fin-account-grid { gap: 10px; }
+
+  /* Purchases, expenses and payroll */
+  .management-workspace--purchases .cmp-sum,
+  .management-workspace--expenses .gst-sum,
+  .management-workspace--payroll .nom-sum {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+
+  .management-workspace--purchases .cmp-sum-ic,
+  .management-workspace--expenses .gst-sum-ic,
+  .management-workspace--payroll .nom-sum-ic {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .management-workspace--purchases .cmp-sum-lbl,
+  .management-workspace--expenses .gst-sum-lbl,
+  .management-workspace--payroll .nom-sum-lbl { font-size: 0.68rem; }
+
+  .management-workspace--purchases .cmp-sum-val,
+  .management-workspace--expenses .gst-sum-val,
+  .management-workspace--payroll .nom-sum-val { font-size: 1.25rem; }
+
+  .management-workspace--purchases .cmp-sum-sub,
+  .management-workspace--expenses .gst-sum-sub,
+  .management-workspace--payroll .nom-sum-sub { font-size: 0.64rem; }
+
+  .management-workspace--purchases .cmp-card,
+  .management-workspace--expenses .gst-card,
+  .management-workspace--payroll .nom-card {
+    padding: 14px;
+    border-radius: var(--workspace-panel-radius);
+  }
+
+  .management-workspace--purchases .cmp-hist-tools,
+  .management-workspace--expenses .gst-card-head,
+  .management-workspace--expenses .gst-tools,
+  .management-workspace--payroll .nom-card-head {
+    flex-wrap: nowrap;
+  }
+
+  .management-workspace--purchases .cmp-table th:nth-child(3),
+  .management-workspace--purchases .cmp-table td:nth-child(3),
+  .management-workspace--purchases .cmp-table th:nth-child(4),
+  .management-workspace--purchases .cmp-table td:nth-child(4),
+  .management-workspace--purchases .cmp-table th:nth-child(6),
+  .management-workspace--purchases .cmp-table td:nth-child(6) {
+    display: none;
+  }
+
+  .management-workspace--expenses .gst-search input { width: 210px; }
+
+  .management-workspace--expenses .gst-table th:nth-child(4),
+  .management-workspace--expenses .gst-table td:nth-child(4),
+  .management-workspace--expenses .gst-table th:nth-child(5),
+  .management-workspace--expenses .gst-table td:nth-child(5),
+  .management-workspace--expenses .gst-table th:nth-child(7),
+  .management-workspace--expenses .gst-table td:nth-child(7) {
+    display: none;
+  }
+
+  .management-workspace--payroll .nom-periods { gap: 10px; }
+  .management-workspace--payroll .nom-period { flex-basis: 235px; padding: 11px; }
+  .management-workspace--payroll .nom-sum-link { margin-top: 7px; padding-top: 7px; }
+
+  /* Cash operations */
+  .management-workspace--cash-ops .cash-ops-eyebrow { display: none; }
+  .management-workspace--cash-ops .management-workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .management-workspace--cash-ops .cash-ops-header h1.page-title { margin: 0; }
+  .management-workspace--cash-ops .cash-open-panel { border-radius: var(--workspace-panel-radius); }
+  .management-workspace--cash-ops .cash-open-intro { padding: 26px; }
+  .management-workspace--cash-ops .cash-open-icon { width: 46px; height: 46px; margin-bottom: 16px; }
+  .management-workspace--cash-ops .cash-open-intro h2 { font-size: 1.35rem; }
+  .management-workspace--cash-ops .cash-form { padding: 24px; gap: 12px; }
+  .management-workspace--cash-ops .cash-session-banner { margin-bottom: 12px; padding: 11px 14px; }
+  .management-workspace--cash-ops .cash-metric-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .management-workspace--cash-ops .cash-metric-grid article { padding: 13px; }
+  .management-workspace--cash-ops .cash-currency-grid { gap: 12px; margin-bottom: 12px; }
+  .management-workspace--cash-ops .cash-currency-card,
+  .management-workspace--cash-ops .cash-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
+  .management-workspace--cash-ops .cash-currency-details { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .management-workspace--cash-ops .cash-content-grid { grid-template-columns: 1.15fr 0.85fr; gap: 12px; }
+
+  /* Reports */
+  .management-workspace--reports .stat-card {
+    min-height: 96px;
+    padding: 13px;
+  }
+
+  .management-workspace--reports .stat-card .stat-label { font-size: 0.68rem; }
+  .management-workspace--reports .stat-card .stat-value { font-size: 1.25rem; }
+  .management-workspace--reports .charts-grid { gap: 12px; margin-bottom: 12px; }
+  .management-workspace--reports .charts-grid.three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .management-workspace--reports .card { padding: 14px; border-radius: var(--workspace-panel-radius); }
+  .management-workspace--reports .chart-card { min-height: 260px; }
+  .management-workspace--reports .chart-container { height: 205px; }
+  .management-workspace--reports .chart-container-sm { height: 180px; }
+  .management-workspace--reports .card-title { margin-bottom: 10px; font-size: 0.95rem; }
+
+  /* Loyalty */
+  .management-workspace--loyalty { gap: 12px; padding-inline: 0; }
+  .management-workspace--loyalty .management-workspace-header { margin-bottom: 0; }
+  .management-workspace--loyalty .fidel-metric {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+  .management-workspace--loyalty .fidel-metric-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+  .management-workspace--loyalty .fidel-metric-icon svg { width: 19px; height: 19px; }
+  .management-workspace--loyalty .fidel-metric-label { font-size: 0.66rem; }
+  .management-workspace--loyalty .fidel-metric-value { font-size: 1.25rem; }
+  .management-workspace--loyalty .fidel-metric-sub { font-size: 0.64rem; }
+  .management-workspace--loyalty .fidel-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
+  }
+  .management-workspace--loyalty .fidel-card,
+  .management-workspace--loyalty .loyalty-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
+
+  /* Promotions */
+  .management-workspace--promotions { padding: 0; gap: 12px; }
+  .management-workspace--promotions .promo-hero {
+    min-height: 56px;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+  }
+  .management-workspace--promotions .promo-hero-title { font-size: 1.45rem; }
+  .management-workspace--promotions .promo-hero-sub { margin-top: 3px; font-size: 0.8rem; }
+  .management-workspace--promotions .promo-hero-fire { right: 18px; }
+  .management-workspace--promotions .promo-toolbar { flex-wrap: nowrap; gap: 12px; }
+  .management-workspace--promotions .promo-stats { padding: 7px 12px; }
+  .management-workspace--promotions .promo-stat { padding: 6px 10px; }
+  .management-workspace--promotions .promo-new-btn { min-height: 40px; padding: 9px 14px; }
+  .management-workspace--promotions .promo-item { padding: 12px 14px; gap: 12px; }
+  .management-workspace--promotions .promo-icon-preview { width: 48px; height: 48px; }
+
+  /* WhatsApp marketing */
+  .management-workspace--whatsapp { gap: 12px; }
+  .management-workspace--whatsapp .management-workspace-header { margin-bottom: 0; }
+  .management-workspace--whatsapp .almacen-metric-card {
+    min-height: 96px;
+    padding: 13px;
+    gap: 10px;
+  }
+  .management-workspace--whatsapp .metric-icon-box { width: 38px; height: 38px; flex-basis: 38px; }
+  .management-workspace--whatsapp .metric-icon-box svg { width: 19px; height: 19px; }
+  .management-workspace--whatsapp .metric-label { font-size: 0.66rem; }
+  .management-workspace--whatsapp .metric-large-val { font-size: 1.15rem; }
+  .management-workspace--whatsapp .metric-sub-text { font-size: 0.62rem; }
+  .management-workspace--whatsapp .whatsapp-grid {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 12px;
+  }
+  .management-workspace--whatsapp .whatsapp-card { padding: 14px; gap: 12px; border-radius: var(--workspace-panel-radius); }
+  .management-workspace--whatsapp .template-card { padding: 12px; }
+
+  /* Team */
+  .management-workspace--team { padding: 0; gap: 12px; }
+  .management-workspace--team .equipo-hero {
+    padding: 12px 16px;
+    border-radius: var(--workspace-panel-radius);
+  }
+  .management-workspace--team .almacen-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
+  .management-workspace--team .equipo-section-head { flex-wrap: nowrap; }
+  .management-workspace--team .equipo-section-hint { margin-bottom: 10px; }
+  .management-workspace--team .users-grid,
+  .management-workspace--team .team-grid { gap: 10px; }
+  .management-workspace--team .user-card,
+  .management-workspace--team .team-card { padding: 12px; gap: 9px; }
+
+  /* Credits and settings */
+  .management-workspace--credits .card,
+  .management-workspace--settings .card { padding: 14px; border-radius: var(--workspace-panel-radius); }
+  .management-workspace--credits .card-header-row { margin-bottom: 12px; }
+  .management-workspace--credits .credit-item { padding: 14px; margin-bottom: 10px; }
+  .management-workspace--credits .credit-header { margin-bottom: 10px; }
+  .management-workspace--credits .credit-amounts-row,
+  .management-workspace--credits .progress-container { margin-bottom: 10px; }
+  .management-workspace--settings .module-shortcuts-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .management-workspace--settings .shortcut-card { padding: 12px; gap: 10px; }
+  .management-workspace--settings .tabs { margin-bottom: 12px; }
+}

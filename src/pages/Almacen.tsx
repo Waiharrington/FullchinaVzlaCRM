@@ -142,8 +142,8 @@ export function Almacen() {
   }
 
   return (
-    <div className="almacen-page">
-      <header className="almacen-page-header">
+    <div className="almacen-page management-workspace management-workspace--warehouse">
+      <header className="almacen-page-header management-workspace-header">
         <div className="almacen-page-title-wrap">
           <div>
             <p className="almacen-eyebrow">OPERACIÓN · ABASTECIMIENTO</p>
@@ -157,7 +157,7 @@ export function Almacen() {
         </div>
       </header>
 
-      <section className="almacen-metrics-grid" aria-label="Resumen del almacén">
+      <section className="almacen-metrics-grid management-workspace-metrics" aria-label="Resumen del almacén">
         <div className="almacen-metric-card accent-red">
           <div className="metric-icon-box"><Package size={22} /></div>
           <div className="metric-info-group">
@@ -196,7 +196,7 @@ export function Almacen() {
       </section>
 
       <div className="almacen-main-grid">
-        <section className="almacen-card inventory-card">
+        <section className="almacen-card inventory-card management-workspace-panel">
           <div className="almacen-card-header">
             <div className="header-title-group">
               <div className="card-header-icon"><Package size={18} /></div>
@@ -255,7 +255,7 @@ export function Almacen() {
         </section>
 
         <aside className="almacen-side-column">
-          <section className="almacen-card">
+          <section className="almacen-card management-workspace-panel">
             <div className="almacen-card-header">
               <div className="header-title-group">
                 <div className="card-header-icon purple-icon"><ArrowRightLeft size={18} /></div>
@@ -297,7 +297,7 @@ export function Almacen() {
             </form>
           </section>
 
-          <section className="almacen-card">
+          <section className="almacen-card management-workspace-panel">
             <div className="history-header">
               <div>
                 <h2 className="almacen-card-title">Historial de transferencias</h2>

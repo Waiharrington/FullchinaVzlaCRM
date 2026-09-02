@@ -93,6 +93,10 @@
   transform: translateY(-1px);
 }
 
+.cmd-board-focus-btn {
+  display: none;
+}
+
 .comandas-stats-row {
   display: flex;
   gap: 12px;
@@ -663,12 +667,31 @@
   }
 }
 
-/* En tablet caben ~2 etapas a la vez; el resto se revela deslizando. */
+/* En tablet se prioriza el tablero: alrededor de 960px caben tres etapas
+   completas, manteniendo un ancho táctil legible en dispositivos menores. */
 @media (min-width: 768px) and (max-width: 1199px) {
   .kanban-board-grid > .kanban-column {
-    width: 46%;
-    max-width: 380px;
+    width: clamp(248px, calc((100% - 28px) / 3), 320px);
+    max-width: none;
   }
+
+  .comandas-page { gap: 10px; }
+  .comandas-pulse { padding-top: 0; }
+  .comandas-pulse-top { align-items: center; gap: 14px; }
+  .comandas-pulse-title-row { gap: 10px; }
+  .comandas-pulse-icon { width: 40px; height: 40px; flex-basis: 40px; border-radius: 11px; }
+  .comandas-pulse h1 { font-size: 23px; }
+  .comandas-pulse-title-row p { margin-top: 3px; font-size: 11.5px; }
+  .comandas-pending-badge { padding: 3px 8px; font-size: 10.5px; }
+  .comandas-flow { margin-top: 9px; padding-bottom: 9px; gap: 8px; }
+  .comandas-flow-step { gap: 6px; font-size: 10px; }
+  .comandas-filters { gap: 6px; margin-top: 0; }
+  .comandas-filters-toprow { gap: 6px; }
+  .comandas-mobile-filters-toggle,
+  .filter-search-inline { height: 36px; min-height: 36px; }
+  .cmd-board-focus-btn { display: flex; }
+  .comandas-pulse .btn-nueva-comanda { padding: 8px 12px; min-height: 36px; }
+  .kanban-board-grid { gap: 14px; }
 }
 
 .payment-error-message {
@@ -688,6 +711,7 @@
   border-radius: 14px;
   display: flex;
   flex-direction: column;
+  container-type: inline-size;
   overflow: hidden;
 }
 
@@ -762,12 +786,23 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  cursor: grab;
+  cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
-  /* Necesario para que dnd-kit reciba el gesto de arrastre táctil en vez de
-     que el navegador lo interprete como scroll de la columna. */
-  touch-action: none;
+  touch-action: pan-y;
+  container-type: inline-size;
+}
+
+.comanda-card-item.is-updating {
+  opacity: 0.72;
+}
+
+.comanda-card-item.is-draggable {
+  cursor: grab;
+}
+
+.comanda-card-item.is-draggable:active {
+  cursor: grabbing;
 }
 
 .comanda-card-item:hover {
@@ -783,6 +818,8 @@
   cursor: grabbing;
   border-color: #E31B2B;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(227, 27, 43, 0.4);
+  pointer-events: none;
+  width: min(320px, calc(100vw - 32px));
 }
 
 .comanda-card-item.has-retraso {
@@ -794,32 +831,76 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
 }
 
 .card-order-no {
   font-size: 15px;
   font-weight: 900;
   color: #fff;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .card-time-wrap {
   display: flex;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.card-time-text,
+.badge-retraso {
+  white-space: nowrap;
+}
+
+/* Cuando una columna se compacta, el identificador conserva su línea y los
+   metadatos bajan juntos. Así no se corta información ni se reduce legibilidad. */
+@container (max-width: 310px) {
+  .card-top-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "number"
+      "timing";
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 4px;
+  }
+
+  .card-order-no {
+    grid-area: number;
+  }
+
+  .card-time-wrap {
+    grid-area: timing;
+    justify-self: start;
+    margin-left: 0;
+  }
+
 }
 
 .card-time-text {
   font-size: 11px;
-  color: #71717a;
+  color: #a1a1aa;
 }
 
 .badge-retraso {
-  background: #FF4D3D;
+  background: #b91c2b;
   color: #fff;
   font-size: 10px;
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.badge-retraso svg {
+  flex: 0 0 auto;
 }
 
 .card-customer-line {
@@ -887,15 +968,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 5px;
   margin-top: 2px;
+}
+
+.card-footer-line > :last-child {
+  margin-left: auto;
 }
 
 .payment-type-badge {
   font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .payment-type-badge.pay-card {
@@ -916,6 +1006,15 @@
 .timer-mins {
   font-size: 11px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.timer-mins svg {
+  flex: 0 0 auto;
 }
 
 .text-red-urgent {
@@ -925,7 +1024,10 @@
 .status-ready-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .badge-ready-tag {
@@ -935,6 +1037,10 @@
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .badge-delivered-tag {
@@ -942,8 +1048,12 @@
   color: #60a5fa;
   font-size: 10px;
   font-weight: 600;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .quick-advance-btn {
@@ -957,6 +1067,16 @@
   cursor: pointer;
   margin-top: 4px;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.quick-advance-btn svg,
+.badge-sin-pagar svg {
+  flex: 0 0 auto;
 }
 
 .quick-advance-btn:hover {
@@ -995,6 +1115,34 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Último ajuste para tarjetas excepcionalmente estrechas: los indicadores
+   conservan una sola fila y reducen sólo su escala secundaria. */
+@container (max-width: 200px) {
+  .card-footer-line {
+    gap: 4px;
+  }
+
+  .payment-type-badge,
+  .badge-ready-tag,
+  .badge-delivered-tag,
+  .timer-mins,
+  .badge-sin-pagar {
+    font-size: 9px;
+  }
+
+  .payment-type-badge,
+  .badge-ready-tag,
+  .badge-delivered-tag {
+    padding-inline: 4px;
+  }
+
+  .badge-sin-pagar {
+    padding: 2px 4px;
+  }
 }
 
 /* Modal de cobro abierto desde Comandas. Estas clases también existen en
@@ -2279,6 +2427,15 @@
   .cmd-footer-left button, .cmd-footer-right button {
     flex: 1;
   }
+}
+
+/* Debe ir después de las reglas base de tarjetas/columnas para que el modo
+   compacto de tablet conserve prioridad sin usar !important. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .kanban-col-header { padding: 10px 12px; }
+  .kanban-col-body { padding: 8px; gap: 8px; min-height: calc(100dvh - 205px); }
+  .comanda-card-item { padding: 10px; gap: 8px; border-radius: 10px; }
+  .quick-advance-btn { min-height: 32px; }
 }
 
 /* ─────────────────────────────────────────────

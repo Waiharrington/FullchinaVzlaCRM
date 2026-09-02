@@ -94,7 +94,37 @@
   }
 
   .app-main {
-    padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.5rem 5rem 1.5rem;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem 1.5rem;
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1199px) {
+  .app-main {
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem 1.5rem;
+  }
+}
+
+/* Comandas puede usar todo el ancho en tablet sin convertir el sidebar en un
+   overlay permanente. La clase se activa únicamente desde el botón del tablero. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  html.comandas-board-focus .sidebar-container {
+    width: 0 !important;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  html.comandas-board-focus .sidebar-container .sidebar {
+    transform: translateX(-100%);
+  }
+
+  html.comandas-board-focus .main-content-wrapper,
+  html.comandas-board-focus .main-content-wrapper.sidebar-collapsed {
+    width: 100%;
+  }
+
+  html.comandas-board-focus .app-main {
+    padding: calc(0.75rem + env(safe-area-inset-top, 0px)) 0.75rem 1rem;
   }
 }
 

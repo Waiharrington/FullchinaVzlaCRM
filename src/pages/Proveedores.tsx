@@ -100,8 +100,8 @@ export function Proveedores() {
   if (loading) return <div className="page prv-loading" key="prv-loading"><PageSkeleton cards={2} rows={4} /></div>
 
   return (
-    <div className="page prv-page animate-fade-in" key="prv-full">
-      <header className="page-header prv-header">
+    <div className="page prv-page animate-fade-in management-workspace management-workspace--suppliers" key="prv-full">
+      <header className="page-header prv-header management-workspace-header">
         <div>
           <h1 className="page-title"><Building2 size={22} className="page-title-icon" /> Proveedores</h1>
           <p className="page-subtitle">Directorio, contactos e historial de compras con cada proveedor.</p>
@@ -112,14 +112,14 @@ export function Proveedores() {
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
-      <section className="prv-kpis" aria-label="Resumen de proveedores">
+      <section className="prv-kpis management-workspace-metrics" aria-label="Resumen de proveedores">
         <article className="prv-kpi-card red"><span><Building2 size={20} /></span><div><small>Proveedores activos</small><strong>{suppliers.length}</strong></div></article>
         <article className="prv-kpi-card purple"><span><ShoppingBag size={20} /></span><div><small>Compras registradas</small><strong>{purchases.length}</strong></div></article>
         <article className="prv-kpi-card green"><span><CalendarDays size={20} /></span><div><small>Total comprado</small><strong>{formatUsd(totalPurchased)}</strong></div></article>
       </section>
 
       {showForm && (
-        <section className="prv-card">
+        <section className="prv-card management-workspace-panel">
           <div className="prv-card-title"><h2>Agregar proveedor</h2></div>
           <form className="prv-form" onSubmit={saveSupplier}>
             <label>Nombre *<input autoFocus value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} required /></label>
@@ -132,7 +132,7 @@ export function Proveedores() {
         </section>
       )}
 
-      <section className="prv-card">
+      <section className="prv-card management-workspace-panel">
         <div className="prv-toolbar">
           <div><h2>Directorio</h2><p>{filtered.length} de {suppliers.length} proveedores</p></div>
           <label className="prv-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, contacto o teléfono" />{search && <button type="button" className="search-clear-btn" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</label>

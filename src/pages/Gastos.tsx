@@ -146,8 +146,8 @@ export function Gastos() {
   }
 
   return (
-    <div className="page gst-page animate-fade-in">
-      <header className="page-header">
+    <div className="page gst-page animate-fade-in management-workspace management-workspace--expenses">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Wallet size={22} className="page-title-icon" /> Gastos</h1>
           <p className="page-subtitle">Registra y controla todos los egresos operativos del negocio que no son compras de inventario.</p>
@@ -162,7 +162,7 @@ export function Gastos() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
-      <div className="gst-summary">
+      <div className="gst-summary management-workspace-metrics">
         <div className="gst-sum red">
           <span className="gst-sum-ic"><TrendingDown size={22} /></span>
           <div><div className="gst-sum-lbl">Egresos totales (este mes)</div><div className="gst-sum-val">{formatUsd(summary.total)}</div>

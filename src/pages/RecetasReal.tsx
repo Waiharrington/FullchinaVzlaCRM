@@ -244,8 +244,8 @@ export function RecetasReal() {
   const costPct = sel && cost != null && sel.salePrice > 0 ? (cost / sel.salePrice) * 100 : null
 
   return (
-    <div className="page rec-page animate-fade-in">
-      <header className="page-header">
+    <div className="page rec-page animate-fade-in management-workspace management-workspace--recipes">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><BookOpen size={22} className="page-title-icon" /> Recetas</h1>
           <p className="page-subtitle">Gestiona todas las recetas y sus componentes por producto vendible.</p>
@@ -261,9 +261,9 @@ export function RecetasReal() {
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
-      <div className="rec-layout">
+      <div className="rec-layout management-workspace-content">
         {/* ============ Lista ============ */}
-        <div className="rec-panel">
+        <div className="rec-panel management-workspace-panel">
           <div className="rec-search">
             <Search size={16} className="rec-search-ic" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar receta..." />
@@ -356,7 +356,7 @@ export function RecetasReal() {
         </div>
 
         {/* ============ Detalle ============ */}
-        <div className="rec-panel">
+        <div className="rec-panel management-workspace-panel">
           {!sel ? (
             <p className="rec-empty-list">Selecciona una receta.</p>
           ) : (

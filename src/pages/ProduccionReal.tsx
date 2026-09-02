@@ -132,8 +132,8 @@ export function ProduccionReal() {
   }
 
   return (
-    <div className="page animate-fade-in">
-      <header className="page-header">
+    <div className="page animate-fade-in management-workspace management-workspace--production">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Flame size={22} className="page-title-icon" /> Producción</h1>
           <p className="page-subtitle">Lotes, rendimiento, merma y bonos de producción</p>
@@ -151,7 +151,7 @@ export function ProduccionReal() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Stats */}
-      <div className="stats-grid">
+      <div className="stats-grid management-workspace-metrics">
         <div className="stat-card red">
           <div className="stat-icon"><Package size={16} /></div>
           <div className="stat-info">
@@ -184,7 +184,7 @@ export function ProduccionReal() {
 
       {/* New batch form */}
       {showForm && (
-        <div className="almacen-card mb-6" style={{ marginTop: '16px' }}>
+        <div className="almacen-card mb-6 management-workspace-panel" style={{ marginTop: '16px' }}>
           <h3 style={{ color: '#fff', fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>
             <Flame size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
             Registrar Nuevo Lote
@@ -254,7 +254,7 @@ export function ProduccionReal() {
       )}
 
       {/* Batch history */}
-      <div className="card table-card mt-6">
+      <div className="card table-card mt-6 management-workspace-panel">
         <div className="card-header">
           <h2 className="card-title">Lotes registrados</h2>
         </div>
@@ -290,7 +290,7 @@ export function ProduccionReal() {
       </div>
 
       {/* Bonuses */}
-      <div className="card table-card mt-6">
+      <div className="card table-card mt-6 management-workspace-panel">
         <div className="card-header">
           <h2 className="card-title">Bonos registrados ({bonuses.length})</h2>
         </div>

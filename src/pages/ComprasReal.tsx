@@ -234,8 +234,8 @@ export function ComprasReal() {
   if (loading) return <PageSkeleton cards={3} rows={5} />
 
   return (
-    <div className="page cmp-page animate-fade-in">
-      <header className="page-header">
+    <div className="page cmp-page animate-fade-in management-workspace management-workspace--purchases">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> Compras e Insumos</h1>
           <p className="page-subtitle">Registra tus compras a proveedores. El inventario se actualiza automáticamente.</p>
@@ -249,7 +249,7 @@ export function ComprasReal() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
-      <div className="cmp-summary">
+      <div className="cmp-summary management-workspace-metrics">
         <div className="cmp-sum red">
           <span className="cmp-sum-ic"><ShoppingBag size={20} /></span>
           <div><div className="cmp-sum-lbl">Total compras (este mes)</div><div className="cmp-sum-val">{formatUsd(summary.totalThis)}</div>
@@ -360,7 +360,7 @@ export function ComprasReal() {
       )}
 
       {/* Historial */}
-      <div className="cmp-card">
+      <div className="cmp-card management-workspace-panel">
         <h3 className="cmp-card-title">Historial de Compras</h3>
         <div className="cmp-hist-tools">
           <div className="cmp-search"><Search size={15} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar compra..." />{search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</div>

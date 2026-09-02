@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
@@ -8,7 +8,22 @@ import './Layout.css'
 
 export function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(min-width: 768px) and (max-width: 1199px)').matches
+      : false
+  ))
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const tabletQuery = window.matchMedia('(min-width: 768px) and (max-width: 1199px)')
+    const syncSidebarWithViewport = (event: MediaQueryListEvent) => {
+      if (event.matches) setSidebarCollapsed(true)
+      else if (window.innerWidth >= 1200) setSidebarCollapsed(false)
+    }
+    tabletQuery.addEventListener('change', syncSidebarWithViewport)
+    return () => tabletQuery.removeEventListener('change', syncSidebarWithViewport)
+  }, [])
 
   return (
     <SearchProvider>

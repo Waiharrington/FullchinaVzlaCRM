@@ -1665,17 +1665,23 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
             <div className="cart-action-buttons mt-2">
               <button
                 className="btn-pay-red"
+                aria-label="Cobrar pedido"
                 disabled={cart.length === 0 || paying}
                 onClick={() => handleOpenPaymentModal(selectedPaymentTab)}
               >
-                <WalletCards size={18} /> <span>Cobrar pedido</span>
+                <WalletCards size={18} />
+                <span className="cart-action-label-full">Cobrar pedido</span>
+                <span className="cart-action-label-short" aria-hidden="true">Cobrar</span>
               </button>
               <button
                 className="btn-kitchen-red"
+                aria-label="Enviar a cocina"
                 disabled={cart.length === 0 || paying}
                 onClick={handleSendToKitchen}
               >
-                <Flame size={18} /> <span>Enviar a cocina</span>
+                <Flame size={18} />
+                <span className="cart-action-label-full">Enviar a cocina</span>
+                <span className="cart-action-label-short" aria-hidden="true">Cocina</span>
               </button>
             </div>
 

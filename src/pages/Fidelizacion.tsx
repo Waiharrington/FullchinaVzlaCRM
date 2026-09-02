@@ -64,8 +64,8 @@ export function Fidelizacion() {
   const medal = (idx: number) => (idx === 0 ? <Trophy size={16} /> : idx === 1 ? <Medal size={16} /> : idx === 2 ? <Award size={16} /> : null)
 
   return (
-    <div className="fidel-page" key="fidel-full">
-      <header className="page-header">
+    <div className="page fidel-page animate-fade-in management-workspace management-workspace--loyalty" key="fidel-full">
+      <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Award size={22} className="page-title-icon" /> Fidelización</h1>
           <p className="page-subtitle">Premia las visitas recurrentes y sigue a tus clientes VIP.</p>
@@ -73,7 +73,7 @@ export function Fidelizacion() {
       </header>
 
       {/* Métricas */}
-      <div className="fidel-metrics">
+      <div className="fidel-metrics management-workspace-metrics">
         {METRICS.map((m, i) => (
           <div key={i} className="fidel-metric">
             <div className={`fidel-metric-icon ${m.cls}`}>{m.icon}</div>
