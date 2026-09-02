@@ -161,6 +161,11 @@ function getProductImage(product: Product): string {
 // última visita al instante, sin el parpadeo de "Cargando...", mientras se
 // refresca en segundo plano.
 const CAJA_PRODUCTS_CACHE_KEY = 'fullchina:caja-products:v1'
+const CAJA_DRAFT_KEY = 'fullchina:caja-draft:v1'
+
+function readCajaDraft(): { cart?: CartItem[]; orderType?: OrderType; tableNumber?: number | null; deliveryFee?: string; customerName?: string; orderNotes?: string } | null {
+  try { return JSON.parse(localStorage.getItem(CAJA_DRAFT_KEY) || 'null') as ReturnType<typeof readCajaDraft> } catch { return null }
+}
 
 let cajaCache: {
   products: Product[]
@@ -211,7 +216,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [productsError, setProductsError] = useState('')
   const [salesRank, setSalesRank] = useState<Map<string, number>>(new Map())
 
-  const [cart, setCart] = useState<CartItem[]>([])
+  const draft = useMemo(readCajaDraft, [])
+  const [cart, setCart] = useState<CartItem[]>(() => draft?.cart ?? [])
   const [productsWithModifiers, setProductsWithModifiers] = useState<Set<string>>(new Set())
   // Selector de modificadores
   const [modifierProduct, setModifierProduct] = useState<Product | null>(null)
@@ -226,12 +232,20 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [selectedProductGroup, setSelectedProductGroup] = useState<MenuProductGroup | null>(null)
   const [closingProductGroup, setClosingProductGroup] = useState(false)
 
-  const [orderType, setOrderType] = useState<OrderType>('dine-in')
-  const [tableNumber, setTableNumber] = useState<number | null>(null)
+  const [orderType, setOrderType] = useState<OrderType>(() => draft?.orderType ?? 'dine-in')
+  const [tableNumber, setTableNumber] = useState<number | null>(() => draft?.tableNumber ?? null)
   const [occupiedTables, setOccupiedTables] = useState<Set<number>>(new Set())
-  const [deliveryFee, setDeliveryFee] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [orderNotes, setOrderNotes] = useState('')
+  const [deliveryFee, setDeliveryFee] = useState(() => draft?.deliveryFee ?? '')
+  const [customerName, setCustomerName] = useState(() => draft?.customerName ?? '')
+  const [orderNotes, setOrderNotes] = useState(() => draft?.orderNotes ?? '')
+
+  useEffect(() => {
+    if (cart.length === 0 && !customerName && !orderNotes && !deliveryFee) {
+      localStorage.removeItem(CAJA_DRAFT_KEY)
+      return
+    }
+    localStorage.setItem(CAJA_DRAFT_KEY, JSON.stringify({ cart, orderType, tableNumber, deliveryFee, customerName, orderNotes }))
+  }, [cart, orderType, tableNumber, deliveryFee, customerName, orderNotes])
 
   // Customer Search & Auto-complete state
   const [customerList, setCustomerList] = useState<CustomerOption[]>([])
