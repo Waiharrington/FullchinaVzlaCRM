@@ -131,6 +131,13 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.team-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .status-toggle-btn {
   background: transparent;
   border: none;
@@ -174,6 +181,9 @@
   color: #fff;
   border-color: #E31B2B;
 }
+
+.icon-action-btn.danger { color: #f87171; }
+.icon-action-btn.danger:hover { color: #fff; background: #dc2626; border-color: #dc2626; }
 
 /* Permissions Table */
 .perm-table {
@@ -547,6 +557,8 @@
 }
 .user-act:hover { background: rgba(227, 27, 43, 0.9); border-color: #E31B2B; color: #fff; }
 .user-act.danger:hover { background: rgba(255, 77, 61, 0.9); border-color: #FF4D3D; }
+.user-act.delete { flex-basis: 100%; color: #f87171; border-color: rgba(248, 113, 113, 0.28); }
+.user-act.delete:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
 .user-act.ok { color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
 .user-act.ok:hover { background: rgba(16, 185, 129, 0.9); border-color: #10b981; color: #fff; }
 

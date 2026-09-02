@@ -14,6 +14,7 @@ import {
   getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
   adminSetUserRole, adminSetUserActive, adminSetUserPin, getErrorMessage,
+  adminDeleteUser,
 } from '../lib/dataService'
 import { adminSetUserModules } from '../lib/dataService'
 import type { Employee, AuthUser } from '../lib/dataService'
@@ -304,6 +305,24 @@ export function Equipo() {
     }
   }
 
+  const handleDeleteUser = async (u: AuthUser) => {
+    const ok = await confirmDialog({
+      title: 'Eliminar usuario de acceso',
+      message: `¿Eliminar el acceso de "${u.fullName || u.email}"? Ya no podrá iniciar sesión con correo, contraseña ni PIN. El historial operativo se conservará.`,
+      confirmText: 'Eliminar acceso',
+      danger: true,
+    })
+    if (!ok) return
+    setUsersError('')
+    try {
+      await adminDeleteUser(u.id)
+      flash(`Acceso de "${u.fullName || u.email}" eliminado`)
+      await loadUsers()
+    } catch (e) {
+      setUsersError(getErrorMessage(e, 'Error eliminando usuario de acceso'))
+    }
+  }
+
   if (loading) {
     return <PageSkeleton cards={3} rows={5} />
   }
@@ -386,6 +405,11 @@ export function Equipo() {
                       {u.isActive ? <Ban size={15} /> : <CheckCircle2 size={15} />}
                       {u.isActive ? 'Suspender' : 'Activar'}
                     </button>
+                    {u.id !== user?.id && (
+                      <button className="user-act delete" title="Eliminar usuario de acceso" onClick={() => handleDeleteUser(u)}>
+                        <Trash2 size={15} /> Eliminar
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -425,12 +449,14 @@ export function Equipo() {
                   {emp.isActive ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
                   {emp.isActive ? 'Activo' : 'Suspendido'}
                 </button>
-                <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
-                  <Edit3 size={16} />
-                </button>
-                <button className="icon-action-btn" title="Eliminar" style={{ color: '#f87171' }} onClick={() => handleDelete(emp)}>
-                  <Trash2 size={16} />
-                </button>
+                <div className="team-row-actions">
+                  <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
+                    <Edit3 size={16} />
+                  </button>
+                  <button className="icon-action-btn danger" title="Eliminar" onClick={() => handleDelete(emp)}>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

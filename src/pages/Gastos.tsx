@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { createExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
@@ -14,7 +15,8 @@ import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import './Gastos.css'
 
-type ExpenseView = { id: string; description: string; type: 'fixed' | 'variable'; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string }
+type ExpenseType = 'fixed' | 'variable' | 'other'
+type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string }
 const CATEGORIES = [
   { v: 'supermarket', l: 'Supermercado' }, { v: 'delivery', l: 'Delivery' }, { v: 'pos_commission', l: 'Comisión' },
   { v: 'payroll', l: 'Nómina' }, { v: 'cleaning', l: 'Limpieza' }, { v: 'services', l: 'Servicios' },
@@ -27,7 +29,7 @@ const METHODS = [
 ]
 const methodLabel = (v: string) => METHODS.find((m) => m.v === v)?.l ?? v
 const PAGE_SIZE = 8
-const emptyForm = { description: '', type: 'variable' as 'fixed' | 'variable', category: 'supermarket', vendor: '', amountUsd: '', paymentMethod: 'pago_movil', accountId: '', reference: '', notes: '' }
+const emptyForm = { description: '', type: 'variable' as ExpenseType, category: 'supermarket', vendor: '', amountUsd: '', paymentMethod: 'pago_movil', accountId: '', reference: '', notes: '' }
 
 export function Gastos() {
   const { user } = useAuth()
@@ -38,24 +40,39 @@ export function Gastos() {
   const [error, setError] = useState('')
 
   const [search, setSearch] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'todos' | 'fixed' | 'variable'>('todos')
+  const [typeFilter, setTypeFilter] = useState<'todos' | ExpenseType>('todos')
   const [showFilters, setShowFilters] = useState(false)
   const [page, setPage] = useState(1)
 
   const [form, setForm] = useState(emptyForm)
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [mobileFormOpen, setMobileFormOpen] = useState(false)
-  const expenseFormRef = useRef<HTMLFormElement>(null)
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
 
   const openExpenseForm = () => {
-    setMobileFormOpen(true)
-    window.setTimeout(() => {
-      expenseFormRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-      descriptionInputRef.current?.focus({ preventScroll: true })
-    }, 0)
+    setExpenseModalOpen(true)
   }
+
+  const closeExpenseForm = useCallback(() => {
+    if (!saving) setExpenseModalOpen(false)
+  }, [saving])
+
+  useEffect(() => {
+    if (!expenseModalOpen) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusTimer = window.setTimeout(() => descriptionInputRef.current?.focus(), 50)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeExpenseForm()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [closeExpenseForm, expenseModalOpen])
 
   useEffect(() => {
     getExchangeRates().then((r) => { if (r.bcv > 0) setRate(r.bcv) }).catch(() => {})
@@ -63,7 +80,8 @@ export function Gastos() {
     getExpenses().then((data) => setExpenses(data.map((item) => {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
-      return { id: item.id, description: item.concept, type: item.category === 'fixed' ? 'fixed' : 'variable', category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined }
+      const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined }
     }))).catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar los gastos'))
   }, [])
 
@@ -77,9 +95,9 @@ export function Gastos() {
     const prev = prevMonth.reduce((s, e) => s + e.amountUsd, 0)
     const fixed = thisMonth.filter((e) => e.type === 'fixed').reduce((s, e) => s + e.amountUsd, 0)
     const variable = thisMonth.filter((e) => e.type === 'variable').reduce((s, e) => s + e.amountUsd, 0)
-    const aradito = thisMonth.filter((e) => e.vendor.toLowerCase().includes('aradito')).reduce((s, e) => s + e.amountUsd, 0)
+    const other = thisMonth.filter((e) => e.type === 'other').reduce((s, e) => s + e.amountUsd, 0)
     const pct = prev > 0 ? ((total - prev) / prev) * 100 : null
-    return { total, fixed, variable, aradito, pct, pctFixed: total > 0 ? (fixed / total) * 100 : 0, pctVar: total > 0 ? (variable / total) * 100 : 0, pctArad: total > 0 ? (aradito / total) * 100 : 0 }
+    return { total, fixed, variable, other, pct, pctFixed: total > 0 ? (fixed / total) * 100 : 0, pctVar: total > 0 ? (variable / total) * 100 : 0, pctOther: total > 0 ? (other / total) * 100 : 0 }
   }, [expenses])
 
   const vendors = useMemo(() => Array.from(new Set(expenses.map((e) => e.vendor).filter((v) => v && v !== 'Sin proveedor'))), [expenses])
@@ -114,14 +132,14 @@ export function Gastos() {
       setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountNum, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
       flash(`Gasto de ${formatUsd(amountNum)} registrado`)
       if (keepOpen) setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor, paymentMethod: form.paymentMethod })
-      else { setForm(emptyForm); setMobileFormOpen(false) }
+      else { setForm(emptyForm); setExpenseModalOpen(false) }
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al registrar el gasto') }
     finally { setSaving(false) }
   }
 
   const exportCsv = () => {
     const rows = [['Fecha', 'Descripción', 'Tipo', 'Categoría', 'Proveedor', 'Monto USD', 'Monto Bs', 'Método', 'Ref']]
-    filtered.forEach((e) => rows.push([e.date, e.description, e.type === 'fixed' ? 'Fijo' : 'Variable', catLabel(e.category), e.vendor, e.amountUsd.toFixed(2), (e.amountUsd * rate).toFixed(2), methodLabel(e.paymentMethod), e.reference ?? '']))
+    filtered.forEach((e) => rows.push([e.date, e.description, e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro', catLabel(e.category), e.vendor, e.amountUsd.toFixed(2), (e.amountUsd * rate).toFixed(2), methodLabel(e.paymentMethod), e.reference ?? '']))
     const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
     const a = document.createElement('a'); a.href = url; a.download = `gastos_${dateKeyInTimeZone()}.csv`; a.click(); URL.revokeObjectURL(url)
@@ -161,7 +179,7 @@ export function Gastos() {
         </div>
         <div className="gst-sum">
           <span className="gst-sum-ic" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><Store size={22} /></span>
-          <div><div className="gst-sum-lbl">Gastos en Aradito (este mes)</div><div className="gst-sum-val">{formatUsd(summary.aradito)}</div><div className="gst-sum-sub">{summary.pctArad.toFixed(0)}% del total</div></div>
+          <div><div className="gst-sum-lbl">Otros gastos (este mes)</div><div className="gst-sum-val">{formatUsd(summary.other)}</div><div className="gst-sum-sub">{summary.pctOther.toFixed(0)}% del total</div></div>
         </div>
       </div>
 
@@ -182,9 +200,9 @@ export function Gastos() {
 
           {showFilters && (
             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              {(['todos', 'fixed', 'variable'] as const).map((t) => (
+              {(['todos', 'fixed', 'variable', 'other'] as const).map((t) => (
                 <button key={t} className="gst-tool" style={typeFilter === t ? { background: '#e11d2a', borderColor: '#e11d2a', color: '#fff' } : undefined} onClick={() => setTypeFilter(t)}>
-                  {t === 'todos' ? 'Todos' : t === 'fixed' ? 'Fijos' : 'Variables'}
+                  {t === 'todos' ? 'Todos' : t === 'fixed' ? 'Fijos' : t === 'variable' ? 'Variables' : 'Otros'}
                 </button>
               ))}
             </div>
@@ -198,7 +216,7 @@ export function Gastos() {
                   <tr key={e.id}>
                     <td style={{ color: '#a1a1aa', fontSize: 12 }}>{new Date(e.date).toLocaleDateString('es-VE')}</td>
                     <td style={{ fontWeight: 600 }}>{e.description}</td>
-                    <td><span className={`gst-badge ${e.type === 'fixed' ? 'fijo' : 'variable'}`}>{e.type === 'fixed' ? 'Fijo' : 'Variable'}</span></td>
+                    <td><span className={`gst-badge ${e.type === 'fixed' ? 'fijo' : e.type === 'variable' ? 'variable' : 'otro'}`}>{e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro'}</span></td>
                     <td><span className="gst-cat">{catLabel(e.category)}</span></td>
                     <td>{e.vendor}</td>
                     <td className="gst-usd">{formatUsd(e.amountUsd)}</td>
@@ -228,12 +246,14 @@ export function Gastos() {
           )}
         </div>
 
-        {/* Panel de registro (modal en móvil) */}
-        <div className={`gst-form-col${mobileFormOpen ? ' open' : ''}`} onClick={(ev) => { if (ev.target === ev.currentTarget) setMobileFormOpen(false) }}>
-          <form id="expense-form" ref={expenseFormRef} className="gst-card" onSubmit={handleSubmit}>
+      </div>
+
+      {expenseModalOpen && createPortal(
+        <div className="gst-form-col open" role="presentation" onMouseDown={(ev) => { if (ev.target === ev.currentTarget) closeExpenseForm() }}>
+          <form id="expense-form" className="gst-card gst-expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title" onSubmit={handleSubmit}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div><h3 className="gst-form-title">Registrar Nuevo Gasto</h3><p className="gst-form-sub">Carga egresos desde el teléfono o laptop</p></div>
-              <button type="button" className="gst-close" onClick={() => setMobileFormOpen(false)}><X size={18} /></button>
+              <div><h3 id="expense-modal-title" className="gst-form-title">Registrar Nuevo Gasto</h3><p className="gst-form-sub">Carga egresos desde el teléfono o laptop</p></div>
+              <button type="button" className="gst-close" aria-label="Cerrar" onClick={closeExpenseForm}><X size={18} /></button>
             </div>
 
             <div className="gst-field"><label>Descripción del Gasto <span className="gst-req">*</span></label>
@@ -241,7 +261,7 @@ export function Gastos() {
 
             <div className="gst-row2">
               <div className="gst-field"><label>Tipo de Gasto <span className="gst-req">*</span></label>
-                <StyledSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'fixed' | 'variable' })}><option value="variable">Gasto Variable</option><option value="fixed">Gasto Fijo</option></StyledSelect></div>
+                <StyledSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ExpenseType })}><option value="variable">Gasto Variable</option><option value="fixed">Gasto Fijo</option><option value="other">Otro</option></StyledSelect></div>
               <div className="gst-field"><label>Categoría <span className="gst-req">*</span></label>
                 <StyledSelect value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}</StyledSelect></div>
             </div>
@@ -276,8 +296,9 @@ export function Gastos() {
               <button type="submit" className="gst-btn" disabled={saving || !form.description.trim() || amountNum <= 0}>{saving ? '...' : <><Plus size={16} /> Registrar Gasto</>}</button>
             </div>
           </form>
-        </div>
-      </div>
+        </div>,
+        document.body,
+      )}
     </div>
   )
 }

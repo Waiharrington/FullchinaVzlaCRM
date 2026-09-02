@@ -38,6 +38,7 @@ describe('Acciones de Gastos', () => {
     fireEvent.click(primaryButton!)
     await waitFor(() => expect(screen.getByLabelText('Descripción del gasto')).toHaveFocus())
     expect(document.querySelector('.gst-form-col')).toHaveClass('open')
+    expect(screen.getByRole('dialog', { name: 'Registrar Nuevo Gasto' })).toBeInTheDocument()
   })
 
   it('abre el mismo formulario desde el estado vacío', async () => {
@@ -46,5 +47,24 @@ describe('Acciones de Gastos', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Registrar gasto' }))
     await waitFor(() => expect(screen.getByLabelText('Descripción del gasto')).toHaveFocus())
     expect(document.querySelector('.gst-form-col')).toHaveClass('open')
+  })
+
+  it('cierra la ventana emergente con Escape', async () => {
+    render(<Gastos />)
+    await screen.findByText('No hay gastos registrados')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Registrar Gasto' })[0])
+    await screen.findByRole('dialog', { name: 'Registrar Nuevo Gasto' })
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Registrar Nuevo Gasto' })).not.toBeInTheDocument())
+  })
+
+  it('incluye Otros como tipo de gasto y filtro', async () => {
+    render(<Gastos />)
+    await screen.findByText('No hay gastos registrados')
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+    expect(screen.getByRole('button', { name: 'Otros' })).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Registrar Gasto' })[0])
+    fireEvent.click(await screen.findByRole('button', { name: 'Gasto Variable' }))
+    expect(await screen.findByRole('option', { name: 'Otro' })).toBeInTheDocument()
   })
 })

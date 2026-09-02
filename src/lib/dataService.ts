@@ -2580,6 +2580,11 @@ export async function adminSetUserActive(userId: string, isActive: boolean): Pro
   if (error) throw error
 }
 
+export async function adminDeleteUser(userId: string): Promise<void> {
+  const { error } = await client().rpc('fn_admin_delete_user', { p_user_id: userId })
+  if (error) throw error
+}
+
 const PIN_ERROR_MESSAGES: Record<string, string> = {
   not_authorized: 'No autorizado para cambiar el PIN.',
   pin_must_have_four_digits: 'El PIN debe tener exactamente 4 dígitos.',

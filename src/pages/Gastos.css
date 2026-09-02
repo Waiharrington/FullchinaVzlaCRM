@@ -20,8 +20,7 @@
 .gst-sum-sub.down { color: #22c55e; }
 
 /* Layout principal */
-.gst-layout { display: grid; grid-template-columns: 1fr 380px; gap: 16px; align-items: start; }
-@media (max-width: 1024px) { .gst-layout { grid-template-columns: 1fr; } }
+.gst-layout { display: block; }
 .gst-card { background: #141419; border: 1px solid rgba(255,255,255,0.07); border-radius: 16px; padding: 18px; }
 
 .gst-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -45,6 +44,7 @@
 .gst-badge { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 10px; border-radius: 8px; font-weight: 600; border: 1px solid transparent; }
 .gst-badge.fijo { color: #a78bfa; background: rgba(124,58,237,0.12); }
 .gst-badge.variable { color: #f97316; background: rgba(249,115,22,0.12); }
+.gst-badge.otro { color: #38bdf8; background: rgba(56,189,248,0.12); }
 .gst-cat { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 10px; border-radius: 8px; font-weight: 600; color: #d4d4d8; background: rgba(255,255,255,0.06); }
 .gst-empty { text-align: center; color: #71717a; padding: 28px; }
 
@@ -54,8 +54,7 @@
 .gst-pagination button.active { background: #e11d2a; border-color: #e11d2a; color: #fff; }
 .gst-pagination button:disabled { opacity: .4; cursor: default; }
 
-/* Panel de registro */
-.gst-form-col .gst-card { position: sticky; top: 16px; }
+/* Modal de registro */
 .gst-form-title { font-size: 16px; font-weight: 700; margin: 0; }
 .gst-form-sub { font-size: 12px; color: #a1a1aa; margin: 2px 0 14px; }
 .gst-field { margin-bottom: 12px; }
@@ -66,13 +65,18 @@
 .gst-rate-hint { font-size: 11px; color: #71717a; display: flex; align-items: center; gap: 6px; margin: -4px 0 12px; }
 .gst-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #d4d4d8; cursor: pointer; }
 .gst-check input { width: 17px; height: 17px; accent-color: #e11d2a; }
-.gst-form-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px; }
-.gst-close { display: none; background: none; border: 0; color: #a1a1aa; cursor: pointer; }
+.gst-form-actions { position: sticky; bottom: -18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px -18px -18px; padding: 14px 18px; background: #141419; border-top: 1px solid rgba(255,255,255,0.08); }
+.gst-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #a1a1aa; cursor: pointer; }
+.gst-close:hover { color: #fff; background: rgba(225,29,42,0.16); border-color: rgba(225,29,42,0.4); }
+.gst-form-col { position: fixed; inset: 0; z-index: 1000; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,0.72); backdrop-filter: blur(5px); }
+.gst-form-col.open { display: flex; }
+.gst-expense-modal { width: min(620px, 100%); max-height: min(880px, calc(100dvh - 40px)); overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.55); animation: gst-modal-in .18s ease-out; }
+@keyframes gst-modal-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
 
-/* Panel como modal en móvil */
-@media (max-width: 1024px) {
-  .gst-form-col { display: none; }
-  .gst-form-col.open { display: block; position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,0.6); padding: 16px; overflow-y: auto; }
-  .gst-form-col.open .gst-card { position: relative; max-width: 460px; margin: 0 auto; }
-  .gst-close { display: inline-flex; }
+@media (max-width: 640px) {
+  .gst-form-col { align-items: flex-end; padding: 8px; }
+  .gst-expense-modal { max-height: calc(100dvh - 16px); border-radius: 18px 18px 12px 12px; }
+  .gst-row2 { grid-template-columns: 1fr; }
+  .gst-form-actions { flex-wrap: wrap; }
+  .gst-form-actions .gst-btn { width: 100%; justify-content: center; min-height: 44px; }
 }
