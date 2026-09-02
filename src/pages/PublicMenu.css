@@ -3142,12 +3142,12 @@ button.mobile-only {
     background: #0B0B0D !important;
   }
 
-.public-menu-label { position: absolute; z-index: 2; top: 10px; left: 10px; padding: 5px 9px; border-radius: 999px; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .01em; box-shadow: 0 5px 14px rgba(0,0,0,.28); animation: menu-label-pulse 2.8s ease-in-out infinite; }
-.public-menu-label.top-sales { background: linear-gradient(135deg,#f97316,#dc2626); }
-.public-menu-label.new { background: linear-gradient(135deg,#8b5cf6,#2563eb); }
-.public-menu-label.recommended { background: linear-gradient(135deg,#16a34a,#0f766e); }
-.public-menu-label.free-drink { background: linear-gradient(135deg,#0891b2,#0e7490); }
-@keyframes menu-label-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.04); } }
+.public-menu-label { position: absolute; z-index: 2; top: 9px; left: 9px; min-width: 92px; padding: 8px 12px; color: #fff; font-size: 11px; line-height: 1; text-align: center; font-weight: 900; letter-spacing: .01em; filter: drop-shadow(0 5px 5px rgba(0,0,0,.35)); transform: rotate(-4deg); animation: menu-label-pulse 2.4s ease-in-out infinite; clip-path: polygon(50% 0%, 61% 7%, 75% 4%, 83% 15%, 97% 20%, 94% 35%, 100% 50%, 93% 63%, 96% 79%, 82% 84%, 73% 96%, 60% 91%, 50% 100%, 39% 92%, 25% 96%, 17% 84%, 3% 79%, 6% 63%, 0% 50%, 7% 36%, 4% 20%, 18% 15%, 26% 4%, 40% 8%); }
+.public-menu-label.top-sales { background: linear-gradient(135deg,#ffb000 0%,#ef4444 52%,#b91c1c 100%); }
+.public-menu-label.new { background: linear-gradient(135deg,#d946ef,#7c3aed 55%,#2563eb); }
+.public-menu-label.recommended { background: linear-gradient(135deg,#84cc16,#16a34a 55%,#047857); }
+.public-menu-label.free-drink { background: linear-gradient(135deg,#22d3ee,#0891b2 55%,#075985); }
+@keyframes menu-label-pulse { 0%,100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .public-menu-label { animation: none; } }
 
   .public-prod-img {
