@@ -314,10 +314,15 @@ export function Finanzas() {
           {accounts.map((account) => {
             const activity = accountActivity.get(account.id) ?? { inflows: 0, outflows: 0, net: 0 }
             const money = (value: number) => account.currency === 'VES' ? formatVes(value) : formatUsd(value)
+            const reference = bcvRate
+              ? account.currency === 'VES'
+                ? `≈ ${formatUsd(account.currentBalance / bcvRate)} al BCV de hoy`
+                : `≈ ${formatVes(account.currentBalance * bcvRate)} al BCV de hoy`
+              : null
             return (
             <div className="fin-account-box" key={account.id}>
               <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
-              <small>{account.currency} · saldo actual</small>
+              <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
               <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
               {editingAccountId === account.id ? <div className="fin-opening-edit"><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
             </div>
