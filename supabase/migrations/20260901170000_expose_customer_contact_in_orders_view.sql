@@ -46,6 +46,7 @@ SELECT
       'id', p.id,
       'method', p.method,
       'amount', p.amount,
+      'account_id', p.account_id,
       'reference_number', p.reference_number,
       'received_amount', p.received_amount,
       'notes', p.notes,

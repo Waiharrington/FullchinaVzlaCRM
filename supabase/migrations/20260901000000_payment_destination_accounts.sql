@@ -1,5 +1,7 @@
 BEGIN;
 
+SET LOCAL search_path = fullchinavzla, pg_temp;
+
 ALTER TABLE fullchinavzla.payments
   ADD COLUMN IF NOT EXISTS account_id UUID REFERENCES fullchinavzla.financial_accounts(id);
 ALTER TABLE fullchinavzla.financial_accounts ADD COLUMN IF NOT EXISTS opening_balance NUMERIC(16,2) NOT NULL DEFAULT 0;
@@ -41,7 +43,8 @@ SELECT o.id,o.order_number,o.status,o.notes,o.order_type,
   COALESCE((SELECT SUM(oi.quantity*oi.unit_price) FROM order_items oi WHERE oi.order_id=o.id),0) AS total_amount,
   (SELECT count(*) FROM order_items oi WHERE oi.order_id=o.id) AS item_count,
   (SELECT json_agg(json_build_object('id',p.id,'method',p.method,'amount',p.amount,'account_id',p.account_id,'reference_number',p.reference_number,'received_amount',p.received_amount,'notes',p.notes,'created_at',p.created_at) ORDER BY p.created_at) FROM payments p WHERE p.order_id=o.id) AS payments,
-  o.fulfillment_status,o.customer_id,o.table_number
+  o.fulfillment_status,o.customer_id,o.table_number,
+  cu.phone AS customer_phone,cu.address AS customer_address,cu.identification AS customer_identification
 FROM orders o LEFT JOIN customers cu ON cu.id=o.customer_id;
 GRANT SELECT ON fullchinavzla.v_orders_with_items TO authenticated, service_role;
 NOTIFY pgrst, 'reload schema';
