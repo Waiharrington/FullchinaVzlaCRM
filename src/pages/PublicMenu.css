@@ -3150,6 +3150,25 @@ button.mobile-only {
 @keyframes menu-label-pulse { 0%,100% { transform: rotate(-4deg) scale(1); } 50% { transform: rotate(-4deg) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .public-menu-label { animation: none; } }
 
+/* En móvil la promoción se comporta como un sticker diagonal pegado a la
+   esquina de la foto, sin ocupar el centro de la tarjeta. */
+@media (max-width: 560px) {
+  .public-menu-label {
+    top: 7px;
+    left: -7px;
+    min-width: 86px;
+    padding: 7px 10px;
+    font-size: 10px;
+    transform: rotate(-11deg);
+    transform-origin: center;
+  }
+
+  @keyframes menu-label-pulse {
+    0%, 100% { transform: rotate(-11deg) scale(1); }
+    50% { transform: rotate(-11deg) scale(1.08); }
+  }
+}
+
   .public-prod-img {
     width: 100% !important;
     height: 100% !important;
