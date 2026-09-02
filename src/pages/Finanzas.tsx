@@ -4,6 +4,7 @@ import {
   type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount,
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
+import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
 import { useRates } from '../context/rates-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
@@ -13,7 +14,7 @@ import { Bar } from 'react-chartjs-2'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
   Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig,
 } from 'lucide-react'
 import './Finanzas.css'
 
@@ -51,7 +52,7 @@ export function Finanzas() {
   const [operations, setOperations] = useState<FinancialOperation[]>([])
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [loading, setLoading] = useState(true)
-  const [period, setPeriod] = useState<Period>('hoy')
+  const [period, setPeriod] = useState<Period>('semana')
   const [rangeStart, setRangeStart] = useState(isoDate(new Date()))
   const [rangeEnd, setRangeEnd] = useState(isoDate(new Date()))
   const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
@@ -132,6 +133,14 @@ export function Finanzas() {
   const weekRows = useMemo(() => dailyRows.filter(row => row.date >= selectedWeek.start && row.date <= selectedWeek.end), [dailyRows, selectedWeek])
   const weekTotals = useMemo(() => sumFinancialRows(weekRows), [weekRows])
   const selectedDay = dailyRows.find(row => row.date === selectedSummaryDate) ?? dailyRows[0]
+  const accountActivity = useMemo(() => buildFinancialAccountActivity(
+    accounts,
+    orders,
+    expenses,
+    purchases,
+    isoDate(ranges[period][0]),
+    isoDate(ranges[period][1]),
+  ), [accounts, orders, expenses, purchases, period, ranges])
   const changeSummaryMonth = (offset: number) => {
     const [year, month] = summaryMonth.split('-').map(Number)
     const next = new Date(year, month - 1 + offset, 1)
@@ -144,8 +153,17 @@ export function Finanzas() {
 
   const cur = pls[period]
   const prev = pls.ayer // referencia de comparación para las tarjetas
-  const breakEven = cur.opex + cur.payroll
-  const bePct = breakEven > 0 ? Math.min(100, Math.round((cur.grossSales / breakEven) * 100)) : (cur.grossSales > 0 ? 100 : 0)
+  const currentPaidOrders = orders.filter(order => {
+    const time = new Date(order.createdAt).getTime()
+    return order.status === 'paid' && time >= ranges[period][0].getTime() && time <= ranges[period][1].getTime()
+  })
+  const missingCostProducts = Array.from(new Set(currentPaidOrders.flatMap(order => order.items)
+    .filter(item => !recipeCost.has(item.sellableProductId) || (recipeCost.get(item.sellableProductId)?.recipeCost ?? 0) <= 0)
+    .map(item => item.productName)))
+  const unassignedPayments = currentPaidOrders.flatMap(order => order.payments).filter(payment => !payment.accountId).length
+  const coverageTarget = cur.cogs + cur.opex + cur.payroll
+  const coverageReady = coverageTarget > 0 && missingCostProducts.length === 0
+  const coveragePct = coverageReady ? Math.min(100, Math.round((cur.grossSales / coverageTarget) * 100)) : 0
   const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
   const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
   const periodLabel = period === 'hoy' ? 'Hoy' : period === 'ayer' ? 'Ayer' : period === 'semana' ? 'Esta semana' : period === 'mes' ? 'Este mes' : `${rangeStart} al ${rangeEnd}`
@@ -192,6 +210,11 @@ export function Finanzas() {
   const netDelta = pct(cur.netProfit, prev.netProfit)
   const marginPP = cur.margin - prev.margin
   const cogsPctSales = cur.grossSales > 0 ? (cur.cogs / cur.grossSales) * 100 : 0
+  const financialWarnings = [
+    ...(accounts.length === 0 ? ['No hay cuentas financieras configuradas; no se pueden conciliar saldos.'] : []),
+    ...(unassignedPayments > 0 ? [`${unassignedPayments} cobro${unassignedPayments === 1 ? '' : 's'} sin cuenta de destino en ${periodLabel.toLowerCase()}.`] : []),
+    ...(missingCostProducts.length > 0 ? [`Falta costo de receta para ${missingCostProducts.slice(0, 3).join(', ')}${missingCostProducts.length > 3 ? ` y ${missingCostProducts.length - 3} producto(s) más` : ''}.`] : []),
+  ]
 
   const Row = ({ label, values, cls }: { label: string; values: string[]; cls?: string }) => (
     <tr><td>{label}</td>{values.map((v, i) => <td key={i} className={cls}>{v}</td>)}</tr>
@@ -215,20 +238,28 @@ export function Finanzas() {
         </div>
       </header>
 
-      {/* Break-even */}
+      <section className={`fin-data-status ${financialWarnings.length ? 'warning' : 'ready'}`}>
+        {financialWarnings.length ? <CircleAlert size={20} /> : <CircleCheckBig size={20} />}
+        <div>
+          <strong>{financialWarnings.length ? 'Datos que requieren atención' : 'Datos conciliables'}</strong>
+          {financialWarnings.length ? <ul>{financialWarnings.map(message => <li key={message}>{message}</li>)}</ul> : <p>Los cobros del período tienen cuenta y los productos vendidos tienen costo registrado.</p>}
+        </div>
+      </section>
+
+      {/* Cobertura de costos registrados */}
       <div className="fin-be">
         <div className="fin-be-top">
           <div style={{ display: 'flex', gap: 10 }}>
             <span className="fin-be-ic"><Target size={20} /></span>
-            <div><h2>Punto de Equilibrio (Break-Even)</h2><p>Necesitas facturar esto para cubrir tus gastos operativos y nómina del período.</p></div>
+            <div><h2>Cobertura de costos del período</h2><p>Compara las ventas con insumos, gastos y nómina realmente registrados.</p></div>
           </div>
-          <div className="fin-be-target"><span className="v">{formatUsd(breakEven)}</span><span className="l">Punto de equilibrio</span></div>
+          <div className="fin-be-target"><span className="v">{coverageReady ? formatUsd(coverageTarget) : 'No calculable'}</span><span className="l">Costos registrados</span></div>
         </div>
-        <div className="fin-be-bar"><div style={{ width: `${bePct}%` }} /></div>
+        <div className="fin-be-bar"><div style={{ width: `${coveragePct}%` }} /></div>
         <div className="fin-be-legend">
-          <span style={{ color: '#eab308', fontWeight: 700 }}>{bePct}% alcanzado</span>
+          <span style={{ color: '#eab308', fontWeight: 700 }}>{coverageReady ? `${coveragePct}% cubierto` : 'Completa los datos señalados'}</span>
           <span>Llevas {formatUsd(cur.grossSales)} vendidos</span>
-          <span>{cur.grossSales >= breakEven ? '🎉 Generando utilidad' : `Faltan ${formatUsd(breakEven - cur.grossSales)} para llegar a cero`}</span>
+          <span>{coverageReady ? (cur.grossSales >= coverageTarget ? 'Resultado operativo positivo' : `Faltan ${formatUsd(coverageTarget - cur.grossSales)} para cubrir costos`) : 'No se mostrará una utilidad incompleta'}</span>
         </div>
       </div>
 
@@ -265,19 +296,24 @@ export function Finanzas() {
         <h2>Saldos actuales por cuenta</h2>
         <p className="sub">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</p>
         <div className="fin-account-grid">
-          {accounts.filter((a) => ['Banco Exterior', 'Banesco', 'Efectivo dolares', 'Efectivo bolivares'].includes(a.name)).map((account) => (
+          {accounts.map((account) => {
+            const activity = accountActivity.get(account.id) ?? { inflows: 0, outflows: 0, net: 0 }
+            const money = (value: number) => account.currency === 'VES' ? formatVes(value) : formatUsd(value)
+            return (
             <div className="fin-account-box" key={account.id}>
               <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
-              <small>{account.currency}</small>
+              <small>{account.currency} · saldo actual</small>
+              <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
               {editingAccountId === account.id ? <div className="fin-opening-edit"><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
             </div>
-          ))}
+          )})}
+          {accounts.length === 0 && <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>}
         </div>
       </div>
 
       <div className="fin-currency-summary">
-        <div className="fin-card"><span className="sub">Ventas en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia</small></div>
-        <div className="fin-card"><span className="sub">Ventas en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios USD</small></div>
+        <div className="fin-card"><span className="sub">Cobros recibidos en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia contable</small></div>
+        <div className="fin-card"><span className="sub">Cobros recibidos en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios denominados en USD</small></div>
       </div>
 
       <section className="fin-card fin-daily-summary">

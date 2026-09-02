@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
@@ -46,6 +46,16 @@ export function Gastos() {
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [mobileFormOpen, setMobileFormOpen] = useState(false)
+  const expenseFormRef = useRef<HTMLFormElement>(null)
+  const descriptionInputRef = useRef<HTMLInputElement>(null)
+
+  const openExpenseForm = () => {
+    setMobileFormOpen(true)
+    window.setTimeout(() => {
+      expenseFormRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      descriptionInputRef.current?.focus({ preventScroll: true })
+    }, 0)
+  }
 
   useEffect(() => {
     getExchangeRates().then((r) => { if (r.bcv > 0) setRate(r.bcv) }).catch(() => {})
@@ -126,7 +136,7 @@ export function Gastos() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="gst-help" onClick={() => flash('Registra egresos que no son inventario (nómina, delivery, comisiones, servicios…). Compras de insumos van en el módulo Compras.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
-          <button className="gst-btn" onClick={() => setMobileFormOpen(true)}><Plus size={16} /> Registrar Gasto</button>
+          <button type="button" className="gst-btn" aria-controls="expense-form" onClick={openExpenseForm}><Plus size={16} /> Registrar Gasto</button>
         </div>
       </header>
 
@@ -202,7 +212,7 @@ export function Gastos() {
                       title="No hay gastos registrados"
                       description="Registra tu primer gasto para llevar el control de tus finanzas."
                       actionLabel="Registrar gasto"
-                      onAction={() => setMobileFormOpen(true)}
+                      onAction={openExpenseForm}
                     />
                   </td></tr>
                 )}
@@ -220,14 +230,14 @@ export function Gastos() {
 
         {/* Panel de registro (modal en móvil) */}
         <div className={`gst-form-col${mobileFormOpen ? ' open' : ''}`} onClick={(ev) => { if (ev.target === ev.currentTarget) setMobileFormOpen(false) }}>
-          <form className="gst-card" onSubmit={handleSubmit}>
+          <form id="expense-form" ref={expenseFormRef} className="gst-card" onSubmit={handleSubmit}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div><h3 className="gst-form-title">Registrar Nuevo Gasto</h3><p className="gst-form-sub">Carga egresos desde el teléfono o laptop</p></div>
               <button type="button" className="gst-close" onClick={() => setMobileFormOpen(false)}><X size={18} /></button>
             </div>
 
             <div className="gst-field"><label>Descripción del Gasto <span className="gst-req">*</span></label>
-              <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Compras de verduras y pollo" required /></div>
+              <input ref={descriptionInputRef} aria-label="Descripción del gasto" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Compras de verduras y pollo" required /></div>
 
             <div className="gst-row2">
               <div className="gst-field"><label>Tipo de Gasto <span className="gst-req">*</span></label>
