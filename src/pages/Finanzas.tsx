@@ -10,16 +10,12 @@ import { useAuth } from '../context/auth-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
 import { formatUsd, formatVes } from '../lib/money'
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip, Legend } from 'chart.js'
-import { Bar } from 'react-chartjs-2'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
   Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
   ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft,
 } from 'lucide-react'
 import './Finanzas.css'
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend)
 
 type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
 interface PL {
@@ -57,7 +53,6 @@ export function Finanzas() {
   const [period, setPeriod] = useState<Period>('semana')
   const [rangeStart, setRangeStart] = useState(isoDate(new Date()))
   const [rangeEnd, setRangeEnd] = useState(isoDate(new Date()))
-  const [plView, setPlView] = useState<'grafico' | 'tabla'>('grafico')
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
   const [openingBalanceDraft, setOpeningBalanceDraft] = useState('')
   const currentMonth = isoDate(new Date()).slice(0, 7)
@@ -192,20 +187,6 @@ export function Finanzas() {
     } catch (error) { setTransferError(error instanceof Error ? error.message : 'No se pudo guardar la transferencia') } finally { setTransferSaving(false) }
   }
 
-  const chartData = {
-    labels: ['Ventas Brutas', 'Costo Insumos', 'Ganancia Bruta', 'Gastos Op.', 'Nómina', 'Ganancia Neta'],
-    datasets: [{
-      data: [cur.grossSales, -cur.cogs, cur.grossProfit, -cur.opex, -cur.payroll, cur.netProfit],
-      backgroundColor: ['#22c55e', '#ef4444', '#22c55e', '#ef4444', '#ef4444', cur.netProfit >= 0 ? '#22c55e' : '#ef4444'],
-      borderRadius: 6,
-    }],
-  }
-  const chartOpts = {
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c: { raw: unknown }) => formatUsd(Number(c.raw)) } } },
-    scales: { x: { ticks: { color: '#a1a1aa', font: { size: 10 } } }, y: { ticks: { color: '#a1a1aa', callback: (v: string | number) => `$${v}` }, grid: { color: 'rgba(255,255,255,0.05)' } } },
-  }
-
   const exportReport = () => {
     const rows = [
       ['Concepto', `${periodLabel} (USD)`, '% Ventas'],
@@ -230,10 +211,6 @@ export function Finanzas() {
     ...(unassignedPayments > 0 ? [`${unassignedPayments} cobro${unassignedPayments === 1 ? '' : 's'} sin cuenta de destino en ${periodLabel.toLowerCase()}.`] : []),
     ...(missingCostProducts.length > 0 ? [`Falta costo de receta para ${missingCostProducts.slice(0, 3).join(', ')}${missingCostProducts.length > 3 ? ` y ${missingCostProducts.length - 3} producto(s) más` : ''}.`] : []),
   ]
-
-  const Row = ({ label, values, cls }: { label: string; values: string[]; cls?: string }) => (
-    <tr><td>{label}</td>{values.map((v, i) => <td key={i} className={cls}>{v}</td>)}</tr>
-  )
 
   return (
     <div className="page fin-page animate-fade-in management-workspace management-workspace--finance">
@@ -360,10 +337,7 @@ export function Finanzas() {
         </div>
       </section>
 
-      <div className="fin-grid">
-        {/* Izquierda: cierre por método + comparativo */}
-        <div>
-          <div className="fin-card">
+      <div className="fin-card">
             <h2>Cierre por Método de Pago</h2>
             <p className="sub">Total cobrado en {periodLabel.toLowerCase()} según los métodos usados en Caja.</p>
             {Object.entries(cur.payments).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([m, v]) => {
@@ -379,53 +353,6 @@ export function Finanzas() {
             })}
             {totalPayments === 0 && <p style={{ color: '#71717a', padding: '10px 0' }}>Sin cobros en el período.</p>}
             <div className="fin-pay-total"><span>Total Cobrado</span><span className="g">{formatUsd(totalPayments)}</span></div>
-          </div>
-
-          <div className="fin-card">
-            <h2>Comparativo</h2>
-            <p className="sub">Rendimiento vs períodos anteriores.</p>
-            <table className="fin-comp">
-              <thead><tr><th>Métrica</th><th>Hoy</th><th>Ayer</th><th>Semana</th><th>Mes</th></tr></thead>
-              <tbody>
-                <Row label="Ventas Brutas" values={[formatUsd(pls.hoy.grossSales), formatUsd(pls.ayer.grossSales), formatUsd(pls.semana.grossSales), formatUsd(pls.mes.grossSales)]} />
-                <Row label="Ganancia Neta" values={[formatUsd(pls.hoy.netProfit), formatUsd(pls.ayer.netProfit), formatUsd(pls.semana.netProfit), formatUsd(pls.mes.netProfit)]} />
-                <Row label="Margen Neto" values={[`${pls.hoy.margin.toFixed(1)}%`, `${pls.ayer.margin.toFixed(1)}%`, `${pls.semana.margin.toFixed(1)}%`, `${pls.mes.margin.toFixed(1)}%`]} />
-                <Row label="Ticket Promedio" values={[formatUsd(pls.hoy.avgTicket), formatUsd(pls.ayer.avgTicket), formatUsd(pls.semana.avgTicket), formatUsd(pls.mes.avgTicket)]} />
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Derecha: P&L */}
-        <div className="fin-card">
-          <div className="fin-pl-head">
-            <div><h2>Estado de Resultados (P&L)</h2><p className="sub" style={{ margin: 0 }}>{periodLabel}</p></div>
-            <div className="fin-toggle">
-              <button className={plView === 'grafico' ? 'active' : ''} onClick={() => setPlView('grafico')}>Gráfico</button>
-              <button className={plView === 'tabla' ? 'active' : ''} onClick={() => setPlView('tabla')}>Tabla</button>
-            </div>
-          </div>
-
-          {plView === 'grafico' ? (
-            <div style={{ height: 300 }}><Bar data={chartData} options={chartOpts} /></div>
-          ) : (
-            <table className="fin-pl-table">
-              <tbody>
-                <tr><td><strong>(+) Ventas Totales Brutas</strong></td><td>{formatUsd(cur.grossSales)}</td><td>100.0%</td></tr>
-                <tr><td>(−) Costo de Productos Vendidos</td><td className="fin-danger">-{formatUsd(cur.cogs)}</td><td className="fin-danger">{cur.grossSales > 0 ? (-cur.cogs / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
-                <tr className="sumline"><td><strong>(=) Ganancia Bruta</strong></td><td className="fin-success">{formatUsd(cur.grossProfit)}</td><td className="fin-success">{cur.grossSales > 0 ? (cur.grossProfit / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
-                <tr><td>(−) Gastos Operativos</td><td className="fin-danger">-{formatUsd(cur.opex)}</td><td className="fin-danger">{cur.grossSales > 0 ? (-cur.opex / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
-                <tr><td>(−) Nómina Base y Bonos</td><td className="fin-danger">-{formatUsd(cur.payroll)}</td><td className="fin-danger">{cur.grossSales > 0 ? (-cur.payroll / cur.grossSales * 100).toFixed(1) : '0'}%</td></tr>
-                <tr className="sumline final"><td><strong>(=) GANANCIA NETA FINAL</strong></td><td style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</td><td style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{cur.margin.toFixed(1)}%</td></tr>
-              </tbody>
-            </table>
-          )}
-
-          <div className="fin-foot">
-            <span>Datos reales: Ventas (Caja), COGS (recetas), Gastos y Nómina.</span>
-            <span>{periodLabel}</span>
-          </div>
-        </div>
       </div>
       <div className="fin-card">
         <h2>Movimientos administrativos</h2>

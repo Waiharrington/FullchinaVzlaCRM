@@ -1,10 +1,11 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
 import { useAuth } from '../context/auth-context'
-import { getDailySales, getProductRanking, getCategorySales, getPaymentMethodSales, type DailySales, type ProductRanking, type CategorySales, type PaymentMethodSales } from '../lib/dataService'
+import { getDailySales, getProductRanking, getCategorySales, getPaymentMethodSales, getOrdersWithItems, getExpenses, getRecipeSummaries, getPayrollSummary, type DailySales, type ProductRanking, type CategorySales, type PaymentMethodSales, type FullOrder, type Expense, type RecipeSummary } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import './Reportes.css'
 import { formatProductTitle } from '../lib/textFormat'
+import { formatUsd } from '../lib/money'
 import { UtensilsCrossed, BarChart3, CalendarDays, CalendarRange, Gauge, ShoppingBag } from 'lucide-react'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
@@ -26,19 +27,31 @@ export function Reportes() {
   const [categorySales, setCategorySales] = useState<CategorySales[]>(reportesCache?.categorySales ?? [])
   const [paymentMethodSales, setPaymentMethodSales] = useState<PaymentMethodSales[]>(reportesCache?.paymentMethodSales ?? [])
   const [, setLoading] = useState(!reportesCache)
+  const [orders, setOrders] = useState<FullOrder[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [recipeCosts, setRecipeCosts] = useState<Map<string, RecipeSummary>>(new Map())
+  const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
 
   const fetchData = useCallback(async () => {
     try {
-      const [daily, ranking, categories, payments] = await Promise.all([
+      const [daily, ranking, categories, payments, orderRows, expenseRows, recipes, payrollRows] = await Promise.all([
         getDailySales(30),
         getProductRanking(),
         getCategorySales(),
         getPaymentMethodSales(),
+        getOrdersWithItems(),
+        getExpenses(),
+        getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
+        getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
       ])
       setDailySales(daily)
       setProductRanking(ranking)
       setCategorySales(categories)
       setPaymentMethodSales(payments)
+      setOrders(orderRows)
+      setExpenses(expenseRows)
+      setRecipeCosts(recipes)
+      setPayroll(payrollRows)
       reportesCache = { dailySales: daily, productRanking: ranking, categorySales: categories, paymentMethodSales: payments }
     } catch (e) {
       console.error('Error:', e)
@@ -57,6 +70,38 @@ export function Reportes() {
   const totalWeek = weeklySales.reduce((s, d) => s + d.total, 0)
   const totalMonth = monthlySales.reduce((s, d) => s + d.total, 0)
   const avgDaily = monthlySales.length > 0 ? totalMonth / monthlySales.length : 0
+
+  const financialPeriods = useMemo(() => {
+    const iso = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+    const now = new Date()
+    const today = iso(now)
+    const yesterdayDate = new Date(now); yesterdayDate.setDate(now.getDate() - 1)
+    const mondayDate = new Date(now); mondayDate.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+    const monthDate = new Date(now.getFullYear(), now.getMonth(), 1)
+    const calculate = (start: string, end: string) => {
+      const paid = orders.filter(order => order.status === 'paid' && order.createdAt.slice(0, 10) >= start && order.createdAt.slice(0, 10) <= end)
+      const grossSales = paid.reduce((sum, order) => sum + order.totalAmount, 0)
+      const cogs = paid.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity * (recipeCosts.get(item.sellableProductId)?.recipeCost ?? 0), 0), 0)
+      const opex = expenses.filter(expense => expense.expenseDate >= start && expense.expenseDate <= end).reduce((sum, expense) => sum + expense.amount, 0)
+      const payrollTotal = payroll.periods.filter(row => row.endDate >= start && row.endDate <= end).reduce((sum, row) => sum + row.total, 0)
+        + payroll.bonuses.filter(row => row.date >= start && row.date <= end).reduce((sum, row) => sum + row.amount, 0)
+      const grossProfit = grossSales - cogs
+      const netProfit = grossProfit - opex - payrollTotal
+      return { grossSales, cogs, opex, payroll: payrollTotal, grossProfit, netProfit, margin: grossSales > 0 ? netProfit / grossSales * 100 : 0, avgTicket: paid.length ? grossSales / paid.length : 0 }
+    }
+    return {
+      hoy: calculate(today, today),
+      ayer: calculate(iso(yesterdayDate), iso(yesterdayDate)),
+      semana: calculate(iso(mondayDate), today),
+      mes: calculate(iso(monthDate), today),
+    }
+  }, [orders, expenses, recipeCosts, payroll])
+
+  const pl = financialPeriods.mes
+  const plChartData = useMemo(() => ({
+    labels: ['Ventas', 'Costo insumos', 'Ganancia bruta', 'Gastos', 'Nómina', 'Ganancia neta'],
+    datasets: [{ data: [pl.grossSales, -pl.cogs, pl.grossProfit, -pl.opex, -pl.payroll, pl.netProfit], backgroundColor: ['#22c55e', '#ef4444', '#22c55e', '#ef4444', '#a855f7', pl.netProfit >= 0 ? '#22c55e' : '#ef4444'], borderRadius: 6 }],
+  }), [pl])
 
   const revenueChartData = useMemo(() => ({
     labels: dailySales.map(d => {
@@ -196,6 +241,28 @@ export function Reportes() {
           <span className="management-metric-copy"><span className="stat-label">Total órdenes</span><span className="stat-value">{dailySales.reduce((s, d) => s + d.count, 0)}</span></span>
         </div>
       </div>
+
+      <section className="financial-report-grid">
+        <div className="card financial-comparison-card">
+          <h2 className="card-title">Comparativo financiero</h2>
+          <p className="report-card-subtitle">Rendimiento de hoy frente a períodos anteriores.</p>
+          <div className="report-table-wrap"><table className="financial-report-table">
+            <thead><tr><th>Métrica</th><th>Hoy</th><th>Ayer</th><th>Semana</th><th>Mes</th></tr></thead>
+            <tbody>
+              <tr><td>Ventas brutas</td>{(['hoy','ayer','semana','mes'] as const).map(key => <td key={key}>{formatUsd(financialPeriods[key].grossSales)}</td>)}</tr>
+              <tr><td>Ganancia neta</td>{(['hoy','ayer','semana','mes'] as const).map(key => <td key={key} className={financialPeriods[key].netProfit >= 0 ? 'positive' : 'negative'}>{formatUsd(financialPeriods[key].netProfit)}</td>)}</tr>
+              <tr><td>Margen neto</td>{(['hoy','ayer','semana','mes'] as const).map(key => <td key={key}>{financialPeriods[key].margin.toFixed(1)}%</td>)}</tr>
+              <tr><td>Ticket promedio</td>{(['hoy','ayer','semana','mes'] as const).map(key => <td key={key}>{formatUsd(financialPeriods[key].avgTicket)}</td>)}</tr>
+            </tbody>
+          </table></div>
+        </div>
+        <div className="card financial-pl-card">
+          <h2 className="card-title">Estado de Resultados (P&amp;L)</h2>
+          <p className="report-card-subtitle">Ventas menos insumos, gastos y nómina · Este mes</p>
+          <div className="financial-pl-chart"><Bar data={plChartData} options={barOptions} /></div>
+          <div className="financial-pl-summary"><span>Ganancia neta <strong className={pl.netProfit >= 0 ? 'positive' : 'negative'}>{formatUsd(pl.netProfit)}</strong></span><span>Margen <strong>{pl.margin.toFixed(1)}%</strong></span></div>
+        </div>
+      </section>
 
       <div className="charts-grid">
         <div className="card chart-card">
