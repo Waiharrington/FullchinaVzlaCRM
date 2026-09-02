@@ -35,7 +35,7 @@ AS $$
             'M54', 'M55', 'M60', 'M64', 'M66', 'M67', 'P41', 'P54'
           ])
           THEN '/productos/' || split_part(p.source_code, ':', 1) || '.jpg'
-          ELSE NULL
+          ELSE p.image_url
         END
       ELSE p.image_url
     END
