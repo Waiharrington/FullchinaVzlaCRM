@@ -2,6 +2,8 @@
    Finanzas — cierre financiero (cálculos reales)
    ============================================================ */
 .fin-page { color: #fff; }
+.fin-modal-overlay { position: fixed; inset: 0; width: 100vw; height: 100dvh; z-index: 200000; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: 20px; overflow: auto; background: rgba(0,0,0,.86); backdrop-filter: blur(8px); }
+.fin-modal-overlay > .modal-card { position: relative; box-sizing: border-box; padding: 24px; color: #fff; background: #17171c; border: 1px solid rgba(255,255,255,.12); border-radius: 16px; box-shadow: 0 28px 90px rgba(0,0,0,.72); }
 .fin-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .fin-head-actions { display: flex; gap: 10px; align-items: center; }
 .fin-period { display: inline-flex; align-items: center; gap: 8px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #fff; border-radius: 12px; padding: 9px 14px; font-size: 13px; }
@@ -157,6 +159,7 @@
 .fin-currency-summary small { color: #71717a; }
 .fin-ledger-modal{width:min(1040px,calc(100vw - 28px))}.fin-ledger-scroll{overflow-x:auto;padding:0 24px 20px}.fin-account-ledger-wide{width:100%;margin:0;min-width:680px}.fin-account-ledger-wide thead th{background:#18181d;color:#f4f4f5;text-align:right;white-space:nowrap}.fin-account-ledger-wide thead th:first-child{text-align:left}.fin-account-ledger-wide tbody th{white-space:nowrap}.fin-ledger-empty{padding:26px 24px;color:#a1a1aa}
 @media(max-width:560px){.fin-ledger-scroll{padding:0 16px 16px}.fin-currency-summary .fin-card{min-height:112px}}
+@media(max-width:560px){.fin-modal-overlay{align-items:flex-end;padding:8px}.fin-modal-overlay .fin-account-modal,.fin-modal-overlay .fin-transfer-modal{max-height:calc(100dvh - 16px)}}
 .fin-date-range { display: flex; align-items: center; gap: 6px; }
 .fin-date-range input { color-scheme: dark; background: #18181d; color: #fff; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 9px; }
 @media (max-width: 760px) { .fin-currency-summary { grid-template-columns: 1fr; } .fin-date-range { width: 100%; } .fin-date-range input { min-width: 0; flex: 1; } }

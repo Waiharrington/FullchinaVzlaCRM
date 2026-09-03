@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import {
   getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer,
   type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount,
@@ -75,7 +76,7 @@ export function Finanzas() {
       const [ords, exps, purchaseData, recipes, pay, ops, accts] = await Promise.all([
         getOrdersWithItems(dataStart.toISOString()),
         getExpenses(isoDate(dataStart)),
-        getPurchases(),
+        getPurchases().catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
         getFinancialOperations(isoDate(dataStart)).catch(() => []),
@@ -407,7 +408,7 @@ export function Finanzas() {
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
         const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)
-        return <div className="modal-overlay-dark" role="dialog" aria-modal="true" onClick={() => setSelectedAccount(null)}><div className="modal-card fin-account-modal" onClick={event => event.stopPropagation()}>
+        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedAccount(null)}><div className="modal-card fin-account-modal" onClick={event => event.stopPropagation()}>
           <div className="fin-account-modal-head"><div><span>CONTROL DIARIO POR CUENTA</span><h2>{selectedAccount.name}</h2><p>{selectedSummaryDate} · {selectedAccount.currency === 'VES' ? `BCV ${formatVes(bcvRate || 0)} por $1` : 'Cuenta en dólares'}</p></div><button className="icon-btn" onClick={() => setSelectedAccount(null)} aria-label="Cerrar"><X size={18}/></button></div>
           <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
           <table className="fin-account-ledger"><tbody>
@@ -421,7 +422,7 @@ export function Finanzas() {
             <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
           </tbody></table>
           <div className="fin-account-modal-foot"><button onClick={() => setSelectedAccount(null)}>Cerrar</button><button className="fin-export" onClick={() => { setSelectedAccount(null); setShowTransfer(true) }}><ArrowRightLeft size={15}/> Registrar movimiento</button></div>
-        </div></div>
+        </div></div>, document.body)
       })()}
       {selectedLedgerCurrency && (() => {
         const ledgerAccounts = accounts.filter(account => account.currency === selectedLedgerCurrency)
@@ -432,7 +433,7 @@ export function Finanzas() {
           const prefix = sign === 'income' && value ? '+' : sign === 'expense' && value ? '-' : ''
           return <td key={account.id}>{prefix} {money(Math.abs(value))}</td>
         })
-        return <div className="modal-overlay-dark" role="dialog" aria-modal="true" onClick={() => setSelectedLedgerCurrency(null)}><div className="modal-card fin-account-modal fin-ledger-modal" onClick={event => event.stopPropagation()}>
+        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedLedgerCurrency(null)}><div className="modal-card fin-account-modal fin-ledger-modal" onClick={event => event.stopPropagation()}>
           <div className="fin-account-modal-head"><div><span>CONTROL DIARIO DE SALDOS</span><h2>{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</p></div><button className="icon-btn" onClick={() => setSelectedLedgerCurrency(null)} aria-label="Cerrar"><X size={18}/></button></div>
           {rows.length ? <div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
             <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
@@ -445,9 +446,9 @@ export function Finanzas() {
             <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
           </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}
           <div className="fin-account-modal-foot"><button onClick={() => setSelectedLedgerCurrency(null)}>Cerrar</button><button className="fin-export" onClick={() => { setSelectedLedgerCurrency(null); setShowTransfer(true) }}><ArrowRightLeft size={15}/> Registrar movimiento</button></div>
-        </div></div>
+        </div></div>, document.body)
       })()}
-      {showTransfer && <div className="modal-overlay-dark" role="dialog" aria-modal="true"><div className="modal-card fin-transfer-modal">
+      {showTransfer && createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="dialog" aria-modal="true"><div className="modal-card fin-transfer-modal">
         <div className="fin-pl-head"><div><h2>Registrar transferencia</h2><p className="sub">Mueve dinero entre cuentas sin afectar la utilidad.</p></div><button className="icon-btn" onClick={() => setShowTransfer(false)}><X size={18}/></button></div>
         <input placeholder="Concepto (ej. Depósito del punto a Banesco)" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/>
         <div className="fin-transfer-grid"><label>Desde<select value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value})}><option value="">Selecciona cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label><label>Hacia<select value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})}><option value="">Selecciona cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label></div>
@@ -455,7 +456,7 @@ export function Finanzas() {
         {transfer.currency === 'VES' && <label>Tasa de cambio<input type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/></label>}
         <input placeholder="Referencia (opcional)" value={transfer.reference} onChange={e => setTransfer({...transfer, reference: e.target.value})}/><textarea placeholder="Notas (opcional)" value={transfer.notes} onChange={e => setTransfer({...transfer, notes: e.target.value})}/>
         {transferError && <p className="fin-down">{transferError}</p>}<div className="fin-modal-actions"><button onClick={() => setShowTransfer(false)}>Cancelar</button><button className="fin-export" disabled={transferSaving} onClick={() => void saveTransfer()}>{transferSaving ? 'Guardando...' : 'Guardar transferencia'}</button></div>
-      </div></div>}
+      </div></div>, document.body)}
     </div>
   )
 }
