@@ -66,6 +66,18 @@ export function Finanzas() {
   const [transferSaving, setTransferSaving] = useState(false)
   const [transferError, setTransferError] = useState('')
 
+  useEffect(() => {
+    if (!selectedAccount && !selectedLedgerCurrency && !showTransfer) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || transferSaving) return
+      setSelectedAccount(null)
+      setSelectedLedgerCurrency(null)
+      setShowTransfer(false)
+    }
+    document.addEventListener('keydown', closeOnEscape)
+    return () => document.removeEventListener('keydown', closeOnEscape)
+  }, [selectedAccount, selectedLedgerCurrency, showTransfer, transferSaving])
+
   const load = useCallback(async () => {
     try {
       setLoading(true)
@@ -408,21 +420,27 @@ export function Finanzas() {
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
         const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)
-        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedAccount(null)}><div className="modal-card fin-account-modal" onClick={event => event.stopPropagation()}>
-          <div className="fin-account-modal-head"><div><span>CONTROL DIARIO POR CUENTA</span><h2>{selectedAccount.name}</h2><p>{selectedSummaryDate} · {selectedAccount.currency === 'VES' ? `BCV ${formatVes(bcvRate || 0)} por $1` : 'Cuenta en dólares'}</p></div><button className="icon-btn" onClick={() => setSelectedAccount(null)} aria-label="Cerrar"><X size={18}/></button></div>
-          <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
-          <table className="fin-account-ledger"><tbody>
-            <tr><th>Saldo anterior</th><td>{money(ledger.opening)}</td></tr>
-            <tr className="income"><th>Ventas del día</th><td>+ {money(ledger.sales)}</td></tr>
-            <tr className="expense"><th>Gastos del día</th><td>- {money(ledger.expenses)}</td></tr>
-            <tr className="expense"><th>Compras pagadas</th><td>- {money(ledger.purchases)}</td></tr>
-            <tr><th>Cuentas cobradas</th><td>{ledger.collections >= 0 ? '+' : '-'} {money(Math.abs(ledger.collections))}</td></tr>
-            <tr><th>Transferencias / Punto por hacerse efectivo</th><td>{ledger.transfers >= 0 ? '+' : '-'} {money(Math.abs(ledger.transfers))}</td></tr>
-            <tr><th>Otros movimientos</th><td>{ledger.others >= 0 ? '+' : '-'} {money(Math.abs(ledger.others))}</td></tr>
-            <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
-          </tbody></table>
-          <div className="fin-account-modal-foot"><button onClick={() => setSelectedAccount(null)}>Cerrar</button><button className="fin-export" onClick={() => { setSelectedAccount(null); setShowTransfer(true) }}><ArrowRightLeft size={15}/> Registrar movimiento</button></div>
-        </div></div>, document.body)
+        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => setSelectedAccount(null)}><section className="modal-card fin-dialog fin-account-modal" role="dialog" aria-modal="true" aria-labelledby="fin-account-dialog-title" onClick={event => event.stopPropagation()}>
+          <header className="fin-dialog-header">
+            <span className="fin-dialog-icon"><Building2 size={20}/></span>
+            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario por cuenta</span><h2 id="fin-account-dialog-title">{selectedAccount.name}</h2><p>{selectedSummaryDate} · {selectedAccount.currency === 'VES' ? `BCV ${formatVes(bcvRate || 0)} por $1` : 'Cuenta en dólares'}</p></div>
+            <button type="button" className="fin-dialog-close" onClick={() => setSelectedAccount(null)} aria-label="Cerrar ventana"><X size={18}/></button>
+          </header>
+          <div className="fin-dialog-body">
+            <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
+            <div className="fin-account-table-wrap"><table className="fin-account-ledger"><tbody>
+              <tr><th>Saldo anterior</th><td>{money(ledger.opening)}</td></tr>
+              <tr className="income"><th>Ventas del día</th><td>+ {money(ledger.sales)}</td></tr>
+              <tr className="expense"><th>Gastos del día</th><td>- {money(ledger.expenses)}</td></tr>
+              <tr className="expense"><th>Compras pagadas</th><td>- {money(ledger.purchases)}</td></tr>
+              <tr><th>Cuentas cobradas</th><td>{ledger.collections >= 0 ? '+' : '-'} {money(Math.abs(ledger.collections))}</td></tr>
+              <tr><th>Transferencias / Punto por hacerse efectivo</th><td>{ledger.transfers >= 0 ? '+' : '-'} {money(Math.abs(ledger.transfers))}</td></tr>
+              <tr><th>Otros movimientos</th><td>{ledger.others >= 0 ? '+' : '-'} {money(Math.abs(ledger.others))}</td></tr>
+              <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
+            </tbody></table></div>
+          </div>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedAccount(null)}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => { setSelectedAccount(null); setShowTransfer(true) }}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+        </section></div>, document.body)
       })()}
       {selectedLedgerCurrency && (() => {
         const ledgerAccounts = accounts.filter(account => account.currency === selectedLedgerCurrency)
@@ -433,30 +451,48 @@ export function Finanzas() {
           const prefix = sign === 'income' && value ? '+' : sign === 'expense' && value ? '-' : ''
           return <td key={account.id}>{prefix} {money(Math.abs(value))}</td>
         })
-        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="dialog" aria-modal="true" onClick={() => setSelectedLedgerCurrency(null)}><div className="modal-card fin-account-modal fin-ledger-modal" onClick={event => event.stopPropagation()}>
-          <div className="fin-account-modal-head"><div><span>CONTROL DIARIO DE SALDOS</span><h2>{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</p></div><button className="icon-btn" onClick={() => setSelectedLedgerCurrency(null)} aria-label="Cerrar"><X size={18}/></button></div>
-          {rows.length ? <div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
-            <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
-            <tr className="income"><th>Ventas del día</th>{cells(ledger => ledger.sales, 'income')}</tr>
-            <tr className="expense"><th>Gastos del día</th>{cells(ledger => ledger.expenses, 'expense')}</tr>
-            <tr className="expense"><th>Compras pagadas</th>{cells(ledger => ledger.purchases, 'expense')}</tr>
-            <tr><th>Cuentas cobradas</th>{cells(ledger => ledger.collections)}</tr>
-            <tr><th>Punto / Transferencias</th>{cells(ledger => ledger.transfers)}</tr>
-            <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
-            <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
-          </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}
-          <div className="fin-account-modal-foot"><button onClick={() => setSelectedLedgerCurrency(null)}>Cerrar</button><button className="fin-export" onClick={() => { setSelectedLedgerCurrency(null); setShowTransfer(true) }}><ArrowRightLeft size={15}/> Registrar movimiento</button></div>
-        </div></div>, document.body)
+        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => setSelectedLedgerCurrency(null)}><section className="modal-card fin-dialog fin-account-modal fin-ledger-modal" role="dialog" aria-modal="true" aria-labelledby="fin-ledger-dialog-title" onClick={event => event.stopPropagation()}>
+          <header className="fin-dialog-header">
+            <span className="fin-dialog-icon"><Wallet size={20}/></span>
+            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario de saldos</span><h2 id="fin-ledger-dialog-title">{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</p></div>
+            <button type="button" className="fin-dialog-close" onClick={() => setSelectedLedgerCurrency(null)} aria-label="Cerrar ventana"><X size={18}/></button>
+          </header>
+          <div className="fin-dialog-body fin-ledger-body">{rows.length ? <div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
+              <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
+              <tr className="income"><th>Ventas del día</th>{cells(ledger => ledger.sales, 'income')}</tr>
+              <tr className="expense"><th>Gastos del día</th>{cells(ledger => ledger.expenses, 'expense')}</tr>
+              <tr className="expense"><th>Compras pagadas</th>{cells(ledger => ledger.purchases, 'expense')}</tr>
+              <tr><th>Cuentas cobradas</th>{cells(ledger => ledger.collections)}</tr>
+              <tr><th>Punto / Transferencias</th>{cells(ledger => ledger.transfers)}</tr>
+              <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
+              <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
+            </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}</div>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedLedgerCurrency(null)}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => { setSelectedLedgerCurrency(null); setShowTransfer(true) }}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+        </section></div>, document.body)
       })()}
-      {showTransfer && createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="dialog" aria-modal="true"><div className="modal-card fin-transfer-modal">
-        <div className="fin-pl-head"><div><h2>Registrar transferencia</h2><p className="sub">Mueve dinero entre cuentas sin afectar la utilidad.</p></div><button className="icon-btn" onClick={() => setShowTransfer(false)}><X size={18}/></button></div>
-        <input placeholder="Concepto (ej. Depósito del punto a Banesco)" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/>
-        <div className="fin-transfer-grid"><label>Desde<select value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value})}><option value="">Selecciona cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label><label>Hacia<select value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})}><option value="">Selecciona cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label></div>
-        <div className="fin-transfer-grid"><label>Moneda<select value={transfer.currency} onChange={e => setTransfer({...transfer, currency: e.target.value as 'USD'|'VES'})}><option value="VES">Bolívares</option><option value="USD">Dólares</option></select></label><label>Monto<input type="number" min="0" step="0.01" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})}/></label></div>
-        {transfer.currency === 'VES' && <label>Tasa de cambio<input type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/></label>}
-        <input placeholder="Referencia (opcional)" value={transfer.reference} onChange={e => setTransfer({...transfer, reference: e.target.value})}/><textarea placeholder="Notas (opcional)" value={transfer.notes} onChange={e => setTransfer({...transfer, notes: e.target.value})}/>
-        {transferError && <p className="fin-down">{transferError}</p>}<div className="fin-modal-actions"><button onClick={() => setShowTransfer(false)}>Cancelar</button><button className="fin-export" disabled={transferSaving} onClick={() => void saveTransfer()}>{transferSaving ? 'Guardando...' : 'Guardar transferencia'}</button></div>
-      </div></div>, document.body)}
+      {showTransfer && createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => { if (!transferSaving) setShowTransfer(false) }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>
+        <header className="fin-dialog-header">
+          <span className="fin-dialog-icon"><ArrowRightLeft size={20}/></span>
+          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento administrativo</span><h2 id="fin-transfer-dialog-title">Registrar transferencia</h2><p>Mueve dinero entre cuentas sin afectar la utilidad.</p></div>
+          <button type="button" className="fin-dialog-close" disabled={transferSaving} onClick={() => setShowTransfer(false)} aria-label="Cerrar ventana"><X size={18}/></button>
+        </header>
+        <div className="fin-dialog-body fin-transfer-body">
+          <label className="fin-field fin-field-wide"><span>Concepto <b>*</b></span><input className="fin-field-control" required autoFocus placeholder="Ej. Depósito del punto a Banesco" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/></label>
+          <div className="fin-transfer-grid">
+            <label className="fin-field"><span>Desde <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value})}><option value="">Selecciona una cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></label>
+            <label className="fin-field"><span>Hacia <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})}><option value="">Selecciona una cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></label>
+          </div>
+          <div className="fin-transfer-grid">
+            <label className="fin-field"><span>Moneda <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" value={transfer.currency} onChange={e => setTransfer({...transfer, currency: e.target.value as 'USD'|'VES'})}><option value="VES">Bolívares</option><option value="USD">Dólares</option></StyledSelect></label>
+            <label className="fin-field"><span>Monto <b>*</b></span><input className="fin-field-control" required type="number" min="0.01" step="0.01" placeholder="0,00" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})}/></label>
+          </div>
+          {transfer.currency === 'VES' && <label className="fin-field"><span>Tasa de cambio</span><input className="fin-field-control" type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/><small>Usa la tasa BCV del día si no necesitas registrar una tasa distinta.</small></label>}
+          <label className="fin-field"><span>Referencia</span><input className="fin-field-control" placeholder="Opcional" value={transfer.reference} onChange={e => setTransfer({...transfer, reference: e.target.value})}/></label>
+          <label className="fin-field"><span>Notas</span><textarea className="fin-field-control" rows={3} placeholder="Información adicional del movimiento" value={transfer.notes} onChange={e => setTransfer({...transfer, notes: e.target.value})}/></label>
+          {transferError && <p className="fin-dialog-error" role="alert"><CircleAlert size={16}/>{transferError}</p>}
+        </div>
+        <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={transferSaving} onClick={() => setShowTransfer(false)}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={transferSaving}>{transferSaving ? 'Guardando…' : <><Check size={16}/> Guardar transferencia</>}</button></footer>
+      </form></div>, document.body)}
     </div>
   )
 }

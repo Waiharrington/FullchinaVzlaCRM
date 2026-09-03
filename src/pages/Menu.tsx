@@ -454,7 +454,7 @@ export function Menu() {
                     })}
                   </div>
                 </div>
-                <div className="mnu-product-section"><div className="mnu-product-section-title">Etiqueta del plato <small>Visible para los clientes</small></div><select className="mnu-label-select" value={form.menuLabel ?? ''} onChange={e => setForm({ ...form, menuLabel: (e.target.value || null) as SellableProduct['menuLabel'] })}><option value="">Sin etiqueta</option><option value="top_sales">🔥 Más vendido</option><option value="new">✨ Nuevo</option><option value="recommended">⭐ Recomendado</option><option value="free_drink">🥤 Refresco gratis</option></select></div>
+                <div className="mnu-product-section"><div className="mnu-product-section-title">Etiqueta del plato <small>Visible para los clientes</small></div><StyledSelect className="mnu-label-select modal-select-dark" aria-label="Etiqueta del plato" value={form.menuLabel ?? ''} onChange={e => setForm({ ...form, menuLabel: (e.target.value || null) as SellableProduct['menuLabel'] })}><option value="">Sin etiqueta</option><option value="top_sales">🔥 Más vendido</option><option value="new">✨ Nuevo</option><option value="recommended">⭐ Recomendado</option><option value="free_drink">🥤 Refresco gratis</option></StyledSelect></div>
               </section>
             </div>
 

@@ -43,9 +43,31 @@ describe('Finanzas', () => {
     fireEvent.click(screen.getByRole('button', { name: /Cobros recibidos en dólares/i }))
 
     const dialog = await screen.findByRole('dialog')
-    expect(dialog).toHaveTextContent('CONTROL DIARIO DE SALDOS')
+    expect(dialog).toHaveTextContent(/Control diario de saldos/i)
     expect(dialog).toHaveTextContent('Caja Full China')
-    expect(dialog.parentElement).toBe(document.body)
+    expect(dialog).toHaveClass('fin-dialog', 'fin-account-modal', 'fin-ledger-modal')
+    expect(dialog.parentElement?.parentElement).toBe(document.body)
     await waitFor(() => expect(mocks.getFinancialAccounts).toHaveBeenCalled())
+  })
+
+  it('usa el mismo sistema visual y permite cerrar las ventanas con Escape', async () => {
+    render(<Finanzas />)
+
+    expect(await screen.findByText('Caja Full China')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Caja Full China/i }))
+
+    const accountDialog = await screen.findByRole('dialog', { name: 'Caja Full China' })
+    expect(accountDialog).toHaveClass('fin-dialog', 'fin-account-modal')
+    expect(accountDialog.querySelector('.fin-dialog-header')).toBeInTheDocument()
+    expect(accountDialog.querySelector('.fin-dialog-actions')).toBeInTheDocument()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Caja Full China' })).not.toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /Registrar transferencia/i }))
+    const transferDialog = await screen.findByRole('dialog', { name: 'Registrar transferencia' })
+    expect(transferDialog).toHaveClass('fin-dialog', 'fin-transfer-modal')
+    expect(screen.getByLabelText(/Concepto/i)).toHaveClass('fin-field-control')
+    expect(screen.getByRole('button', { name: /Guardar transferencia/i })).toHaveClass('fin-dialog-primary')
   })
 })

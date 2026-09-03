@@ -383,6 +383,8 @@
 }
 
 .mnu-product-section { position: relative; }
+.mnu-product-section > .mnu-label-select { width: 100%; }
+.mnu-product-section > .mnu-label-select .fc-select-trigger { min-height: 46px; background: linear-gradient(180deg, rgba(34,34,39,.98), rgba(25,25,29,.98)); }
 .mnu-info-section::before,
 .mnu-price-section::before,
 .mnu-category-section::before {
