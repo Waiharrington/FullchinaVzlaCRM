@@ -513,14 +513,14 @@ export function Inventario() {
                         <td>
                           <div className="inv-actions">
                             <button className="inv-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${ing.name}`} onClick={() => openView(ing)}>
-                              <Eye size={14} />
+                              <Eye size={13} />
                             </button>
                             {showCosts && (
                               <>
-                                <button className="inv-action-btn" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={14} /></button>
-                                <button className="inv-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${ing.name}`} onClick={() => openAdjustment(ing, 1)}><Plus size={14} /></button>
-                                <button className="inv-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${ing.name}`} onClick={() => openAdjustment(ing, -1)}><Minus size={14} /></button>
-                                <button className="inv-action-btn danger" title="Eliminar artículo" aria-label={`Eliminar ${ing.name}`} onClick={() => handleDelete(ing)}><Trash2 size={14} /></button>
+                                <button className="inv-action-btn" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={13} /></button>
+                                <button className="inv-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${ing.name}`} onClick={() => openAdjustment(ing, 1)}><Plus size={13} /></button>
+                                <button className="inv-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${ing.name}`} onClick={() => openAdjustment(ing, -1)}><Minus size={13} /></button>
+                                <button className="inv-action-btn danger" title="Eliminar artículo" aria-label={`Eliminar ${ing.name}`} onClick={() => handleDelete(ing)}><Trash2 size={13} /></button>
                               </>
                             )}
                           </div>
