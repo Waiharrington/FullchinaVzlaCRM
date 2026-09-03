@@ -21,8 +21,8 @@ import {
   sendToKitchen,
   getCustomers,
   createCustomer,
-  getProductsWithModifiers,
   getProductModifiers,
+  getAllProductModifiers,
   getOccupiedTables,
   getMenuCategories,
   getFinancialAccounts,
@@ -132,14 +132,14 @@ const usdToPaymentInput = (usd: number, method: SplitPaymentMethod, rate: number
   (usesBolivares(method) ? usd * (rate || 0) : usd).toFixed(2)
 
 const FOOD_IMAGES: Record<string, string> = {
-  arroz: 'https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=600&q=80',
-  noodles: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80',
-  lumpia: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80',
-  combo: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=600&q=80',
-  proteina: 'https://images.unsplash.com/photo-1525755662778-989d0524087e?auto=format&fit=crop&w=600&q=80',
-  bebida: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80',
-  extra: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80',
-  default: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=600&q=80'
+  arroz: '/optimized/productos/M1.webp',
+  noodles: '/optimized/productos/M2.webp',
+  lumpia: '/optimized/productos/M13.webp',
+  combo: '/optimized/productos/M53.webp',
+  proteina: '/optimized/productos/M3.webp',
+  bebida: '/optimized/productos/M16.webp',
+  extra: '/optimized/productos/M4.webp',
+  default: '/optimized/productos/M1.webp'
 }
 
 function getProductImage(product: Product): string {
@@ -450,9 +450,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         cajaCache = { products: cajaCache?.products ?? readCachedProducts(), todayOrders: orders }
       })
       .catch((e) => console.error('getTodayOrders error:', e))
-    void getProductsWithModifiers().then((withMods) => {
-      if (!cancelled) setProductsWithModifiers(withMods)
-    }).catch((e) => console.error('getProductsWithModifiers error:', e))
+    void getAllProductModifiers().then((modMap) => {
+      if (!cancelled) setProductsWithModifiers(new Set(modMap.keys()))
+    }).catch((e) => console.error('getAllProductModifiers error:', e))
     void getMenuCategories().then((cats) => {
       if (!cancelled && cats.length) hydrateMenuCategories(cats)
     }).catch((e) => console.error('getMenuCategories error:', e))

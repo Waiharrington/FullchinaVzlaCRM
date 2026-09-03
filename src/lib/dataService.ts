@@ -720,8 +720,18 @@ export async function deleteDeliveryZone(id: string): Promise<void> {
 
 // --- Modificadores -----------------------------------------------------------
 
+const modifiersCache = new Map<string, ProductModifierGroup[]>()
+
+/** Invalida la caché de modificadores */
+export function invalidateModifiersCache() {
+  modifiersCache.clear()
+}
+
 /** Conjunto de ids de productos que tienen al menos un modificador asignado. */
 export async function getProductsWithModifiers(): Promise<Set<string>> {
+  if (modifiersCache.size > 0) {
+    return new Set(modifiersCache.keys())
+  }
   const { data, error } = await client()
     .from('sellable_product_modifiers')
     .select('sellable_product_id')
@@ -730,8 +740,48 @@ export async function getProductsWithModifiers(): Promise<Set<string>> {
   return new Set((data ?? []).map((r) => r.sellable_product_id as string))
 }
 
+/** Precarga todos los modificadores en 1 sola consulta para respuesta instantánea (0ms) en caja */
+export async function getAllProductModifiers(): Promise<Map<string, ProductModifierGroup[]>> {
+  if (modifiersCache.size > 0) {
+    return new Map(modifiersCache)
+  }
+  const { data, error } = await client()
+    .from('sellable_product_modifiers')
+    .select('sellable_product_id, modifiers(id,name,min_selections,max_selections,allow_repeat,display_order,is_active,modifier_options(id,name,sale_price,display_order,is_active))')
+
+  if (error) throw error
+
+  const result = new Map<string, ProductModifierGroup[]>()
+  for (const row of data ?? []) {
+    const prodId = row.sellable_product_id as string
+    const m = (Array.isArray(row.modifiers) ? row.modifiers[0] : row.modifiers) as Record<string, unknown> | null
+    if (!m || m.is_active === false) continue
+    const rawOptions = (m.modifier_options as Array<Record<string, unknown>>) ?? []
+    const options: ModifierOption[] = rawOptions
+      .filter((o) => o.is_active !== false)
+      .sort((a, b) => Number(a.display_order ?? 0) - Number(b.display_order ?? 0))
+      .map((o) => ({ id: o.id as string, name: o.name as string, price: Number(o.sale_price ?? 0) }))
+    const group: ProductModifierGroup = {
+      modifierId: m.id as string,
+      name: m.name as string,
+      minSelections: Number(m.min_selections ?? 0),
+      maxSelections: m.max_selections == null ? null : Number(m.max_selections),
+      allowRepeat: Boolean(m.allow_repeat),
+      options,
+    }
+    const current = result.get(prodId) ?? []
+    current.push(group)
+    result.set(prodId, current)
+    modifiersCache.set(prodId, current)
+  }
+  return result
+}
+
 /** Grupos de modificadores (con sus opciones) de un producto. */
 export async function getProductModifiers(productId: string): Promise<ProductModifierGroup[]> {
+  if (modifiersCache.has(productId)) {
+    return modifiersCache.get(productId)!
+  }
   const { data, error } = await client()
     .from('sellable_product_modifiers')
     .select('modifiers(id,name,min_selections,max_selections,allow_repeat,display_order,is_active,modifier_options(id,name,sale_price,display_order,is_active))')
@@ -757,7 +807,9 @@ export async function getProductModifiers(productId: string): Promise<ProductMod
       options,
     })
   }
-  return groups.sort((a, b) => a.name.localeCompare(b.name))
+  const sorted = groups.sort((a, b) => a.name.localeCompare(b.name))
+  modifiersCache.set(productId, sorted)
+  return sorted
 }
 
 // --- Cobro (checkout) --------------------------------------------------------
@@ -1807,12 +1859,21 @@ export async function getFinancialOperations(dateStart?: string, dateEnd?: strin
 
 // --- Clientes y fidelización ------------------------------------------------
 
-export async function getCustomers(): Promise<Customer[]> {
+let customersCache: Customer[] | null = null
+
+export function invalidateCustomersCache() {
+  customersCache = null
+}
+
+export async function getCustomers(forceRefresh = false): Promise<Customer[]> {
+  if (customersCache && !forceRefresh) {
+    return customersCache
+  }
   const { data, error } = await client().from('customers')
     .select('id,full_name,identification,phone,address,email,total_visits,rewards_unlocked,last_visit,favorite_product,birth_date,created_at,is_active')
     .order('full_name')
   if (error) throw error
-  return (data ?? []).map((row) => ({
+  const mapped = (data ?? []).map((row) => ({
     id: row.id as string,
     name: row.full_name as string,
     identification: (row.identification as string) ?? '',
@@ -1827,9 +1888,12 @@ export async function getCustomers(): Promise<Customer[]> {
     createdAt: (row.created_at as string) ?? '',
     isActive: Boolean(row.is_active),
   }))
+  customersCache = mapped
+  return mapped
 }
 
 export async function setCustomerActive(id: string, isActive: boolean): Promise<void> {
+  invalidateCustomersCache()
   const { error } = await client().from('customers').update({ is_active: isActive }).eq('id', id)
   if (error) throw error
 }
@@ -1913,6 +1977,7 @@ export async function getCustomerPurchaseMetrics(): Promise<CustomerPurchaseMetr
 }
 
 export async function createCustomer(params: { name: string; identification?: string; phone?: string; address?: string; birthDate?: string }): Promise<Customer> {
+  invalidateCustomersCache()
   const { data, error } = await client().rpc('fn_create_customer', {
     p_full_name: params.name,
     p_identification: params.identification || null,
@@ -1933,6 +1998,7 @@ export async function createCustomer(params: { name: string; identification?: st
 }
 
 export async function updateCustomer(id: string, params: { name: string; identification?: string; phone?: string; address?: string; birthDate?: string }): Promise<Customer> {
+  invalidateCustomersCache()
   const { data, error } = await client().rpc('fn_update_customer', {
     p_id: id,
     p_full_name: params.name,
