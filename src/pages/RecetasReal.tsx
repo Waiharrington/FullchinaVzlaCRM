@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent, updateRecipeComponent,
-  getIngredients, getUnits, getRecipeSummaries,
-  type RecipeComponent, type SellableProduct, type Ingredient, type RecipeSummary,
+  getIngredients, getUnits, getRecipeSummaries, getPortionRecipes,
+  type RecipeComponent, type SellableProduct, type Ingredient, type RecipeSummary, type PortionRecipe,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -24,8 +25,10 @@ import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../li
 
 const PAGE_SIZE = 8
 type Tab = 'todas' | 'completas' | 'faltan'
+type RecipeView = 'platos' | 'porciones' | 'personal'
 
 export function RecetasReal() {
+  const navigate = useNavigate()
   const { bcvRate } = useRates()
   const [products, setProducts] = useState<SellableProduct[]>([])
   const [summaries, setSummaries] = useState<Map<string, RecipeSummary>>(new Map())
@@ -36,6 +39,8 @@ export function RecetasReal() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [recipeView, setRecipeView] = useState<RecipeView>('platos')
+  const [portions, setPortions] = useState<PortionRecipe[]>([])
 
   // Filtros / navegación
   const [search, setSearch] = useState('')
@@ -72,11 +77,12 @@ export function RecetasReal() {
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true)
-      const [prods, ingr, un, sums] = await Promise.all([
+      const [prods, ingr, un, sums, portionRows] = await Promise.all([
         getSellableProducts(),
         getIngredients(),
         getUnits(),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
+        getPortionRecipes().catch(() => []),
       ])
       // Las bebidas son productos de reventa: se auto-gestionan como ítem de
       // inventario (costo/venta en Menú, stock en Inventario) y descuentan solo
@@ -87,6 +93,7 @@ export function RecetasReal() {
       setIngredients(ingr)
       setUnits(un)
       setSummaries(sums)
+      setPortions(portionRows)
       if (recipeProds.length > 0) setSelected((cur) => cur ?? recipeProds[0])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando recetas')
@@ -258,10 +265,16 @@ export function RecetasReal() {
         </button>
       </header>
 
+      <nav className="rec-module-tabs" aria-label="Tipos de receta">
+        <button className={recipeView === 'platos' ? 'active' : ''} onClick={() => setRecipeView('platos')}><UtensilsCrossed size={16} /><span>Recetas de platos</span><small>{products.length}</small></button>
+        <button className={recipeView === 'porciones' ? 'active' : ''} onClick={() => setRecipeView('porciones')}><Soup size={16} /><span>Recetas de porciones</span><small>{portions.length}</small></button>
+        <button className={recipeView === 'personal' ? 'active' : ''} onClick={() => setRecipeView('personal')}><BookOpen size={16} /><span>Alimentación del personal</span><small>Almuerzo y cena</small></button>
+      </nav>
+
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
-      <div className="rec-layout management-workspace-content">
+      {recipeView === 'platos' ? <div className="rec-layout management-workspace-content">
         {/* ============ Lista ============ */}
         <div className="rec-panel management-workspace-panel">
           <div className="rec-search">
@@ -490,7 +503,11 @@ export function RecetasReal() {
             </>
           )}
         </div>
-      </div>
+      </div> : recipeView === 'porciones' ? (
+        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Recetas de porciones</h2><p>Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</p></div><button className="rec-add-btn" onClick={() => navigate('/inventario')}><Plus size={16} /> Nueva receta de porción</button></div>{portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una preparación base desde Inventario para definir sus ingredientes y rendimiento." actionLabel="Ir a Inventario" onAction={() => navigate('/inventario')} /></div> : <div className="rec-module-grid">{portions.map(portion => <article className="rec-module-card" key={portion.id}><div><h3>{portion.name}</h3><p>{portion.ingredientName} · {portion.quantity} {portion.unitSymbol} por porción</p></div><span className="rec-badge ok">Disponible para platos</span></article>)}</div>}</section>
+      ) : (
+        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Alimentación del personal</h2><p>Recetas separadas para almuerzo y cena, sin mezclarlas con los platos vendidos al cliente.</p></div><button className="rec-add-btn" onClick={() => navigate('/inventario')}><UtensilsCrossed size={16} /> Registrar consumo</button></div><div className="rec-meal-cards"><article className="rec-module-card"><div className="meal-icon">☀️</div><h3>Almuerzo</h3><p>Configura los ingredientes o una preparación base y registra las porciones servidas.</p><button className="rec-link-btn" onClick={() => navigate('/inventario')}>Gestionar en Inventario</button></article><article className="rec-module-card"><div className="meal-icon">🌙</div><h3>Cena</h3><p>Controla la proteína comprada aparte y los ingredientes usados del almacén.</p><button className="rec-link-btn" onClick={() => navigate('/inventario')}>Gestionar en Inventario</button></article></div></section>
+      )}
 
       {showNewRecipe && createPortal(
         <div className={`rec-modal-overlay ${closingNewRecipe ? 'closing' : ''}`} onClick={() => closeNewRecipe()}>

@@ -76,18 +76,18 @@
 
 .almacen-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .almacen-metric-card {
   position: relative;
   min-width: 0;
-  min-height: 112px;
+  min-height: 96px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px;
+  gap: 9px;
+  padding: 13px 12px;
   overflow: hidden;
   background: linear-gradient(145deg, rgba(29, 29, 32, 0.98), rgba(20, 20, 22, 0.98));
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -111,6 +111,12 @@
   transform: translateY(-2px);
   border-color: rgba(255, 255, 255, 0.16);
 }
+.almacen-metric-card { border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+
+/* Las acciones del almacén se abren desde los cuadros superiores. */
+.almacen-main-grid { grid-template-columns: minmax(0, 1fr); }
+.almacen-side-column > section:nth-child(-n + 2) { display: none; }
+.almacen-side-column > section:last-child { margin-top: 0; }
 
 .accent-red { color: #f87171; }
 .accent-green { color: #34d399; }
@@ -501,7 +507,6 @@
 .history-empty { padding: 18px 12px; color: var(--text-muted); background: rgba(255, 255, 255, 0.025); border-radius: 10px; font-size: 0.76rem; text-align: center; }
 
 @media (max-width: 1200px) {
-  .almacen-main-grid { grid-template-columns: minmax(0, 1fr) 350px; }
   .almacen-metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

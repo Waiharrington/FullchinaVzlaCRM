@@ -340,6 +340,18 @@ export interface RecipeComponent {
   costPerUnit: number | null
 }
 
+export interface PortionRecipe {
+  id: string
+  name: string
+  ingredientId: string
+  ingredientName: string
+  quantity: number
+  unitId: string
+  unitSymbol: string
+  isActive: boolean
+  notes: string | null
+}
+
 export interface Employee {
   id: string
   fullName: string
@@ -3226,6 +3238,18 @@ export async function getProductionBonusRecords(): Promise<ProductionBonusRecord
 }
 
 // --- Recetas ------------------------------------------------------------------
+
+export async function getPortionRecipes(): Promise<PortionRecipe[]> {
+  const { data, error } = await client().from('portion_recipes').select('id,name,ingredient_id,portion_quantity,portion_unit_id,is_active,notes,ingredients(name),units(symbol)').eq('is_active', true).order('name')
+  if (error) throw error
+  return (data ?? []).map((r) => ({ id: r.id as string, name: r.name as string, ingredientId: r.ingredient_id as string, ingredientName: Array.isArray(r.ingredients) ? String((r.ingredients[0] as Record<string, unknown>)?.name ?? '') : '', quantity: Number(r.portion_quantity), unitId: r.portion_unit_id as string, unitSymbol: Array.isArray(r.units) ? String((r.units[0] as Record<string, unknown>)?.symbol ?? '') : '', isActive: Boolean(r.is_active), notes: (r.notes as string) ?? null }))
+}
+
+export async function createPortionRecipe(params: { name: string; ingredientId: string; quantity: number; unitId: string; notes?: string }): Promise<string> {
+  const { data, error } = await client().from('portion_recipes').insert({ name: params.name.trim(), ingredient_id: params.ingredientId, portion_quantity: params.quantity, portion_unit_id: params.unitId, notes: params.notes?.trim() || null }).select('id').single()
+  if (error) throw error
+  return data.id as string
+}
 
 export async function createRecipeComponent(params: {
   sellableProductId: string
