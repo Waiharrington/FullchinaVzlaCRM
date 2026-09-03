@@ -179,7 +179,7 @@ export function Almacen() {
 
       <section className="almacen-metrics-grid management-workspace-metrics" aria-label="Resumen del almacén">
         <div className="almacen-metric-card accent-red">
-          <div className="metric-icon-box"><Package size={20} /></div>
+          <div className="metric-icon-box"><Package size={18} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Insumos con stock</span>
             <strong className="metric-large-val">{itemsWithStock.length}</strong>
@@ -188,7 +188,7 @@ export function Almacen() {
         </div>
 
         <div className="almacen-metric-card accent-green">
-          <div className="metric-icon-box"><DollarSign size={20} /></div>
+          <div className="metric-icon-box"><DollarSign size={18} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Valorización</span>
             <strong className="metric-large-val">${totalValuation.toFixed(2)}</strong>
@@ -196,8 +196,17 @@ export function Almacen() {
           </div>
         </div>
 
-        <button type="button" className="almacen-metric-card accent-purple" onClick={() => setQuickAction('receive')}>
-          <div className="metric-icon-box"><ArrowRightLeft size={20} /></div>
+        <button type="button" className="almacen-metric-card accent-purple" onClick={() => setQuickAction('transfer')}>
+          <div className="metric-icon-box"><ArrowRightLeft size={18} /></div>
+          <div className="metric-info-group">
+            <span className="metric-label">Enviar a inventario</span>
+            <strong className="metric-large-val">{itemsWithStock.length}</strong>
+            <span className="metric-sub-text">Despachar a cocina</span>
+          </div>
+        </button>
+
+        <button type="button" className="almacen-metric-card accent-blue" onClick={() => setQuickAction('receive')}>
+          <div className="metric-icon-box"><Plus size={18} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Traer desde inventario</span>
             <strong className="metric-large-val">{operationalItems.filter(i => i.quantity > 0).length}</strong>
@@ -206,7 +215,7 @@ export function Almacen() {
         </button>
 
         <button type="button" className="almacen-metric-card accent-orange" onClick={() => setQuickAction('critical')}>
-          <div className="metric-icon-box"><AlertTriangle size={20} /></div>
+          <div className="metric-icon-box"><AlertTriangle size={18} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Stock crítico</span>
             <strong className="metric-large-val">{criticalItems}</strong>
@@ -284,39 +293,41 @@ export function Almacen() {
               </thead>
               <tbody>
                 {displayedItems.length === 0 ? (
-                  <tr><td colSpan={8}>
-                    <EmptyState
-                      compact
-                      title={
-                        searchTerm
-                          ? 'No se encontraron insumos'
-                          : filterMode === 'stock'
-                          ? 'No hay insumos con existencias en almacén'
-                          : 'No hay insumos registrados'
-                      }
-                      description={
-                        searchTerm
-                          ? `No hay resultados para "${searchTerm}".`
-                          : filterMode === 'stock'
-                          ? 'Puedes traer insumos desde el Food Truck con el botón "Traer al almacén" o cambiar a la pestaña "Todos los insumos".'
-                          : 'Agrega tu primer insumo para empezar a llevar el inventario.'
-                      }
-                      actionLabel={
-                        searchTerm
-                          ? 'Limpiar búsqueda'
-                          : filterMode === 'stock'
-                          ? 'Traer desde inventario'
-                          : undefined
-                      }
-                      onAction={
-                        searchTerm
-                          ? () => setSearchTerm('')
-                          : filterMode === 'stock'
-                          ? () => setQuickAction('receive')
-                          : undefined
-                      }
-                    />
-                  </td></tr>
+                  <tr>
+                    <td colSpan={8} className="almacen-empty-cell">
+                      <EmptyState
+                        compact
+                        title={
+                          searchTerm
+                            ? 'No se encontraron insumos'
+                            : filterMode === 'stock'
+                            ? 'No hay insumos con existencias en almacén'
+                            : 'No hay insumos registrados'
+                        }
+                        description={
+                          searchTerm
+                            ? `No hay resultados para "${searchTerm}".`
+                            : filterMode === 'stock'
+                            ? 'Puedes traer insumos desde el Food Truck con el botón "Traer al almacén" o cambiar a la pestaña "Todos los insumos".'
+                            : 'Agrega tu primer insumo para empezar a llevar el inventario.'
+                        }
+                        actionLabel={
+                          searchTerm
+                            ? 'Limpiar búsqueda'
+                            : filterMode === 'stock'
+                            ? 'Traer desde inventario'
+                            : undefined
+                        }
+                        onAction={
+                          searchTerm
+                            ? () => setSearchTerm('')
+                            : filterMode === 'stock'
+                            ? () => setQuickAction('receive')
+                            : undefined
+                        }
+                      />
+                    </td>
+                  </tr>
                 ) : displayedItems.map(item => {
                   const isLow = item.quantity <= item.minStock
                   const operationalQty = operationalStockMap.get(item.id) ?? 0
