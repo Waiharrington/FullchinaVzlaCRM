@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent, updateRecipeComponent,
-  getIngredients, getUnits, getRecipeSummaries, getPortionRecipes,
+  getIngredients, getUnits, getRecipeSummaries, getPortionRecipes, createPortionRecipe,
   type RecipeComponent, type SellableProduct, type Ingredient, type RecipeSummary, type PortionRecipe,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
@@ -41,6 +41,11 @@ export function RecetasReal() {
   const [notice, setNotice] = useState('')
   const [recipeView, setRecipeView] = useState<RecipeView>('platos')
   const [portions, setPortions] = useState<PortionRecipe[]>([])
+  const [showPortionForm, setShowPortionForm] = useState(false)
+  const [portionName, setPortionName] = useState('')
+  const [portionIngredientId, setPortionIngredientId] = useState('')
+  const [portionQuantity, setPortionQuantity] = useState('')
+  const [portionUnitId, setPortionUnitId] = useState('')
 
   // Filtros / navegación
   const [search, setSearch] = useState('')
@@ -92,6 +97,7 @@ export function RecetasReal() {
       setProducts(recipeProds)
       setIngredients(ingr)
       setUnits(un)
+      if (ingr.length > 0 && !portionIngredientId) { setPortionIngredientId(ingr[0].id); setPortionUnitId(ingr[0].unitId) }
       setSummaries(sums)
       setPortions(portionRows)
       if (recipeProds.length > 0) setSelected((cur) => cur ?? recipeProds[0])
@@ -163,6 +169,20 @@ export function RecetasReal() {
     setAddIngredientId(id)
     const ingr = ingredients.find((x) => x.id === id)
     if (ingr) setAddUnitId(ingr.unitId)
+  }
+
+  const openPortionForm = () => { setPortionName(''); setPortionQuantity(''); setShowPortionForm(true) }
+  const handleCreatePortion = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const quantity = Number.parseFloat(portionQuantity)
+    if (!portionName.trim() || !portionIngredientId || !portionUnitId || !Number.isFinite(quantity) || quantity <= 0) return
+    try {
+      await createPortionRecipe({ name: portionName, ingredientId: portionIngredientId, quantity, unitId: portionUnitId })
+      setShowPortionForm(false)
+      setPortions(await getPortionRecipes())
+      setNotice('Receta de porción creada')
+      window.setTimeout(() => setNotice(''), 3000)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error creando receta de porción') }
   }
 
   const refreshSummaryFor = useCallback(async () => {
@@ -504,7 +524,7 @@ export function RecetasReal() {
           )}
         </div>
       </div> : recipeView === 'porciones' ? (
-        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Recetas de porciones</h2><p>Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</p></div><button className="rec-add-btn" onClick={() => navigate('/inventario')}><Plus size={16} /> Nueva receta de porción</button></div>{portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una preparación base desde Inventario para definir sus ingredientes y rendimiento." actionLabel="Ir a Inventario" onAction={() => navigate('/inventario')} /></div> : <div className="rec-module-grid">{portions.map(portion => <article className="rec-module-card" key={portion.id}><div><h3>{portion.name}</h3><p>{portion.ingredientName} · {portion.quantity} {portion.unitSymbol} por porción</p></div><span className="rec-badge ok">Disponible para platos</span></article>)}</div>}</section>
+        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Recetas de porciones</h2><p>Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</p></div><button className="rec-add-btn" onClick={openPortionForm}><Plus size={16} /> Nueva receta de porción</button></div>{portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una porción base como pollo de 125 g para usarla en tus platos." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-module-grid">{portions.map(portion => <article className="rec-module-card" key={portion.id}><div><h3>{portion.name}</h3><p>{portion.ingredientName} · {portion.quantity} {portion.unitSymbol} por porción</p></div><span className="rec-badge ok">Disponible para platos</span></article>)}</div>}</section>
       ) : (
         <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Alimentación del personal</h2><p>Recetas separadas para almuerzo y cena, sin mezclarlas con los platos vendidos al cliente.</p></div><button className="rec-add-btn" onClick={() => navigate('/inventario')}><UtensilsCrossed size={16} /> Registrar consumo</button></div><div className="rec-meal-cards"><article className="rec-module-card"><div className="meal-icon">☀️</div><h3>Almuerzo</h3><p>Configura los ingredientes o una preparación base y registra las porciones servidas.</p><button className="rec-link-btn" onClick={() => navigate('/inventario')}>Gestionar en Inventario</button></article><article className="rec-module-card"><div className="meal-icon">🌙</div><h3>Cena</h3><p>Controla la proteína comprada aparte y los ingredientes usados del almacén.</p><button className="rec-link-btn" onClick={() => navigate('/inventario')}>Gestionar en Inventario</button></article></div></section>
       )}
@@ -557,6 +577,7 @@ export function RecetasReal() {
         </div>,
         document.body
       )}
+      {showPortionForm && createPortal(<div className="rec-modal-overlay" onClick={() => setShowPortionForm(false)}><form className="rec-modal" onClick={e => e.stopPropagation()} onSubmit={handleCreatePortion}><div className="rec-modal-header"><div className="rec-modal-header-icon"><Soup size={18} /></div><h3>Nueva receta de porción</h3></div><p className="rec-detail-sub">Define la cantidad exacta que representa una porción.</p><label className="rec-form-label">Nombre de la porción<input value={portionName} onChange={e => setPortionName(e.target.value)} placeholder="Ej. Porción de pollo" required /></label><label className="rec-form-label">Ingrediente<select value={portionIngredientId} onChange={e => { setPortionIngredientId(e.target.value); const i = ingredients.find(x => x.id === e.target.value); if (i) setPortionUnitId(i.unitId) }}>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></label><div className="rec-portion-fields"><label className="rec-form-label">Cantidad por porción<input type="number" min="0.001" step="0.001" value={portionQuantity} onChange={e => setPortionQuantity(e.target.value)} placeholder="125" required /></label><label className="rec-form-label">Unidad<select value={portionUnitId} onChange={e => setPortionUnitId(e.target.value)}>{units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}</select></label></div><div className="rec-modal-actions"><button type="button" className="rec-modal-cancel" onClick={() => setShowPortionForm(false)}>Cancelar</button><button type="submit" className="rec-add-btn"><Check size={16} /> Guardar porción</button></div></form></div>, document.body)}
     </div>
   )
 }
