@@ -7,6 +7,7 @@ import {
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { DateField } from '../components/DateField'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
 import { useAuth } from '../context/auth-context'
@@ -286,7 +287,7 @@ export function ComprasReal() {
                   <button type="button" className="cmp-ghost-btn" onClick={() => setShowSupplierForm(!showSupplierForm)}><Plus size={14} /> Nuevo Proveedor</button>
                 </div>
               </div>
-              <div className="cmp-field"><label>Fecha *</label><input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} /></div>
+              <div className="cmp-field"><label>Fecha *</label><DateField value={purchaseDate} onChange={setPurchaseDate} required /></div>
               <div className="cmp-field"><label>N° de Factura</label><input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="Ej: 0001-12345" /></div>
               <div className="cmp-field"><label>Notas (opcional)</label><input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej: Entrega rápida" /></div>
             </div>

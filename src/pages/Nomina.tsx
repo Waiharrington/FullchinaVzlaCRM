@@ -9,6 +9,7 @@ import {
 } from '../lib/dataService'
 import { formatUsd, dateKeyInTimeZone } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { DateField } from '../components/DateField'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
 import {
@@ -468,8 +469,8 @@ export function Nomina() {
               <h3>Nuevo período de nómina</h3>
             </div>
             <div className="nom-row2">
-              <div className="nom-field"><label>Inicio *</label><input type="date" value={pStart} onChange={(e) => setPStart(e.target.value)} required /></div>
-              <div className="nom-field"><label>Fin *</label><input type="date" value={pEnd} onChange={(e) => setPEnd(e.target.value)} required /></div>
+              <div className="nom-field"><label>Inicio *</label><DateField value={pStart} onChange={setPStart} required /></div>
+              <div className="nom-field"><label>Fin *</label><DateField value={pEnd} onChange={setPEnd} required /></div>
             </div>
             <div className="nom-field"><label>Notas</label><input value={pNotes} onChange={(e) => setPNotes(e.target.value)} placeholder="Ej: Semana 3 - Agosto" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closePeriod()}>Cancelar</button><button type="submit" className="nom-btn">Crear período</button></div>
@@ -487,7 +488,7 @@ export function Nomina() {
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={advAmt} onChange={(v) => setAdvAmt(v)} required /></div>
-              <div className="nom-field"><label>Fecha</label><input type="date" value={advDate} onChange={(e) => setAdvDate(e.target.value)} /></div>
+              <div className="nom-field"><label>Fecha</label><DateField value={advDate} onChange={setAdvDate} /></div>
             </div>
             <div className="nom-field"><label>Notas</label><input value={advNotes} onChange={(e) => setAdvNotes(e.target.value)} placeholder="Opcional" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closeAdvance()}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
@@ -505,7 +506,7 @@ export function Nomina() {
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={bonAmt} onChange={(v) => setBonAmt(v)} required /></div>
-              <div className="nom-field"><label>Fecha</label><input type="date" value={bonDate} onChange={(e) => setBonDate(e.target.value)} /></div>
+              <div className="nom-field"><label>Fecha</label><DateField value={bonDate} onChange={setBonDate} /></div>
             </div>
             <div className="nom-field"><label>Motivo</label><input value={bonReason} onChange={(e) => setBonReason(e.target.value)} placeholder="Ej: Ventas destacadas" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closeBonus()}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>

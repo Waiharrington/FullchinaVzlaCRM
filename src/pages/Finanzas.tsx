@@ -11,6 +11,7 @@ import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
+import { DateField } from '../components/DateField'
 import { formatUsd, formatVes } from '../lib/money'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
@@ -274,7 +275,7 @@ export function Finanzas() {
               <option value="hoy">Hoy</option><option value="ayer">Ayer</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="rango">Rango personalizado</option>
             </StyledSelect>
           </span>
-          {period === 'rango' && <span className="fin-date-range"><input type="date" value={rangeStart} onChange={(e) => setRangeStart(e.target.value)} /><span>a</span><input type="date" value={rangeEnd} min={rangeStart} onChange={(e) => setRangeEnd(e.target.value)} /></span>}
+          {period === 'rango' && <span className="fin-date-range"><DateField value={rangeStart} onChange={setRangeStart} /><span>a</span><DateField value={rangeEnd} onChange={setRangeEnd} /></span>}
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
