@@ -619,6 +619,38 @@
   max-height: calc(100dvh - 32px);
   overflow-y: auto;
 }
+
+.inv-detail-modal.inv-detail-modal--view {
+  width: min(540px, 100%);
+}
+
+.inv-modal-date-range {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 8px 12px;
+  border-radius: 12px;
+}
+
+.inv-modal-date-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.inv-modal-date-box span {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.inv-modal-date-sep {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
 .inv-modal-close {
   position: absolute;
   top: 14px;

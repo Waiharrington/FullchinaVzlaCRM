@@ -38,6 +38,7 @@ import {
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { confirmDialog } from '../components/ConfirmDialog'
+import { DateField } from '../components/DateField'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
@@ -123,6 +124,10 @@ export function Inventario() {
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<'all' | 'critical' | 'low'>('all')
   const [alertSearchTerm, setAlertSearchTerm] = useState('')
   const [ingredientMovements, setIngredientMovements] = useState<StockMovement[]>([])
+  const [itemViewDateFilter, setItemViewDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
+  const [itemViewStartDate, setItemViewStartDate] = useState('')
+  const [itemViewEndDate, setItemViewEndDate] = useState('')
+  const [itemViewCurrentPage, setItemViewCurrentPage] = useState(1)
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
   const [editForm, setEditForm] = useState({ name: '', unitId: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
   const [adjustment, setAdjustment] = useState({ direction: 1 as 1 | -1, quantity: '', notes: '' })
@@ -166,6 +171,10 @@ export function Inventario() {
     setModalMode('view')
     setModalError('')
     setModalLoading(true)
+    setItemViewDateFilter('all')
+    setItemViewStartDate('')
+    setItemViewEndDate('')
+    setItemViewCurrentPage(1)
     try {
       setIngredientMovements(await getStockMovements(ingredient.id))
     } catch (error) {
@@ -360,6 +369,47 @@ export function Inventario() {
     const start = (movementCurrentPage - 1) * MOVEMENTS_PER_PAGE
     return filteredAllMovements.slice(start, start + MOVEMENTS_PER_PAGE)
   }, [filteredAllMovements, movementCurrentPage])
+
+  const filteredIngredientMovements = useMemo(() => {
+    return ingredientMovements.filter(m => {
+      const movDate = new Date(m.createdAt)
+      if (itemViewDateFilter === 'today') {
+        const now = new Date()
+        const isSameDay =
+          movDate.getFullYear() === now.getFullYear() &&
+          movDate.getMonth() === now.getMonth() &&
+          movDate.getDate() === now.getDate()
+        if (!isSameDay) return false
+      } else if (itemViewDateFilter === 'week') {
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        weekAgo.setHours(0, 0, 0, 0)
+        if (movDate < weekAgo) return false
+      } else if (itemViewDateFilter === 'month') {
+        const monthAgo = new Date()
+        monthAgo.setDate(monthAgo.getDate() - 30)
+        monthAgo.setHours(0, 0, 0, 0)
+        if (movDate < monthAgo) return false
+      } else if (itemViewDateFilter === 'custom') {
+        if (itemViewStartDate) {
+          const start = new Date(itemViewStartDate + 'T00:00:00')
+          if (movDate < start) return false
+        }
+        if (itemViewEndDate) {
+          const end = new Date(itemViewEndDate + 'T23:59:59')
+          if (movDate > end) return false
+        }
+      }
+      return true
+    })
+  }, [ingredientMovements, itemViewDateFilter, itemViewStartDate, itemViewEndDate])
+
+  const ITEM_MOVEMENTS_PER_PAGE = 20
+  const totalItemMovementPages = Math.ceil(filteredIngredientMovements.length / ITEM_MOVEMENTS_PER_PAGE)
+  const paginatedIngredientMovements = useMemo(() => {
+    const start = (itemViewCurrentPage - 1) * ITEM_MOVEMENTS_PER_PAGE
+    return filteredIngredientMovements.slice(start, start + ITEM_MOVEMENTS_PER_PAGE)
+  }, [filteredIngredientMovements, itemViewCurrentPage])
 
   const getStockStatus = (ing: Ingredient): 'ok' | 'low' | 'critical' => {
     if (ing.currentStock <= 5) return 'critical'
@@ -731,13 +781,126 @@ export function Inventario() {
       {successMessage && <div className="inv-success" role="status">{successMessage}<button onClick={() => setSuccessMessage('')} aria-label="Cerrar mensaje">×</button></div>}
       {selectedIngredient && modalMode && createPortal(
         <div className={`inv-modal-overlay ${closingIngredient ? 'closing' : ''}`} onClick={closeModal}>
-          <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
+          <div className={`inv-sidebar-card inv-detail-modal ${modalMode === 'view' ? 'inv-detail-modal--view' : ''}`} onClick={event => event.stopPropagation()}>
             <button className="inv-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
             {modalMode === 'view' && <>
               <div className="inv-modal-heading"><span><Eye size={18} /></span><div><small>Historial del artículo</small><h3>{selectedIngredient.name}</h3></div></div>
               <div className="inv-current-stock"><small>Stock actual</small><strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></div>
+
+              <div className="inv-modal-toolbar" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+                <div className="inv-modal-filter-pills">
+                  {[
+                    ['all', 'Todos'],
+                    ['today', 'Hoy'],
+                    ['week', '7 días'],
+                    ['month', '30 días'],
+                    ['custom', 'Rango'],
+                  ].map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`inv-modal-filter-pill ${itemViewDateFilter === key ? 'active' : ''}`}
+                      onClick={() => {
+                        setItemViewDateFilter(key as typeof itemViewDateFilter)
+                        setItemViewCurrentPage(1)
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {itemViewDateFilter === 'custom' && (
+                <div className="inv-modal-date-range">
+                  <div className="inv-modal-date-box">
+                    <span>Desde</span>
+                    <DateField
+                      value={itemViewStartDate}
+                      onChange={d => {
+                        setItemViewStartDate(d)
+                        setItemViewCurrentPage(1)
+                      }}
+                    />
+                  </div>
+                  <span className="inv-modal-date-sep">a</span>
+                  <div className="inv-modal-date-box">
+                    <span>Hasta</span>
+                    <DateField
+                      value={itemViewEndDate}
+                      onChange={d => {
+                        setItemViewEndDate(d)
+                        setItemViewCurrentPage(1)
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
-              {modalLoading ? <div className="inv-modal-loading"><Loader2 className="spin" /> Cargando movimientos…</div> : ingredientMovements.length === 0 ? <div className="inv-empty-state"><p>Este artículo todavía no tiene movimientos.</p></div> : <div className="inv-history-list">{ingredientMovements.map(mov => <div className="inv-history-row" key={mov.id}><div className={`inv-movement-icon ${mov.quantity > 0 ? 'entry' : 'exit'}`}>{mov.quantity > 0 ? <Plus size={15} /> : <Minus size={15} />}</div><div><strong>{getMovementLabel(mov.movementType)}</strong><small>{mov.notes || mov.referenceType || 'Sin nota'}</small><time>{new Date(mov.createdAt).toLocaleString('es-VE')}</time></div><b className={mov.quantity > 0 ? 'positive' : 'negative'}>{mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}</b></div>)}</div>}
+              {modalLoading ? (
+                <div className="inv-modal-loading"><Loader2 className="spin" /> Cargando movimientos…</div>
+              ) : filteredIngredientMovements.length === 0 ? (
+                <div className="inv-empty-state"><p>No hay movimientos registrados para este período.</p></div>
+              ) : (
+                <>
+                  <div className="inv-history-list">
+                    {paginatedIngredientMovements.map(mov => (
+                      <div className="inv-history-row" key={mov.id}>
+                        <div className={`inv-movement-icon ${mov.quantity > 0 ? 'entry' : 'exit'}`}>
+                          {mov.quantity > 0 ? <Plus size={15} /> : <Minus size={15} />}
+                        </div>
+                        <div>
+                          <strong>{getMovementLabel(mov.movementType)}</strong>
+                          <small>{mov.notes || mov.referenceType || 'Sin nota'}</small>
+                          <time>{new Date(mov.createdAt).toLocaleString('es-VE')}</time>
+                        </div>
+                        <b className={mov.quantity > 0 ? 'positive' : 'negative'}>
+                          {mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}
+                        </b>
+                      </div>
+                    ))}
+                  </div>
+
+                  {filteredIngredientMovements.length > ITEM_MOVEMENTS_PER_PAGE && (
+                    <div className="inv-modal-pagination">
+                      <span className="inv-modal-pagination-info">
+                        Mostrando {((itemViewCurrentPage - 1) * ITEM_MOVEMENTS_PER_PAGE) + 1} a {Math.min(itemViewCurrentPage * ITEM_MOVEMENTS_PER_PAGE, filteredIngredientMovements.length)} de {filteredIngredientMovements.length} movimientos
+                      </span>
+                      <div className="inv-pagination-btns">
+                        <button
+                          type="button"
+                          className="inv-page-btn"
+                          disabled={itemViewCurrentPage === 1}
+                          onClick={() => setItemViewCurrentPage(p => p - 1)}
+                          aria-label="Página anterior"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        {Array.from({ length: totalItemMovementPages }, (_, i) => i + 1).map(page => (
+                          <button
+                            key={page}
+                            type="button"
+                            className={`inv-page-btn ${itemViewCurrentPage === page ? 'active' : ''}`}
+                            onClick={() => setItemViewCurrentPage(page)}
+                          >
+                            {page}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          className="inv-page-btn"
+                          disabled={itemViewCurrentPage === totalItemMovementPages}
+                          onClick={() => setItemViewCurrentPage(p => p + 1)}
+                          aria-label="Página siguiente"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </>}
             {modalMode === 'edit' && <form onSubmit={saveEdit}>
               <div className="inv-modal-heading"><span><Pencil size={18} /></span><div><small>Editar artículo</small><h3>{selectedIngredient.name}</h3></div></div>
