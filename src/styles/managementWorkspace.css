@@ -105,8 +105,15 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.management-workspace--warehouse .management-workspace-metrics,
 .management-workspace--finance .management-workspace-metrics {
   grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.management-workspace--warehouse .management-workspace-metrics > * {
+  min-height: 70px;
+  padding: 8px 10px;
+  border-radius: 12px;
 }
 
 .management-workspace--cash-ops .management-workspace-metrics {
@@ -335,6 +342,7 @@
   }
 
   .management-workspace .management-workspace-metrics,
+  .management-workspace--warehouse .management-workspace-metrics,
   .management-workspace--finance .management-workspace-metrics,
   .management-workspace--suppliers .management-workspace-metrics,
   .management-workspace--cash-ops .management-workspace-metrics,
@@ -345,6 +353,7 @@
 
 @media (max-width: 480px) {
   .management-workspace .management-workspace-metrics,
+  .management-workspace--warehouse .management-workspace-metrics,
   .management-workspace--finance .management-workspace-metrics,
   .management-workspace--suppliers .management-workspace-metrics,
   .management-workspace--cash-ops .management-workspace-metrics,
