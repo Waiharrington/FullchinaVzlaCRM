@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Building2, CalendarDays, Eye, Loader2, Mail, Phone, Plus, Search, ShoppingBag, UserRound, X } from 'lucide-react'
 import Toast from '../components/Toast'
 import { createSupplier, getPurchases, getSuppliers, type Purchase, type Supplier } from '../lib/dataService'
@@ -166,10 +167,16 @@ export function Proveedores() {
         </div>
       </section>
 
-      {selected && (
+      {selected && createPortal(
         <div className={`prv-overlay ${closingSelected ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSelected() }}>
-          <section className="prv-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-history-title">
-            <div className="prv-card-title"><div><h2 id="supplier-history-title">{selected.name}</h2><p>Historial completo de compras</p></div><button aria-label="Cerrar historial" onClick={() => closeSelected()}><X size={19} /></button></div>
+          <section className="prv-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-history-title" onClick={(e) => e.stopPropagation()}>
+            <div className="prv-card-title">
+              <div>
+                <h2 id="supplier-history-title">{selected.name}</h2>
+                <p>Historial completo de compras</p>
+              </div>
+              <button aria-label="Cerrar historial" className="prv-modal-close" onClick={() => closeSelected()}><X size={19} /></button>
+            </div>
             <div className="prv-modal-summary"><span>{selectedActivity?.history.length ?? 0} compras</span><strong>{formatUsd(selectedActivity?.total ?? 0)}</strong></div>
             <div className="prv-purchases">
               {selectedActivity?.history.map((purchase) => (
@@ -182,7 +189,8 @@ export function Proveedores() {
               {!selectedActivity?.history.length && <div className="prv-empty">Todavía no hay compras registradas con este proveedor.</div>}
             </div>
           </section>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
