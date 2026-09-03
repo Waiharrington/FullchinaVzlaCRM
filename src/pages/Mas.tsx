@@ -29,7 +29,8 @@ import { DeliverySettings } from '../components/DeliverySettings'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
-import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings } from 'lucide-react'
+import { DateField } from '../components/DateField'
+import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -52,7 +53,7 @@ export function Mas() {
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
   const [loading, setLoading] = useState(!masCache)
-  const [tab, setTab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
+  const [tab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
@@ -353,7 +354,7 @@ export function Mas() {
                   onChange={(v) => setNewAmount(v)}
                 />
                 <label><input type="checkbox" checked={newIndefinite} onChange={e => setNewIndefinite(e.target.checked)} /> Plazo indefinido</label>
-                {!newIndefinite && <input type="date" value={newDueDate} onChange={e => setNewDueDate(e.target.value)} />}
+                {!newIndefinite && <DateField value={newDueDate} onChange={setNewDueDate} />}
                 <div className="form-actions-inline">
                   <button className="btn-ghost" onClick={() => setShowNewCredit(false)}>Cancelar</button>
                   <button className="btn-accent" onClick={handleCreateCredit}>Crear</button>
