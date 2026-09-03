@@ -456,9 +456,10 @@
   .management-workspace--inventory .inv-kpi-link { font-size: 0.7rem; }
 
   .management-workspace--inventory .management-workspace-toolbar {
+    justify-content: flex-start;
     margin-bottom: 12px;
     flex-wrap: nowrap;
-    gap: 10px;
+    gap: 12px;
   }
 
   .management-workspace--inventory .inv-filter-pills {
