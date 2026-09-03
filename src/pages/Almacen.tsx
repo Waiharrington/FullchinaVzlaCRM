@@ -10,7 +10,6 @@ import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { normalizeForSearch } from '../lib/textFormat'
 import './Almacen.css'
-import { dateKeyInTimeZone } from '../lib/money'
 
 type WarehouseItem = {
   id: string
@@ -26,27 +25,14 @@ type WarehouseItem = {
 type WarehouseModal = 'view' | 'edit' | 'adjust' | null
 type QuickAction = 'receive' | 'transfer' | 'critical' | null
 
-type WarehouseTransfer = {
-  id: string
-  itemName: string
-  quantityTransferred: number
-  unit: string
-  date: string
-  operator: string
-  destination: string
-  status: 'completed'
-}
-
 export function Almacen() {
   const { user } = useAuth()
   const [items, setItems] = useState<WarehouseItem[]>([])
   const [operationalItems, setOperationalItems] = useState<WarehouseItem[]>([])
   const [selectedOperationalItemId, setSelectedOperationalItemId] = useState('')
   const [warehouseQty, setWarehouseQty] = useState('1')
-  const [transfers, setTransfers] = useState<WarehouseTransfer[]>([])
   const [selectedItemId, setSelectedItemId] = useState('')
   const [transferQty, setTransferQty] = useState('10')
-  const [operator, setOperator] = useState('Usuario del sistema')
   const [filterMode, setFilterMode] = useState<'stock' | 'all'>('stock')
   const [searchTerm, setSearchTerm] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
@@ -89,7 +75,7 @@ export function Almacen() {
   }, [items, itemsWithStock, filterMode, searchTerm])
 
   useEffect(() => {
-    Promise.all([getWarehouseIngredients(), getIngredients(), getStockMovements()]).then(([ingredients, operational, movements]) => {
+    Promise.all([getWarehouseIngredients(), getIngredients()]).then(([ingredients, operational]) => {
       const mapItem = (item: Ingredient): WarehouseItem => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass })
       setItems(ingredients.map(item => ({
         id: item.id,
@@ -106,18 +92,6 @@ export function Almacen() {
       setOperationalItems(operationalMapped)
       setSelectedOperationalItemId(current => current || operationalMapped[0]?.id || '')
       setSelectedItemId(current => current || ingredients[0]?.id || '')
-      setTransfers(movements
-        .filter(item => item.stockLocation === 'warehouse' && item.quantity < 0 && item.notes?.startsWith('Transferencia de'))
-        .map(item => ({
-          id: item.id,
-          itemName: item.ingredientName,
-          quantityTransferred: Math.abs(item.quantity),
-          unit: item.unitSymbol,
-          date: item.createdAt.slice(0, 10),
-          operator: 'Usuario del sistema',
-          destination: 'Operación',
-          status: 'completed'
-        })))
     }).catch(error => setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
       .finally(() => setLoading(false))
   }, [])
@@ -172,17 +146,6 @@ export function Almacen() {
         : item
       ))
 
-      setTransfers(previous => [{
-        id: `wt-${Date.now()}`,
-        itemName: targetItem.name,
-        quantityTransferred: qty,
-        unit: targetItem.unit,
-        date: dateKeyInTimeZone(),
-        operator,
-        destination: 'Food Truck Inventario Operativo',
-        status: 'completed'
-      }, ...previous])
-
       setErrorMsg('')
       setSuccessMsg(`Transferencia de ${qty} ${targetItem.unit} registrada correctamente.`)
       setQuickAction(null)
@@ -211,9 +174,12 @@ export function Almacen() {
         </div>
       </header>
 
+      {successMsg && <Toast type="success" message={successMsg} onClose={() => setSuccessMsg('')} />}
+      {errorMsg && <Toast type="error" message={errorMsg} onClose={() => setErrorMsg('')} />}
+
       <section className="almacen-metrics-grid management-workspace-metrics" aria-label="Resumen del almacén">
         <div className="almacen-metric-card accent-red">
-          <div className="metric-icon-box"><Package size={22} /></div>
+          <div className="metric-icon-box"><Package size={20} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Insumos con stock</span>
             <strong className="metric-large-val">{itemsWithStock.length}</strong>
@@ -222,7 +188,7 @@ export function Almacen() {
         </div>
 
         <div className="almacen-metric-card accent-green">
-          <div className="metric-icon-box"><DollarSign size={22} /></div>
+          <div className="metric-icon-box"><DollarSign size={20} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Valorización</span>
             <strong className="metric-large-val">${totalValuation.toFixed(2)}</strong>
@@ -230,26 +196,22 @@ export function Almacen() {
           </div>
         </div>
 
-        <button type="button" className="almacen-metric-card accent-purple" onClick={() => setQuickAction('transfer')}>
-          <div className="metric-icon-box"><ArrowRightLeft size={22} /></div>
-          <div className="metric-info-group">
-            <span className="metric-label">Enviar a inventario</span>
-            <strong className="metric-large-val">{transfers.length}</strong>
-            <span className="metric-sub-text">Transferencias hoy</span>
-          </div>
-        </button>
-
-        <button type="button" className="almacen-metric-card accent-orange" onClick={() => setQuickAction('receive')}>
-          <div className="metric-icon-box"><Plus size={22} /></div>
+        <button type="button" className="almacen-metric-card accent-purple" onClick={() => setQuickAction('receive')}>
+          <div className="metric-icon-box"><ArrowRightLeft size={20} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Traer desde inventario</span>
             <strong className="metric-large-val">{operationalItems.filter(i => i.quantity > 0).length}</strong>
             <span className="metric-sub-text">Disponibles en cocina</span>
           </div>
         </button>
+
         <button type="button" className="almacen-metric-card accent-orange" onClick={() => setQuickAction('critical')}>
-          <div className="metric-icon-box"><AlertTriangle size={22} /></div>
-          <div className="metric-info-group"><span className="metric-label">Stock crítico</span><strong className="metric-large-val">{criticalItems}</strong><span className="metric-sub-text">Por debajo de mínimo</span></div>
+          <div className="metric-icon-box"><AlertTriangle size={20} /></div>
+          <div className="metric-info-group">
+            <span className="metric-label">Stock crítico</span>
+            <strong className="metric-large-val">{criticalItems}</strong>
+            <span className="metric-sub-text">Por debajo de mínimo</span>
+          </div>
         </button>
       </section>
 
@@ -402,82 +364,6 @@ export function Almacen() {
             </table>
           </div>
         </section>
-
-        <aside className="almacen-side-column">
-          <section className="almacen-card management-workspace-panel">
-            <div className="almacen-card-header"><div className="header-title-group"><div className="card-header-icon"><Package size={18} /></div><div><h2 className="almacen-card-title">Traer desde inventario</h2><p className="almacen-card-description">Mueve existencias operativas al almacén.</p></div></div></div>
-            <form onSubmit={handleReceiveToWarehouse} className="transfer-form-box">
-              <div className="select-field-group"><label className="field-label" htmlFor="operational-item">Producto de inventario</label><StyledSelect id="operational-item" className="field-select" value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></div>
-              <div className="select-field-group"><label className="field-label" htmlFor="warehouse-quantity">Cantidad</label><NumberStepper id="warehouse-quantity" min={0.001} step={0.001} className="field-select" value={warehouseQty} onChange={setWarehouseQty} /></div>
-              <button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId}><ArrowRightLeft size={17} /> Traer al almacén</button>
-            </form>
-          </section>
-
-          <section className="almacen-card management-workspace-panel">
-            <div className="almacen-card-header">
-              <div className="header-title-group">
-                <div className="card-header-icon purple-icon"><ArrowRightLeft size={18} /></div>
-                <div>
-                  <h2 className="almacen-card-title">Nueva transferencia</h2>
-                  <p className="almacen-card-description">Despacha insumos al inventario operativo.</p>
-                </div>
-              </div>
-            </div>
-
-            {successMsg && <Toast type="success" message={successMsg} onClose={() => setSuccessMsg('')} />}
-            {errorMsg && <Toast type="error" message={errorMsg} onClose={() => setErrorMsg('')} />}
-
-            <form onSubmit={handleTransfer} className="transfer-form-box">
-              <div className="select-field-group">
-                <label className="field-label" htmlFor="warehouse-item">Insumo de almacén</label>
-                <StyledSelect id="warehouse-item" className="field-select" value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>
-                  {items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}
-                </StyledSelect>
-              </div>
-
-              <div className="transfer-fields-grid">
-                <div className="select-field-group">
-                  <label className="field-label" htmlFor="transfer-quantity">Cantidad</label>
-                  <NumberStepper id="transfer-quantity" min={1} step={1} className="field-select" value={transferQty} onChange={(v) => setTransferQty(v)} />
-                </div>
-                <div className="select-field-group">
-                  <label className="field-label" htmlFor="transfer-operator">Operador responsable</label>
-                  <StyledSelect id="transfer-operator" className="field-select" value={operator} onChange={event => setOperator(event.target.value)}>
-                    <option value="Usuario del sistema">Usuario del sistema</option>
-                  </StyledSelect>
-                </div>
-              </div>
-
-              <button type="submit" className="btn-primary-red" disabled={!selectedItemId}>
-                <Plus size={17} />
-                Transferir al Food Truck
-              </button>
-            </form>
-          </section>
-
-          <section className="almacen-card management-workspace-panel">
-            <div className="history-header">
-              <div>
-                <h2 className="almacen-card-title">Historial de transferencias</h2>
-                <p className="almacen-card-description">Últimos movimientos hacia la operación.</p>
-              </div>
-              <ArrowRightLeft size={18} className="history-header-icon" />
-            </div>
-            <div className="transfer-history-list">
-              {transfers.length === 0 ? (
-                <div className="history-empty">Aún no hay transferencias registradas.</div>
-              ) : transfers.map(transfer => (
-                <div key={transfer.id} className="transfer-history-item">
-                  <div>
-                    <span className="history-item-name">{transfer.itemName}</span>
-                    <span className="history-item-meta">{transfer.quantityTransferred} {transfer.unit} · {transfer.operator} · {transfer.date}</span>
-                  </div>
-                  <span className="history-status">Enviado</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        </aside>
       </div>
 
       {selectedItem && modalMode && createPortal(<div className="almacen-modal-overlay" onClick={closeModal}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} /></button>
