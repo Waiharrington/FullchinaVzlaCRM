@@ -117,6 +117,7 @@ export function Inventario() {
   const [closingAllMovements, setClosingAllMovements] = useState(false)
   const [movementTypeFilter, setMovementTypeFilter] = useState<'all' | 'purchase' | 'consumption' | 'adjustment'>('all')
   const [movementSearchTerm, setMovementSearchTerm] = useState('')
+  const [movementCurrentPage, setMovementCurrentPage] = useState(1)
   const [showAllAlertsModal, setShowAllAlertsModal] = useState(false)
   const [closingAllAlerts, setClosingAllAlerts] = useState(false)
   const [alertSeverityFilter, setAlertSeverityFilter] = useState<'all' | 'critical' | 'low'>('all')
@@ -352,6 +353,13 @@ export function Inventario() {
       return true
     })
   }, [stockMovements, movementTypeFilter, movementSearchTerm])
+
+  const MOVEMENTS_PER_PAGE = 20
+  const totalMovementPages = Math.ceil(filteredAllMovements.length / MOVEMENTS_PER_PAGE)
+  const paginatedAllMovements = useMemo(() => {
+    const start = (movementCurrentPage - 1) * MOVEMENTS_PER_PAGE
+    return filteredAllMovements.slice(start, start + MOVEMENTS_PER_PAGE)
+  }, [filteredAllMovements, movementCurrentPage])
 
   const getStockStatus = (ing: Ingredient): 'ok' | 'low' | 'critical' => {
     if (ing.currentStock <= 5) return 'critical'
@@ -828,7 +836,7 @@ export function Inventario() {
                   type="text"
                   placeholder="Buscar por insumo o motivo..."
                   value={movementSearchTerm}
-                  onChange={e => setMovementSearchTerm(e.target.value)}
+                  onChange={e => { setMovementSearchTerm(e.target.value); setMovementCurrentPage(1) }}
                 />
               </div>
               <div className="inv-modal-filter-pills">
@@ -841,7 +849,7 @@ export function Inventario() {
                   <button
                     key={key}
                     className={`inv-modal-filter-pill ${movementTypeFilter === key ? 'active' : ''}`}
-                    onClick={() => setMovementTypeFilter(key as typeof movementTypeFilter)}
+                    onClick={() => { setMovementTypeFilter(key as typeof movementTypeFilter); setMovementCurrentPage(1) }}
                   >
                     {label}
                   </button>
@@ -853,7 +861,7 @@ export function Inventario() {
               {filteredAllMovements.length === 0 ? (
                 <div className="inv-empty-state"><p>No se encontraron movimientos con los filtros aplicados</p></div>
               ) : (
-                filteredAllMovements.map(mov => {
+                paginatedAllMovements.map(mov => {
                   const matchingIng = ingredients.find(i => i.id === mov.ingredientId || normalizeForSearch(i.name) === normalizeForSearch(mov.ingredientName))
                   return (
                     <div
@@ -886,6 +894,44 @@ export function Inventario() {
                 })
               )}
             </div>
+
+            {filteredAllMovements.length > MOVEMENTS_PER_PAGE && (
+              <div className="inv-modal-pagination">
+                <span className="inv-modal-pagination-info">
+                  Mostrando {((movementCurrentPage - 1) * MOVEMENTS_PER_PAGE) + 1} a {Math.min(movementCurrentPage * MOVEMENTS_PER_PAGE, filteredAllMovements.length)} de {filteredAllMovements.length} movimientos
+                </span>
+                <div className="inv-pagination-btns">
+                  <button
+                    type="button"
+                    className="inv-page-btn"
+                    disabled={movementCurrentPage === 1}
+                    onClick={() => setMovementCurrentPage(p => p - 1)}
+                    aria-label="Página anterior"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  {Array.from({ length: totalMovementPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={`inv-page-btn ${movementCurrentPage === page ? 'active' : ''}`}
+                      onClick={() => setMovementCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="inv-page-btn"
+                    disabled={movementCurrentPage === totalMovementPages}
+                    onClick={() => setMovementCurrentPage(p => p + 1)}
+                    aria-label="Página siguiente"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>,
         document.body
