@@ -80,17 +80,17 @@ export function ProduccionReal() {
       setEmployees(emps)
 
       // Set initial defaults if available
-      if (whIng.length > 0 && !rawIngredientId) {
+      if (whIng.length > 0) {
         const defaultRaw = whIng.find(i => normalizeForSearch(i.name).includes('pollo')) || whIng[0]
-        setRawIngredientId(defaultRaw.id)
-        setRawUnitId(defaultRaw.unitId)
+        setRawIngredientId(prev => prev || defaultRaw.id)
+        setRawUnitId(prev => prev || defaultRaw.unitId)
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos de producción')
     } finally {
       setLoading(false)
     }
-  }, [rawIngredientId])
+  }, [])
 
   useEffect(() => { void loadData() }, [loadData])
 
