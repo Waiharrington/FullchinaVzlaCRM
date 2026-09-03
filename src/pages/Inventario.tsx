@@ -113,6 +113,14 @@ export function Inventario() {
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null)
   const [modalMode, setModalMode] = useState<InventoryModal>(null)
   const [showPortionsModal, setShowPortionsModal] = useState(false)
+  const [showAllMovementsModal, setShowAllMovementsModal] = useState(false)
+  const [closingAllMovements, setClosingAllMovements] = useState(false)
+  const [movementTypeFilter, setMovementTypeFilter] = useState<'all' | 'purchase' | 'consumption' | 'adjustment'>('all')
+  const [movementSearchTerm, setMovementSearchTerm] = useState('')
+  const [showAllAlertsModal, setShowAllAlertsModal] = useState(false)
+  const [closingAllAlerts, setClosingAllAlerts] = useState(false)
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState<'all' | 'critical' | 'low'>('all')
+  const [alertSearchTerm, setAlertSearchTerm] = useState('')
   const [ingredientMovements, setIngredientMovements] = useState<StockMovement[]>([])
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
   const [editForm, setEditForm] = useState({ name: '', unitId: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
@@ -320,17 +328,68 @@ export function Inventario() {
     return stockMovements.slice(0, 5)
   }, [stockMovements])
 
-  const alerts = useMemo(() => {
+  const allAlerts = useMemo(() => {
     return ingredients
       .filter(i => i.currentStock <= 10)
       .sort((a, b) => a.currentStock - b.currentStock)
-      .slice(0, 4)
   }, [ingredients])
+
+  const alerts = useMemo(() => {
+    return allAlerts.slice(0, 4)
+  }, [allAlerts])
+
+  const filteredAllMovements = useMemo(() => {
+    return stockMovements.filter(m => {
+      if (movementTypeFilter !== 'all' && m.movementType !== movementTypeFilter) return false
+      if (movementSearchTerm.trim()) {
+        const q = normalizeForSearch(movementSearchTerm)
+        return (
+          normalizeForSearch(m.ingredientName).includes(q) ||
+          normalizeForSearch(m.notes || '').includes(q) ||
+          normalizeForSearch(m.referenceType || '').includes(q)
+        )
+      }
+      return true
+    })
+  }, [stockMovements, movementTypeFilter, movementSearchTerm])
 
   const getStockStatus = (ing: Ingredient): 'ok' | 'low' | 'critical' => {
     if (ing.currentStock <= 5) return 'critical'
     if (ing.currentStock <= 10) return 'low'
     return 'ok'
+  }
+
+  const filteredAllAlerts = useMemo(() => {
+    return allAlerts.filter(ing => {
+      const status = getStockStatus(ing)
+      if (alertSeverityFilter === 'critical' && status !== 'critical') return false
+      if (alertSeverityFilter === 'low' && status !== 'low') return false
+      if (alertSearchTerm.trim()) {
+        const q = normalizeForSearch(alertSearchTerm)
+        return normalizeForSearch(ing.name).includes(q)
+      }
+      return true
+    })
+  }, [allAlerts, alertSeverityFilter, alertSearchTerm])
+
+  const closeAllMovementsModal = (then?: () => void) => {
+    if (closingAllMovements) return
+    setClosingAllMovements(true)
+    setTimeout(() => {
+      setShowAllMovementsModal(false)
+      setClosingAllMovements(false)
+      then?.()
+    }, 200)
+  }
+
+  const closeAllAlertsModal = (then?: () => void) => {
+    if (closingAllAlerts) return
+    setClosingAllAlerts(true)
+    setTimeout(() => {
+      setShowAllAlertsModal(false)
+      setClosingAllAlerts(false)
+      then?.()
+    }, 200)
   }
 
   const getStockStatusLabel = (status: 'ok' | 'low' | 'critical') => {
@@ -395,14 +454,21 @@ export function Inventario() {
             <span className="inv-kpi-sub green">+8.2% vs. ayer</span>
           </div>
         </div>
-        <div className="inv-kpi-card amber">
+        <div
+          className="inv-kpi-card amber"
+          role="button"
+          tabIndex={0}
+          onClick={() => setShowAllAlertsModal(true)}
+          style={{ cursor: 'pointer' }}
+          title="Ver productos con stock bajo"
+        >
           <div className="inv-kpi-icon amber">
             <AlertTriangle size={22} />
           </div>
           <div className="inv-kpi-info">
             <span className="inv-kpi-label">Productos con stock bajo</span>
             <span className="inv-kpi-value">{lowStockCount}</span>
-            <span className="inv-kpi-sub amber">Requieren atención</span>
+            <span className="inv-kpi-sub" style={{ color: 'var(--accent-amber, #f59e0b)', fontWeight: 600 }}>Requieren atención &gt;</span>
           </div>
         </div>
         <div
@@ -568,38 +634,46 @@ export function Inventario() {
           )}
         </div>
 
-        {/* Right Sidebar */}
-        <div className="inv-sidebar">
+        {/* Bottom Side-by-Side Panels (Movimientos & Alertas) */}
+        <div className="inv-bottom-panels">
           {/* Movements Card */}
           <div className="inv-sidebar-card management-workspace-panel">
             <div className="inv-sidebar-header">
               <h3 className="inv-sidebar-title">Movimientos recientes</h3>
-              <button className="inv-sidebar-link" onClick={() => setSearchTerm('')}>Ver todos</button>
+              <button type="button" className="inv-sidebar-link" onClick={() => setShowAllMovementsModal(true)}>Ver todos</button>
             </div>
             {recentMovements.length === 0 ? (
               <div className="inv-empty-state">
                 <p>No hay movimientos</p>
               </div>
             ) : (
-              recentMovements.map(mov => (
-                <div key={mov.id} className="inv-movement-item">
-                  <div className={`inv-movement-icon ${mov.movementType === 'purchase' ? 'entry' : mov.movementType === 'consumption' ? 'exit' : 'adjustment'}`}>
-                    {getMovementIcon(mov.movementType)}
-                  </div>
-                  <div className="inv-movement-info">
-                    <div className="inv-movement-name">
-                      {getMovementLabel(mov.movementType)} de {mov.ingredientName}
+              recentMovements.map(mov => {
+                const matchingIng = ingredients.find(i => i.id === mov.ingredientId || normalizeForSearch(i.name) === normalizeForSearch(mov.ingredientName))
+                return (
+                  <div
+                    key={mov.id}
+                    className="inv-movement-item"
+                    onClick={() => { if (matchingIng) openView(matchingIng) }}
+                    title={matchingIng ? `Ver historial de ${matchingIng.name}` : undefined}
+                  >
+                    <div className={`inv-movement-icon ${mov.movementType === 'purchase' ? 'entry' : mov.movementType === 'consumption' ? 'exit' : 'adjustment'}`}>
+                      {getMovementIcon(mov.movementType)}
                     </div>
-                    <div className="inv-movement-detail">{mov.notes || mov.referenceType || '-'}</div>
-                  </div>
-                  <div className="inv-movement-meta">
-                    <div className="inv-movement-time">{formatTime(mov.createdAt)}</div>
-                    <div className={`inv-movement-amount ${mov.quantity > 0 ? 'positive' : 'negative'}`}>
-                      {mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}
+                    <div className="inv-movement-info">
+                      <div className="inv-movement-name">
+                        {getMovementLabel(mov.movementType)} de {mov.ingredientName}
+                      </div>
+                      <div className="inv-movement-detail">{mov.notes || mov.referenceType || '-'}</div>
+                    </div>
+                    <div className="inv-movement-meta">
+                      <div className="inv-movement-time">{formatTime(mov.createdAt)}</div>
+                      <div className={`inv-movement-amount ${mov.quantity > 0 ? 'positive' : 'negative'}`}>
+                        {mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
 
@@ -607,7 +681,7 @@ export function Inventario() {
           <div className="inv-sidebar-card management-workspace-panel">
             <div className="inv-sidebar-header">
               <h3 className="inv-sidebar-title">Alertas de inventario</h3>
-              <button className="inv-sidebar-link" onClick={() => setCategoryFilter('all')}>Ver todas</button>
+              <button type="button" className="inv-sidebar-link" onClick={() => setShowAllAlertsModal(true)}>Ver todas</button>
             </div>
             {alerts.length === 0 ? (
               <div className="inv-empty-state">
@@ -617,7 +691,12 @@ export function Inventario() {
               alerts.map(ing => {
                 const status = getStockStatus(ing)
                 return (
-                  <div key={ing.id} className="inv-alert-item">
+                  <div
+                    key={ing.id}
+                    className="inv-alert-item"
+                    onClick={() => openView(ing)}
+                    title={`Ver detalles de ${ing.name}`}
+                  >
                     <div className={`inv-alert-icon ${status}`}>
                       <Package size={16} />
                     </div>
@@ -709,19 +788,194 @@ export function Inventario() {
                       <small>{showCosts && p.pricePerUnit !== null ? `Costo: $${p.pricePerUnit.toFixed(2)} c/u` : 'Ración lista'}</small>
                     </div>
                     <b className={p.currentStock > 0 ? 'positive' : 'negative'}>
-                      {p.currentStock} {p.unitSymbol}
+                      {p.currentStock} {['por', 'porcion', 'porción', 'porciones'].includes(p.unitSymbol.toLowerCase()) ? (p.currentStock === 1 ? 'porción' : 'porciones') : p.unitSymbol}
                     </b>
                   </div>
                 ))}
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
                   <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Total porciones:</span>
-                  <strong style={{ color: 'var(--accent-green, #22c55e)', fontSize: '1.1rem' }}>{Math.round(totalPortionsCount)} por</strong>
+                  <strong style={{ color: 'var(--accent-green, #22c55e)', fontSize: '1.1rem' }}>
+                    {Math.round(totalPortionsCount)} {Math.round(totalPortionsCount) === 1 ? 'porción' : 'porciones'}
+                  </strong>
                 </div>
                 <button className="inv-generate-order-btn" style={{ marginTop: '1rem' }} onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
                   + Nueva producción de raciones
                 </button>
               </div>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal: All Movements */}
+      {showAllMovementsModal && createPortal(
+        <div className={`inv-modal-overlay ${closingAllMovements ? 'closing' : ''}`} onClick={() => closeAllMovementsModal()}>
+          <div className="inv-sidebar-card inv-wide-modal" onClick={e => e.stopPropagation()}>
+            <button className="inv-modal-close" onClick={() => closeAllMovementsModal()} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
+            <div className="inv-modal-heading">
+              <span><RefreshCw size={18} /></span>
+              <div>
+                <small>Auditoría de almacén</small>
+                <h3>Historial de movimientos ({stockMovements.length})</h3>
+              </div>
+            </div>
+
+            <div className="inv-modal-toolbar">
+              <div className="inv-modal-search">
+                <Search size={14} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar por insumo o motivo..."
+                  value={movementSearchTerm}
+                  onChange={e => setMovementSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="inv-modal-filter-pills">
+                {[
+                  ['all', 'Todos'],
+                  ['purchase', 'Entradas'],
+                  ['consumption', 'Salidas'],
+                  ['adjustment', 'Ajustes'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={`inv-modal-filter-pill ${movementTypeFilter === key ? 'active' : ''}`}
+                    onClick={() => setMovementTypeFilter(key as typeof movementTypeFilter)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="inv-modal-list">
+              {filteredAllMovements.length === 0 ? (
+                <div className="inv-empty-state"><p>No se encontraron movimientos con los filtros aplicados</p></div>
+              ) : (
+                filteredAllMovements.map(mov => {
+                  const matchingIng = ingredients.find(i => i.id === mov.ingredientId || normalizeForSearch(i.name) === normalizeForSearch(mov.ingredientName))
+                  return (
+                    <div
+                      key={mov.id}
+                      className="inv-movement-item"
+                      onClick={() => {
+                        if (matchingIng) {
+                          closeAllMovementsModal(() => openView(matchingIng))
+                        }
+                      }}
+                      title={matchingIng ? `Ver historial de ${matchingIng.name}` : undefined}
+                    >
+                      <div className={`inv-movement-icon ${mov.movementType === 'purchase' ? 'entry' : mov.movementType === 'consumption' ? 'exit' : 'adjustment'}`}>
+                        {getMovementIcon(mov.movementType)}
+                      </div>
+                      <div className="inv-movement-info">
+                        <div className="inv-movement-name">
+                          {getMovementLabel(mov.movementType)} de <strong>{mov.ingredientName}</strong>
+                        </div>
+                        <div className="inv-movement-detail">{mov.notes || mov.referenceType || 'Sin notas'}</div>
+                      </div>
+                      <div className="inv-movement-meta">
+                        <div className="inv-movement-time">{new Date(mov.createdAt).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                        <div className={`inv-movement-amount ${mov.quantity > 0 ? 'positive' : 'negative'}`}>
+                          {mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal: All Alerts */}
+      {showAllAlertsModal && createPortal(
+        <div className={`inv-modal-overlay ${closingAllAlerts ? 'closing' : ''}`} onClick={() => closeAllAlertsModal()}>
+          <div className="inv-sidebar-card inv-wide-modal" onClick={e => e.stopPropagation()}>
+            <button className="inv-modal-close" onClick={() => closeAllAlertsModal()} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
+            <div className="inv-modal-heading">
+              <span className="negative"><AlertTriangle size={18} /></span>
+              <div>
+                <small>Existencias por debajo del mínimo</small>
+                <h3>Alertas de inventario ({allAlerts.length})</h3>
+              </div>
+            </div>
+
+            <div className="inv-modal-toolbar">
+              <div className="inv-modal-search">
+                <Search size={14} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar insumo con alerta..."
+                  value={alertSearchTerm}
+                  onChange={e => setAlertSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="inv-modal-filter-pills">
+                {[
+                  ['all', `Todas (${allAlerts.length})`],
+                  ['critical', `Críticos (${allAlerts.filter(i => getStockStatus(i) === 'critical').length})`],
+                  ['low', `Bajos (${allAlerts.filter(i => getStockStatus(i) === 'low').length})`],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    className={`inv-modal-filter-pill ${alertSeverityFilter === key ? 'active' : ''}`}
+                    onClick={() => setAlertSeverityFilter(key as typeof alertSeverityFilter)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="inv-modal-list">
+              {filteredAllAlerts.length === 0 ? (
+                <div className="inv-empty-state"><p>No hay alertas con los filtros seleccionados</p></div>
+              ) : (
+                filteredAllAlerts.map(ing => {
+                  const status = getStockStatus(ing)
+                  return (
+                    <div key={ing.id} className="inv-alert-modal-item">
+                      <div className="inv-alert-info" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className={`inv-alert-icon ${status}`}>
+                          <Package size={16} />
+                        </div>
+                        <div>
+                          <div className="inv-alert-name" style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{ing.name}</div>
+                          <div className="inv-alert-detail" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                            Disponible: <strong style={{ color: status === 'critical' ? '#ff4d3d' : '#f59e0b' }}>{ing.currentStock} {ing.unitSymbol}</strong>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="inv-alert-modal-actions">
+                        <span className={`inv-alert-badge ${status}`} style={{ marginRight: '6px' }}>
+                          {status === 'critical' ? 'Crítico' : 'Bajo'}
+                        </span>
+                        <button
+                          type="button"
+                          className="inv-alert-action-btn"
+                          onClick={() => closeAllAlertsModal(() => openView(ing))}
+                          title="Ver historial"
+                        >
+                          <Eye size={13} /> Historial
+                        </button>
+                        <button
+                          type="button"
+                          className="inv-alert-action-btn primary"
+                          onClick={() => closeAllAlertsModal(() => openAdjustment(ing, 1))}
+                          title="Registrar entrada"
+                        >
+                          <Plus size={13} /> Entrada
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
         </div>,
         document.body
