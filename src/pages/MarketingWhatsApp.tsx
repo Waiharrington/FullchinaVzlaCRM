@@ -3,7 +3,7 @@ import { getCustomers, getWhatsAppMessages, queueWhatsAppMessage, type Customer,
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { dateKeyInTimeZone } from '../lib/money'
-import { MessageSquare, Cake, Sparkles, Send, Users, CheckCircle2, Clock } from 'lucide-react'
+import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
 export function MarketingWhatsApp() {
@@ -69,33 +69,51 @@ export function MarketingWhatsApp() {
       </section>
 
       <main className="wa-studio">
-        <section className="wa-panel wa-automations">
-          <header className="wa-panel-header">
-            <span className="wa-panel-icon"><Sparkles size={19} /></span>
-            <div><span className="wa-eyebrow">Siempre activas</span><h2>Automatizaciones</h2><p>Mensajes preparados para cada momento del cliente.</p></div>
-            <span className="wa-count">3 plantillas</span>
-          </header>
+        <div className="wa-side-stack">
+          <section className="wa-panel wa-automations">
+            <header className="wa-panel-header">
+              <span className="wa-panel-icon"><Bot size={19} /></span>
+              <div><span className="wa-eyebrow">Siempre activas</span><h2>Automatizaciones</h2><p>Mensajes preparados para cada momento del cliente.</p></div>
+              <span className="wa-count">3 plantillas</span>
+            </header>
 
-          <div className="wa-template-grid">
-            <article className="wa-template wa-template--birthday">
-              <header><span className="wa-template-icon"><Cake size={17} /></span><span className="wa-template-badge">8:00 a. m.</span></header>
-              <div><small>Cumpleaños</small><h3>Un detalle en su día</h3><p>Se activa automáticamente para los clientes que cumplen años hoy.</p></div>
-              <blockquote>¡Feliz cumpleaños [Nombre]! 🎉 En <strong>Full China</strong> te regalamos una ración de lumpias gratis hoy.</blockquote>
-            </article>
+            <div className="wa-template-grid">
+              <article className="wa-template wa-template--birthday">
+                <header><span className="wa-template-icon"><Cake size={17} /></span><span className="wa-template-badge">8:00 a. m.</span></header>
+                <div><small>Cumpleaños</small><h3>Un detalle en su día</h3><p>Se activa automáticamente para los clientes que cumplen años hoy.</p></div>
+                <blockquote>¡Feliz cumpleaños [Nombre]! 🎉 En <strong>Full China</strong> te regalamos una ración de lumpias gratis hoy.</blockquote>
+              </article>
 
-            <article className="wa-template wa-template--thanks">
-              <header><span className="wa-template-icon"><MessageSquare size={17} /></span><span className="wa-template-badge">10 min después</span></header>
-              <div><small>Post-compra</small><h3>Gracias por elegirnos</h3><p>Acompaña cada compra y mantiene presente la marca.</p></div>
-              <blockquote>¡Muchas gracias por tu compra, [Nombre]! 🥡 Esperamos que disfrutes tu pedido. ¡Vuelve pronto!</blockquote>
-            </article>
+              <article className="wa-template wa-template--thanks">
+                <header><span className="wa-template-icon"><MessageSquare size={17} /></span><span className="wa-template-badge">10 min después</span></header>
+                <div><small>Post-compra</small><h3>Gracias por elegirnos</h3><p>Acompaña cada compra y mantiene presente la marca.</p></div>
+                <blockquote>¡Muchas gracias por tu compra, [Nombre]! 🥡 Esperamos que disfrutes tu pedido. ¡Vuelve pronto!</blockquote>
+              </article>
 
-            <article className="wa-template wa-template--inactive">
-              <header><span className="wa-template-icon"><Clock size={17} /></span><span className="wa-template-badge">21 días</span></header>
-              <div><small>Reactivación</small><h3>Es hora de volver</h3><p>Recupera clientes que llevan más de tres semanas sin visitarnos.</p></div>
-              <blockquote>¡Hola [Nombre]! Te extrañamos en <strong>Full China</strong>. 🍜 Recibe 15% de descuento esta semana.</blockquote>
-            </article>
-          </div>
-        </section>
+              <article className="wa-template wa-template--inactive">
+                <header><span className="wa-template-icon"><Clock size={17} /></span><span className="wa-template-badge">21 días</span></header>
+                <div><small>Reactivación</small><h3>Es hora de volver</h3><p>Recupera clientes que llevan más de tres semanas sin visitarnos.</p></div>
+                <blockquote>¡Hola [Nombre]! Te extrañamos en <strong>Full China</strong>. 🍜 Recibe 15% de descuento esta semana.</blockquote>
+              </article>
+            </div>
+          </section>
+
+          <section className="wa-panel wa-history">
+            <header className="wa-panel-header">
+              <span className="wa-panel-icon wa-panel-icon--history"><MessageSquare size={19} /></span>
+              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Mensajes manuales y automatizados registrados.</p></div>
+              <span className="wa-count">{messages.length} envíos</span>
+            </header>
+
+            {messages.length === 0 ? (
+              <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
+            ) : (
+              <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
+                {messages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{msg.sentAt}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
+              </tbody></table></div>
+            )}
+          </section>
+        </div>
 
         <aside className="wa-panel wa-composer">
           <header className="wa-panel-header">
@@ -123,22 +141,6 @@ export function MarketingWhatsApp() {
             <p className="wa-compose-hint">El envío se habilitará al conectar el proveedor de WhatsApp.</p>
           </form>
         </aside>
-
-        <section className="wa-panel wa-history">
-          <header className="wa-panel-header">
-            <span className="wa-panel-icon wa-panel-icon--history"><MessageSquare size={19} /></span>
-            <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Mensajes manuales y automatizados registrados.</p></div>
-            <span className="wa-count">{messages.length} envíos</span>
-          </header>
-
-          {messages.length === 0 ? (
-            <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
-          ) : (
-            <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
-              {messages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{msg.sentAt}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
-            </tbody></table></div>
-          )}
-        </section>
       </main>
     </div>
   )

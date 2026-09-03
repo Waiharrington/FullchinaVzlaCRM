@@ -24,6 +24,7 @@ import {
   UtensilsCrossed
 } from 'lucide-react'
 import Toast from '../components/Toast'
+import { PageSkeleton } from '../components/PageSkeleton'
 import './Inicio.css'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
@@ -253,6 +254,8 @@ export function Inicio() {
 
   const doughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '72%' }
   const paymentDoughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: '72%' }
+
+  if (loading && !inicioCache) return <PageSkeleton cards={4} rows={4} hasTable={false} />
 
   return (
     <div className="db-page animate-fade-in">

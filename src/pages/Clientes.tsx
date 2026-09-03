@@ -9,6 +9,7 @@ import NumberStepper from '../components/NumberStepper'
 import { formatProductTitle, normalizeForSearch } from '../lib/textFormat'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
+import { PageSkeleton } from '../components/PageSkeleton'
 import {
   getCredits,
   getCreditPayments,
@@ -269,6 +270,7 @@ export function Clientes() {
   const [searchParams] = useSearchParams()
   const isDemoMode = searchParams.get('demoClient') === '1'
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
+  const [loading, setLoading] = useState(!creditsCache)
 
   // Selected customer for Profile View matching target screenshot
   const [selectedClient, setSelectedClient] = useState<CustomerRow | null>(null)
@@ -443,6 +445,7 @@ export function Clientes() {
     setCustomerCreditPayments(demo.payments)
     setSelectedClient(demo.row)
     setProducts(demo.products)
+    setLoading(false)
   }, [isDemoMode])
 
   const fetchCredits = useCallback(async () => {
@@ -459,6 +462,8 @@ export function Clientes() {
       creditsCache = creditData
     } catch (e) {
       console.error('Error cargando créditos:', e)
+    } finally {
+      setLoading(false)
     }
   }, [isDemoMode])
 
@@ -1540,6 +1545,8 @@ export function Clientes() {
   // ═══════════════════════════════════════════════════════════════════════════
   // CLIENTS TABLE LIST VIEW
   // ═══════════════════════════════════════════════════════════════════════════
+
+  if (loading) return <PageSkeleton cards={4} rows={8} hasTable />
 
   return (
     <div className="page animate-fade-in management-workspace management-workspace--customers" key="client-list-view">

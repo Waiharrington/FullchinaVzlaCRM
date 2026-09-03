@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
+import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
@@ -71,7 +71,8 @@ const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
 // v2 intentionally drops caches created while the public RPC still returned
 // inline Base64 images (those entries could occupy several megabytes).
-const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v2'
+// v3 descarta catálogos que guardaron las rutas estáticas antiguas M*.jpg.
+const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v3'
 const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // Debe coincidir exactamente con el breakpoint de PublicMenu.css: escritorio
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
@@ -211,10 +212,10 @@ function groupDescription(group: MenuProductGroup) {
 }
 
 const menuLabelMeta = {
-  top_sales: { text: 'Más vendido', icon: '🔥', className: 'top-sales' },
-  new: { text: 'Nuevo', icon: '✨', className: 'new' },
-  recommended: { text: 'Recomendado', icon: '⭐', className: 'recommended' },
-  free_drink: { text: 'Refresco gratis', icon: '🥤', className: 'free-drink' },
+  top_sales: { text: 'Más vendido', icon: Flame, className: 'top-sales' },
+  new: { text: 'Nuevo', icon: Zap, className: 'new' },
+  recommended: { text: 'Recomendado', icon: Star, className: 'recommended' },
+  free_drink: { text: 'Refresco gratis', icon: CupSoda, className: 'free-drink' },
 } as const
 
 function cartProductName(name: string) {
@@ -256,6 +257,10 @@ export function PublicMenu() {
   const [closingDetail, setClosingDetail] = useState(false)
   const [detailOrigin, setDetailOrigin] = useState<{ x: number; y: number } | null>(null)
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
+  const [quickVariantGroup, setQuickVariantGroup] = useState<MenuProductGroup | null>(null)
+  const [quickVariantId, setQuickVariantId] = useState<string | null>(null)
+  const [quickVariantQuantity, setQuickVariantQuantity] = useState(1)
+  const [closingQuickVariant, setClosingQuickVariant] = useState(false)
   const [detailQuantity, setDetailQuantity] = useState(1)
   const [detailNotes, setDetailNotes] = useState('')
   const [detailModifierGroups, setDetailModifierGroups] = useState<ProductModifierGroup[]>([])
@@ -310,7 +315,6 @@ export function PublicMenu() {
   const [loading, setLoading] = useState(() => !initialCatalog)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
-  const [variantHint, setVariantHint] = useState('')
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
   useEffect(() => {
     if (!error) return
@@ -525,16 +529,7 @@ export function PublicMenu() {
   
   const handleCardAdd = (group: MenuProductGroup) => {
     const qty = getCardQty(group.key)
-    if (group.isGrouped && group.variants.length > 1) {
-      setVariantHint(`${productTitle(group.name)} tiene varias opciones — elige la que prefieras`)
-      openGroup(group)
-    } else {
-      const product = group.variants[0]?.product
-      if (product) {
-        addProduct(product, qty)
-        setCardQtys(prev => ({ ...prev, [group.key]: 1 }))
-      }
-    }
+    requestQuickAdd(group, qty)
   }
   const categorySections = useMemo(() => categories
     .filter(category => category !== 'Todos')
@@ -773,6 +768,55 @@ export function PublicMenu() {
     closeProductDetail()
   }
 
+  const closeQuickVariant = () => {
+    if (!quickVariantGroup || closingQuickVariant) return
+    setClosingQuickVariant(true)
+    window.setTimeout(() => {
+      setQuickVariantGroup(null)
+      setQuickVariantId(null)
+      setQuickVariantQuantity(1)
+      setClosingQuickVariant(false)
+    }, 200)
+  }
+
+  const requestQuickAdd = (group: MenuProductGroup, quantity = 1) => {
+    if (group.variants.length <= 1) {
+      const product = group.variants[0]?.product
+      if (product) {
+        addProduct(product, quantity)
+        setCardQtys(prev => ({ ...prev, [group.key]: 1 }))
+      }
+      return
+    }
+
+    setQuickVariantGroup(group)
+    setQuickVariantId(null)
+    setQuickVariantQuantity(Math.max(1, quantity))
+    setClosingQuickVariant(false)
+  }
+
+  const confirmQuickVariant = () => {
+    const variant = quickVariantGroup?.variants.find(({ product }) => product.id === quickVariantId)
+    if (!variant || !quickVariantGroup) return
+    addProduct(variant.product, quickVariantQuantity)
+    setCardQtys(prev => ({ ...prev, [quickVariantGroup.key]: 1 }))
+    closeQuickVariant()
+  }
+
+  const personalizeQuickVariant = () => {
+    const group = quickVariantGroup
+    const variant = group?.variants.find(({ product }) => product.id === quickVariantId)
+    if (!group || !variant || closingQuickVariant) return
+    setClosingQuickVariant(true)
+    window.setTimeout(() => {
+      setQuickVariantGroup(null)
+      setQuickVariantId(null)
+      setQuickVariantQuantity(1)
+      setClosingQuickVariant(false)
+      openGroup(group, undefined, variant.product.id)
+    }, 200)
+  }
+
   const [deletingKeys, setDeletingKeys] = useState<string[]>([])
   const updateQuantity = (productId: string, delta: number, notes = '') => setCart(current => current
     .map(item => item.productId === productId && (item.notes || '') === notes ? { ...item, quantity: item.quantity + delta } : item)
@@ -802,17 +846,18 @@ export function PublicMenu() {
     }, 220)
   }
 
-  const openGroup = (group: MenuProductGroup, originEvent?: { clientX: number; clientY: number }) => {
+  const openGroup = (group: MenuProductGroup, originEvent?: { clientX: number; clientY: number }, initialVariantId?: string) => {
     const requestId = modifierRequestRef.current + 1
     modifierRequestRef.current = requestId
+    const initialVariant = group.variants.find(({ product }) => product.id === initialVariantId) ?? group.variants[0]
     setDetailOrigin(originEvent ? { x: originEvent.clientX, y: originEvent.clientY } : null)
     setClosingDetail(false)
     setSelectedGroup(group)
-    setSelectedVariantId(group.variants[0]?.product.id ?? null)
+    setSelectedVariantId(initialVariant?.product.id ?? null)
     setDetailQuantity(1)
     setDetailNotes('')
     setSelectedExtras([])
-    const productId = group.variants[0]?.product.id
+    const productId = initialVariant?.product.id
     const isExtrasEligible = !group.variants.some(v =>
       v.product.categories.includes('bebidas') || v.product.categories.includes('extras')
     )
@@ -870,6 +915,7 @@ export function PublicMenu() {
 
   const selectedProduct = selectedGroup?.variants.find(({ product }) => product.id === selectedVariantId)?.product
     ?? selectedGroup?.variants[0]?.product
+  const quickSelectedVariant = quickVariantGroup?.variants.find(({ product }) => product.id === quickVariantId)
   const detailExtrasTotal = detailModifierGroups
     .flatMap(g => g.options.filter(o => selectedExtras.includes(o.id)))
     .reduce((sum, o) => sum + o.price, 0)
@@ -1112,8 +1158,16 @@ export function PublicMenu() {
     const isLiptonBottle = /^lipton\b/i.test(group.name.trim())
     return (
       <article className="public-prod-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+        {group.variants.find(v => v.product.menuLabel)?.product.menuLabel === 'free_drink' && (
+          <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="public-free-drink-sticker" />
+        )}
         <div className="public-prod-img-wrap">
-          {(() => { const label = menuLabelMeta[group.variants.find(v => v.product.menuLabel)?.product.menuLabel as keyof typeof menuLabelMeta]; return label ? <span className={`public-menu-label ${label.className}`}>{label.icon} {label.text}</span> : null })()}
+          {(() => {
+            const label = menuLabelMeta[group.variants.find(v => v.product.menuLabel)?.product.menuLabel as keyof typeof menuLabelMeta]
+            if (!label || label.className === 'free-drink') return null
+            const LabelIcon = label.icon
+            return <span className={`public-menu-label ${label.className}`}><LabelIcon size={12} strokeWidth={2.4} aria-hidden="true" /> {label.text}</span>
+          })()}
           <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         </div>
@@ -1125,7 +1179,7 @@ export function PublicMenu() {
               <span className="public-prod-price">{group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}</span>
               {priceBs(group.minPrice) && <span className="public-prod-price-bs">{priceBs(group.minPrice)}</span>}
             </div>
-            <button className="public-prod-add" aria-label={`Agregar ${group.name} al carrito`} onClick={(e) => { e.stopPropagation(); const defaultProduct = group.variants[0]?.product; if (defaultProduct) addProduct(defaultProduct) }}>
+            <button className="public-prod-add" aria-label={`Agregar ${group.name} al carrito`} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
               <span>Agregar</span>
               <ShoppingCart size={15} />
             </button>
@@ -1234,8 +1288,6 @@ export function PublicMenu() {
       onLoadCapture={handleImageLoad}
       onErrorCapture={handleImageError}
     >
-      {variantHint && <Toast type="info" message={variantHint} onClose={() => setVariantHint('')} duration={3500} />}
-
       {/* Top Navbar */}
       <header className="public-top-bar" id="inicio">
           <>
@@ -2148,7 +2200,7 @@ export function PublicMenu() {
                           <strong>{productTitle(activeReco.name)}</strong>
                           <b>{money(activeReco.minPrice)}{priceBs(activeReco.minPrice) && <small className="public-reco-bs">{priceBs(activeReco.minPrice)}</small>}</b>
                         </div>
-                        <button type="button" onClick={() => { const product = activeReco.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button>
+                        <button type="button" onClick={() => requestQuickAdd(activeReco)}><Plus size={15} /></button>
                       </div>
                       {recommendations.length > 1 && (
                         <div className="public-sidebar-reco-dots">
@@ -2270,6 +2322,67 @@ export function PublicMenu() {
         </div>
       )}
 
+      {quickVariantGroup && createPortal(
+        <div className={`public-variant-backdrop ${closingQuickVariant ? 'closing' : ''}`} onClick={closeQuickVariant}>
+          <section className="public-variant-picker" role="dialog" aria-modal="true" aria-labelledby="public-variant-title" onClick={event => event.stopPropagation()}>
+            <header className="public-variant-header">
+              <span className="public-variant-header-icon"><Utensils size={20} /></span>
+              <div>
+                <small>ESCOGE ANTES DE AGREGAR</small>
+                <h2 id="public-variant-title">¿Cuál presentación quieres?</h2>
+                <p>{productTitle(quickVariantGroup.name)}</p>
+              </div>
+              <button type="button" className="public-variant-close" onClick={closeQuickVariant} aria-label="Cerrar selector"><X size={18} /></button>
+            </header>
+
+            <div className="public-variant-options">
+              {quickVariantGroup.variants.map(({ product, label }) => {
+                const selected = product.id === quickVariantId
+                const inheritedImage = optimizedProductImage(product.imageUrl)
+                  || optimizedProductImage(quickVariantGroup.variants[0]?.product.imageUrl)
+                  || productImage(quickVariantGroup.category)
+                return (
+                  <button
+                    type="button"
+                    className={`public-variant-option ${selected ? 'selected' : ''}`}
+                    key={product.id}
+                    onClick={() => setQuickVariantId(product.id)}
+                    aria-pressed={selected}
+                  >
+                    <span className="public-variant-option-media">
+                      <img src={inheritedImage} alt="" />
+                      {selected && <span className="public-variant-option-badge">Elegido</span>}
+                      <span className="public-variant-option-check"><Check size={16} /></span>
+                    </span>
+                    <span className="public-variant-option-copy">
+                      <small>Presentación</small>
+                      <strong>{formatSpanishText(label)}</strong>
+                      <span className="public-variant-option-price">{money(product.price)}{priceBs(product.price) && <em>{priceBs(product.price)}</em>}</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <footer className="public-variant-footer">
+              <div className="public-variant-quantity" aria-label="Cantidad">
+                <button type="button" onClick={() => setQuickVariantQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus size={15} /></button>
+                <span><small>Cantidad</small><strong>{quickVariantQuantity}</strong></span>
+                <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
+              </div>
+              <div className="public-variant-actions">
+                <button type="button" className="public-variant-customize" disabled={!quickSelectedVariant} onClick={personalizeQuickVariant}>Personalizar</button>
+                <button type="button" className="public-variant-add" disabled={!quickSelectedVariant} onClick={confirmQuickVariant}>
+                  <ShoppingCart size={16} />
+                  <span>{quickSelectedVariant ? <>Agregar · {money(quickSelectedVariant.product.price * quickVariantQuantity)}</> : 'Elige una presentación'}</span>
+                </button>
+              </div>
+            </footer>
+          </section>
+        </div>,
+        document.body
+      )}
+
       {selectedGroup && selectedProduct && createPortal(
         <div className={`public-modal-backdrop ${closingDetail ? 'closing' : ''}`} onClick={closeProductDetail}>
           <section
@@ -2357,7 +2470,7 @@ export function PublicMenu() {
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
         <header className="public-review-header"><button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { if (isDesktop) { if (orderType === 'delivery') { setStep('address'); } else { closeCart(); } } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { if (isDesktop) { closeCart(); } else { setStep('delivery'); } } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing' || step === 'sent') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button><img src="/optimized/root/logo.webp" alt="Full China" /><div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : step === 'sent' ? 'Pedido enviado' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : step === 'sent' ? 'Tu solicitud fue registrada correctamente.' : 'Revisa tu pedido antes de continuar.'}</p></div>{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
-        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
+        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
         {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className="public-address-selected"><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span></div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className="public-address-extra"><span>Casa / edificio / referencia</span><input value={addressReference} onChange={event => setAddressReference(event.target.value)} placeholder="Ej. Torre B, Piso 4, Apt. 4B" /></label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div>{addressError && <p className="public-address-error" role="alert">{addressError}</p>}<button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
         {step === 'details' && (
@@ -2405,7 +2518,7 @@ export function PublicMenu() {
         </div>}
         {step === 'preparing' && <div className="public-preparing-page"><img className="preparing-logo" src="/optimized/root/logo.webp" alt="Full China" /><div className="public-preparing-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div><h3>Preparando tu pedido<br />para WhatsApp<span className="preparing-ellipsis">…</span></h3><p>Estamos creando tu solicitud segura.</p><div className="public-preparing-progress" aria-label="Progreso del pedido"><div className="public-progress-rail"><span /></div><div className="public-progress-step progress-step-one"><i><Check size={22} /></i><strong>Solicitud<br />creada</strong></div><div className="public-progress-step progress-step-two"><i><Check size={22} /></i><strong>Armando tu<br />pedido</strong></div><div className="public-progress-step progress-step-three"><i><LoaderCircle size={22} /></i><strong>Abriendo<br />WhatsApp</strong></div></div><div className="public-preparing-security"><ShieldCheck size={20} /><div><strong>Tus datos viajan seguros</strong><span>Solo los usamos para confirmar tu pedido.</span></div></div></div>}
         {step === 'sent' && <div className="public-success"><span><Check /></span><h3>¡Enviado!</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>Ahora espera la confirmación de Full China por <b>WhatsApp</b>.</p><div className="public-status-timeline"><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido fue registrado correctamente.</small></div><time>Ahora</time></div><div className="complete"><i><Check size={18} /></i><div><strong>Enviado por WhatsApp</strong><small>Tu solicitud fue enviada a Full China.</small></div><time>Ahora</time></div><div className="pending"><i>3</i><div><strong>Esperando confirmación</strong><small>Te confirmaremos tu pedido por WhatsApp.</small></div><time>◷</time></div></div><button className="public-primary" onClick={() => window.open(whatsappUrl || `https://wa.me/${String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')}`, '_blank', 'noopener,noreferrer')}>Volver a WhatsApp</button>{lastOrder.length > 0 && <button className="public-repeat-order" onClick={repeatLastOrder}><RotateCcw size={16} /> Repetir este pedido</button>}<button className="public-primary" onClick={startNewOrder}>Hacer otro pedido</button></div>}
-        {showAllExtras && step === 'cart' && <div className={`public-cart-all-extras ${closingAllExtras ? 'closing' : ''}`}><div className="public-cart-all-extras-head"><div><span>CATÁLOGO RÁPIDO</span><h3>Agrega algo más</h3></div><button type="button" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; closeAllExtras(); if (isDesktop) closeCart() }} aria-label="Cerrar">×</button></div><label className="public-cart-extras-search"><Search size={16} /><input value={extrasSearch} onChange={event => setExtrasSearch(event.target.value)} placeholder="Buscar un plato, bebida o extra" /><button type="button" onClick={() => setExtrasSearch('')} aria-label="Limpiar búsqueda">×</button></label><div className="public-cart-extra-sections">{extrasSections.length === 0 ? <p className="public-cart-extras-empty">No encontramos ese producto. Prueba con otro nombre.</p> : extrasSections.map(([category, categoryGroups]) => <section key={category}><div className="public-cart-extra-section-head"><h4>{categoryLabel(category)}</h4><span>{categoryGroups.length}</span></div><div className="public-cart-all-extras-grid">{categoryGroups.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => { const product = group.variants[0]?.product; if (product) addProduct(product) }}><Plus size={15} /></button></article>)}</div></section>)}</div></div>}
+        {showAllExtras && step === 'cart' && <div className={`public-cart-all-extras ${closingAllExtras ? 'closing' : ''}`}><div className="public-cart-all-extras-head"><div><span>CATÁLOGO RÁPIDO</span><h3>Agrega algo más</h3></div><button type="button" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; closeAllExtras(); if (isDesktop) closeCart() }} aria-label="Cerrar">×</button></div><label className="public-cart-extras-search"><Search size={16} /><input value={extrasSearch} onChange={event => setExtrasSearch(event.target.value)} placeholder="Buscar un plato, bebida o extra" /><button type="button" onClick={() => setExtrasSearch('')} aria-label="Limpiar búsqueda">×</button></label><div className="public-cart-extra-sections">{extrasSections.length === 0 ? <p className="public-cart-extras-empty">No encontramos ese producto. Prueba con otro nombre.</p> : extrasSections.map(([category, categoryGroups]) => <section key={category}><div className="public-cart-extra-section-head"><h4>{categoryLabel(category)}</h4><span>{categoryGroups.length}</span></div><div className="public-cart-all-extras-grid">{categoryGroups.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>)}</div></div>}
       </aside></div>,
         document.body
       )}

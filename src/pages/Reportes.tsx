@@ -7,6 +7,7 @@ import './Reportes.css'
 import { formatProductTitle } from '../lib/textFormat'
 import { formatUsd } from '../lib/money'
 import { UtensilsCrossed, BarChart3, CalendarDays, CalendarRange, Gauge, ShoppingBag } from 'lucide-react'
+import { PageSkeleton } from '../components/PageSkeleton'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -26,7 +27,7 @@ export function Reportes() {
   const [productRanking, setProductRanking] = useState<ProductRanking[]>(reportesCache?.productRanking ?? [])
   const [categorySales, setCategorySales] = useState<CategorySales[]>(reportesCache?.categorySales ?? [])
   const [paymentMethodSales, setPaymentMethodSales] = useState<PaymentMethodSales[]>(reportesCache?.paymentMethodSales ?? [])
-  const [, setLoading] = useState(!reportesCache)
+  const [loading, setLoading] = useState(!reportesCache)
   const [orders, setOrders] = useState<FullOrder[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [recipeCosts, setRecipeCosts] = useState<Map<string, RecipeSummary>>(new Map())
@@ -213,6 +214,8 @@ export function Reportes() {
       </div>
     )
   }
+
+  if (loading) return <PageSkeleton cards={4} rows={4} hasTable={false} />
 
   return (
     <div className="page animate-fade-in management-workspace management-workspace--reports" key="reportes-full">

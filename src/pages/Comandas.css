@@ -2577,22 +2577,29 @@
   padding: 4px 24px 20px;
 }
 
-.cmd-history-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 60px 20px;
-  color: #999;
+.cmd-history-skeleton { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+.cmd-history-skeleton-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: #1c1c1f;
+  border: 1px solid rgba(255,255,255,.05);
+  border-radius: 12px;
 }
-.cmd-history-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #333;
-  border-top-color: #E31B2B;
-  border-radius: 50%;
-  animation: fc-spin 0.8s linear infinite;
+.cmd-history-skeleton-icon {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%; animation: cmd-history-shimmer 1.5s infinite;
+}
+.cmd-history-skeleton-lines { display: flex; flex-direction: column; gap: 7px; flex: 1; min-width: 0; }
+.cmd-history-skeleton-line {
+  height: 12px; border-radius: 6px; width: 45%;
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%; animation: cmd-history-shimmer 1.5s infinite;
+}
+.cmd-history-skeleton-line.wide { width: 70%; }
+@keyframes cmd-history-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .cmd-history-group {

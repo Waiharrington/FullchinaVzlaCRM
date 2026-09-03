@@ -6,6 +6,7 @@ import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
 import { EmptyState } from '../components/EmptyState'
+import { PageSkeleton } from '../components/PageSkeleton'
 import {
   addCashMovement,
   closeCashSession,
@@ -40,6 +41,7 @@ export function CajaOperativa() {
   const [transactions, setTransactions] = useState<CashTransaction[]>([])
   const [txFilter, setTxFilter] = useState<'all' | 'in' | 'out'>('all')
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -77,6 +79,7 @@ export function CajaOperativa() {
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar la caja')
     } finally {
       setLoading(false)
+      setInitialLoading(false)
     }
   }, [])
 
@@ -153,6 +156,8 @@ export function CajaOperativa() {
       setError(cause instanceof Error ? cause.message : 'No se pudo cerrar la caja')
     } finally { setSaving(false) }
   }
+
+  if (initialLoading) return <PageSkeleton cards={3} rows={4} hasTable={false} />
 
   return (
     <div className="page cash-ops-page animate-fade-in management-workspace management-workspace--cash-ops">

@@ -42,6 +42,7 @@ import {
   Utensils,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
+import { PageSkeleton } from '../components/PageSkeleton'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
@@ -57,7 +58,7 @@ export function Inventario() {
   const navigate = useNavigate()
   const [ingredients, setIngredients] = useState<Ingredient[]>(inventarioCache?.ingredients ?? [])
   const [stockMovements, setStockMovements] = useState<StockMovement[]>(inventarioCache?.stockMovements ?? [])
-  const [, setLoading] = useState(!inventarioCache)
+  const [loading, setLoading] = useState(!inventarioCache)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -335,6 +336,8 @@ export function Inventario() {
     if (diffDays === 1) return 'Ayer'
     return `${diffDays}d atrás`
   }
+
+  if (loading) return <PageSkeleton cards={4} rows={6} hasTable />
 
   return (
     <div className="inv-page management-workspace management-workspace--inventory">

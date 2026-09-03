@@ -7,6 +7,7 @@ import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
 import { EmptyState } from '../components/EmptyState'
+import { PageSkeleton } from '../components/PageSkeleton'
 import './Almacen.css'
 import { dateKeyInTimeZone } from '../lib/money'
 
@@ -50,6 +51,7 @@ export function Almacen() {
   const [editForm, setEditForm] = useState({ name: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
   const [adjustment, setAdjustment] = useState({ direction: 1 as 1 | -1, quantity: '', notes: '' })
   const [modalLoading, setModalLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   const closeModal = () => { if (!modalLoading) { setSelectedItem(null); setModalMode(null) } }
   const openView = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('view'); setModalLoading(true); try { setItemMovements(await getStockMovements(item.id)) } catch { setErrorMsg('No se pudieron cargar los movimientos.') } finally { setModalLoading(false) } }
@@ -89,6 +91,7 @@ export function Almacen() {
           status: 'completed'
         })))
     }).catch(error => setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
+      .finally(() => setLoading(false))
   }, [])
 
   const handleTransfer = async (event: FormEvent) => {
@@ -140,6 +143,8 @@ export function Almacen() {
       setErrorMsg(error instanceof Error ? error.message : 'No se pudo registrar la transferencia')
     }
   }
+
+  if (loading) return <PageSkeleton cards={3} rows={5} hasTable />
 
   return (
     <div className="almacen-page management-workspace management-workspace--warehouse">

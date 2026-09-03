@@ -28,6 +28,7 @@ import { formatProductTitle } from '../lib/textFormat'
 import { DeliverySettings } from '../components/DeliverySettings'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
+import { PageSkeleton } from '../components/PageSkeleton'
 import { Bike, Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings } from 'lucide-react'
 
 type Tab = 'credits' | 'close' | 'delivery'
@@ -50,7 +51,7 @@ export function Mas() {
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
-  const [, setLoading] = useState(!masCache)
+  const [loading, setLoading] = useState(!masCache)
   const [tab, setTab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
@@ -291,6 +292,8 @@ export function Mas() {
   const settledCredits = credits.filter(c => c.status === 'paid')
   const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
 
+  if (loading && isCreditsModule) return <PageSkeleton cards={3} rows={5} hasTable />
+
   return (
     <div className={`page mas-page animate-fade-in management-workspace ${isCreditsModule ? 'management-workspace--credits' : 'management-workspace--settings'}`}>
       <header className="page-header management-workspace-header">
@@ -307,16 +310,10 @@ export function Mas() {
         <a href="/equipo" className="card shortcut-card"><span className="shortcut-icon"><Users size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Equipo y Usuarios</span><span className="shortcut-desc">Roles y accesos del personal</span></div></a>
         <a href="/fidelizacion" className="card shortcut-card"><span className="shortcut-icon"><Award size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Fidelización</span><span className="shortcut-desc">Clientes frecuentes y beneficios</span></div></a>
         <a href="/marketing" className="card shortcut-card"><span className="shortcut-icon"><MessageSquare size={28} /></span><div className="shortcut-info"><span className="shortcut-title">WhatsApp Bot</span><span className="shortcut-desc">Mensajes y automatizaciones</span></div></a>
-        <a href="/promociones" className="card shortcut-card"><span className="shortcut-icon"><Tag size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Promociones</span><span className="shortcut-desc">Ofertas y campañas activas</span></div></a>
+        <a href="/promociones" className="card shortcut-card"><span className="shortcut-icon"><Tag size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Promociones</span><span className="shortcut-desc">Cupones para WhatsApp</span></div></a>
       </div>}
 
-      {!isCreditsModule && <div className="tabs">
-        {tab !== 'credits' && <button className={`tab ${tab === 'delivery' ? 'active' : ''}`} onClick={() => setTab('delivery')}>
-          <Bike size={14} /> Delivery
-        </button>}
-      </div>}
-
-      {!isCreditsModule && tab === 'delivery' && <DeliverySettings />}
+      {!isCreditsModule && <DeliverySettings />}
 
       {tab === 'credits' && (
         <div className="card">

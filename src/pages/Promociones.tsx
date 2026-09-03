@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../lib/supabase'
 import NumberStepper from '../components/NumberStepper'
-import { Plus, Pencil, Trash2, Eye, EyeOff, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
+import { Plus, Trash2, Eye, EyeOff, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
 import './Promociones.css'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
+import { PageSkeleton } from '../components/PageSkeleton'
 
 interface Promotion {
   id: string
@@ -46,6 +47,17 @@ const ICON_OPTIONS = [
 ]
 
 const ICON_MAP = Object.fromEntries(ICON_OPTIONS.map(o => [o.key, o.icon]))
+
+// El ícono ya se muestra aparte (selector + marca), así que se limpia
+// cualquier emoji que haya quedado escrito dentro del texto del tag.
+function stripEmoji(value: string): string {
+  return value
+    .replace(/\p{Extended_Pictographic}/gu, '')
+    .replace(/\u{FE0F}/gu, '')
+    .replace(/\u{200D}/gu, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
 
 function db() {
   if (!supabase) throw new Error('Supabase no está configurado')
@@ -191,37 +203,35 @@ export function Promociones() {
 
   const visibles = promos.filter(p => p.isActive).length
 
+  if (loading) return <PageSkeleton cards={2} rows={3} hasTable={false} />
+
   return (
     <div className="page promo-page animate-fade-in management-workspace management-workspace--promotions">
-      {/* Hero */}
-      <header className="promo-hero management-workspace-header">
-        <div className="promo-hero-text">
-          <h1 className="page-title promo-hero-title"><Tag size={22} className="page-title-icon" /> Promociones <span>del Menú</span></h1>
-          <p className="promo-hero-sub">Gestiona las ofertas que se ven en /pedir</p>
+      <header className="page-header management-workspace-header">
+        <div>
+          <h1 className="page-title"><Tag size={22} className="page-title-icon" /> Promociones</h1>
+          <p className="page-subtitle">Cupones listos para tus automatizaciones de WhatsApp</p>
+        </div>
+
+        <div className="promo-header-actions">
+          <div className="promo-stats">
+            <div className="promo-stat">
+              <Eye size={16} className="promo-stat-ico green" />
+              <b>{visibles}</b><span>Activas</span>
+            </div>
+            <div className="promo-stat-divider" />
+            <div className="promo-stat">
+              <Tag size={16} className="promo-stat-ico red" />
+              <b>{promos.length}</b><span>Total</span>
+            </div>
+          </div>
+          <button className="promo-new-btn" onClick={openNew}>
+            <Plus size={18} /> Nueva promoción
+          </button>
         </div>
       </header>
 
-      {/* Toolbar: stats + acción */}
-      <div className="promo-toolbar">
-        <div className="promo-stats">
-          <div className="promo-stat">
-            <Eye size={18} className="promo-stat-ico green" />
-            <b>{visibles}</b><span>Visibles</span>
-          </div>
-          <div className="promo-stat-divider" />
-          <div className="promo-stat">
-            <Tag size={18} className="promo-stat-ico red" />
-            <b>{promos.length}</b><span>Total</span>
-          </div>
-        </div>
-        <button className="promo-new-btn" onClick={openNew}>
-          <Plus size={18} /> Nueva promoción
-        </button>
-      </div>
-
-      {loading ? (
-        <p className="promo-empty">Cargando promociones…</p>
-      ) : promos.length === 0 ? (
+      {promos.length === 0 ? (
         <p className="promo-empty">No hay promociones creadas. Crea la primera con “Nueva promoción”.</p>
       ) : (
         <div className="promos-list">
@@ -230,118 +240,158 @@ export function Promociones() {
               key={p.id}
               className={`promo-item ${!p.isActive ? 'inactive' : ''}`}
               style={{ '--pc': p.color } as CSSProperties}
+              onClick={() => openEdit(p)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter') openEdit(p) }}
             >
-              <div className="promo-glow" aria-hidden>{(() => { const Ico = ICON_MAP[p.icon]; return Ico ? <Ico size={32} /> : p.icon; })()}</div>
-
-              <div className="promo-drag">
-                <button className="promo-move" onClick={() => moveUp(p, idx)} disabled={idx === 0} title="Subir"><ChevronUp size={16} /></button>
-                <button className="promo-move" onClick={() => moveDown(p, idx)} disabled={idx >= promos.length - 1} title="Bajar"><ChevronDown size={16} /></button>
+              <div className="promo-item-drag">
+                <button className="promo-move" onClick={(e) => { e.stopPropagation(); moveUp(p, idx) }} disabled={idx === 0} title="Subir"><ChevronUp size={14} /></button>
+                <button className="promo-move" onClick={(e) => { e.stopPropagation(); moveDown(p, idx) }} disabled={idx >= promos.length - 1} title="Bajar"><ChevronDown size={14} /></button>
               </div>
 
-              <div className="promo-icon-preview">{(() => { const Ico = ICON_MAP[p.icon]; return Ico ? <Ico size={20} /> : p.icon; })()}</div>
-
-              <div className="promo-info">
-                <span className="promo-tag">{p.tag}</span>
-                <strong>{p.title}</strong>
-                <span className="promo-subtitle">{p.subtitle}</span>
-                {p.note && <span className="promo-note-badge">{p.note}</span>}
+              <div className="promo-item-actions">
+                <button className="promo-btn-toggle" onClick={(e) => { e.stopPropagation(); toggleActive(p) }} title={p.isActive ? 'Desactivar' : 'Activar'}>
+                  {p.isActive ? <Eye size={15} /> : <EyeOff size={15} />}
+                </button>
+                <button className="promo-btn-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }} title="Eliminar"><Trash2 size={15} /></button>
               </div>
+
+              <div className="promo-icon-preview">{(() => { const Ico = ICON_MAP[p.icon]; return Ico ? <Ico size={26} /> : p.icon; })()}</div>
+              <span className="promo-tag">{stripEmoji(p.tag)}</span>
+              <strong className="promo-item-title">{p.title}</strong>
+              <span className="promo-subtitle">{p.subtitle}</span>
 
               {p.price && (
-                <div className="promo-price-block">
+                <div className="promo-price-row">
                   <span className="promo-price-main">${p.price}</span>
                   {p.oldPrice && <span className="promo-price-old">${p.oldPrice}</span>}
                 </div>
               )}
 
-              <div className="promo-actions">
-                <button className="promo-btn-toggle" onClick={() => toggleActive(p)} title={p.isActive ? 'Ocultar' : 'Mostrar'}>
-                  {p.isActive ? <Eye size={16} /> : <EyeOff size={16} />}
-                </button>
-                <button className="promo-btn-edit" onClick={() => openEdit(p)} title="Editar"><Pencil size={16} /></button>
-                <button className="promo-btn-delete" onClick={() => handleDelete(p.id)} title="Eliminar"><Trash2 size={16} /></button>
-              </div>
+              {p.note && <span className="promo-note-badge">{p.note}</span>}
+              {!p.isActive && <span className="promo-hidden-flag">Inactiva</span>}
             </div>
           ))}
         </div>
       )}
 
-      <p className="promo-footer-note"><Lock size={13} /> Las promociones visibles aparecerán en tu menú público (/pedir)</p>
+      <p className="promo-footer-note"><Lock size={13} /> Las promociones activas quedan listas para usarse en tus automatizaciones de WhatsApp</p>
 
       {showForm && createPortal(
-        <div className={`modal-overlay ${closingForm ? 'closing' : ''}`} onClick={() => closeForm()}>
-          <div className="modal promo-form-modal animate-slide-up" onClick={e => e.stopPropagation()}>
+        <div className={`promo-modal-overlay ${closingForm ? 'closing' : ''}`} onClick={() => closeForm()}>
+          <div className="promo-form-modal animate-slide-up" onClick={e => e.stopPropagation()}>
             <div className="promo-form-header">
               <h3>{editing ? 'Editar promoción' : 'Nueva promoción'}</h3>
             </div>
 
-            <div className="promo-form-body">
-              <div className="promo-form-row">
-                <label>Ícono</label>
-                <div className="promo-emoji-grid">
-                  {ICON_OPTIONS.map(opt => (
-                    <button key={opt.key} type="button" className={`promo-emoji-btn ${form.icon === opt.key ? 'selected' : ''}`}
-                      onClick={() => setForm(f => ({ ...f, icon: opt.key }))} title={opt.label}><opt.icon size={18} /></button>
-                  ))}
-                </div>
-              </div>
+            <div className="promo-form-content">
+              <div className="promo-form-fields">
+                <div className="promo-form-body">
+                  <div className="promo-form-row">
+                    <label>Ícono</label>
+                    <div className="promo-emoji-grid">
+                      {ICON_OPTIONS.map(opt => (
+                        <button key={opt.key} type="button" className={`promo-emoji-btn ${form.icon === opt.key ? 'selected' : ''}`}
+                          onClick={() => setForm(f => ({ ...f, icon: opt.key }))} title={opt.label}><opt.icon size={18} /></button>
+                      ))}
+                    </div>
+                  </div>
 
-              <div className="promo-form-row">
-                <label>Tag</label>
-                <input value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))} placeholder="PROMO" />
-              </div>
+                  <div className="promo-form-row">
+                    <label>Tag</label>
+                    <input value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))} placeholder="PROMO" />
+                  </div>
 
-              <div className="promo-form-row">
-                <label>Título</label>
-                <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Delivery gratis" />
-              </div>
+                  <div className="promo-form-row">
+                    <label>Título</label>
+                    <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Delivery gratis" />
+                  </div>
 
-              <div className="promo-form-row">
-                <label>Subtítulo</label>
-                <input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} placeholder="En pedidos mayores a $10" />
-              </div>
+                  <div className="promo-form-row">
+                    <label>Subtítulo</label>
+                    <input value={form.subtitle} onChange={e => setForm(f => ({ ...f, subtitle: e.target.value }))} placeholder="En pedidos mayores a $10" />
+                  </div>
 
-              <div className="promo-form-grid">
-                <div className="promo-form-row">
-                  <label>Precio (opcional)</label>
-                  <input value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="12,90" />
-                </div>
-                <div className="promo-form-row">
-                  <label>Precio anterior (opcional)</label>
-                  <input value={form.oldPrice} onChange={e => setForm(f => ({ ...f, oldPrice: e.target.value }))} placeholder="16,00" />
-                </div>
-              </div>
+                  <div className="promo-form-grid">
+                    <div className="promo-form-row">
+                      <label>Precio (opcional)</label>
+                      <input value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="12,90" />
+                    </div>
+                    <div className="promo-form-row">
+                      <label>Precio anterior (opcional)</label>
+                      <input value={form.oldPrice} onChange={e => setForm(f => ({ ...f, oldPrice: e.target.value }))} placeholder="16,00" />
+                    </div>
+                  </div>
 
-              <div className="promo-form-row">
-                <label>Nota</label>
-                <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Válido solo delivery" />
-              </div>
+                  <div className="promo-form-row">
+                    <label>Nota</label>
+                    <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="Válido solo delivery" />
+                  </div>
 
-              <div className="promo-form-grid">
-                <div className="promo-form-row">
-                  <label>Color</label>
-                  <div className="promo-color-row">
-                    <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} className="promo-color-input" />
-                    <span className="promo-color-hex">{form.color}</span>
+                  <div className="promo-form-grid">
+                    <div className="promo-form-row">
+                      <label>Color</label>
+                      <div className="promo-color-row">
+                        <input type="color" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} className="promo-color-input" />
+                        <span className="promo-color-hex">{form.color}</span>
+                      </div>
+                    </div>
+                    <div className="promo-form-row">
+                      <label>Orden</label>
+                      <NumberStepper step={1} value={String(form.sortOrder)} onChange={v => setForm(f => ({ ...f, sortOrder: parseInt(v) || 0 }))} />
+                    </div>
+                  </div>
+
+                  <div className="promo-form-row">
+                    <label className="promo-toggle-label">
+                      <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />
+                      <span>Activa (disponible para usar en WhatsApp)</span>
+                    </label>
                   </div>
                 </div>
-                <div className="promo-form-row">
-                  <label>Orden</label>
-                  <NumberStepper step={1} value={String(form.sortOrder)} onChange={v => setForm(f => ({ ...f, sortOrder: parseInt(v) || 0 }))} />
-                </div>
               </div>
 
-              <div className="promo-form-row">
-                <label className="promo-toggle-label">
-                  <input type="checkbox" checked={form.isActive} onChange={e => setForm(f => ({ ...f, isActive: e.target.checked }))} />
-                  <span>Activa (visible en el menú)</span>
-                </label>
+              <div className="promo-preview-pane">
+                <span className="promo-preview-label">Vista previa del cupón</span>
+                <div className="promo-coupon-preview">
+                  <div className="promo-coupon-bg-art" aria-hidden />
+                  <div className="promo-coupon-shine" aria-hidden />
+
+                  <div className="promo-coupon-head">
+                    <div className="promo-coupon-head-text">
+                      <span className="promo-coupon-tag">
+                        {(() => { const Ico = ICON_MAP[form.icon]; return Ico ? <Ico size={11} /> : form.icon })()}
+                        {stripEmoji(form.tag) || 'PROMO'}
+                      </span>
+                      <h4 className="promo-coupon-title">{form.title.trim() || 'Título de la promo'}</h4>
+                    </div>
+                    <div className="promo-coupon-mark"><img src="/icons/wok-mark.png" alt="" /></div>
+                  </div>
+
+                  <p className="promo-coupon-subtitle">{form.subtitle.trim() || 'Describe la oferta aquí'}</p>
+
+                  <div className="promo-coupon-perf" aria-hidden />
+
+                  <div className="promo-coupon-foot">
+                    {form.price.trim() && (
+                      <div className="promo-coupon-price-row">
+                        <span className="promo-coupon-price">${form.price}</span>
+                        {form.oldPrice.trim() && <span className="promo-coupon-old">${form.oldPrice}</span>}
+                      </div>
+                    )}
+                    {form.note.trim() && <span className="promo-coupon-note">{form.note}</span>}
+                  </div>
+
+                  {!form.isActive && <span className="promo-coupon-hidden-flag">Inactiva</span>}
+                </div>
+                <span className="promo-preview-hint">Diseño de marca — el ícono es lo único que cambia</span>
               </div>
             </div>
 
             <div className="promo-form-footer">
-              <button className="btn-ghost" onClick={() => closeForm()}>Cancelar</button>
-              <button className="btn-accent" onClick={handleSave} disabled={saving || !form.tag.trim() || !form.title.trim()}>
+              <button className="promo-btn-cancel" onClick={() => closeForm()}>Cancelar</button>
+              <button className="promo-btn-save" onClick={handleSave} disabled={saving || !form.tag.trim() || !form.title.trim()}>
                 <Check size={16} /> {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>

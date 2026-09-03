@@ -22,6 +22,7 @@ export function DeliverySettings() {
   const [lng, setLng] = useState('')
   const [factor, setFactor] = useState('1.3')
   const [zones, setZones] = useState<DeliveryZoneRow[]>([])
+  const [savingZones, setSavingZones] = useState(false)
   const [testCoords, setTestCoords] = useState('')
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
@@ -63,10 +64,13 @@ export function DeliverySettings() {
   const patchZone = (id: string, patch: Partial<DeliveryZoneRow>) =>
     setZones((zs) => zs.map((z) => (z.id === id ? { ...z, ...patch } : z)))
 
-  const saveZone = async (zone: DeliveryZoneRow) => {
-    setError('')
-    try { await updateDeliveryZone(zone.id, { minKm: zone.minKm, maxKm: zone.maxKm, price: zone.price }); flash('Zona actualizada') }
-    catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar la zona') }
+  const saveAllZones = async () => {
+    setError(''); setSavingZones(true)
+    try {
+      await Promise.all(zones.map((z) => updateDeliveryZone(z.id, { minKm: z.minKm, maxKm: z.maxKm, price: z.price })))
+      flash('Zonas guardadas')
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron guardar las zonas') }
+    finally { setSavingZones(false) }
   }
 
   const addZone = async () => {
@@ -104,9 +108,10 @@ export function DeliverySettings() {
           <h2 className="card-title"><Bike size={18} style={{ verticalAlign: -3, marginRight: 6 }} />Delivery por distancia</h2>
           <p className="card-subtitle">Se estima el costo en el menú de clientes según la distancia al local. En Caja el monto sigue siendo manual.</p>
         </div>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+        <label className="ds-toggle">
+          <span>{config.enabled ? 'Activado' : 'Desactivado'}</span>
           <input type="checkbox" checked={config.enabled} onChange={toggleEnabled} />
-          {config.enabled ? 'Activado' : 'Desactivado'}
+          <i aria-hidden="true" />
         </label>
       </div>
 
@@ -121,7 +126,7 @@ export function DeliverySettings() {
           <div className="ds-field"><label>Longitud</label><input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-67.5926267" /></div>
           <div className="ds-field"><label>Factor de ruta</label><input value={factor} onChange={(e) => setFactor(e.target.value)} placeholder="1.3" /><span className="ds-sub">1.3 = ruta ~30% más larga que la línea recta.</span></div>
         </div>
-        <button className="btn-accent btn-sm" onClick={saveConfig} disabled={saving}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar ubicación</button>
+        <button className="ds-btn-primary" onClick={saveConfig} disabled={saving}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar ubicación</button>
       </div>
 
       <div className="ds-section">
@@ -135,13 +140,17 @@ export function DeliverySettings() {
               <NumberStepper step={0.1} min={0} value={z.maxKm != null ? String(z.maxKm) : ''} placeholder="sin tope" onChange={(v) => patchZone(z.id, { maxKm: v.trim() ? parseFloat(v) : null })} />
               <NumberStepper step={0.01} min={0} value={String(z.price)} onChange={(v) => patchZone(z.id, { price: parseFloat(v) || 0 })} />
               <div className="ds-zone-actions">
-                <button className="btn-ghost btn-sm" onClick={() => saveZone(z)} title="Guardar"><Save size={14} /></button>
-                <button className="btn-ghost btn-sm" onClick={() => removeZone(z)} title="Eliminar" style={{ color: '#f87171' }}><Trash2 size={14} /></button>
+                <button className="ds-icon-btn danger" onClick={() => removeZone(z)} title="Eliminar zona"><Trash2 size={14} /></button>
               </div>
             </div>
           ))}
         </div>
-        <button className="btn-ghost btn-sm" onClick={addZone} style={{ marginTop: 8 }}><Plus size={14} /> Agregar zona</button>
+        <div className="ds-zones-footer">
+          <button className="ds-btn-ghost" onClick={addZone}><Plus size={14} /> Agregar zona</button>
+          <button className="ds-btn-primary" onClick={saveAllZones} disabled={savingZones || zones.length === 0}>
+            {savingZones ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar zonas
+          </button>
+        </div>
       </div>
 
       <div className="ds-section">

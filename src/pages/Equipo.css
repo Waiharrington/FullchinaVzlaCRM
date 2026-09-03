@@ -5,66 +5,36 @@
   gap: 16px;
 }
 
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  margin-top: 8px;
+/* ---------- Tabla de empleados (nómina) ---------- */
+.team-table-wrap { overflow-x: auto; margin-top: 4px; }
+.team-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.team-table th {
+  background: rgba(255, 255, 255, 0.03);
+  color: #a1a1aa;
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-
-.team-card {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: all 0.2s ease;
-}
-
-.team-card:hover {
-  border-color: rgba(227, 27, 43, 0.4);
-  transform: translateY(-2px);
-}
-
-.team-card.inactive {
-  opacity: 0.6;
-  filter: grayscale(0.6);
-  border-style: dashed;
-}
-
-.team-card-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.team-table td { padding: 10px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); color: #e4e4e7; }
+.team-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+.team-table tr.inactive td { opacity: 0.55; }
+.team-row-id { display: flex; align-items: center; gap: 10px; }
+.team-row-id strong { color: #fff; font-size: 13.5px; }
 
 .team-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
   background: linear-gradient(135deg, #E31B2B 0%, #991b1b 100%);
   color: #fff;
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(227, 27, 43, 0.3);
-}
-
-.team-info-header {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.team-name {
-  color: #ffffff;
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0;
 }
 
 .team-badge {
@@ -99,36 +69,6 @@
   background: rgba(168, 85, 247, 0.15);
   color: #c084fc;
   border: 1px solid rgba(168, 85, 247, 0.3);
-}
-
-.team-card-details {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  color: #a1a1aa;
-}
-
-.detail-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.detail-icon {
-  color: #E31B2B;
-  flex-shrink: 0;
-}
-
-.team-card-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .team-row-actions {
@@ -211,9 +151,20 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
-.text-green { color: #10b981; }
-.text-red { color: #FF4D3D; }
-.text-gray { color: #71717a; }
+/* ---------- Píldoras de nivel de permiso (sistema visual consistente) ---------- */
+.perm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.perm-pill.perm-total { color: #34d399; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.28); }
+.perm-pill.perm-partial { color: #fbbf24; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.28); }
+.perm-pill.perm-blocked { color: #f87171; background: rgba(255, 77, 61, 0.1); border: 1px solid rgba(255, 77, 61, 0.25); }
 
 /* Modal Custom */
 .modal-overlay {
@@ -534,33 +485,79 @@
 
 .user-card-actions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 .user-act {
-  flex: 1 1 calc(50% - 4px);
+  flex: 1 1 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #e4e4e7;
-  padding: 7px 6px;
+  padding: 8px 10px;
   border-radius: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 .user-act:hover { background: rgba(227, 27, 43, 0.9); border-color: #E31B2B; color: #fff; }
-.user-act.danger:hover { background: rgba(255, 77, 61, 0.9); border-color: #FF4D3D; }
-.user-act.delete { flex-basis: 100%; color: #f87171; border-color: rgba(248, 113, 113, 0.28); }
-.user-act.delete:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
-.user-act.ok { color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
-.user-act.ok:hover { background: rgba(16, 185, 129, 0.9); border-color: #10b981; color: #fff; }
+.user-act.primary { color: #ff9187; background: rgba(227, 27, 43, 0.1); border-color: rgba(227, 27, 43, 0.28); }
+.user-act.primary:hover { background: rgba(227, 27, 43, 0.9); border-color: #E31B2B; color: #fff; }
+
+/* Menú "⋯" con las acciones secundarias */
+.user-menu { position: relative; flex: 0 0 auto; }
+.user-menu-trigger {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.user-menu-trigger:hover,
+.user-menu-trigger[aria-expanded="true"] { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.user-menu-dropdown {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 175px;
+  padding: 6px;
+  background: #1c1c20;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+}
+.user-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  color: #e4e4e7;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.user-menu-dropdown button:hover { background: rgba(255, 255, 255, 0.07); }
+.user-menu-dropdown button.danger { color: #f87171; }
+.user-menu-dropdown button.danger:hover { background: rgba(255, 77, 61, 0.14); }
 
 .users-empty {
   grid-column: 1 / -1;

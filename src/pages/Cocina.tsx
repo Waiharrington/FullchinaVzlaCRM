@@ -4,6 +4,7 @@ import { dayRangeInTimeZone } from '../lib/money'
 import './Cocina.css'
 import { formatProductTitle } from '../lib/textFormat'
 import { ChefHat, CookingPot, Utensils, Package, Bell, BellOff, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
+import { PageSkeleton } from '../components/PageSkeleton'
 
 type StationFilter = 'all' | 'wok' | 'fryer' | 'prep'
 
@@ -21,7 +22,7 @@ let cocinaCache: FullOrder[] | null = null
 
 export function Cocina() {
   const [orders, setOrders] = useState<FullOrder[]>(cocinaCache ?? [])
-  const [, setLoading] = useState(!cocinaCache)
+  const [loading, setLoading] = useState(!cocinaCache)
   const [stationFilter, setStationFilter] = useState<StationFilter>('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
@@ -74,6 +75,8 @@ export function Cocina() {
       setUpdatingId(null)
     }
   }
+
+  if (loading) return <PageSkeleton cards={0} rows={6} hasTable={false} />
 
   return (
     <div className="kds-page animate-fade-in">

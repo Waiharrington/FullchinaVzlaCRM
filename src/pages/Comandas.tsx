@@ -2403,9 +2403,16 @@ export function Comandas() {
 
             <div className="cmd-history-body">
               {historyLoading ? (
-                <div className="cmd-history-loading">
-                  <div className="cmd-history-spinner"></div>
-                  <span>Cargando historial...</span>
+                <div className="cmd-history-skeleton" aria-hidden>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div className="cmd-history-skeleton-row" key={i}>
+                      <span className="cmd-history-skeleton-icon" />
+                      <span className="cmd-history-skeleton-lines">
+                        <span className="cmd-history-skeleton-line wide" />
+                        <span className="cmd-history-skeleton-line" />
+                      </span>
+                    </div>
+                  ))}
                 </div>
               ) : historyGroups.length === 0 ? (
                 <EmptyState

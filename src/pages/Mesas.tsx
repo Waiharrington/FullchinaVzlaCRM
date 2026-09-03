@@ -14,6 +14,7 @@ import {
   type FloorTable,
 } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
+import { PageSkeleton } from '../components/PageSkeleton'
 import './Mesas.css'
 
 const CANVAS_WIDTH = 100
@@ -225,6 +226,8 @@ export function Mesas() {
     }
   }
 
+  if (loading) return <PageSkeleton cards={0} rows={6} hasTable={false} />
+
   return (
     <div className="mesas-page">
       <header className="mesas-page-header">
@@ -267,9 +270,7 @@ export function Mesas() {
         </div>
       )}
 
-      {loading ? (
-        <div className="mesas-empty">Cargando mapa de mesas…</div>
-      ) : visibleTables.length === 0 ? (
+      {visibleTables.length === 0 ? (
         <div className="mesas-empty">
           Aún no hay mesas configuradas.
           {canManage && (

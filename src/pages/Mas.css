@@ -737,19 +737,96 @@
 .ds-section:first-of-type { border-top: 0; }
 .ds-h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: #fff; }
 .ds-hint { font-size: 12px; color: #a1a1aa; margin: 0 0 12px; }
-.ds-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
-@media (max-width: 640px) { .ds-grid { grid-template-columns: 1fr; } }
+.ds-grid { display: grid; grid-template-columns: repeat(3, minmax(140px, 240px)); gap: 10px; margin-bottom: 12px; }
+@media (max-width: 640px) {
+  .ds-grid { grid-template-columns: 1fr; }
+  .ds-zones-footer { flex-direction: column-reverse; align-items: stretch; }
+  .ds-zones-footer .ds-btn-primary,
+  .ds-zones-footer .ds-btn-ghost { justify-content: center; width: 100%; }
+}
 .ds-field { display: flex; flex-direction: column; gap: 4px; }
 .ds-field label { font-size: 12px; color: #a1a1aa; }
-.ds-field input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; }
+.ds-field input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; width: 100%; box-sizing: border-box; }
+
+/* Toggle "Activado/Desactivado" con el mismo estilo del resto de la app */
+.ds-toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #d4d4d8;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.ds-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.ds-toggle i {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 38px;
+  border-radius: 999px;
+  background: #3f3f46;
+  transition: background 0.18s ease;
+}
+.ds-toggle i::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.18s ease;
+}
+.ds-toggle input:checked + i { background: #E31B2B; }
+.ds-toggle input:checked + i::after { transform: translateX(16px); }
+.ds-toggle:has(input:focus-visible) i { outline: 2px solid rgba(227,27,43,.45); outline-offset: 2px; }
 .ds-sub { font-size: 11px; color: #71717a; }
-.ds-zones { display: flex; flex-direction: column; gap: 6px; }
-.ds-zone-head, .ds-zone-row { display: grid; grid-template-columns: 1fr 1fr 1fr 90px; gap: 8px; align-items: center; }
+.ds-zones { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ds-zone-head, .ds-zone-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 42px; gap: 8px; align-items: center; }
 .ds-zone-head span { font-size: 11px; color: #71717a; padding-left: 4px; }
 .ds-zone-row input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 9px; color: #fff; padding: 9px; font-size: 14px; width: 100%; }
-.ds-zone-actions { display: flex; gap: 4px; justify-content: flex-end; }
+.ds-zone-actions { display: flex; align-items: center; justify-content: center; align-self: center; gap: 4px; }
 .ds-test-input { background: #17171d; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #fff; padding: 10px; font-size: 14px; width: 100%; max-width: 320px; }
 .ds-test-result { margin-top: 10px; font-size: 14px; color: #d4d4d8; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 12px; }
+
+/* Botones de marca (rojo sólido) para la config de delivery, en vez de los genéricos btn-accent/btn-ghost */
+.ds-btn-primary {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: #E31B2B; border: none; color: #fff;
+  padding: 9px 16px; border-radius: 9px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(227, 27, 43, 0.3);
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+.ds-btn-primary:hover:not(:disabled) { background: #b91c1c; }
+.ds-btn-primary:active:not(:disabled) { transform: scale(0.97); }
+.ds-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.ds-btn-ghost {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #a1a1aa;
+  padding: 9px 16px; border-radius: 9px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ds-btn-ghost:hover { background: rgba(255, 255, 255, 0.09); color: #fff; }
+
+.ds-zones-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+
+.ds-icon-btn {
+  display: grid; place-items: center;
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: #a1a1aa;
+  border-radius: 8px; cursor: pointer;
+  transition: all 0.15s ease;
+}
+.ds-icon-btn.danger { color: #f87171; }
+.ds-icon-btn.danger:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
 
 .spin {
   animation: fc-spin 1s linear infinite;

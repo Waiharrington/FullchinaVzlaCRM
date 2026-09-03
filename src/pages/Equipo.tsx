@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import {
-  Users, UserPlus, Shield, CheckCircle2, XCircle, Loader2, Edit3,
-  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2, X,
+  Users, UserPlus, Shield, CheckCircle2, MinusCircle, XCircle, Loader2, Edit3,
+  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2, MoreVertical,
 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
@@ -51,6 +51,60 @@ function timeAgo(iso: string | null): string {
   const days = Math.floor(h / 24)
   if (days < 30) return `Hace ${days} d`
   return new Date(iso).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function UserActionsMenu({
+  isActive, canDelete, onPassword, onPin, onToggleActive, onDelete,
+}: {
+  isActive: boolean
+  canDelete: boolean
+  onPassword: () => void
+  onPin: () => void
+  onToggleActive: () => void
+  onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const run = (fn: () => void) => { setOpen(false); fn() }
+
+  return (
+    <div className="user-menu" ref={ref}>
+      <button type="button" className="user-menu-trigger" onClick={() => setOpen(o => !o)} aria-label="Más acciones" aria-expanded={open}>
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <div className="user-menu-dropdown" role="menu">
+          <button type="button" role="menuitem" onClick={() => run(onPassword)}><KeyRound size={14} /> Cambiar clave</button>
+          <button type="button" role="menuitem" onClick={() => run(onPin)}><Hash size={14} /> Cambiar PIN</button>
+          <button type="button" role="menuitem" onClick={() => run(onToggleActive)}>
+            {isActive ? <><Ban size={14} /> Suspender</> : <><CheckCircle2 size={14} /> Activar</>}
+          </button>
+          {canDelete && (
+            <button type="button" role="menuitem" className="danger" onClick={() => run(onDelete)}>
+              <Trash2 size={14} /> Eliminar
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+type PermLevel = 'total' | 'partial' | 'blocked'
+const PERM_ICON: Record<PermLevel, typeof CheckCircle2> = { total: CheckCircle2, partial: MinusCircle, blocked: XCircle }
+function PermCell({ level, label }: { level: PermLevel; label: string }) {
+  const Icon = PERM_ICON[level]
+  return <span className={`perm-pill perm-${level}`}><Icon size={13} /> {label}</span>
 }
 
 export function Equipo() {
@@ -403,28 +457,17 @@ export function Equipo() {
                     </span>
                   </div>
                   <div className="user-card-actions">
-                    <button className="user-act" title="Editar correo y rol" onClick={() => openEditUser(u)}>
+                    <button className="user-act primary" title="Editar correo y rol" onClick={() => openEditUser(u)}>
                       <Edit3 size={15} /> Editar
                     </button>
-                    <button className="user-act" title="Cambiar contraseña" onClick={() => openPwModal(u)}>
-                      <KeyRound size={15} /> Clave
-                    </button>
-                    <button className="user-act" title="Cambiar PIN de acceso" onClick={() => openPinModal(u)}>
-                      <Hash size={15} /> PIN
-                    </button>
-                    <button
-                      className={`user-act ${u.isActive ? 'danger' : 'ok'}`}
-                      title={u.isActive ? 'Suspender acceso' : 'Reactivar acceso'}
-                      onClick={() => toggleUserActive(u)}
-                    >
-                      {u.isActive ? <Ban size={15} /> : <CheckCircle2 size={15} />}
-                      {u.isActive ? 'Suspender' : 'Activar'}
-                    </button>
-                    {u.id !== user?.id && (
-                      <button className="user-act delete" title="Eliminar usuario de acceso" onClick={() => handleDeleteUser(u)}>
-                        <Trash2 size={15} /> Eliminar
-                      </button>
-                    )}
+                    <UserActionsMenu
+                      isActive={u.isActive}
+                      canDelete={u.id !== user?.id}
+                      onPassword={() => openPwModal(u)}
+                      onPin={() => openPinModal(u)}
+                      onToggleActive={() => toggleUserActive(u)}
+                      onDelete={() => handleDeleteUser(u)}
+                    />
                   </div>
                 </div>
               ))}
@@ -444,48 +487,51 @@ export function Equipo() {
         <div className="equipo-section-head">
           <h3 className="equipo-section-title"><Users size={18} /> Empleados (nómina)</h3>
         </div>
-        <div className="team-grid" style={{ marginTop: 4 }}>
-          {team.map(emp => (
-            <div key={emp.id} className={`team-card ${!emp.isActive ? 'inactive' : ''}`}>
-              <div className="team-card-header">
-                <div className="team-avatar">{emp.fullName.charAt(0).toUpperCase()}</div>
-                <div className="team-info-header">
-                  <h3 className="team-name">{emp.fullName}</h3>
-                </div>
-              </div>
-              <div className="team-card-details">
-                <div className="detail-row">
-                  <span style={{ color: '#a1a1aa', fontSize: '13px' }}>Sueldo semanal:</span>
-                  <span style={{ color: '#fff', fontSize: '13px' }}>${emp.weeklySalary.toFixed(2)} / semana</span>
-                </div>
-              </div>
-              <div className="team-card-actions">
-                <button className={`status-toggle-btn ${emp.isActive ? 'active' : 'inactive'}`} onClick={() => toggleActive(emp)}>
-                  {emp.isActive ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                  {emp.isActive ? 'Activo' : 'Suspendido'}
-                </button>
-                <div className="team-row-actions">
-                  <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
-                    <Edit3 size={16} />
-                  </button>
-                  <button className="icon-action-btn danger" title="Eliminar" onClick={() => handleDelete(emp)}>
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-          {team.length === 0 && (
-            <div style={{ gridColumn: '1 / -1' }}>
-              <EmptyState
-                title="No hay empleados registrados"
-                description="Crea el primero para empezar a gestionar tu equipo."
-                actionLabel="Nuevo empleado"
-                onAction={() => handleOpenModal()}
-              />
-            </div>
-          )}
-        </div>
+        {team.length === 0 ? (
+          <EmptyState
+            title="No hay empleados registrados"
+            description="Crea el primero para empezar a gestionar tu equipo."
+            actionLabel="Nuevo empleado"
+            onAction={() => handleOpenModal()}
+          />
+        ) : (
+          <div className="team-table-wrap">
+            <table className="team-table">
+              <thead>
+                <tr><th>Empleado</th><th>Sueldo semanal</th><th>Estado</th><th></th></tr>
+              </thead>
+              <tbody>
+                {team.map(emp => (
+                  <tr key={emp.id} className={!emp.isActive ? 'inactive' : ''}>
+                    <td>
+                      <div className="team-row-id">
+                        <div className="team-avatar">{emp.fullName.charAt(0).toUpperCase()}</div>
+                        <strong>{emp.fullName}</strong>
+                      </div>
+                    </td>
+                    <td>${emp.weeklySalary.toFixed(2)} / semana</td>
+                    <td>
+                      <button className={`status-toggle-btn ${emp.isActive ? 'active' : 'inactive'}`} onClick={() => toggleActive(emp)}>
+                        {emp.isActive ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+                        {emp.isActive ? 'Activo' : 'Suspendido'}
+                      </button>
+                    </td>
+                    <td>
+                      <div className="team-row-actions">
+                        <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
+                          <Edit3 size={16} />
+                        </button>
+                        <button className="icon-action-btn danger" title="Eliminar" onClick={() => handleDelete(emp)}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* ===================== MATRIZ DE PERMISOS ===================== */}
@@ -501,33 +547,33 @@ export function Equipo() {
             <tbody>
               <tr>
                 <td>Ventas y Caja</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
+                <td><PermCell level="total" label="Total" /></td>
+                <td><PermCell level="total" label="Total" /></td>
+                <td><PermCell level="total" label="Total" /></td>
               </tr>
               <tr>
                 <td>Costos y Márgenes</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Visibles</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Visibles</td>
-                <td><XCircle size={14} className="text-red" /> Ocultos</td>
+                <td><PermCell level="total" label="Visibles" /></td>
+                <td><PermCell level="total" label="Visibles" /></td>
+                <td><PermCell level="blocked" label="Ocultos" /></td>
               </tr>
               <tr>
                 <td>Inventario y Almacén</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Transferencias</td>
-                <td><XCircle size={14} className="text-red" /> Solo lectura</td>
+                <td><PermCell level="total" label="Total" /></td>
+                <td><PermCell level="partial" label="Transferencias" /></td>
+                <td><PermCell level="partial" label="Solo lectura" /></td>
               </tr>
               <tr>
                 <td>Nómina y Finanzas</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
-                <td><XCircle size={14} className="text-red" /> Cierre operativo</td>
-                <td><XCircle size={14} className="text-red" /> Bloqueado</td>
+                <td><PermCell level="total" label="Total" /></td>
+                <td><PermCell level="partial" label="Cierre operativo" /></td>
+                <td><PermCell level="blocked" label="Bloqueado" /></td>
               </tr>
               <tr>
                 <td>Gestión de Usuarios</td>
-                <td><CheckCircle2 size={14} className="text-green" /> Total</td>
-                <td><XCircle size={14} className="text-red" /> Sólo empleados</td>
-                <td><XCircle size={14} className="text-red" /> Bloqueado</td>
+                <td><PermCell level="total" label="Total" /></td>
+                <td><PermCell level="partial" label="Sólo empleados" /></td>
+                <td><PermCell level="blocked" label="Bloqueado" /></td>
               </tr>
             </tbody>
           </table>
@@ -585,9 +631,6 @@ export function Equipo() {
                   <p>Identidad, rol y módulos disponibles en un solo lugar.</p>
                 </div>
               </div>
-              <button type="button" className="user-access-close" onClick={() => closeUserModal()} aria-label="Cerrar">
-                <X size={19} />
-              </button>
             </div>
 
             <form onSubmit={handleSaveUser} className="modal-form user-access-form">

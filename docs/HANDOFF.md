@@ -1,6 +1,6 @@
 # Estado y continuidad de FullChinaVzla
 
-Última actualización: 2026-08-11.
+Última actualización: 2026-09-02.
 
 ## Resumen
 
@@ -54,6 +54,20 @@ Se creó y verificó un backup antes de los cambios. Después se aplicaron:
 
 Los tres roles reales fueron probados también mediante PIN. Tras cinco intentos
 fallidos, el mismo cliente queda bloqueado durante quince minutos.
+
+## Corrección del catálogo público aplicada al VPS
+
+El 2026-09-02 se aplicó
+`20260902190000_respect_public_catalog_product_images.sql` para que
+`fn_get_public_catalog()` devuelva siempre la foto guardada en
+`sellable_products.image_url`. La función anterior sustituía las fotos de 39
+productos con código `M*` por archivos estáticos antiguos, por lo que Menú y
+Pedir mostraban imágenes diferentes.
+
+Antes de la migración se creó y verificó el backup completo
+`/root/fullchina-backups/pre_product_image_fix_20260902_185838.dump`
+(16.031.415 bytes). Después se verificó el RPC con acceso público: 68 productos,
+68 imágenes cargadas y ninguna ruta estática `/productos/M*.jpg`.
 
 No se confirmó una fuga de filas antes del endurecimiento: RLS devolvía cero
 filas en las pruebas anónimas. El problema corregido fue el exceso de grants y

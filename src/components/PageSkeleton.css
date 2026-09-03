@@ -2,13 +2,13 @@
 
 .sk-header { margin-bottom: 24px; }
 .sk-title {
-  width: 180px; height: 32px; border-radius: 10px;
+  width: 180px; max-width: 60vw; height: 32px; border-radius: 10px;
   background: linear-gradient(90deg, rgba(255,255,255,0.06) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.06) 75%);
   background-size: 200% 100%;
   animation: sk-shimmer 1.5s infinite;
 }
 .sk-subtitle {
-  width: 320px; height: 16px; border-radius: 8px; margin-top: 10px;
+  width: 320px; max-width: 85vw; height: 16px; border-radius: 8px; margin-top: 10px;
   background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
   background-size: 200% 100%;
   animation: sk-shimmer 1.5s infinite;
@@ -41,15 +41,15 @@
 }
 
 .sk-tools {
-  display: flex; gap: 10px; margin-bottom: 16px;
+  display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;
 }
 .sk-search {
-  flex: 1 1 220px; max-width: 340px; height: 40px; border-radius: 12px;
+  flex: 1 1 220px; min-width: 140px; max-width: 340px; height: 40px; border-radius: 12px;
   background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
   background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
 }
 .sk-filter {
-  width: 140px; height: 40px; border-radius: 12px;
+  flex: 0 1 140px; min-width: 110px; height: 40px; border-radius: 12px;
   background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.04) 75%);
   background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
 }
@@ -57,6 +57,7 @@
 .sk-table {
   background: linear-gradient(170deg, #1c1c22 0%, #161618 100%);
   border: 1px solid rgba(255,255,255,0.07); border-radius: 18px; padding: 8px 16px;
+  overflow: hidden;
 }
 .sk-table-row {
   display: flex; align-items: center; gap: 12px; padding: 12px 0;
@@ -64,15 +65,21 @@
 }
 .sk-table-row:last-child { border-bottom: none; }
 .sk-table-cell {
-  border-radius: 8px;
+  border-radius: 8px; flex-shrink: 0;
   background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.05) 75%);
   background-size: 200% 100%; animation: sk-shimmer 1.5s infinite;
 }
-.sk-table-thumb { width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0; }
-.sk-table-name { width: 200px; height: 16px; }
+.sk-table-thumb { width: 42px; height: 42px; border-radius: 10px; }
+.sk-table-name { flex: 1 1 140px; min-width: 0; max-width: 200px; height: 16px; }
 .sk-table-cat { width: 100px; height: 14px; }
 .sk-table-price { width: 60px; height: 18px; }
 .sk-table-actions { width: 80px; height: 32px; border-radius: 8px; margin-left: auto; }
+
+@media (max-width: 560px) {
+  .sk-table-cat { display: none; }
+  .sk-table-price { width: 44px; }
+  .sk-table-actions { width: 60px; }
+}
 
 .sk-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px;

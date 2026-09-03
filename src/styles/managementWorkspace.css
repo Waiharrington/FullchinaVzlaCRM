@@ -281,8 +281,7 @@
 
 .management-workspace--settings .shortcut-icon svg { width: 21px; height: 21px; }
 
-/* Remove the two isolated hero treatments so every module starts alike. */
-.management-workspace--promotions .promo-hero,
+/* Remove the isolated hero treatment so every module starts alike. */
 .management-workspace--team .equipo-hero {
   overflow: visible;
   padding: 0;
@@ -291,14 +290,11 @@
   border-radius: 0;
 }
 
-.management-workspace--promotions .promo-hero-text { z-index: auto; }
-
 .management-workspace:is(
   .management-workspace--warehouse,
   .management-workspace--loyalty,
   .management-workspace--whatsapp,
-  .management-workspace--team,
-  .management-workspace--promotions
+  .management-workspace--team
 ) {
   gap: 14px;
 }
@@ -307,8 +303,7 @@
   .management-workspace--warehouse,
   .management-workspace--loyalty,
   .management-workspace--whatsapp,
-  .management-workspace--team,
-  .management-workspace--promotions
+  .management-workspace--team
 ) .management-workspace-header {
   margin-bottom: 0;
 }
@@ -879,22 +874,12 @@
   .management-workspace--loyalty .loyalty-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
 
   /* Promotions */
-  .management-workspace--promotions { padding: 0; gap: 12px; }
-  .management-workspace--promotions .promo-hero {
-    min-height: 56px;
-    padding: 0;
-    background: none;
-    border: 0;
-    border-radius: 0;
-  }
-  .management-workspace--promotions .promo-hero-title { font-size: 1.45rem; }
-  .management-workspace--promotions .promo-hero-sub { margin-top: 3px; font-size: 0.8rem; }
-  .management-workspace--promotions .promo-hero-fire { right: 18px; }
-  .management-workspace--promotions .promo-toolbar { flex-wrap: nowrap; gap: 12px; }
-  .management-workspace--promotions .promo-stats { padding: 7px 12px; }
-  .management-workspace--promotions .promo-stat { padding: 6px 10px; }
+  .management-workspace--promotions { padding: 0; gap: 28px; }
+  .management-workspace--promotions .promo-header-actions { flex-wrap: nowrap; gap: 10px; }
+  .management-workspace--promotions .promo-stats { padding: 6px 12px; }
+  .management-workspace--promotions .promo-stat { padding: 4px 8px; }
   .management-workspace--promotions .promo-new-btn { min-height: 40px; padding: 9px 14px; }
-  .management-workspace--promotions .promo-item { padding: 12px 14px; gap: 12px; }
+  .management-workspace--promotions .promo-item { padding: 58px 14px 16px; }
   .management-workspace--promotions .promo-icon-preview { width: 48px; height: 48px; }
 
   /* WhatsApp marketing */

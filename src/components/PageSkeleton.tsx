@@ -14,17 +14,19 @@ export function PageSkeleton({ rows = 4, cards = 4, hasTable = true }: PageSkele
         <div className="sk-subtitle" />
       </div>
 
-      <div className="sk-cards">
-        {Array.from({ length: cards }).map((_, i) => (
-          <div key={i} className="sk-card">
-            <div className="sk-card-icon" />
-            <div className="sk-card-text">
-              <div className="sk-card-label" />
-              <div className="sk-card-value" />
+      {cards > 0 && (
+        <div className="sk-cards">
+          {Array.from({ length: cards }).map((_, i) => (
+            <div key={i} className="sk-card">
+              <div className="sk-card-icon" />
+              <div className="sk-card-text">
+                <div className="sk-card-label" />
+                <div className="sk-card-value" />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <div className="sk-tools">
         <div className="sk-search" />

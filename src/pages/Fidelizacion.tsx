@@ -1,15 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getCustomers, registerCustomerVisit, type Customer } from '../lib/dataService'
-import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame, Plus, Medal } from 'lucide-react'
+import { normalizeForSearch } from '../lib/textFormat'
+import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame, Plus, Medal, Search, X, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
+import { PageSkeleton } from '../components/PageSkeleton'
 import './Fidelizacion.css'
 
 const CYCLE = 10 // visitas por premio
+const PAGE_SIZE = 8
+
+const AVATAR_COLORS = ['#E31B2B', '#FF6259', '#FF9E1B', '#FFD23F', '#b91c1c', '#c2410c']
+
+function avatarColorFor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
+function initialsFor(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  return `${parts[0]?.[0] || '?'}${parts[1]?.[0] || ''}`.toUpperCase()
+}
 
 export function Fidelizacion() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [visitNotice, setVisitNotice] = useState('')
   const [noticeError, setNoticeError] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
 
   const topVisitsCustomers = [...customers].sort((a, b) => b.totalVisits - a.totalVisits)
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || customers[0]
@@ -21,8 +40,12 @@ export function Fidelizacion() {
     }).catch(error => {
       setNoticeError(true)
       setVisitNotice(error instanceof Error ? error.message : 'No se pudieron cargar los clientes')
-    })
+    }).finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchTerm])
 
   const handleAddVisit = async (customerId: string) => {
     try {
@@ -37,6 +60,26 @@ export function Fidelizacion() {
       setTimeout(() => setVisitNotice(''), 5000)
     }
   }
+
+  const rankedCustomers = useMemo(
+    () => topVisitsCustomers.map((cust, idx) => ({ cust, rank: idx })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [customers],
+  )
+
+  const filteredCustomers = useMemo(() => {
+    const q = normalizeForSearch(searchTerm)
+    if (!q) return rankedCustomers
+    return rankedCustomers.filter(({ cust }) =>
+      normalizeForSearch(cust.name).includes(q) || cust.phone.includes(searchTerm.trim()))
+  }, [rankedCustomers, searchTerm])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageStart = (safePage - 1) * PAGE_SIZE
+  const pagedCustomers = filteredCustomers.slice(pageStart, pageStart + PAGE_SIZE)
+
+  if (loading) return <PageSkeleton cards={4} rows={5} hasTable={false} />
 
   if (!selectedCustomer) {
     return (
@@ -61,7 +104,7 @@ export function Fidelizacion() {
     { icon: <Star size={22} />, cls: 'red', label: 'Clientes VIP (≥ 10)', value: vipCount.toLocaleString('es-VE'), sub: 'Criterio de fidelización' },
   ]
 
-  const medal = (idx: number) => (idx === 0 ? <Trophy size={16} /> : idx === 1 ? <Medal size={16} /> : idx === 2 ? <Award size={16} /> : null)
+  const medal = (idx: number) => (idx === 0 ? <Trophy size={14} /> : idx === 1 ? <Medal size={14} /> : idx === 2 ? <Award size={14} /> : null)
 
   return (
     <div className="page fidel-page animate-fade-in management-workspace management-workspace--loyalty" key="fidel-full">
@@ -95,58 +138,89 @@ export function Fidelizacion() {
               <h2 className="fidel-card-title">Ranking del "Mejor Cliente"</h2>
               <span className="fidel-card-sub">Premia la frecuencia de visita</span>
             </div>
+            <span className="fidel-card-count">{filteredCustomers.length} cliente{filteredCustomers.length === 1 ? '' : 's'}</span>
           </div>
 
-          <div className="fidel-table-wrap">
-            <table className="fidel-table">
-              <thead>
-                <tr>
-                  <th>Pos.</th>
-                  <th>Cliente</th>
-                  <th className="hide-sm">Teléfono</th>
-                  <th>Visitas</th>
-                  <th className="hide-sm">Última</th>
-                  <th>Premios</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {topVisitsCustomers.map((cust, idx) => (
-                  <tr
-                    key={cust.id}
-                    className={`${cust.id === selectedCustomerId ? 'selected' : ''} ${idx < 3 ? `podium-${idx + 1}` : ''}`}
-                    onClick={() => setSelectedCustomerId(cust.id)}
-                  >
-                    <td>
-                      {medal(idx)
-                        ? <span className={`fidel-rank medal-${idx + 1}`}>{medal(idx)} {idx + 1}</span>
-                        : <span className="fidel-rank">{idx + 1}</span>}
-                    </td>
-                    <td className="fidel-cust-name">{cust.name}</td>
-                    <td className="hide-sm fidel-muted">{cust.phone || '—'}</td>
-                    <td><span className="fidel-visits">{cust.totalVisits}</span></td>
-                    <td className="hide-sm fidel-muted">{cust.lastVisit || '—'}</td>
-                    <td><span className="fidel-reward-badge"><Gift size={14} /> {cust.rewardsUnlocked}</span></td>
-                    <td>
-                      <button
-                        className="fidel-add-visit"
-                        onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(cust.id); handleAddVisit(cust.id) }}
-                        title="Registrar una visita"
-                      >
-                        <Plus size={14} /> Visita
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="filter-search-box fidel-search-box">
+            <Search size={16} className="filter-search-icon" />
+            <input
+              type="text"
+              placeholder="Buscar cliente por nombre o teléfono…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="filter-search-input"
+            />
+            {searchTerm && (
+              <button type="button" className="search-clear-btn" onClick={() => setSearchTerm('')} aria-label="Limpiar búsqueda">
+                <X size={13} />
+              </button>
+            )}
           </div>
+
+          <div className="fidel-list">
+            {pagedCustomers.length === 0 && (
+              <div className="fidel-list-empty">
+                {searchTerm ? `Sin resultados para "${searchTerm}".` : 'No hay clientes todavía.'}
+              </div>
+            )}
+            {pagedCustomers.map(({ cust, rank }) => {
+              const stamps = cust.totalVisits % CYCLE
+              const pct = (stamps / CYCLE) * 100
+              return (
+                <button
+                  type="button"
+                  key={cust.id}
+                  className={`fidel-row ${cust.id === selectedCustomerId ? 'selected' : ''} ${rank < 3 ? `podium-${rank + 1}` : ''}`}
+                  onClick={() => setSelectedCustomerId(cust.id)}
+                >
+                  <span className="fidel-row-rank">{medal(rank) ?? <>#{rank + 1}</>}</span>
+                  <span className="fidel-row-avatar" style={{ background: avatarColorFor(cust.name) }}>{initialsFor(cust.name)}</span>
+                  <span className="fidel-row-body">
+                    <span className="fidel-row-name">{cust.name}</span>
+                    <span className="fidel-row-meta">
+                      {cust.phone ? <><Phone size={11} /> {cust.phone}</> : 'Sin teléfono'}
+                      {cust.lastVisit ? ` · Últ. visita ${cust.lastVisit}` : ''}
+                    </span>
+                    <span className="fidel-row-progress-track"><span className="fidel-row-progress-fill" style={{ width: `${pct}%` }} /></span>
+                  </span>
+                  <span className="fidel-row-visits">
+                    <strong>{cust.totalVisits}</strong>
+                    <small>visitas</small>
+                  </span>
+                  <span className="fidel-row-reward"><Gift size={13} /> {cust.rewardsUnlocked}</span>
+                  <span
+                    className="fidel-row-add"
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(cust.id); handleAddVisit(cust.id) }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setSelectedCustomerId(cust.id); handleAddVisit(cust.id) } }}
+                    title="Registrar una visita"
+                  >
+                    <Plus size={15} />
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="fidel-pagination">
+              <button type="button" disabled={safePage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                <ChevronLeft size={16} />
+              </button>
+              <span>Página {safePage} de {totalPages}</span>
+              <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Tarjeta de fidelidad */}
         <div className="fidel-side">
           <div className="loyalty-card">
             <div className="loyalty-card-shine" aria-hidden />
+            <div className="loyalty-bg-art" aria-hidden />
             <div className="loyalty-head">
               <div>
                 <span className="loyalty-kicker">Tarjeta de Fidelidad</span>
@@ -156,7 +230,7 @@ export function Fidelizacion() {
                   {selectedCustomer.favoriteProduct ? ` · ${selectedCustomer.favoriteProduct}` : ''}
                 </span>
               </div>
-              <div className="loyalty-award"><Award size={26} /></div>
+              <div className="loyalty-award"><img src="/icons/wok-mark.png" alt="" /></div>
             </div>
 
             {visitNotice && (
@@ -164,6 +238,8 @@ export function Fidelizacion() {
                 <CheckCircle2 size={15} /> <span>{visitNotice}</span>
               </div>
             )}
+
+            <div className="loyalty-perforation" aria-hidden />
 
             <div className="loyalty-progress-block">
               <div className="loyalty-progress-top">
@@ -180,7 +256,7 @@ export function Fidelizacion() {
                 const isStamped = i < stampsInCycle
                 return (
                   <div key={i} className={`loyalty-stamp ${isStamped ? 'on' : ''}`}>
-                    {isStamped ? <CheckCircle2 size={18} /> : i + 1}
+                    {isStamped ? <img src="/icons/wok-mark.png" alt="" /> : i + 1}
                   </div>
                 )
               })}
