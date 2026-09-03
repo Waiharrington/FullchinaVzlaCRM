@@ -333,6 +333,7 @@ export interface RecipeComponent {
   sellableProductId: string
   ingredientId: string | null
   preparationBatchId: string | null
+  portionRecipeId: string | null
   ingredientName: string | null
   quantity: number
   unitId: string
@@ -2365,7 +2366,7 @@ export async function getRecipeComponents(sellableProductId: string): Promise<Re
   const [componentsRes, stockRes] = await Promise.all([
     sb
       .from('recipe_components')
-      .select('id,sellable_product_id,ingredient_id,preparation_batch_id,quantity,unit_id,ingredients(name),units(symbol)')
+      .select('id,sellable_product_id,ingredient_id,preparation_batch_id,portion_recipe_id,quantity,unit_id,ingredients(name),units(symbol)')
       .eq('sellable_product_id', sellableProductId)
       .order('created_at', { ascending: true }),
     sb.from('v_current_stock').select('ingredient_id,price_per_unit'),
@@ -2389,6 +2390,7 @@ export async function getRecipeComponents(sellableProductId: string): Promise<Re
       sellableProductId: r.sellable_product_id as string,
       ingredientId,
       preparationBatchId: (r.preparation_batch_id as string) ?? null,
+      portionRecipeId: (r.portion_recipe_id as string) ?? null,
       ingredientName: (ingr?.name as string) ?? null,
       quantity: Number(r.quantity),
       unitId: r.unit_id as string,
@@ -3242,7 +3244,8 @@ export async function getProductionBonusRecords(): Promise<ProductionBonusRecord
 export async function getPortionRecipes(): Promise<PortionRecipe[]> {
   const { data, error } = await client().from('portion_recipes').select('id,name,ingredient_id,portion_quantity,portion_unit_id,is_active,notes,ingredients(name),units(symbol)').eq('is_active', true).order('name')
   if (error) throw error
-  return (data ?? []).map((r) => ({ id: r.id as string, name: r.name as string, ingredientId: r.ingredient_id as string, ingredientName: Array.isArray(r.ingredients) ? String((r.ingredients[0] as Record<string, unknown>)?.name ?? '') : '', quantity: Number(r.portion_quantity), unitId: r.portion_unit_id as string, unitSymbol: Array.isArray(r.units) ? String((r.units[0] as Record<string, unknown>)?.symbol ?? '') : '', isActive: Boolean(r.is_active), notes: (r.notes as string) ?? null }))
+  const one = (value: unknown) => Array.isArray(value) ? (value[0] as Record<string, unknown> | undefined) : value as Record<string, unknown> | undefined
+  return (data ?? []).map((r) => ({ id: r.id as string, name: r.name as string, ingredientId: r.ingredient_id as string, ingredientName: String(one(r.ingredients)?.name ?? ''), quantity: Number(r.portion_quantity), unitId: r.portion_unit_id as string, unitSymbol: String(one(r.units)?.symbol ?? ''), isActive: Boolean(r.is_active), notes: (r.notes as string) ?? null }))
 }
 
 export async function createPortionRecipe(params: { name: string; ingredientId: string; quantity: number; unitId: string; notes?: string }): Promise<string> {
@@ -3255,6 +3258,7 @@ export async function createRecipeComponent(params: {
   sellableProductId: string
   ingredientId?: string
   preparationBatchId?: string
+  portionRecipeId?: string
   quantity: number
   unitId: string
 }): Promise<string> {
@@ -3264,6 +3268,7 @@ export async function createRecipeComponent(params: {
       sellable_product_id: params.sellableProductId,
       ingredient_id: params.ingredientId ?? null,
       preparation_batch_id: params.preparationBatchId ?? null,
+      portion_recipe_id: params.portionRecipeId ?? null,
       quantity: params.quantity,
       unit_id: params.unitId,
     })

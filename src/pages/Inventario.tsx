@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { useNavigate } from 'react-router-dom'
@@ -75,10 +75,18 @@ export function Inventario() {
   const [modalError, setModalError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [closingIngredient, setClosingIngredient] = useState(false)
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => {
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+    }
+  }, [])
+
   const closeIngredientModal = (then?: () => void) => {
     if (closingIngredient) return
     setClosingIngredient(true)
-    window.setTimeout(() => {
+    if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current)
+    closeTimeoutRef.current = setTimeout(() => {
       setSelectedIngredient(null)
       setModalMode(null)
       setModalError('')

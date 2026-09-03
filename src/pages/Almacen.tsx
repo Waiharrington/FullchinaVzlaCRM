@@ -1,13 +1,14 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useMemo, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
-import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2 } from 'lucide-react'
+import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2, Search } from 'lucide-react'
 import { adjustStock, getIngredients, getWarehouseIngredients, getStockMovements, getUnits, transferStock, updateIngredient, updateIngredientCost, type Ingredient, type StockMovement } from '../lib/dataService'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { normalizeForSearch } from '../lib/textFormat'
 import './Almacen.css'
 import { dateKeyInTimeZone } from '../lib/money'
 
@@ -46,6 +47,8 @@ export function Almacen() {
   const [selectedItemId, setSelectedItemId] = useState('')
   const [transferQty, setTransferQty] = useState('10')
   const [operator, setOperator] = useState('Usuario del sistema')
+  const [filterMode, setFilterMode] = useState<'stock' | 'all'>('stock')
+  const [searchTerm, setSearchTerm] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [selectedItem, setSelectedItem] = useState<WarehouseItem | null>(null)
@@ -68,6 +71,22 @@ export function Almacen() {
 
   const totalValuation = items.reduce((sum, item) => sum + item.quantity * item.costPerUnit, 0)
   const criticalItems = items.filter(item => item.quantity <= item.minStock).length
+  const itemsWithStock = useMemo(() => items.filter(item => item.quantity > 0), [items])
+
+  const operationalStockMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const op of operationalItems) {
+      map.set(op.id, op.quantity)
+    }
+    return map
+  }, [operationalItems])
+
+  const displayedItems = useMemo(() => {
+    const base = filterMode === 'stock' ? itemsWithStock : items
+    if (!searchTerm.trim()) return base
+    const q = normalizeForSearch(searchTerm)
+    return base.filter(item => normalizeForSearch(item.name).includes(q) || normalizeForSearch(item.category).includes(q))
+  }, [items, itemsWithStock, filterMode, searchTerm])
 
   useEffect(() => {
     Promise.all([getWarehouseIngredients(), getIngredients(), getStockMovements()]).then(([ingredients, operational, movements]) => {
@@ -183,12 +202,12 @@ export function Almacen() {
           <div>
             <p className="almacen-eyebrow">OPERACIÓN · ABASTECIMIENTO</p>
             <h1 className="page-title"><Warehouse size={22} className="page-title-icon" /> Almacén principal</h1>
-            <p>Controla la materia prima antes de enviarla al Food Truck.</p>
+            <p>Controla la materia prima resguardada antes de despacharla al Food Truck.</p>
           </div>
         </div>
         <div className="almacen-header-note">
           <span className="almacen-live-dot" />
-          Inventario actualizado
+          Depósito central
         </div>
       </header>
 
@@ -196,9 +215,9 @@ export function Almacen() {
         <div className="almacen-metric-card accent-red">
           <div className="metric-icon-box"><Package size={22} /></div>
           <div className="metric-info-group">
-            <span className="metric-label">Insumos en almacén</span>
-            <strong className="metric-large-val">{items.length}</strong>
-            <span className="metric-sub-text">Tipos de materia prima</span>
+            <span className="metric-label">Insumos con stock</span>
+            <strong className="metric-large-val">{itemsWithStock.length}</strong>
+            <span className="metric-sub-text">de {items.length} materias primas</span>
           </div>
         </div>
 
@@ -207,7 +226,7 @@ export function Almacen() {
           <div className="metric-info-group">
             <span className="metric-label">Valorización</span>
             <strong className="metric-large-val">${totalValuation.toFixed(2)}</strong>
-            <span className="metric-sub-text">Valor total a costo</span>
+            <span className="metric-sub-text">Total a costo en almacén</span>
           </div>
         </div>
 
@@ -221,11 +240,11 @@ export function Almacen() {
         </button>
 
         <button type="button" className="almacen-metric-card accent-orange" onClick={() => setQuickAction('receive')}>
-          <div className="metric-icon-box"><AlertTriangle size={22} /></div>
+          <div className="metric-icon-box"><Plus size={22} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Traer desde inventario</span>
-            <strong className="metric-large-val">{operationalItems.length}</strong>
-            <span className="metric-sub-text">Mover productos al almacén</span>
+            <strong className="metric-large-val">{operationalItems.filter(i => i.quantity > 0).length}</strong>
+            <span className="metric-sub-text">Disponibles en cocina</span>
           </div>
         </button>
         <button type="button" className="almacen-metric-card accent-orange" onClick={() => setQuickAction('critical')}>
@@ -241,10 +260,50 @@ export function Almacen() {
               <div className="card-header-icon"><Package size={18} /></div>
               <div>
                 <h2 className="almacen-card-title">Productos en almacén</h2>
-                <p className="almacen-card-description">Insumos recibidos por compras, listos para enviar a la operación.</p>
+                <p className="almacen-card-description">Materia prima lista para transferir al Food Truck o registrar en producción.</p>
               </div>
             </div>
-            <span className="almacen-count-pill">{items.length} insumos</span>
+            <button
+              type="button"
+              className="almacen-add-stock-btn"
+              onClick={() => setQuickAction('receive')}
+              title="Traer productos del Food Truck al almacén"
+            >
+              <Plus size={15} /> Traer al almacén
+            </button>
+          </div>
+
+          <div className="almacen-table-controls">
+            <div className="almacen-filter-pills" role="tablist" aria-label="Filtrar insumos">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={filterMode === 'stock'}
+                className={`almacen-filter-pill ${filterMode === 'stock' ? 'active' : ''}`}
+                onClick={() => setFilterMode('stock')}
+              >
+                Con existencias ({itemsWithStock.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={filterMode === 'all'}
+                className={`almacen-filter-pill ${filterMode === 'all' ? 'active' : ''}`}
+                onClick={() => setFilterMode('all')}
+              >
+                Todos los insumos ({items.length})
+              </button>
+            </div>
+            <div className="almacen-search-wrap">
+              <Search size={14} className="almacen-search-icon" />
+              <input
+                type="text"
+                className="almacen-search-input"
+                placeholder="Buscar insumo..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="table-responsive-wrapper">
@@ -253,29 +312,58 @@ export function Almacen() {
                 <tr>
                   <th>Insumo</th>
                   <th>Categoría</th>
-                  <th>Stock</th>
+                  <th>Stock en Almacén</th>
+                  <th>Stock en Food Truck</th>
                   <th>Costo / unidad</th>
-                  <th>Valor total</th>
+                  <th>Valor Almacén</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {items.length === 0 ? (
-                  <tr><td colSpan={7}>
+                {displayedItems.length === 0 ? (
+                  <tr><td colSpan={8}>
                     <EmptyState
                       compact
-                      title="No hay insumos registrados"
-                      description="Agrega tu primer insumo para empezar a llevar el inventario."
+                      title={
+                        searchTerm
+                          ? 'No se encontraron insumos'
+                          : filterMode === 'stock'
+                          ? 'No hay insumos con existencias en almacén'
+                          : 'No hay insumos registrados'
+                      }
+                      description={
+                        searchTerm
+                          ? `No hay resultados para "${searchTerm}".`
+                          : filterMode === 'stock'
+                          ? 'Puedes traer insumos desde el Food Truck con el botón "Traer al almacén" o cambiar a la pestaña "Todos los insumos".'
+                          : 'Agrega tu primer insumo para empezar a llevar el inventario.'
+                      }
+                      actionLabel={
+                        searchTerm
+                          ? 'Limpiar búsqueda'
+                          : filterMode === 'stock'
+                          ? 'Traer desde inventario'
+                          : undefined
+                      }
+                      onAction={
+                        searchTerm
+                          ? () => setSearchTerm('')
+                          : filterMode === 'stock'
+                          ? () => setQuickAction('receive')
+                          : undefined
+                      }
                     />
                   </td></tr>
-                ) : items.map(item => {
+                ) : displayedItems.map(item => {
                   const isLow = item.quantity <= item.minStock
+                  const operationalQty = operationalStockMap.get(item.id) ?? 0
                   return (
                     <tr key={item.id}>
                       <td className="almacen-item-name">{item.name}</td>
                       <td><span className="almacen-category">{item.category}</span></td>
                       <td className="almacen-stock-value">{item.quantity} <small>{item.unit}</small></td>
+                      <td className="almacen-stock-operational">{operationalQty} <small>{item.unit}</small></td>
                       <td>${item.costPerUnit.toFixed(2)}</td>
                       <td className="almacen-total-value">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
                       <td>
@@ -284,7 +372,29 @@ export function Almacen() {
                           {isLow ? 'Crítico' : 'Suficiente'}
                         </span>
                       </td>
-                      <td><div className="almacen-actions"><button type="button" className="almacen-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${item.name}`} onClick={() => openView(item)}><Eye size={14} /></button><button type="button" className="almacen-action-btn" title="Editar insumo" aria-label={`Editar ${item.name}`} onClick={() => openEdit(item)}><Pencil size={14} /></button><button type="button" className="almacen-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${item.name}`} onClick={() => openAdjustment(item, 1)}><Plus size={14} /></button><button type="button" className="almacen-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${item.name}`} onClick={() => openAdjustment(item, -1)}><Minus size={14} /></button></div></td>
+                      <td>
+                        <div className="almacen-actions">
+                          {item.quantity > 0 && (
+                            <button
+                              type="button"
+                              className="almacen-action-btn positive"
+                              title="Transferir al Food Truck"
+                              aria-label={`Transferir ${item.name} al Food Truck`}
+                              onClick={() => {
+                                setSelectedItemId(item.id)
+                                setTransferQty(String(Math.min(10, item.quantity)))
+                                setQuickAction('transfer')
+                              }}
+                            >
+                              <ArrowRightLeft size={14} />
+                            </button>
+                          )}
+                          <button type="button" className="almacen-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${item.name}`} onClick={() => openView(item)}><Eye size={14} /></button>
+                          <button type="button" className="almacen-action-btn" title="Editar insumo" aria-label={`Editar ${item.name}`} onClick={() => openEdit(item)}><Pencil size={14} /></button>
+                          <button type="button" className="almacen-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${item.name}`} onClick={() => openAdjustment(item, 1)}><Plus size={14} /></button>
+                          <button type="button" className="almacen-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${item.name}`} onClick={() => openAdjustment(item, -1)}><Minus size={14} /></button>
+                        </div>
+                      </td>
                     </tr>
                   )
                 })}
@@ -302,6 +412,7 @@ export function Almacen() {
               <button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId}><ArrowRightLeft size={17} /> Traer al almacén</button>
             </form>
           </section>
+
           <section className="almacen-card management-workspace-panel">
             <div className="almacen-card-header">
               <div className="header-title-group">
@@ -368,11 +479,13 @@ export function Almacen() {
           </section>
         </aside>
       </div>
+
       {selectedItem && modalMode && createPortal(<div className="almacen-modal-overlay" onClick={closeModal}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} /></button>
         {modalMode === 'view' && <><div className="almacen-modal-heading"><span><Eye size={18} /></span><div><small>Historial del insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div>{modalLoading ? <p className="almacen-modal-empty">Cargando movimientos…</p> : itemMovements.length === 0 ? <p className="almacen-modal-empty">Este insumo todavía no tiene movimientos.</p> : <div className="almacen-history-list">{itemMovements.map(movement => <div className="almacen-history-row" key={movement.id}><div><strong>{movement.movementType === 'purchase' ? 'Entrada' : movement.movementType === 'consumption' ? 'Salida' : 'Ajuste'}</strong><small>{movement.notes || movement.referenceType || 'Sin motivo'}</small></div><b className={movement.quantity > 0 ? 'positive' : 'negative'}>{movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unitSymbol}</b></div>)}</div>}</>}
         {modalMode === 'edit' && <form onSubmit={saveEdit}><div className="almacen-modal-heading"><span><Pencil size={18} /></span><div><small>Editar insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-fields"><label>Nombre<input value={editForm.name} onChange={event => setEditForm(form => ({ ...form, name: event.target.value }))} /></label><label>Costo por unidad (USD)<input type="number" min="0" step="0.01" value={editForm.price} onChange={event => setEditForm(form => ({ ...form, price: event.target.value }))} /></label><label>Clasificación<select value={editForm.inventoryClass} onChange={event => setEditForm(form => ({ ...form, inventoryClass: event.target.value as Ingredient['inventoryClass'] }))}><option value="raw_material">Materia prima</option><option value="packaging">Empaque</option><option value="beverage">Bebida</option><option value="non_inventory">No inventariable</option></select></label></div><button className="btn-primary-red" disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : <Save size={17} />} Guardar cambios</button></form>}
         {modalMode === 'adjust' && <form onSubmit={saveAdjustment}><div className="almacen-modal-heading"><span className={adjustment.direction > 0 ? 'positive' : 'negative'}>{adjustment.direction > 0 ? <Plus size={18} /> : <Minus size={18} />}</span><div><small>{adjustment.direction > 0 ? 'Agregar al inventario' : 'Descontar del inventario'}</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div><div className="almacen-modal-fields"><label>Cantidad ({selectedItem.unit})<input autoFocus type="number" min="0.001" step="0.001" value={adjustment.quantity} onChange={event => setAdjustment(value => ({ ...value, quantity: event.target.value }))} placeholder="0.000" /></label><label>Motivo del ajuste<textarea value={adjustment.notes} onChange={event => setAdjustment(value => ({ ...value, notes: event.target.value }))} placeholder="Ej. conteo físico, merma, recepción manual…" /></label></div><button className={`btn-primary-red ${adjustment.direction < 0 ? 'danger' : ''}`} disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : adjustment.direction > 0 ? <Plus size={17} /> : <Minus size={17} />} {adjustment.direction > 0 ? 'Registrar entrada' : 'Registrar salida'}</button></form>}
       </div></div>, document.body)}
+
       {quickAction && createPortal(<div className="almacen-modal-overlay" onClick={() => setQuickAction(null)}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={() => setQuickAction(null)} aria-label="Cerrar"><X size={16} /></button>
         {quickAction === 'receive' && <form onSubmit={handleReceiveToWarehouse}><div className="almacen-modal-heading"><span><Package size={18} /></span><div><small>Transferencia interna</small><h3>Traer desde inventario</h3></div></div><p className="almacen-card-description">Mueve existencias del inventario operativo al almacén. No genera una compra.</p><div className="almacen-modal-fields"><label>Producto de inventario<StyledSelect value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper min={0.001} step={0.001} value={warehouseQty} onChange={setWarehouseQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId}><ArrowRightLeft size={17} /> Traer al almacén</button></form>}
         {quickAction === 'transfer' && <form onSubmit={handleTransfer}><div className="almacen-modal-heading"><span className="positive"><ArrowRightLeft size={18} /></span><div><small>Transferencia interna</small><h3>Enviar a inventario</h3></div></div><p className="almacen-card-description">Despacha existencias del almacén al inventario operativo del Food Truck.</p><div className="almacen-modal-fields"><label>Producto de almacén<StyledSelect value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>{items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper min={0.001} step={0.001} value={transferQty} onChange={setTransferQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedItemId}><ArrowRightLeft size={17} /> Enviar a inventario</button></form>}

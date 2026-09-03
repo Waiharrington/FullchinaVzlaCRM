@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import {
   getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent, updateRecipeComponent,
-  getIngredients, getUnits, getRecipeSummaries, getPortionRecipes, createPortionRecipe,
+  getIngredients, getUnits, getRecipeSummaries, getPortionRecipes, createPortionRecipe, registerStaffMealConsumption,
   type RecipeComponent, type SellableProduct, type Ingredient, type RecipeSummary, type PortionRecipe,
 } from '../lib/dataService'
 import { SearchSelect } from '../components/SearchSelect'
@@ -15,7 +14,7 @@ import { formatUsd, formatVes } from '../lib/money'
 import {
   Plus, Trash2, Pencil, Check, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
-  UtensilsCrossed, X,
+  UtensilsCrossed, Utensils, X, Sun, Moon, Sparkles,
 } from 'lucide-react'
 import './RecetasReal.css'
 import Toast from '../components/Toast'
@@ -28,7 +27,6 @@ type Tab = 'todas' | 'completas' | 'faltan'
 type RecipeView = 'platos' | 'porciones' | 'personal'
 
 export function RecetasReal() {
-  const navigate = useNavigate()
   const { bcvRate } = useRates()
   const [products, setProducts] = useState<SellableProduct[]>([])
   const [summaries, setSummaries] = useState<Map<string, RecipeSummary>>(new Map())
@@ -59,6 +57,8 @@ export function RecetasReal() {
   // Alta de componente
   const [showAdd, setShowAdd] = useState(false)
   const [addIngredientId, setAddIngredientId] = useState('')
+  const [addPortionId, setAddPortionId] = useState('')
+  const [addComponentType, setAddComponentType] = useState<'ingredient' | 'portion'>('ingredient')
   const [addQuantity, setAddQuantity] = useState('1')
   const [addUnitId, setAddUnitId] = useState('')
   const [editingComponentId, setEditingComponentId] = useState<string | null>(null)
@@ -79,6 +79,58 @@ export function RecetasReal() {
   }
   const [newRecipeProductId, setNewRecipeProductId] = useState('')
 
+  // ==========================================
+  // Alimentación del personal: Recetas y Consumo
+  // ==========================================
+  interface StaffMealIngredient {
+    id: string
+    ingredientId: string
+    ingredientName: string
+    quantity: number
+    unitId: string
+    unitSymbol: string
+  }
+
+  const [staffMeals, setStaffMeals] = useState<{
+    lunch: StaffMealIngredient[]
+    dinner: StaffMealIngredient[]
+  }>(() => {
+    try {
+      const saved = localStorage.getItem('fullchina_staff_meals_v2')
+      if (saved) return JSON.parse(saved)
+    } catch { /* ignore */ }
+    return { lunch: [], dinner: [] }
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('fullchina_staff_meals_v2', JSON.stringify(staffMeals))
+    } catch { /* ignore */ }
+  }, [staffMeals])
+
+  // Modal para agregar ingrediente a la ración de personal
+  const [showStaffIngModal, setShowStaffIngModal] = useState(false)
+  const [staffIngTargetMeal, setStaffIngTargetMeal] = useState<'lunch' | 'dinner'>('lunch')
+  const [staffIngIngredientId, setStaffIngIngredientId] = useState('')
+  const [staffIngQuantity, setStaffIngQuantity] = useState('0.4')
+  const [staffIngUnitId, setStaffIngUnitId] = useState('')
+
+  // Modal para registrar consumo diario
+  const [showConsumeModal, setShowConsumeModal] = useState(false)
+  const [consumeMealType, setConsumeMealType] = useState<'lunch' | 'dinner'>('lunch')
+  const [consumeServings, setConsumeServings] = useState(4)
+  const [consumeNotes, setConsumeNotes] = useState('')
+  const [consumeItems, setConsumeItems] = useState<Array<{
+    ingredientId: string
+    ingredientName: string
+    unitId: string
+    unitSymbol: string
+    baseQuantity: number
+    overrideQuantity: number
+    active: boolean
+  }>>([])
+  const [consumeLoading, setConsumeLoading] = useState(false)
+
   const loadProducts = useCallback(async () => {
     try {
       setLoading(true)
@@ -89,18 +141,43 @@ export function RecetasReal() {
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPortionRecipes().catch(() => []),
       ])
-      // Las bebidas son productos de reventa: se auto-gestionan como ítem de
-      // inventario (costo/venta en Menú, stock en Inventario) y descuentan solo
-      // al vender vía su ingrediente espejo. No requieren receta manual, así que
-      // se ocultan de esta pantalla.
       const recipeProds = prods.filter((p) => p.category !== 'bebidas')
       setProducts(recipeProds)
       setIngredients(ingr)
       setUnits(un)
-      if (ingr.length > 0 && !portionIngredientId) { setPortionIngredientId(ingr[0].id); setPortionUnitId(ingr[0].unitId) }
+      if (ingr.length > 0) {
+        setPortionIngredientId((cur) => cur || ingr[0].id)
+        setPortionUnitId((cur) => cur || ingr[0].unitId)
+        setStaffIngIngredientId((cur) => cur || ingr[0].id)
+        setStaffIngUnitId((cur) => cur || ingr[0].unitId)
+      }
       setSummaries(sums)
       setPortions(portionRows)
       if (recipeProds.length > 0) setSelected((cur) => cur ?? recipeProds[0])
+
+      // Auto-inicializar raciones de personal con sugerencias si están vacías
+      setStaffMeals((cur) => {
+        if (cur.lunch.length > 0 && cur.dinner.length > 0) return cur
+        const arroz = ingr.find((i) => i.name.toLowerCase().includes('arroz'))
+        const pollo = ingr.find((i) => i.name.toLowerCase().includes('pollo') || i.name.toLowerCase().includes('pechuga'))
+        const pasta = ingr.find((i) => i.name.toLowerCase().includes('pasta') || i.name.toLowerCase().includes('espagueti'))
+        const veg = ingr.find((i) => i.name.toLowerCase().includes('vegetal') || i.name.toLowerCase().includes('cebolla'))
+
+        const newLunch = [...cur.lunch]
+        if (newLunch.length === 0) {
+          if (arroz) newLunch.push({ id: 'def-arroz', ingredientId: arroz.id, ingredientName: arroz.name, quantity: 0.4, unitId: arroz.unitId, unitSymbol: arroz.unitSymbol })
+          if (pollo) newLunch.push({ id: 'def-pollo', ingredientId: pollo.id, ingredientName: pollo.name, quantity: 0.2, unitId: pollo.unitId, unitSymbol: pollo.unitSymbol })
+          if (veg) newLunch.push({ id: 'def-veg', ingredientId: veg.id, ingredientName: veg.name, quantity: 0.1, unitId: veg.unitId, unitSymbol: veg.unitSymbol })
+        }
+
+        const newDinner = [...cur.dinner]
+        if (newDinner.length === 0) {
+          if (pasta) newDinner.push({ id: 'def-pasta', ingredientId: pasta.id, ingredientName: pasta.name, quantity: 0.15, unitId: pasta.unitId, unitSymbol: pasta.unitSymbol })
+          else if (arroz) newDinner.push({ id: 'def-arroz-c', ingredientId: arroz.id, ingredientName: arroz.name, quantity: 0.35, unitId: arroz.unitId, unitSymbol: arroz.unitSymbol })
+          if (pollo) newDinner.push({ id: 'def-pollo-c', ingredientId: pollo.id, ingredientName: pollo.name, quantity: 0.25, unitId: pollo.unitId, unitSymbol: pollo.unitSymbol })
+        }
+        return { lunch: newLunch, dinner: newDinner }
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando recetas')
     } finally {
@@ -126,6 +203,116 @@ export function RecetasReal() {
       setAddUnitId(ingredients[0].unitId)
     }
   }, [ingredients, addIngredientId])
+
+  const handleOpenAddStaffIng = (mealType: 'lunch' | 'dinner') => {
+    setStaffIngTargetMeal(mealType)
+    if (ingredients.length > 0) {
+      setStaffIngIngredientId(ingredients[0].id)
+      setStaffIngUnitId(ingredients[0].unitId)
+    }
+    setStaffIngQuantity('0.25')
+    setShowStaffIngModal(true)
+  }
+
+  const handleSaveStaffIng = (e: React.FormEvent) => {
+    e.preventDefault()
+    const qty = Number.parseFloat(staffIngQuantity)
+    if (!staffIngIngredientId || !Number.isFinite(qty) || qty <= 0) {
+      setError('Ingresa una cantidad válida para la porción')
+      return
+    }
+    const ing = ingredients.find((i) => i.id === staffIngIngredientId)
+    if (!ing) return
+    const unit = units.find((u) => u.id === staffIngUnitId) || { symbol: ing.unitSymbol }
+
+    const newItem: StaffMealIngredient = {
+      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      ingredientId: ing.id,
+      ingredientName: ing.name,
+      quantity: qty,
+      unitId: staffIngUnitId || ing.unitId,
+      unitSymbol: unit.symbol,
+    }
+
+    setStaffMeals((prev) => ({
+      ...prev,
+      [staffIngTargetMeal]: [...prev[staffIngTargetMeal].filter((x) => x.ingredientId !== ing.id), newItem],
+    }))
+
+    setShowStaffIngModal(false)
+    setNotice(`Ingrediente ${ing.name} agregado a la ración de ${staffIngTargetMeal === 'lunch' ? 'Almuerzo' : 'Cena'}`)
+    setTimeout(() => setNotice(''), 3000)
+  }
+
+  const handleRemoveStaffIng = (mealType: 'lunch' | 'dinner', id: string) => {
+    setStaffMeals((prev) => ({
+      ...prev,
+      [mealType]: prev[mealType].filter((x) => x.id !== id),
+    }))
+    setNotice('Ingrediente retirado de la ración')
+    setTimeout(() => setNotice(''), 3000)
+  }
+
+  const handleOpenConsumeModal = (mealType: 'lunch' | 'dinner' = 'lunch') => {
+    setConsumeMealType(mealType)
+    setConsumeServings(4)
+    setConsumeNotes('')
+    const targetItems = staffMeals[mealType] || []
+    setConsumeItems(targetItems.map((item) => ({
+      ingredientId: item.ingredientId,
+      ingredientName: item.ingredientName,
+      unitId: item.unitId,
+      unitSymbol: item.unitSymbol,
+      baseQuantity: item.quantity,
+      overrideQuantity: Number((item.quantity * 4).toFixed(3)),
+      active: true,
+    })))
+    setShowConsumeModal(true)
+  }
+
+  const handleServingsChange = (valStr: string) => {
+    const parsed = parseInt(valStr, 10)
+    const s = Math.max(1, Number.isNaN(parsed) ? 1 : parsed)
+    setConsumeServings(s)
+    setConsumeItems((prev) => prev.map((item) => ({
+      ...item,
+      overrideQuantity: Number((item.baseQuantity * s).toFixed(3)),
+    })))
+  }
+
+  const handleSubmitConsume = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const activeItems = consumeItems.filter((i) => i.active && i.overrideQuantity > 0)
+    if (activeItems.length === 0) {
+      setError('Debes incluir al menos un ingrediente para registrar el consumo')
+      return
+    }
+    try {
+      setConsumeLoading(true)
+      setError('')
+      const itemsPayload = activeItems.map((i) => ({
+        ingredientId: i.ingredientId,
+        unitId: i.unitId,
+        quantity: i.overrideQuantity / consumeServings,
+      }))
+
+      await registerStaffMealConsumption({
+        mealType: consumeMealType,
+        servings: consumeServings,
+        items: itemsPayload,
+        notes: consumeNotes || undefined,
+      })
+
+      setShowConsumeModal(false)
+      setNotice(`✅ Consumo de ${consumeMealType === 'lunch' ? 'Almuerzo' : 'Cena'} (${consumeServings} personas) registrado y descontado del inventario.`)
+      setTimeout(() => setNotice(''), 4000)
+      void loadProducts()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error registrando consumo')
+    } finally {
+      setConsumeLoading(false)
+    }
+  }
 
   const summaryOf = useCallback(
     (id: string): RecipeSummary => summaries.get(id) ?? { componentCount: 0, recipeCost: null, marginEstimated: null },
@@ -191,12 +378,14 @@ export function RecetasReal() {
 
   const handleAddComponent = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selected || !addIngredientId || !addQuantity || !addUnitId) return
+    if (!selected || (!addIngredientId && !addPortionId) || !addQuantity || !addUnitId) return
     try {
       setError('')
       await createRecipeComponent({
         sellableProductId: selected.id,
-        ingredientId: addIngredientId,
+        ingredientId: addComponentType === 'ingredient' ? addIngredientId : undefined,
+        preparationBatchId: undefined,
+        portionRecipeId: addComponentType === 'portion' ? addPortionId : undefined,
         quantity: parseFloat(addQuantity) || 1,
         unitId: addUnitId,
       })
@@ -430,13 +619,16 @@ export function RecetasReal() {
                 <>
                   {showAdd && (
                     <form className="rec-add-form" onSubmit={handleAddComponent}>
-                      <SearchSelect
+                      <StyledSelect value={addComponentType} onChange={(e) => { setAddComponentType(e.target.value as 'ingredient' | 'portion'); setAddIngredientId(''); setAddPortionId('') }}>
+                        <option value="ingredient">Ingrediente</option><option value="portion">Porción</option>
+                      </StyledSelect>
+                      {addComponentType === 'ingredient' ? <SearchSelect
                         options={ingredients.map((i) => ({ value: i.id, label: `${i.name} (${i.unitSymbol})` }))}
                         value={addIngredientId}
                         onChange={handleAddIngredientIdChange}
                         placeholder="Buscar ingrediente..."
                         emptyText="Sin ingredientes"
-                      />
+                      /> : <SearchSelect options={portions.map(p => ({ value: p.id, label: `${p.name} (${p.quantity} ${p.unitSymbol})` }))} value={addPortionId} onChange={id => { setAddPortionId(id); setAddUnitId(portions.find(p => p.id === id)?.unitId ?? '') }} placeholder="Escribe para buscar porción..." emptyText="Sin porciones" />}
                       <NumberStepper step={0.01} min={0.01} placeholder="Cant." value={addQuantity} onChange={(v) => setAddQuantity(v)} required />
                       <StyledSelect value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
                         {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
@@ -524,9 +716,141 @@ export function RecetasReal() {
           )}
         </div>
       </div> : recipeView === 'porciones' ? (
-        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Recetas de porciones</h2><p>Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</p></div><button className="rec-add-btn" onClick={openPortionForm}><Plus size={16} /> Nueva receta de porción</button></div>{portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una porción base como pollo de 125 g para usarla en tus platos." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-module-grid">{portions.map(portion => <article className="rec-module-card" key={portion.id}><div><h3>{portion.name}</h3><p>{portion.ingredientName} · {portion.quantity} {portion.unitSymbol} por porción</p></div><span className="rec-badge ok">Disponible para platos</span></article>)}</div>}</section>
+        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Recetas de porciones</h2><p>Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</p></div><button className="rec-add-btn" onClick={openPortionForm}><Plus size={16} /> Nueva receta de porción</button></div>{portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una porción base como pollo de 125 g para usarla en tus platos." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-portion-list"><div className="rec-portion-header"><span>Porción</span><span>Ingrediente</span><span>Cantidad</span><span>Origen</span></div>{portions.map(portion => <article className="rec-portion-row" key={portion.id}><strong>{portion.name}</strong><span>{portion.ingredientName || 'Ingrediente no encontrado'}</span><b>{portion.quantity} {portion.unitSymbol}</b><span className="rec-origin">Inventario</span></article>)}</div>}</section>
       ) : (
-        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Alimentación del personal</h2><p>Recetas separadas para almuerzo y cena, sin mezclarlas con los platos vendidos al cliente.</p></div><button className="rec-add-btn" onClick={() => navigate('/inventario')}><UtensilsCrossed size={16} /> Registrar consumo</button></div><div className="rec-meal-cards"><article className="rec-module-card"><div className="meal-icon">☀️</div><h3>Almuerzo</h3><p>Configura los ingredientes o una preparación base y registra las porciones servidas.</p><button className="rec-link-btn" onClick={() => navigate('/inventario')}>Gestionar en Inventario</button></article><article className="rec-module-card"><div className="meal-icon">🌙</div><h3>Cena</h3><p>Controla la proteína comprada aparte y los ingredientes usados del almacén.</p><button className="rec-link-btn" onClick={() => navigate('/inventario')}>Gestionar en Inventario</button></article></div></section>
+        <section className="rec-module-view management-workspace-content rec-staff-view">
+          <div className="rec-module-view-head">
+            <div>
+              <h2>Alimentación del personal</h2>
+              <p>Control de porciones y registro diario de comida de empleados. Descuenta inventario como consumo interno sin afectar ventas ni ticket promedio.</p>
+            </div>
+            <button className="rec-add-btn rec-staff-main-btn" onClick={() => handleOpenConsumeModal('lunch')}>
+              <Utensils size={16} /> Registrar consumo de hoy
+            </button>
+          </div>
+
+          <div className="rec-staff-banner">
+            <Sparkles size={18} className="rec-staff-banner-icon" />
+            <div className="rec-staff-banner-text">
+              <strong>Control de raciones y autoconsumo</strong>
+              <span>Configura los ingredientes base por ración (almuerzo y cena). Al registrar el consumo diario, se calcula el total para el número de personas y se descuenta del inventario físico sin alterar la facturación de caja ni métricas de venta.</span>
+            </div>
+          </div>
+
+          <div className="rec-staff-grid">
+            <article className="rec-staff-card">
+              <div className="rec-staff-card-head">
+                <div className="rec-staff-card-title-wrap">
+                  <span className="rec-staff-icon lunch"><Sun size={20} /></span>
+                  <div>
+                    <h3>Almuerzo del personal</h3>
+                    <small>Ración base por persona</small>
+                  </div>
+                </div>
+                <span className="rec-staff-badge">{staffMeals.lunch.length} ingredientes</span>
+              </div>
+
+              <div className="rec-staff-ingredients-box">
+                {staffMeals.lunch.length === 0 ? (
+                  <p className="rec-staff-empty-msg">No hay ingredientes configurados para el almuerzo.</p>
+                ) : (
+                  <div className="rec-staff-ing-list">
+                    {staffMeals.lunch.map((item) => (
+                      <div className="rec-staff-ing-row" key={item.id}>
+                        <div className="rec-staff-ing-info">
+                          <strong>{item.ingredientName}</strong>
+                          <span>{item.quantity} {item.unitSymbol} por persona</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="rec-staff-remove-btn"
+                          onClick={() => handleRemoveStaffIng('lunch', item.id)}
+                          title="Quitar de la ración"
+                          aria-label={`Quitar ${item.ingredientName}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rec-staff-card-actions">
+                <button
+                  type="button"
+                  className="rec-staff-add-ing-btn"
+                  onClick={() => handleOpenAddStaffIng('lunch')}
+                >
+                  <Plus size={15} /> Agregar ingrediente
+                </button>
+                <button
+                  type="button"
+                  className="rec-staff-consume-cta-btn"
+                  onClick={() => handleOpenConsumeModal('lunch')}
+                >
+                  <Utensils size={15} /> Registrar Almuerzo
+                </button>
+              </div>
+            </article>
+
+            <article className="rec-staff-card">
+              <div className="rec-staff-card-head">
+                <div className="rec-staff-card-title-wrap">
+                  <span className="rec-staff-icon dinner"><Moon size={20} /></span>
+                  <div>
+                    <h3>Cena del personal</h3>
+                    <small>Ración base por persona</small>
+                  </div>
+                </div>
+                <span className="rec-staff-badge">{staffMeals.dinner.length} ingredientes</span>
+              </div>
+
+              <div className="rec-staff-ingredients-box">
+                {staffMeals.dinner.length === 0 ? (
+                  <p className="rec-staff-empty-msg">No hay ingredientes configurados para la cena.</p>
+                ) : (
+                  <div className="rec-staff-ing-list">
+                    {staffMeals.dinner.map((item) => (
+                      <div className="rec-staff-ing-row" key={item.id}>
+                        <div className="rec-staff-ing-info">
+                          <strong>{item.ingredientName}</strong>
+                          <span>{item.quantity} {item.unitSymbol} por persona</span>
+                        </div>
+                        <button
+                          type="button"
+                          className="rec-staff-remove-btn"
+                          onClick={() => handleRemoveStaffIng('dinner', item.id)}
+                          title="Quitar de la ración"
+                          aria-label={`Quitar ${item.ingredientName}`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rec-staff-card-actions">
+                <button
+                  type="button"
+                  className="rec-staff-add-ing-btn"
+                  onClick={() => handleOpenAddStaffIng('dinner')}
+                >
+                  <Plus size={15} /> Agregar ingrediente
+                </button>
+                <button
+                  type="button"
+                  className="rec-staff-consume-cta-btn"
+                  onClick={() => handleOpenConsumeModal('dinner')}
+                >
+                  <Utensils size={15} /> Registrar Cena
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
       )}
 
       {showNewRecipe && createPortal(
@@ -577,7 +901,250 @@ export function RecetasReal() {
         </div>,
         document.body
       )}
-      {showPortionForm && createPortal(<div className="rec-modal-overlay" onClick={() => setShowPortionForm(false)}><form className="rec-modal" onClick={e => e.stopPropagation()} onSubmit={handleCreatePortion}><div className="rec-modal-header"><div className="rec-modal-header-icon"><Soup size={18} /></div><h3>Nueva receta de porción</h3></div><p className="rec-detail-sub">Define la cantidad exacta que representa una porción.</p><label className="rec-form-label">Nombre de la porción<input value={portionName} onChange={e => setPortionName(e.target.value)} placeholder="Ej. Porción de pollo" required /></label><label className="rec-form-label">Ingrediente<select value={portionIngredientId} onChange={e => { setPortionIngredientId(e.target.value); const i = ingredients.find(x => x.id === e.target.value); if (i) setPortionUnitId(i.unitId) }}>{ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}</select></label><div className="rec-portion-fields"><label className="rec-form-label">Cantidad por porción<input type="number" min="0.001" step="0.001" value={portionQuantity} onChange={e => setPortionQuantity(e.target.value)} placeholder="125" required /></label><label className="rec-form-label">Unidad<select value={portionUnitId} onChange={e => setPortionUnitId(e.target.value)}>{units.map(u => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}</select></label></div><div className="rec-modal-actions"><button type="button" className="rec-modal-cancel" onClick={() => setShowPortionForm(false)}>Cancelar</button><button type="submit" className="rec-add-btn"><Check size={16} /> Guardar porción</button></div></form></div>, document.body)}
+
+      {showPortionForm && createPortal(
+        <div className="rec-modal-overlay" onClick={() => setShowPortionForm(false)}>
+          <form className="rec-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreatePortion}>
+            <div className="rec-modal-header">
+              <div className="rec-modal-header-icon"><Soup size={18} /></div>
+              <h3>Nueva receta de porción</h3>
+            </div>
+            <p className="rec-detail-sub">Define la cantidad exacta que representa una porción.</p>
+            <label className="rec-form-label">
+              Nombre de la porción
+              <input value={portionName} onChange={(e) => setPortionName(e.target.value)} placeholder="Ej. Porción de pollo" required />
+            </label>
+            <div className="rec-form-label">
+              Ingrediente
+              <SearchSelect
+                options={ingredients.map((i) => ({ value: i.id, label: `${i.name} (${i.unitSymbol})` }))}
+                value={portionIngredientId}
+                onChange={(id) => {
+                  setPortionIngredientId(id)
+                  const i = ingredients.find((x) => x.id === id)
+                  if (i) setPortionUnitId(i.unitId)
+                }}
+                placeholder="Escribe para buscar ingrediente..."
+                emptyText="Sin ingredientes"
+              />
+            </div>
+            <div className="rec-portion-fields">
+              <label className="rec-form-label">
+                Cantidad por porción
+                <input type="number" min="0.001" step="0.001" value={portionQuantity} onChange={(e) => setPortionQuantity(e.target.value)} placeholder="125" required />
+              </label>
+              <label className="rec-form-label">
+                Unidad
+                <StyledSelect value={portionUnitId} onChange={(e) => setPortionUnitId(e.target.value)}>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
+                </StyledSelect>
+              </label>
+            </div>
+            <div className="rec-modal-actions">
+              <button type="button" className="rec-modal-cancel" onClick={() => setShowPortionForm(false)}>Cancelar</button>
+              <button type="submit" className="rec-add-btn"><Check size={16} /> Guardar porción</button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {showStaffIngModal && createPortal(
+        <div className="rec-modal-overlay" onClick={() => setShowStaffIngModal(false)}>
+          <form className="rec-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveStaffIng}>
+            <div className="rec-modal-header">
+              <div className="rec-modal-header-icon">
+                {staffIngTargetMeal === 'lunch' ? <Sun size={18} /> : <Moon size={18} />}
+              </div>
+              <h3>Agregar a ración de {staffIngTargetMeal === 'lunch' ? 'Almuerzo' : 'Cena'}</h3>
+            </div>
+            <p className="rec-detail-sub">
+              Define la cantidad estándar que consume una persona de este insumo.
+            </p>
+
+            <div className="rec-form-label">
+              <span>Ingrediente del inventario</span>
+              <SearchSelect
+                options={ingredients.map((i) => ({ value: i.id, label: `${i.name} (${i.unitSymbol})` }))}
+                value={staffIngIngredientId}
+                onChange={(id) => {
+                  setStaffIngIngredientId(id)
+                  const found = ingredients.find((x) => x.id === id)
+                  if (found) setStaffIngUnitId(found.unitId)
+                }}
+                placeholder="Buscar ingrediente..."
+                emptyText="Sin ingredientes"
+              />
+            </div>
+
+            <div className="rec-portion-fields">
+              <label className="rec-form-label">
+                <span>Cantidad por ración</span>
+                <input
+                  type="number"
+                  min="0.001"
+                  step="0.001"
+                  value={staffIngQuantity}
+                  onChange={(e) => setStaffIngQuantity(e.target.value)}
+                  placeholder="0.4"
+                  required
+                />
+              </label>
+              <label className="rec-form-label">
+                <span>Unidad</span>
+                <StyledSelect value={staffIngUnitId} onChange={(e) => setStaffIngUnitId(e.target.value)}>
+                  {units.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>
+                  ))}
+                </StyledSelect>
+              </label>
+            </div>
+
+            <div className="rec-modal-actions">
+              <button type="button" className="rec-modal-cancel" onClick={() => setShowStaffIngModal(false)}>
+                Cancelar
+              </button>
+              <button type="submit" className="rec-add-btn">
+                <Check size={16} /> Guardar en ración
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
+
+      {showConsumeModal && createPortal(
+        <div className="rec-modal-overlay" onClick={() => !consumeLoading && setShowConsumeModal(false)}>
+          <form className="rec-modal rec-staff-consume-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitConsume}>
+            <div className="rec-modal-header">
+              <div className="rec-modal-header-icon"><Utensils size={18} /></div>
+              <h3>Registrar consumo de personal</h3>
+            </div>
+
+            <div className="rec-staff-modal-type-tabs">
+              <button
+                type="button"
+                className={consumeMealType === 'lunch' ? 'active' : ''}
+                onClick={() => {
+                  setConsumeMealType('lunch')
+                  const targetItems = staffMeals.lunch || []
+                  setConsumeItems(targetItems.map((item) => ({
+                    ingredientId: item.ingredientId,
+                    ingredientName: item.ingredientName,
+                    unitId: item.unitId,
+                    unitSymbol: item.unitSymbol,
+                    baseQuantity: item.quantity,
+                    overrideQuantity: Number((item.quantity * consumeServings).toFixed(3)),
+                    active: true,
+                  })))
+                }}
+              >
+                <Sun size={15} /> Almuerzo
+              </button>
+              <button
+                type="button"
+                className={consumeMealType === 'dinner' ? 'active' : ''}
+                onClick={() => {
+                  setConsumeMealType('dinner')
+                  const targetItems = staffMeals.dinner || []
+                  setConsumeItems(targetItems.map((item) => ({
+                    ingredientId: item.ingredientId,
+                    ingredientName: item.ingredientName,
+                    unitId: item.unitId,
+                    unitSymbol: item.unitSymbol,
+                    baseQuantity: item.quantity,
+                    overrideQuantity: Number((item.quantity * consumeServings).toFixed(3)),
+                    active: true,
+                  })))
+                }}
+              >
+                <Moon size={15} /> Cena
+              </button>
+            </div>
+
+            <div className="rec-staff-servings-row">
+              <label className="rec-form-label" style={{ marginTop: 0 }}>
+                <span>Número de personas / raciones servidas</span>
+                <NumberStepper
+                  value={String(consumeServings)}
+                  min={1}
+                  max={50}
+                  step={1}
+                  onChange={handleServingsChange}
+                />
+              </label>
+            </div>
+
+            <div className="rec-staff-modal-breakdown">
+              <div className="rec-staff-breakdown-head">
+                <span>Insumos a descontar del inventario</span>
+                <small>Calculado para {consumeServings} personas</small>
+              </div>
+
+              {consumeItems.length === 0 ? (
+                <p className="rec-staff-empty-msg">No hay ingredientes configurados en la ración de {consumeMealType === 'lunch' ? 'almuerzo' : 'cena'}.</p>
+              ) : (
+                <div className="rec-staff-consume-items-list">
+                  {consumeItems.map((item, idx) => (
+                    <div className="rec-staff-consume-item-row" key={item.ingredientId}>
+                      <div className="rec-staff-consume-item-name">
+                        <strong>{item.ingredientName}</strong>
+                        <small>{item.baseQuantity} {item.unitSymbol} × {consumeServings} pers.</small>
+                      </div>
+                      <div className="rec-staff-consume-item-calc">
+                        <input
+                          type="number"
+                          min="0.001"
+                          step="0.001"
+                          value={item.overrideQuantity}
+                          onChange={(e) => {
+                            const val = Number.parseFloat(e.target.value) || 0
+                            setConsumeItems((prev) => prev.map((it, i) => (i === idx ? { ...it, overrideQuantity: val } : it)))
+                          }}
+                        />
+                        <span>{item.unitSymbol}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <label className="rec-form-label" style={{ marginTop: 12 }}>
+              <span>Nota (opcional)</span>
+              <input
+                type="text"
+                placeholder="Ej. Almuerzo turno completo domingo"
+                value={consumeNotes}
+                onChange={(e) => setConsumeNotes(e.target.value)}
+              />
+            </label>
+
+            <p className="rec-detail-sub" style={{ fontSize: '0.74rem', marginTop: 10, color: '#a1a1aa' }}>
+              ℹ️ Se creará un movimiento de consumo interno ('staff_meal'). No afecta ventas, caja ni ticket promedio.
+            </p>
+
+            <div className="rec-modal-actions">
+              <button
+                type="button"
+                className="rec-modal-cancel"
+                disabled={consumeLoading}
+                onClick={() => setShowConsumeModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="rec-add-btn"
+                disabled={consumeLoading || consumeItems.length === 0}
+              >
+                <Check size={16} /> {consumeLoading ? 'Descontando...' : `Confirmar (${consumeServings} pers.)`}
+              </button>
+            </div>
+          </form>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
