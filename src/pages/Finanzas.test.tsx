@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Finanzas } from './Finanzas'
 
@@ -69,5 +69,31 @@ describe('Finanzas', () => {
     expect(transferDialog).toHaveClass('fin-dialog', 'fin-transfer-modal')
     expect(screen.getByLabelText(/Concepto/i)).toHaveClass('fin-field-control')
     expect(screen.getByRole('button', { name: /Guardar transferencia/i })).toHaveClass('fin-dialog-primary')
+  })
+
+  it('prioriza bolívares en cobros VES y deja USD como referencia secundaria', async () => {
+    mocks.getFinancialAccounts.mockResolvedValue([
+      { id: 'banesco', name: 'Banesco', accountType: 'bank', currency: 'VES', isActive: true, acceptsCustomerPayments: true, openingBalance: 0, currentBalance: 8000 },
+      { id: 'cash-usd', name: 'Caja Full China', accountType: 'cash', currency: 'USD', isActive: true, acceptsCustomerPayments: true, openingBalance: 0, currentBalance: 20 },
+    ])
+    mocks.getOrdersWithItems.mockResolvedValue([{
+      id: 'order-1', orderNumber: 1, status: 'paid', fulfillmentStatus: 'delivered', notes: null,
+      orderType: 'takeaway', tableNumber: null, customerName: 'Cliente', customerPhone: null,
+      customerAddress: null, customerIdentification: null, bcvRate: 800, createdBy: 'owner-1',
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), items: [], totalAmount: 30,
+      payments: [
+        { id: 'pay-ves', method: 'mobile', amount: 10, accountId: 'banesco', createdAt: new Date().toISOString() },
+        { id: 'pay-usd', method: 'cash', amount: 20, accountId: 'cash-usd', createdAt: new Date().toISOString() },
+      ],
+    }])
+
+    render(<Finanzas />)
+
+    const heading = await screen.findByRole('heading', { name: 'Cierre por Método de Pago' })
+    const card = heading.closest('.fin-card')
+    expect(card).not.toBeNull()
+    expect(within(card as HTMLElement).getByText('Bs. 8.000,00')).toBeInTheDocument()
+    expect(within(card as HTMLElement).getByText('$10,00 de referencia')).toBeInTheDocument()
+    expect(within(card as HTMLElement).getByText('$20,00')).toBeInTheDocument()
   })
 })

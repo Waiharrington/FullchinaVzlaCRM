@@ -6,6 +6,7 @@ import {
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
+import { buildPaymentBreakdown, type PaymentBreakdownEntry } from '../lib/paymentBreakdown'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -22,7 +23,7 @@ type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
 interface PL {
   grossSales: number; cogs: number; opex: number; payroll: number
   grossProfit: number; netProfit: number; margin: number
-  ordersCount: number; avgTicket: number; payments: Record<string, number>
+  ordersCount: number; avgTicket: number; payments: Record<string, PaymentBreakdownEntry>
 }
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
 const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
@@ -105,11 +106,10 @@ export function Finanzas() {
     const paid = orders.filter((o) => { const t = new Date(o.createdAt).getTime(); return o.status === 'paid' && t >= s && t <= e })
     const grossSales = paid.reduce((sum, o) => sum + o.totalAmount, 0)
     let cogs = 0
-    const payments: Record<string, number> = {}
     for (const o of paid) {
       for (const it of o.items) cogs += it.quantity * (recipeCost.get(it.sellableProductId)?.recipeCost ?? 0)
-      for (const p of o.payments) payments[p.method] = (payments[p.method] ?? 0) + p.amount
     }
+    const payments = buildPaymentBreakdown(paid, accounts, bcvRate)
     const opex = expenses.filter((x) => x.expenseDate >= sIso && x.expenseDate <= eIso).reduce((sum, x) => sum + x.amount, 0)
     const pay = payroll.periods.filter((p) => p.endDate >= sIso && p.endDate <= eIso).reduce((sum, p) => sum + p.total, 0)
       + payroll.bonuses.filter((b) => b.date >= sIso && b.date <= eIso).reduce((sum, b) => sum + b.amount, 0)
@@ -120,7 +120,7 @@ export function Finanzas() {
       margin: grossSales > 0 ? (netProfit / grossSales) * 100 : 0,
       ordersCount: paid.length, avgTicket: paid.length > 0 ? grossSales / paid.length : 0, payments,
     }
-  }, [orders, expenses, recipeCost, payroll])
+  }, [orders, expenses, recipeCost, payroll, accounts, bcvRate])
 
   const ranges = useMemo(() => {
     const now = new Date()
@@ -180,11 +180,12 @@ export function Finanzas() {
   const coverageTarget = cur.cogs + cur.opex + cur.payroll
   const coverageReady = coverageTarget > 0 && missingCostProducts.length === 0
   const coveragePct = coverageReady ? Math.min(100, Math.round((cur.grossSales / coverageTarget) * 100)) : 0
-  const totalPayments = Object.values(cur.payments).reduce((s, v) => s + v, 0)
+  const paymentRows = Object.values(cur.payments).filter(payment => payment.amountUsd > 0).sort((a, b) => b.amountUsd - a.amountUsd)
+  const totalPayments = paymentRows.reduce((sum, payment) => sum + payment.amountUsd, 0)
   const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
   const periodLabel = period === 'hoy' ? 'Hoy' : period === 'ayer' ? 'Ayer' : period === 'semana' ? 'Esta semana' : period === 'mes' ? 'Este mes' : `${rangeStart} al ${rangeEnd}`
-  const salesUsd = Object.entries(cur.payments).filter(([method]) => ['cash','binance','zelle'].includes(method)).reduce((sum,[,amount]) => sum+amount,0)
-  const salesVesUsd = Math.max(cur.grossSales-salesUsd,0)
+  const salesUsd = paymentRows.filter(payment => payment.currency === 'USD').reduce((sum, payment) => sum + payment.amountUsd, 0)
+  const salesVesUsd = paymentRows.filter(payment => payment.currency === 'VES').reduce((sum, payment) => sum + payment.amountUsd, 0)
   const buildAccountDay = (account: FinancialAccount) => {
     const amountFor = (usd: number, rate: number | null) => account.currency === 'VES' ? usd * (rate || bcvRate || 0) : usd
     const operationAmount = (op: FinancialOperation) => account.currency === op.originalCurrency
@@ -388,14 +389,14 @@ export function Finanzas() {
       <div className="fin-card">
             <h2>Cierre por Método de Pago</h2>
             <p className="sub">Total cobrado en {periodLabel.toLowerCase()} según los métodos usados en Caja.</p>
-            {Object.entries(cur.payments).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([m, v]) => {
-              const meta = PAY_META[m] ?? PAY_META.other
+            {paymentRows.map((payment) => {
+              const meta = PAY_META[payment.method] ?? PAY_META.other
               return (
-                <div className="fin-pay-row" key={m}>
+                <div className="fin-pay-row" key={payment.key}>
                   <span className="fin-pay-ic" style={{ background: `${meta.color}22`, color: meta.color }}>{meta.icon}</span>
-                  <span className="fin-pay-name">{meta.label}{meta.sub && <small>{meta.sub}</small>}</span>
-                  <span className="fin-pay-amt">{formatUsd(v)}{bcvRate ? <small style={{ display: 'block', color: '#71717a', fontWeight: 400 }}>{formatVes(v * bcvRate)}</small> : null}</span>
-                  <span className="fin-pay-pct">{totalPayments > 0 ? ((v / totalPayments) * 100).toFixed(1) : '0'}%</span>
+                  <span className="fin-pay-name">{meta.label}<small>{payment.currency === 'VES' ? 'Cobrado en bolívares' : meta.sub}</small></span>
+                  <span className="fin-pay-amt">{payment.currency === 'VES' ? formatVes(payment.amountNative) : formatUsd(payment.amountNative)}{payment.currency === 'VES' && <small>{formatUsd(payment.amountUsd)} de referencia</small>}</span>
+                  <span className="fin-pay-pct">{totalPayments > 0 ? ((payment.amountUsd / totalPayments) * 100).toFixed(1) : '0'}%</span>
                 </div>
               )
             })}

@@ -101,7 +101,8 @@
 .fin-pay-ic { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .fin-pay-name { flex: 1; font-size: 14px; font-weight: 600; }
 .fin-pay-name small { display: block; color: #71717a; font-size: 11px; font-weight: 400; }
-.fin-pay-amt { font-weight: 700; text-align: right; }
+.fin-pay-amt { font-weight: 800; text-align: right; }
+.fin-pay-amt small { display: block; margin-top: 3px; color: #71717a; font-size: 10px; font-weight: 500; }
 .fin-pay-pct { width: 54px; text-align: right; color: #a1a1aa; font-size: 13px; }
 .fin-pay-total { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; font-weight: 800; }
 .fin-pay-total .g { color: #22c55e; }
