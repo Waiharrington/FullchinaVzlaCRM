@@ -185,6 +185,7 @@ export function ProduccionReal() {
       {/* New batch form */}
       {showForm && (
         <div className="almacen-card mb-6 management-workspace-panel" style={{ marginTop: '16px' }}>
+          <p className="inv-form-hint" style={{ margin: '0 0 12px' }}>Los ingredientes utilizados en este lote se descuentan del almacén. Después puedes asociar la preparación a una receta de porciones o a un plato.</p>
           <h3 style={{ color: '#fff', fontSize: '15px', fontWeight: 700, marginBottom: '16px' }}>
             <Flame size={18} style={{ verticalAlign: 'middle', marginRight: '8px' }} />
             Registrar Nuevo Lote

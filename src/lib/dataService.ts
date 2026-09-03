@@ -247,6 +247,8 @@ export interface FinancialAccount {
   currentBalance: number
 }
 
+export type WarehouseIngredient = Ingredient
+
 export interface StockMovement {
   id: string
   ingredientId: string
@@ -255,6 +257,7 @@ export interface StockMovement {
   unitId: string
   unitSymbol: string
   movementType: string
+  stockLocation: 'warehouse' | 'operational'
   referenceType: string | null
   referenceId: string | null
   notes: string | null
@@ -2142,6 +2145,23 @@ export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
   }))
 }
 
+export async function getWarehouseIngredients(): Promise<WarehouseIngredient[]> {
+  const [{ data, error }, { data: metadata, error: metadataError }] = await Promise.all([
+    client().from('v_warehouse_stock').select('*').order('ingredient_name', { ascending: true }),
+    client().from('ingredients').select('id,inventory_class'),
+  ])
+  if (error) throw error
+  if (metadataError) throw metadataError
+  const classes = new Map((metadata ?? []).map(row => [row.id as string, row.inventory_class as Ingredient['inventoryClass']]))
+  return (data ?? []).map(i => ({
+    id: i.ingredient_id as string, name: i.ingredient_name as string, unitId: i.unit_id as string,
+    unitName: i.unit_name as string, unitSymbol: i.unit_symbol as string, isActive: true,
+    currentStock: Number(i.current_stock), pricePerUnit: i.price_per_unit === null ? null : Number(i.price_per_unit),
+    stockValue: i.stock_value === null ? null : Number(i.stock_value),
+    inventoryClass: classes.get(i.ingredient_id as string) ?? 'raw_material',
+  }))
+}
+
 export async function updateFinancialAccountOpeningBalance(id: string, openingBalance: number): Promise<void> {
   const { error } = await client().from('financial_accounts').update({ opening_balance: openingBalance }).eq('id', id)
   if (error) throw error
@@ -2167,6 +2187,7 @@ export async function getStockMovements(ingredientId?: string): Promise<StockMov
     unitId: m.unit_id as string,
     unitSymbol: (m.units as Record<string, unknown>)?.symbol as string ?? '',
     movementType: m.movement_type as string,
+    stockLocation: (m.stock_location as 'warehouse' | 'operational') ?? 'operational',
     referenceType: (m.reference_type as string) ?? null,
     referenceId: (m.reference_id as string) ?? null,
     notes: (m.notes as string) ?? null,
@@ -2194,6 +2215,17 @@ export async function adjustStock(params: {
     p_notes: params.notes ?? null,
   })
   if (error) throw error
+}
+
+export async function transferStock(params: {
+  ingredientId: string; quantity: number; unitId: string; from: 'warehouse' | 'operational'; to: 'warehouse' | 'operational'; notes?: string
+}): Promise<string> {
+  const { data, error } = await client().rpc('fn_transfer_stock', {
+    p_ingredient_id: params.ingredientId, p_quantity: params.quantity, p_unit_id: params.unitId,
+    p_from: params.from, p_to: params.to, p_notes: params.notes ?? null,
+  })
+  if (error) throw error
+  return String(data)
 }
 
 export async function getUnits(): Promise<Array<{ id: string; name: string; symbol: string }>> {

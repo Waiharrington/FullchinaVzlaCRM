@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2 } from 'lucide-react'
-import { adjustStock, getIngredients, getStockMovements, getUnits, updateIngredient, updateIngredientCost, type Ingredient, type StockMovement } from '../lib/dataService'
+import { adjustStock, getIngredients, getWarehouseIngredients, getStockMovements, getUnits, transferStock, updateIngredient, updateIngredientCost, type Ingredient, type StockMovement } from '../lib/dataService'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
@@ -38,6 +38,9 @@ type WarehouseTransfer = {
 export function Almacen() {
   const { user } = useAuth()
   const [items, setItems] = useState<WarehouseItem[]>([])
+  const [operationalItems, setOperationalItems] = useState<WarehouseItem[]>([])
+  const [selectedOperationalItemId, setSelectedOperationalItemId] = useState('')
+  const [warehouseQty, setWarehouseQty] = useState('1')
   const [transfers, setTransfers] = useState<WarehouseTransfer[]>([])
   const [selectedItemId, setSelectedItemId] = useState('')
   const [transferQty, setTransferQty] = useState('10')
@@ -57,7 +60,7 @@ export function Almacen() {
   const openView = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('view'); setModalLoading(true); try { setItemMovements(await getStockMovements(item.id)) } catch { setErrorMsg('No se pudieron cargar los movimientos.') } finally { setModalLoading(false) } }
   const openEdit = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('edit'); setEditForm({ name: item.name, inventoryClass: item.inventoryClass, price: String(item.costPerUnit) }); if (!units.length) setUnits(await getUnits()) }
   const openAdjustment = (item: WarehouseItem, direction: 1 | -1) => { setSelectedItem(item); setModalMode('adjust'); setAdjustment({ direction, quantity: '', notes: '' }) }
-  const refreshItems = async () => { const ingredients = await getIngredients(); setItems(ingredients.map(item => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass }))) }
+  const refreshItems = async () => { const ingredients = await getWarehouseIngredients(); setItems(ingredients.map(item => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass }))) }
   const saveEdit = async (event: FormEvent) => { event.preventDefault(); if (!selectedItem || !user) return; const name = editForm.name.trim(); const price = Number(editForm.price); if (!name || !Number.isFinite(price) || price < 0) { setErrorMsg('Indica nombre y costo válidos.'); return } setModalLoading(true); try { await updateIngredient(selectedItem.id, { name, inventory_class: editForm.inventoryClass }); await updateIngredientCost(selectedItem.id, price, user.id); await refreshItems(); setSuccessMsg(`${name} actualizado correctamente.`); setSelectedItem(null); setModalMode(null) } catch (error) { setErrorMsg(error instanceof Error ? error.message : 'No se pudo actualizar el insumo.') } finally { setModalLoading(false) } }
   const saveAdjustment = async (event: FormEvent) => { event.preventDefault(); if (!selectedItem) return; const quantity = Number(adjustment.quantity); if (!Number.isFinite(quantity) || quantity <= 0 || !adjustment.notes.trim()) { setErrorMsg('Indica una cantidad válida y el motivo del ajuste.'); return } setModalLoading(true); try { await adjustStock({ ingredientId: selectedItem.id, quantity: quantity * adjustment.direction, unitId: selectedItem.unitId, movementType: 'adjustment', referenceType: 'manual', notes: adjustment.notes.trim() }); await refreshItems(); setSuccessMsg(`${adjustment.direction > 0 ? 'Entrada' : 'Salida'} registrada para ${selectedItem.name}.`); setSelectedItem(null); setModalMode(null) } catch (error) { setErrorMsg(error instanceof Error ? error.message : 'No se pudo registrar el ajuste.') } finally { setModalLoading(false) } }
 
@@ -65,7 +68,8 @@ export function Almacen() {
   const criticalItems = items.filter(item => item.quantity <= item.minStock).length
 
   useEffect(() => {
-    Promise.all([getIngredients(), getStockMovements()]).then(([ingredients, movements]) => {
+    Promise.all([getWarehouseIngredients(), getIngredients(), getStockMovements()]).then(([ingredients, operational, movements]) => {
+      const mapItem = (item: Ingredient): WarehouseItem => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass })
       setItems(ingredients.map(item => ({
         id: item.id,
         unitId: item.unitId,
@@ -77,9 +81,12 @@ export function Almacen() {
         unit: item.unitSymbol,
         inventoryClass: item.inventoryClass
       })))
+      const operationalMapped = operational.map(mapItem)
+      setOperationalItems(operationalMapped)
+      setSelectedOperationalItemId(current => current || operationalMapped[0]?.id || '')
       setSelectedItemId(current => current || ingredients[0]?.id || '')
       setTransfers(movements
-        .filter(item => item.notes?.startsWith('Transferencia a operación'))
+        .filter(item => item.stockLocation === 'warehouse' && item.quantity < 0 && item.notes?.startsWith('Transferencia de'))
         .map(item => ({
           id: item.id,
           itemName: item.ingredientName,
@@ -93,6 +100,24 @@ export function Almacen() {
     }).catch(error => setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleReceiveToWarehouse = async (event: FormEvent) => {
+    event.preventDefault()
+    const source = operationalItems.find(item => item.id === selectedOperationalItemId)
+    const qty = Number(warehouseQty)
+    if (!source || !Number.isFinite(qty) || qty <= 0 || qty > source.quantity) {
+      setErrorMsg('La cantidad debe ser válida y no superar el inventario operativo.')
+      return
+    }
+    try {
+      await transferStock({ ingredientId: source.id, quantity: qty, unitId: source.unitId, from: 'operational', to: 'warehouse', notes: `Transferencia de ${source.name} a almacén` })
+      setSuccessMsg(`${qty} ${source.unit} de ${source.name} enviados al almacén.`)
+      await refreshItems()
+      setOperationalItems(previous => previous.map(item => item.id === source.id ? { ...item, quantity: item.quantity - qty } : item))
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'No se pudo transferir el insumo al almacén.')
+    }
+  }
 
   const handleTransfer = async (event: FormEvent) => {
     event.preventDefault()
@@ -111,12 +136,13 @@ export function Almacen() {
     }
 
     try {
-      await adjustStock({
+      await transferStock({
         ingredientId: targetItem.id,
-        quantity: -qty,
+        quantity: qty,
         unitId: targetItem.unitId,
-        movementType: 'adjustment',
-        notes: 'Transferencia a operación'
+        from: 'warehouse',
+        to: 'operational',
+        notes: `Transferencia de ${targetItem.name} a operación`,
       })
 
       setItems(previous => previous.map(item => item.id === selectedItemId
@@ -206,8 +232,8 @@ export function Almacen() {
             <div className="header-title-group">
               <div className="card-header-icon"><Package size={18} /></div>
               <div>
-                <h2 className="almacen-card-title">Inventario disponible</h2>
-                <p className="almacen-card-description">Insumos listos para transferir a la operación.</p>
+                <h2 className="almacen-card-title">Productos en almacén</h2>
+                <p className="almacen-card-description">Insumos recibidos por compras, listos para enviar a la operación.</p>
               </div>
             </div>
             <span className="almacen-count-pill">{items.length} insumos</span>
@@ -260,6 +286,14 @@ export function Almacen() {
         </section>
 
         <aside className="almacen-side-column">
+          <section className="almacen-card management-workspace-panel">
+            <div className="almacen-card-header"><div className="header-title-group"><div className="card-header-icon"><Package size={18} /></div><div><h2 className="almacen-card-title">Traer desde inventario</h2><p className="almacen-card-description">Mueve existencias operativas al almacén.</p></div></div></div>
+            <form onSubmit={handleReceiveToWarehouse} className="transfer-form-box">
+              <div className="select-field-group"><label className="field-label" htmlFor="operational-item">Producto de inventario</label><StyledSelect id="operational-item" className="field-select" value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></div>
+              <div className="select-field-group"><label className="field-label" htmlFor="warehouse-quantity">Cantidad</label><NumberStepper id="warehouse-quantity" min={0.001} step={0.001} className="field-select" value={warehouseQty} onChange={setWarehouseQty} /></div>
+              <button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId}><ArrowRightLeft size={17} /> Traer al almacén</button>
+            </form>
+          </section>
           <section className="almacen-card management-workspace-panel">
             <div className="almacen-card-header">
               <div className="header-title-group">
