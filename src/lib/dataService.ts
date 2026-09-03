@@ -2110,26 +2110,29 @@ export async function getLegacyPurchaseOrders(): Promise<LegacyPurchaseOrder[]> 
 export async function getIngredients(): Promise<Ingredient[]> {
   const [{ data, error }, { data: metadata, error: metadataError }] = await Promise.all([
     client().from('v_current_stock').select('*').order('ingredient_name', { ascending: true }),
-    client().from('ingredients').select('id,inventory_class'),
+    client().from('ingredients').select('id,inventory_class,is_active'),
   ])
 
   if (error) throw error
   if (metadataError) throw metadataError
 
+  const activeMap = new Map((metadata ?? []).map(row => [row.id as string, row.is_active !== false]))
   const inventoryClasses = new Map((metadata ?? []).map(row => [row.id as string, row.inventory_class as Ingredient['inventoryClass']]))
 
-  return (data ?? []).map((i) => ({
-    id: i.ingredient_id as string,
-    name: i.ingredient_name as string,
-    unitId: i.unit_id as string,
-    unitName: i.unit_name as string,
-    unitSymbol: i.unit_symbol as string,
-    isActive: true,
-    currentStock: Number(i.current_stock),
-    pricePerUnit: i.price_per_unit !== null ? Number(i.price_per_unit) : null,
-    stockValue: i.stock_value !== null ? Number(i.stock_value) : null,
-    inventoryClass: inventoryClasses.get(i.ingredient_id as string) ?? 'raw_material',
-  }))
+  return (data ?? [])
+    .filter(i => activeMap.get(i.ingredient_id as string) !== false)
+    .map((i) => ({
+      id: i.ingredient_id as string,
+      name: i.ingredient_name as string,
+      unitId: i.unit_id as string,
+      unitName: i.unit_name as string,
+      unitSymbol: i.unit_symbol as string,
+      isActive: true,
+      currentStock: Number(i.current_stock),
+      pricePerUnit: i.price_per_unit !== null ? Number(i.price_per_unit) : null,
+      stockValue: i.stock_value !== null ? Number(i.stock_value) : null,
+      inventoryClass: inventoryClasses.get(i.ingredient_id as string) ?? 'raw_material',
+    }))
 }
 
 export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
@@ -2161,18 +2164,21 @@ export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
 export async function getWarehouseIngredients(): Promise<WarehouseIngredient[]> {
   const [{ data, error }, { data: metadata, error: metadataError }] = await Promise.all([
     client().from('v_warehouse_stock').select('*').order('ingredient_name', { ascending: true }),
-    client().from('ingredients').select('id,inventory_class'),
+    client().from('ingredients').select('id,inventory_class,is_active'),
   ])
   if (error) throw error
   if (metadataError) throw metadataError
+  const activeMap = new Map((metadata ?? []).map(row => [row.id as string, row.is_active !== false]))
   const classes = new Map((metadata ?? []).map(row => [row.id as string, row.inventory_class as Ingredient['inventoryClass']]))
-  return (data ?? []).map(i => ({
-    id: i.ingredient_id as string, name: i.ingredient_name as string, unitId: i.unit_id as string,
-    unitName: i.unit_name as string, unitSymbol: i.unit_symbol as string, isActive: true,
-    currentStock: Number(i.current_stock), pricePerUnit: i.price_per_unit === null ? null : Number(i.price_per_unit),
-    stockValue: i.stock_value === null ? null : Number(i.stock_value),
-    inventoryClass: classes.get(i.ingredient_id as string) ?? 'raw_material',
-  }))
+  return (data ?? [])
+    .filter(i => activeMap.get(i.ingredient_id as string) !== false)
+    .map(i => ({
+      id: i.ingredient_id as string, name: i.ingredient_name as string, unitId: i.unit_id as string,
+      unitName: i.unit_name as string, unitSymbol: i.unit_symbol as string, isActive: true,
+      currentStock: Number(i.current_stock), pricePerUnit: i.price_per_unit === null ? null : Number(i.price_per_unit),
+      stockValue: i.stock_value === null ? null : Number(i.stock_value),
+      inventoryClass: classes.get(i.ingredient_id as string) ?? 'raw_material',
+    }))
 }
 
 export async function updateFinancialAccountOpeningBalance(id: string, openingBalance: number): Promise<void> {
@@ -2277,6 +2283,14 @@ export async function updateIngredient(id: string, updates: {
   const { error } = await client()
     .from('ingredients')
     .update(updates)
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function deleteIngredient(id: string): Promise<void> {
+  const { error } = await client()
+    .from('ingredients')
+    .update({ is_active: false })
     .eq('id', id)
   if (error) throw error
 }

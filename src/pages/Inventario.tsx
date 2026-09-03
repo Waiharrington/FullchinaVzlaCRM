@@ -9,6 +9,7 @@ import {
   adjustStock,
   updateIngredient,
   updateIngredientCost,
+  deleteIngredient,
   type Ingredient,
   type StockMovement,
 } from '../lib/dataService'
@@ -21,7 +22,6 @@ import {
   TrendingUp,
   AlertTriangle,
   ShoppingBag,
-  Bell,
   ArrowDown,
   ArrowUp,
   RefreshCw,
@@ -33,9 +33,11 @@ import {
   Minus,
   Save,
   Loader2,
+  Trash2,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { confirmDialog } from '../components/ConfirmDialog'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
@@ -45,6 +47,59 @@ type InventoryModal = 'view' | 'edit' | 'adjust' | null
 // la última visita al instante, sin el parpadeo de "Cargando...", mientras
 // se refrescan en segundo plano.
 let inventarioCache: { ingredients: Ingredient[]; stockMovements: StockMovement[] } | null = null
+
+function getIngredientCategory(ing: Ingredient): 'raw' | 'packaging' | 'beverages' {
+  if (ing.inventoryClass === 'beverage') return 'beverages'
+  if (ing.inventoryClass === 'packaging') return 'packaging'
+  const name = normalizeForSearch(ing.name)
+  // Detección inteligente de Bebidas
+  if (
+    name.includes('agua') ||
+    name.includes('refresco') ||
+    name.includes('soda') ||
+    name.includes('coca') ||
+    name.includes('pepsi') ||
+    name.includes('chinotto') ||
+    name.includes('colita') ||
+    name.includes('jugo') ||
+    name.includes('malta') ||
+    name.includes('cerveza') ||
+    name.includes('polar') ||
+    name.includes('red bull') ||
+    name.includes('monster') ||
+    name.includes('bebida') ||
+    name.includes('te ') ||
+    name.includes('té ') ||
+    name.includes('gatorade') ||
+    name.includes('sangria')
+  ) {
+    return 'beverages'
+  }
+  // Detección inteligente de Empaques y Descartables
+  if (
+    name.includes('empaque') ||
+    name.includes('bolsa') ||
+    name.includes('envase') ||
+    name.includes('caja') ||
+    name.includes('vaso') ||
+    name.includes('cubierto') ||
+    name.includes('cuchillo') ||
+    name.includes('cuchara') ||
+    name.includes('tenedor') ||
+    name.includes('servilleta') ||
+    name.includes('vianda') ||
+    name.includes('tapa') ||
+    name.includes('sticker') ||
+    name.includes('papel') ||
+    name.includes('aluminio') ||
+    name.includes('porta') ||
+    name.includes('pitillo') ||
+    name.includes('delivery')
+  ) {
+    return 'packaging'
+  }
+  return 'raw'
+}
 
 export function Inventario() {
   const { user } = useAuth()
@@ -57,6 +112,7 @@ export function Inventario() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null)
   const [modalMode, setModalMode] = useState<InventoryModal>(null)
+  const [showPortionsModal, setShowPortionsModal] = useState(false)
   const [ingredientMovements, setIngredientMovements] = useState<StockMovement[]>([])
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
   const [editForm, setEditForm] = useState({ name: '', unitId: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
@@ -185,6 +241,26 @@ export function Inventario() {
     }
   }
 
+  const handleDelete = async (ing: Ingredient) => {
+    const ok = await confirmDialog({
+      title: `¿Eliminar "${ing.name}"?`,
+      message: 'El producto se desactivará del inventario. Esta acción no se puede deshacer.',
+      confirmText: 'Sí, eliminar',
+      cancelText: 'Cancelar',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await deleteIngredient(ing.id)
+      await fetchAll()
+      setSuccessMessage(`"${ing.name}" fue eliminado del inventario.`)
+      setTimeout(() => setSuccessMessage(''), 3000)
+    } catch (e) {
+      console.error(e)
+      setModalError('No se pudo eliminar el artículo.')
+    }
+  }
+
   const fetchAll = useCallback(async () => {
     try {
       const [ingData, movData] = await Promise.all([
@@ -207,10 +283,8 @@ export function Inventario() {
 
   const filteredIngredients = useMemo(() => {
     return ingredients.filter(ing => {
-      const matchesCategory = categoryFilter === 'all' ||
-        (categoryFilter === 'raw' && ing.inventoryClass === 'raw_material') ||
-        (categoryFilter === 'packaging' && ing.inventoryClass === 'packaging') ||
-        (categoryFilter === 'beverages' && ing.inventoryClass === 'beverage')
+      const cat = getIngredientCategory(ing)
+      const matchesCategory = categoryFilter === 'all' || categoryFilter === cat
       return matchesCategory && normalizeForSearch(ing.name).includes(normalizeForSearch(searchTerm))
     })
   }, [ingredients, searchTerm, categoryFilter])
@@ -229,13 +303,18 @@ export function Inventario() {
     return ingredients.filter(i => i.currentStock <= 10).length
   }, [ingredients])
 
-  const totalPortions = useMemo(() => {
-    return ingredients.reduce((sum, ing) => sum + ing.currentStock, 0)
+  const portionItems = useMemo(() => {
+    return ingredients.filter(i =>
+      i.unitSymbol.toLowerCase() === 'por' ||
+      i.unitSymbol.toLowerCase() === 'porcion' ||
+      normalizeForSearch(i.name).includes('porcion') ||
+      normalizeForSearch(i.name).includes('lote')
+    )
   }, [ingredients])
 
-  const criticalCount = useMemo(() => {
-    return ingredients.filter(i => i.currentStock <= 5).length
-  }, [ingredients])
+  const totalPortionsCount = useMemo(() => {
+    return portionItems.reduce((sum, ing) => sum + Math.max(0, ing.currentStock), 0)
+  }, [portionItems])
 
   const recentMovements = useMemo(() => {
     return stockMovements.slice(0, 5)
@@ -326,50 +405,55 @@ export function Inventario() {
             <span className="inv-kpi-sub amber">Requieren atención</span>
           </div>
         </div>
-        <div className="inv-kpi-card green">
+        <div
+          className="inv-kpi-card green"
+          role="button"
+          tabIndex={0}
+          onClick={() => setShowPortionsModal(true)}
+          style={{ cursor: 'pointer' }}
+          title="Ver desglose de porciones"
+        >
           <div className="inv-kpi-icon green">
             <TrendingUp size={22} />
           </div>
           <div className="inv-kpi-info">
             <span className="inv-kpi-label">Porciones disponibles</span>
-            <span className="inv-kpi-value">{Math.round(totalPortions)}</span>
-            <span className="inv-kpi-sub">Porciones listas</span>
+            <span className="inv-kpi-value">{Math.round(totalPortionsCount)}</span>
+            <span className="inv-kpi-sub" style={{ color: 'var(--accent-green, #22c55e)', fontWeight: 600 }}>Ver desglose &gt;</span>
           </div>
         </div>
-        <div className="inv-kpi-card orange">
-          <div className="inv-kpi-icon orange">
-            <Bell size={22} />
+        <div className="inv-kpi-card blue">
+          <div className="inv-kpi-icon blue">
+            <Package size={22} />
           </div>
           <div className="inv-kpi-info">
-            <span className="inv-kpi-label">Alertas activas</span>
-            <span className="inv-kpi-value">{criticalCount}</span>
-            <span className="inv-kpi-link">Ver detalles {'>'}</span>
+            <span className="inv-kpi-label">Total de productos</span>
+            <span className="inv-kpi-value">{ingredients.length}</span>
+            <span className="inv-kpi-sub">Artículos registrados</span>
           </div>
         </div>
       </div>
 
       {/* Filters Row */}
       <div className="inv-filters-row management-workspace-toolbar">
+        <div className="inv-search-box">
+          <Search size={16} className="search-icon" />
+          <input
+            type="text"
+            placeholder="Buscar producto..."
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
+          />
+          {searchTerm && (
+            <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => { setSearchTerm(''); setCurrentPage(1) }} aria-label="Borrar búsqueda">
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <div className="inv-filter-pills">
           {[['all', 'Todos'], ['raw', 'Materia prima'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
             <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
           ))}
-        </div>
-        <div className="inv-search-and-filters">
-          <div className="inv-search-box">
-            <Search size={16} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Buscar producto..."
-              value={searchTerm}
-              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1) }}
-            />
-            {searchTerm && (
-              <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => { setSearchTerm(''); setCurrentPage(1) }} aria-label="Borrar búsqueda">
-                <X size={13} />
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
@@ -436,6 +520,7 @@ export function Inventario() {
                                 <button className="inv-action-btn" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={14} /></button>
                                 <button className="inv-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${ing.name}`} onClick={() => openAdjustment(ing, 1)}><Plus size={14} /></button>
                                 <button className="inv-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${ing.name}`} onClick={() => openAdjustment(ing, -1)}><Minus size={14} /></button>
+                                <button className="inv-action-btn danger" title="Eliminar artículo" aria-label={`Eliminar ${ing.name}`} onClick={() => handleDelete(ing)}><Trash2 size={14} /></button>
                               </>
                             )}
                           </div>
@@ -586,6 +671,57 @@ export function Inventario() {
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
               <button className={`inv-generate-order-btn ${adjustment.direction < 0 ? 'danger' : ''}`} disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : adjustment.direction > 0 ? <Plus size={17} /> : <Minus size={17} />} {adjustment.direction > 0 ? 'Registrar entrada' : 'Registrar salida'}</button>
             </form>}
+          </div>
+        </div>,
+        document.body
+      )}
+      {showPortionsModal && createPortal(
+        <div className="inv-modal-overlay" onClick={() => setShowPortionsModal(false)}>
+          <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
+            <button className="inv-modal-close" onClick={() => setShowPortionsModal(false)} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
+            <div className="inv-modal-heading">
+              <span className="positive"><TrendingUp size={18} /></span>
+              <div>
+                <small>Producción y Cocina</small>
+                <h3>Porciones Disponibles</h3>
+              </div>
+            </div>
+            <p className="inv-form-hint">
+              Raciones listas preparadas en el Food Truck disponibles para el despacho de pedidos.
+            </p>
+
+            {portionItems.length === 0 ? (
+              <div className="inv-empty-state">
+                <p>No hay porciones registradas en este momento.</p>
+                <button className="inv-generate-order-btn" onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
+                  Ir a Producción
+                </button>
+              </div>
+            ) : (
+              <div className="inv-history-list" style={{ marginTop: '0.75rem' }}>
+                {portionItems.map(p => (
+                  <div className="inv-history-row" key={p.id}>
+                    <div className="inv-movement-icon entry">
+                      <Package size={15} />
+                    </div>
+                    <div>
+                      <strong>{p.name}</strong>
+                      <small>{showCosts && p.pricePerUnit !== null ? `Costo: $${p.pricePerUnit.toFixed(2)} c/u` : 'Ración lista'}</small>
+                    </div>
+                    <b className={p.currentStock > 0 ? 'positive' : 'negative'}>
+                      {p.currentStock} {p.unitSymbol}
+                    </b>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Total porciones:</span>
+                  <strong style={{ color: 'var(--accent-green, #22c55e)', fontSize: '1.1rem' }}>{Math.round(totalPortionsCount)} por</strong>
+                </div>
+                <button className="inv-generate-order-btn" style={{ marginTop: '1rem' }} onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
+                  + Nueva producción de raciones
+                </button>
+              </div>
+            )}
           </div>
         </div>,
         document.body

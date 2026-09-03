@@ -75,6 +75,10 @@
   --kpi-tint: rgba(249,115,22,0.16); --kpi-border: rgba(249,115,22,0.3); --kpi-border-hover: rgba(249,115,22,0.5);
   --kpi-inset: rgba(249,115,22,0.08); --kpi-shadow: rgba(249,115,22,0.1); --kpi-shadow-hover: rgba(249,115,22,0.18);
 }
+.inv-kpi-card.blue {
+  --kpi-tint: rgba(59,130,246,0.16); --kpi-border: rgba(59,130,246,0.3); --kpi-border-hover: rgba(59,130,246,0.5);
+  --kpi-inset: rgba(59,130,246,0.08); --kpi-shadow: rgba(59,130,246,0.1); --kpi-shadow-hover: rgba(59,130,246,0.18);
+}
 
 .inv-kpi-icon {
   width: 44px;
@@ -108,6 +112,11 @@
   --kpi-glow: rgba(249,115,22,0.5);
 }
 
+.inv-kpi-icon.blue {
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%);
+  --kpi-glow: rgba(59,130,246,0.5);
+}
+
 .inv-kpi-info {
   display: flex;
   flex-direction: column;
@@ -127,6 +136,7 @@
 .inv-kpi-card.amber .inv-kpi-label { --kpi-label: #fcd34d; }
 .inv-kpi-card.green .inv-kpi-label { --kpi-label: #86efac; }
 .inv-kpi-card.orange .inv-kpi-label { --kpi-label: #fdba74; }
+.inv-kpi-card.blue .inv-kpi-label { --kpi-label: #93c5fd; }
 
 .inv-kpi-value {
   font-size: 1.5rem;
@@ -487,6 +497,7 @@
 
 .inv-action-btn.positive:hover { color: #22c55e; border-color: rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .1); }
 .inv-action-btn.negative:hover { color: #ff4d3d; border-color: rgba(255, 77, 61, .5); background: rgba(255, 77, 61, .1); }
+.inv-action-btn.danger:hover { color: #ef4444; border-color: rgba(239, 68, 68, .5); background: rgba(239, 68, 68, .12); }
 
 /* Pagination */
 .inv-pagination {

@@ -10,10 +10,16 @@ const mocks = vi.hoisted(() => ({
   adjustStock: vi.fn(),
   updateIngredient: vi.fn(),
   updateIngredientCost: vi.fn(),
+  deleteIngredient: vi.fn(),
+  confirmDialog: vi.fn(),
 }))
 
 vi.mock('../context/auth-context', () => ({
   useAuth: () => ({ user: { id: 'owner-1', role: 'owner', email: 'owner@example.com' } }),
+}))
+
+vi.mock('../components/ConfirmDialog', () => ({
+  confirmDialog: (...args: unknown[]) => mocks.confirmDialog(...args),
 }))
 
 vi.mock('../lib/dataService', () => ({
@@ -85,5 +91,17 @@ describe('Acciones de Inventario', () => {
       ingredientId: 'ingredient-1', quantity: -1.25, unitId: 'unit-1', movementType: 'adjustment',
       referenceType: 'manual', notes: 'Merma verificada',
     }))
+  })
+
+  it('elimina un artículo tras confirmar en el diálogo', async () => {
+    mocks.confirmDialog.mockResolvedValue(true)
+    mocks.deleteIngredient.mockResolvedValue(undefined)
+    renderInventory()
+    fireEvent.click(await screen.findByRole('button', { name: 'Eliminar Aceite' }))
+    expect(mocks.confirmDialog).toHaveBeenCalledWith(expect.objectContaining({
+      title: '¿Eliminar "Aceite"?',
+      danger: true,
+    }))
+    await waitFor(() => expect(mocks.deleteIngredient).toHaveBeenCalledWith('ingredient-1'))
   })
 })
