@@ -40,7 +40,6 @@ import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { DateField } from '../components/DateField'
-import { StyledSelect } from '../components/StyledSelect'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
