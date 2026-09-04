@@ -40,6 +40,7 @@ export function RecetasReal() {
   const [recipeView, setRecipeView] = useState<RecipeView>('platos')
   const [portions, setPortions] = useState<PortionRecipe[]>([])
   const [showPortionForm, setShowPortionForm] = useState(false)
+  const [closingPortionForm, setClosingPortionForm] = useState(false)
   const [portionName, setPortionName] = useState('')
   const [portionIngredientId, setPortionIngredientId] = useState('')
   const [portionQuantity, setPortionQuantity] = useState('')
@@ -110,6 +111,7 @@ export function RecetasReal() {
 
   // Modal para agregar ingrediente a la ración de personal
   const [showStaffIngModal, setShowStaffIngModal] = useState(false)
+  const [closingStaffIng, setClosingStaffIng] = useState(false)
   const [staffIngTargetMeal, setStaffIngTargetMeal] = useState<'lunch' | 'dinner'>('lunch')
   const [staffIngIngredientId, setStaffIngIngredientId] = useState('')
   const [staffIngQuantity, setStaffIngQuantity] = useState('0.4')
@@ -117,6 +119,7 @@ export function RecetasReal() {
 
   // Modal para registrar consumo diario
   const [showConsumeModal, setShowConsumeModal] = useState(false)
+  const [closingConsume, setClosingConsume] = useState(false)
   const [consumeMealType, setConsumeMealType] = useState<'lunch' | 'dinner'>('lunch')
   const [consumeServings, setConsumeServings] = useState(4)
   const [consumeNotes, setConsumeNotes] = useState('')
@@ -130,6 +133,20 @@ export function RecetasReal() {
     active: boolean
   }>>([])
   const [consumeLoading, setConsumeLoading] = useState(false)
+
+  const closeTimedModal = (
+    visible: boolean,
+    closing: boolean,
+    setClosing: (value: boolean) => void,
+    setVisible: (value: boolean) => void,
+  ) => {
+    if (!visible || closing) return
+    setClosing(true)
+    window.setTimeout(() => {
+      setVisible(false)
+      setClosing(false)
+    }, 200)
+  }
 
   const loadProducts = useCallback(async () => {
     try {
@@ -903,7 +920,7 @@ export function RecetasReal() {
       )}
 
       {showPortionForm && createPortal(
-        <div className="rec-modal-overlay" onClick={() => setShowPortionForm(false)}>
+        <div className={`rec-modal-overlay ${closingPortionForm ? 'closing' : ''}`} onClick={() => closeTimedModal(showPortionForm, closingPortionForm, setClosingPortionForm, setShowPortionForm)}>
           <form className="rec-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreatePortion}>
             <div className="rec-modal-header">
               <div className="rec-modal-header-icon"><Soup size={18} /></div>
@@ -941,7 +958,7 @@ export function RecetasReal() {
               </label>
             </div>
             <div className="rec-modal-actions">
-              <button type="button" className="rec-modal-cancel" onClick={() => setShowPortionForm(false)}>Cancelar</button>
+              <button type="button" className="rec-modal-cancel" onClick={() => closeTimedModal(showPortionForm, closingPortionForm, setClosingPortionForm, setShowPortionForm)}>Cancelar</button>
               <button type="submit" className="rec-add-btn"><Check size={16} /> Guardar porción</button>
             </div>
           </form>
@@ -950,7 +967,7 @@ export function RecetasReal() {
       )}
 
       {showStaffIngModal && createPortal(
-        <div className="rec-modal-overlay" onClick={() => setShowStaffIngModal(false)}>
+        <div className={`rec-modal-overlay ${closingStaffIng ? 'closing' : ''}`} onClick={() => closeTimedModal(showStaffIngModal, closingStaffIng, setClosingStaffIng, setShowStaffIngModal)}>
           <form className="rec-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveStaffIng}>
             <div className="rec-modal-header">
               <div className="rec-modal-header-icon">
@@ -1001,7 +1018,7 @@ export function RecetasReal() {
             </div>
 
             <div className="rec-modal-actions">
-              <button type="button" className="rec-modal-cancel" onClick={() => setShowStaffIngModal(false)}>
+              <button type="button" className="rec-modal-cancel" onClick={() => closeTimedModal(showStaffIngModal, closingStaffIng, setClosingStaffIng, setShowStaffIngModal)}>
                 Cancelar
               </button>
               <button type="submit" className="rec-add-btn">
@@ -1014,7 +1031,7 @@ export function RecetasReal() {
       )}
 
       {showConsumeModal && createPortal(
-        <div className="rec-modal-overlay" onClick={() => !consumeLoading && setShowConsumeModal(false)}>
+        <div className={`rec-modal-overlay ${closingConsume ? 'closing' : ''}`} onClick={() => !consumeLoading && closeTimedModal(showConsumeModal, closingConsume, setClosingConsume, setShowConsumeModal)}>
           <form className="rec-modal rec-staff-consume-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitConsume}>
             <div className="rec-modal-header">
               <div className="rec-modal-header-icon"><Utensils size={18} /></div>
@@ -1129,7 +1146,7 @@ export function RecetasReal() {
                 type="button"
                 className="rec-modal-cancel"
                 disabled={consumeLoading}
-                onClick={() => setShowConsumeModal(false)}
+                onClick={() => closeTimedModal(showConsumeModal, closingConsume, setClosingConsume, setShowConsumeModal)}
               >
                 Cancelar
               </button>

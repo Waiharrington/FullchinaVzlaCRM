@@ -45,10 +45,28 @@ export function Almacen() {
   const [adjustment, setAdjustment] = useState({ direction: 1 as 1 | -1, quantity: '', notes: '' })
   const [modalLoading, setModalLoading] = useState(false)
   const [quickAction, setQuickAction] = useState<QuickAction>(null)
+  const [closingItemModal, setClosingItemModal] = useState(false)
+  const [closingQuickAction, setClosingQuickAction] = useState(false)
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const closeModal = () => { if (!modalLoading) { setSelectedItem(null); setModalMode(null) } }
+  const closeModal = () => {
+    if (modalLoading || closingItemModal) return
+    setClosingItemModal(true)
+    window.setTimeout(() => {
+      setSelectedItem(null)
+      setModalMode(null)
+      setClosingItemModal(false)
+    }, 200)
+  }
+  const closeQuickAction = () => {
+    if (!quickAction || closingQuickAction) return
+    setClosingQuickAction(true)
+    window.setTimeout(() => {
+      setQuickAction(null)
+      setClosingQuickAction(false)
+    }, 200)
+  }
   const openView = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('view'); setModalLoading(true); try { setItemMovements(await getStockMovements(item.id)) } catch { setErrorMsg('No se pudieron cargar los movimientos.') } finally { setModalLoading(false) } }
   const openEdit = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('edit'); setEditForm({ name: item.name, inventoryClass: item.inventoryClass, price: String(item.costPerUnit) }); if (!units.length) setUnits(await getUnits()) }
   const openAdjustment = (item: WarehouseItem, direction: 1 | -1) => { setSelectedItem(item); setModalMode('adjust'); setAdjustment({ direction, quantity: '', notes: '' }) }
@@ -218,7 +236,7 @@ export function Almacen() {
           </div>
         </button>
 
-        <button type="button" className="almacen-metric-card accent-orange" onClick={() => setQuickAction('critical')}>
+        <button type="button" className="almacen-metric-card accent-red" onClick={() => setQuickAction('critical')}>
           <div className="metric-icon-box"><AlertTriangle size={18} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Stock crítico</span>
@@ -382,13 +400,13 @@ export function Almacen() {
         </section>
       </div>
 
-      {selectedItem && modalMode && createPortal(<div className="almacen-modal-overlay" onClick={closeModal}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} /></button>
+      {selectedItem && modalMode && createPortal(<div className={`almacen-modal-overlay ${closingItemModal ? 'closing' : ''}`} onClick={closeModal}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} /></button>
         {modalMode === 'view' && <><div className="almacen-modal-heading"><span><Eye size={18} /></span><div><small>Historial del insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div>{modalLoading ? <p className="almacen-modal-empty">Cargando movimientos…</p> : itemMovements.length === 0 ? <p className="almacen-modal-empty">Este insumo todavía no tiene movimientos.</p> : <div className="almacen-history-list">{itemMovements.map(movement => <div className="almacen-history-row" key={movement.id}><div><strong>{movement.movementType === 'purchase' ? 'Entrada' : movement.movementType === 'consumption' ? 'Salida' : 'Ajuste'}</strong><small>{movement.notes || movement.referenceType || 'Sin motivo'}</small></div><b className={movement.quantity > 0 ? 'positive' : 'negative'}>{movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unitSymbol}</b></div>)}</div>}</>}
         {modalMode === 'edit' && <form onSubmit={saveEdit}><div className="almacen-modal-heading"><span><Pencil size={18} /></span><div><small>Editar insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-fields"><label>Nombre<input value={editForm.name} onChange={event => setEditForm(form => ({ ...form, name: event.target.value }))} /></label><label>Costo por unidad (USD)<input type="number" min="0" step="0.01" value={editForm.price} onChange={event => setEditForm(form => ({ ...form, price: event.target.value }))} /></label><label>Clasificación<select value={editForm.inventoryClass} onChange={event => setEditForm(form => ({ ...form, inventoryClass: event.target.value as Ingredient['inventoryClass'] }))}><option value="raw_material">Materia prima</option><option value="packaging">Empaque</option><option value="beverage">Bebida</option><option value="non_inventory">No inventariable</option></select></label></div><button className="btn-primary-red" disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : <Save size={17} />} Guardar cambios</button></form>}
         {modalMode === 'adjust' && <form onSubmit={saveAdjustment}><div className="almacen-modal-heading"><span className={adjustment.direction > 0 ? 'positive' : 'negative'}>{adjustment.direction > 0 ? <Plus size={18} /> : <Minus size={18} />}</span><div><small>{adjustment.direction > 0 ? 'Agregar al inventario' : 'Descontar del inventario'}</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div><div className="almacen-modal-fields"><label>Cantidad ({selectedItem.unit})<input autoFocus type="number" min="0.001" step="0.001" value={adjustment.quantity} onChange={event => setAdjustment(value => ({ ...value, quantity: event.target.value }))} placeholder="0.000" /></label><label>Motivo del ajuste<textarea value={adjustment.notes} onChange={event => setAdjustment(value => ({ ...value, notes: event.target.value }))} placeholder="Ej. conteo físico, merma, recepción manual…" /></label></div><button className={`btn-primary-red ${adjustment.direction < 0 ? 'danger' : ''}`} disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : adjustment.direction > 0 ? <Plus size={17} /> : <Minus size={17} />} {adjustment.direction > 0 ? 'Registrar entrada' : 'Registrar salida'}</button></form>}
       </div></div>, document.body)}
 
-      {quickAction && createPortal(<div className="almacen-modal-overlay" onClick={() => setQuickAction(null)}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={() => setQuickAction(null)} aria-label="Cerrar"><X size={16} /></button>
+      {quickAction && createPortal(<div className={`almacen-modal-overlay ${closingQuickAction ? 'closing' : ''}`} onClick={closeQuickAction}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeQuickAction} aria-label="Cerrar"><X size={16} /></button>
         {quickAction === 'receive' && <form onSubmit={handleReceiveToWarehouse}><div className="almacen-modal-heading"><span><Package size={18} /></span><div><small>Transferencia interna</small><h3>Traer desde inventario</h3></div></div><p className="almacen-card-description">Mueve existencias del inventario operativo al almacén. No genera una compra.</p><div className="almacen-modal-fields"><label>Producto de inventario<StyledSelect value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper min={0.001} step={0.001} value={warehouseQty} onChange={setWarehouseQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId}><ArrowRightLeft size={17} /> Traer al almacén</button></form>}
         {quickAction === 'transfer' && <form onSubmit={handleTransfer}><div className="almacen-modal-heading"><span className="positive"><ArrowRightLeft size={18} /></span><div><small>Transferencia interna</small><h3>Enviar a inventario</h3></div></div><p className="almacen-card-description">Despacha existencias del almacén al inventario operativo del Food Truck.</p><div className="almacen-modal-fields"><label>Producto de almacén<StyledSelect value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>{items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper min={0.001} step={0.001} value={transferQty} onChange={setTransferQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedItemId}><ArrowRightLeft size={17} /> Enviar a inventario</button></form>}
         {quickAction === 'critical' && <><div className="almacen-modal-heading"><span className="negative"><AlertTriangle size={18} /></span><div><small>Revisión de existencias</small><h3>Stock crítico</h3></div></div><p className="almacen-card-description">Insumos en almacén con existencia igual o menor al mínimo configurado.</p>{items.filter(item => item.quantity <= item.minStock).length === 0 ? <p className="almacen-modal-empty">No hay insumos en estado crítico.</p> : <div className="almacen-history-list">{items.filter(item => item.quantity <= item.minStock).map(item => <div className="almacen-history-row" key={item.id}><div><strong>{item.name}</strong><small>Existencia actual</small></div><b className="negative">{item.quantity} {item.unit}</b></div>)}</div>}</>}

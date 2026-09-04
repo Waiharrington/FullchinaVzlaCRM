@@ -101,7 +101,7 @@ export function Reportes() {
   const pl = financialPeriods.mes
   const plChartData = useMemo(() => ({
     labels: ['Ventas', 'Costo insumos', 'Ganancia bruta', 'Gastos', 'Nómina', 'Ganancia neta'],
-    datasets: [{ data: [pl.grossSales, -pl.cogs, pl.grossProfit, -pl.opex, -pl.payroll, pl.netProfit], backgroundColor: ['#22c55e', '#ef4444', '#22c55e', '#ef4444', '#a855f7', pl.netProfit >= 0 ? '#22c55e' : '#ef4444'], borderRadius: 6 }],
+    datasets: [{ data: [pl.grossSales, -pl.cogs, pl.grossProfit, -pl.opex, -pl.payroll, pl.netProfit], backgroundColor: ['#22c55e', '#ef4444', '#22c55e', '#ef4444', '#eab308', pl.netProfit >= 0 ? '#22c55e' : '#ef4444'], borderRadius: 6 }],
   }), [pl])
 
   const revenueChartData = useMemo(() => ({
@@ -112,8 +112,8 @@ export function Reportes() {
     datasets: [{
       label: 'Ventas ($)',
       data: dailySales.map(d => d.total),
-      borderColor: '#f97316',
-      backgroundColor: 'rgba(249, 115, 22, 0.1)',
+      borderColor: '#e31b2b',
+      backgroundColor: 'rgba(227, 27, 43, 0.1)',
       borderWidth: 2,
       fill: true,
       tension: 0.4,
@@ -130,8 +130,8 @@ export function Reportes() {
     datasets: [{
       label: 'Órdenes',
       data: dailySales.map(d => d.count),
-      backgroundColor: 'rgba(59, 130, 246, 0.6)',
-      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(250, 204, 21, 0.6)',
+      borderColor: '#eab308',
       borderWidth: 1,
       borderRadius: 4,
     }]
@@ -145,11 +145,11 @@ export function Reportes() {
       datasets: [{
         data: Object.values(catMap),
         backgroundColor: [
-          'rgba(249, 115, 22, 0.8)',
-          'rgba(59, 130, 246, 0.8)',
-          'rgba(168, 85, 247, 0.8)',
+          'rgba(227, 27, 43, 0.8)',
+          'rgba(250, 204, 21, 0.8)',
+          'rgba(250, 204, 21, 0.8)',
           'rgba(16, 185, 129, 0.8)',
-          'rgba(245, 158, 11, 0.8)',
+          'rgba(253, 224, 71, 0.8)',
           'rgba(239, 68, 68, 0.8)',
         ],
         borderWidth: 2,
@@ -166,7 +166,7 @@ export function Reportes() {
       ),
       datasets: [{
         data: Object.values(methodMap),
-        backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(59, 130, 246, 0.8)', 'rgba(168, 85, 247, 0.8)', 'rgba(245, 158, 11, 0.8)'],
+        backgroundColor: ['rgba(34, 197, 94, 0.8)', 'rgba(250, 204, 21, 0.8)', 'rgba(250, 204, 21, 0.8)', 'rgba(227, 27, 43, 0.8)'],
         borderWidth: 2,
       }]
     }
@@ -175,7 +175,7 @@ export function Reportes() {
   const lineOptions = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(28,28,30,0.95)', titleColor: '#fff', bodyColor: '#aeaeb2', borderColor: 'rgba(249,115,22,0.3)', borderWidth: 1, padding: 12, cornerRadius: 8 } },
+    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(28,28,30,0.95)', titleColor: '#fff', bodyColor: '#aeaeb2', borderColor: 'rgba(227,27,43,0.3)', borderWidth: 1, padding: 12, cornerRadius: 8 } },
     scales: {
       x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#aeaeb2', font: { size: 10 }, maxRotation: 45 } },
       y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#aeaeb2', callback: (v: string | number) => `$${v}` }, beginAtZero: true }

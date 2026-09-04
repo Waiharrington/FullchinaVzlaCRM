@@ -1,0 +1,202 @@
+/* Contrato visual compartido para Clientes, Proveedores, Inventario, Almacén,
+   Recetas y Producción. Rojo Full China identifica marca y acciones; amarillo
+   acompaña la identidad y el verde queda reservado para estados positivos. */
+.management-workspace:is(
+  .management-workspace--customers,
+  .management-workspace--suppliers,
+  .management-workspace--inventory,
+  .management-workspace--warehouse,
+  .management-workspace--recipes,
+  .management-workspace--production
+) {
+  --management-brand: #e31b2b;
+  --management-brand-bright: #ff4d3d;
+  --management-brand-deep: #9f1020;
+}
+
+.management-workspace:is(
+  .management-workspace--customers,
+  .management-workspace--suppliers,
+  .management-workspace--inventory,
+  .management-workspace--warehouse,
+  .management-workspace--recipes,
+  .management-workspace--production
+) :is(
+  .btn-primary-red, .client-primary-btn, .prv-primary, .prv-add-btn,
+  .inv-primary-btn, .inv-generate-order-btn, .almacen-primary-btn,
+  .rec-add-btn, .rec-save-btn, .prod-new-batch-btn, .prod-submit-btn
+) {
+  border-color: #ff4d3d !important;
+  background: linear-gradient(135deg, #e31b2b, #b91024) !important;
+  color: #fff !important;
+  box-shadow: 0 7px 20px rgba(227,27,43,.22) !important;
+}
+
+/* Tarjetas históricamente orange/gold pasan a amarillo de marca. */
+.management-workspace--customers :is(.kpi-card-dark.orange, .kpi-card-dark.gold, .kpi-card-dark.blue, .kpi-card-dark.green, .kpi-card-dark.purple),
+.management-workspace--suppliers :is(.prv-kpi-card.green, .prv-kpi-card.purple),
+.management-workspace--inventory :is(.inv-kpi-card.orange, .inv-kpi-card.gold, .inv-kpi-card.blue, .inv-kpi-card.green, .inv-kpi-card.purple),
+.management-workspace--warehouse :is(.stat-card.orange, .stat-card.blue, .stat-card.green, .stat-card.purple, .accent-orange, .accent-blue, .accent-green, .accent-purple),
+.management-workspace--production :is(.prod-stat-card.orange, .prod-stat-card.blue, .prod-stat-card.green, .prod-stat-card.purple) {
+  --kpi-tint: rgba(250,204,21,.13) !important;
+  --kpi-border: rgba(250,204,21,.26) !important;
+  --kpi-border-hover: rgba(250,204,21,.42) !important;
+  --kpi-inset: rgba(250,204,21,.06) !important;
+  --kpi-shadow: rgba(250,204,21,.08) !important;
+  --kpi-shadow-hover: rgba(250,204,21,.14) !important;
+  --kpi-label: #f8fafc !important;
+}
+.management-workspace--customers :is(.kpi-icon-circle-box.orange, .kpi-icon-circle-box.gold, .kpi-icon-circle-box.blue, .kpi-icon-circle-box.green, .kpi-icon-circle-box.purple),
+.management-workspace--suppliers :is(.prv-kpi-card.green, .prv-kpi-card.purple) > span,
+.management-workspace--inventory :is(.inv-kpi-icon.orange, .inv-kpi-icon.gold, .inv-kpi-icon.blue, .inv-kpi-icon.green, .inv-kpi-icon.purple),
+.management-workspace--warehouse :is(.stat-card.green, .stat-card.purple) .stat-icon,
+.management-workspace--production :is(.prod-stat-card.orange, .prod-stat-card.blue, .prod-stat-card.green, .prod-stat-card.purple) .prod-stat-icon {
+  border-color: rgba(250,204,21,.3) !important;
+  background: linear-gradient(135deg, #a16207, #eab308 58%, #fde047) !important;
+  color: #16120a !important;
+  --kpi-glow: rgba(250,204,21,.32) !important;
+  box-shadow: 0 4px 16px rgba(250,204,21,.24), inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+
+/* Todo degradado de marca termina en rojo, no amarillo. */
+.management-workspace--customers .kpi-icon-circle-box.red,
+.management-workspace--suppliers .prv-kpi-card.red > span,
+.management-workspace--inventory .inv-kpi-icon.red,
+.management-workspace--warehouse :is(.metric-icon-box.red, .stat-card.red .stat-icon) {
+  background: linear-gradient(135deg, #9f1020, #e31b2b 58%, #ff4d3d) !important;
+  --kpi-glow: rgba(227,27,43,.34) !important;
+  box-shadow: 0 4px 16px rgba(227,27,43,.26), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+/* Estados de apoyo usan amarillo; verde se mantiene para éxito y rojo para atención. */
+.management-workspace--customers :is(.kpi-sub-tag.orange, .dot-color.orange, .kpi-banner-icon.orange, .kpi-banner-icon.user-orange),
+.management-workspace--recipes :is(.rec-badge.warn, .rec-pill.warn, .rec-ing-cancel),
+.management-workspace--inventory :is(.inv-staff-meal-btn, .inv-meal-mode button.active) {
+  border-color: rgba(250,204,21,.32) !important;
+  background: rgba(250,204,21,.1) !important;
+  color: #fde047 !important;
+}
+.management-workspace--recipes .rec-badge.warn::before { background: #eab308 !important; }
+
+/* En las métricas el color no invade la tipografía: acento en el icono,
+   información en blanco y contexto en gris. */
+.management-workspace:is(
+  .management-workspace--customers,
+  .management-workspace--inventory,
+  .management-workspace--warehouse,
+  .management-workspace--production
+) :is(.kpi-label-sm, .inv-kpi-label, .metric-label, .prod-stat-lbl) {
+  color: #f8fafc !important;
+}
+.management-workspace--suppliers .prv-kpi-card small,
+.management-workspace--warehouse .almacen-metric-card .metric-label {
+  color: #f8fafc !important;
+}
+.management-workspace--warehouse .almacen-metric-card:is(.accent-purple, .accent-blue, .accent-orange, .accent-green) {
+  color: #fde047 !important;
+}
+
+/* Invariante visual del almacén: tarjeta e icono comparten el mismo acento. */
+.management-workspace--warehouse .almacen-metric-card.accent-red {
+  color: #ff6673 !important;
+  border-color: rgba(227,27,43,.34) !important;
+  background: linear-gradient(145deg, rgba(227,27,43,.15), rgba(20,20,22,.98) 65%) !important;
+  box-shadow: inset 0 0 0 1px rgba(227,27,43,.06), 0 10px 28px rgba(227,27,43,.1) !important;
+}
+.management-workspace--warehouse .almacen-metric-card:is(.accent-green, .accent-purple, .accent-blue, .accent-orange) {
+  color: #fde047 !important;
+  border-color: rgba(250,204,21,.28) !important;
+  background: linear-gradient(145deg, rgba(250,204,21,.12), rgba(20,20,22,.98) 65%) !important;
+  box-shadow: inset 0 0 0 1px rgba(250,204,21,.05), 0 10px 28px rgba(250,204,21,.08) !important;
+}
+.management-workspace--warehouse .almacen-metric-card .metric-icon-box {
+  color: currentColor !important;
+  border-color: color-mix(in srgb, currentColor 30%, transparent) !important;
+  background: color-mix(in srgb, currentColor 14%, transparent) !important;
+  box-shadow: 0 4px 14px color-mix(in srgb, currentColor 20%, transparent) !important;
+}
+.management-workspace:is(
+  .management-workspace--customers,
+  .management-workspace--inventory,
+  .management-workspace--warehouse,
+  .management-workspace--production
+) :is(.kpi-sub-tag, .inv-kpi-sub, .metric-detail, .prod-stat-sub) {
+  color: #a1a1aa !important;
+}
+
+/* Clases heredadas llamadas blue conservan el nombre técnico, no el color visual. */
+.management-workspace--customers :is(.hero-pill.blue, .act-dot.blue) {
+  border-color: rgba(250,204,21,.28) !important;
+  background: rgba(250,204,21,.1) !important;
+  color: #fde047 !important;
+}
+
+.management-workspace--production .prod-header-title-wrap { min-width: 0; }
+.management-workspace--production .prod-header-title-wrap > div { min-width: 0; }
+.management-workspace--production .prod-header h1 { margin: 0; }
+.management-workspace--production .prod-stats-grid { margin: 18px 0; }
+.management-workspace--production .prod-stat-card { min-width: 0; }
+
+@media (max-width: 767px) {
+  .management-workspace:is(
+    .management-workspace--customers,
+    .management-workspace--suppliers,
+    .management-workspace--inventory,
+    .management-workspace--warehouse,
+    .management-workspace--recipes,
+    .management-workspace--production
+  ) .management-workspace-header > :last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .management-workspace--customers :is(.table-filter-bar, .clientes-page-actions),
+  .management-workspace--suppliers .prv-toolbar,
+  .management-workspace--inventory :is(.inv-filters-row, .inv-filter-pills),
+  .management-workspace--warehouse :is(.almacen-toolbar, .almacen-actions),
+  .management-workspace--recipes :is(.rec-module-tabs, .rec-tabs, .rec-filters, .rec-module-view-head),
+  .management-workspace--production :is(.prod-toolbar, .prod-header) {
+    width: 100%;
+    flex-wrap: wrap !important;
+  }
+
+  .management-workspace--customers :is(.filter-search-box, .filter-search-box input),
+  .management-workspace--suppliers :is(.prv-search, .prv-search input),
+  .management-workspace--inventory :is(.inv-search-box, .inv-search-box input),
+  .management-workspace--production :is(.prod-search-wrap, .prod-search-wrap input) {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .management-workspace--production .prod-header-title-wrap { align-items: flex-start; }
+  .management-workspace--production .prod-new-batch-btn { width: 100%; justify-content: center; }
+  .management-workspace--inventory .inv-meal-item { grid-template-columns: minmax(0,1fr) 42px !important; }
+  .management-workspace--inventory .inv-meal-item > :nth-child(2) { grid-column: 1; }
+  .management-workspace--inventory .inv-meal-item small { margin-left: 0 !important; }
+}
+
+@media (max-width: 480px) {
+  .management-workspace:is(
+    .management-workspace--customers,
+    .management-workspace--inventory,
+    .management-workspace--warehouse,
+    .management-workspace--production
+  ) .management-workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) and (orientation: landscape) {
+  .management-workspace:is(
+    .management-workspace--customers,
+    .management-workspace--suppliers,
+    .management-workspace--inventory,
+    .management-workspace--warehouse,
+    .management-workspace--recipes,
+    .management-workspace--production
+  ) :is(.kpi-label-sm, .inv-kpi-label, .metric-label, .prod-stat-lbl) {
+    font-size: .68rem !important;
+  }
+  .management-workspace--production .prod-stats-grid { gap: 10px; }
+}

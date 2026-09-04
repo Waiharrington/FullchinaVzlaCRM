@@ -102,7 +102,7 @@
 }
 
 /* ─── Buscador (mismo diseño que Clientes/Menú) ─────────────────────── */
-.filter-search-box {
+.fidel-page .filter-search-box {
   position: relative;
   z-index: 1;
   display: flex;
@@ -114,12 +114,12 @@
   padding: 4px 12px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
-.filter-search-box:focus-within {
+.fidel-page .filter-search-box:focus-within {
   border-color: #E31B2B;
   box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
-.filter-search-icon { color: #71717a; flex-shrink: 0; }
-.filter-search-input {
+.fidel-page .filter-search-icon { color: #71717a; flex-shrink: 0; }
+.fidel-page .filter-search-input {
   appearance: none;
   -webkit-appearance: none;
   background: transparent !important;
@@ -132,8 +132,13 @@
   width: 100%;
   font-family: inherit;
 }
-.filter-search-input::placeholder { color: #6b6b73; }
-.fidel-search-box { width: 100%; }
+.fidel-page .filter-search-input::placeholder { color: #6b6b73; }
+.fidel-search-box {
+  width: 100%;
+  min-height: 44px;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+}
 
 /* ─── Lista ranking ──────────────────────────────────────────────────── */
 .fidel-list { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; }

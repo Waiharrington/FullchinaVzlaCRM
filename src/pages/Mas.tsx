@@ -55,6 +55,7 @@ export function Mas() {
   const [loading, setLoading] = useState(!masCache)
   const [tab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
+  const [closingNewCredit, setClosingNewCredit] = useState(false)
   const [newClient, setNewClient] = useState('')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [showCustomerOptions, setShowCustomerOptions] = useState(false)
@@ -69,6 +70,12 @@ export function Mas() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [closing, setClosing] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
+
+  const closeNewCredit = () => {
+    if (!showNewCredit || closingNewCredit) return
+    setClosingNewCredit(true)
+    window.setTimeout(() => { setShowNewCredit(false); setClosingNewCredit(false) }, 180)
+  }
 
   const closePaymentModal = (then?: () => void) => {
     if (!paymentModal || closingPayment) return
@@ -128,7 +135,7 @@ export function Mas() {
       setSelectedCustomerId(null)
       setNewAmount('')
       setNewDueDate('')
-      setShowNewCredit(false)
+      closeNewCredit()
       fetchAll()
     } catch (e) {
       console.error('Error:', e)
@@ -323,13 +330,13 @@ export function Mas() {
               <h2 className="card-title">Cuentas corrientes</h2>
               <p className="card-subtitle">${totalPending.toFixed(2)} pendiente de {credits.length} clientes</p>
             </div>
-            <button className="btn-accent btn-sm" onClick={() => setShowNewCredit(true)}>
+            <button className="btn-accent btn-sm" onClick={() => { setClosingNewCredit(false); setShowNewCredit(true) }}>
               + Nuevo crédito
             </button>
           </div>
 
           {showNewCredit && (
-            <div className="new-credit-form animate-slide-up">
+            <div className={`new-credit-form animate-slide-up ${closingNewCredit ? 'closing' : ''}`}>
               <div className="form-row credit-customer-field">
                 <input
                   type="text"
@@ -356,7 +363,7 @@ export function Mas() {
                 <label><input type="checkbox" checked={newIndefinite} onChange={e => setNewIndefinite(e.target.checked)} /> Plazo indefinido</label>
                 {!newIndefinite && <DateField value={newDueDate} onChange={setNewDueDate} />}
                 <div className="form-actions-inline">
-                  <button className="btn-ghost" onClick={() => setShowNewCredit(false)}>Cancelar</button>
+                  <button className="btn-ghost" onClick={closeNewCredit}>Cancelar</button>
                   <button className="btn-accent" onClick={handleCreateCredit}>Crear</button>
                 </div>
               </div>
@@ -527,7 +534,7 @@ export function Mas() {
       )}
 
       {paymentModal && createPortal(
-        <div className={`modal-overlay ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
+        <div className={`modal-overlay mas-credit-overlay ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
           <div className="modal animate-slide-up mas-modal-glow" onClick={(e) => e.stopPropagation()}>
             <div className="mas-modal-header-glow">
               <h3 className="modal-title">Abonar a crédito</h3>

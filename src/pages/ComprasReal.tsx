@@ -46,6 +46,7 @@ export function ComprasReal() {
   const [notice, setNotice] = useState('')
 
   const [showForm, setShowForm] = useState(false)
+  const [closingForm, setClosingForm] = useState(false)
   const [supplierId, setSupplierId] = useState('')
   const [purchaseDate, setPurchaseDate] = useState(dateKeyInTimeZone())
   const [invoiceNumber, setInvoiceNumber] = useState('')
@@ -94,8 +95,13 @@ export function ComprasReal() {
   useEffect(() => { void load() }, [load])
 
   const closePurchaseForm = useCallback(() => {
-    if (!saving) setShowForm(false)
-  }, [saving])
+    if (saving || closingForm) return
+    setClosingForm(true)
+    window.setTimeout(() => {
+      setShowForm(false)
+      setClosingForm(false)
+    }, 200)
+  }, [closingForm, saving])
 
   useEffect(() => {
     if (!showForm) return
@@ -153,6 +159,7 @@ export function ComprasReal() {
 
   const openPurchaseForm = () => {
     resetForm()
+    setClosingForm(false)
     setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }])
     setShowForm(true)
   }
@@ -184,7 +191,9 @@ export function ComprasReal() {
         items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0 })),
       })
       flash('Compra registrada · inventario actualizado')
-      setShowForm(false); resetForm(); await load()
+      setClosingForm(true)
+      window.setTimeout(() => { setShowForm(false); setClosingForm(false); resetForm() }, 200)
+      await load()
     } catch (e) { setError(e instanceof Error ? e.message : 'Error guardando compra') }
     finally { setSaving(false) }
   }
@@ -276,7 +285,7 @@ export function ComprasReal() {
 
       {/* Nueva compra */}
       {showForm && createPortal(
-        <div className="cmp-modal-overlay cmp-purchase-overlay" onMouseDown={(event) => { if (event.target === event.currentTarget) closePurchaseForm() }}>
+        <div className={`cmp-modal-overlay cmp-purchase-overlay ${closingForm ? 'closing' : ''}`} onMouseDown={(event) => { if (event.target === event.currentTarget) closePurchaseForm() }}>
         <div className="cmp-card cmp-purchase-modal" role="dialog" aria-modal="true" aria-labelledby="new-purchase-title">
           <div className="cmp-purchase-header"><h3 id="new-purchase-title" className="cmp-card-title"><ShoppingBag size={18} style={{ color: '#e11d2a' }} /> Nueva Compra</h3><button type="button" className="cmp-icon-btn" aria-label="Cerrar" onClick={closePurchaseForm}><X size={20} /></button></div>
           <form onSubmit={handleSubmit}>

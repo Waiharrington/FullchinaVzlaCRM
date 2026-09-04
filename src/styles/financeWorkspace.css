@@ -1,0 +1,263 @@
+/* Unificación visual exclusiva del grupo Finanzas.
+   Mantiene rojo Full China para marca/acciones, amarillo como acento y verde
+   para estados positivos. El naranja queda limitado a alertas puntuales. */
+.management-workspace:is(
+  .management-workspace--finance,
+  .management-workspace--cash-ops,
+  .management-workspace--purchases,
+  .management-workspace--expenses,
+  .management-workspace--payroll,
+  .management-workspace--credits,
+  .management-workspace--reports
+) {
+  --finance-brand: #e31b2b;
+  --finance-brand-bright: #ff4d3d;
+  --finance-brand-deep: #9f1020;
+  --finance-brand-soft: rgba(227, 27, 43, 0.15);
+}
+
+/* Acciones y títulos: una sola firma Full China. */
+.management-workspace:is(
+  .management-workspace--finance,
+  .management-workspace--cash-ops,
+  .management-workspace--purchases,
+  .management-workspace--expenses,
+  .management-workspace--payroll,
+  .management-workspace--credits
+) :is(.fin-export, .cash-primary, .cmp-new-btn, .gst-btn, .nom-btn, .btn-accent) {
+  border-color: #ff4d3d !important;
+  background: linear-gradient(135deg, #e31b2b, #b91024) !important;
+  color: #fff !important;
+  box-shadow: 0 7px 20px rgba(227, 27, 43, 0.22) !important;
+}
+
+/* Elimina los últimos remates naranja de degradados que visualmente deben ser rojos. */
+.management-workspace--finance :is(.fin-be-ic, .fin-kpi.red .fin-kpi-ic),
+.management-workspace--purchases .cmp-sum.red .cmp-sum-ic,
+.management-workspace--expenses .gst-sum.red .gst-sum-ic {
+  background: linear-gradient(135deg, #9f1020 0%, #e31b2b 58%, #ff4d3d 100%) !important;
+}
+.management-workspace--finance :is(.fin-be-ring-center strong, .fin-pay-hero-val) {
+  background-image: linear-gradient(135deg, #ff8177, #e31b2b 62%, #9f1020) !important;
+}
+
+/* Clases históricas llamadas orange/gold conservan el nombre para no romper
+   datos, pero ahora pertenecen al amarillo de marca. */
+.management-workspace--purchases .cmp-sum.orange,
+.management-workspace--purchases :is(.cmp-sum.green, .cmp-sum.purple),
+.management-workspace--expenses .gst-sum.orange,
+.management-workspace--expenses :is(.gst-sum.green, .gst-sum.purple),
+.management-workspace--finance :is(.fin-kpi.green, .fin-kpi.purple),
+.management-workspace--reports :is(.stat-card.gold, .stat-card.green, .stat-card.purple) {
+  --kpi-tint: rgba(250, 204, 21, 0.13) !important;
+  --kpi-border: rgba(250, 204, 21, 0.26) !important;
+  --kpi-border-hover: rgba(250, 204, 21, 0.42) !important;
+  --kpi-inset: rgba(250, 204, 21, 0.06) !important;
+  --kpi-shadow: rgba(250, 204, 21, 0.08) !important;
+  --kpi-shadow-hover: rgba(250, 204, 21, 0.14) !important;
+  --kpi-label: #fde047 !important;
+}
+.management-workspace--purchases .cmp-sum.orange .cmp-sum-ic,
+.management-workspace--purchases :is(.cmp-sum.green, .cmp-sum.purple) .cmp-sum-ic,
+.management-workspace--expenses .gst-sum.orange .gst-sum-ic,
+.management-workspace--expenses :is(.gst-sum.green, .gst-sum.purple) .gst-sum-ic,
+.management-workspace--finance :is(.fin-kpi.green, .fin-kpi.purple) .fin-kpi-ic {
+  background: linear-gradient(135deg, #a16207, #eab308 58%, #fde047) !important;
+  --kpi-glow: rgba(250,204,21,.32) !important;
+  box-shadow: 0 4px 16px rgba(250,204,21,.24), inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+.management-workspace--expenses .gst-badge.variable,
+.management-workspace--purchases .cmp-badge.warn {
+  color: #fde047 !important;
+  background: rgba(250, 204, 21, 0.1) !important;
+}
+
+/* Apertura y cierre: reemplaza el antiguo naranja dominante. */
+.management-workspace--cash-ops :is(.cash-ops-eyebrow, .cash-card-heading span, .cash-open-intro > span) { color: #ff8177 !important; }
+.management-workspace--cash-ops .cash-open-intro {
+  background: radial-gradient(circle at top left, rgba(227,27,43,.2), transparent 56%) !important;
+}
+.management-workspace--cash-ops .cash-open-icon,
+.management-workspace--cash-ops .cash-tx-filter.active {
+  border-color: #e31b2b !important;
+  background: #e31b2b !important;
+}
+.management-workspace--cash-ops .cash-metric-grid .featured,
+.management-workspace--cash-ops .cash-currency-card.usd {
+  border-color: rgba(227,27,43,.34) !important;
+  background: linear-gradient(145deg, rgba(227,27,43,.16), rgba(20,20,22,.98) 66%) !important;
+  box-shadow: inset 0 0 0 1px rgba(227,27,43,.06), 0 10px 28px rgba(227,27,43,.1) !important;
+}
+
+/* Nómina: el tercer resumen y Adelantos usan amarillo de forma contenida. */
+.management-workspace--payroll .nom-sum:nth-child(3) {
+  border-color: rgba(250,204,21,.26) !important;
+  background: linear-gradient(145deg, rgba(250,204,21,.12), rgba(20,20,22,.98) 65%) !important;
+}
+.management-workspace--payroll .nom-sum:nth-child(3) .nom-sum-ic {
+  background: linear-gradient(135deg, #a16207, #fde047) !important;
+}
+
+/* Finanzas: USD y operaciones principales pasan a rojo de marca. */
+.management-workspace--finance .fin-account-group-head.usd { color: #ff8177 !important; }
+.management-workspace--finance .fin-account-box.usd {
+  border-color: rgba(227,27,43,.25) !important;
+}
+.management-workspace--finance .fin-account-box.usd:hover {
+  border-color: rgba(227,27,43,.52) !important;
+  background: rgba(227,27,43,.06) !important;
+}
+
+/* El nombre blue se conserva por compatibilidad, pero visualmente es amarillo. */
+.management-workspace--finance .fin-kpi.blue {
+  --kpi-tint: rgba(250,204,21,.13) !important;
+  --kpi-border: rgba(250,204,21,.26) !important;
+  --kpi-border-hover: rgba(250,204,21,.42) !important;
+  --kpi-inset: rgba(250,204,21,.06) !important;
+  --kpi-shadow: rgba(250,204,21,.08) !important;
+  --kpi-shadow-hover: rgba(250,204,21,.14) !important;
+  --kpi-label: #fde047 !important;
+}
+.management-workspace--finance .fin-kpi.blue .fin-kpi-ic {
+  background: linear-gradient(135deg, #a16207, #eab308 58%, #fde047) !important;
+  color: #16120a !important;
+  --kpi-glow: rgba(250,204,21,.32) !important;
+  box-shadow: 0 4px 16px rgba(250,204,21,.24), inset 0 1px 0 rgba(255,255,255,.24) !important;
+}
+.management-workspace--finance :is(.fin-account-group-head.ves, .fin-data-status.warning) {
+  color: #fde047 !important;
+}
+.management-workspace--finance .fin-account-box.ves {
+  border-color: rgba(250,204,21,.24) !important;
+}
+
+/* Las tarjetas usan el color únicamente en iconos y bordes. Los títulos
+   permanecen neutros para evitar mezclas verde/amarillo o rojo/amarillo. */
+.management-workspace:is(
+  .management-workspace--finance,
+  .management-workspace--purchases,
+  .management-workspace--expenses,
+  .management-workspace--payroll,
+  .management-workspace--reports
+) :is(.fin-kpi-lbl, .cmp-sum-lbl, .gst-sum-lbl, .nom-sum-lbl, .stat-card-label) {
+  color: #f8fafc !important;
+}
+
+/* Nómina mantiene las cifras semánticas en verde/rojo, pero sus iconos
+   decorativos comparten el amarillo de marca. */
+.management-workspace--payroll .nom-sum .nom-sum-ic {
+  background: linear-gradient(135deg, #a16207, #eab308 58%, #fde047) !important;
+  color: #16120a !important;
+}
+.management-workspace--payroll .nom-sum:nth-child(-n+3) {
+  border-color: rgba(250,204,21,.26) !important;
+  background: linear-gradient(145deg, rgba(250,204,21,.11), rgba(20,20,22,.98) 65%) !important;
+}
+.management-workspace--payroll .nom-sum:nth-child(-n+3) .nom-sum-ic {
+  background: linear-gradient(135deg, #a16207, #eab308 58%, #fde047) !important;
+  color: #16120a !important;
+  box-shadow: 0 4px 16px rgba(250,204,21,.24), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+.management-workspace--payroll .nom-sum:nth-child(4) {
+  border-color: rgba(227,27,43,.3) !important;
+  background: linear-gradient(145deg, rgba(227,27,43,.14), rgba(20,20,22,.98) 65%) !important;
+}
+.management-workspace--payroll .nom-sum:nth-child(4) .nom-sum-ic {
+  background: linear-gradient(135deg, #9f1020, #e31b2b 58%, #ff4d3d) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(227,27,43,.26), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+.management-workspace--finance .fin-kpi.red .fin-kpi-ic,
+.management-workspace--purchases .cmp-sum.red .cmp-sum-ic,
+.management-workspace--expenses .gst-sum.red .gst-sum-ic {
+  --kpi-glow: rgba(227,27,43,.34) !important;
+  box-shadow: 0 4px 16px rgba(227,27,43,.26), inset 0 1px 0 rgba(255,255,255,.22) !important;
+}
+
+/* Controles táctiles y barras de herramientas responsivas. */
+@media (max-width: 767px) {
+  .management-workspace:is(
+    .management-workspace--finance,
+    .management-workspace--cash-ops,
+    .management-workspace--purchases,
+    .management-workspace--expenses,
+    .management-workspace--payroll,
+    .management-workspace--credits,
+    .management-workspace--reports
+  ) .management-workspace-header > :last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  .management-workspace--expenses :is(.gst-tools, .gst-filter-row),
+  .management-workspace--purchases .cmp-hist-tools,
+  .management-workspace--payroll .nom-head-actions,
+  .management-workspace--cash-ops .cash-tx-filters {
+    width: 100%;
+    flex-wrap: wrap !important;
+  }
+  .management-workspace--expenses .gst-search,
+  .management-workspace--expenses .gst-search input,
+  .management-workspace--purchases .cmp-search { width: 100% !important; max-width: none; }
+  .management-workspace--expenses .gst-tool,
+  .management-workspace--cash-ops .cash-tx-filter { flex: 1 1 auto; justify-content: center; }
+
+  .management-workspace--credits .card-header-row,
+  .management-workspace--credits .form-row,
+  .management-workspace--credits .credit-amounts-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .management-workspace--credits .card-header-row .btn-accent,
+  .management-workspace--credits .form-actions-inline,
+  .management-workspace--credits .form-actions-inline > button { width: 100%; }
+  .management-workspace--credits .credit-amounts-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .management-workspace--purchases .cmp-items-head { display: none; }
+  .management-workspace--purchases .cmp-item-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+  }
+  .management-workspace--purchases .cmp-item-row > :first-child { grid-column: 1 / -1; }
+  .management-workspace--purchases .cmp-item-row > :last-child { justify-self: end; }
+
+  .management-workspace--finance .fin-daily-table-wrap,
+  .management-workspace--payroll .nom-table-wrap,
+  .management-workspace--reports .report-table-wrap {
+    margin-inline: -6px;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Dos KPI por fila en teléfono: conserva lectura sin convertir cada módulo
+     en una lista excesivamente larga. */
+  .management-workspace:is(
+    .management-workspace--finance,
+    .management-workspace--cash-ops,
+    .management-workspace--purchases,
+    .management-workspace--expenses,
+    .management-workspace--payroll,
+    .management-workspace--reports
+  ) .management-workspace-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .management-workspace--credits .credit-amounts-row { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 768px) and (max-width: 1199px) and (orientation: landscape) {
+  /* Evita los textos de 9 px que tenía Finanzas en tablet horizontal. */
+  .management-workspace--finance .fin-kpi-lbl { font-size: .68rem !important; }
+  .management-workspace--finance .fin-kpi-sub { font-size: .66rem !important; }
+  .management-workspace--finance .fin-daily-table { font-size: .74rem !important; }
+  .management-workspace--finance .fin-daily-table th { font-size: .66rem !important; }
+  .management-workspace--finance .fin-period .fc-select-trigger { min-height: 40px !important; height: 40px !important; }
+}

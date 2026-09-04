@@ -37,21 +37,21 @@ const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 1
 
 const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
   cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
-  mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#38bdf8', sub: 'Verificado con referencia' },
-  card: { label: 'Punto de Venta', icon: <CreditCard size={16} />, color: '#a855f7', sub: 'Tarjeta crédito/débito' },
-  transfer: { label: 'Transferencia', icon: <Building2 size={16} />, color: '#f59e0b' },
+  mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#facc15', sub: 'Verificado con referencia' },
+  card: { label: 'Punto de Venta', icon: <CreditCard size={16} />, color: '#eab308', sub: 'Tarjeta crédito/débito' },
+  transfer: { label: 'Transferencia', icon: <Building2 size={16} />, color: '#fde047' },
   binance: { label: 'Binance', icon: <DollarSign size={16} />, color: '#eab308' },
   zelle: { label: 'Zelle', icon: <DollarSign size={16} />, color: '#6366f1' },
   other: { label: 'Otro', icon: <Wallet size={16} />, color: '#71717a' },
 }
 
 const OP_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  transfer: { label: 'Transferencia', icon: <ArrowRightLeft size={15} />, color: '#a855f7' },
-  receivable: { label: 'Cuenta por cobrar', icon: <Clock size={15} />, color: '#f59e0b' },
+  transfer: { label: 'Transferencia', icon: <ArrowRightLeft size={15} />, color: '#eab308' },
+  receivable: { label: 'Cuenta por cobrar', icon: <Clock size={15} />, color: '#fde047' },
   receivable_collection: { label: 'Cobro recibido', icon: <CircleCheckBig size={15} />, color: '#22c55e' },
   tip: { label: 'Propina', icon: <Gift size={15} />, color: '#eab308' },
-  tip_distribution: { label: 'Reparto de propinas', icon: <Users size={15} />, color: '#38bdf8' },
-  employee_advance: { label: 'Adelanto', icon: <Wallet size={15} />, color: '#fb923c' },
+  tip_distribution: { label: 'Reparto de propinas', icon: <Users size={15} />, color: '#facc15' },
+  employee_advance: { label: 'Adelanto', icon: <Wallet size={15} />, color: '#facc15' },
   loan: { label: 'Préstamo', icon: <Landmark size={15} />, color: '#818cf8' },
   loan_payment: { label: 'Pago de préstamo', icon: <Check size={15} />, color: '#4ade80' },
   bank_fee: { label: 'Comisión bancaria', icon: <Percent size={15} />, color: '#f87171' },
@@ -81,28 +81,40 @@ export function Finanzas() {
   const [closingTransfer, setClosingTransfer] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<FinancialAccount | null>(null)
   const [selectedLedgerCurrency, setSelectedLedgerCurrency] = useState<'USD' | 'VES' | null>(null)
+  const [closingAccount, setClosingAccount] = useState(false)
+  const [closingLedger, setClosingLedger] = useState(false)
   const [transfer, setTransfer] = useState({ concept: '', from: '', to: '', currency: 'VES' as 'USD' | 'VES', amount: '', rate: '', reference: '', notes: '' })
   const [transferSaving, setTransferSaving] = useState(false)
   const [transferError, setTransferError] = useState('')
   const [opsError, setOpsError] = useState('')
 
-  const closeTransfer = () => {
+  const closeTransfer = useCallback(() => {
     if (closingTransfer) return
     setClosingTransfer(true)
     window.setTimeout(() => { setShowTransfer(false); setClosingTransfer(false) }, 180)
-  }
+  }, [closingTransfer])
+  const closeAccount = useCallback((then?: () => void) => {
+    if (!selectedAccount || closingAccount) return
+    setClosingAccount(true)
+    window.setTimeout(() => { setSelectedAccount(null); setClosingAccount(false); then?.() }, 180)
+  }, [closingAccount, selectedAccount])
+  const closeLedger = useCallback((then?: () => void) => {
+    if (!selectedLedgerCurrency || closingLedger) return
+    setClosingLedger(true)
+    window.setTimeout(() => { setSelectedLedgerCurrency(null); setClosingLedger(false); then?.() }, 180)
+  }, [closingLedger, selectedLedgerCurrency])
 
   useEffect(() => {
     if (!selectedAccount && !selectedLedgerCurrency && !showTransfer) return
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape' || transferSaving) return
-      setSelectedAccount(null)
-      setSelectedLedgerCurrency(null)
-      closeTransfer()
+      if (selectedAccount) closeAccount()
+      else if (selectedLedgerCurrency) closeLedger()
+      else closeTransfer()
     }
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [selectedAccount, selectedLedgerCurrency, showTransfer, transferSaving])
+  }, [closeAccount, closeLedger, closeTransfer, selectedAccount, selectedLedgerCurrency, showTransfer, transferSaving])
 
   const load = useCallback(async () => {
     try {
@@ -410,7 +422,7 @@ export function Finanzas() {
                   <linearGradient id="finBeRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stopColor="#E31B2B" />
                     <stop offset="55%" stopColor="#FF4D3D" />
-                    <stop offset="100%" stopColor="#f59e0b" />
+                    <stop offset="100%" stopColor="#9f1020" />
                   </linearGradient>
                 </defs>
                 <circle className="fin-be-ring-track" cx="50" cy="50" r={ringRadius} />
@@ -584,11 +596,11 @@ export function Finanzas() {
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
         const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)
-        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => setSelectedAccount(null)}><section className="modal-card fin-dialog fin-account-modal" role="dialog" aria-modal="true" aria-labelledby="fin-account-dialog-title" onClick={event => event.stopPropagation()}>
+        return createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingAccount ? 'closing' : ''}`} role="presentation" onClick={() => closeAccount()}><section className="modal-card fin-dialog fin-account-modal" role="dialog" aria-modal="true" aria-labelledby="fin-account-dialog-title" onClick={event => event.stopPropagation()}>
           <header className="fin-dialog-header">
             <span className="fin-dialog-icon"><Building2 size={20}/></span>
             <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario por cuenta</span><h2 id="fin-account-dialog-title">{selectedAccount.name}</h2><p>{selectedSummaryDate} · {selectedAccount.currency === 'VES' ? `BCV ${formatVes(bcvRate || 0)} por $1` : 'Cuenta en dólares'}</p></div>
-            <button type="button" className="fin-dialog-close" onClick={() => setSelectedAccount(null)} aria-label="Cerrar ventana"><X size={18}/></button>
+            <button type="button" className="fin-dialog-close" onClick={() => closeAccount()} aria-label="Cerrar ventana"><X size={18}/></button>
           </header>
           <div className="fin-dialog-body">
             <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
@@ -603,7 +615,7 @@ export function Finanzas() {
               <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
             </tbody></table></div>
           </div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedAccount(null)}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => { setSelectedAccount(null); setShowTransfer(true) }}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeAccount()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => setShowTransfer(true))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {selectedLedgerCurrency && (() => {
@@ -615,11 +627,11 @@ export function Finanzas() {
           const prefix = sign === 'income' && value ? '+' : sign === 'expense' && value ? '-' : ''
           return <td key={account.id}>{prefix} {money(Math.abs(value))}</td>
         })
-        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => setSelectedLedgerCurrency(null)}><section className="modal-card fin-dialog fin-account-modal fin-ledger-modal" role="dialog" aria-modal="true" aria-labelledby="fin-ledger-dialog-title" onClick={event => event.stopPropagation()}>
+        return createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingLedger ? 'closing' : ''}`} role="presentation" onClick={() => closeLedger()}><section className="modal-card fin-dialog fin-account-modal fin-ledger-modal" role="dialog" aria-modal="true" aria-labelledby="fin-ledger-dialog-title" onClick={event => event.stopPropagation()}>
           <header className="fin-dialog-header">
             <span className="fin-dialog-icon"><Wallet size={20}/></span>
             <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario de saldos</span><h2 id="fin-ledger-dialog-title">{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</p></div>
-            <button type="button" className="fin-dialog-close" onClick={() => setSelectedLedgerCurrency(null)} aria-label="Cerrar ventana"><X size={18}/></button>
+            <button type="button" className="fin-dialog-close" onClick={() => closeLedger()} aria-label="Cerrar ventana"><X size={18}/></button>
           </header>
           <div className="fin-dialog-body fin-ledger-body">{rows.length ? <div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
               <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
@@ -631,7 +643,7 @@ export function Finanzas() {
               <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
               <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
             </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}</div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedLedgerCurrency(null)}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => { setSelectedLedgerCurrency(null); setShowTransfer(true) }}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeLedger()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => setShowTransfer(true))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {(showTransfer || closingTransfer) && createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingTransfer ? 'closing' : ''}`} role="presentation" onClick={() => { if (!transferSaving) closeTransfer() }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>

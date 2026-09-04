@@ -18,7 +18,7 @@ interface TooltipState {
 
 const GROUP_ICONS: Record<string, typeof Flame> = {
   Operación: Flame,
-  'Gestión FullChina': Boxes,
+  'Gestión': Boxes,
   Finanzas: Landmark,
   Configuración: SlidersHorizontal
 }

@@ -171,8 +171,8 @@
 }
 
 .kpi-card-dark.orange {
-  --kpi-tint: rgba(249,115,22,0.16); --kpi-border: rgba(249,115,22,0.3); --kpi-border-hover: rgba(249,115,22,0.5);
-  --kpi-inset: rgba(249,115,22,0.08); --kpi-shadow: rgba(249,115,22,0.1); --kpi-shadow-hover: rgba(249,115,22,0.18);
+  --kpi-tint: rgba(34,197,94,0.16); --kpi-border: rgba(34,197,94,0.3); --kpi-border-hover: rgba(34,197,94,0.5);
+  --kpi-inset: rgba(34,197,94,0.08); --kpi-shadow: rgba(34,197,94,0.1); --kpi-shadow-hover: rgba(34,197,94,0.18);
 }
 
 .kpi-card-dark.dark-red {
@@ -193,18 +193,18 @@
 }
 
 .kpi-icon-circle-box.red {
-  background: linear-gradient(135deg, #E31B2B 0%, #FF4D3D 55%, #f59e0b 100%);
+  background: linear-gradient(135deg, #9f1020 0%, #E31B2B 55%, #FF4D3D 100%);
   --kpi-glow: rgba(225,29,42,0.5);
 }
 
 .kpi-icon-circle-box.gold {
-  background: linear-gradient(135deg, #b45309 0%, #f59e0b 55%, #fbbf24 100%);
+  background: linear-gradient(135deg, #15803d 0%, #22c55e 55%, #4ade80 100%);
   --kpi-glow: rgba(245,158,11,0.5);
 }
 
 .kpi-icon-circle-box.orange {
-  background: linear-gradient(135deg, #c2410c 0%, #f97316 55%, #fb923c 100%);
-  --kpi-glow: rgba(249,115,22,0.5);
+  background: linear-gradient(135deg, #15803d 0%, #22c55e 55%, #4ade80 100%);
+  --kpi-glow: rgba(34,197,94,0.5);
 }
 
 .kpi-icon-circle-box.dark-red {
@@ -227,8 +227,8 @@
 }
 
 .kpi-card-dark.red .kpi-label-sm { --kpi-label: #f4a3a8; }
-.kpi-card-dark.gold .kpi-label-sm { --kpi-label: #fcd34d; }
-.kpi-card-dark.orange .kpi-label-sm { --kpi-label: #fdba74; }
+.kpi-card-dark.gold .kpi-label-sm { --kpi-label: #f8fafc; }
+.kpi-card-dark.orange .kpi-label-sm { --kpi-label: #f8fafc; }
 .kpi-card-dark.dark-red .kpi-label-sm { --kpi-label: #fca5a5; }
 
 .kpi-value-lg {
@@ -249,7 +249,7 @@
 }
 
 .kpi-sub-tag.green { color: #10b981; }
-.kpi-sub-tag.orange { color: #f97316; }
+.kpi-sub-tag.orange { color: #a1a1aa; }
 .kpi-sub-tag.gold-text { color: #eab308; }
 .kpi-sub-tag.red-text { color: #FF4D3D; }
 
@@ -291,7 +291,7 @@
   flex-wrap: wrap;
 }
 
-.filter-search-box {
+.management-workspace--customers .filter-search-box {
   display: flex;
   align-items: center;
   background: rgba(255,255,255,0.03);
@@ -303,14 +303,14 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.filter-search-box:focus-within {
+.management-workspace--customers .filter-search-box:focus-within {
   border-color: #E31B2B;
   box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
 
-.filter-search-icon { color: #71717a; }
+.management-workspace--customers .filter-search-icon { color: #71717a; }
 
-.filter-search-input {
+.management-workspace--customers .filter-search-input {
   appearance: none;
   -webkit-appearance: none;
   background: transparent !important;
@@ -323,7 +323,7 @@
   width: 100%;
 }
 
-.filter-search-input:focus {
+.management-workspace--customers .filter-search-input:focus {
   background: transparent !important;
   border: none !important;
   outline: none !important;
@@ -445,13 +445,13 @@
 }
 
 .identity-badge.verified_format {
-  color: #93c5fd;
-  background: rgba(59, 130, 246, .12);
-  border: 1px solid rgba(59, 130, 246, .25);
+  color: #fde047;
+  background: rgba(250, 204, 21, .12);
+  border: 1px solid rgba(250, 204, 21, .25);
 }
 
 .identity-badge.legacy_review {
-  color: #fbbf24;
+  color: #facc15;
   background: rgba(245, 158, 11, .12);
   border: 1px solid rgba(251, 191, 36, .25);
 }
@@ -477,7 +477,7 @@
 
 .type-badge.mayorista {
   background: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  color: #facc15;
 }
 
 .status-badge-pill {
@@ -495,9 +495,9 @@
 }
 
 .status-badge-pill.frecuente {
-  background: rgba(249, 115, 22, 0.15);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  color: #f97316;
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  color: #facc15;
 }
 
 .status-badge-pill.activo {
@@ -714,7 +714,7 @@
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  background: conic-gradient(#FF4D3D 0% 40%, #f97316 40% 100%);
+  background: conic-gradient(#FF4D3D 0% 40%, #22c55e 40% 100%);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -771,7 +771,7 @@
 }
 
 .dot-color.red { background: #FF4D3D; }
-.dot-color.orange { background: #f97316; }
+.dot-color.orange { background: #22c55e; }
 
 .legend-val { color: #fff; }
 
@@ -1269,9 +1269,9 @@
 }
 
 .hero-pill.purple {
-  background: rgba(168, 85, 247, 0.15);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  color: #c084fc;
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  color: #fde047;
 }
 
 .hero-pill.green {
@@ -1287,15 +1287,15 @@
 }
 
 .hero-pill.blue {
-  background: rgba(59, 130, 246, 0.14);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  color: #7dd3fc;
+  background: rgba(250, 204, 21, 0.14);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  color: #fde047;
 }
 
 .hero-pill.gold {
   background: rgba(245, 158, 11, 0.14);
   border: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fbbf24;
+  color: #facc15;
 }
 
 .hero-phone-wrap {
@@ -1387,9 +1387,9 @@
 }
 
 .badge-tag-purple {
-  background: rgba(168, 85, 247, 0.15);
-  border: 1px solid rgba(168, 85, 247, 0.3);
-  color: #c084fc;
+  background: rgba(250, 204, 21, 0.15);
+  border: 1px solid rgba(250, 204, 21, 0.3);
+  color: #fde047;
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 12px;
@@ -1590,10 +1590,10 @@
 }
 
 .kpi-banner-icon.red { background: rgba(227, 27, 43, 0.2); color: #FF4D3D; }
-.kpi-banner-icon.orange { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+.kpi-banner-icon.orange { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
 .kpi-banner-icon.gold { background: rgba(234, 179, 8, 0.2); color: #eab308; }
 .kpi-banner-icon.dark-red { background: rgba(227, 27, 43, 0.25); color: #E31B2B; }
-.kpi-banner-icon.user-orange { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+.kpi-banner-icon.user-orange { background: rgba(34, 197, 94, 0.2); color: #4ade80; }
 
 .kpi-banner-info {
   display: flex;
@@ -1712,8 +1712,8 @@
 }
 
 .badge-purple-sm {
-  background: rgba(168, 85, 247, 0.15);
-  color: #c084fc;
+  background: rgba(250, 204, 21, 0.15);
+  color: #fde047;
   font-size: 11px;
   font-weight: 600;
   padding: 2px 8px;
@@ -1856,14 +1856,14 @@
 
 .payment-method-tag {
   font-size: 12px;
-  color: #c084fc;
+  color: #fde047;
 }
 
 .payment-method-icons {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #c084fc;
+  color: #fde047;
   cursor: default;
 }
 
@@ -2000,7 +2000,7 @@
 
 .lp-badge {
   font-size: 10px;
-  color: #c084fc;
+  color: #fde047;
   text-align: right;
 }
 
@@ -2052,8 +2052,8 @@
 }
 
 .act-dot.green { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,0.15), 0 4px 10px rgba(34,197,94,0.3); }
-.act-dot.purple { background: #a855f7; box-shadow: 0 0 0 4px rgba(168,85,247,0.15), 0 4px 10px rgba(168,85,247,0.3); }
-.act-dot.blue { background: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.15), 0 4px 10px rgba(59,130,246,0.3); }
+.act-dot.purple { background: #eab308; box-shadow: 0 0 0 4px rgba(250, 204, 21,0.15), 0 4px 10px rgba(250, 204, 21,0.3); }
+.act-dot.blue { background: #eab308; box-shadow: 0 0 0 4px rgba(250, 204, 21,0.15), 0 4px 10px rgba(250, 204, 21,0.3); }
 .act-dot.red { background: #FF4D3D; box-shadow: 0 0 0 4px rgba(255,77,61,0.15), 0 4px 10px rgba(255,77,61,0.3); }
 
 .act-info {
@@ -2581,9 +2581,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: rgba(168, 85, 247, 0.12);
-  border: 1px solid rgba(168, 85, 247, 0.28);
-  color: #c084fc;
+  background: rgba(250, 204, 21, 0.12);
+  border: 1px solid rgba(250, 204, 21, 0.28);
+  color: #fde047;
   font-size: 12px;
   font-weight: 700;
   padding: 5px 10px;

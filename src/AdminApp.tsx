@@ -10,6 +10,8 @@ import { Login } from './pages/Login'
 import { canAccessModule, type Role } from './components/navItems'
 import './styles/managementWorkspace.css'
 import './styles/controlSizing.css'
+import './styles/financeWorkspace.css'
+import './styles/managementGroup.css'
 
 const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
 const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))

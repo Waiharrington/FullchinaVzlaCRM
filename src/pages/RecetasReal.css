@@ -89,8 +89,8 @@
 .rec-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; }
 .rec-badge.ok { color: #22c55e; }
 .rec-badge.ok::before { background: #22c55e; }
-.rec-badge.warn { color: #f97316; }
-.rec-badge.warn::before { background: #f97316; }
+.rec-badge.warn { color: #fde047; }
+.rec-badge.warn::before { background: #eab308; }
 .rec-card-price { font-size: 15px; font-weight: 700; margin-left: auto; white-space: nowrap; }
 .rec-card-chev { color: #52525b; flex-shrink: 0; }
 
@@ -125,7 +125,7 @@
   font-size: 12px; padding: 3px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px;
 }
 .rec-pill.ok { color: #22c55e; background: rgba(34,197,94,0.12); }
-.rec-pill.warn { color: #f97316; background: rgba(249,115,22,0.12); }
+.rec-pill.warn { color: #fde047; background: rgba(250,204,21,0.1); }
 
 .rec-detail-tabs { display: flex; gap: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 16px; }
 .rec-detail-tab {
@@ -155,7 +155,7 @@
 .rec-ing-action { background: none; border: 0; cursor: pointer; padding: 4px; }
 .rec-ing-edit { color: #a1a1aa; }
 .rec-ing-save { color: #22c55e; }
-.rec-ing-cancel { color: #f59e0b; }
+.rec-ing-cancel { color: #4ade80; }
 .rec-ing-edit-fields { display: flex; align-items: center; gap: 6px; }
 .rec-ing-edit-fields input, .rec-ing-edit-fields select { max-width: 92px; }
 
@@ -231,7 +231,7 @@
  .rec-empty-module{display:flex;justify-content:center;align-items:center;min-height:270px;text-align:center}.rec-empty-module .empty-state{margin:0 auto}
 .rec-form-label{display:flex;flex-direction:column;gap:7px;margin-top:14px;color:var(--text-secondary);font-size:.8rem;font-weight:700}.rec-form-label input,.rec-form-label select{box-sizing:border-box;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border-color);border-radius:10px;background:#151515;color:var(--text-primary);font:inherit}.rec-portion-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .rec-portion-list{display:flex;flex-direction:column;border:1px solid var(--border-color);border-radius:12px;overflow:hidden}.rec-portion-row{display:grid;grid-template-columns:1.4fr 1fr .8fr auto;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);background:#18181c}.rec-portion-row:last-child{border-bottom:0}.rec-portion-row strong{color:var(--text-primary)}.rec-portion-row span:not(.rec-badge),.rec-portion-row b{color:var(--text-secondary);font-size:.85rem}.rec-portion-row .rec-badge{justify-self:end}@media(max-width:640px){.rec-portion-row{grid-template-columns:1fr auto;gap:7px}.rec-portion-row span:not(.rec-badge){grid-column:1}.rec-portion-row .rec-badge{grid-column:2;grid-row:1 / span 2}}
-.rec-portion-header{display:grid;grid-template-columns:1.4fr 1fr .8fr auto;gap:16px;padding:9px 16px;background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.rec-origin{color:#a78bfa!important;font-size:.8rem!important}.rec-portion-row .rec-origin{justify-self:end}@media(max-width:640px){.rec-portion-header{display:none}}
+.rec-portion-header{display:grid;grid-template-columns:1.4fr 1fr .8fr auto;gap:16px;padding:9px 16px;background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.rec-origin{color:#facc15!important;font-size:.8rem!important}.rec-portion-row .rec-origin{justify-self:end}@media(max-width:640px){.rec-portion-header{display:none}}
 
 /* ============================================================
    Alimentación del Personal (Almuerzo y Cena)
@@ -312,7 +312,7 @@
   flex-shrink: 0;
 }
 .rec-staff-icon.lunch {
-  color: #f59e0b;
+  color: #4ade80;
   background: rgba(245, 158, 11, 0.15);
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
@@ -385,7 +385,7 @@
   font-weight: 700;
 }
 .rec-staff-ing-info span {
-  color: #38bdf8;
+  color: #facc15;
   font-size: 0.74rem;
   font-weight: 600;
 }
@@ -550,7 +550,7 @@
   background: #121214;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  color: #38bdf8;
+  color: #facc15;
   font-size: 0.82rem;
   font-weight: 700;
   text-align: right;

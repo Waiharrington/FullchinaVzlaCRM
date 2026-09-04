@@ -116,6 +116,7 @@ export function Inventario() {
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null)
   const [modalMode, setModalMode] = useState<InventoryModal>(null)
   const [showPortionsModal, setShowPortionsModal] = useState(false)
+  const [closingPortions, setClosingPortions] = useState(false)
   const [showAllMovementsModal, setShowAllMovementsModal] = useState(false)
   const [closingAllMovements, setClosingAllMovements] = useState(false)
   const [movementTypeFilter, setMovementTypeFilter] = useState<'all' | 'purchase' | 'consumption' | 'adjustment'>('all')
@@ -162,6 +163,15 @@ export function Inventario() {
   const closeModal = () => {
     if (modalLoading) return
     closeIngredientModal()
+  }
+
+  const closePortionsModal = () => {
+    if (!showPortionsModal || closingPortions) return
+    setClosingPortions(true)
+    window.setTimeout(() => {
+      setShowPortionsModal(false)
+      setClosingPortions(false)
+    }, 200)
   }
 
   const finishModal = () => {
@@ -958,9 +968,9 @@ export function Inventario() {
         document.body
       )}
       {showPortionsModal && createPortal(
-        <div className="inv-modal-overlay" onClick={() => setShowPortionsModal(false)}>
+        <div className={`inv-modal-overlay ${closingPortions ? 'closing' : ''}`} onClick={closePortionsModal}>
           <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
-            <button className="inv-modal-close" onClick={() => setShowPortionsModal(false)} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
+            <button className="inv-modal-close" onClick={closePortionsModal} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
             <div className="inv-modal-heading">
               <span className="positive"><TrendingUp size={18} /></span>
               <div>
@@ -975,7 +985,7 @@ export function Inventario() {
             {portionItems.length === 0 ? (
               <div className="inv-empty-state">
                 <p>No hay porciones registradas en este momento.</p>
-                <button className="inv-generate-order-btn" onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
+                <button className="inv-generate-order-btn" onClick={() => { closePortionsModal(); window.setTimeout(() => navigate('/produccion'), 200) }}>
                   Ir a Producción
                 </button>
               </div>
@@ -1004,7 +1014,7 @@ export function Inventario() {
                     {Math.round(totalPortionsCount)} {Math.round(totalPortionsCount) === 1 ? 'porción' : 'porciones'}
                   </strong>
                 </div>
-                <button className="inv-generate-order-btn" onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
+                <button className="inv-generate-order-btn" onClick={() => { closePortionsModal(); window.setTimeout(() => navigate('/produccion'), 200) }}>
                   + Registrar producción
                 </button>
               </div>

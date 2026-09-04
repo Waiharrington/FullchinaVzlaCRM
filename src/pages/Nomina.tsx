@@ -214,7 +214,7 @@ export function Nomina() {
       {/* Resumen */}
       <div className="nom-summary management-workspace-metrics">
         <div className="nom-sum">
-          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><Users size={20} /></span>
+          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(250, 204, 21,0.15)', color: '#facc15' }}><Users size={20} /></span>
             <div><div className="nom-sum-lbl">Empleados activos</div><div className="nom-sum-val">{activeEmployees.length}</div><div className="nom-sum-sub">de {employees.length} registrados</div></div></div>
         </div>
         <div className="nom-sum">
@@ -222,7 +222,7 @@ export function Nomina() {
             <div><div className="nom-sum-lbl">Liquidación del período</div><div className="nom-sum-val">{formatUsd(tot.neto)}</div><div className="nom-sum-sub">{selected ? `Período actual` : 'Sin período'}</div></div></div>
         </div>
         <div className="nom-sum">
-          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(234,179,8,0.15)', color: '#eab308' }}><Gift size={20} /></span>
+          <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(250, 204, 21,0.15)', color: '#facc15' }}><Gift size={20} /></span>
             <div><div className="nom-sum-lbl">Bonos totales</div><div className="nom-sum-val">{formatUsd(periodBonuses)}</div><div className="nom-sum-sub">Período actual</div></div></div>
         </div>
         <div className="nom-sum">

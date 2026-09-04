@@ -133,9 +133,9 @@
 
 .accent-red { color: #f87171; }
 .accent-green { color: #34d399; }
-.accent-purple { color: #a78bfa; }
-.accent-blue { color: #38bdf8; }
-.accent-orange { color: #fb923c; }
+.accent-purple { color: #facc15; }
+.accent-blue { color: #facc15; }
+.accent-orange { color: #4ade80; }
 
 .metric-icon-box {
   position: relative;
@@ -380,9 +380,9 @@
 }
 
 .purple-icon {
-  color: #c4b5fd;
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(167, 139, 250, 0.2);
+  color: #fde047;
+  background: rgba(250, 204, 21, 0.18);
+  border-color: rgba(253, 224, 71, 0.2);
 }
 
 .almacen-card-title {
@@ -545,8 +545,8 @@
 .almacen-category { color: #a1a1aa; }
 .almacen-stock-value { color: #fff !important; font-weight: 800; font-variant-numeric: tabular-nums; }
 .almacen-stock-value small { color: #a1a1aa; font-size: 0.72rem; font-weight: 600; }
-.almacen-stock-operational { color: #38bdf8 !important; font-weight: 700; font-variant-numeric: tabular-nums; }
-.almacen-stock-operational small { color: #7dd3fc; font-size: 0.72rem; font-weight: 600; }
+.almacen-stock-operational { color: #facc15 !important; font-weight: 700; font-variant-numeric: tabular-nums; }
+.almacen-stock-operational small { color: #fde047; font-size: 0.72rem; font-weight: 600; }
 .almacen-total-value { color: #f4f4f5 !important; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .badge-stock {
@@ -648,7 +648,7 @@
   line-height: 1;
   border-radius: 12px;
   color: #fff;
-  background: var(--kpi-icon-grad, linear-gradient(135deg, #E31B2B 0%, #FF4D3D 55%, #f59e0b 100%));
+  background: var(--kpi-icon-grad, linear-gradient(135deg, #9f1020 0%, #E31B2B 55%, #FF4D3D 100%));
   box-shadow: 0 4px 16px var(--kpi-glow, rgba(225,29,42,0.5)), inset 0 1px 0 rgba(255,255,255,0.3);
   border: none;
 }
@@ -659,7 +659,7 @@
 .stat-card.red {
   --kpi-tint: rgba(225,29,42,0.16); --kpi-border: rgba(225,29,42,0.32); --kpi-border-hover: rgba(225,29,42,0.5);
   --kpi-inset: rgba(225,29,42,0.08); --kpi-shadow: rgba(225,29,42,0.1); --kpi-shadow-hover: rgba(225,29,42,0.18);
-  --kpi-icon-grad: linear-gradient(135deg, #E31B2B 0%, #FF4D3D 55%, #f59e0b 100%); --kpi-glow: rgba(225,29,42,0.5);
+  --kpi-icon-grad: linear-gradient(135deg, #9f1020 0%, #E31B2B 55%, #FF4D3D 100%); --kpi-glow: rgba(225,29,42,0.5);
   --kpi-label: #f4a3a8;
 }
 .stat-card.green {
@@ -669,16 +669,16 @@
   --kpi-label: #86efac;
 }
 .stat-card.orange {
-  --kpi-tint: rgba(249,115,22,0.16); --kpi-border: rgba(249,115,22,0.3); --kpi-border-hover: rgba(249,115,22,0.5);
-  --kpi-inset: rgba(249,115,22,0.08); --kpi-shadow: rgba(249,115,22,0.1); --kpi-shadow-hover: rgba(249,115,22,0.18);
-  --kpi-icon-grad: linear-gradient(135deg, #c2410c 0%, #f97316 55%, #fb923c 100%); --kpi-glow: rgba(249,115,22,0.5);
-  --kpi-label: #fdba74;
+  --kpi-tint: rgba(34,197,94,0.16); --kpi-border: rgba(34,197,94,0.3); --kpi-border-hover: rgba(34,197,94,0.5);
+  --kpi-inset: rgba(34,197,94,0.08); --kpi-shadow: rgba(34,197,94,0.1); --kpi-shadow-hover: rgba(34,197,94,0.18);
+  --kpi-icon-grad: linear-gradient(135deg, #15803d 0%, #22c55e 55%, #4ade80 100%); --kpi-glow: rgba(34,197,94,0.4);
+  --kpi-label: #86efac;
 }
 .stat-card.blue {
-  --kpi-tint: rgba(59,130,246,0.16); --kpi-border: rgba(59,130,246,0.3); --kpi-border-hover: rgba(59,130,246,0.5);
-  --kpi-inset: rgba(59,130,246,0.08); --kpi-shadow: rgba(59,130,246,0.1); --kpi-shadow-hover: rgba(59,130,246,0.18);
-  --kpi-icon-grad: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #60a5fa 100%); --kpi-glow: rgba(59,130,246,0.5);
-  --kpi-label: #93c5fd;
+  --kpi-tint: rgba(250, 204, 21,0.16); --kpi-border: rgba(250, 204, 21,0.3); --kpi-border-hover: rgba(250, 204, 21,0.5);
+  --kpi-inset: rgba(250, 204, 21,0.08); --kpi-shadow: rgba(250, 204, 21,0.1); --kpi-shadow-hover: rgba(250, 204, 21,0.18);
+  --kpi-icon-grad: linear-gradient(135deg, #a16207 0%, #eab308 55%, #facc15 100%); --kpi-glow: rgba(250, 204, 21,0.5);
+  --kpi-label: #fde047;
 }
 
 .card, .table-card {
@@ -764,7 +764,7 @@
 .btn-primary-red:disabled { cursor: not-allowed; opacity: 0.45; box-shadow: none; }
 
 .history-header { justify-content: space-between; gap: 12px; }
-.history-header-icon { flex: 0 0 auto; color: #a78bfa; }
+.history-header-icon { flex: 0 0 auto; color: #facc15; }
 .transfer-history-list { display: flex; flex-direction: column; gap: 8px; }
 .transfer-history-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; background: rgba(255, 255, 255, 0.035); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 11px; }
 .history-item-name { display: block; color: #fff; font-size: 0.78rem; font-weight: 750; }

@@ -41,9 +41,11 @@ export function ProduccionReal() {
   const [searchTerm, setSearchTerm] = useState('')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all')
   const [selectedBatch, setSelectedBatch] = useState<ProductionBatch | null>(null)
+  const [closingBatchDetail, setClosingBatchDetail] = useState(false)
 
   // Guided New Batch Modal State
   const [showModal, setShowModal] = useState(false)
+  const [closingBatchForm, setClosingBatchForm] = useState(false)
   const [proteinType, setProteinType] = useState<ProteinType>('pollo')
   const [selectedPortionRecipeId, setSelectedPortionRecipeId] = useState('')
   const [batchName, setBatchName] = useState('Porcionamiento de Pollo para Arroz')
@@ -57,6 +59,24 @@ export function ProduccionReal() {
   const [operatorId, setOperatorId] = useState('')
   const [batchNotes, setBatchNotes] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const closeBatchForm = () => {
+    if (!showModal || closingBatchForm || saving) return
+    setClosingBatchForm(true)
+    window.setTimeout(() => {
+      setShowModal(false)
+      setClosingBatchForm(false)
+    }, 200)
+  }
+
+  const closeBatchDetail = () => {
+    if (!selectedBatch || closingBatchDetail) return
+    setClosingBatchDetail(true)
+    window.setTimeout(() => {
+      setSelectedBatch(null)
+      setClosingBatchDetail(false)
+    }, 200)
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -269,7 +289,11 @@ export function ProduccionReal() {
       })
 
       setNotice(`✅ Lote "${batchName}" registrado con éxito (${prodQty} porciones).`)
-      setShowModal(false)
+      setClosingBatchForm(true)
+      window.setTimeout(() => {
+        setShowModal(false)
+        setClosingBatchForm(false)
+      }, 200)
       await loadData()
       setTimeout(() => setNotice(''), 4000)
     } catch (err) {
@@ -314,14 +338,11 @@ export function ProduccionReal() {
   }
 
   return (
-    <div className="page animate-fade-in prod-page">
-      <header className="prod-header">
+    <div className="page animate-fade-in prod-page management-workspace management-workspace--production">
+      <header className="prod-header management-workspace-header">
         <div className="prod-header-title-wrap">
-          <div className="prod-header-icon">
-            <Flame size={24} />
-          </div>
           <div>
-            <h1>Producción y Porcionamiento</h1>
+            <h1 className="page-title"><Flame size={22} className="page-title-icon" /> Producción y Porcionamiento</h1>
             <p>Transformación de proteínas crudas, porcionamiento, merma y rendimiento de cocina</p>
           </div>
         </div>
@@ -338,7 +359,7 @@ export function ProduccionReal() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* KPI Stats Cards */}
-      <div className="prod-stats-grid">
+      <div className="prod-stats-grid management-workspace-metrics">
         <div className="prod-stat-card red">
           <div className="prod-stat-icon"><Package size={18} /></div>
           <div className="prod-stat-info">
@@ -373,7 +394,7 @@ export function ProduccionReal() {
       </div>
 
       {/* Main Panel with Batches List */}
-      <div className="prod-panel">
+      <div className="prod-panel management-workspace-panel">
         <div className="prod-toolbar">
           <div className="prod-search-wrap">
             <Search size={16} />
@@ -476,7 +497,7 @@ export function ProduccionReal() {
                         </span>
                       </td>
                       <td>
-                        <span style={{ color: b.wasteQuantity > 0 ? '#fbbf24' : 'var(--text-muted)' }}>
+                        <span style={{ color: b.wasteQuantity > 0 ? '#fde047' : 'var(--text-muted)' }}>
                           {b.wasteQuantity.toFixed(2)} kg ({b.wastePercentage.toFixed(1)}%)
                         </span>
                       </td>
@@ -487,7 +508,7 @@ export function ProduccionReal() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <strong style={{ color: '#38bdf8' }}>{formatUsd(b.totalCost)}</strong>
+                          <strong style={{ color: '#facc15' }}>{formatUsd(b.totalCost)}</strong>
                           {b.quantityProduced > 0 && (
                             <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
                               {formatUsd(b.costPerPortion)}/porc
@@ -517,7 +538,7 @@ export function ProduccionReal() {
           Modal Guiado de Registro de Lote
           ============================================================ */}
       {showModal && createPortal(
-        <div className="prod-modal-overlay" onClick={() => !saving && setShowModal(false)}>
+        <div className={`prod-modal-overlay ${closingBatchForm ? 'closing' : ''}`} onClick={closeBatchForm}>
           <form className="prod-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitBatch}>
             <div className="prod-modal-header">
               <div className="prod-modal-header-icon">
@@ -674,7 +695,7 @@ export function ProduccionReal() {
                       background: '#121214',
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '10px',
-                      color: '#38bdf8',
+                      color: '#facc15',
                       font: 'inherit',
                       fontWeight: 750,
                       fontSize: '0.9rem',
@@ -813,7 +834,7 @@ export function ProduccionReal() {
                 type="button"
                 className="prod-modal-cancel"
                 disabled={saving}
-                onClick={() => setShowModal(false)}
+                onClick={closeBatchForm}
               >
                 Cancelar
               </button>
@@ -838,7 +859,7 @@ export function ProduccionReal() {
           Modal de Detalle e Inspección de Lote
           ============================================================ */}
       {selectedBatch && createPortal(
-        <div className="prod-modal-overlay" onClick={() => setSelectedBatch(null)}>
+        <div className={`prod-modal-overlay ${closingBatchDetail ? 'closing' : ''}`} onClick={closeBatchDetail}>
           <div className="prod-modal" onClick={(e) => e.stopPropagation()}>
             <div className="prod-modal-header">
               <div className="prod-modal-header-icon">
@@ -852,7 +873,7 @@ export function ProduccionReal() {
                 type="button"
                 className="prod-modal-cancel"
                 style={{ padding: '6px 10px', minHeight: 'unset' }}
-                onClick={() => setSelectedBatch(null)}
+                onClick={closeBatchDetail}
               >
                 <X size={16} />
               </button>
@@ -868,7 +889,7 @@ export function ProduccionReal() {
 
               <div className="prod-detail-item">
                 <small>Rendimiento del Lote</small>
-                <strong style={{ color: selectedBatch.wastePercentage <= 20 ? '#4ade80' : '#fbbf24' }}>
+                <strong style={{ color: selectedBatch.wastePercentage <= 20 ? '#4ade80' : '#ff4d5f' }}>
                   {(100 - selectedBatch.wastePercentage).toFixed(1)}%
                 </strong>
               </div>
@@ -882,7 +903,7 @@ export function ProduccionReal() {
 
               <div className="prod-detail-item">
                 <small>Costo Total del Lote</small>
-                <strong style={{ color: '#38bdf8' }}>
+                <strong style={{ color: '#facc15' }}>
                   {formatUsd(selectedBatch.totalCost)}
                   {selectedBatch.quantityProduced > 0 && (
                     <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginLeft: '6px' }}>
@@ -912,7 +933,7 @@ export function ProduccionReal() {
                     }}
                   >
                     <span><strong>{it.ingredientName}</strong></span>
-                    <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+                    <span style={{ color: '#facc15', fontWeight: 700 }}>
                       {it.quantityUsed} {it.unitSymbol}
                     </span>
                   </div>
@@ -933,7 +954,7 @@ export function ProduccionReal() {
               type="button"
               className="prod-modal-cancel"
               style={{ marginTop: '10px' }}
-              onClick={() => setSelectedBatch(null)}
+              onClick={closeBatchDetail}
             >
               Cerrar Detalle
             </button>

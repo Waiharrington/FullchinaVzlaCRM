@@ -4,7 +4,7 @@
   margin: 0 auto;
 }
 
-.page-subtitle {
+.mas-page .page-subtitle {
   font-size: 1rem;
   color: var(--text-secondary);
   margin: 0.25rem 0 0;
@@ -87,7 +87,7 @@
   color: var(--accent-primary);
 }
 
-.card {
+.mas-page .card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
@@ -123,6 +123,7 @@
   padding: 1.25rem;
   margin-bottom: 1.25rem;
 }
+.new-credit-form.closing { pointer-events: none; animation: fc-dialog-exit var(--motion-fast) var(--motion-exit) both !important; }
 
 .form-row {
   display: flex;
@@ -455,8 +456,8 @@
 }
 
 .cash-fill { background: #22c55e; }
-.card-fill { background: #3b82f6; }
-.transfer-fill { background: #a855f7; }
+.card-fill { background: #eab308; }
+.transfer-fill { background: #eab308; }
 
 .hourly-list {
   display: flex;
@@ -546,7 +547,7 @@
   color: var(--accent-primary);
 }
 
-.modal-overlay {
+.mas-credit-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
@@ -557,7 +558,7 @@
   padding: 1rem;
 }
 
-.modal {
+.mas-modal-glow {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
@@ -584,7 +585,7 @@
   margin: 0 0 1.25rem 0;
 }
 
-.modal input {
+.mas-modal-glow input {
   width: 100%;
   padding: 0.875rem;
   background: rgba(255, 255, 255, 0.05);
@@ -596,12 +597,12 @@
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.modal input:focus {
+.mas-modal-glow input:focus {
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
 
-.modal input:focus {
+.mas-modal-glow input:focus {
   border-color: var(--accent-primary);
 }
 
@@ -613,8 +614,8 @@
 }
 
 @media (max-width: 767px) {
-  .modal-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
-  .modal {
+  .mas-credit-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
+  .mas-modal-glow {
     max-width: none;
     max-height: calc(100dvh - 6px);
     overflow-y: auto;

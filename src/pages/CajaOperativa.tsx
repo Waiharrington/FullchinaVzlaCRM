@@ -51,6 +51,7 @@ export function CajaOperativa() {
   const [openingNotes, setOpeningNotes] = useState('')
 
   const [showMovement, setShowMovement] = useState(false)
+  const [closingMovement, setClosingMovement] = useState(false)
   const [direction, setDirection] = useState<'in' | 'out'>('out')
   const [movementType, setMovementType] = useState<CashMovement['movementType']>('withdrawal')
   const [currency, setCurrency] = useState<'USD' | 'VES'>('USD')
@@ -62,6 +63,16 @@ export function CajaOperativa() {
   const [countedUsd, setCountedUsd] = useState('')
   const [countedVes, setCountedVes] = useState('')
   const [closingNotes, setClosingNotes] = useState('')
+
+  const toggleMovement = () => {
+    if (showMovement) {
+      if (closingMovement) return
+      setClosingMovement(true)
+      window.setTimeout(() => { setShowMovement(false); setClosingMovement(false) }, 180)
+    } else {
+      setShowMovement(true)
+    }
+  }
 
   const refresh = useCallback(async () => {
     setLoading(true)
@@ -115,7 +126,8 @@ export function CajaOperativa() {
         sessionId: session.id, direction, movementType, currency,
         amount: Number(movementAmount), description: movementDescription, userId: user.id,
       })
-      setMovementAmount(''); setMovementDescription(''); setShowMovement(false)
+      setMovementAmount(''); setMovementDescription(''); setClosingMovement(true)
+      window.setTimeout(() => { setShowMovement(false); setClosingMovement(false) }, 180)
       setNotice('Movimiento registrado.')
       await refresh()
     } catch (cause) {
@@ -213,9 +225,9 @@ export function CajaOperativa() {
 
           <section className="cash-content-grid">
             <article className="cash-card">
-              <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary" onClick={() => setShowMovement(value => !value)}>+ Movimiento</button></div>
-              {showMovement && (
-                <form className="cash-inline-form" onSubmit={handleMovement}>
+              <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary" onClick={toggleMovement}>+ Movimiento</button></div>
+              {(showMovement || closingMovement) && (
+                <form className={`cash-inline-form ${closingMovement ? 'closing' : ''}`} onSubmit={handleMovement}>
                   <label>Dirección<StyledSelect value={direction} onChange={event => setDirection(event.target.value as 'in' | 'out')}><option value="in">Entrada</option><option value="out">Salida</option></StyledSelect></label>
                   <label>Tipo<StyledSelect value={movementType} onChange={event => setMovementType(event.target.value as CashMovement['movementType'])}><option value="cash_in">Ingreso de efectivo</option><option value="cash_out">Salida de efectivo</option><option value="withdrawal">Retiro</option><option value="expense">Gasto</option><option value="adjustment">Ajuste</option></StyledSelect></label>
                   <label>Moneda<StyledSelect value={currency} onChange={event => setCurrency(event.target.value as 'USD' | 'VES')}><option value="USD">USD</option><option value="VES">Bolívares</option></StyledSelect></label>

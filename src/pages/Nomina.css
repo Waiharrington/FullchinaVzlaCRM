@@ -34,8 +34,8 @@
 .nom-period-top strong { font-size: 14px; }
 .nom-status { font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
 .nom-status.open { color: #22c55e; background: rgba(34,197,94,0.12); }
-.nom-status.closed { color: #38bdf8; background: rgba(56,189,248,0.12); }
-.nom-status.paid { color: #a78bfa; background: rgba(167,139,250,0.12); }
+.nom-status.closed { color: #facc15; background: rgba(250, 204, 21,0.12); }
+.nom-status.paid { color: #facc15; background: rgba(253, 224, 71,0.12); }
 .nom-period small { color: #a1a1aa; font-size: 12px; display: block; }
 .nom-period .liq { color: #22c55e; font-weight: 700; font-size: 13px; margin-top: 4px; }
 
@@ -53,7 +53,7 @@
 .nom-col-avatar { width: 42px; padding-right: 0 !important; text-align: center !important; }
 
 .nom-emp { display: flex; align-items: center; gap: 10px; }
-.nom-avatar { width: 36px; height: 36px; border-radius: 50%; background: #7c3aed; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.nom-avatar { width: 36px; height: 36px; border-radius: 50%; background: #ca8a04; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 
 /* Envoltorio consistente para alinear todos los campos a la misma altura exacta */
 .nom-cell-wrap {
@@ -240,19 +240,19 @@
   background: rgba(225, 29, 42, 0.15);
 }
 
-.nom-modal--period.nom-modal { border-color: rgba(56, 189, 248, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(56, 189, 248, 0.06); }
+.nom-modal--period.nom-modal { border-color: rgba(250, 204, 21, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(250, 204, 21, 0.06); }
 .nom-modal--period .nom-modal-header {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.14) 0%, rgba(56, 189, 248, 0.02) 45%, transparent 70%);
-  border-bottom-color: rgba(56, 189, 248, 0.18);
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.14) 0%, rgba(250, 204, 21, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(250, 204, 21, 0.18);
 }
-.nom-modal--period .nom-modal-header-icon { color: #7dd3fc; background: rgba(56, 189, 248, 0.15); }
+.nom-modal--period .nom-modal-header-icon { color: #fde047; background: rgba(250, 204, 21, 0.15); }
 
-.nom-modal--advance.nom-modal { border-color: rgba(234, 179, 8, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(234, 179, 8, 0.06); }
+.nom-modal--advance.nom-modal { border-color: rgba(250, 204, 21, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(250, 204, 21, 0.06); }
 .nom-modal--advance .nom-modal-header {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.14) 0%, rgba(234, 179, 8, 0.02) 45%, transparent 70%);
-  border-bottom-color: rgba(234, 179, 8, 0.18);
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.14) 0%, rgba(250, 204, 21, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(250, 204, 21, 0.18);
 }
-.nom-modal--advance .nom-modal-header-icon { color: #fde047; background: rgba(234, 179, 8, 0.15); }
+.nom-modal--advance .nom-modal-header-icon { color: #fde047; background: rgba(250, 204, 21, 0.15); }
 
 .nom-modal--bonus.nom-modal { border-color: rgba(34, 197, 94, 0.25); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(34, 197, 94, 0.06); }
 .nom-modal--bonus .nom-modal-header {
@@ -261,12 +261,12 @@
 }
 .nom-modal--bonus .nom-modal-header-icon { color: #86efac; background: rgba(34, 197, 94, 0.15); }
 
-.nom-modal--payment.nom-modal { border-color: rgba(124, 58, 237, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(124, 58, 237, 0.08); }
+.nom-modal--payment.nom-modal { border-color: rgba(250, 204, 21, 0.3); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(250, 204, 21, 0.08); }
 .nom-modal--payment .nom-modal-header {
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.16) 0%, rgba(124, 58, 237, 0.02) 45%, transparent 70%);
-  border-bottom-color: rgba(124, 58, 237, 0.2);
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.16) 0%, rgba(250, 204, 21, 0.02) 45%, transparent 70%);
+  border-bottom-color: rgba(250, 204, 21, 0.2);
 }
-.nom-modal--payment .nom-modal-header-icon { color: #c4b5fd; background: rgba(124, 58, 237, 0.18); }
+.nom-modal--payment .nom-modal-header-icon { color: #fde047; background: rgba(250, 204, 21, 0.18); }
 
 .nom-field {
   margin-bottom: 12px;

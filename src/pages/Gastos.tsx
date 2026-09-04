@@ -48,15 +48,22 @@ export function Gastos() {
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [closingExpense, setClosingExpense] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
 
   const openExpenseForm = () => {
+    setClosingExpense(false)
     setExpenseModalOpen(true)
   }
 
   const closeExpenseForm = useCallback(() => {
-    if (!saving) setExpenseModalOpen(false)
-  }, [saving])
+    if (saving || closingExpense) return
+    setClosingExpense(true)
+    window.setTimeout(() => {
+      setExpenseModalOpen(false)
+      setClosingExpense(false)
+    }, 200)
+  }, [closingExpense, saving])
 
   useEffect(() => {
     if (!expenseModalOpen) return
@@ -132,7 +139,11 @@ export function Gastos() {
       setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountNum, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
       flash(`Gasto de ${formatUsd(amountNum)} registrado`)
       if (keepOpen) setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor, paymentMethod: form.paymentMethod })
-      else { setForm(emptyForm); setExpenseModalOpen(false) }
+      else {
+        setForm(emptyForm)
+        setClosingExpense(true)
+        window.setTimeout(() => { setExpenseModalOpen(false); setClosingExpense(false) }, 200)
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al registrar el gasto') }
     finally { setSaving(false) }
   }
@@ -199,7 +210,7 @@ export function Gastos() {
           </div>
 
           {showFilters && (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <div className="gst-filter-row">
               {(['todos', 'fixed', 'variable', 'other'] as const).map((t) => (
                 <button key={t} className="gst-tool" style={typeFilter === t ? { background: '#e11d2a', borderColor: '#e11d2a', color: '#fff' } : undefined} onClick={() => setTypeFilter(t)}>
                   {t === 'todos' ? 'Todos' : t === 'fixed' ? 'Fijos' : t === 'variable' ? 'Variables' : 'Otros'}
@@ -249,7 +260,7 @@ export function Gastos() {
       </div>
 
       {expenseModalOpen && createPortal(
-        <div className="gst-form-col open" role="presentation" onMouseDown={(ev) => { if (ev.target === ev.currentTarget) closeExpenseForm() }}>
+        <div className={`gst-form-col open ${closingExpense ? 'closing' : ''}`} role="presentation" onMouseDown={(ev) => { if (ev.target === ev.currentTarget) closeExpenseForm() }}>
           <form id="expense-form" className="gst-card gst-expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title" onSubmit={handleSubmit}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div><h3 id="expense-modal-title" className="gst-form-title">Registrar Nuevo Gasto</h3><p className="gst-form-sub">Carga egresos desde el teléfono o laptop</p></div>

@@ -331,6 +331,16 @@ export function Clientes() {
   const [closingPayment, setClosingPayment] = useState(false)
   const [closingCobrar, setClosingCobrar] = useState(false)
   const [closingQuickOrder, setClosingQuickOrder] = useState(false)
+  const [closingOrderDetail, setClosingOrderDetail] = useState(false)
+
+  const closeOrderDetail = () => {
+    if (!orderDetail || closingOrderDetail) return
+    setClosingOrderDetail(true)
+    window.setTimeout(() => {
+      setOrderDetail(null)
+      setClosingOrderDetail(false)
+    }, 200)
+  }
 
   const closeNewModal = (then?: () => void) => {
     if (!showNewModal || closingNew) return
@@ -1110,14 +1120,14 @@ export function Clientes() {
 
       {/* Modal Detalle de pedido (desde el historial, todo con nombres completos) */}
       {orderDetail && createPortal(
-        <div className="modal-overlay-dark" onClick={() => setOrderDetail(null)}>
+        <div className={`modal-overlay-dark ${closingOrderDetail ? 'closing' : ''}`} onClick={closeOrderDetail}>
           <div className="client-modal-box order-detail-modal animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-line clientes-modal-header-glow">
               <div>
                 <h3 className="modal-title">Pedido #{String(orderDetail.orderNumber).padStart(6, '0')}</h3>
                 <p className="modal-sub-desc">{formatDateTime(orderDetail.createdAt)}</p>
               </div>
-              <button className="modal-close-btn" onClick={() => setOrderDetail(null)}><X size={18} /></button>
+              <button className="modal-close-btn" onClick={closeOrderDetail}><X size={18} /></button>
             </div>
 
             <div className="order-detail-badges mt-2">
