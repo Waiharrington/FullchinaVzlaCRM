@@ -664,9 +664,9 @@ button.mobile-only {
 
 .public-list-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; }
 .public-menu-search { grid-area: search; display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 11px 0 14px; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; background: rgba(8,9,13,.72); color: #858A94; transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
-.public-menu-search:focus-within { border-color: rgba(227,27,43,.6); background: rgba(18,19,25,.96); box-shadow: 0 0 0 3px rgba(227,27,43,.1); color: #FF5A52; }
+.public-menu-search:focus-within { border-color: rgba(227,27,43,.6); background: rgba(18,19,25,.96); box-shadow: none; color: #FF5A52; }
 .public-menu-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #FFF; font: 500 12.5px 'DM Sans'; }
-.public-menu-search input:focus { border: 0; outline: 0; box-shadow: none; }
+.public-menu-search input:focus { border: 0 !important; outline: 0 !important; box-shadow: none !important; }
 .public-menu-search input::placeholder { color: #777C86; }
 .public-menu-search input::-webkit-search-cancel-button { display: none; }
 .public-menu-search button { display: grid; flex: 0 0 auto; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.08); color: #B9BDC5; cursor: pointer; }
@@ -682,7 +682,7 @@ button.mobile-only {
 .public-menu-discovery-heading h1 { margin: 0; color: #FFF; font-size: clamp(22px,2vw,28px); font-weight: 900; line-height: 1.08; letter-spacing: -.025em; }
 .public-menu-discovery-heading p { margin: 5px 0 0; color: #9A9EA7; font-size: 12.5px; line-height: 1.35; }
 .public-menu-discovery .public-menu-search { min-height: 50px; border-color: rgba(227,27,43,.28); border-radius: 15px; background: linear-gradient(90deg, rgba(20,15,18,.94), rgba(10,11,15,.9)); box-shadow: inset 0 1px rgba(255,255,255,.035), 0 10px 28px rgba(0,0,0,.16); }
-.public-menu-discovery .public-menu-search:focus-within { border-color: rgba(255,69,58,.72); box-shadow: 0 0 0 3px rgba(227,27,43,.11), 0 12px 32px rgba(0,0,0,.2); }
+.public-menu-discovery .public-menu-search:focus-within { border-color: rgba(255,69,58,.72); box-shadow: 0 12px 32px rgba(0,0,0,.2); }
 .public-menu-discovery .public-menu-search input { font-size: 13.5px; }
 .public-menu-discovery .public-favorites-inline { align-self: center; background: rgba(255,255,255,.035); }
 .public-selected-category-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 6px 0 18px; padding: 0 4px; }
@@ -876,12 +876,12 @@ button.mobile-only {
   gap: 10px;
 }
 .public-cart-fab-tooltip {
-  background: rgba(20, 22, 28, 0.92);
+  background: #FCD900;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  color: #FFF;
+  color: #1a1400;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 8px 12px;
   border-radius: 10px;
   white-space: nowrap;
@@ -890,7 +890,7 @@ button.mobile-only {
   gap: 4px;
   animation: public-tooltip-in 400ms ease 800ms both, public-tooltip-out 400ms ease 5s both;
   pointer-events: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(252, 217, 0, .4);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 @keyframes public-tooltip-in {
@@ -1206,10 +1206,14 @@ button.mobile-only {
 .public-contact-card > div span { color: #D7D9DE; font-size: 16px; }
 .public-contact-card > div small { color: #E5E7EB; font-size: 14px; padding-right: 80px; }
 .public-delivery-step { display: grid; gap: 22px; padding-top: 18px; }
-.public-delivery-choice { position: relative; display: grid; grid-template-columns: 42% minmax(0, 1fr) 56px; align-items: center; min-height: 230px; overflow: hidden; border: 1px solid #303238; border-radius: 28px; background: rgba(0,0,0,.18); cursor: pointer; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.public-delivery-choice { position: relative; display: grid; grid-template-columns: 42% minmax(0, 1fr) 56px; align-items: center; height: 230px; min-height: 230px; overflow: hidden; border: 1px solid #303238; border-radius: 28px; background: rgba(0,0,0,.18); cursor: pointer; transition: border-color .2s, box-shadow .2s, transform .2s; }
 .public-delivery-choice:hover { transform: translateY(-2px); }
 .public-delivery-choice.selected { border-color: #E31B2B; box-shadow: 0 0 24px rgba(227,27,43,.2); }
-.public-delivery-choice img { width: 100%; height: 100%; min-height: 230px; object-fit: cover; }
+.public-delivery-choice img {
+  width: 100%; height: 100%; min-height: 230px; object-fit: cover;
+  -webkit-mask-image: linear-gradient(to right, #000 55%, transparent 100%);
+  mask-image: linear-gradient(to right, #000 55%, transparent 100%);
+}
 .public-delivery-choice > div { display: grid; gap: 12px; padding: 28px; }
 .public-delivery-choice strong { font-size: clamp(22px, 3vw, 32px); }
 .public-delivery-choice > div span { color: #F3F4F6; font-size: clamp(16px, 2vw, 22px); line-height: 1.45; }
@@ -1243,7 +1247,7 @@ button.mobile-only {
 .public-address-selected > svg { width: 34px; height: 34px; color: #E31B2B; flex: 0 0 auto; }
 .public-address-selected > div { display: grid; gap: 5px; min-width: 0; flex: 1; }.public-address-selected small { color: #F3F4F6; font-size: 14px; }.public-address-selected strong { font-size: 20px; overflow-wrap: anywhere; }.public-address-selected > div span { color: #51d88a; font-size: 10px; }.public-address-selected button { border: 0; background: transparent; color: #E31B2B; font: 700 16px 'DM Sans'; cursor: pointer; }
 .public-address-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 14px 16px; border: 1px solid rgba(237,27,47,.3); border-radius: 16px; background: linear-gradient(110deg, rgba(237,27,47,.12), rgba(255,255,255,.03)); }.public-address-summary div { display: grid; gap: 3px; }.public-address-summary small { color: #a7aab2; font-size: 10px; }.public-address-summary strong { color: #ffd666; font-size: 17px; }.public-address-summary > span { color: #51d88a; font-size: 11px; font-weight: 700; }.public-address-error { margin: 10px 2px 0; color: #ff9da6; font-size: 11px; line-height: 1.35; }
-.public-address-extra { display: grid; gap: 9px; padding: 18px 24px; }.public-address-extra > span { color: #F3F4F6; font-size: 15px; }.public-address-extra small { color: #E5E7EB; }.public-address-extra input, .public-address-extra textarea { width: 100%; box-sizing: border-box; border: 0; outline: 0; resize: vertical; background: transparent; color: #FFF; font: 600 18px 'DM Sans'; }.public-address-extra input:focus, .public-address-extra textarea:focus { border: 0; outline: 0; background: transparent; box-shadow: none; }.public-address-extra input::placeholder, .public-address-extra textarea::placeholder { color: #E5E7EB; font-weight: 400; }
+.public-address-extra { display: grid; gap: 9px; padding: 18px 24px; }.public-address-extra > span { color: #F3F4F6; font-size: 15px; }.public-address-extra small { color: #E5E7EB; }.public-address-extra input, .public-address-extra textarea { width: 100%; box-sizing: border-box; border: 0; outline: 0; resize: vertical; background: transparent; color: #FFF; font: 600 18px 'DM Sans'; }.public-address-extra input:focus, .public-address-extra textarea:focus { border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; }.public-address-extra input::placeholder, .public-address-extra textarea::placeholder { color: #E5E7EB; font-weight: 400; }
 .public-location-row { display: flex; align-items: center; gap: 16px; padding: 20px 24px; color: #FFF; cursor: pointer; }.public-location-row svg:first-child { color: #E31B2B; }.public-location-row strong { flex: 1; text-align: left; font-size: 18px; }.public-address-continue { min-height: 68px; margin-top: 10px; font-size: 20px; }.public-address-step-suggestions { position: absolute; top: 76px; left: 0; right: 0; }
 .public-data-drawer .public-review-heading { margin-top: 34px; }
 .public-data-drawer .public-checkout { min-height: calc(100dvh - 190px); box-sizing: border-box; padding-top: 20px; gap: 18px; max-width: 900px; margin: 0 auto; width: 100%; }
@@ -1255,7 +1259,63 @@ button.mobile-only {
 .public-data-form-card > label { padding: 0; }
 .public-data-form-card > label + label { border-top: 0; }
 .public-data-form-card .public-data-field { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 14px; min-height: 78px; box-sizing: border-box; padding: 12px 16px; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(9,10,13,.68); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); transition: border-color .18s ease, background .18s ease, box-shadow .18s ease; }
-.public-data-form-card .public-data-field:focus-within { border-color: rgba(239,51,69,.88); background: rgba(25,11,14,.82); box-shadow: 0 0 0 3px rgba(239,51,69,.12); }
+.public-data-form-card .public-data-field:focus-within { border-color: rgba(239,51,69,.88); background: rgba(25,11,14,.82); box-shadow: none; }
+
+/* Campo puntual con error: se marca en amarillo para distinguirse del rojo
+   de marca (que ya se usa para el CTA/carrito), y el mensaje va pegado al
+   campo en vez de un aviso genérico perdido en la pantalla. */
+.public-data-form-card .public-data-field.invalid,
+.public-address-selected.invalid,
+.public-address-extra.invalid {
+  border-color: rgba(255, 214, 102, .9) !important;
+  background: rgba(41, 33, 6, .55) !important;
+  box-shadow: none !important;
+}
+.public-data-field.invalid .public-data-icon { background: rgba(255, 214, 102, .16) !important; color: #FFD666 !important; }
+/* El campo también tiene su propio borde rojo al enfocarse (:focus-within,
+   más abajo). Si el campo queda enfocado Y en error a la vez (por ejemplo,
+   el enfoque automático al aparecer el error), se ven dos bordes distintos.
+   Se fija el color amarillo también para ese caso, y se blinda el input
+   para que nunca dibuje su propio borde/outline por debajo. */
+.public-data-form-card .public-data-field.invalid:focus-within {
+  border-color: rgba(255, 214, 102, .9) !important;
+  background: rgba(41, 33, 6, .55) !important;
+  box-shadow: none !important;
+}
+.public-data-field.invalid input,
+.public-data-field.invalid input:focus {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.public-address-selected.invalid > svg { color: #FFD666 !important; }
+/* Mismo blindaje que arriba, pero para los campos con error del paso de
+   dirección (referencia, y por si la tarjeta de ubicación llega a tener
+   un input propio a futuro): un solo borde amarillo, nunca uno rojo de
+   foco por debajo. */
+.public-address-extra.invalid:focus-within,
+.public-address-selected.invalid:focus-within {
+  border-color: rgba(255, 214, 102, .9) !important;
+  background: rgba(41, 33, 6, .55) !important;
+  box-shadow: none !important;
+}
+.public-address-extra.invalid input,
+.public-address-extra.invalid textarea,
+.public-address-extra.invalid input:focus,
+.public-address-extra.invalid textarea:focus {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+.public-field-error {
+  display: block;
+  margin-top: 4px;
+  color: #FFD666;
+  font-size: 11px;
+  font-weight: 600;
+  font-style: normal;
+  line-height: 1.35;
+}
 
 .public-pay-card { margin-top: 14px; padding: 16px; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(9,10,13,.68); display: grid; gap: 12px; }
 .public-pay-head { display: flex; align-items: center; gap: 9px; color: #fff; font-weight: 700; font-size: 15px; }
@@ -1267,7 +1327,7 @@ button.mobile-only {
 .public-pay-select { display: grid; gap: 6px; }
 .public-pay-select > span { font-size: 12px; font-weight: 700; color: #9aa1ab; text-transform: uppercase; letter-spacing: .04em; }
 .public-pay-select select { width: 100%; padding: 12px 14px; border-radius: 13px; border: 1px solid rgba(255,255,255,.2); background: rgba(9,10,13,.9); color: #fff; font-size: 15px; font-weight: 600; appearance: none; cursor: pointer; }
-.public-pay-select select:focus { outline: none; border-color: rgba(239,51,69,.88); box-shadow: 0 0 0 3px rgba(239,51,69,.12); }
+.public-pay-select select:focus { outline: none !important; border-color: rgba(239,51,69,.88) !important; box-shadow: none !important; }
 /* Desplegables de pago: lista nativa en modo oscuro + flecha propia */
 .public-pay-select select {
   color-scheme: dark;
@@ -1329,7 +1389,7 @@ button.mobile-only {
 .public-data-field-copy > small { color: #8f949d; font-size: 9px; font-weight: 500; }
 .public-data-input { display: flex; align-items: center; min-height: 28px; padding: 0; border: 0; border-radius: 0; background: transparent; }
 .public-data-input input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: #FFF; font: 400 18px 'DM Sans'; }
-.public-data-input input:focus { box-shadow: none; }
+.public-data-input input:focus { border: 0 !important; outline: 0 !important; box-shadow: none !important; }
 .public-data-input input::placeholder { color: #E5E7EB; }
 .public-data-notes { display: grid; gap: 12px; padding: 15px 16px; border: 1px solid rgba(255,255,255,.2); border-radius: 17px; background: rgba(9,10,13,.68); }
 .public-data-notes-title { display: flex; align-items: center; gap: 11px; }
@@ -1338,7 +1398,7 @@ button.mobile-only {
 .public-data-notes-title strong { color: #fff; font-size: 13px; }
 .public-data-notes-title small { color: #8f949d; font-size: 9px; font-weight: 700; text-transform: uppercase; }
 .public-checkout .public-data-notes textarea { min-height: 54px; box-sizing: border-box; padding: 12px 13px; border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.045); font-size: 13px; }
-.public-checkout .public-data-notes textarea:focus { border-color: rgba(255,255,255,.14); background: rgba(255,255,255,.045); box-shadow: none; }
+.public-checkout .public-data-notes textarea:focus { border-color: rgba(255,255,255,.14) !important; background: rgba(255,255,255,.045) !important; box-shadow: none !important; }
 .public-checkout .public-data-notes:focus-within { border-color: rgba(239,51,69,.72); }
 .public-data-privacy { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 8px; color: #9297a0; font-size: 10px; line-height: 1.35; text-align: center; }
 .public-data-privacy svg { width: 16px; height: 16px; flex: 0 0 auto; color: #ffd666; }
@@ -1373,7 +1433,7 @@ button.mobile-only {
 .public-cart-all-extras-head > button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: rgba(255,255,255,.05); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
 .public-cart-extras-search { display: flex; align-items: center; gap: 8px; height: 42px; box-sizing: border-box; margin-bottom: 24px; padding: 0 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 13px; background: rgba(10,11,14,.82); color: #aeb3ba; }
 .public-cart-extras-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #fff; font: 500 13px 'DM Sans'; }
-.public-cart-extras-search input:focus { border: 0; outline: 0; background: transparent; box-shadow: none; }
+.public-cart-extras-search input:focus { border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; }
 .public-cart-extras-search input::placeholder { color: #7f858d; }
 .public-cart-extras-search > button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.1); color: #fff; cursor: pointer; }
 .public-cart-extra-sections { display: grid; gap: 24px; }
@@ -1627,6 +1687,14 @@ button.mobile-only {
   .public-cart-all-extras-grid article > button { width: 36px; height: 36px; right: 3px; bottom: 3px; }
   .public-cart-all-extras-grid article > button svg { width: 16px; height: 16px; }
   .public-review-page .public-cart-item { grid-template-columns: 86px minmax(0,1fr); gap: 10px; min-height: 0; padding: 12px 0; }
+  /* Bloque de totales del paso "Tu pedido": usaba el tamaño pensado para
+     escritorio (padding/márgenes grandes) también en el teléfono, dejando
+     mucho aire vacío antes de llegar al botón "Continuar". */
+  .public-review-page .public-total { padding: 14px 16px; margin: 14px 0; border-radius: 14px; }
+  .public-review-page .public-total strong { font-size: 18px; }
+  .public-review-page .public-total small { margin-top: 2px; font-size: 11px; }
+  .public-review-page .public-total b { padding-top: 10px; margin-top: 8px; font-size: 15px; }
+  .public-review-page .public-total em { font-size: 18px; }
   .public-confirm-items { padding: 6px 12px; border-radius: 18px; }
   .public-confirm-page { padding: 0; gap: 10px; }
   .public-receipt { padding: 12px 10px 18px; gap: 10px; }
@@ -1648,6 +1716,21 @@ button.mobile-only {
   .public-confirm-info strong { font-size: 14px; }
   .public-confirm-info span { font-size: 12px; }
   .public-confirm-info small { font-size: 11px; }
+
+  /* Recibo más compacto: menos aire entre secciones para que quepa con
+     el mínimo scroll posible en el teléfono. */
+  .public-confirm-page { gap: 6px; }
+  .public-receipt { padding: 8px 6px 12px; gap: 4px; }
+  .public-confirm-page .public-receipt-head { padding: 8px 4px 8px; }
+  .public-confirm-page .public-confirm-items { padding: 0 2px 4px; }
+  .public-confirm-item { min-height: 0; padding: 8px 0; }
+  .public-confirm-page .public-review-total { padding: 8px 4px 6px; }
+  .public-confirm-page .public-review-total b { padding-top: 8px; margin-top: 6px; }
+  .public-confirm-page .public-confirm-info { gap: 0; }
+  .public-confirm-page .public-confirm-info button { padding: 10px 4px; }
+  .public-confirm-page > .public-primary.whatsapp { margin-top: 8px; }
+  .public-order-security { margin-top: 4px; font-size: 10.5px; }
+
   .public-whatsapp-cta { min-height: 58px !important; gap: 8px; padding: 8px 10px !important; border-radius: 14px !important; }
   .public-whatsapp-copy strong { font-size: 12px; }
   .public-whatsapp-copy small { font-size: 8px; }
@@ -1688,7 +1771,7 @@ button.mobile-only {
   .public-contact-card > div span { font-size: 12px; }
   .public-contact-card > div small { font-size: 11px; }
   .public-delivery-step { gap: 14px; padding-top: 4px; }
-  .public-delivery-choice { grid-template-columns: 38% minmax(0, 1fr) 30px; min-height: 150px; border-radius: 18px; }
+  .public-delivery-choice { grid-template-columns: 38% minmax(0, 1fr) 30px; height: 150px; min-height: 150px; border-radius: 18px; }
   .public-delivery-choice img { min-height: 150px; }
   .public-delivery-choice > div { gap: 6px; padding: 14px; }
   .public-delivery-choice strong { font-size: 14px; }
@@ -1748,7 +1831,16 @@ button.mobile-only {
 .public-checkout input::placeholder, .public-checkout textarea::placeholder { color: #E5E7EB; }
 .public-checkout .public-data-form-card label { display: grid; gap: 10px; font-size: inherit; color: inherit; }
 .public-checkout .public-data-input input { border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }
-.public-checkout .public-data-input input:focus { border: 0; outline: 0; box-shadow: none; }
+/* index.css pone borde rojo + resplandor a TODO input:focus de la app
+   (!important, global). Sin blindar esto también aquí, ese input crudo
+   (con radio 0, o sea esquinas cuadradas) se ve como un segundo cuadro
+   grueso y cuadrado metido dentro de esta tarjeta redondeada. */
+.public-checkout .public-data-input input:focus {
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
 .public-form-error { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 14px; border: 1px solid rgba(237,27,47,.45); border-radius: 13px; background: linear-gradient(110deg, rgba(237,27,47,.16), rgba(237,27,47,.04)); color: #ffd7da; font-size: 11px; line-height: 1.4; box-shadow: 0 8px 22px rgba(0,0,0,.18); }
 .public-form-error::before { content: '!'; display: grid; place-items: center; width: 18px; height: 18px; flex: 0 0 auto; border: 1px solid #ed1b2f; border-radius: 50%; color: #fff; background: #ed1b2f; font-size: 11px; font-weight: 800; }
 
@@ -2041,7 +2133,7 @@ button.mobile-only {
   .public-estimate-card { width: 150px; }
   .public-drawer-backdrop .public-cart-drawer { max-width: min(680px, 92vw); }
   .public-cart-fab-tooltip { white-space: normal; max-width: 160px; text-align: center; }
-  .public-delivery-choice { min-height: 180px; }
+  .public-delivery-choice { height: 180px; min-height: 180px; }
   .public-delivery-choice img { min-height: 180px; }
   .public-delivery-choice strong { font-size: clamp(18px, 2.5vw, 28px); }
   .public-confirm-page .public-cart-items { max-width: 700px; margin-left: auto; margin-right: auto; }
@@ -2052,6 +2144,7 @@ button.mobile-only {
 .fire-icon-pulse { color: #E31B2B; }
 .public-top-bar-action-btn svg { color: #E31B2B; }
 .public-recommended-card svg { color: #E31B2B; }
+.public-recommended-btn svg { color: #FFF; }
 .public-category-grid svg { color: #E31B2B; }
 .public-product-list svg { color: #E31B2B; }
 .public-prod-card svg { color: #E31B2B; }
@@ -6653,7 +6746,8 @@ button.mobile-only {
   outline: none;
 }
 .ppdm-instructions input:focus {
-  box-shadow: none;
+  border: none !important;
+  box-shadow: none !important;
 }
 .ppdm-instructions input::placeholder {
   color: #555;
@@ -6684,7 +6778,7 @@ button.mobile-only {
   font: inherit;
   outline: none;
 }
-.ppdm-instructions-field textarea:focus { border-color: rgba(227,27,43,.75); box-shadow: none; }
+.ppdm-instructions-field textarea:focus { border-color: rgba(227,27,43,.75) !important; box-shadow: none !important; }
 .ppdm-instructions-field textarea::placeholder { color: #686c75; }
 .ppdm-instructions-field > span { display: block; text-align: right; color: #686c75; font-size: 11px; font-weight: 400; margin-top: 4px; }
 .ppdm-footer {
@@ -7314,21 +7408,19 @@ button.mobile-only {
   visibility: hidden !important;
 }
 
-/* Custom Red Scrollbar for Public Menu */
-.public-menu-page::-webkit-scrollbar {
-  display: block !important;
-  width: 6px !important;
-  height: 6px !important;
+/* Hide scrollbars across the ordering app (page scroll, the window
+   scrollbar it drives, and every scrollable panel inside it) */
+.public-menu-page,
+.public-menu-page *,
+body:has(.public-menu-page) {
+  scrollbar-width: none !important;
 }
-.public-menu-page::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1) !important;
-}
-.public-menu-page::-webkit-scrollbar-thumb {
-  background: #E31B2B !important;
-  border-radius: 10px !important;
-}
-.public-menu-page::-webkit-scrollbar-thumb:hover {
-  background: #C81321 !important;
+.public-menu-page::-webkit-scrollbar,
+.public-menu-page *::-webkit-scrollbar,
+body:has(.public-menu-page)::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .public-img--top-align {
@@ -7342,6 +7434,33 @@ button.mobile-only {
 
 .public-menu-page .public-categories-scroll::-webkit-scrollbar {
   display: none !important;
+}
+
+/* CTA ancladas abajo en el flujo de pedido en el teléfono. Antes solo
+   existía este truco para escritorio (arriba, dentro del bloque de
+   min-width:1280px): el botón de "siguiente paso" quedaba al final de
+   una tarjeta larga, obligando a hacer scroll para poder tocarlo o para
+   terminar de leer el recibo. Se ancla al fondo del panel de checkout
+   (que ya hace su propio scroll) para que el botón principal esté
+   siempre visible, sin importar qué tan largo sea el contenido de arriba. */
+@media (max-width: 1023px) {
+  .public-drawer-backdrop .public-review-page > .public-primary,
+  .public-drawer-backdrop .public-delivery-step > .public-primary,
+  .public-drawer-backdrop .public-address-step > .public-primary,
+  .public-drawer-backdrop .public-checkout > .public-primary {
+    position: sticky;
+    bottom: 10px;
+    margin-top: 12px;
+    z-index: 6;
+    box-shadow: 0 0 0 16px rgba(14,16,22,0.98), 0 14px 30px rgba(227,27,43,.28);
+  }
+  .public-drawer-backdrop .public-confirm-page > .public-whatsapp-cta {
+    position: sticky;
+    bottom: 10px;
+    margin-top: 10px;
+    z-index: 6;
+    box-shadow: 0 0 0 16px rgba(14,16,22,0.98), 0 14px 30px rgba(8,169,67,.28);
+  }
 }
 
 /* El bloque "DESKTOP VIEWPORT" de arriba trata como escritorio a

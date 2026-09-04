@@ -305,8 +305,10 @@ export function PublicMenu() {
   const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
   const [addressMethod, setAddressMethod] = useState<'gps' | 'map' | 'search' | null>(null)
-  const [addressError, setAddressError] = useState('')
+  const [addressFieldError, setAddressFieldError] = useState<'' | 'address' | 'geo' | 'reference'>('')
   const addressRef = useRef<HTMLInputElement>(null)
+  const referenceRef = useRef<HTMLInputElement>(null)
+  const addressSelectedRef = useRef<HTMLDivElement>(null)
   const addressSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [notes, setNotes] = useState('')
   const [bcvRate, setBcvRate] = useState<number | null>(null)
@@ -320,6 +322,25 @@ export function PublicMenu() {
     if (!error) return
     document.querySelector('.public-cart-drawer')?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [error])
+  const [fieldError, setFieldError] = useState<'' | 'name' | 'phone' | 'identification'>('')
+  const nameRef = useRef<HTMLInputElement>(null)
+  const phoneRef = useRef<HTMLInputElement>(null)
+  const identificationRef = useRef<HTMLInputElement>(null)
+  // Al fallar la validación de un campo puntual, llevar al cliente directo a
+  // ese campo (en vez de un aviso genérico perdido en la pantalla).
+  useEffect(() => {
+    if (!fieldError) return
+    const ref = fieldError === 'name' ? nameRef : fieldError === 'phone' ? phoneRef : identificationRef
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    ref.current?.focus()
+  }, [fieldError])
+  useEffect(() => {
+    if (!addressFieldError) return
+    const ref = addressFieldError === 'reference' ? referenceRef : addressFieldError === 'address' ? addressRef : addressSelectedRef
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    if (addressFieldError === 'address') addressRef.current?.focus()
+    if (addressFieldError === 'reference') referenceRef.current?.focus()
+  }, [addressFieldError])
   const [cartGuardMessage, setCartGuardMessage] = useState('')
   const [cartGuardClosing, setCartGuardClosing] = useState(false)
   const restoringFlow = useRef(true)
@@ -938,7 +959,7 @@ export function PublicMenu() {
         const { latitude: lat, longitude: lng } = pos.coords
         setGeoCoords({ lat, lng })
         setAddressMethod('gps')
-        setAddressError('')
+        setAddressFieldError('')
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
             headers: { 'Accept-Language': 'es' }
@@ -961,7 +982,7 @@ export function PublicMenu() {
     setShowSuggestions(true)
     setGeoCoords(null)
     setAddressMethod(null)
-    setAddressError('')
+    setAddressFieldError(value => value === 'reference' ? value : '')
     if (addressSearchTimer.current) clearTimeout(addressSearchTimer.current)
     if (query.trim().length < 4) { setAddressSuggestions([]); setSearchingAddress(false); return }
     addressSearchTimer.current = setTimeout(async () => {
@@ -991,7 +1012,7 @@ export function PublicMenu() {
     setAddress(s.display_name.length > 120 ? s.display_name.substring(0, 120) + '…' : s.display_name)
     setGeoCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) })
     setAddressMethod('search')
-    setAddressError('')
+    setAddressFieldError(value => value === 'reference' ? value : '')
     setShowSuggestions(false)
     setAddressSuggestions([])
   }
@@ -999,7 +1020,7 @@ export function PublicMenu() {
   const selectMapLocation = async (coordinates: MapCoordinates) => {
     setGeoCoords(coordinates)
     setAddressMethod('map')
-    setAddressError('')
+    setAddressFieldError(value => value === 'reference' ? value : '')
     setShowSuggestions(false)
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.lat}&lon=${coordinates.lng}&addressdetails=1`, { headers: { 'Accept-Language': 'es' } })
@@ -1011,21 +1032,25 @@ export function PublicMenu() {
   }
 
   const continueFromAddress = () => {
-    if (address.trim().length < 8) return setAddressError('Escribe una dirección o toca un punto del mapa para seleccionarla.')
-    if (!geoCoords) return setAddressError('Confirma la ubicación tocando el mapa o eligiendo una sugerencia.')
-    if (orderType === 'delivery' && !addressReference.trim()) return setAddressError('Agrega una referencia para que el repartidor encuentre el lugar fácilmente.')
-    setAddressError('')
+    if (address.trim().length < 8) return setAddressFieldError('address')
+    if (!geoCoords) return setAddressFieldError('geo')
+    if (orderType === 'delivery' && !addressReference.trim()) return setAddressFieldError('reference')
+    setAddressFieldError('')
     setStep('details')
   }
 
   const continueToConfirmation = () => {
     setError('')
-    if (name.trim().length < 2) return setError('Escribe tu nombre.')
-    if (phone.replace(/\D/g, '').length < 7) return setError('Escribe un teléfono válido.')
-    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) return setError('Escribe una cédula válida, por ejemplo V-12345678.')
-    if (orderType === 'delivery' && address.trim().length < 8) return setError('Escribe la dirección de entrega.')
-    if (orderType === 'delivery' && !geoCoords) return setError('Confirma la ubicación tocando el mapa o eligiendo una sugerencia.')
-    if (orderType === 'delivery' && !addressReference.trim()) return setError('Agrega una referencia para que el repartidor encuentre el lugar fácilmente.')
+    setFieldError('')
+    if (name.trim().length < 2) return setFieldError('name')
+    if (phone.replace(/\D/g, '').length < 7) return setFieldError('phone')
+    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) return setFieldError('identification')
+    if (orderType === 'delivery' && (address.trim().length < 8 || !geoCoords || !addressReference.trim())) {
+      setStep('address')
+      if (address.trim().length < 8) return setAddressFieldError('address')
+      if (!geoCoords) return setAddressFieldError('geo')
+      return setAddressFieldError('reference')
+    }
     if (!cart.length) return setError('Tu carrito está vacío.')
     if (!draftOrderCode) setDraftOrderCode(`WEB-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
     setStep('confirm')
@@ -1041,10 +1066,11 @@ export function PublicMenu() {
       return
     }
     setError('')
-    if (name.trim().length < 2) return setError('Escribe tu nombre.')
-    if (phone.replace(/\D/g, '').length < 7) return setError('Escribe un teléfono válido.')
-    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) return setError('Escribe una cédula válida, por ejemplo V-12345678.')
-    if (orderType === 'delivery' && address.trim().length < 8) return setError('Escribe la dirección de entrega.')
+    setFieldError('')
+    if (name.trim().length < 2) { setStep('details'); return setFieldError('name') }
+    if (phone.replace(/\D/g, '').length < 7) { setStep('details'); return setFieldError('phone') }
+    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) { setStep('details'); return setFieldError('identification') }
+    if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return setAddressFieldError('address') }
     if (!cart.length) return setError('Tu carrito está vacío.')
 
     const lineNotes = cart.filter(item => item.notes).map(item => `${item.productName}: ${item.notes}`).join(' | ')
@@ -1913,7 +1939,6 @@ export function PublicMenu() {
                   </div>
                 )}
 
-                {error && products.length > 0 && <Toast type="error" message={error} onClose={() => setError('')} />}
                 {error && products.length === 0 ? <div className="public-state error">{error}</div> : (
                   <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
                     {visibleGroups.length === 0 ? (
@@ -2472,18 +2497,17 @@ export function PublicMenu() {
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
-        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className="public-address-selected"><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span></div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className="public-address-extra"><span>Casa / edificio / referencia</span><input value={addressReference} onChange={event => setAddressReference(event.target.value)} placeholder="Ej. Torre B, Piso 4, Apt. 4B" /></label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div>{addressError && <p className="public-address-error" role="alert">{addressError}</p>}<button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
+        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Casa / edificio / referencia</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. Torre B, Piso 4, Apt. 4B" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div><button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
         {step === 'details' && (
           <div className="public-checkout">
             <div className="public-data-intro">
               <strong>¿A nombre de quién?</strong>
               <span>Solo para coordinar tu pedido.</span>
             </div>
-            {error && <Toast type="error" message={error} onClose={() => setError('')} />}
             <div className="public-data-form-card">
-              <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input autoComplete="name" value={name} onChange={event => setName(event.target.value)} placeholder="Nombre y apellido" /></div></span></label>
-              <label className="public-data-field"><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula</span><div className="public-data-input"><input inputMode="text" autoComplete="off" value={identification} maxLength={12} onChange={event => setIdentification(event.target.value.toUpperCase().replace(/[^VE0-9-]/g, ''))} placeholder="V-12345678" /></div><small>La usaremos para conservar tu historial de pedidos</small></span></label>
-              <label className="public-data-field"><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => setPhone(event.target.value)} placeholder="0412 000 0000" /></div><small>Te escribiremos aquí para confirmar</small></span></label>
+              <label className={`public-data-field${fieldError === 'name' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input ref={nameRef} autoComplete="name" value={name} onChange={event => { setName(event.target.value); if (fieldError === 'name') setFieldError('') }} placeholder="Nombre y apellido" /></div>{fieldError === 'name' && <em className="public-field-error" role="alert">Escribe tu nombre.</em>}</span></label>
+              <label className={`public-data-field${fieldError === 'identification' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula</span><div className="public-data-input"><input ref={identificationRef} inputMode="text" autoComplete="off" value={identification} maxLength={12} onChange={event => { setIdentification(event.target.value.toUpperCase().replace(/[^VE0-9-]/g, '')); if (fieldError === 'identification') setFieldError('') }} placeholder="V-12345678" /></div>{fieldError === 'identification' ? <em className="public-field-error" role="alert">Escribe una cédula válida, por ejemplo V-12345678.</em> : <small>La usaremos para conservar tu historial de pedidos</small>}</span></label>
+              <label className={`public-data-field${fieldError === 'phone' ? ' invalid' : ''}`}><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input ref={phoneRef} type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => { setPhone(event.target.value); if (fieldError === 'phone') setFieldError('') }} placeholder="0412 000 0000" /></div>{fieldError === 'phone' ? <em className="public-field-error" role="alert">Escribe un teléfono válido.</em> : <small>Te escribiremos aquí para confirmar</small>}</span></label>
             </div>
             <div className="public-pay-card">
               <div className="public-pay-head"><Wallet size={17} /><span>¿Cómo vas a pagar?</span></div>
@@ -2506,7 +2530,6 @@ export function PublicMenu() {
               {payMode === 'mixed' && <p className="public-pay-hint">Al cobrar coordinamos cuánto va por cada método.</p>}
             </div>
             <label className="public-data-notes"><span className="public-data-notes-title"><MessageSquareText /><span><strong>¿Algo para la cocina?</strong><small>Opcional</small></span></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín, poca salsa…" /></label>
-            <div className="public-data-privacy"><ShieldCheck /><span>Tus datos están seguros y solo se usarán para este pedido.</span></div>
             <button className="public-primary whatsapp" disabled={submitting} onClick={continueToConfirmation}>Revisar pedido <ChevronRight /></button>
           </div>
         )}
