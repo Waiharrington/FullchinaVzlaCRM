@@ -66,16 +66,23 @@ describe('Acciones de Inventario', () => {
     expect(mocks.getStockMovements).toHaveBeenCalledWith('ingredient-1')
   })
 
-  it('edita el nombre, clasificación y costo sin sobrescribir el stock', async () => {
+  it('edita el nombre, unidad, clasificación y costo sin sobrescribir el stock', async () => {
+    mocks.getUnits.mockResolvedValue([
+      { id: 'unit-1', name: 'Litro', symbol: 'L' },
+      { id: 'unit-2', name: 'Mililitro', symbol: 'ml' },
+    ])
     renderInventory()
     fireEvent.click(await screen.findByRole('button', { name: 'Editar Aceite' }))
     fireEvent.change(await screen.findByLabelText('Nombre'), { target: { value: 'Aceite vegetal' } })
     fireEvent.change(screen.getByLabelText('Costo por unidad (USD)'), { target: { value: '5.5' } })
-    fireEvent.change(screen.getByLabelText('Clasificación'), { target: { value: 'beverage' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Unidad base' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Mililitro (ml)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clasificación' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Bebida' }))
     fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
 
     await waitFor(() => expect(mocks.updateIngredient).toHaveBeenCalledWith('ingredient-1', {
-      name: 'Aceite vegetal', inventory_class: 'beverage',
+      name: 'Aceite vegetal', unit_id: 'unit-2', inventory_class: 'beverage',
     }))
     expect(mocks.updateIngredientCost).toHaveBeenCalledWith('ingredient-1', 5.5, 'owner-1')
   })

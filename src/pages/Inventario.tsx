@@ -40,6 +40,7 @@ import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { DateField } from '../components/DateField'
+import { StyledSelect } from '../components/StyledSelect'
 import './Inventario.css'
 
 const ITEMS_PER_PAGE = 8
@@ -219,7 +220,11 @@ export function Inventario() {
     setModalLoading(true)
     setModalError('')
     try {
-      await updateIngredient(selectedIngredient.id, { name, inventory_class: editForm.inventoryClass })
+      await updateIngredient(selectedIngredient.id, {
+        name,
+        unit_id: editForm.unitId,
+        inventory_class: editForm.inventoryClass,
+      })
       await updateIngredientCost(selectedIngredient.id, price, user.id)
       await fetchAll()
       setSuccessMessage(`${name} fue actualizado correctamente.`)
@@ -282,12 +287,14 @@ export function Inventario() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [ingData, movData] = await Promise.all([
+      const [ingData, movData, unitData] = await Promise.all([
         getIngredients(),
         getStockMovements(),
+        getUnits().catch(() => []),
       ])
       setIngredients(ingData)
       setStockMovements(movData)
+      if (unitData.length > 0) setUnits(unitData)
       inventarioCache = { ingredients: ingData, stockMovements: movData }
     } catch (e) {
       console.error('Error:', e)
@@ -909,10 +916,33 @@ export function Inventario() {
               <div className="inv-form-grid">
                 <label className="wide"><span>Nombre</span><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></label>
                 <label><span>Costo por unidad (USD)</span><input type="number" min="0" step="0.01" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))} /></label>
-                <label><span>Unidad base</span><StyledSelect value={editForm.unitId} disabled aria-describedby="unit-help">{units.map(unit => <option value={unit.id} key={unit.id}>{unit.name} ({unit.symbol})</option>)}</StyledSelect></label>
-                <label className="wide"><span>Clasificación</span><StyledSelect value={editForm.inventoryClass} onChange={e => setEditForm(f => ({ ...f, inventoryClass: e.target.value as Ingredient['inventoryClass'] }))}><option value="raw_material">Materia prima</option><option value="packaging">Empaque</option><option value="beverage">Bebida</option><option value="non_inventory">No inventariable</option></StyledSelect></label>
+                <label>
+                  <span>Unidad base</span>
+                  <StyledSelect
+                    aria-label="Unidad base"
+                    value={editForm.unitId}
+                    onChange={e => setEditForm(f => ({ ...f, unitId: e.target.value }))}
+                  >
+                    {units.map(unit => (
+                      <option value={unit.id} key={unit.id}>{unit.name} ({unit.symbol})</option>
+                    ))}
+                  </StyledSelect>
+                </label>
+                <label className="wide">
+                  <span>Clasificación</span>
+                  <StyledSelect
+                    aria-label="Clasificación"
+                    value={editForm.inventoryClass}
+                    onChange={e => setEditForm(f => ({ ...f, inventoryClass: e.target.value as Ingredient['inventoryClass'] }))}
+                  >
+                    <option value="raw_material">Materia prima</option>
+                    <option value="packaging">Empaque</option>
+                    <option value="beverage">Bebida</option>
+                    <option value="non_inventory">No inventariable</option>
+                  </StyledSelect>
+                </label>
               </div>
-              <p className="inv-form-hint" id="unit-help">La unidad base no se cambia porque alteraría el significado del historial. La existencia se ajusta con los botones + y −.</p>
+              <p className="inv-form-hint">La existencia del producto se ajusta con los botones + y − de la tabla.</p>
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
               <button className="inv-generate-order-btn" disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : <Save size={17} />} Guardar cambios</button>
             </form>}
