@@ -14,6 +14,7 @@ import {
   deleteWebOrder,
   validateMyPin,
   setOrderDeliveryFee,
+  getAllSellableProducts,
   type PaymentMethod,
   type CartItem,
 } from '../lib/dataService'
@@ -29,6 +30,8 @@ import {
   Search,
   Calendar,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   Clock,
   CheckCircle,
@@ -468,7 +471,10 @@ function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, 
       {/* Column Body / Order Cards */}
       <div ref={setNodeRef} className={`kanban-col-body ${isOver ? 'drag-over' : ''}`}>
         {colOrders.length === 0 ? (
-          <div className="empty-col">Sin comandas</div>
+          <div className="empty-col">
+            <span className="empty-col-icon" style={{ color: col.color }}>{col.icon}</span>
+            <span className="empty-col-text">Sin comandas</span>
+          </div>
         ) : (
           visibleOrders.map(order => (
             <ComandaCard
@@ -542,6 +548,19 @@ export function Comandas() {
   const [deletePin, setDeletePin] = useState('')
   const [deleteError, setDeleteError] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [productImageByName, setProductImageByName] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    getAllSellableProducts()
+      .then(products => {
+        const map = new Map<string, string>()
+        for (const p of products) {
+          if (p.imageUrl) map.set(normalizeForSearch(p.name), p.imageUrl)
+        }
+        setProductImageByName(map)
+      })
+      .catch(() => {})
+  }, [])
+
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [closingHistory, setClosingHistory] = useState(false)
   const [historyOrders, setHistoryOrders] = useState<ComandaOrder[]>([])
@@ -572,7 +591,24 @@ export function Comandas() {
     }
   }, [showNewOrderModal, closeNewOrderModal])
 
-  const [historyRange, setHistoryRange] = useState<'today' | 'yesterday' | '7d' | '30d'>('7d')
+  const [historyMonthCursor, setHistoryMonthCursor] = useState(() => {
+    const n = new Date()
+    return new Date(n.getFullYear(), n.getMonth(), 1)
+  })
+  const [historyWeekStartKey, setHistoryWeekStartKey] = useState<string | null>(null)
+  const [showHistoryYearMenu, setShowHistoryYearMenu] = useState(false)
+  const historyYearMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showHistoryYearMenu) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (historyYearMenuRef.current && !historyYearMenuRef.current.contains(e.target as Node)) {
+        setShowHistoryYearMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showHistoryYearMenu])
 
   // Filtros de la barra superior (antes eran decorativos, sin lógica).
   const [dateFilter, setDateFilter] = useState<'today' | 'yesterday'>('today')
@@ -1127,17 +1163,71 @@ export function Comandas() {
       setShowHistoryModal(false)
       setClosingHistory(false)
       setHistorySearch('')
+      setHistoryMonthCursor(() => {
+        const n = new Date()
+        return new Date(n.getFullYear(), n.getMonth(), 1)
+      })
+      setHistoryWeekStartKey(null)
       then?.()
     }, 200)
   }
 
-  const loadHistoryOrders = async () => {
+  const mondayOf = (d: Date) => {
+    const day = d.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff)
+  }
+
+  const historyWeeksInMonth = useMemo(() => {
+    const monthStart = historyMonthCursor
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+    const today = new Date()
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const weeks: Array<{ key: string; start: Date; end: Date; label: string }> = []
+    let cursor = mondayOf(monthStart)
+    while (cursor <= monthEnd) {
+      const weekEnd = new Date(cursor)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      if (cursor <= todayStart) {
+        const cappedEnd = weekEnd > todayStart ? todayStart : weekEnd
+        const startLabel = cursor.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '')
+        const endLabel = cappedEnd.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '')
+        weeks.push({
+          key: cursor.toISOString().slice(0, 10),
+          start: cursor,
+          end: cappedEnd,
+          label: `${startLabel} – ${endLabel}`,
+        })
+      }
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7)
+    }
+    return weeks.reverse()
+  }, [historyMonthCursor])
+
+  useEffect(() => {
+    if (!showHistoryModal) return
+    if (historyWeeksInMonth.length === 0) {
+      setHistoryWeekStartKey(null)
+      return
+    }
+    if (!historyWeeksInMonth.some(w => w.key === historyWeekStartKey)) {
+      setHistoryWeekStartKey(historyWeeksInMonth[0].key)
+    }
+  }, [historyWeeksInMonth, showHistoryModal, historyWeekStartKey])
+
+  const canGoNextMonth = useMemo(() => {
+    const now = new Date()
+    return historyMonthCursor.getFullYear() < now.getFullYear() ||
+      (historyMonthCursor.getFullYear() === now.getFullYear() && historyMonthCursor.getMonth() < now.getMonth())
+  }, [historyMonthCursor])
+
+  const loadHistoryOrders = async (monthCursor: Date) => {
     setHistoryLoading(true)
     try {
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      const dateFrom = dayRangeInTimeZone(thirtyDaysAgo).start
-      const dateTo = dayRangeInTimeZone().end
+      const monthStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1)
+      const monthEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0)
+      const dateFrom = dayRangeInTimeZone(monthStart).start
+      const dateTo = dayRangeInTimeZone(monthEnd).end
 
       const allOrders = await getOrdersWithItems(dateFrom, dateTo)
 
@@ -1209,6 +1299,12 @@ export function Comandas() {
     }
   }
 
+  useEffect(() => {
+    if (!showHistoryModal) return
+    loadHistoryOrders(historyMonthCursor)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHistoryModal, historyMonthCursor])
+
   const filteredHistoryOrders = useMemo(() => {
     if (!historySearch) return historyOrders
     const q = normalizeForSearch(historySearch)
@@ -1229,18 +1325,13 @@ export function Comandas() {
 
     const now = new Date()
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const startOfYesterday = new Date(startOfToday)
-    startOfYesterday.setDate(startOfYesterday.getDate() - 1)
-    const rangeCutoff = new Date(startOfToday)
-    if (historyRange === '7d') rangeCutoff.setDate(rangeCutoff.getDate() - 6)
-    else if (historyRange === '30d') rangeCutoff.setDate(rangeCutoff.getDate() - 29)
+    const selectedWeek = historyWeeksInMonth.find(w => w.key === historyWeekStartKey)
 
     const filtered = filteredHistoryOrders.filter(order => {
       const d = parseDdMmYyyy(order.date)
       if (!d) return true
-      if (historyRange === 'today') return d.getTime() === startOfToday.getTime()
-      if (historyRange === 'yesterday') return d.getTime() === startOfYesterday.getTime()
-      return d.getTime() >= rangeCutoff.getTime()
+      if (!selectedWeek) return false
+      return d.getTime() >= selectedWeek.start.getTime() && d.getTime() <= selectedWeek.end.getTime()
     })
 
     const map = new Map<string, ComandaOrder[]>()
@@ -1264,7 +1355,7 @@ export function Comandas() {
       }
       return { key, label, orders }
     })
-  }, [filteredHistoryOrders, historyRange])
+  }, [filteredHistoryOrders, historyWeeksInMonth, historyWeekStartKey])
 
   // Simulation timer for elapsed mins
   useEffect(() => {
@@ -1453,7 +1544,7 @@ export function Comandas() {
               {boardExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               <span>{boardExpanded ? 'Salir' : 'Ampliar'}</span>
             </button>
-            <button className="btn-nueva-comanda btn-historial" disabled={isDemoMode} title={isDemoMode ? 'No disponible en la vista demo' : undefined} onClick={() => { setShowHistoryModal(true); loadHistoryOrders() }}>
+            <button className="btn-nueva-comanda btn-historial" disabled={isDemoMode} title={isDemoMode ? 'No disponible en la vista demo' : undefined} onClick={() => setShowHistoryModal(true)}>
               <Clock size={16} />
               <span>Historial</span>
             </button>
@@ -1726,8 +1817,14 @@ export function Comandas() {
                 <div className={`cmd-badge ${selectedOrder.orderType === 'Delivery' ? 'type-delivery' : selectedOrder.orderType.startsWith('Mesa') ? 'type-mesa' : 'type-takeaway'}`}>{selectedOrder.orderType}</div>
               </div>
               <div className="cmd-header-actions">
+                <button className="cmd-btn-outline cmd-header-print-btn" onClick={() => window.print()}>
+                  <Printer size={16} /> Imprimir
+                </button>
                 <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
                   <Trash2 size={18} />
+                </button>
+                <button className="cmd-close-btn" onClick={() => closeSelectedOrder()} title="Cerrar">
+                  <X size={20} />
                 </button>
               </div>
             </header>
@@ -1872,7 +1969,15 @@ export function Comandas() {
                           <tr key={item.id}>
                             <td>
                               <div className="cmd-product-cell">
-                                <div className={`cmd-product-img ${item.name === 'Delivery' ? 'is-delivery' : 'is-food'}`}>{item.name === 'Delivery' ? <Bike size={16} /> : <Utensils size={16} />}</div>
+                                <div className={`cmd-product-img ${item.name === 'Delivery' ? 'is-delivery' : 'is-food'}`}>
+                                  {item.name === 'Delivery' ? (
+                                    <Bike size={16} />
+                                  ) : productImageByName.get(normalizeForSearch(item.name)) ? (
+                                    <img src={productImageByName.get(normalizeForSearch(item.name))} alt={item.name} className="cmd-product-photo" />
+                                  ) : (
+                                    <Utensils size={16} />
+                                  )}
+                                </div>
                                 <span>{item.name}</span>
                               </div>
                             </td>
@@ -1906,6 +2011,45 @@ export function Comandas() {
                   <div className="cmd-section-title"><FileText size={16} className="cmd-icon-notes" /> Notas del pedido</div>
                   <div className="cmd-notes-content">
                     {cleanNotes(selectedOrder.notes) ? cleanNotes(selectedOrder.notes).split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
+                  </div>
+                </div>
+
+                <div className="cmd-modal-timeline cmd-modal-timeline-compact">
+                  <div className="cmd-timeline-header">
+                    <Clock size={14} className="cmd-tl-icon"/> Progreso del pedido
+                  </div>
+                  <div className="cmd-timeline-steps">
+                    <div className={`cmd-step ${['new', 'preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
+                      <div className="cmd-step-icon"><FileText size={14} /></div>
+                      <div className="cmd-step-info">
+                        <span className="cmd-step-name">Nueva</span>
+                        <span className="cmd-step-time">{selectedOrder.time}</span>
+                      </div>
+                    </div>
+                    <div className={`cmd-timeline-line ${['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
+                    <div className={`cmd-step ${['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
+                      <div className="cmd-step-icon"><Clock size={14} /></div>
+                      <div className="cmd-step-info">
+                        <span className="cmd-step-name">En preparación</span>
+                        <span className="cmd-step-time">{['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? selectedOrder.time : '—'}</span>
+                      </div>
+                    </div>
+                    <div className={`cmd-timeline-line ${['ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
+                    <div className={`cmd-step ${['ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
+                      <div className="cmd-step-icon"><CheckCircle size={14} /></div>
+                      <div className="cmd-step-info">
+                        <span className="cmd-step-name">Lista</span>
+                        <span className="cmd-step-time">—</span>
+                      </div>
+                    </div>
+                    <div className={`cmd-timeline-line ${['delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
+                    <div className={`cmd-step ${['delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
+                      <div className="cmd-step-icon"><Truck size={14} /></div>
+                      <div className="cmd-step-info">
+                        <span className="cmd-step-name">Entregada</span>
+                        <span className="cmd-step-time">{selectedOrder.status === 'delivered' ? (selectedOrder.deliveredTime || '—') : '—'}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1974,77 +2118,38 @@ export function Comandas() {
               </div>
             </div>
 
-            <div className="cmd-modal-timeline">
-              <div className="cmd-timeline-header">
-                <Clock size={14} className="cmd-tl-icon"/> Progreso del pedido
-              </div>
-              <div className="cmd-timeline-steps">
-                <div className={`cmd-step ${['new', 'preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                  <div className="cmd-step-icon"><FileText size={16} /></div>
-                  <div className="cmd-step-info">
-                    <span className="cmd-step-name">Nueva</span>
-                    <span className="cmd-step-time">{selectedOrder.time}</span>
-                  </div>
+            {(selectedOrder.status !== 'delivered' || selectedOrder.source === 'web' || !selectedOrder.isPaid) && (
+              <footer className="cmd-modal-footer">
+                <div className="cmd-footer-left">
+                  {selectedOrder.status !== 'delivered' && (
+                    <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
+                  )}
                 </div>
-                <div className={`cmd-timeline-line ${['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
-                <div className={`cmd-step ${['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                  <div className="cmd-step-icon"><Clock size={16} /></div>
-                  <div className="cmd-step-info">
-                    <span className="cmd-step-name">En preparación</span>
-                    <span className="cmd-step-time">{['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? selectedOrder.time : '—'}</span>
-                  </div>
-                </div>
-                <div className={`cmd-timeline-line ${['ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
-                <div className={`cmd-step ${['ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                  <div className="cmd-step-icon"><CheckCircle size={16} /></div>
-                  <div className="cmd-step-info">
-                    <span className="cmd-step-name">Lista</span>
-                    <span className="cmd-step-time">{['ready', 'delivered'].includes(selectedOrder.status) ? '—' : '—'}</span>
-                  </div>
-                </div>
-                <div className={`cmd-timeline-line ${['delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
-                <div className={`cmd-step ${['delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                  <div className="cmd-step-icon"><Truck size={16} /></div>
-                  <div className="cmd-step-info">
-                    <span className="cmd-step-name">Entregada</span>
-                    <span className="cmd-step-time">{selectedOrder.status === 'delivered' ? (selectedOrder.deliveredTime || '—') : '—'}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <footer className="cmd-modal-footer">
-              <div className="cmd-footer-left">
-                {selectedOrder.status !== 'delivered' && (
-                  <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
-                )}
-                <button className="cmd-btn-outline" onClick={() => window.print()}><Printer size={16} /> Imprimir comanda</button>
-              </div>
-              <div className="cmd-footer-right">
-                {selectedOrder.source === 'web' ? (
-                  <button className="cmd-btn-primary" disabled={confirmingWebId === selectedOrder.webRequestId} onClick={() => handleConfirmWebOrder(selectedOrder)}>
-                    <CheckCircle size={16} /> {confirmingWebId === selectedOrder.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
-                  </button>
-                ) : !selectedOrder.isPaid && (
-                  <button
-                    className="cmd-btn-cobrar"
-                    onClick={() => handleOpenPaymentForOrder(selectedOrder)}
+                <div className="cmd-footer-right">
+                  {selectedOrder.source === 'web' ? (
+                    <button className="cmd-btn-primary" disabled={confirmingWebId === selectedOrder.webRequestId} onClick={() => handleConfirmWebOrder(selectedOrder)}>
+                      <CheckCircle size={16} /> {confirmingWebId === selectedOrder.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
+                    </button>
+                  ) : !selectedOrder.isPaid && (
+                    <button
+                      className="cmd-btn-cobrar"
+                      onClick={() => handleOpenPaymentForOrder(selectedOrder)}
+                    >
+                      <DollarSign size={16} /> Cobrar pedido
+                    </button>
+                  )}
+                  {selectedOrder.source !== 'web' && selectedOrder.status !== 'delivered' && <button
+                    className="cmd-btn-primary"
+                    onClick={() => {
+                      handleAdvanceStatus(selectedOrder.id, selectedOrder.status)
+                      closeSelectedOrder()
+                    }}
                   >
-                    <DollarSign size={16} /> Cobrar pedido
-                  </button>
-                )}
-                {selectedOrder.source !== 'web' && selectedOrder.status !== 'delivered' && <button
-                  className="cmd-btn-primary"
-                  onClick={() => {
-                    handleAdvanceStatus(selectedOrder.id, selectedOrder.status)
-                    closeSelectedOrder()
-                  }}
-                >
-                  <CheckCircle size={16} /> Marcar como {selectedOrder.status === 'new' ? 'preparación' : selectedOrder.status === 'preparing' ? 'lista' : 'entregada'}
-                </button>}
-                <button className="cmd-btn-secondary" onClick={() => closeSelectedOrder()}>Cerrar</button>
-              </div>
-            </footer>
+                    <CheckCircle size={16} /> Marcar como {selectedOrder.status === 'new' ? 'preparación' : selectedOrder.status === 'preparing' ? 'lista' : 'entregada'}
+                  </button>}
+                </div>
+              </footer>
+            )}
           </div>
         </div>,
         document.body
@@ -2057,7 +2162,7 @@ export function Comandas() {
               <ShieldCheck size={24} className="cmd-pin-icon" />
               <h3>Autorización requerida</h3>
             </div>
-            <p className="cmd-pin-text">Ingresa tu PIN para eliminar la comanda <strong>{selectedOrder?.orderNumber}</strong></p>
+            <p className="cmd-pin-text">Ingresa tu PIN para eliminar la comanda <strong className="cmd-pin-order-no">{selectedOrder?.orderNumber}</strong></p>
             <input
               key={deletePin}
               type="password"
@@ -2380,25 +2485,77 @@ export function Comandas() {
                   </button>
                 )}
               </div>
-              <div className="cmd-history-range" role="tablist" aria-label="Rango de fechas">
-                {([
-                  { value: 'today', label: 'Hoy' },
-                  { value: 'yesterday', label: 'Ayer' },
-                  { value: '7d', label: '7 días' },
-                  { value: '30d', label: '30 días' },
-                ] as const).map(r => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    role="tab"
-                    aria-selected={historyRange === r.value}
-                    className={`cmd-history-range-btn ${historyRange === r.value ? 'active' : ''}`}
-                    onClick={() => setHistoryRange(r.value)}
-                  >
-                    {r.label}
-                  </button>
-                ))}
+            </div>
+
+            <div className="cmd-history-nav">
+              <div className="cmd-history-month-nav">
+                <button
+                  type="button"
+                  className="cmd-history-month-btn"
+                  aria-label="Mes anterior"
+                  onClick={() => setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="cmd-history-month-label">
+                  {(() => {
+                    const raw = historyMonthCursor.toLocaleDateString('es-VE', { month: 'long' })
+                    return raw.charAt(0).toUpperCase() + raw.slice(1)
+                  })()}
+                </span>
+                <button
+                  type="button"
+                  className="cmd-history-month-btn"
+                  aria-label="Mes siguiente"
+                  disabled={!canGoNextMonth}
+                  onClick={() => setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
+              <div className="filter-dropdown-wrap" ref={historyYearMenuRef}>
+                <button
+                  type="button"
+                  className="cmd-history-year-btn"
+                  aria-label="Año"
+                  onClick={() => setShowHistoryYearMenu(v => !v)}
+                >
+                  <span>{historyMonthCursor.getFullYear()}</span>
+                  <ChevronDown size={12} />
+                </button>
+                {showHistoryYearMenu && (
+                  <div className="filter-dropdown-menu cmd-history-year-menu">
+                    {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                      <button
+                        key={y}
+                        type="button"
+                        className={historyMonthCursor.getFullYear() === y ? 'active' : ''}
+                        onClick={() => {
+                          setHistoryMonthCursor(prev => new Date(y, prev.getMonth(), 1))
+                          setShowHistoryYearMenu(false)
+                        }}
+                      >
+                        {y}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="cmd-history-weeks" role="tablist" aria-label="Semana">
+              {historyWeeksInMonth.map(w => (
+                <button
+                  key={w.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={historyWeekStartKey === w.key}
+                  className={`cmd-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
+                  onClick={() => setHistoryWeekStartKey(w.key)}
+                >
+                  {w.label}
+                </button>
+              ))}
             </div>
 
             <div className="cmd-history-body">

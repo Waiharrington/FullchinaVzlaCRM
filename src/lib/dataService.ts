@@ -2772,6 +2772,11 @@ export async function createFinancialTransfer(params: {
   if (error) throw error
 }
 
+export async function deleteFinancialOperation(id: string): Promise<void> {
+  const { error } = await client().from('financial_operations').delete().eq('id', id)
+  if (error) throw error
+}
+
 export async function registerStaffMealConsumption(params: {
   mealType: 'lunch' | 'dinner'
   servings: number

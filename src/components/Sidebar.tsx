@@ -163,20 +163,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </button>
       </div>
 
-
-
-      <div className="sidebar-user-profile" aria-hidden={collapsed}>
-          <img 
-            src="/optimized/login-carousel/slide7.webp" 
-            alt="Avatar" 
-            className="sidebar-user-avatar" 
-          />
-          <div className="sidebar-user-info">
-            <span className="sidebar-user-name">{user?.email || 'Admin'}</span>
-            <span className="sidebar-user-sub">Full China</span>
-          </div>
-      </div>
-
       {tooltip && (
         <div 
           className="sidebar-tooltip-portal"

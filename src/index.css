@@ -198,9 +198,38 @@ input, select, textarea {
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: var(--accent-primary);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.1);
+  border-color: rgba(225, 29, 42, 0.5);
+  background: rgba(225, 29, 42, 0.04);
+  box-shadow: 0 0 0 3px rgba(225, 29, 42, 0.1);
+}
+
+/* Foco unificado para toda la app: mismo borde/halo fino que ya usaba el
+   buscador de Menú. Las reglas específicas de cada página tenían su propio
+   halo (más grueso); se fuerza aquí para que no se repita en ningún lado. */
+input:focus, select:focus, textarea:focus,
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  border-color: rgba(225, 29, 42, 0.5) !important;
+  background: rgba(225, 29, 42, 0.04) !important;
+  box-shadow: 0 0 0 3px rgba(225, 29, 42, 0.1) !important;
+}
+
+/* Oculta las flechas nativas de los input type="number" en toda la app.
+   Los steppers propios (NumberStepper) usan sus botones custom aparte. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Anillo de foco por defecto para botones: reemplaza el outline blanco/azul
+   nativo del navegador por el rojo de marca. Cualquier estilo :focus-visible
+   más específico definido en una página sigue ganando por especificidad. */
+button:focus-visible, a:focus-visible, [role="button"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(227, 27, 43, 0.35);
 }
 
 /* ─── Unified dark select styling ─── */

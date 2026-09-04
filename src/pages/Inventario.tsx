@@ -14,6 +14,7 @@ import {
   type StockMovement,
 } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
+import { StyledSelect } from '../components/StyledSelect'
 import {
   Package,
   Search,
@@ -27,6 +28,7 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ShoppingCart,
   X,
   Plus,
@@ -34,6 +36,7 @@ import {
   Save,
   Loader2,
   Trash2,
+  History,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -137,6 +140,12 @@ export function Inventario() {
     }
   }, [])
 
+  const [historyMonthCursor, setHistoryMonthCursor] = useState(() => {
+    const n = new Date()
+    return new Date(n.getFullYear(), n.getMonth(), 1)
+  })
+  const [historyWeekStartKey, setHistoryWeekStartKey] = useState<string | null>(null)
+  const [openDayKey, setOpenDayKey] = useState<string | null>(null)
   const closeIngredientModal = (then?: () => void) => {
     if (closingIngredient) return
     setClosingIngredient(true)
@@ -166,6 +175,9 @@ export function Inventario() {
     setModalMode('view')
     setModalError('')
     setModalLoading(true)
+    const n = new Date()
+    setHistoryMonthCursor(new Date(n.getFullYear(), n.getMonth(), 1))
+    setHistoryWeekStartKey(null)
     try {
       setIngredientMovements(await getStockMovements(ingredient.id))
     } catch (error) {
@@ -425,6 +437,88 @@ export function Inventario() {
     }
   }
 
+  const mondayOfHistory = (d: Date) => {
+    const day = d.getDay()
+    const diff = day === 0 ? -6 : 1 - day
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff)
+  }
+
+  const historyWeeksInMonth = useMemo(() => {
+    const monthStart = historyMonthCursor
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+    const today = new Date()
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const weeks: Array<{ key: string; start: Date; end: Date; label: string }> = []
+    let cursor = mondayOfHistory(monthStart)
+    while (cursor <= monthEnd) {
+      const weekEnd = new Date(cursor)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      if (cursor <= todayStart) {
+        const cappedEnd = weekEnd > todayStart ? todayStart : weekEnd
+        const startLabel = cursor.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '')
+        const endLabel = cappedEnd.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '')
+        weeks.push({ key: cursor.toISOString().slice(0, 10), start: cursor, end: cappedEnd, label: `${startLabel} – ${endLabel}` })
+      }
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + 7)
+    }
+    return weeks.reverse()
+  }, [historyMonthCursor])
+
+  useEffect(() => {
+    if (modalMode !== 'view') return
+    if (historyWeeksInMonth.length === 0) { setHistoryWeekStartKey(null); return }
+    if (!historyWeeksInMonth.some((w) => w.key === historyWeekStartKey)) {
+      setHistoryWeekStartKey(historyWeeksInMonth[0].key)
+    }
+  }, [historyWeeksInMonth, modalMode, historyWeekStartKey])
+
+  const canGoNextHistoryMonth = useMemo(() => {
+    const now = new Date()
+    return historyMonthCursor.getFullYear() < now.getFullYear() ||
+      (historyMonthCursor.getFullYear() === now.getFullYear() && historyMonthCursor.getMonth() < now.getMonth())
+  }, [historyMonthCursor])
+
+  const movementGroups = useMemo(() => {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const selectedWeek = historyWeeksInMonth.find((w) => w.key === historyWeekStartKey)
+    if (!selectedWeek) return []
+    const startTime = selectedWeek.start.getTime()
+    const endTime = selectedWeek.end.getTime()
+
+    const filtered = ingredientMovements.filter((mov) => {
+      const d = new Date(mov.createdAt)
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      return dayStart.getTime() >= startTime && dayStart.getTime() <= endTime
+    })
+
+    const map = new Map<string, StockMovement[]>()
+    for (const mov of filtered) {
+      const d = new Date(mov.createdAt)
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      if (!map.has(key)) map.set(key, [])
+      map.get(key)!.push(mov)
+    }
+    return [...map.entries()].map(([key, items]) => {
+      const d = new Date(items[0].createdAt)
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+      const diffDays = Math.round((startOfToday.getTime() - dayStart.getTime()) / 86400000)
+      let label: string
+      if (diffDays === 0) label = 'Hoy'
+      else if (diffDays === 1) label = 'Ayer'
+      else {
+        const raw = d.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })
+        label = raw.charAt(0).toUpperCase() + raw.slice(1)
+      }
+      return { key, label, items }
+    })
+  }, [ingredientMovements, historyWeeksInMonth, historyWeekStartKey])
+
+  useEffect(() => {
+    if (modalMode !== 'view') return
+    setOpenDayKey(null)
+  }, [historyWeekStartKey, modalMode])
+
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr)
     const now = new Date()
@@ -457,7 +551,7 @@ export function Inventario() {
             <ShoppingBag size={22} />
           </div>
           <div className="inv-kpi-info">
-            <span className="inv-kpi-label">Valor total del inventario</span>
+            <span className="inv-kpi-label">Valor de inventario</span>
             <span className="inv-kpi-value">${totalInventoryValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             <span className="inv-kpi-sub green">+8.2% vs. ayer</span>
           </div>
@@ -474,7 +568,7 @@ export function Inventario() {
             <AlertTriangle size={22} />
           </div>
           <div className="inv-kpi-info">
-            <span className="inv-kpi-label">Productos con stock bajo</span>
+            <span className="inv-kpi-label">Stock bajo</span>
             <span className="inv-kpi-value">{lowStockCount}</span>
             <span className="inv-kpi-sub" style={{ color: 'var(--accent-amber, #f59e0b)', fontWeight: 600 }}>Requieren atención &gt;</span>
           </div>
@@ -731,21 +825,119 @@ export function Inventario() {
       {successMessage && <div className="inv-success" role="status">{successMessage}<button onClick={() => setSuccessMessage('')} aria-label="Cerrar mensaje">×</button></div>}
       {selectedIngredient && modalMode && createPortal(
         <div className={`inv-modal-overlay ${closingIngredient ? 'closing' : ''}`} onClick={closeModal}>
-          <div className="inv-sidebar-card inv-detail-modal" onClick={event => event.stopPropagation()}>
+          <div className={`inv-sidebar-card inv-detail-modal ${modalMode === 'view' ? 'inv-detail-modal-history' : ''}`} onClick={event => event.stopPropagation()}>
             <button className="inv-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
-            {modalMode === 'view' && <>
-              <div className="inv-modal-heading"><span><Eye size={18} /></span><div><small>Historial del artículo</small><h3>{selectedIngredient.name}</h3></div></div>
-              <div className="inv-current-stock"><small>Stock actual</small><strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></div>
-              {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
-              {modalLoading ? <div className="inv-modal-loading"><Loader2 className="spin" /> Cargando movimientos…</div> : ingredientMovements.length === 0 ? <div className="inv-empty-state"><p>Este artículo todavía no tiene movimientos.</p></div> : <div className="inv-history-list">{ingredientMovements.map(mov => <div className="inv-history-row" key={mov.id}><div className={`inv-movement-icon ${mov.quantity > 0 ? 'entry' : 'exit'}`}>{mov.quantity > 0 ? <Plus size={15} /> : <Minus size={15} />}</div><div><strong>{getMovementLabel(mov.movementType)}</strong><small>{mov.notes || mov.referenceType || 'Sin nota'}</small><time>{new Date(mov.createdAt).toLocaleString('es-VE')}</time></div><b className={mov.quantity > 0 ? 'positive' : 'negative'}>{mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}</b></div>)}</div>}
-            </>}
+            {modalMode === 'view' && (
+              <div className="inv-history-view">
+                <div className="inv-history-hero">
+                  <span className="inv-history-hero-icon"><Package size={24} /></span>
+                  <h3>{selectedIngredient.name}</h3>
+                  <span className={`inv-status-badge ${getStockStatus(selectedIngredient)}`}>
+                    <span className="status-dot" />{getStockStatusLabel(getStockStatus(selectedIngredient))}
+                  </span>
+                  <div className="inv-history-hero-stock">
+                    <small>Stock actual</small>
+                    <strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong>
+                  </div>
+                  <div className="inv-history-hero-count">
+                    <History size={13} /> {ingredientMovements.length} movimiento{ingredientMovements.length === 1 ? '' : 's'} registrado{ingredientMovements.length === 1 ? '' : 's'}
+                  </div>
+                </div>
+
+                <div className="inv-history-timeline">
+                  {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
+
+                  <div className="inv-history-nav-sticky">
+                    <div className="inv-history-nav">
+                      <div className="inv-history-month-nav">
+                        <button type="button" className="inv-history-month-btn" aria-label="Mes anterior" onClick={() => setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}>
+                          <ChevronLeft size={16} />
+                        </button>
+                        <span className="inv-history-month-label">
+                          {(() => {
+                            const raw = historyMonthCursor.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+                            return raw.charAt(0).toUpperCase() + raw.slice(1)
+                          })()}
+                        </span>
+                        <button type="button" className="inv-history-month-btn" aria-label="Mes siguiente" disabled={!canGoNextHistoryMonth} onClick={() => setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}>
+                          <ChevronRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="inv-history-weeks" role="tablist" aria-label="Semana">
+                      {historyWeeksInMonth.map(w => (
+                        <button
+                          key={w.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={historyWeekStartKey === w.key}
+                          className={`inv-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
+                          onClick={() => setHistoryWeekStartKey(w.key)}
+                        >
+                          {w.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {modalLoading ? (
+                    <div className="inv-modal-loading"><Loader2 className="spin" /> Cargando movimientos…</div>
+                  ) : ingredientMovements.length === 0 ? (
+                    <div className="inv-empty-state"><span className="inv-empty-state-icon"><History size={22} /></span><p>Este artículo todavía no tiene movimientos.</p></div>
+                  ) : movementGroups.length === 0 ? (
+                    <div className="inv-empty-state"><span className="inv-empty-state-icon"><History size={22} /></span><p>Sin movimientos en esta semana</p><small>Prueba con otra semana o mes</small></div>
+                  ) : (
+                    movementGroups.map(group => {
+                      const isOpen = openDayKey === group.key
+                      return (
+                        <section className={`inv-timeline-group ${isOpen ? 'open' : ''}`} key={group.key}>
+                          <button
+                            type="button"
+                            className="inv-timeline-date"
+                            aria-expanded={isOpen}
+                            onClick={() => setOpenDayKey(current => (current === group.key ? null : group.key))}
+                          >
+                            <span>{group.label}</span>
+                            <span className="inv-timeline-date-right">
+                              <small>{group.items.length} movimiento{group.items.length === 1 ? '' : 's'}</small>
+                              <ChevronDown size={15} className="inv-timeline-date-chevron" />
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div className="inv-timeline-group-body">
+                              {group.items.map(mov => (
+                                <div className="inv-timeline-row" key={mov.id}>
+                                  <span className={`inv-movement-icon ${mov.movementType === 'purchase' ? 'entry' : mov.movementType === 'consumption' ? 'exit' : 'adjustment'}`}>
+                                    {getMovementIcon(mov.movementType)}
+                                  </span>
+                                  <div className="inv-timeline-content">
+                                    <div className="inv-timeline-top">
+                                      <strong>{getMovementLabel(mov.movementType)}</strong>
+                                      <b className={mov.quantity > 0 ? 'positive' : 'negative'}>{mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}</b>
+                                    </div>
+                                    <div className="inv-timeline-bottom">
+                                      <small>{mov.notes || mov.referenceType || 'Sin nota'}</small>
+                                      <time>{new Date(mov.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</time>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </section>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            )}
             {modalMode === 'edit' && <form onSubmit={saveEdit}>
               <div className="inv-modal-heading"><span><Pencil size={18} /></span><div><small>Editar artículo</small><h3>{selectedIngredient.name}</h3></div></div>
               <div className="inv-form-grid">
                 <label className="wide"><span>Nombre</span><input value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></label>
                 <label><span>Costo por unidad (USD)</span><input type="number" min="0" step="0.01" value={editForm.price} onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))} /></label>
-                <label><span>Unidad base</span><select value={editForm.unitId} disabled aria-describedby="unit-help">{units.map(unit => <option value={unit.id} key={unit.id}>{unit.name} ({unit.symbol})</option>)}</select></label>
-                <label className="wide"><span>Clasificación</span><select value={editForm.inventoryClass} onChange={e => setEditForm(f => ({ ...f, inventoryClass: e.target.value as Ingredient['inventoryClass'] }))}><option value="raw_material">Materia prima</option><option value="packaging">Empaque</option><option value="beverage">Bebida</option><option value="non_inventory">No inventariable</option></select></label>
+                <label><span>Unidad base</span><StyledSelect value={editForm.unitId} disabled aria-describedby="unit-help">{units.map(unit => <option value={unit.id} key={unit.id}>{unit.name} ({unit.symbol})</option>)}</StyledSelect></label>
+                <label className="wide"><span>Clasificación</span><StyledSelect value={editForm.inventoryClass} onChange={e => setEditForm(f => ({ ...f, inventoryClass: e.target.value as Ingredient['inventoryClass'] }))}><option value="raw_material">Materia prima</option><option value="packaging">Empaque</option><option value="beverage">Bebida</option><option value="non_inventory">No inventariable</option></StyledSelect></label>
               </div>
               <p className="inv-form-hint" id="unit-help">La unidad base no se cambia porque alteraría el significado del historial. La existencia se ajusta con los botones + y −.</p>
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}

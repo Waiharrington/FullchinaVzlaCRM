@@ -9,6 +9,7 @@ import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { canAccessModule, type Role } from './components/navItems'
 import './styles/managementWorkspace.css'
+import './styles/controlSizing.css'
 
 const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
 const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))
@@ -113,5 +114,9 @@ function AdminRoutes() {
 }
 
 export default function AdminApp() {
-  return <RatesProvider><AuthProvider><AdminRoutes /></AuthProvider></RatesProvider>
+  return (
+    <div className="admin-app">
+      <RatesProvider><AuthProvider><AdminRoutes /></AuthProvider></RatesProvider>
+    </div>
+  )
 }

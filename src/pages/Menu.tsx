@@ -5,7 +5,7 @@ import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2,
   LayoutGrid, List, ImagePlus, X, Package, Eye, EyeOff, Tag, Trash2, CheckSquare, Square,
-  ChevronUp, ChevronDown, Check,
+  ChevronUp, ChevronDown, Check, Flame, Zap, Star, CupSoda, Ban,
 } from 'lucide-react'
 import './Menu.css'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -19,6 +19,14 @@ import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, is
 
 const catLabel = categoryLabel
 const EDIT_MODAL_EXIT_MS = 300
+
+const MENU_LABEL_OPTIONS: Array<{ value: SellableProduct['menuLabel'] | ''; label: string; icon: typeof Flame }> = [
+  { value: '', label: 'Sin etiqueta', icon: Ban },
+  { value: 'top_sales', label: 'Más vendido', icon: Flame },
+  { value: 'new', label: 'Nuevo', icon: Zap },
+  { value: 'recommended', label: 'Recomendado', icon: Star },
+  { value: 'free_drink', label: 'Refresco gratis', icon: CupSoda },
+]
 
 function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -454,7 +462,27 @@ export function Menu() {
                     })}
                   </div>
                 </div>
-                <div className="mnu-product-section"><div className="mnu-product-section-title">Etiqueta del plato <small>Visible para los clientes</small></div><StyledSelect className="mnu-label-select modal-select-dark" aria-label="Etiqueta del plato" value={form.menuLabel ?? ''} onChange={e => setForm({ ...form, menuLabel: (e.target.value || null) as SellableProduct['menuLabel'] })}><option value="">Sin etiqueta</option><option value="top_sales">🔥 Más vendido</option><option value="new">✨ Nuevo</option><option value="recommended">⭐ Recomendado</option><option value="free_drink">🥤 Refresco gratis</option></StyledSelect></div>
+                <div className="mnu-product-section">
+                  <div className="mnu-product-section-title">Etiqueta del plato <small>Visible para los clientes</small></div>
+                  <div className="mnu-cat-chips mnu-label-chips" role="radiogroup" aria-label="Etiqueta del plato">
+                    {MENU_LABEL_OPTIONS.map(opt => {
+                      const on = (form.menuLabel ?? '') === opt.value
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          type="button"
+                          key={opt.value || 'none'}
+                          role="radio"
+                          aria-checked={on}
+                          className={`mnu-cat-chip mnu-label-chip ${on ? 'on' : ''}`}
+                          onClick={() => setForm({ ...form, menuLabel: (opt.value || null) as SellableProduct['menuLabel'] })}
+                        >
+                          <Icon size={13} />{opt.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
               </section>
             </div>
 

@@ -149,6 +149,12 @@
     box-shadow: 4px 0 24px rgba(0,0,0,0.5);
   }
 
+  /* El botón de colapsar a solo-íconos es un ajuste de escritorio; en el
+     drawer móvil no aplica (para cerrar el menú se usa el overlay/swipe). */
+  .sidebar-container.mobile-open .sidebar-toggle {
+    display: none;
+  }
+
   .sidebar-container.mobile-open .sidebar-overlay {
     display: block;
   }

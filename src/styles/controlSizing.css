@@ -1,0 +1,104 @@
+/*
+ * Escala interactiva del CRM.
+ *
+ * Escritorio con puntero fino conserva una densidad cómoda de 44 px.
+ * Teléfono, tablet y cualquier dispositivo con puntero táctil usan 48 px.
+ * Los interruptores conservan su forma visual, pero reciben un área táctil
+ * invisible de 48 px. El menú público queda fuera de estas reglas.
+ */
+.admin-app {
+  --control-height: 44px;
+  --control-height-lg: 56px;
+  --touch-target: 44px;
+  --control-gap: 8px;
+  min-height: 100dvh;
+}
+
+.admin-app button:not(.search-clear-btn):not(.num-stepper-btn):not([role='switch']):not(.mnu-switch):not(.ws-switch),
+.admin-app input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='hidden']),
+.admin-app select,
+.admin-app .fc-select-trigger,
+.admin-app .fc-select-option {
+  min-height: var(--control-height);
+}
+
+/* Los botones de solo icono también conservan un ancho fácil de señalar. */
+.admin-app button:not(.search-clear-btn):not(.num-stepper-btn):not([role='switch']):not(.mnu-switch):not(.ws-switch) {
+  min-width: var(--touch-target);
+}
+
+.admin-app textarea {
+  min-height: var(--control-height);
+}
+
+/* Acciones principales: una única variante grande y reconocible. */
+.admin-app :is(
+  .btn-accent,
+  .cash-primary,
+  .cash-close-button,
+  .mesas-modal-cta,
+  .inv-generate-order-btn,
+  .wa-send-button,
+  .bottom-nav-logout
+) {
+  min-height: var(--control-height-lg);
+}
+
+/* Selectores compartidos: mismo ritmo vertical que botones y campos. */
+.admin-app .fc-select-trigger,
+.admin-app .fc-select.sort-select .fc-select-trigger,
+.admin-app .mnu-tools > .fc-select .fc-select-trigger,
+.admin-app .rec-filters > .fc-select .fc-select-trigger,
+.admin-app .fc-select.cmp-tool .fc-select-trigger,
+.admin-app .fc-select.filter-select .fc-select-trigger,
+.admin-app .fin-period .fc-select-trigger,
+.admin-app .db-period-control .fc-select-trigger,
+.admin-app .fc-select-search input {
+  height: var(--control-height);
+}
+
+.admin-app .fc-select-option,
+.admin-app .search-select-option {
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+}
+
+/* Los iconos pueden verse pequeños sin que su zona táctil también lo sea. */
+.admin-app .search-clear-btn::before {
+  inset: calc((var(--touch-target) - 22px) / -2);
+}
+
+.admin-app :is(button[role='switch'], .mnu-switch, .ws-switch) {
+  position: relative;
+}
+
+.admin-app :is(button[role='switch'], .mnu-switch, .ws-switch)::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  transform: translate(-50%, -50%);
+}
+
+/* Navegación frecuente: toda la fila, no solo el icono, es fácil de tocar. */
+.admin-app :is(.bottom-nav-item, .bottom-nav-drawer-item, .sidebar-nav-item) {
+  min-height: var(--touch-target);
+}
+
+@media (max-width: 1199px), (any-pointer: coarse) {
+  .admin-app {
+    --control-height: 48px;
+    --touch-target: 48px;
+  }
+}
+
+/* Modo compacto únicamente cuando realmente existe un puntero preciso. */
+@media (min-width: 1200px) and (hover: hover) and (pointer: fine) {
+  .admin-app .control-compact {
+    min-height: 40px;
+  }
+}

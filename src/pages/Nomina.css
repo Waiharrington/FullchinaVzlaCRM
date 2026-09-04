@@ -40,12 +40,13 @@
 .nom-period .liq { color: #22c55e; font-weight: 700; font-size: 13px; margin-top: 4px; }
 
 /* Tabla liquidación */
-.nom-table-wrap { overflow-x: auto; border-radius: 14px; }
+.nom-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); }
 .nom-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 980px; }
-.nom-table th { color: #a1a1aa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
+.nom-table th { color: #85858f; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 10px; background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
 .nom-table tbody tr { transition: background 0.15s ease; }
 .nom-table tbody tr:hover { background: rgba(255,255,255,0.02); }
 .nom-table td { padding: 14px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+.nom-table tbody tr:last-child td { border-bottom: none; }
 .nom-col-left { text-align: left !important; }
 .nom-col-center { text-align: center !important; }
 .nom-col-right { text-align: right !important; }
@@ -119,7 +120,9 @@
   background: #18181f;
   border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
-  align-items: stretch;
+  /* Centrado por flexbox en vez de line-height: así el número queda
+     verticalmente centrado sin depender de cuadrar alturas a mano. */
+  align-items: center;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -129,13 +132,17 @@
   font-weight: 700 !important;
   text-align: center !important;
   color: #fff !important;
-  padding: 0 !important;
-  height: 100% !important;
-  line-height: 30px !important;
+  /* Los controles +/- solo ocupan el lado derecho (22px); este padding
+     compensa ese peso visual para que el número quede centrado en la caja
+     completa, no solo en el espacio que le queda al input. */
+  padding: 0 0 0 22px !important;
+  height: auto !important;
+  line-height: normal !important;
   min-width: 0 !important;
 }
 
 .nom-stepper-cell .num-stepper-controls {
+  align-self: stretch;
   width: 22px;
   flex-shrink: 0;
 }

@@ -90,7 +90,7 @@
 .confirm-btn-cancel:hover { background: rgba(255, 255, 255, 0.08); color: #d4d4d8; border-color: rgba(255, 255, 255, 0.2); }
 
 .confirm-btn-ok {
-  background: var(--accent-gradient, linear-gradient(135deg, #E31B2B 0%, #FF4D3D 50%, #E31B2B 100%));
+  background: linear-gradient(135deg, #E31B2B 0%, #FF4D3D 50%, #E31B2B 100%);
   color: #fff;
 }
 .confirm-btn-ok:hover { filter: brightness(1.08); }

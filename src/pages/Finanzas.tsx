@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer,
+  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, deleteFinancialOperation,
   type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount,
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
@@ -10,13 +10,16 @@ import { buildPaymentBreakdown, type PaymentBreakdownEntry } from '../lib/paymen
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { EmptyState } from '../components/EmptyState'
 import { StyledSelect } from '../components/StyledSelect'
 import { DateField } from '../components/DateField'
+import { confirmDialog } from '../components/ConfirmDialog'
 import { formatUsd, formatVes } from '../lib/money'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
   Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
-  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft,
+  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2,
+  Clock, Gift, Users, Landmark, ArrowRight,
 } from 'lucide-react'
 import './Finanzas.css'
 
@@ -42,6 +45,19 @@ const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: st
   other: { label: 'Otro', icon: <Wallet size={16} />, color: '#71717a' },
 }
 
+const OP_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  transfer: { label: 'Transferencia', icon: <ArrowRightLeft size={15} />, color: '#a855f7' },
+  receivable: { label: 'Cuenta por cobrar', icon: <Clock size={15} />, color: '#f59e0b' },
+  receivable_collection: { label: 'Cobro recibido', icon: <CircleCheckBig size={15} />, color: '#22c55e' },
+  tip: { label: 'Propina', icon: <Gift size={15} />, color: '#eab308' },
+  tip_distribution: { label: 'Reparto de propinas', icon: <Users size={15} />, color: '#38bdf8' },
+  employee_advance: { label: 'Adelanto', icon: <Wallet size={15} />, color: '#fb923c' },
+  loan: { label: 'Préstamo', icon: <Landmark size={15} />, color: '#818cf8' },
+  loan_payment: { label: 'Pago de préstamo', icon: <Check size={15} />, color: '#4ade80' },
+  bank_fee: { label: 'Comisión bancaria', icon: <Percent size={15} />, color: '#f87171' },
+  adjustment: { label: 'Ajuste', icon: <Pencil size={15} />, color: '#a1a1aa' },
+}
+
 export function Finanzas() {
   const { bcvRate } = useRates()
   const { user } = useAuth()
@@ -62,11 +78,19 @@ export function Finanzas() {
   const [summaryMonth, setSummaryMonth] = useState(currentMonth)
   const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
   const [showTransfer, setShowTransfer] = useState(false)
+  const [closingTransfer, setClosingTransfer] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<FinancialAccount | null>(null)
   const [selectedLedgerCurrency, setSelectedLedgerCurrency] = useState<'USD' | 'VES' | null>(null)
   const [transfer, setTransfer] = useState({ concept: '', from: '', to: '', currency: 'VES' as 'USD' | 'VES', amount: '', rate: '', reference: '', notes: '' })
   const [transferSaving, setTransferSaving] = useState(false)
   const [transferError, setTransferError] = useState('')
+  const [opsError, setOpsError] = useState('')
+
+  const closeTransfer = () => {
+    if (closingTransfer) return
+    setClosingTransfer(true)
+    window.setTimeout(() => { setShowTransfer(false); setClosingTransfer(false) }, 180)
+  }
 
   useEffect(() => {
     if (!selectedAccount && !selectedLedgerCurrency && !showTransfer) return
@@ -74,7 +98,7 @@ export function Finanzas() {
       if (event.key !== 'Escape' || transferSaving) return
       setSelectedAccount(null)
       setSelectedLedgerCurrency(null)
-      setShowTransfer(false)
+      closeTransfer()
     }
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
@@ -158,6 +182,33 @@ export function Finanzas() {
     isoDate(ranges[period][0]),
     isoDate(ranges[period][1]),
   ), [accounts, orders, expenses, purchases, period, ranges])
+  const mostActiveAccountId = useMemo(() => {
+    let bestId: string | null = null
+    let bestScore = 0
+    for (const account of accounts) {
+      const activity = accountActivity.get(account.id)
+      const score = activity ? activity.inflows + activity.outflows : 0
+      if (score > bestScore) { bestScore = score; bestId = account.id }
+    }
+    return bestId
+  }, [accounts, accountActivity])
+  const monthOptions = useMemo(() => {
+    const [cy, cm] = currentMonth.split('-').map(Number)
+    const opts: Array<{ value: string; label: string }> = []
+    for (let i = 0; i < 24; i++) {
+      const d = new Date(cy, cm - 1 - i, 1)
+      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const label = d.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+      opts.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
+    }
+    if (!opts.some(opt => opt.value === summaryMonth)) {
+      const [sy, sm] = summaryMonth.split('-').map(Number)
+      const label = new Date(sy, sm - 1, 1).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+      opts.push({ value: summaryMonth, label: label.charAt(0).toUpperCase() + label.slice(1) })
+    }
+    return opts
+  }, [currentMonth, summaryMonth])
+
   const changeSummaryMonth = (offset: number) => {
     const [year, month] = summaryMonth.split('-').map(Number)
     const next = new Date(year, month - 1 + offset, 1)
@@ -181,6 +232,9 @@ export function Finanzas() {
   const coverageTarget = cur.cogs + cur.opex + cur.payroll
   const coverageReady = coverageTarget > 0 && missingCostProducts.length === 0
   const coveragePct = coverageReady ? Math.min(100, Math.round((cur.grossSales / coverageTarget) * 100)) : 0
+  const ringRadius = 46
+  const ringCircumference = 2 * Math.PI * ringRadius
+  const ringOffset = ringCircumference * (1 - coveragePct / 100)
   const paymentRows = Object.values(cur.payments).filter(payment => payment.amountUsd > 0).sort((a, b) => b.amountUsd - a.amountUsd)
   const totalPayments = paymentRows.reduce((sum, payment) => sum + payment.amountUsd, 0)
   const periodOperations = operations.filter((op) => op.operationDate >= isoDate(ranges[period][0]) && op.operationDate <= isoDate(ranges[period][1]))
@@ -232,9 +286,26 @@ export function Finanzas() {
     if (!user || !transfer.from || !transfer.to || !transfer.concept) return setTransferError('Completa concepto y cuentas')
     try {
       setTransferSaving(true)
-      await createFinancialTransfer({ concept: transfer.concept, operationDate: isoDate(new Date()), fromAccountId: transfer.from, toAccountId: transfer.to, originalCurrency: transfer.currency, originalAmount: Number(transfer.amount), exchangeRate: transfer.currency === 'VES' ? Number(transfer.rate) : null, referenceNumber: transfer.reference, notes: transfer.notes, userId: user.id })
-      setShowTransfer(false); setTransfer({ concept: '', from: '', to: '', currency: 'VES', amount: '', rate: '', reference: '', notes: '' }); await load()
+      const exchangeRate = transfer.currency === 'VES' ? (transferCrossCurrency ? Number(transfer.rate) : bcvRate) : null
+      await createFinancialTransfer({ concept: transfer.concept, operationDate: isoDate(new Date()), fromAccountId: transfer.from, toAccountId: transfer.to, originalCurrency: transfer.currency, originalAmount: Number(transfer.amount), exchangeRate, referenceNumber: transfer.reference, notes: transfer.notes, userId: user.id })
+      closeTransfer(); setTransfer({ concept: '', from: '', to: '', currency: 'VES', amount: '', rate: '', reference: '', notes: '' }); await load()
     } catch (error) { setTransferError(error instanceof Error ? error.message : 'No se pudo guardar la transferencia') } finally { setTransferSaving(false) }
+  }
+
+  const handleDeleteOperation = async (op: FinancialOperation) => {
+    const ok = await confirmDialog({
+      title: 'Eliminar movimiento',
+      message: `¿Eliminar "${op.concept}"? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar', danger: true,
+    })
+    if (!ok) return
+    setOpsError('')
+    try {
+      await deleteFinancialOperation(op.id)
+      await load()
+    } catch (error) {
+      setOpsError(error instanceof Error ? error.message : 'No se pudo eliminar el movimiento')
+    }
   }
 
   const exportReport = () => {
@@ -252,15 +323,45 @@ export function Finanzas() {
     const a = document.createElement('a'); a.href = url; a.download = `finanzas_${period}_${isoDate(new Date())}.csv`; a.click(); URL.revokeObjectURL(url)
   }
 
+  const renderAccountCard = (account: FinancialAccount) => {
+    const activity = accountActivity.get(account.id) ?? { inflows: 0, outflows: 0, net: 0 }
+    const money = (value: number) => account.currency === 'VES' ? formatVes(value) : formatUsd(value)
+    const reference = bcvRate
+      ? account.currency === 'VES'
+        ? `≈ ${formatUsd(account.currentBalance / bcvRate)} al BCV de hoy`
+        : `≈ ${formatVes(account.currentBalance * bcvRate)} al BCV de hoy`
+      : null
+    const isTop = account.id === mostActiveAccountId
+    return (
+      <div className={`fin-account-box ${account.currency === 'USD' ? 'usd' : 'ves'}${isTop ? ' top' : ''}`} key={account.id} role="button" tabIndex={0} onClick={() => setSelectedAccount(account)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelectedAccount(account) }}>
+        {isTop && <span className="fin-account-top-badge">Más movimiento</span>}
+        <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
+        <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
+        <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
+        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={(event) => { event.stopPropagation(); setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
+      </div>
+    )
+  }
+  const usdAccounts = accounts.filter(account => account.currency === 'USD')
+  const vesAccounts = accounts.filter(account => account.currency === 'VES')
+
+  // La tasa solo aplica cuando la transferencia cruza de una cuenta a otra de
+  // distinta moneda (ej. bolívares -> dólares, "comprando" dólares). Entre
+  // dos cuentas de la misma moneda no hay ningún cambio real que registrar.
+  const transferFromAccount = accounts.find(a => a.id === transfer.from)
+  const transferToAccount = accounts.find(a => a.id === transfer.to)
+  const transferCrossCurrency = !!(transferFromAccount && transferToAccount && transferFromAccount.currency !== transferToAccount.currency)
+
   const salesDelta = pct(cur.grossSales, prev.grossSales)
   const netDelta = pct(cur.netProfit, prev.netProfit)
   const marginPP = cur.margin - prev.margin
   const cogsPctSales = cur.grossSales > 0 ? (cur.cogs / cur.grossSales) * 100 : 0
-  const financialWarnings = [
-    ...(accounts.length === 0 ? ['No hay cuentas financieras configuradas; no se pueden conciliar saldos.'] : []),
-    ...(unassignedPayments > 0 ? [`${unassignedPayments} cobro${unassignedPayments === 1 ? '' : 's'} sin cuenta de destino en ${periodLabel.toLowerCase()}.`] : []),
-    ...(missingCostProducts.length > 0 ? [`Falta costo de receta para ${missingCostProducts.slice(0, 3).join(', ')}${missingCostProducts.length > 3 ? ` y ${missingCostProducts.length - 3} producto(s) más` : ''}.`] : []),
+  const reconciliationChecks = [
+    { label: 'Cuentas financieras configuradas', ok: accounts.length > 0, detail: accounts.length === 0 ? 'No hay cuentas para conciliar saldos.' : null },
+    { label: 'Cobros con cuenta asignada', ok: unassignedPayments === 0, detail: unassignedPayments > 0 ? `${unassignedPayments} cobro${unassignedPayments === 1 ? '' : 's'} sin cuenta en ${periodLabel.toLowerCase()}.` : null },
+    { label: 'Costos de receta registrados', ok: missingCostProducts.length === 0, detail: missingCostProducts.length > 0 ? `Falta costo para ${missingCostProducts.slice(0, 2).join(', ')}${missingCostProducts.length > 2 ? ` y ${missingCostProducts.length - 2} más` : ''}.` : null },
   ]
+  const allChecksOk = reconciliationChecks.every(check => check.ok)
 
   return (
     <div className="page fin-page animate-fade-in management-workspace management-workspace--finance">
@@ -280,28 +381,58 @@ export function Finanzas() {
         </div>
       </header>
 
-      <section className={`fin-data-status ${financialWarnings.length ? 'warning' : 'ready'}`}>
-        {financialWarnings.length ? <CircleAlert size={20} /> : <CircleCheckBig size={20} />}
-        <div>
-          <strong>{financialWarnings.length ? 'Datos que requieren atención' : 'Datos conciliables'}</strong>
-          {financialWarnings.length ? <ul>{financialWarnings.map(message => <li key={message}>{message}</li>)}</ul> : <p>Los cobros del período tienen cuenta y los productos vendidos tienen costo registrado.</p>}
-        </div>
-      </section>
+      <div className="fin-status-row">
+        <section className={`fin-data-status ${allChecksOk ? 'ready' : 'warning'}`}>
+          <div className="fin-check-head">
+            {allChecksOk ? <CircleCheckBig size={18} /> : <CircleAlert size={18} />}
+            <strong>{allChecksOk ? 'Datos conciliables' : 'Datos que requieren atención'}</strong>
+          </div>
+          <ul className="fin-check-list">
+            {reconciliationChecks.map(check => (
+              <li key={check.label} className={check.ok ? 'ok' : 'fail'}>
+                {check.ok ? <Check size={13} /> : <X size={13} />}
+                <div><span>{check.label}</span>{check.detail && <small>{check.detail}</small>}</div>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      {/* Cobertura de costos registrados */}
-      <div className="fin-be">
-        <div className="fin-be-top">
-          <div style={{ display: 'flex', gap: 10 }}>
+        {/* Cobertura de costos registrados */}
+        <div className="fin-be fin-be--ring">
+          <div className="fin-be-head">
             <span className="fin-be-ic"><Target size={20} /></span>
             <div><h2>Cobertura de costos del período</h2><p>Compara las ventas con insumos, gastos y nómina realmente registrados.</p></div>
           </div>
-          <div className="fin-be-target"><span className="v">{coverageReady ? formatUsd(coverageTarget) : 'No calculable'}</span><span className="l">Costos registrados</span></div>
-        </div>
-        <div className="fin-be-bar"><div style={{ width: `${coveragePct}%` }} /></div>
-        <div className="fin-be-legend">
-          <span style={{ color: '#eab308', fontWeight: 700 }}>{coverageReady ? `${coveragePct}% cubierto` : 'Completa los datos señalados'}</span>
-          <span>Llevas {formatUsd(cur.grossSales)} vendidos</span>
-          <span>{coverageReady ? (cur.grossSales >= coverageTarget ? 'Resultado operativo positivo' : `Faltan ${formatUsd(coverageTarget - cur.grossSales)} para cubrir costos`) : 'No se mostrará una utilidad incompleta'}</span>
+          <div className="fin-be-body">
+            <div className="fin-be-ring-wrap">
+              <svg className="fin-be-ring" viewBox="0 0 100 100">
+                <defs>
+                  <linearGradient id="finBeRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#E31B2B" />
+                    <stop offset="55%" stopColor="#FF4D3D" />
+                    <stop offset="100%" stopColor="#f59e0b" />
+                  </linearGradient>
+                </defs>
+                <circle className="fin-be-ring-track" cx="50" cy="50" r={ringRadius} />
+                <circle
+                  className="fin-be-ring-progress"
+                  cx="50" cy="50" r={ringRadius}
+                  stroke="url(#finBeRingGradient)"
+                  strokeDasharray={ringCircumference}
+                  strokeDashoffset={ringOffset}
+                />
+              </svg>
+              <div className="fin-be-ring-center">
+                <strong>{coverageReady ? `${coveragePct}%` : '—'}</strong>
+                <small>cubierto</small>
+              </div>
+            </div>
+            <div className="fin-be-stats">
+              <div><span className="l">Costos registrados</span><span className="v">{coverageReady ? formatUsd(coverageTarget) : 'No calculable'}</span></div>
+              <div><span className="l">Ventas del período</span><span className="v">{formatUsd(cur.grossSales)}</span></div>
+              <div className="fin-be-result">{coverageReady ? (cur.grossSales >= coverageTarget ? <span className="positive">Resultado operativo positivo</span> : <span>Faltan {formatUsd(coverageTarget - cur.grossSales)} para cubrir costos</span>) : <span>No se mostrará una utilidad incompleta hasta completar los datos señalados.</span>}</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -309,12 +440,12 @@ export function Finanzas() {
       <div className="fin-kpis management-workspace-metrics">
         <div className="fin-kpi green">
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><ShoppingCart size={18} /></span>
-            <div><div className="fin-kpi-lbl">Ventas Brutas Totales</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Ventas Brutas</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
           <div className="fin-kpi-sub">{salesDelta != null ? <span className={salesDelta >= 0 ? 'fin-up' : 'fin-down'}>{salesDelta >= 0 ? '▲' : '▼'} {Math.abs(salesDelta).toFixed(0)}% vs ayer</span> : periodLabel}</div>
         </div>
         <div className="fin-kpi red">
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><Wallet size={18} /></span>
-            <div><div className="fin-kpi-lbl">Costo de Insumos (COGS)</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Costo Insumos</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
           <div className="fin-kpi-sub fin-down">{cogsPctSales.toFixed(1)}% de las ventas</div>
         </div>
         <div className="fin-kpi purple">
@@ -324,7 +455,7 @@ export function Finanzas() {
         </div>
         <div className="fin-kpi green">
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><TrendingUp size={18} /></span>
-            <div><div className="fin-kpi-lbl">Ganancia Neta Estimada</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Ganancia Neta</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
           <div className="fin-kpi-sub">{netDelta != null ? <span className={netDelta >= 0 ? 'fin-up' : 'fin-down'}>{netDelta >= 0 ? '▲' : '▼'} {Math.abs(netDelta).toFixed(0)}% vs ayer</span> : `${cur.margin.toFixed(1)}% de las ventas`}</div>
         </div>
         <div className="fin-kpi blue">
@@ -337,25 +468,24 @@ export function Finanzas() {
       <div className="fin-card fin-accounts-card management-workspace-panel">
         <h2>Saldos actuales por cuenta</h2>
         <p className="sub">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</p>
-        <div className="fin-account-grid">
-          {accounts.map((account) => {
-            const activity = accountActivity.get(account.id) ?? { inflows: 0, outflows: 0, net: 0 }
-            const money = (value: number) => account.currency === 'VES' ? formatVes(value) : formatUsd(value)
-            const reference = bcvRate
-              ? account.currency === 'VES'
-                ? `≈ ${formatUsd(account.currentBalance / bcvRate)} al BCV de hoy`
-                : `≈ ${formatVes(account.currentBalance * bcvRate)} al BCV de hoy`
-              : null
-            return (
-            <div className="fin-account-box" key={account.id} role="button" tabIndex={0} onClick={() => setSelectedAccount(account)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelectedAccount(account) }}>
-              <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
-              <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
-              <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
-              {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={(event) => { event.stopPropagation(); setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
-            </div>
-          )})}
-          {accounts.length === 0 && <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>}
-        </div>
+        {accounts.length === 0 ? (
+          <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>
+        ) : (
+          <>
+            {usdAccounts.length > 0 && (
+              <div className="fin-account-group">
+                <div className="fin-account-group-head usd"><DollarSign size={14} /> Cuentas en dólares</div>
+                <div className="fin-account-grid">{usdAccounts.map(renderAccountCard)}</div>
+              </div>
+            )}
+            {vesAccounts.length > 0 && (
+              <div className="fin-account-group">
+                <div className="fin-account-group-head ves"><Banknote size={14} /> Cuentas en bolívares</div>
+                <div className="fin-account-grid">{vesAccounts.map(renderAccountCard)}</div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
       <div className="fin-currency-summary">
@@ -366,7 +496,7 @@ export function Finanzas() {
       <section className="fin-card fin-daily-summary">
         <div className="fin-daily-head">
           <div><h2>Resumen diario de operación</h2><p className="sub">Ventas y egresos reales organizados como el control diario del negocio.</p></div>
-          <div className="fin-month-nav"><button onClick={() => changeSummaryMonth(-1)} aria-label="Mes anterior"><ChevronLeft size={16}/></button><input type="month" value={summaryMonth} max={currentMonth} onChange={event => { setSummaryMonth(event.target.value); setSelectedSummaryDate(`${event.target.value}-01`) }} aria-label="Mes del resumen"/><button onClick={() => changeSummaryMonth(1)} disabled={summaryMonth >= currentMonth} aria-label="Mes siguiente"><ChevronRight size={16}/></button></div>
+          <div className="fin-month-nav"><button onClick={() => changeSummaryMonth(-1)} aria-label="Mes anterior"><ChevronLeft size={16}/></button><StyledSelect className="fin-month-select" value={summaryMonth} onChange={event => { setSummaryMonth(event.target.value); setSelectedSummaryDate(`${event.target.value}-01`) }} aria-label="Mes del resumen">{monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</StyledSelect><button onClick={() => changeSummaryMonth(1)} disabled={summaryMonth >= currentMonth} aria-label="Mes siguiente"><ChevronRight size={16}/></button></div>
         </div>
         <div className="fin-daily-layout">
           <div className="fin-daily-table-wrap">
@@ -387,37 +517,69 @@ export function Finanzas() {
         </div>
       </section>
 
-      <div className="fin-card">
-            <h2>Cierre por Método de Pago</h2>
-            <p className="sub">Total cobrado en {periodLabel.toLowerCase()} según los métodos usados en Caja.</p>
-            {paymentRows.map((payment) => {
-              const meta = PAY_META[payment.method] ?? PAY_META.other
-              return (
-                <div className="fin-pay-row" key={payment.key}>
-                  <span className="fin-pay-ic" style={{ background: `${meta.color}22`, color: meta.color }}>{meta.icon}</span>
-                  <span className="fin-pay-name">{meta.label}<small>{payment.currency === 'VES' ? 'Cobrado en bolívares' : meta.sub}</small></span>
-                  <span className="fin-pay-amt">{payment.currency === 'VES' ? formatVes(payment.amountNative) : formatUsd(payment.amountNative)}{payment.currency === 'VES' && <small>{formatUsd(payment.amountUsd)} de referencia</small>}</span>
-                  <span className="fin-pay-pct">{totalPayments > 0 ? ((payment.amountUsd / totalPayments) * 100).toFixed(1) : '0'}%</span>
-                </div>
-              )
-            })}
-            {totalPayments === 0 && <p style={{ color: '#71717a', padding: '10px 0' }}>Sin cobros en el período.</p>}
-            <div className="fin-pay-total"><span>Total Cobrado</span><span className="g">{formatUsd(totalPayments)}</span></div>
+      <div className="fin-pay-ops-row">
+      <div className="fin-card fin-pay-card">
+            <div className="fin-pay-head">
+              <div><h2>Cierre por Método de Pago</h2><p className="sub">Total cobrado en {periodLabel.toLowerCase()} según los métodos usados en Caja.</p></div>
+              <div className="fin-pay-hero"><span className="fin-pay-hero-lbl">Total Cobrado</span><strong className="fin-pay-hero-val">{formatUsd(totalPayments)}</strong></div>
+            </div>
+            {totalPayments > 0 && (
+              <div className="fin-pay-bar">
+                {paymentRows.map((payment) => {
+                  const meta = PAY_META[payment.method] ?? PAY_META.other
+                  const pct = (payment.amountUsd / totalPayments) * 100
+                  return <span key={payment.key} className="fin-pay-bar-seg" style={{ width: `${pct}%`, background: meta.color }} title={`${meta.label} · ${pct.toFixed(1)}%`} />
+                })}
+              </div>
+            )}
+            <div className="fin-pay-rows">
+              {paymentRows.map((payment) => {
+                const meta = PAY_META[payment.method] ?? PAY_META.other
+                const pct = totalPayments > 0 ? (payment.amountUsd / totalPayments) * 100 : 0
+                return (
+                  <div className="fin-pay-row" key={payment.key}>
+                    <span className="fin-pay-dot" style={{ background: meta.color }} />
+                    <span className="fin-pay-ic" style={{ background: `${meta.color}22`, color: meta.color }}>{meta.icon}</span>
+                    <span className="fin-pay-name">{meta.label}<small>{payment.currency === 'VES' ? 'Cobrado en bolívares' : meta.sub}</small></span>
+                    <span className="fin-pay-amt">{payment.currency === 'VES' ? formatVes(payment.amountNative) : formatUsd(payment.amountNative)}{payment.currency === 'VES' && <small>{formatUsd(payment.amountUsd)} de referencia</small>}</span>
+                    <span className="fin-pay-pct">{pct.toFixed(1)}%</span>
+                  </div>
+                )
+              })}
+              {totalPayments === 0 && <p style={{ color: '#71717a', padding: '10px 0' }}>Sin cobros en el período.</p>}
+            </div>
       </div>
       <div className="fin-card">
         <h2>Movimientos administrativos</h2>
-        <p className="sub">Traspasos, cuentas por cobrar, adelantos, préstamos y propinas. Los que no afectan utilidad se muestran sin convertirlos en gastos.</p>
+        <p className="sub">Traspasos, cobros, adelantos y propinas, sin afectar la utilidad.</p>
         <button className="fin-export" onClick={() => setShowTransfer(true)}><ArrowRightLeft size={15} /> Registrar transferencia</button>
+        {opsError && <p className="fin-dialog-error" role="alert" style={{ margin: '10px 0 0' }}><CircleAlert size={16}/>{opsError}</p>}
         <div className="fin-ops">
-          {periodOperations.slice(0, 12).map((op) => (
+          {periodOperations.slice(0, 12).map((op) => {
+            const meta = OP_META[op.type] ?? OP_META.adjustment
+            return (
             <div className="fin-op" key={op.id}>
-              <div><strong>{op.concept}</strong><small>{op.operationDate} · {op.type.replace(/_/g, ' ')}{op.counterparty ? ` · ${op.counterparty}` : ''}</small></div>
-              <div className="fin-op-route">{op.fromAccount && <span>{op.fromAccount}</span>}{op.fromAccount && op.toAccount && ' → '}{op.toAccount && <span>{op.toAccount}</span>}</div>
+              <span className="fin-op-ic" style={{ background: `${meta.color}22`, color: meta.color }}>{meta.icon}</span>
+              <div><strong>{op.concept}</strong><small>{op.operationDate} · {meta.label}{op.counterparty ? ` · ${op.counterparty}` : ''}</small></div>
+              <div className="fin-op-route">
+                {op.fromAccount && <span className="fin-op-pill">{op.fromAccount}</span>}
+                {op.fromAccount && op.toAccount && <ArrowRight size={12} className="fin-op-route-arrow" />}
+                {op.toAccount && <span className="fin-op-pill">{op.toAccount}</span>}
+              </div>
               <div className="fin-op-amount">{formatUsd(op.amountUsd)}<small className={op.affectsProfit ? 'fin-down' : 'fin-neutral'}>{op.affectsProfit ? 'Afecta resultado' : 'No altera utilidad'}</small></div>
+              <button type="button" className="fin-op-delete" title="Eliminar movimiento" aria-label={`Eliminar ${op.concept}`} onClick={() => void handleDeleteOperation(op)}><Trash2 size={14} /></button>
             </div>
-          ))}
-          {periodOperations.length === 0 && <p style={{ color: '#71717a' }}>Sin movimientos administrativos en este período.</p>}
+            )
+          })}
+          {periodOperations.length === 0 && (
+            <EmptyState
+              compact
+              title="Sin movimientos administrativos"
+              description={`No hay nada registrado en ${periodLabel.toLowerCase()}.`}
+            />
+          )}
         </div>
+      </div>
       </div>
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
@@ -472,11 +634,11 @@ export function Finanzas() {
           <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedLedgerCurrency(null)}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => { setSelectedLedgerCurrency(null); setShowTransfer(true) }}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
-      {showTransfer && createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => { if (!transferSaving) setShowTransfer(false) }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>
+      {(showTransfer || closingTransfer) && createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingTransfer ? 'closing' : ''}`} role="presentation" onClick={() => { if (!transferSaving) closeTransfer() }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>
         <header className="fin-dialog-header">
           <span className="fin-dialog-icon"><ArrowRightLeft size={20}/></span>
           <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento administrativo</span><h2 id="fin-transfer-dialog-title">Registrar transferencia</h2><p>Mueve dinero entre cuentas sin afectar la utilidad.</p></div>
-          <button type="button" className="fin-dialog-close" disabled={transferSaving} onClick={() => setShowTransfer(false)} aria-label="Cerrar ventana"><X size={18}/></button>
+          <button type="button" className="fin-dialog-close" disabled={transferSaving} onClick={() => closeTransfer()} aria-label="Cerrar ventana"><X size={18}/></button>
         </header>
         <div className="fin-dialog-body fin-transfer-body">
           <label className="fin-field fin-field-wide"><span>Concepto <b>*</b></span><input className="fin-field-control" required autoFocus placeholder="Ej. Depósito del punto a Banesco" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/></label>
@@ -488,12 +650,12 @@ export function Finanzas() {
             <label className="fin-field"><span>Moneda <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" value={transfer.currency} onChange={e => setTransfer({...transfer, currency: e.target.value as 'USD'|'VES'})}><option value="VES">Bolívares</option><option value="USD">Dólares</option></StyledSelect></label>
             <label className="fin-field"><span>Monto <b>*</b></span><input className="fin-field-control" required type="number" min="0.01" step="0.01" placeholder="0,00" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})}/></label>
           </div>
-          {transfer.currency === 'VES' && <label className="fin-field"><span>Tasa de cambio</span><input className="fin-field-control" type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/><small>Usa la tasa BCV del día si no necesitas registrar una tasa distinta.</small></label>}
+          {transferCrossCurrency && <label className="fin-field"><span>Tasa de cambio <b>*</b></span><input className="fin-field-control" required type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/><small>Esta transferencia cambia de moneda ({transferFromAccount?.currency} → {transferToAccount?.currency}); usa la tasa BCV del día si no necesitas registrar una distinta.</small></label>}
           <label className="fin-field"><span>Referencia</span><input className="fin-field-control" placeholder="Opcional" value={transfer.reference} onChange={e => setTransfer({...transfer, reference: e.target.value})}/></label>
           <label className="fin-field"><span>Notas</span><textarea className="fin-field-control" rows={3} placeholder="Información adicional del movimiento" value={transfer.notes} onChange={e => setTransfer({...transfer, notes: e.target.value})}/></label>
           {transferError && <p className="fin-dialog-error" role="alert"><CircleAlert size={16}/>{transferError}</p>}
         </div>
-        <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={transferSaving} onClick={() => setShowTransfer(false)}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={transferSaving}>{transferSaving ? 'Guardando…' : <><Check size={16}/> Guardar transferencia</>}</button></footer>
+        <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={transferSaving} onClick={() => closeTransfer()}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={transferSaving}>{transferSaving ? 'Guardando…' : <><Check size={16}/> Guardar transferencia</>}</button></footer>
       </form></div>, document.body)}
     </div>
   )

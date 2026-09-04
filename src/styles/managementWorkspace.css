@@ -177,6 +177,9 @@
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Warehouse and WhatsApp previously used a separate, flatter card family. */
@@ -725,13 +728,17 @@
   .management-workspace--finance .fin-period,
   .management-workspace--finance .fin-export {
     min-height: 38px;
-    padding: 8px 11px;
+    padding: 0 11px;
     border-radius: 10px;
     font-size: 0.75rem;
   }
 
+  .management-workspace--finance .fin-period .fc-select-trigger {
+    height: 26px;
+  }
+
   .management-workspace--finance .management-workspace-metrics {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
   }
 
   .management-workspace--finance .fin-kpi {
@@ -744,13 +751,59 @@
     height: 34px;
   }
 
-  .management-workspace--finance .fin-kpi-lbl { font-size: 0.64rem; }
-  .management-workspace--finance .fin-kpi-val { font-size: 1.1rem; }
-  .management-workspace--finance .fin-kpi-sub { margin-top: 5px; font-size: 0.62rem; }
-  .management-workspace--finance .fin-data-status { margin-top: 10px; padding: 10px 12px; }
-  .management-workspace--finance .fin-be { margin: 10px 0 12px; padding: 12px 14px; }
+  .management-workspace--finance .fin-kpi-lbl { font-size: 0.56rem !important; }
+  .management-workspace--finance .fin-kpi-val { font-size: 1.1rem !important; }
+  .management-workspace--finance .fin-kpi-sub { margin-top: 5px; font-size: 0.62rem !important; }
+  .management-workspace--finance .fin-data-status { margin: 0; padding: 10px 12px; }
+  .management-workspace--finance .fin-be { margin: 0; padding: 12px 14px; }
   .management-workspace--finance .fin-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
   .management-workspace--finance .fin-account-grid { gap: 10px; }
+
+  /* La fila de "Movimientos administrativos" (nombre / cuentas / monto) tenía
+     un ancho mínimo mayor que el espacio real de la tarjeta angosta en
+     tablet, y se desbordaba fuera del borde. Se compacta esa fila en vez de
+     romper el layout de dos columnas que se pidió mantener. */
+  .management-workspace--finance .fin-op {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 8px;
+    row-gap: 2px;
+  }
+  .management-workspace--finance .fin-op-route {
+    grid-column: 2 / -1;
+    grid-row: 2;
+    font-size: 0.72rem;
+  }
+  .management-workspace--finance .fin-op-amount {
+    font-size: 0.82rem;
+  }
+
+  /* La tabla de resumen diario tiene 8 columnas (min-width 830px) que no
+     entraban junto al sidebar en una tablet horizontal de ~960px: se cortaba
+     "Diferencia" al borde. En vez de esconder columnas, se comprime todo
+     (fuente, padding, encabezados en dos líneas) para que las 8 quepan
+     completas sin scroll horizontal ni recortes. */
+  .management-workspace--finance .fin-daily-table {
+    min-width: 0;
+    width: 100%;
+    font-size: 0.68rem;
+  }
+
+  .management-workspace--finance .fin-daily-table th {
+    padding: 8px 4px;
+    font-size: 0.58rem;
+    line-height: 1.25;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .management-workspace--finance .fin-daily-table td {
+    padding: 7px 4px;
+  }
+
+  .management-workspace--finance .fin-daily-table td button {
+    width: 22px;
+    height: 22px;
+  }
 
   /* Purchases, expenses and payroll */
   .management-workspace--purchases .cmp-sum,

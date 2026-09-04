@@ -52,9 +52,9 @@
 .mesas-btn:hover { color: #fff; border-color: rgba(255, 255, 255, 0.2); }
 .mesas-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .mesas-btn-ghost { background: rgba(255, 255, 255, 0.03); }
-.mesas-btn-active { background: #E31B2B; border-color: #E31B2B; color: #fff; }
-.mesas-btn-primary { background: #E31B2B; border-color: #E31B2B; color: #fff; width: 100%; justify-content: center; }
-.mesas-btn-primary:hover { background: #FF4D3D; }
+.mesas-btn-active { background: linear-gradient(135deg, #E31B2B, #b91c1c); border-color: #E31B2B; color: #fff; box-shadow: 0 0 16px 1px rgba(227, 27, 43, 0.4); }
+.mesas-btn-primary { background: linear-gradient(135deg, #E31B2B, #b91c1c); border-color: #E31B2B; color: #fff; width: 100%; justify-content: center; }
+.mesas-btn-primary:hover { background: linear-gradient(135deg, #FF4D3D, #E31B2B); box-shadow: 0 0 18px 2px rgba(255, 77, 61, 0.4); }
 .mesas-btn-danger { background: rgba(227, 27, 43, 0.1); border-color: rgba(227, 27, 43, 0.4); color: #f87171; }
 
 .mesas-error-banner {
@@ -98,20 +98,16 @@
   aspect-ratio: 16 / 9;
   min-height: 360px;
   background:
-    linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px) 0 0 / 24px 24px,
-    #16161a;
+    radial-gradient(ellipse 60% 45% at 22% 12%, rgba(227, 27, 43, 0.16), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 82% 88%, rgba(255, 200, 61, 0.09), transparent 70%),
+    linear-gradient(rgba(255,255,255,0.045) 1px, transparent 1px) 0 0 / 26px 26px,
+    linear-gradient(90deg, rgba(255,255,255,0.045) 1px, transparent 1px) 0 0 / 26px 26px,
+    #121216;
   border: 1px solid var(--border-color);
   border-radius: 18px;
   overflow: hidden;
   touch-action: none;
-}
-
-.mesas-tile-elapsed {
-  display: flex; align-items: center; gap: 3px;
-  font-size: 0.6rem; font-weight: 700; color: #fca5a5;
-  position: absolute; bottom: -20px; white-space: nowrap;
-  background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 100px;
+  box-shadow: inset 0 0 80px rgba(0,0,0,0.5);
 }
 
 .mesas-canvas.edit-mode { border-color: rgba(227, 27, 43, 0.4); }
@@ -128,11 +124,11 @@
   gap: 2px;
   cursor: pointer;
   border: 4px solid rgba(0, 0, 0, 0.3);
-  box-shadow: 
-    0 8px 24px rgba(0,0,0,0.4), 
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.4),
     inset 0 4px 6px rgba(255,255,255,0.1),
     inset 0 -4px 6px rgba(0,0,0,0.2);
-  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms ease;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 220ms ease, border-color 220ms ease;
   touch-action: none;
   background: #2a2a32;
   color: #fff;
@@ -163,18 +159,38 @@
 }
 .mesas-tile.free:hover {
   background: linear-gradient(145deg, #3a3a42 0%, #26262e 100%);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 4px 6px rgba(255,255,255,0.15), inset 0 -4px 6px rgba(0,0,0,0.2), 0 0 0 1px rgba(74, 222, 128, 0.2);
+  border-color: rgba(255, 200, 61, 0.5);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 4px 6px rgba(255,255,255,0.15), inset 0 -4px 6px rgba(0,0,0,0.2), 0 0 22px 2px rgba(74, 222, 128, 0.35);
 }
 
 .mesas-tile.occupied {
-  background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%);
-  border-color: rgba(0,0,0,0.2);
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3), inset 0 4px 6px rgba(255,255,255,0.2), inset 0 -4px 6px rgba(0,0,0,0.3);
+  background: linear-gradient(145deg, #ff4d3d 0%, #b91c1c 55%, #7f1d1d 100%);
+  border-color: rgba(0,0,0,0.25);
+  animation: mesas-occupied-glow 2.6s ease-in-out infinite;
+}
+@keyframes mesas-occupied-glow {
+  0%, 100% {
+    box-shadow: 0 8px 24px rgba(227, 27, 43, 0.35), inset 0 4px 6px rgba(255,255,255,0.2), inset 0 -4px 6px rgba(0,0,0,0.3), 0 0 0 0 rgba(255, 77, 61, 0.5);
+  }
+  50% {
+    box-shadow: 0 8px 28px rgba(227, 27, 43, 0.5), inset 0 4px 6px rgba(255,255,255,0.22), inset 0 -4px 6px rgba(0,0,0,0.3), 0 0 26px 7px rgba(255, 77, 61, 0.55);
+  }
+}
+.mesas-tile.occupied:hover {
+  box-shadow: 0 12px 32px rgba(227, 27, 43, 0.55), inset 0 4px 6px rgba(255,255,255,0.25), inset 0 -4px 6px rgba(0,0,0,0.3), 0 0 30px 8px rgba(255, 200, 61, 0.4);
+  border-color: rgba(255, 200, 61, 0.5);
 }
 
 .mesas-tile.occupied::before {
   border-color: rgba(255,255,255,0.15);
   background: rgba(0,0,0,0.08);
+}
+
+.mesas-tile.inactive {
+  background: linear-gradient(145deg, #232327 0%, #17171a 100%);
+  border-color: rgba(0,0,0,0.4);
+  opacity: 0.5;
+  filter: grayscale(0.4);
 }
 
 .mesas-tile-number {
@@ -207,121 +223,17 @@
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 114'%3E%3Cg fill='%234ade80' opacity='0.35'%3E%3C!-- Top Chair --%3E%3Crect x='41' y='0' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='6' width='24' height='7' rx='2'/%3E%3C!-- Bottom Chair --%3E%3Crect x='41' y='107' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='101' width='24' height='7' rx='2'/%3E%3C!-- Left Chair --%3E%3Crect x='0' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='6' y='45' width='7' height='24' rx='2'/%3E%3C!-- Right Chair --%3E%3Crect x='107' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='101' y='45' width='7' height='24' rx='2'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat;
 }
 
-
-
 .mesas-tile.occupied::after {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 114'%3E%3Cg fill='%23ef4444' opacity='0.6'%3E%3C!-- Top Chair --%3E%3Crect x='41' y='0' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='6' width='24' height='7' rx='2'/%3E%3C!-- Bottom Chair --%3E%3Crect x='41' y='107' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='101' width='24' height='7' rx='2'/%3E%3C!-- Left Chair --%3E%3Crect x='0' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='6' y='45' width='7' height='24' rx='2'/%3E%3C!-- Right Chair --%3E%3Crect x='107' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='101' y='45' width='7' height='24' rx='2'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 114'%3E%3Cg fill='%23ff4d3d' opacity='0.75'%3E%3C!-- Top Chair --%3E%3Crect x='41' y='0' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='6' width='24' height='7' rx='2'/%3E%3C!-- Bottom Chair --%3E%3Crect x='41' y='107' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='101' width='24' height='7' rx='2'/%3E%3C!-- Left Chair --%3E%3Crect x='0' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='6' y='45' width='7' height='24' rx='2'/%3E%3C!-- Right Chair --%3E%3Crect x='107' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='101' y='45' width='7' height='24' rx='2'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat;
 }
 
 .mesas-tile-elapsed {
   display: flex; align-items: center; gap: 3px;
-  font-size: 0.6rem; font-weight: 700; color: #fca5a5;
+  font-size: 0.6rem; font-weight: 700; color: #fff;
   position: absolute; bottom: -20px; white-space: nowrap;
-  background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 100px;
-}
-
-.mesas-canvas.edit-mode .mesas-tile {
-  position: absolute;
-  z-index: 10;
-  width: 76px;
-  height: 76px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  cursor: pointer;
-  border: 4px solid rgba(0, 0, 0, 0.3);
-  box-shadow: 
-    0 8px 24px rgba(0,0,0,0.4), 
-    inset 0 4px 6px rgba(255,255,255,0.1),
-    inset 0 -4px 6px rgba(0,0,0,0.2);
-  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms ease;
-  touch-action: none;
-  background: #2a2a32;
-  color: #fff;
-}
-
-.mesas-tile.square { border-radius: 20px; }
-.mesas-tile.round { border-radius: 50%; }
-
-.mesas-tile::before {
-  content: "";
-  position: absolute;
-  top: 18%; left: 18%; right: 18%; bottom: 18%;
-  pointer-events: none;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-  border: 1.5px solid rgba(255,255,255,0.06);
-  background: rgba(255,255,255,0.02);
-}
-.mesas-tile.round::before { border-radius: 50%; }
-.mesas-tile.square::before { border-radius: 8px; }
-
-.mesas-tile:hover {
-  transform: translateY(-4px) scale(1.05);
-}
-
-.mesas-tile.free {
-  background: linear-gradient(145deg, #32323a 0%, #202028 100%);
-  border-color: rgba(0,0,0,0.4);
-}
-.mesas-tile.free:hover {
-  background: linear-gradient(145deg, #3a3a42 0%, #26262e 100%);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.5), inset 0 4px 6px rgba(255,255,255,0.15), inset 0 -4px 6px rgba(0,0,0,0.2), 0 0 0 1px rgba(74, 222, 128, 0.2);
-}
-
-.mesas-tile.occupied {
-  background: linear-gradient(145deg, #ef4444 0%, #b91c1c 100%);
-  border-color: rgba(0,0,0,0.2);
-  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.3), inset 0 4px 6px rgba(255,255,255,0.2), inset 0 -4px 6px rgba(0,0,0,0.3);
-}
-
-.mesas-tile.occupied::before {
-  border-color: rgba(255,255,255,0.15);
-  background: rgba(0,0,0,0.08);
-}
-
-.mesas-tile-number {
-  font-size: 1.4rem;
-  font-weight: 850;
-  line-height: 1;
-  letter-spacing: -0.5px;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
-  z-index: 2;
-}
-
-.mesas-tile-seats {
-  display: flex; align-items: center; gap: 4px;
-  font-size: 0.65rem; font-weight: 700; color: #a1a1aa;
-  opacity: 0.9;
-  z-index: 2;
-}
-.mesas-tile.occupied .mesas-tile-seats {
-  color: rgba(255,255,255,0.9);
-}
-
-.mesas-tile::after {
-  content: "";
-  position: absolute;
-  top: -9px; left: -9px; right: -9px; bottom: -9px;
-  z-index: -1;
-  pointer-events: none;
-  border-radius: inherit;
-  transition: background 150ms ease;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 114'%3E%3Cg fill='%234ade80' opacity='0.35'%3E%3C!-- Top Chair --%3E%3Crect x='41' y='0' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='6' width='24' height='7' rx='2'/%3E%3C!-- Bottom Chair --%3E%3Crect x='41' y='107' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='101' width='24' height='7' rx='2'/%3E%3C!-- Left Chair --%3E%3Crect x='0' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='6' y='45' width='7' height='24' rx='2'/%3E%3C!-- Right Chair --%3E%3Crect x='107' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='101' y='45' width='7' height='24' rx='2'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat;
-}
-
-
-
-.mesas-tile.occupied::after {
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 114 114'%3E%3Cg fill='%23ef4444' opacity='0.6'%3E%3C!-- Top Chair --%3E%3Crect x='41' y='0' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='6' width='24' height='7' rx='2'/%3E%3C!-- Bottom Chair --%3E%3Crect x='41' y='107' width='32' height='7' rx='3.5'/%3E%3Crect x='45' y='101' width='24' height='7' rx='2'/%3E%3C!-- Left Chair --%3E%3Crect x='0' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='6' y='45' width='7' height='24' rx='2'/%3E%3C!-- Right Chair --%3E%3Crect x='107' y='41' width='7' height='32' rx='3.5'/%3E%3Crect x='101' y='45' width='7' height='24' rx='2'/%3E%3C/g%3E%3C/svg%3E") center/cover no-repeat;
-}
-
-.mesas-tile-elapsed {
-  display: flex; align-items: center; gap: 3px;
-  font-size: 0.6rem; font-weight: 700; color: #fca5a5;
-  position: absolute; bottom: -20px; white-space: nowrap;
-  background: rgba(0,0,0,0.5); padding: 2px 6px; border-radius: 100px;
+  background: linear-gradient(135deg, rgba(227,27,43,0.9), rgba(127,29,29,0.9));
+  padding: 2px 7px; border-radius: 100px;
+  box-shadow: 0 2px 8px rgba(227, 27, 43, 0.4);
 }
 
 .mesas-canvas.edit-mode .mesas-tile:active { cursor: grabbing; }
@@ -335,8 +247,8 @@
 }
 .mesas-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .mesas-legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.mesas-legend .dot.free { background: #4ade80; }
-.mesas-legend .dot.occupied { background: #f87171; }
+.mesas-legend .dot.free { background: #4ade80; box-shadow: 0 0 8px 1px rgba(74, 222, 128, 0.5); }
+.mesas-legend .dot.occupied { background: #ff4d3d; box-shadow: 0 0 8px 1px rgba(255, 77, 61, 0.55); }
 .mesas-legend-hint { color: var(--text-muted); font-style: italic; }
 
 .mesas-modal-overlay {

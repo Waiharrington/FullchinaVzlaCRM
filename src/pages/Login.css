@@ -1625,3 +1625,53 @@ body:has(.login-page) {
     padding-top: 0.15rem;
   }
 }
+
+/* ── Tablets horizontales muy bajas (ej. 960x600): el modo PIN todavía no
+   entraba sin scroll con el ajuste anterior, así que acá se aprieta más. ── */
+@media (min-width: 680px) and (orientation: landscape) and (max-height: 650px) {
+  .login-card.pin-active {
+    padding: 1.1rem 1.5rem;
+    gap: 0.65rem;
+  }
+  .login-card.pin-active .login-header {
+    margin-bottom: 0;
+  }
+  .login-card.pin-active .login-title {
+    font-size: 1.3rem;
+  }
+  .login-card.pin-active .login-subtitle {
+    display: none;
+  }
+  .login-card.pin-active .login-form {
+    gap: 0.6rem;
+  }
+  .login-card.pin-active .form-section.active {
+    gap: 0.65rem;
+  }
+  .login-card.pin-active .field-group {
+    gap: 0.35rem;
+  }
+  .login-card.pin-active .input-wrapper {
+    height: 38px;
+  }
+  .login-card.pin-active .pin-keypad {
+    gap: 0.4rem;
+    margin-top: 0.15rem;
+  }
+  .login-card.pin-active .keypad-btn {
+    height: 34px;
+    font-size: 0.95rem;
+  }
+  .login-card.pin-active .btn-primary,
+  .login-card.pin-active .btn-secondary {
+    height: auto;
+    padding: 0.55rem;
+    font-size: 0.85rem;
+  }
+  .login-card.pin-active .divider-row {
+    margin: -0.1rem 0;
+  }
+  .login-card.pin-active .login-footer {
+    display: none;
+  }
+}

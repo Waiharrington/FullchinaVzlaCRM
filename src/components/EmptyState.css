@@ -38,7 +38,7 @@
   border: none;
   border-radius: 10px;
   padding: 10px 18px;
-  background: var(--accent-gradient, linear-gradient(135deg, #E31B2B 0%, #FF4D3D 50%, #E31B2B 100%));
+  background: linear-gradient(135deg, #E31B2B 0%, #FF4D3D 50%, #E31B2B 100%);
   color: #fff;
   font-weight: 700;
   font-size: 13px;
