@@ -50,7 +50,8 @@ type InventoryModal = 'view' | 'edit' | 'adjust' | null
 // se refrescan en segundo plano.
 let inventarioCache: { ingredients: Ingredient[]; stockMovements: StockMovement[] } | null = null
 
-function getIngredientCategory(ing: Ingredient): 'raw' | 'packaging' | 'beverages' {
+function getIngredientCategory(ing: Ingredient): 'raw' | 'packaging' | 'beverages' | 'portions' {
+  if (['por', 'porcion', 'porción', 'porciones'].includes(ing.unitSymbol.toLowerCase())) return 'portions'
   if (ing.inventoryClass === 'beverage') return 'beverages'
   if (ing.inventoryClass === 'packaging') return 'packaging'
   const name = normalizeForSearch(ing.name)
@@ -583,7 +584,7 @@ export function Inventario() {
           )}
         </div>
         <div className="inv-filter-pills">
-          {[['all', 'Todos'], ['raw', 'Materia prima'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
+          {[['all', 'Todos'], ['raw', 'Materia prima'], ['portions', 'Porciones'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
             <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
           ))}
         </div>

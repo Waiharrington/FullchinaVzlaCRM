@@ -245,12 +245,30 @@
 
 .prv-history-weeks { display: flex; align-items: center; gap: 6px; padding-bottom: 14px; overflow-x: auto; }
 .prv-history-week-btn {
-  border: none; background: rgba(255,255,255,.04); color: #999; font-size: 12px; font-weight: 600;
-  padding: 6px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  height: 28px;
+  padding: 0 14px;
+  border: none;
+  background: rgba(255, 255, 255, 0.04);
+  color: #999;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.15s ease, color 0.15s ease;
 }
-.prv-history-week-btn:hover { color: #ddd; }
-.prv-history-week-btn.active { background: #e11d2a; color: #fff; }
+.prv-history-week-btn:hover { color: #ddd; background: rgba(255, 255, 255, 0.08); }
+.prv-history-week-btn.active {
+  background: #E31B2B;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(227, 27, 43, 0.4);
+}
 
 .prv-history-group { margin-top: 18px; }
 .prv-history-group:first-child { margin-top: 0; }

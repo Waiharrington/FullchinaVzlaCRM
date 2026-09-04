@@ -468,12 +468,16 @@
   .management-workspace--inventory .inv-filter-pills {
     flex-wrap: nowrap;
     gap: 6px;
+    align-items: center;
   }
 
   .management-workspace--inventory .inv-filter-pill {
-    min-height: 34px;
-    padding: 7px 12px;
+    min-height: 28px;
+    height: 28px;
+    padding: 0 14px;
     font-size: 0.75rem;
+    line-height: 1;
+    border-radius: 9999px;
   }
 
   .management-workspace--inventory .inv-search-box { width: 250px; }

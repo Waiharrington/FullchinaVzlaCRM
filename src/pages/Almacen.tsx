@@ -46,6 +46,7 @@ export function Almacen() {
   const [modalLoading, setModalLoading] = useState(false)
   const [quickAction, setQuickAction] = useState<QuickAction>(null)
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const closeModal = () => { if (!modalLoading) { setSelectedItem(null); setModalMode(null) } }
   const openView = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('view'); setModalLoading(true); try { setItemMovements(await getStockMovements(item.id)) } catch { setErrorMsg('No se pudieron cargar los movimientos.') } finally { setModalLoading(false) } }
@@ -73,6 +74,9 @@ export function Almacen() {
     const q = normalizeForSearch(searchTerm)
     return base.filter(item => normalizeForSearch(item.name).includes(q) || normalizeForSearch(item.category).includes(q))
   }, [items, itemsWithStock, filterMode, searchTerm])
+  const totalPages = Math.max(1, Math.ceil(displayedItems.length / 20))
+  const paginatedItems = displayedItems.slice((currentPage - 1) * 20, currentPage * 20)
+  useEffect(() => { setCurrentPage(1) }, [filterMode, searchTerm])
 
   useEffect(() => {
     Promise.all([getWarehouseIngredients(), getIngredients()]).then(([ingredients, operational]) => {
@@ -328,7 +332,7 @@ export function Almacen() {
                       />
                     </td>
                   </tr>
-                ) : displayedItems.map(item => {
+                ) : paginatedItems.map(item => {
                   const isLow = item.quantity <= item.minStock
                   const operationalQty = operationalStockMap.get(item.id) ?? 0
                   return (
@@ -374,6 +378,7 @@ export function Almacen() {
               </tbody>
             </table>
           </div>
+          {displayedItems.length > 20 && <div className="almacen-pagination"><span>Mostrando {((currentPage - 1) * 20) + 1}–{Math.min(currentPage * 20, displayedItems.length)} de {displayedItems.length}</span><div><button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(page => page - 1)}>Anterior</button><b>Página {currentPage} de {totalPages}</b><button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage(page => page + 1)}>Siguiente</button></div></div>}
         </section>
       </div>
 
