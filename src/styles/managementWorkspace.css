@@ -472,8 +472,8 @@
   }
 
   .management-workspace--inventory .inv-filter-pill {
-    min-height: 28px;
-    height: 28px;
+    min-height: 36px;
+    height: 36px;
     padding: 0 14px;
     font-size: 0.75rem;
     line-height: 1;

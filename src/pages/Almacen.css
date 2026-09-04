@@ -307,8 +307,12 @@
   padding: 12px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-.almacen-history-row > div { display: flex; flex-direction: column; gap: 3px; }
+.almacen-history-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.almacen-history-title { display: flex; align-items: center; gap: 7px; }
+.almacen-history-kind { display: grid; place-items: center; width: 25px; height: 25px; flex: 0 0 auto; border-radius: 8px; background: rgba(34, 197, 94, .14); }
+.almacen-history-kind.negative { background: rgba(255, 77, 61, .14); }
 .almacen-history-row small { color: var(--text-muted); font-size: 0.76rem; }
+.almacen-history-row time { color: var(--text-muted); font-size: 0.7rem; }
 .almacen-history-row b.positive { color: #22c55e; }
 .almacen-history-row b.negative { color: #ff4d3d; }
 .almacen-modal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
@@ -321,6 +325,7 @@
   font-weight: 700;
 }
 .almacen-modal-fields label:last-child { grid-column: 1/-1; }
+.transfer-modal-fields label:last-child { grid-column: auto; }
 .almacen-modal-fields input,
 .almacen-modal-fields select,
 .almacen-modal-fields textarea {
@@ -343,6 +348,8 @@
   .almacen-action-modal { max-height: calc(100dvh - 12px); padding: 20px 16px 16px; border-radius: 18px 18px 10px 10px; }
   .almacen-modal-fields { grid-template-columns: 1fr; }
   .almacen-modal-fields label:last-child { grid-column: auto; }
+  .almacen-history-row { align-items: flex-start; padding: 11px 0; }
+  .almacen-history-row > b { padding-top: 5px; font-size: .8rem; }
 }
 
 .almacen-card {

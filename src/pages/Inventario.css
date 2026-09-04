@@ -202,11 +202,12 @@
 }
 
 .inv-filter-pill {
-  height: 28px;
+  height: 36px;
+  min-height: 36px;
   padding: 0 16px;
   background: rgba(255, 255, 255, 0.05);
-  border: none;
-  border-radius: 9999px;
+  border: 1px solid transparent;
+  border-radius: 9999px !important;
   color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 600;
@@ -232,7 +233,7 @@
 
 .inv-filter-pill.active {
   background: #E31B2B;
-  border: none;
+  border-color: #E31B2B;
   color: #ffffff;
   font-weight: 700;
   box-shadow: 0 2px 10px rgba(227, 27, 43, 0.4);
