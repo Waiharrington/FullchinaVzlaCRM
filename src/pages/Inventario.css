@@ -718,6 +718,43 @@
 .inv-current-stock strong { font-size: 1.1rem; }
 .inv-modal-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 42px 12px; color: var(--text-muted); }
 
+.inv-portion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.inv-portion-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 68px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+}
+
+.inv-portion-name { min-width: 0; }
+.inv-portion-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-portion-name small { display: block; margin-top: 4px; color: var(--text-muted); font-size: .75rem; }
+.inv-portion-cost { color: var(--text-secondary); font-size: .82rem; white-space: nowrap; }
+.inv-portion-quantity { min-width: 94px; text-align: right; white-space: nowrap; }
+.inv-portion-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 4px 0;
+  margin-top: 4px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+.inv-portion-total strong { color: var(--accent-green, #22c55e); font-size: 1.1rem; }
+
 /* --- Item history: hero + timeline --- */
 .inv-history-view { display: flex; flex-direction: column; }
 
@@ -1381,6 +1418,17 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 1rem;
   }
+}
+
+@media (max-width: 520px) {
+  .inv-modal-overlay { padding: 12px; }
+  .inv-modal-overlay .inv-detail-modal { width: 100%; }
+  .inv-portion-row {
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+  .inv-portion-cost { grid-column: 2; grid-row: 2; font-size: .75rem; }
+  .inv-portion-quantity { grid-column: 3; grid-row: 1 / span 2; min-width: auto; }
 }
 
 @media (max-width: 1024px) {

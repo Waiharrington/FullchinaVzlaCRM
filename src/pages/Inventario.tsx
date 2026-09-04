@@ -980,29 +980,32 @@ export function Inventario() {
                 </button>
               </div>
             ) : (
-              <div className="inv-history-list" style={{ marginTop: '0.75rem' }}>
+              <div className="inv-portion-list">
                 {portionItems.map(p => (
-                  <div className="inv-history-row" key={p.id}>
+                  <div className="inv-portion-row" key={p.id}>
                     <div className="inv-movement-icon entry">
                       <Package size={15} />
                     </div>
-                    <div>
+                    <div className="inv-portion-name">
                       <strong>{p.name}</strong>
-                      <small>{showCosts && p.pricePerUnit !== null ? `Costo: $${p.pricePerUnit.toFixed(2)} c/u` : 'Ración lista'}</small>
+                      <small>{showCosts && p.pricePerUnit !== null ? 'Costo unitario' : 'Ración lista'}</small>
                     </div>
-                    <b className={p.currentStock > 0 ? 'positive' : 'negative'}>
+                    <div className="inv-portion-cost">
+                      {showCosts && p.pricePerUnit !== null ? `$${p.pricePerUnit.toFixed(2)} / c/u` : '—'}
+                    </div>
+                    <b className={`inv-portion-quantity ${p.currentStock > 0 ? 'positive' : 'negative'}`}>
                       {p.currentStock} {['por', 'porcion', 'porción', 'porciones'].includes(p.unitSymbol.toLowerCase()) ? (p.currentStock === 1 ? 'porción' : 'porciones') : p.unitSymbol}
                     </b>
                   </div>
                 ))}
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0.5rem 0', borderTop: '1px solid var(--border-color)', marginTop: '0.5rem' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Total porciones:</span>
-                  <strong style={{ color: 'var(--accent-green, #22c55e)', fontSize: '1.1rem' }}>
+                <div className="inv-portion-total">
+                  <span>Total de porciones</span>
+                  <strong>
                     {Math.round(totalPortionsCount)} {Math.round(totalPortionsCount) === 1 ? 'porción' : 'porciones'}
                   </strong>
                 </div>
-                <button className="inv-generate-order-btn" style={{ marginTop: '1rem' }} onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
-                  + Nueva producción de raciones
+                <button className="inv-generate-order-btn" onClick={() => { setShowPortionsModal(false); navigate('/produccion') }}>
+                  + Registrar producción
                 </button>
               </div>
             )}
