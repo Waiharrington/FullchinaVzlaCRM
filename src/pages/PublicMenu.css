@@ -1316,8 +1316,8 @@ button.mobile-only {
   color: #d7dade; font: 600 14px 'DM Sans', sans-serif; cursor: pointer;
   transition: background .14s ease, color .14s ease;
 }
-.public-paydd-option:hover { background: rgba(239,51,69,.16); color: #fff; }
-.public-paydd-option.selected { background: rgba(239,51,69,.22); color: #fff; }
+.public-paydd-option:hover { background: rgba(255,255,255,.07); color: #fff; }
+.public-paydd-option.selected { background: rgba(255,255,255,.07); color: #fff; }
 .public-paydd-option.selected svg { color: #ff5361; flex: 0 0 auto; }
 
 .public-pay-hint { font-size: 12px; color: #9aa1ab; margin: 0; }

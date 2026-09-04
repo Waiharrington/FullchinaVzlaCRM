@@ -187,8 +187,8 @@
 }
 .fc-select-option span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .fc-select-option:hover,
-.fc-select-option.is-active { background: rgba(255, 77, 61,0.09); color: #fff; }
-.fc-select-option.is-selected { color: #ff6565; font-weight: 700; }
+.fc-select-option.is-active { background: rgba(255,255,255,0.07); color: #fff; }
+.fc-select-option.is-selected { color: #f4f4f5; font-weight: 700; }
 .fc-select-option.is-selected svg { flex: 0 0 auto; color: #FF4D3D; }
 .fc-select-option:disabled { opacity: 0.38; cursor: not-allowed; }
 .fc-select-empty { padding: 24px 12px; color: #777782; font-size: 0.8rem; text-align: center; }

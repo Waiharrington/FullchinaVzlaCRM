@@ -14,6 +14,7 @@ interface NumberStepperProps {
   className?: string
   id?: string
   autoFocus?: boolean
+  hideControls?: boolean
 }
 
 function decimalsOf(n: number) {
@@ -23,7 +24,7 @@ function decimalsOf(n: number) {
 }
 
 export default function NumberStepper({
-  value, onChange, step = 1, min, max, placeholder, prefix, required, disabled, className = '', id, autoFocus,
+  value, onChange, step = 1, min, max, placeholder, prefix, required, disabled, className = '', id, autoFocus, hideControls,
 }: NumberStepperProps) {
   const bump = (dir: 1 | -1) => {
     const current = parseFloat(value) || 0
@@ -57,14 +58,14 @@ export default function NumberStepper({
         disabled={disabled}
         autoFocus={autoFocus}
       />
-      <div className="num-stepper-controls">
+      {!hideControls && <div className="num-stepper-controls">
         <button type="button" className="num-stepper-btn" tabIndex={-1} disabled={disabled || atMax} onClick={() => bump(1)} aria-label="Aumentar">
           <ChevronUp size={12} strokeWidth={3} />
         </button>
         <button type="button" className="num-stepper-btn" tabIndex={-1} disabled={disabled || atMin} onClick={() => bump(-1)} aria-label="Disminuir">
           <ChevronDown size={12} strokeWidth={3} />
         </button>
-      </div>
+      </div>}
     </div>
   )
 }

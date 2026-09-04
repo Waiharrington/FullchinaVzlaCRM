@@ -326,6 +326,7 @@
 }
 .almacen-modal-fields label:last-child { grid-column: 1/-1; }
 .transfer-modal-fields label:last-child { grid-column: auto; }
+.transfer-modal-fields .num-stepper { min-height: 42px; height: 42px; }
 .almacen-modal-fields input,
 .almacen-modal-fields select,
 .almacen-modal-fields textarea {
