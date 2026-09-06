@@ -371,7 +371,7 @@ export function PublicMenu() {
   }
   const submitLockRef = useRef(false)
   const checkoutAttemptRef = useRef<{ signature: string; key: string } | null>(readCheckoutAttempt())
-  const [lastOrder, setLastOrder] = useState<WebOrderCartItem[]>(() => {
+  const [_lastOrder, setLastOrder] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(LAST_ORDER_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
   const [currentTab, setCurrentTab] = useState<DesktopTab>(readDesktopTab)
