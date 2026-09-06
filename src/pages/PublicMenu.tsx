@@ -320,6 +320,13 @@ export function PublicMenu() {
   const [error, setError] = useState('')
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
   useEffect(() => {
+    const preload = [
+      '/optimized/fondos/pickup-card.webp',
+      '/optimized/fondos/delivery-card.webp',
+    ]
+    preload.forEach(src => { const img = new Image(); img.src = src })
+  }, [])
+  useEffect(() => {
     if (!error) return
     document.querySelector('.public-cart-drawer')?.scrollTo({ top: 0, behavior: 'smooth' })
   }, [error])
