@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, RotateCcw, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
+import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
@@ -347,7 +347,7 @@ export function PublicMenu() {
   const restoringFlow = useRef(true)
   const [orderCode, setOrderCode] = useState('')
   const [draftOrderCode, setDraftOrderCode] = useState('')
-  const [whatsappUrl, setWhatsappUrl] = useState('')
+  const [, setWhatsappUrl] = useState('')
   const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string } | null>(null)
   const [addFeedbackClosing, setAddFeedbackClosing] = useState(false)
   const [cartPulse, setCartPulse] = useState(false)
@@ -706,13 +706,6 @@ export function PublicMenu() {
   }, [cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod])
 
   const toggleFavorite = (groupKey: string) => setFavoriteIds(current => current.includes(groupKey) ? current.filter(id => id !== groupKey) : [...current, groupKey])
-  const repeatLastOrder = () => {
-    if (!lastOrder.length) return
-    setCart(lastOrder)
-    setClosingCart(false)
-    setCartOpen(true)
-    setStep('cart')
-  }
   const startNewOrder = () => {
     setCart([])
     setName('')
