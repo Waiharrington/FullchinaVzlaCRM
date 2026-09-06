@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
-import { GlobalSearch } from '../components/GlobalSearch'
+import { useSearch } from '../context/search-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { canAccessModule } from '../components/navItems'
 import { formatRateDate, formatVes } from '../lib/money'
@@ -13,8 +13,8 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
   Flame,
-  Calendar,
   Bell,
+  Search,
   RefreshCw,
   TrendingUp,
   DollarSign,
@@ -51,6 +51,7 @@ const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '
 export function Inicio() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { open: openSearch } = useSearch()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
   const [stats, setStats] = useState<TodayStats | null>(inicioCache?.stats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(inicioCache?.todayOrders ?? [])
@@ -267,9 +268,9 @@ export function Inicio() {
 
         <div className="db-header-tools">
           <div className="db-header-search-row">
-            <div className="db-header-search">
-              <GlobalSearch inline />
-            </div>
+            <button className="db-header-icon-btn db-header-search-btn" type="button" onClick={openSearch} aria-label="Buscar">
+              <Search size={18} />
+            </button>
             <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
               <Bell size={18} />
               {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
@@ -277,9 +278,6 @@ export function Inicio() {
           </div>
 
           <div className="db-header-meta-row">
-              <button className="db-header-pill" type="button" onClick={() => void fetchData(salesRange)} disabled={loading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
-                <Calendar size={14} /><span>{loading ? 'Actualizando…' : 'Hoy'}</span><RefreshCw size={13} className={loading ? 'is-spinning' : ''} />
-              </button>
               <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">
                 <DollarSign size={12} />
                 <span>BCV</span>
@@ -317,7 +315,6 @@ export function Inicio() {
       <div className="kpi-banner">
         <div className="kpi-banner-content">
           <div className="db-section-label">
-            <Flame size={14} className="section-label-icon" />
             <span>Resumen del día</span>
           </div>
           <div className="kpi-row">
@@ -328,8 +325,8 @@ export function Inicio() {
                 <MoneyWithBcv usd={totalSales} className="kpi-value" align="start" />
               </div>
             </div>
-            <div className="kpi-card orange">
-              <div className="kpi-icon-circle orange"><ClipboardList size={20} /></div>
+            <div className="kpi-card red">
+              <div className="kpi-icon-circle red"><ClipboardList size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">COMANDAS</span>
                 <span className="kpi-value">{ordersCount}</span>
@@ -338,16 +335,15 @@ export function Inicio() {
             <div className="kpi-card green">
               <div className="kpi-icon-circle green"><TrendingUp size={20} /></div>
               <div className="kpi-data">
-                <span className="kpi-label">TICKET PROMEDIO</span>
+                <span className="kpi-label"><span className="kpi-lbl-full">TICKET PROMEDIO</span><span className="kpi-lbl-short">TICKET PROM.</span></span>
                 <MoneyWithBcv usd={stats?.avgTicket ?? 0} className="kpi-value" align="start" />
               </div>
             </div>
             <div className="kpi-card red">
               <div className="kpi-icon-circle red"><CreditCard size={20} /></div>
               <div className="kpi-data">
-                <span className="kpi-label">CUENTAS POR COBRAR</span>
+                <span className="kpi-label"><span className="kpi-lbl-full">CUENTAS POR COBRAR</span><span className="kpi-lbl-short">POR COBRAR</span></span>
                 <MoneyWithBcv usd={totalPendingCredits} className="kpi-value" align="start" />
-                <span className="kpi-sub">{pendingCredits.length} cliente{pendingCredits.length === 1 ? '' : 's'}</span>
               </div>
             </div>
           </div>
@@ -388,8 +384,8 @@ export function Inicio() {
               <div className="db-donut-wrap">
                 <Doughnut data={paymentData} options={paymentDoughnutOptions} />
                 <div className="db-donut-center" aria-hidden="true">
-                  <span>Total cobrado</span>
                   <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                  <span>cobrado hoy</span>
                 </div>
               </div>
               <span className="db-pago-caption">Ingresos recibidos hoy</span>
@@ -445,19 +441,67 @@ export function Inicio() {
           <div className="db-card-head">
             <h3>Platos más vendidos</h3>
           </div>
-          <div className="db-sellers-list">
-            {productRanking.length === 0 ? (
-              <div className="db-empty-state"><UtensilsCrossed size={20} /><span>Aún no hay platos vendidos</span></div>
-            ) : productRanking.slice(0, 5).map((d, i) => (
-              <div key={d.name} className="seller-row-v2">
-                <span className={`seller-rank r${i + 1}`}>{i + 1}</span>
-                <div className="seller-meta">
-                  <span className="seller-name-v2"><UtensilsCrossed size={14} style={{opacity:.6}} /> {formatProductTitle(d.name)}</span>
-                  <span className="seller-sub">{d.count} platos</span>
-                </div>
-                <MoneyWithBcv usd={d.revenue} className="seller-rev" compact />
+          {productRanking.length === 0 ? (
+            <div className="db-empty-state"><UtensilsCrossed size={20} /><span>Aún no hay platos vendidos</span></div>
+          ) : (
+            <div className="db-sellers-table">
+              <div className="st-header">
+                <span>#</span>
+                <span>Plato</span>
+                <span>Uds</span>
+                <span>Total</span>
               </div>
-            ))}
+              {productRanking.slice(0, 5).map((d, i) => (
+                <div key={d.name} className="st-row">
+                  <span className={`st-idx${i < 3 ? ' top' : ''}`}>{i + 1}</span>
+                  <span className="st-name">{formatProductTitle(d.name)}</span>
+                  <span className="st-qty">{d.count}</span>
+                  <MoneyWithBcv usd={d.revenue} className="st-rev" compact />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="db-card db-quick-card">
+          <div className="db-card-head"><h3>Acciones rápidas</h3></div>
+          <div className="db-quick-grid">
+            {hasAccess('/comandas') && (
+              <button className="db-qa-btn" onClick={() => navigate('/comandas')}>
+                <ClipboardList size={20} />
+                <span>Comandas</span>
+              </button>
+            )}
+            {hasAccess('/ventas') && (
+              <button className="db-qa-btn" onClick={() => navigate('/ventas')}>
+                <TrendingUp size={20} />
+                <span>Ventas</span>
+              </button>
+            )}
+            {hasAccess('/menu') && (
+              <button className="db-qa-btn" onClick={() => navigate('/menu')}>
+                <UtensilsCrossed size={20} />
+                <span>Menú</span>
+              </button>
+            )}
+            {hasAccess('/mesas') && (
+              <button className="db-qa-btn" onClick={() => navigate('/mesas')}>
+                <CreditCard size={20} />
+                <span>Mesas</span>
+              </button>
+            )}
+            {hasAccess('/inventario') && (
+              <button className="db-qa-btn" onClick={() => navigate('/inventario')}>
+                <AlertTriangle size={20} />
+                <span>Inventario</span>
+              </button>
+            )}
+            {hasAccess('/clientes') && (
+              <button className="db-qa-btn" onClick={() => navigate('/clientes')}>
+                <DollarSign size={20} />
+                <span>Clientes</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
