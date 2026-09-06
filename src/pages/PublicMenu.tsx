@@ -291,6 +291,7 @@ export function PublicMenu() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [identification, setIdentification] = useState('')
+  const [idPrefix, setIdPrefix] = useState<'V' | 'E' | 'J'>('V')
   const [email, setEmail] = useState('')
   const [orderType, setOrderType] = useState<'takeaway' | 'delivery'>('takeaway')
   const [payMode, setPayMode] = useState<'single' | 'mixed'>('single')
@@ -1043,8 +1044,8 @@ export function PublicMenu() {
     setError('')
     setFieldError('')
     if (name.trim().length < 2) return setFieldError('name')
-    if (phone.replace(/\D/g, '').length < 7) return setFieldError('phone')
-    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) return setFieldError('identification')
+    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) return setFieldError('identification')
+    if (phone.replace(/\D/g, '').length !== 11) return setFieldError('phone')
     if (orderType === 'delivery' && (address.trim().length < 8 || !geoCoords || !addressReference.trim())) {
       setStep('address')
       if (address.trim().length < 8) return setAddressFieldError('address')
@@ -1068,8 +1069,8 @@ export function PublicMenu() {
     setError('')
     setFieldError('')
     if (name.trim().length < 2) { setStep('details'); return setFieldError('name') }
-    if (phone.replace(/\D/g, '').length < 7) { setStep('details'); return setFieldError('phone') }
-    if (!/^(?:[VE]-?)?\d{6,10}$/i.test(identification.trim())) { setStep('details'); return setFieldError('identification') }
+    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) { setStep('details'); return setFieldError('identification') }
+    if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return setFieldError('phone') }
     if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return setAddressFieldError('address') }
     if (!cart.length) return setError('Tu carrito está vacío.')
 
@@ -2506,9 +2507,9 @@ export function PublicMenu() {
               <span>Solo para coordinar tu pedido.</span>
             </div>
             <div className="public-data-form-card">
-              <label className={`public-data-field${fieldError === 'name' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre</span><div className="public-data-input"><input ref={nameRef} autoComplete="name" value={name} onChange={event => { setName(event.target.value); if (fieldError === 'name') setFieldError('') }} placeholder="Nombre y apellido" /></div>{fieldError === 'name' && <em className="public-field-error" role="alert">Escribe tu nombre.</em>}</span></label>
-              <label className={`public-data-field${fieldError === 'identification' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula</span><div className="public-data-input"><input ref={identificationRef} inputMode="text" autoComplete="off" value={identification} maxLength={12} onChange={event => { setIdentification(event.target.value.toUpperCase().replace(/[^VE0-9-]/g, '')); if (fieldError === 'identification') setFieldError('') }} placeholder="V-12345678" /></div>{fieldError === 'identification' ? <em className="public-field-error" role="alert">Escribe una cédula válida, por ejemplo V-12345678.</em> : <small>La usaremos para conservar tu historial de pedidos</small>}</span></label>
-              <label className={`public-data-field${fieldError === 'phone' ? ' invalid' : ''}`}><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp</span><div className="public-data-input"><input ref={phoneRef} type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={event => { setPhone(event.target.value); if (fieldError === 'phone') setFieldError('') }} placeholder="0412 000 0000" /></div>{fieldError === 'phone' ? <em className="public-field-error" role="alert">Escribe un teléfono válido.</em> : <small>Te escribiremos aquí para confirmar</small>}</span></label>
+              <label className={`public-data-field${fieldError === 'name' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={nameRef} autoComplete="name" value={name} onChange={event => { setName(event.target.value); if (fieldError === 'name') setFieldError('') }} placeholder="Nombre y apellido" /></div>{fieldError === 'name' && <em className="public-field-error" role="alert">Escribe tu nombre.</em>}</span></label>
+              <label className={`public-data-field${fieldError === 'identification' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula <em className="public-data-req">*</em></span><div className="public-data-input"><div className="public-id-prefix-toggle">{(['V', 'E', 'J'] as const).map(p => <button key={p} type="button" className={idPrefix === p ? 'active' : ''} onClick={() => { setIdPrefix(p); setIdentification(`${p}-${identification.replace(/^[VEJ]-?/i, '')}`); if (fieldError === 'identification') setFieldError('') }}>{p}</button>)}</div><input ref={identificationRef} inputMode="numeric" autoComplete="off" value={identification.replace(/^[VEJ]-?/i, '')} maxLength={8} onChange={event => { const digits = event.target.value.replace(/\D/g, ''); setIdentification(`${idPrefix}-${digits}`); if (fieldError === 'identification') setFieldError('') }} onBlur={() => { const digits = identification.replace(/^[VEJ]-?/i, ''); if (digits && (digits.length < 6 || digits.length > 8)) setFieldError('identification') }} placeholder="12345678" /></div>{fieldError === 'identification' ? <em className="public-field-error" role="alert">La cédula debe tener entre 6 y 8 dígitos.</em> : <small>La usaremos para conservar tu historial de pedidos</small>}</span></label>
+              <label className={`public-data-field${fieldError === 'phone' ? ' invalid' : ''}`}><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={phoneRef} type="tel" inputMode="tel" autoComplete="tel" value={phone} maxLength={15} onChange={event => { setPhone(event.target.value); if (fieldError === 'phone') setFieldError('') }} onBlur={() => { if (phone.trim() && phone.replace(/\D/g, '').length !== 11) setFieldError('phone') }} placeholder="0412 000 0000" /></div>{fieldError === 'phone' ? <em className="public-field-error" role="alert">Debe tener exactamente 11 dígitos, ej. 0412 000 0000.</em> : <small>Te escribiremos aquí para confirmar</small>}</span></label>
             </div>
             <div className="public-pay-card">
               <div className="public-pay-head"><Wallet size={17} /><span>¿Cómo vas a pagar?</span></div>

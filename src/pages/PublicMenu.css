@@ -1388,6 +1388,12 @@ button.mobile-only {
 .public-data-icon svg { width: 22px; height: 22px; }
 .public-data-field-copy { display: grid; gap: 2px; min-width: 0; }
 .public-data-field-copy > span { color: #fff; font-size: 12px; font-weight: 800; }
+.public-data-req { font-style: normal; color: #ed1b2f; font-size: 11px; margin-left: 2px; }
+.public-data-input:has(.public-id-prefix-toggle) { align-items: center; gap: 10px; }
+.public-id-prefix-toggle { display: flex; flex-shrink: 0; border: 1px solid rgba(255,255,255,.15); border-radius: 10px; overflow: hidden; }
+.public-id-prefix-toggle button { padding: 5px 13px; font: 700 13px 'DM Sans'; color: rgba(255,255,255,.4); background: transparent; border: none; cursor: pointer; transition: color .15s, background .15s; }
+.public-id-prefix-toggle button.active { color: #fff; background: rgba(255,255,255,.12); }
+.public-id-prefix-toggle button:not(:last-child) { border-right: 1px solid rgba(255,255,255,.15); }
 .public-data-field-copy > span small { margin-left: 6px; padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,.09); color: #aeb3ba; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .public-data-field-copy > small { color: #8f949d; font-size: 9px; font-weight: 500; }
 .public-data-input { display: flex; align-items: center; min-height: 28px; padding: 0; border: 0; border-radius: 0; background: transparent; }
