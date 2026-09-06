@@ -321,8 +321,13 @@ export function PublicMenu() {
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
   useEffect(() => {
     const preload = [
+      '/optimized/root/logo.webp',
       '/optimized/fondos/pickup-card.webp',
       '/optimized/fondos/delivery-card.webp',
+      '/optimized/fondos/carrito-vacio.webp',
+      '/optimized/cargando-pedido/fuego-circulo-rojo.webp',
+      '/optimized/cargando-pedido/wok-nuevo.webp',
+      '/optimized/cargando-pedido/whatsapp-circulo-verde.webp',
     ]
     preload.forEach(src => { const img = new Image(); img.src = src })
   }, [])
