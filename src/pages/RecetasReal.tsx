@@ -513,8 +513,8 @@ export function RecetasReal() {
       </header>
 
       <nav className="rec-module-tabs" aria-label="Tipos de receta">
-        <button className={recipeView === 'platos' ? 'active' : ''} onClick={() => setRecipeView('platos')}><UtensilsCrossed size={16} /><span>Recetas de platos</span><small>{products.length}</small></button>
-        <button className={recipeView === 'porciones' ? 'active' : ''} onClick={() => setRecipeView('porciones')}><Soup size={16} /><span>Recetas de porciones</span><small>{portions.length}</small></button>
+        <button className={recipeView === 'platos' ? 'active' : ''} onClick={() => setRecipeView('platos')}><UtensilsCrossed size={16} /><span>Recetas de platos</span></button>
+        <button className={recipeView === 'porciones' ? 'active' : ''} onClick={() => setRecipeView('porciones')}><Soup size={16} /><span>Recetas de porciones</span></button>
         <button className={recipeView === 'personal' ? 'active' : ''} onClick={() => setRecipeView('personal')}><BookOpen size={16} /><span>Alimentación del personal</span></button>
       </nav>
 
