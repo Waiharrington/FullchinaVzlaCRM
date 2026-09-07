@@ -363,7 +363,11 @@ export function Mas() {
                   value={newAmount}
                   onChange={(v) => setNewAmount(v)}
                 />
-                <label><input type="checkbox" checked={newIndefinite} onChange={e => setNewIndefinite(e.target.checked)} /> Plazo indefinido</label>
+                <label className="credit-indefinite-toggle">
+                  <input type="checkbox" checked={newIndefinite} onChange={e => setNewIndefinite(e.target.checked)} />
+                  <span className="credit-checkbox" aria-hidden="true" />
+                  <span>Plazo indefinido</span>
+                </label>
                 {!newIndefinite && <DateField value={newDueDate} onChange={setNewDueDate} />}
                 <div className="form-actions-inline">
                   <button className="btn-ghost" onClick={closeNewCredit}>Cancelar</button>
