@@ -312,14 +312,14 @@
   flex-shrink: 0;
 }
 .rec-staff-icon.lunch {
-  color: #4ade80;
-  background: rgba(245, 158, 11, 0.15);
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #ff4d3d;
+  background: rgba(255, 77, 61, 0.12);
+  border: 1px solid rgba(255, 77, 61, 0.3);
 }
 .rec-staff-icon.dinner {
-  color: #818cf8;
-  background: rgba(129, 140, 248, 0.15);
-  border: 1px solid rgba(129, 140, 248, 0.3);
+  color: #ff4d3d;
+  background: rgba(255, 77, 61, 0.12);
+  border: 1px solid rgba(255, 77, 61, 0.3);
 }
 .rec-staff-card-title-wrap h3 {
   margin: 0;
