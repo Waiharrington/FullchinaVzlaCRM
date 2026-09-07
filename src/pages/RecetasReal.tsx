@@ -14,7 +14,7 @@ import { formatUsd, formatVes } from '../lib/money'
 import {
   Plus, Trash2, Pencil, Check, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
-  UtensilsCrossed, Utensils, X, Sun, Moon, Sparkles,
+  UtensilsCrossed, Utensils, X,
 } from 'lucide-react'
 import './RecetasReal.css'
 import Toast from '../components/Toast'
@@ -760,26 +760,18 @@ export function RecetasReal() {
           <div className="rec-module-view-head">
             <div>
               <h2>Alimentación del personal</h2>
-              <p>Control de porciones y registro diario de comida de empleados. Descuenta inventario como consumo interno sin afectar ventas ni ticket promedio.</p>
+              <p><strong>Control de raciones y autoconsumo.</strong> Configura los ingredientes base por ración (almuerzo y cena). Al registrar el consumo diario, se calcula el total para el número de personas y se descuenta del inventario físico sin alterar la facturación de caja ni métricas de venta.</p>
             </div>
             <button className="rec-add-btn rec-staff-main-btn" onClick={() => handleOpenConsumeModal('lunch')}>
               <Utensils size={16} /> Registrar consumo de hoy
             </button>
           </div>
 
-          <div className="rec-staff-banner">
-            <Sparkles size={18} className="rec-staff-banner-icon" />
-            <div className="rec-staff-banner-text">
-              <strong>Control de raciones y autoconsumo</strong>
-              <span>Configura los ingredientes base por ración (almuerzo y cena). Al registrar el consumo diario, se calcula el total para el número de personas y se descuenta del inventario físico sin alterar la facturación de caja ni métricas de venta.</span>
-            </div>
-          </div>
-
           <div className="rec-staff-grid">
             <article className="rec-staff-card">
               <div className="rec-staff-card-head">
                 <div className="rec-staff-card-title-wrap">
-                  <span className="rec-staff-icon lunch"><Sun size={20} /></span>
+                  <span className="rec-staff-icon lunch"><Utensils size={20} /></span>
                   <div>
                     <h3>Almuerzo del personal</h3>
                     <small>Ración base por persona</small>
@@ -835,7 +827,7 @@ export function RecetasReal() {
             <article className="rec-staff-card">
               <div className="rec-staff-card-head">
                 <div className="rec-staff-card-title-wrap">
-                  <span className="rec-staff-icon dinner"><Moon size={20} /></span>
+                  <span className="rec-staff-icon dinner"><Utensils size={20} /></span>
                   <div>
                     <h3>Cena del personal</h3>
                     <small>Ración base por persona</small>
@@ -992,7 +984,7 @@ export function RecetasReal() {
           <form className="rec-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSaveStaffIng}>
             <div className="rec-modal-header">
               <div className="rec-modal-header-icon">
-                {staffIngTargetMeal === 'lunch' ? <Sun size={18} /> : <Moon size={18} />}
+                <Utensils size={18} />
               </div>
               <h3>Agregar a ración de {staffIngTargetMeal === 'lunch' ? 'Almuerzo' : 'Cena'}</h3>
             </div>
@@ -1077,7 +1069,7 @@ export function RecetasReal() {
                   })))
                 }}
               >
-                <Sun size={15} /> Almuerzo
+                <Utensils size={15} /> Almuerzo
               </button>
               <button
                 type="button"
@@ -1096,7 +1088,7 @@ export function RecetasReal() {
                   })))
                 }}
               >
-                <Moon size={15} /> Cena
+                <Utensils size={15} /> Cena
               </button>
             </div>
 

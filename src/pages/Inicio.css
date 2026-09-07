@@ -1565,8 +1565,9 @@
 
 .db-payment-card .db-donut-center strong {
   color: #fff;
-  font-size: 0.82rem;
+  font-size: 0.68rem;
   letter-spacing: -0.03em;
+  white-space: nowrap;
 }
 
 .db-pago-caption {

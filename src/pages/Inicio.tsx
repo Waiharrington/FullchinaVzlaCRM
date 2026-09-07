@@ -388,7 +388,6 @@ export function Inicio() {
                   <span>cobrado hoy</span>
                 </div>
               </div>
-              <span className="db-pago-caption">Ingresos recibidos hoy</span>
             </div>
             <div className="db-pago-legend">
               {paymentMethods.length === 0 ? (
