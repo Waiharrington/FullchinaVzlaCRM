@@ -608,6 +608,7 @@ export function Proveedores() {
                               <button
                                 type="button"
                                 className="prv-wsap-pill"
+                                aria-label={`Enviar WhatsApp a ${supplier.name}`}
                                 title={`Enviar WhatsApp a ${supplier.name}`}
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -617,7 +618,7 @@ export function Proveedores() {
                                   }
                                 }}
                               >
-                                <WhatsAppIcon size={12} /> WhatsApp
+                                <WhatsAppIcon size={14} />
                               </button>
                             </div>
                           ) : null}
