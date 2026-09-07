@@ -110,6 +110,12 @@
 .gst-table td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
 .gst-usd { font-weight: 800; color: #FF4D3D; }
 .gst-bs { color: #a1a1aa; }
+.gst-icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 0; background: transparent; color: #a1a1aa; cursor: pointer; }
+.gst-icon-btn.gst-icon-danger { color: #f87171; }
+.gst-icon-btn.gst-icon-danger:hover { color: #ff4d5a; }
+.gst-icon-btn:disabled { opacity: .45; cursor: wait; }
+.gst-spinner { width: 14px; height: 14px; border: 2px solid rgba(248,113,113,.3); border-top-color: currentColor; border-radius: 50%; animation: gst-spin .7s linear infinite; }
+@keyframes gst-spin { to { transform: rotate(360deg); } }
 .gst-badge { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 10px; border-radius: 8px; font-weight: 600; border: 1px solid transparent; }
 .gst-badge.fijo { color: #facc15; background: rgba(250, 204, 21,0.12); }
 .gst-badge.variable { color: #fde047; background: rgba(250, 204, 21,0.12); }

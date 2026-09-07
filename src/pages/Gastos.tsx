@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { createExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
+import { createExpense, deleteExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
@@ -9,10 +9,11 @@ import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import {
   Receipt, Store, Plus, TrendingDown, Wallet, Activity,
-  Search, Filter, Download, HelpCircle, X,
+  Search, Filter, Download, HelpCircle, X, Trash2,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
+import { confirmDialog } from '../components/ConfirmDialog'
 import './Gastos.css'
 
 type ExpenseType = 'fixed' | 'variable' | 'other'
@@ -47,6 +48,7 @@ export function Gastos() {
   const [form, setForm] = useState(emptyForm)
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [closingExpense, setClosingExpense] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
@@ -148,6 +150,25 @@ export function Gastos() {
     finally { setSaving(false) }
   }
 
+  const handleDeleteExpense = async (expense: ExpenseView) => {
+    const ok = await confirmDialog({
+      title: 'Eliminar gasto',
+      message: `¿Eliminar el gasto “${expense.description}” por ${formatUsd(expense.amountUsd)}?\n\nEsta acción actualizará el saldo de la cuenta y no se puede deshacer.`,
+      confirmText: 'Eliminar gasto',
+      danger: true,
+    })
+    if (!ok) return
+    setDeletingExpenseId(expense.id); setError('')
+    try {
+      await deleteExpense(expense.id)
+      setExpenses((prev) => prev.filter((item) => item.id !== expense.id))
+      flash('Gasto eliminado y saldo actualizado')
+      getFinancialAccounts().then(setAccounts).catch(() => {})
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar el gasto')
+    } finally { setDeletingExpenseId(null) }
+  }
+
   const exportCsv = () => {
     const rows = [['Fecha', 'Descripción', 'Tipo', 'Categoría', 'Proveedor', 'Monto USD', 'Monto Bs', 'Método', 'Ref']]
     filtered.forEach((e) => rows.push([e.date, e.description, e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro', catLabel(e.category), e.vendor, e.amountUsd.toFixed(2), (e.amountUsd * rate).toFixed(2), methodLabel(e.paymentMethod), e.reference ?? '']))
@@ -221,7 +242,7 @@ export function Gastos() {
 
           <div className="gst-table-wrap">
             <table className="gst-table">
-              <thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Categoría</th><th>Proveedor</th><th>Monto (USD)</th><th>Monto (Bs)</th></tr></thead>
+              <thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Categoría</th><th>Proveedor</th><th>Monto (USD)</th><th>Monto (Bs)</th><th>Acción</th></tr></thead>
               <tbody>
                 {pageItems.map((e) => (
                   <tr key={e.id}>
@@ -232,10 +253,11 @@ export function Gastos() {
                     <td>{e.vendor}</td>
                     <td className="gst-usd">{formatUsd(e.amountUsd)}</td>
                     <td className="gst-bs">{formatVes(e.amountUsd * rate)}</td>
+                    <td><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={15} />}</button></td>
                   </tr>
                 ))}
                 {pageItems.length === 0 && (
-                  <tr><td colSpan={7}>
+                  <tr><td colSpan={8}>
                     <EmptyState
                       compact
                       title="No hay gastos registrados"

@@ -1831,6 +1831,12 @@ export async function createExpense(params: {
   }
 }
 
+/** Elimina un gasto. El saldo de la cuenta se recalcula desde los movimientos registrados. */
+export async function deleteExpense(id: string): Promise<void> {
+  const { error } = await client().from('expenses').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar el gasto')
+}
+
 export async function getFinancialOperations(dateStart?: string, dateEnd?: string): Promise<FinancialOperation[]> {
   let query = client().from('financial_operations').select(`
     id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,
