@@ -154,4 +154,7 @@ $$;
 REVOKE ALL ON FUNCTION fullchinavzla.fn_delete_purchase(UUID) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION fullchinavzla.fn_delete_purchase(UUID) TO authenticated;
 
+-- PostgREST necesita refrescar su caché para exponer el nuevo RPC.
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
