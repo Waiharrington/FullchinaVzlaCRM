@@ -357,6 +357,9 @@ export function Mas() {
                 <NumberStepper
                   step={0.01}
                   placeholder="Monto del crédito"
+                  prefix="$"
+                  hideControls
+                  className="credit-amount-stepper"
                   value={newAmount}
                   onChange={(v) => setNewAmount(v)}
                 />
