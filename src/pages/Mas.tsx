@@ -368,7 +368,7 @@ export function Mas() {
                   <span className="credit-checkbox" aria-hidden="true" />
                   <span>Plazo indefinido</span>
                 </label>
-                {!newIndefinite && <DateField value={newDueDate} onChange={setNewDueDate} />}
+                {!newIndefinite && <DateField value={newDueDate} onChange={setNewDueDate} calendar className="credit-due-date" placeholder="Fecha de vencimiento" />}
                 <div className="form-actions-inline">
                   <button className="btn-ghost" onClick={closeNewCredit}>Cancelar</button>
                   <button className="btn-accent" onClick={handleCreateCredit}>Crear</button>

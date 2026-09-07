@@ -33,16 +33,32 @@ interface DateFieldProps {
   placeholder?: string
   id?: string
   name?: InputHTMLAttributes<HTMLInputElement>['name']
+  calendar?: boolean
 }
 
 /** Campo de fecha escrito a mano (dd/mm/aaaa), sin calendario nativo. */
-export function DateField({ value, onChange, required, className, placeholder = 'dd/mm/aaaa', id, name }: DateFieldProps) {
+export function DateField({ value, onChange, required, className, placeholder = 'dd/mm/aaaa', id, name, calendar = false }: DateFieldProps) {
   const [text, setText] = useState(() => isoToDisplay(value))
 
   // Si el valor viene de afuera (p. ej. se limpia el formulario), refleja el cambio.
   useEffect(() => {
     setText((current) => (displayToIso(current) === value ? current : isoToDisplay(value)))
   }, [value])
+
+  if (calendar) {
+    return (
+      <input
+        type="date"
+        id={id}
+        name={name}
+        className={className}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        aria-label={placeholder}
+      />
+    )
+  }
 
   const handleChange = (raw: string) => {
     const formatted = formatTyping(raw)

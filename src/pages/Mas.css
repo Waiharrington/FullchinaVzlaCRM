@@ -193,6 +193,21 @@
   padding-left: 8px !important;
 }
 
+.credit-due-date {
+  flex: 0 0 190px !important;
+  width: 190px;
+  padding: 0.65rem 0.75rem !important;
+  border-radius: var(--radius-pill) !important;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.credit-due-date::-webkit-calendar-picker-indicator {
+  opacity: 0.8;
+  cursor: pointer;
+  filter: invert(38%) sepia(86%) saturate(2700%) hue-rotate(337deg) brightness(97%) contrast(93%);
+}
+
 .credit-indefinite-toggle {
   display: inline-flex;
   align-items: center;
