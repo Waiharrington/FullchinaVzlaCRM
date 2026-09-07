@@ -202,7 +202,7 @@ export function Proveedores() {
   useEffect(() => { void load() }, [load])
 
   const activity = useMemo(() => new Map(suppliers.map((supplier) => {
-    const history = purchases.filter((purchase) => purchase.supplierId === supplier.id)
+    const history = purchases.filter((purchase) => !purchase.isVoided && purchase.supplierId === supplier.id)
     return [supplier.id, {
       history,
       total: history.reduce((sum, purchase) => sum + purchase.totalAmount, 0),

@@ -265,7 +265,7 @@ export function Finanzas() {
       .reduce((sum, row) => sum + amountFor(row.payment.amount, row.rate), 0)
     const expensesDay = expenses.filter(row => row.accountId === account.id && row.expenseDate === day)
       .reduce((sum, row) => sum + amountFor(row.amount, row.exchangeRate), 0)
-    const purchasesDay = purchases.filter(row => row.isPaid && row.accountId === account.id && row.purchaseDate === day)
+    const purchasesDay = purchases.filter(row => !row.isVoided && row.isPaid && row.accountId === account.id && row.purchaseDate === day)
       .reduce((sum, row) => sum + amountFor(row.totalAmount, row.exchangeRate), 0)
     let collections = 0; let transfers = 0; let others = 0
     for (const op of operations.filter(row => row.operationDate === day)) {

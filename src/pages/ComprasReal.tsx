@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid, deletePurchase,
+  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid, deletePurchase, voidPurchase,
   getIngredients, getUnits, createIngredient, getFinancialAccounts,
   type Supplier, type Purchase, type Ingredient, type FinancialAccount,
 } from '../lib/dataService'
@@ -15,7 +15,7 @@ import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import {
-  ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart,
+  ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart, Ban,
   ClipboardList, Package, CalendarClock, Search, Download, Eye, X,
 } from 'lucide-react'
 import Toast from '../components/Toast'
@@ -74,6 +74,7 @@ export function ComprasReal() {
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState<Purchase | null>(null)
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null)
+  const [voidingPurchaseId, setVoidingPurchaseId] = useState<string | null>(null)
   const [closingDetail, setClosingDetail] = useState(false)
   const closeDetail = () => {
     if (closingDetail) return
@@ -123,13 +124,14 @@ export function ComprasReal() {
       const dt = new Date(d)
       return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth() - offset
     }
-    const thisMonth = purchases.filter((p) => inMonth(p.purchaseDate))
-    const prevMonth = purchases.filter((p) => inMonth(p.purchaseDate, 1))
+    const activePurchases = purchases.filter((p) => !p.isVoided)
+    const thisMonth = activePurchases.filter((p) => inMonth(p.purchaseDate))
+    const prevMonth = activePurchases.filter((p) => inMonth(p.purchaseDate, 1))
     const totalThis = thisMonth.reduce((s, p) => s + p.totalAmount, 0)
     const totalPrev = prevMonth.reduce((s, p) => s + p.totalAmount, 0)
     const pct = totalPrev > 0 ? ((totalThis - totalPrev) / totalPrev) * 100 : null
     const itemsThis = thisMonth.reduce((s, p) => s + p.items.length, 0)
-    return { totalThis, count: thisMonth.length, itemsThis, pct, last: purchases[0] ?? null }
+    return { totalThis, count: thisMonth.length, itemsThis, pct, last: activePurchases[0] ?? null }
   }, [purchases])
 
   const filtered = useMemo(() => {
@@ -247,6 +249,24 @@ export function ComprasReal() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo eliminar la compra')
     } finally { setDeletingPurchaseId(null) }
+  }
+
+  const handleVoidPurchase = async (purchase: Purchase) => {
+    const ok = await confirmDialog({
+      title: 'Anular compra',
+      message: `¿Anular la compra de ${purchase.supplierName} por ${formatUsd(purchase.totalAmount)}?\n\nEl registro y el inventario histórico se conservarán, pero dejará de contar en los totales financieros.`,
+      confirmText: 'Anular compra',
+      danger: true,
+    })
+    if (!ok) return
+    setVoidingPurchaseId(purchase.id); setError('')
+    try {
+      await voidPurchase(purchase.id)
+      flash('Compra anulada; el registro histórico se conserva')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo anular la compra')
+    } finally { setVoidingPurchaseId(null) }
   }
 
   const exportCsv = () => {
@@ -415,8 +435,8 @@ export function ComprasReal() {
                     {p.isPaid ? <div className="cmp-paid-amount"><strong>{p.paymentCurrency === 'VES' && p.exchangeRate ? formatVes(p.totalAmount * p.exchangeRate) : formatUsd(p.totalAmount)}</strong>{p.paymentCurrency === 'VES' && p.exchangeRate && <small>Ref. {formatUsd(p.totalAmount)} · BCV {formatVes(p.exchangeRate)}</small>}</div> : <span>—</span>}
                   </td>
                   <td><div className="cmp-payment-info"><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</div></td>
-                  <td><span className={`cmp-badge ${p.isPaid ? 'ok' : 'warn'}`} title="Clic para cambiar" onClick={() => togglePaid(p)}>{p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
-                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar compra" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></div></td>
+                  <td><span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Clic para cambiar'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>{p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
+                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>{!p.isVoided && <><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></>}</div></td>
                 </tr>
               ))}
               {pageItems.length === 0 && (

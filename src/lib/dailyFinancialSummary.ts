@@ -11,7 +11,7 @@ export interface DailyFinancialRow {
 }
 
 interface OrderInput { createdAt: string; status: string; totalAmount: number }
-interface PurchaseInput { purchaseDate: string; totalAmount: number }
+interface PurchaseInput { purchaseDate: string; totalAmount: number; isVoided?: boolean }
 interface ExpenseInput { expenseDate: string; category: string; amount: number }
 
 const isoDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -29,7 +29,7 @@ export function buildDailyFinancialRows(
     const day = index + 1
     const date = `${month}-${String(day).padStart(2, '0')}`
     const sales = orders.filter(order => order.status === 'paid' && localDate(order.createdAt) === date).reduce((sum, order) => sum + order.totalAmount, 0)
-    const dayPurchases = purchases.filter(purchase => purchase.purchaseDate === date).reduce((sum, purchase) => sum + purchase.totalAmount, 0)
+    const dayPurchases = purchases.filter(purchase => !purchase.isVoided && purchase.purchaseDate === date).reduce((sum, purchase) => sum + purchase.totalAmount, 0)
     const dayExpenses = expenses.filter(expense => expense.expenseDate === date)
     const fixedExpenses = dayExpenses.filter(expense => expense.category === 'fixed').reduce((sum, expense) => sum + expense.amount, 0)
     const variableExpenses = dayExpenses.filter(expense => expense.category === 'variable').reduce((sum, expense) => sum + expense.amount, 0)

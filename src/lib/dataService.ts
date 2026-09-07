@@ -293,6 +293,7 @@ export interface Purchase {
   paymentMethod: string | null
   paymentReference: string | null
   exchangeRate: number | null
+  isVoided: boolean
 }
 
 export interface PurchaseItem {
@@ -3503,7 +3504,7 @@ export async function getPurchases(): Promise<Purchase[]> {
   const { data, error } = await client()
     .from('purchases')
     .select(`
-      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
+      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, is_voided, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
       suppliers(name),
       financial_accounts(name,currency),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
@@ -3536,6 +3537,7 @@ export async function getPurchases(): Promise<Purchase[]> {
       items,
       totalAmount: items.reduce((sum, i) => sum + i.total, 0),
       isPaid: p.is_paid !== false,
+      isVoided: p.is_voided === true,
       accountId: (p.account_id as string) ?? null,
       accountName: ((p.financial_accounts as unknown as Record<string, unknown>)?.name as string) ?? null,
       paymentCurrency: ((p.payment_currency ?? (p.financial_accounts as unknown as Record<string, unknown>)?.currency) as 'USD' | 'VES') ?? null,
@@ -3549,6 +3551,12 @@ export async function getPurchases(): Promise<Purchase[]> {
 export async function setPurchasePaid(id: string, isPaid: boolean): Promise<void> {
   const { error } = await client().from('purchases').update({ is_paid: isPaid }).eq('id', id)
   if (error) throw error
+}
+
+/** Anula una compra conservando su registro y movimientos históricos. */
+export async function voidPurchase(id: string): Promise<void> {
+  const { error } = await client().rpc('fn_void_purchase', { p_purchase_id: id })
+  if (error) throw new Error(error.message || 'No se pudo anular la compra')
 }
 
 /** Elimina una compra y registra la reversa de inventario de forma atómica. */

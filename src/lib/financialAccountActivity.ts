@@ -6,7 +6,7 @@ export interface AccountActivityInput {
 interface PaymentInput { amount: number; accountId?: string | null }
 interface OrderInput { status: string; createdAt: string; bcvRate: number | null; payments: PaymentInput[] }
 interface ExpenseInput { expenseDate: string; amount: number; accountId: string | null; exchangeRate: number | null }
-interface PurchaseInput { purchaseDate: string; totalAmount: number; accountId: string | null; exchangeRate: number | null; isPaid: boolean }
+interface PurchaseInput { purchaseDate: string; totalAmount: number; accountId: string | null; exchangeRate: number | null; isPaid: boolean; isVoided?: boolean }
 
 export interface AccountActivity {
   inflows: number
@@ -42,7 +42,7 @@ export function buildFinancialAccountActivity(
     result.get(expense.accountId)!.outflows += accountAmount(expense.amount, currencies.get(expense.accountId)!, expense.exchangeRate)
   }
   for (const purchase of purchases) {
-    if (!purchase.isPaid || !purchase.accountId || !result.has(purchase.accountId) || !inRange(purchase.purchaseDate, start, end)) continue
+    if (purchase.isVoided || !purchase.isPaid || !purchase.accountId || !result.has(purchase.accountId) || !inRange(purchase.purchaseDate, start, end)) continue
     result.get(purchase.accountId)!.outflows += accountAmount(purchase.totalAmount, currencies.get(purchase.accountId)!, purchase.exchangeRate)
   }
   for (const row of result.values()) row.net = row.inflows - row.outflows
