@@ -112,8 +112,12 @@
 .cmp-badge.ok { color: #22c55e; background: rgba(34,197,94,0.12); }
 .cmp-badge.warn { color: #fde047; background: rgba(250, 204, 21,0.12); }
 .cmp-badge.fixed { cursor: default; }
+.cmp-row-actions { display: inline-flex; align-items: center; gap: 6px; }
 .cmp-icon-btn { background: none; border: 0; color: #a1a1aa; cursor: pointer; padding: 4px; }
 .cmp-icon-btn:hover { color: #fff; }
+.cmp-icon-btn.cmp-icon-danger { color: #f87171; }
+.cmp-icon-btn.cmp-icon-danger:hover { color: #ff4d5a; }
+.cmp-icon-btn:disabled { opacity: .45; cursor: wait; }
 
 .cmp-pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
 .cmp-pagination button { min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: #1c1c22; color: #d4d4d8; cursor: pointer; font-size: 13px; }

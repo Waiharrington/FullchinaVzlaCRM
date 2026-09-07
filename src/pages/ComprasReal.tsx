@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid,
+  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid, deletePurchase,
   getIngredients, getUnits, createIngredient, getFinancialAccounts,
   type Supplier, type Purchase, type Ingredient, type FinancialAccount,
 } from '../lib/dataService'
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
+import { confirmDialog } from '../components/ConfirmDialog'
 import './ComprasReal.css'
 
 interface ItemForm { ingredientId: string; quantity: string; unitId: string; unitCost: string }
@@ -72,6 +73,7 @@ export function ComprasReal() {
   const [paidFilter, setPaidFilter] = useState<PaidFilter>('todos')
   const [page, setPage] = useState(1)
   const [detail, setDetail] = useState<Purchase | null>(null)
+  const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null)
   const [closingDetail, setClosingDetail] = useState(false)
   const closeDetail = () => {
     if (closingDetail) return
@@ -226,6 +228,25 @@ export function ComprasReal() {
   const togglePaid = async (p: Purchase) => {
     try { await setPurchasePaid(p.id, !p.isPaid); await load() }
     catch (e) { setError(e instanceof Error ? e.message : 'Error actualizando estado') }
+  }
+
+  const handleDeletePurchase = async (purchase: Purchase) => {
+    const ok = await confirmDialog({
+      title: 'Eliminar compra',
+      message: `¿Eliminar la compra de ${purchase.supplierName} por ${formatUsd(purchase.totalAmount)}?\n\nSe revertirá el stock de almacén. Si algún insumo ya fue usado o transferido, la operación será rechazada.`,
+      confirmText: 'Eliminar compra',
+      danger: true,
+    })
+    if (!ok) return
+    setDeletingPurchaseId(purchase.id); setError('')
+    try {
+      await deletePurchase(purchase.id)
+      if (detail?.id === purchase.id) setDetail(null)
+      flash('Compra eliminada y stock revertido')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo eliminar la compra')
+    } finally { setDeletingPurchaseId(null) }
   }
 
   const exportCsv = () => {
@@ -395,7 +416,7 @@ export function ComprasReal() {
                   </td>
                   <td><div className="cmp-payment-info"><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</div></td>
                   <td><span className={`cmp-badge ${p.isPaid ? 'ok' : 'warn'}`} title="Clic para cambiar" onClick={() => togglePaid(p)}>{p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
-                  <td><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle"><Eye size={16} /></button></td>
+                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar compra" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></div></td>
                 </tr>
               ))}
               {pageItems.length === 0 && (

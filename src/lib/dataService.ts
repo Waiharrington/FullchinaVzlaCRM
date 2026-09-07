@@ -3545,6 +3545,12 @@ export async function setPurchasePaid(id: string, isPaid: boolean): Promise<void
   if (error) throw error
 }
 
+/** Elimina una compra y registra la reversa de inventario de forma atómica. */
+export async function deletePurchase(id: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_purchase', { p_purchase_id: id })
+  if (error) throw new Error(error.message || 'No se pudo eliminar la compra')
+}
+
 export async function createPurchase(params: {
   supplierId: string
   purchaseDate: string
