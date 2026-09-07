@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid, deletePurchase, voidPurchase,
+  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid, deletePurchase, voidPurchase, deleteVoidedPurchase,
   getIngredients, getUnits, createIngredient, getFinancialAccounts,
   type Supplier, type Purchase, type Ingredient, type FinancialAccount,
 } from '../lib/dataService'
@@ -269,6 +269,25 @@ export function ComprasReal() {
     } finally { setVoidingPurchaseId(null) }
   }
 
+  const handleDeleteVoidedPurchase = async (purchase: Purchase) => {
+    const ok = await confirmDialog({
+      title: 'Borrar compra demo',
+      message: `¿Borrar permanentemente la compra anulada de ${purchase.supplierName}?\n\nEsta acción elimina el registro y sus movimientos de inventario. Úsala solo si esta compra era de prueba.`,
+      confirmText: 'Borrar permanentemente',
+      danger: true,
+    })
+    if (!ok) return
+    setDeletingPurchaseId(purchase.id); setError('')
+    try {
+      await deleteVoidedPurchase(purchase.id)
+      if (detail?.id === purchase.id) setDetail(null)
+      flash('Compra demo borrada permanentemente')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo borrar la compra anulada')
+    } finally { setDeletingPurchaseId(null) }
+  }
+
   const exportCsv = () => {
     const rows = [['Fecha', 'Proveedor', 'Factura', 'Items', 'Total USD', 'Total Bs', 'Tasa BCV', 'Método', 'Cuenta', 'Referencia', 'Pagado']]
     filtered.forEach((p) => rows.push([
@@ -436,7 +455,7 @@ export function ComprasReal() {
                   </td>
                   <td><div className="cmp-payment-info"><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</div></td>
                   <td><span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Clic para cambiar'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>{p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
-                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>{!p.isVoided && <><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></>}</div></td>
+                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>{p.isVoided ? <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeleteVoidedPurchase(p)} title="Borrar compra demo permanentemente" aria-label={`Borrar compra demo de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button> : <><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></>}</div></td>
                 </tr>
               ))}
               {pageItems.length === 0 && (

@@ -3559,6 +3559,12 @@ export async function voidPurchase(id: string): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudo anular la compra')
 }
 
+/** Borra definitivamente una compra previamente anulada, solo para demos. */
+export async function deleteVoidedPurchase(id: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_voided_purchase', { p_purchase_id: id })
+  if (error) throw new Error(error.message || 'No se pudo borrar la compra anulada')
+}
+
 /** Elimina una compra y registra la reversa de inventario de forma atómica. */
 export async function deletePurchase(id: string): Promise<void> {
   const { error } = await client().rpc('fn_delete_purchase', { p_purchase_id: id })
