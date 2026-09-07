@@ -3339,6 +3339,27 @@ export async function createPortionRecipe(params: { name: string; ingredientId: 
   return data.id as string
 }
 
+export async function updatePortionRecipe(
+  id: string,
+  params: { name?: string; ingredientId?: string; quantity?: number; unitId?: string; notes?: string; isActive?: boolean },
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+  if (params.name !== undefined) updates.name = params.name.trim()
+  if (params.ingredientId !== undefined) updates.ingredient_id = params.ingredientId
+  if (params.quantity !== undefined) updates.portion_quantity = params.quantity
+  if (params.unitId !== undefined) updates.portion_unit_id = params.unitId
+  if (params.notes !== undefined) updates.notes = params.notes?.trim() || null
+  if (params.isActive !== undefined) updates.is_active = params.isActive
+
+  const { error } = await client().from('portion_recipes').update(updates).eq('id', id)
+  if (error) throw error
+}
+
+export async function deletePortionRecipe(id: string): Promise<void> {
+  const { error } = await client().from('portion_recipes').update({ is_active: false }).eq('id', id)
+  if (error) throw error
+}
+
 export async function createRecipeComponent(params: {
   sellableProductId: string
   ingredientId?: string
@@ -3442,6 +3463,32 @@ export async function createSupplier(params: {
     .single()
   if (error) throw error
   return data.id as string
+}
+
+export async function updateSupplier(
+  id: string,
+  params: {
+    name?: string
+    contact?: string
+    phone?: string
+    email?: string
+    notes?: string
+    isActive?: boolean
+  },
+): Promise<void> {
+  const updates: Record<string, unknown> = {}
+  if (params.name !== undefined) updates.name = params.name
+  if (params.contact !== undefined) updates.contact = params.contact || null
+  if (params.phone !== undefined) updates.phone = params.phone || null
+  if (params.email !== undefined) updates.email = params.email || null
+  if (params.notes !== undefined) updates.notes = params.notes || null
+  if (params.isActive !== undefined) updates.is_active = params.isActive
+
+  const { error } = await client()
+    .from('suppliers')
+    .update(updates)
+    .eq('id', id)
+  if (error) throw error
 }
 
 // --- Compras ------------------------------------------------------------------

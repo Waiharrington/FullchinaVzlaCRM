@@ -36,6 +36,7 @@
   font-size: 14px;
   font-weight: 600;
   font-family: inherit;
+  text-align: center;
   padding: 11px 4px 11px 12px !important;
 }
 .num-stepper-input:focus { box-shadow: none !important; }

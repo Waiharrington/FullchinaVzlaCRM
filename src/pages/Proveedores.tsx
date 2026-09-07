@@ -1,16 +1,87 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Building2, CalendarDays, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CreditCard, Eye, FileText, Loader2, Mail, Phone, Plus, Search, ShoppingBag, UserRound, Wallet, X } from 'lucide-react'
+import {
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Edit2,
+  Eye,
+  FileText,
+  Loader2,
+  Mail,
+  Phone,
+  Plus,
+  Search,
+  ShoppingBag,
+  UserRound,
+  Wallet,
+  X,
+} from 'lucide-react'
 import Toast from '../components/Toast'
-import { createSupplier, getPurchases, getSuppliers, type Purchase, type Supplier } from '../lib/dataService'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { StyledSelect } from '../components/StyledSelect'
+import { PageSkeleton } from '../components/PageSkeleton'
+import { EmptyState } from '../components/EmptyState'
+import {
+  createSupplier,
+  updateSupplier,
+  getPurchases,
+  getSuppliers,
+  type Purchase,
+  type Supplier,
+} from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import './Proveedores.css'
-import { PageSkeleton } from '../components/PageSkeleton'
-import { EmptyState } from '../components/EmptyState'
 
 type SupplierDraft = { name: string; contact: string; phone: string; email: string; notes: string }
 const EMPTY_DRAFT: SupplierDraft = { name: '', contact: '', phone: '', email: '', notes: '' }
+
+type SortOption = 'purchases' | 'total' | 'name' | 'recent'
+type FilterOption = 'all' | 'with-phone' | 'with-purchases'
+
+function WhatsAppIcon({ size = 13 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+      <path d="M12.001 2C6.478 2 2 6.478 2 12c0 1.79.47 3.548 1.362 5.096L2 22l4.99-1.331A9.956 9.956 0 0 0 12.001 22C17.523 22 22 17.523 22 12S17.523 2 12.001 2zm0 18.15a8.126 8.126 0 0 1-4.15-1.132l-.297-.176-3.11.83.83-3.033-.194-.312A8.104 8.104 0 0 1 3.85 12c0-4.49 3.66-8.15 8.15-8.15S20.15 7.51 20.15 12 16.49 20.15 12 20.15z" />
+    </svg>
+  )
+}
+
+const AVATAR_COLORS = [
+  'linear-gradient(135deg, #e11d2a, #7f1d1d)',
+  'linear-gradient(135deg, #ea580c, #9a3412)',
+  'linear-gradient(135deg, #ca8a04, #854d0e)',
+  'linear-gradient(135deg, #b91c1c, #450a0a)',
+  'linear-gradient(135deg, #d97706, #78350f)',
+]
+
+function getAvatarBg(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
+}
+
+function formatRelativeDays(value?: string | null): string {
+  if (!value) return ''
+  const d = new Date(value.length <= 10 ? `${value}T12:00:00` : value)
+  if (Number.isNaN(d.getTime())) return ''
+  const days = Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000))
+  if (days < 1) return 'Hoy'
+  if (days === 1) return 'Ayer'
+  return `Hace ${days} d`
+}
+
+function formatDate(value?: string | null): string {
+  if (!value) return '—'
+  const d = new Date(value.length <= 10 ? `${value}T12:00:00` : value)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
 
 export function Proveedores() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -20,9 +91,21 @@ export function Proveedores() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<SortOption>('purchases')
+  const [filterContact, setFilterContact] = useState<FilterOption>('all')
+
+  // Create Modal state
   const [showForm, setShowForm] = useState(false)
   const [closingForm, setClosingForm] = useState(false)
   const [draft, setDraft] = useState<SupplierDraft>(EMPTY_DRAFT)
+
+  // Edit Modal state
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [closingEditModal, setClosingEditModal] = useState(false)
+  const [editDraft, setEditDraft] = useState<SupplierDraft>(EMPTY_DRAFT)
+
+  // History Modal state
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [closingSelected, setClosingSelected] = useState(false)
   const [historyMonthCursor, setHistoryMonthCursor] = useState(() => {
@@ -31,6 +114,26 @@ export function Proveedores() {
   })
   const [historyWeekStartKey, setHistoryWeekStartKey] = useState<string | null>(null)
   const [expandedPurchaseId, setExpandedPurchaseId] = useState<string | null>(null)
+  const [historyPage, setHistoryPage] = useState(1)
+  const HISTORY_PAGE_SIZE = 10
+
+  const timeoutsRef = useRef<number[]>([])
+
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = window.setTimeout(() => {
+      timeoutsRef.current = timeoutsRef.current.filter((t) => t !== id)
+      fn()
+    }, ms)
+    timeoutsRef.current.push(id)
+    return id
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((id) => clearTimeout(id))
+      timeoutsRef.current = []
+    }
+  }, [])
 
   useEffect(() => {
     if (!selectedId) return
@@ -38,12 +141,13 @@ export function Proveedores() {
     const n = new Date()
     setHistoryMonthCursor(new Date(n.getFullYear(), n.getMonth(), 1))
     setHistoryWeekStartKey(null)
+    setHistoryPage(1)
   }, [selectedId])
 
   const closeSelected = (then?: () => void) => {
     if (closingSelected) return
     setClosingSelected(true)
-    window.setTimeout(() => {
+    safeTimeout(() => {
       setSelectedId(null)
       setClosingSelected(false)
       then?.()
@@ -53,9 +157,31 @@ export function Proveedores() {
   const closeForm = () => {
     if (closingForm) return
     setClosingForm(true)
-    window.setTimeout(() => {
+    safeTimeout(() => {
       setShowForm(false)
       setClosingForm(false)
+    }, 200)
+  }
+
+  const openEditModal = (supplier: Supplier) => {
+    setEditingSupplier(supplier)
+    setEditDraft({
+      name: supplier.name,
+      contact: supplier.contact ?? '',
+      phone: supplier.phone ?? '',
+      email: supplier.email ?? '',
+      notes: supplier.notes ?? '',
+    })
+    setShowEditModal(true)
+  }
+
+  const closeEditModal = () => {
+    if (closingEditModal) return
+    setClosingEditModal(true)
+    safeTimeout(() => {
+      setShowEditModal(false)
+      setEditingSupplier(null)
+      setClosingEditModal(false)
     }, 200)
   }
 
@@ -86,10 +212,44 @@ export function Proveedores() {
 
   const filtered = useMemo(() => {
     const query = normalizeForSearch(search)
-    if (!query) return suppliers
-    return suppliers.filter((supplier) => [supplier.name, supplier.contact, supplier.phone, supplier.email]
-      .some((value) => value && normalizeForSearch(value).includes(query)))
-  }, [search, suppliers])
+    let list = suppliers
+
+    if (query) {
+      list = list.filter((supplier) => [supplier.name, supplier.contact, supplier.phone, supplier.email]
+        .some((value) => value && normalizeForSearch(value).includes(query)))
+    }
+
+    if (filterContact === 'with-phone') {
+      list = list.filter((s) => Boolean(s.phone && s.phone.trim().length > 0))
+    } else if (filterContact === 'with-purchases') {
+      list = list.filter((s) => {
+        const stats = activity.get(s.id)
+        return (stats?.history.length ?? 0) > 0
+      })
+    }
+
+    return [...list].sort((a, b) => {
+      const statsA = activity.get(a.id)
+      const statsB = activity.get(b.id)
+
+      if (sortBy === 'purchases') {
+        const countA = statsA?.history.length ?? 0
+        const countB = statsB?.history.length ?? 0
+        return countB - countA || a.name.localeCompare(b.name, 'es')
+      }
+      if (sortBy === 'total') {
+        const totalA = statsA?.total ?? 0
+        const totalB = statsB?.total ?? 0
+        return totalB - totalA || a.name.localeCompare(b.name, 'es')
+      }
+      if (sortBy === 'recent') {
+        const dateA = statsA?.last ? new Date(`${statsA.last.purchaseDate}T12:00:00`).getTime() : 0
+        const dateB = statsB?.last ? new Date(`${statsB.last.purchaseDate}T12:00:00`).getTime() : 0
+        return dateB - dateA || a.name.localeCompare(b.name, 'es')
+      }
+      return a.name.localeCompare(b.name, 'es')
+    })
+  }, [search, suppliers, filterContact, sortBy, activity])
 
   const selected = selectedId ? suppliers.find((supplier) => supplier.id === selectedId) ?? null : null
   const selectedActivity = selected ? activity.get(selected.id) : null
@@ -173,6 +333,21 @@ export function Proveedores() {
     })
   }, [selectedActivity, historyWeeksInMonth, historyWeekStartKey])
 
+  const historyRows = useMemo(() => historyGroups.flatMap((group) => group.items.map((purchase) => ({ group, purchase }))), [historyGroups])
+  const historyTotalPages = Math.max(1, Math.ceil(historyRows.length / HISTORY_PAGE_SIZE))
+  const safeHistoryPage = Math.min(historyPage, historyTotalPages)
+  const visibleHistoryRows = historyRows.slice((safeHistoryPage - 1) * HISTORY_PAGE_SIZE, safeHistoryPage * HISTORY_PAGE_SIZE)
+  const visibleHistoryGroups = useMemo(() => {
+    const grouped = new Map<string, { group: typeof historyGroups[number]; items: Purchase[] }>()
+    visibleHistoryRows.forEach(({ group, purchase }) => {
+      if (!grouped.has(group.key)) grouped.set(group.key, { group, items: [] })
+      grouped.get(group.key)!.items.push(purchase)
+    })
+    return [...grouped.values()]
+  }, [visibleHistoryRows])
+
+  useEffect(() => { setHistoryPage(1) }, [historyWeekStartKey, historyMonthCursor, selectedId])
+
   const selectedPurchase = useMemo(
     () => historyGroups.flatMap((g) => g.items).find((p) => p.id === expandedPurchaseId) ?? null,
     [historyGroups, expandedPurchaseId],
@@ -216,6 +391,7 @@ export function Proveedores() {
   )
 
   const updateDraft = (field: keyof SupplierDraft, value: string) => setDraft((current) => ({ ...current, [field]: value }))
+  const updateEditDraft = (field: keyof SupplierDraft, value: string) => setEditDraft((current) => ({ ...current, [field]: value }))
 
   const saveSupplier = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -233,7 +409,7 @@ export function Proveedores() {
       setDraft(EMPTY_DRAFT)
       closeForm()
       setNotice('Proveedor guardado correctamente')
-      window.setTimeout(() => setNotice(''), 3500)
+      safeTimeout(() => setNotice(''), 3500)
       await load()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudo guardar el proveedor')
@@ -242,7 +418,31 @@ export function Proveedores() {
     }
   }
 
-  if (loading) return <PageSkeleton cards={3} rows={4} hasTable={false} />
+  const handleUpdateSupplier = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!editingSupplier || !editDraft.name.trim()) return
+    setSaving(true)
+    setError('')
+    try {
+      await updateSupplier(editingSupplier.id, {
+        name: editDraft.name.trim(),
+        contact: editDraft.contact.trim() || undefined,
+        phone: editDraft.phone.trim() || undefined,
+        email: editDraft.email.trim() || undefined,
+        notes: editDraft.notes.trim() || undefined,
+      })
+      closeEditModal()
+      setNotice('Proveedor actualizado correctamente')
+      safeTimeout(() => setNotice(''), 3500)
+      await load()
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'No se pudo actualizar el proveedor')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <PageSkeleton cards={3} rows={8} hasTable />
 
   return (
     <div className="page prv-page animate-fade-in management-workspace management-workspace--suppliers" key="prv-full">
@@ -257,12 +457,244 @@ export function Proveedores() {
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
+      {/* KPI Cards */}
       <section className="prv-kpis management-workspace-metrics" aria-label="Resumen de proveedores">
-        <article className="prv-kpi-card red"><span><Building2 size={20} /></span><div><small>Proveedores activos</small><strong>{suppliers.length}</strong></div></article>
-        <article className="prv-kpi-card purple"><span><ShoppingBag size={20} /></span><div><small>Compras registradas</small><strong>{purchases.length}</strong></div></article>
-        <article className="prv-kpi-card green"><span><CalendarDays size={20} /></span><div><small>Total comprado</small><strong>{formatUsd(totalPurchased)}</strong></div></article>
+        <article className="prv-kpi-card red">
+          <span><Building2 size={20} /></span>
+          <div>
+            <small>Proveedores activos</small>
+            <strong>{suppliers.length}</strong>
+          </div>
+        </article>
+        <article className="prv-kpi-card purple">
+          <span><ShoppingBag size={20} /></span>
+          <div>
+            <small>Compras registradas</small>
+            <strong>{purchases.length}</strong>
+          </div>
+        </article>
+        <article className="prv-kpi-card green">
+          <span><CalendarDays size={20} /></span>
+          <div>
+            <small>Total comprado</small>
+            <MoneyWithBcv usd={totalPurchased} compact align="start" className="prv-kpi-money" usdClassName="prv-kpi-strong" />
+          </div>
+        </article>
       </section>
 
+      {/* Directory Table Card */}
+      <section className="prv-table-card management-workspace-panel">
+        <div className="prv-toolbar">
+          <div className="prv-toolbar-left">
+            <h2>Directorio</h2>
+            <p>{filtered.length} de {suppliers.length} proveedores</p>
+          </div>
+
+          <div className="prv-toolbar-right">
+            <div className="prv-search">
+              <Search size={16} />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar por nombre, contacto o teléfono..."
+              />
+              {search && (
+                <button type="button" className="search-clear-btn" onClick={() => setSearch('')} aria-label="Borrar búsqueda">
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            <div className="prv-filter-dropdown-wrap">
+              <span className="dropdown-label">Ordenar</span>
+              <StyledSelect
+                className="prv-filter-select"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+              >
+                <option value="purchases">Más compras</option>
+                <option value="total">Mayor total ($)</option>
+                <option value="name">Nombre (A - Z)</option>
+                <option value="recent">Última compra</option>
+              </StyledSelect>
+            </div>
+
+            <div className="prv-filter-dropdown-wrap">
+              <span className="dropdown-label">Filtro</span>
+              <StyledSelect
+                className="prv-filter-select"
+                value={filterContact}
+                onChange={(e) => setFilterContact(e.target.value as FilterOption)}
+              >
+                <option value="all">Todos</option>
+                <option value="with-phone">Con teléfono</option>
+                <option value="with-purchases">Con compras</option>
+              </StyledSelect>
+            </div>
+          </div>
+        </div>
+
+        <div className="table-responsive-wrapper">
+          <table className="prv-custom-table">
+            <thead>
+              <tr>
+                <th>Proveedor</th>
+                <th>Persona de contacto</th>
+                <th>Teléfono / Correo</th>
+                <th className="amount-th" style={{ textAlign: 'center' }}>Compras</th>
+                <th className="amount-th">Total Acumulado</th>
+                <th>Última Compra</th>
+                <th style={{ textAlign: 'center' }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7}>
+                    <EmptyState
+                      compact
+                      title="No se encontraron proveedores"
+                      description="Prueba con otro término de búsqueda o agrega un proveedor nuevo."
+                    />
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((supplier) => {
+                  const stats = activity.get(supplier.id)
+                  const purchaseCount = stats?.history.length ?? 0
+                  const totalAmount = stats?.total ?? 0
+                  const lastPurchaseDate = stats?.last?.purchaseDate ?? null
+                  const cleanPhone = supplier.phone ? supplier.phone.replace(/\D/g, '') : ''
+
+                  return (
+                    <tr
+                      key={supplier.id}
+                      className="clickable-row prv-table-row"
+                      onClick={() => setSelectedId(supplier.id)}
+                    >
+                      {/* Proveedor / Avatar */}
+                      <td>
+                        <div className="prv-supplier-cell">
+                          <span
+                            className="prv-cell-avatar"
+                            style={{ background: getAvatarBg(supplier.name) }}
+                          >
+                            {supplier.name.slice(0, 2).toUpperCase()}
+                          </span>
+                          <span className="prv-supplier-name">{supplier.name}</span>
+                        </div>
+                      </td>
+
+                      {/* Contacto */}
+                      <td>
+                        {supplier.contact ? (
+                          <div className="prv-contact-person">
+                            <UserRound size={13} className="prv-icon-muted" />
+                            <span>{supplier.contact}</span>
+                          </div>
+                        ) : (
+                          <span className="prv-empty-text">Sin contacto</span>
+                        )}
+                      </td>
+
+                      {/* Teléfono / Correo */}
+                      <td>
+                        <div className="prv-contact-cell">
+                          {supplier.phone ? (
+                            <div className="prv-phone-row">
+                              <span className="prv-phone-text">
+                                <Phone size={12} className="prv-icon-muted" /> {supplier.phone}
+                              </span>
+                              <button
+                                type="button"
+                                className="prv-wsap-pill"
+                                title={`Enviar WhatsApp a ${supplier.name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (cleanPhone) {
+                                    const waNumber = cleanPhone.startsWith('58') ? cleanPhone : `58${cleanPhone.replace(/^0/, '')}`
+                                    window.open(`https://wa.me/${waNumber}`, '_blank', 'noopener,noreferrer')
+                                  }
+                                }}
+                              >
+                                <WhatsAppIcon size={12} /> WhatsApp
+                              </button>
+                            </div>
+                          ) : null}
+
+                          {supplier.email ? (
+                            <div className="prv-email-text">
+                              <Mail size={12} className="prv-icon-muted" />
+                              <span>{supplier.email}</span>
+                            </div>
+                          ) : null}
+
+                          {!supplier.phone && !supplier.email && (
+                            <span className="prv-empty-text">Sin datos</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Compras */}
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`prv-purchases-badge ${purchaseCount > 0 ? 'active' : 'zero'}`}>
+                          {purchaseCount} {purchaseCount === 1 ? 'compra' : 'compras'}
+                        </span>
+                      </td>
+
+                      {/* Total Acumulado */}
+                      <td className="amount-td">
+                        <MoneyWithBcv
+                          usd={totalAmount}
+                          className={totalAmount === 0 ? 'text-muted-amount' : 'text-green'}
+                          usdClassName="font-bold"
+                          compact
+                        />
+                      </td>
+
+                      {/* Última Compra */}
+                      <td>
+                        {lastPurchaseDate ? (
+                          <div className="prv-date-cell">
+                            <span className="prv-date-main">{formatDate(lastPurchaseDate)}</span>
+                            <span className="prv-date-sub">{formatRelativeDays(lastPurchaseDate)}</span>
+                          </div>
+                        ) : (
+                          <span className="prv-empty-text">Sin compras</span>
+                        )}
+                      </td>
+
+                      {/* Acciones */}
+                      <td>
+                        <div className="prv-actions-flex" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="prv-icon-action-btn"
+                            title="Ver historial de compras"
+                            onClick={() => setSelectedId(supplier.id)}
+                          >
+                            <Eye size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            className="prv-icon-action-btn"
+                            title="Editar proveedor"
+                            onClick={() => openEditModal(supplier)}
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Modal Nuevo Proveedor */}
       {showForm && createPortal(
         <div className={`prv-overlay ${closingForm ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm() }}>
           <section className="prv-modal prv-modal-supplier" role="dialog" aria-modal="true" aria-labelledby="new-supplier-title">
@@ -289,21 +721,21 @@ export function Proveedores() {
                   <span className="prv-form-row-icon"><UserRound size={15} /></span>
                   <span className="prv-form-row-content">
                     <span className="prv-form-row-label">Persona de contacto</span>
-                    <input placeholder="Opcional" value={draft.contact} onChange={(event) => updateDraft('contact', event.target.value)} />
+                    <input placeholder="Nombre de contacto (opcional)" value={draft.contact} onChange={(event) => updateDraft('contact', event.target.value)} />
                   </span>
                 </label>
                 <label className="prv-form-row">
                   <span className="prv-form-row-icon"><Phone size={15} /></span>
                   <span className="prv-form-row-content">
                     <span className="prv-form-row-label">Teléfono</span>
-                    <input placeholder="Opcional" value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} />
+                    <input placeholder="Ej. 0414-1234567" value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} />
                   </span>
                 </label>
                 <label className="prv-form-row">
                   <span className="prv-form-row-icon"><Mail size={15} /></span>
                   <span className="prv-form-row-content">
                     <span className="prv-form-row-label">Correo</span>
-                    <input type="email" placeholder="Opcional" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} />
+                    <input type="email" placeholder="correo@ejemplo.com" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} />
                   </span>
                 </label>
               </div>
@@ -318,46 +750,73 @@ export function Proveedores() {
         document.body
       )}
 
-      <section className="prv-card management-workspace-panel">
-        <div className="prv-toolbar">
-          <div><h2>Directorio</h2><p>{filtered.length} de {suppliers.length} proveedores</p></div>
-          <label className="prv-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nombre, contacto o teléfono" />{search && <button type="button" className="search-clear-btn" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</label>
-        </div>
+      {/* Modal Editar Proveedor */}
+      {showEditModal && editingSupplier && createPortal(
+        <div className={`prv-overlay ${closingEditModal ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditModal() }}>
+          <section className="prv-modal prv-modal-supplier" role="dialog" aria-modal="true" aria-labelledby="edit-supplier-title">
+            <form onSubmit={handleUpdateSupplier}>
+              <div className="prv-modal-topbar">
+                <button type="button" className="prv-modal-cancel" onClick={() => closeEditModal()}>Cancelar</button>
+                <h2 id="edit-supplier-title">Editar proveedor</h2>
+                <button type="submit" className="prv-modal-save" disabled={saving}>{saving ? <Loader2 className="animate-spin" size={15} /> : 'Guardar'}</button>
+              </div>
 
-        <div className="prv-grid">
-          {filtered.map((supplier) => {
-            const stats = activity.get(supplier.id)
-            return (
-              <article className="prv-supplier" key={supplier.id}>
-                <div className="prv-avatar">{supplier.name.slice(0, 2).toUpperCase()}</div>
-                <div className="prv-info">
-                  <h3>{supplier.name}</h3>
-                  <p>{supplier.contact ? <><UserRound size={14} /> {supplier.contact}</> : 'Sin persona de contacto'}</p>
-                  <div className="prv-contact">
-                    {supplier.phone && <span><Phone size={13} /> {supplier.phone}</span>}
-                    {supplier.email && <span><Mail size={13} /> {supplier.email}</span>}
-                  </div>
-                </div>
-                <div className="prv-stats"><span><b>{stats?.history.length ?? 0}</b> compras</span><span><b>{formatUsd(stats?.total ?? 0)}</b> acumulado</span><span>Última: <b>{stats?.last ? new Date(`${stats.last.purchaseDate}T12:00:00`).toLocaleDateString('es-VE') : '—'}</b></span></div>
-                <button className="prv-history" onClick={() => setSelectedId(supplier.id)}><Eye size={15} /> Ver historial</button>
-              </article>
-            )
-          })}
-          {filtered.length === 0 && (
-            <EmptyState
-              title="No hay proveedores que coincidan"
-              description="Prueba con otro nombre o agrega un proveedor nuevo."
-            />
-          )}
-        </div>
-      </section>
+              <div className="prv-modal-avatar">
+                <span className="prv-modal-avatar-circle" style={{ background: getAvatarBg(editDraft.name || editingSupplier.name) }}>
+                  {(editDraft.name || editingSupplier.name).slice(0, 2).toUpperCase()}
+                </span>
+              </div>
 
+              <div className="prv-form-group">
+                <label className="prv-form-row">
+                  <span className="prv-form-row-icon"><Building2 size={15} /></span>
+                  <span className="prv-form-row-content">
+                    <span className="prv-form-row-label">Nombre *</span>
+                    <input autoFocus placeholder="Nombre del proveedor" value={editDraft.name} onChange={(event) => updateEditDraft('name', event.target.value)} required />
+                  </span>
+                </label>
+                <label className="prv-form-row">
+                  <span className="prv-form-row-icon"><UserRound size={15} /></span>
+                  <span className="prv-form-row-content">
+                    <span className="prv-form-row-label">Persona de contacto</span>
+                    <input placeholder="Nombre de contacto (opcional)" value={editDraft.contact} onChange={(event) => updateEditDraft('contact', event.target.value)} />
+                  </span>
+                </label>
+                <label className="prv-form-row">
+                  <span className="prv-form-row-icon"><Phone size={15} /></span>
+                  <span className="prv-form-row-content">
+                    <span className="prv-form-row-label">Teléfono</span>
+                    <input placeholder="Ej. 0414-1234567" value={editDraft.phone} onChange={(event) => updateEditDraft('phone', event.target.value)} />
+                  </span>
+                </label>
+                <label className="prv-form-row">
+                  <span className="prv-form-row-icon"><Mail size={15} /></span>
+                  <span className="prv-form-row-content">
+                    <span className="prv-form-row-label">Correo</span>
+                    <input type="email" placeholder="correo@ejemplo.com" value={editDraft.email} onChange={(event) => updateEditDraft('email', event.target.value)} />
+                  </span>
+                </label>
+              </div>
+
+              <label className="prv-form-notes">
+                <span className="prv-form-row-label">Notas</span>
+                <textarea rows={3} placeholder="Condiciones de pago, horarios de entrega…" value={editDraft.notes} onChange={(event) => updateEditDraft('notes', event.target.value)} />
+              </label>
+            </form>
+          </section>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal Historial de Compras */}
       {selected && createPortal(
         <div className={`prv-overlay ${closingSelected ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeSelected() }}>
           <section className="prv-modal prv-modal-history" role="dialog" aria-modal="true" aria-labelledby="supplier-history-title" onClick={(e) => e.stopPropagation()}>
             <div className="prv-history-topbar">
               <div className="prv-history-who">
-                <span className="prv-history-avatar">{selected.name.slice(0, 2).toUpperCase()}</span>
+                <span className="prv-history-avatar" style={{ background: getAvatarBg(selected.name) }}>
+                  {selected.name.slice(0, 2).toUpperCase()}
+                </span>
                 <div>
                   <h2 id="supplier-history-title">{selected.name}</h2>
                   <p>Historial de compras</p>
@@ -406,10 +865,10 @@ export function Proveedores() {
                 </div>
 
                 <div className="prv-purchases">
-                  {historyGroups.map((group) => (
+                  {visibleHistoryGroups.map(({ group, items }) => (
                     <section className="prv-history-group" key={group.key}>
                       <h3 className="prv-history-group-label">{group.label}</h3>
-                      {group.items.map((purchase) => {
+                      {items.map((purchase) => {
                         const isExpanded = expandedPurchaseId === purchase.id
                         return (
                           <article key={purchase.id} className={`prv-purchase-card ${isExpanded ? 'expanded' : ''}`}>
@@ -442,6 +901,7 @@ export function Proveedores() {
                   ))}
                   {!selectedActivity?.history.length && <div className="prv-empty">Todavía no hay compras registradas con este proveedor.</div>}
                   {Boolean(selectedActivity?.history.length) && historyGroups.length === 0 && <div className="prv-empty">Sin compras en esta semana. Prueba con otra semana o mes.</div>}
+                  {historyRows.length > HISTORY_PAGE_SIZE && <div className="prv-history-pagination"><button type="button" disabled={safeHistoryPage === 1} onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}><ChevronLeft size={15} /> Anterior</button><span>Página {safeHistoryPage} de {historyTotalPages}</span><button type="button" disabled={safeHistoryPage === historyTotalPages} onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}>Siguiente <ChevronRight size={15} /></button></div>}
                 </div>
               </div>
 
