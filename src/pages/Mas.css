@@ -332,6 +332,28 @@
   border-top: 1px solid var(--border-color);
 }
 
+.credit-history > strong {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.credit-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.6rem;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 0.8125rem;
+}
+
+.credit-history-row .text-success {
+  flex: 0 0 auto;
+}
+
 .payment-history-item {
   display: flex;
   justify-content: space-between;
