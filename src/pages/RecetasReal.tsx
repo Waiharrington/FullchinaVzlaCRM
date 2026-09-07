@@ -1150,10 +1150,6 @@ export function RecetasReal() {
               />
             </label>
 
-            <p className="rec-detail-sub" style={{ fontSize: '0.74rem', marginTop: 10, color: '#a1a1aa' }}>
-              ℹ️ Se creará un movimiento de consumo interno ('staff_meal'). No afecta ventas, caja ni ticket promedio.
-            </p>
-
             <div className="rec-modal-actions">
               <button
                 type="button"
