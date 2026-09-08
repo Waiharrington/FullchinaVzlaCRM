@@ -92,6 +92,7 @@
 
 .charts-grid.three-col {
   grid-template-columns: repeat(3, 1fr);
+  align-items: start;
 }
 
 @media (max-width: 1024px) {
@@ -125,6 +126,10 @@
   min-height: 320px;
 }
 
+.charts-grid.three-col .chart-card {
+  min-height: 320px;
+}
+
 .chart-container {
   height: 260px;
 }
@@ -134,6 +139,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.chart-card .card-title {
+  letter-spacing: -0.2px;
+}
+
+.chart-container-sm canvas {
+  max-height: 190px;
 }
 
 .ranking-list {
