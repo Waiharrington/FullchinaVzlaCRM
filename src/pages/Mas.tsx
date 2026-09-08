@@ -7,6 +7,7 @@ import {
   getCredits,
   addCreditPayment,
   deleteCredit,
+  deleteDemoCredit,
   getCreditPayments,
   createCredit,
   getCustomers,
@@ -178,7 +179,24 @@ export function Mas() {
 
   const handleDeleteCredit = async (credit: CreditType) => {
     if (credit.orderId || credit.totalPaid > 0) {
-      void alertDialog('Este crédito no se puede borrar porque está vinculado a una comanda o ya tiene abonos. Puedes conservarlo como historial.')
+      const ok = await confirmDialog({
+        title: 'Borrar crédito demo',
+        message: 'Este crédito tiene una comanda o abonos vinculados. Al continuar se eliminarán el crédito y su historial de abonos demo, pero la comanda original no se tocará. ¿Deseas continuar?',
+        confirmText: 'Borrar demo',
+        danger: true,
+      })
+      if (!ok) return
+      try {
+        await deleteDemoCredit(credit.id)
+        if (selectedCredit?.id === credit.id) {
+          setSelectedCredit(null)
+          setCreditPayments([])
+        }
+        await fetchAll()
+      } catch (e) {
+        console.error('Error borrando crédito demo:', e)
+        alert('No se pudo borrar el crédito demo')
+      }
       return
     }
     const ok = await confirmDialog({ title: 'Eliminar crédito', message: `¿Borrar el crédito de ${credit.customerName} por $${credit.totalAmount.toFixed(2)}?`, confirmText: 'Eliminar', danger: true })

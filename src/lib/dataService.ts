@@ -3198,6 +3198,11 @@ export async function deleteCredit(creditId: string): Promise<void> {
   if (error) throw error
 }
 
+export async function deleteDemoCredit(creditId: string): Promise<void> {
+  const { error } = await client().rpc('fn_delete_demo_credit', { p_credit_id: creditId })
+  if (error) throw error
+}
+
 export async function getPayrollPayments(): Promise<PayrollPayment[]> {
   const { data, error } = await client().from('payroll_payments')
     .select('id,employee_id,amount,currency,exchange_rate,payment_account,payment_date,reference,notes,employees(full_name)')
