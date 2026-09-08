@@ -354,7 +354,16 @@ export function Finanzas() {
       </div>
     )
   }
-  const usdAccounts = accounts.filter(account => account.currency === 'USD')
+  const usdAccounts = accounts
+    .filter(account => account.currency === 'USD')
+    .sort((a, b) => {
+      const order: Record<string, number> = {
+        'Binance': 0,
+        'Dólares en efectivo general': 1,
+        'Caja Full China': 2,
+      }
+      return (order[a.name] ?? 99) - (order[b.name] ?? 99)
+    })
   const vesAccounts = accounts.filter(account => account.currency === 'VES')
 
   // La tasa solo aplica cuando la transferencia cruza de una cuenta a otra de
