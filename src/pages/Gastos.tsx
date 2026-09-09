@@ -131,7 +131,9 @@ export function Gastos() {
 
   const amountNum = parseFloat(form.amountUsd) || 0
   const selectedAccount = accounts.find((account) => account.id === form.accountId)
-  const amountCurrency: 'USD' | 'VES' = selectedAccount?.currency ?? methodCurrency(form.paymentMethod) ?? 'VES'
+  const fixedPaymentCurrency = methodCurrency(form.paymentMethod)
+  const amountCurrency: 'USD' | 'VES' = fixedPaymentCurrency ?? selectedAccount?.currency ?? 'VES'
+  const availableAccounts = accounts.filter((account) => !fixedPaymentCurrency || account.currency === fixedPaymentCurrency)
   const amountUsdToSave = amountCurrency === 'VES' ? amountNum / rate : amountNum
 
   const handlePaymentMethodChange = (paymentMethod: string) => {
@@ -331,7 +333,7 @@ export function Gastos() {
               <div className="gst-field"><label>Método de Pago <span className="gst-req">*</span></label>
                 <StyledSelect value={form.paymentMethod} onChange={(e) => handlePaymentMethodChange(e.target.value)}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}{methodCurrency(m.v) ? ` · ${methodCurrency(m.v)}` : ''}</option>)}</StyledSelect></div>
               <div className="gst-field"><label>Cuenta de salida <span className="gst-req">*</span></label>
-                <StyledSelect value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
+                <StyledSelect value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{availableAccounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
               <div className="gst-field"><label>N° de Referencia</label>
                 <input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Ej: 8841023" /></div>
             </div>
