@@ -357,12 +357,13 @@ export function Finanzas() {
   const usdAccounts = accounts
     .filter(account => account.currency === 'USD')
     .sort((a, b) => {
+      const normalizeName = (name: string) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
       const order: Record<string, number> = {
-        'Binance': 0,
-        'Dólares en efectivo general': 1,
-        'Caja Full China': 2,
+        binance: 0,
+        'dolares en efectivo general': 1,
+        'caja full china': 2,
       }
-      return (order[a.name] ?? 99) - (order[b.name] ?? 99)
+      return (order[normalizeName(a.name)] ?? 99) - (order[normalizeName(b.name)] ?? 99)
     })
   const vesAccounts = accounts.filter(account => account.currency === 'VES')
 
