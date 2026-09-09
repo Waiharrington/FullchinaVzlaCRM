@@ -29,6 +29,11 @@ const METHODS = [
   { v: 'efectivo_bs', l: 'Efectivo Bs' }, { v: 'transferencia', l: 'Transferencia' }, { v: 'punto', l: 'Punto' },
 ]
 const methodLabel = (v: string) => METHODS.find((m) => m.v === v)?.l ?? v
+const methodCurrency = (method: string): 'USD' | 'VES' | null => {
+  if (method === 'efectivo_usd') return 'USD'
+  if (method === 'efectivo_bs' || method === 'pago_movil') return 'VES'
+  return null
+}
 const PAGE_SIZE = 8
 const emptyForm = { description: '', type: 'variable' as ExpenseType, category: 'supermarket', vendor: '', amountUsd: '', paymentMethod: 'pago_movil', accountId: '', reference: '', notes: '' }
 
@@ -125,6 +130,19 @@ export function Gastos() {
   useEffect(() => { setPage(1) }, [search, typeFilter])
 
   const amountNum = parseFloat(form.amountUsd) || 0
+  const selectedAccount = accounts.find((account) => account.id === form.accountId)
+  const amountCurrency: 'USD' | 'VES' = selectedAccount?.currency ?? methodCurrency(form.paymentMethod) ?? 'VES'
+  const amountUsdToSave = amountCurrency === 'VES' ? amountNum / rate : amountNum
+
+  const handlePaymentMethodChange = (paymentMethod: string) => {
+    const fixedCurrency = methodCurrency(paymentMethod)
+    const currentAccount = accounts.find((account) => account.id === form.accountId)
+    setForm({
+      ...form,
+      paymentMethod,
+      accountId: fixedCurrency && currentAccount && currentAccount.currency !== fixedCurrency ? '' : form.accountId,
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -133,13 +151,13 @@ export function Gastos() {
     setSaving(true); setError('')
     try {
       const saved = await createExpense({
-        concept: form.description.trim(), amount: amountNum, category: form.type,
+        concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
         expenseDate: dateKeyInTimeZone(), userId: user.id,
         accountId: form.accountId, exchangeRate: rate,
         notes: JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() }),
       })
-      setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountNum, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
-      flash(`Gasto de ${formatUsd(amountNum)} registrado`)
+      setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
+      flash(`Gasto de ${amountCurrency === 'VES' ? formatVes(amountNum) : formatUsd(amountNum)} registrado`)
       if (keepOpen) setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor, paymentMethod: form.paymentMethod })
       else {
         setForm(emptyForm)
@@ -304,17 +322,14 @@ export function Gastos() {
               <datalist id="gst-vendors">{vendors.map((v) => <option key={v} value={v} />)}</datalist>
             </div>
 
-            <div className="gst-row2">
-              <div className="gst-field"><label>Monto (USD) <span className="gst-req">*</span></label>
-                <NumberStepper step={0.5} min={0} value={form.amountUsd} onChange={(v) => setForm({ ...form, amountUsd: v })} placeholder="0.00" /></div>
-              <div className="gst-field"><label>Monto (Bs)</label>
-                <input value={amountNum > 0 ? formatVes(amountNum * rate) : ''} readOnly placeholder="Bs. 0.00" style={{ color: '#a1a1aa' }} /></div>
+            <div className="gst-field gst-amount-field"><label>Monto ({amountCurrency === 'VES' ? 'Bs' : 'USD'}) <span className="gst-req">*</span></label>
+              <NumberStepper step={amountCurrency === 'VES' ? 0.5 : 0.01} min={0} value={form.amountUsd} onChange={(v) => setForm({ ...form, amountUsd: v })} placeholder={amountCurrency === 'VES' ? '0,00' : '0.00'} />
+              <small className="gst-amount-hint">{amountCurrency === 'VES' ? `Se guardará como ${formatUsd(amountUsdToSave)} de referencia` : 'Monto expresado en dólares'}</small>
             </div>
-            <div className="gst-rate-hint">Tasa BCV: {formatVes(rate)} por $1</div>
 
             <div className="gst-row2">
               <div className="gst-field"><label>Método de Pago <span className="gst-req">*</span></label>
-                <StyledSelect value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value })}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}</StyledSelect></div>
+                <StyledSelect value={form.paymentMethod} onChange={(e) => handlePaymentMethodChange(e.target.value)}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}{methodCurrency(m.v) ? ` · ${methodCurrency(m.v)}` : ''}</option>)}</StyledSelect></div>
               <div className="gst-field"><label>Cuenta de salida <span className="gst-req">*</span></label>
                 <StyledSelect value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
               <div className="gst-field"><label>N° de Referencia</label>
