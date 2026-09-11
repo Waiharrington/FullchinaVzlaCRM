@@ -34,6 +34,8 @@ const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
+const DELIVERY_EMPLOYEE_RATE = 0.70
+const isDeliveryItem = (item: FullOrder['items'][number]) => item.productName.trim().toLowerCase() === 'delivery'
 
 const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
   cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
@@ -144,7 +146,13 @@ export function Finanzas() {
     const grossSales = paid.reduce((sum, o) => sum + o.totalAmount, 0)
     let cogs = 0
     for (const o of paid) {
-      for (const it of o.items) cogs += it.quantity * (recipeCost.get(it.sellableProductId)?.recipeCost ?? 0)
+      for (const it of o.items) {
+        // Delivery no usa receta: el repartidor recibe el 70% del cargo
+        // cobrado al cliente y el 30% restante queda como margen del negocio.
+        cogs += isDeliveryItem(it)
+          ? it.quantity * it.unitPrice * DELIVERY_EMPLOYEE_RATE
+          : it.quantity * (recipeCost.get(it.sellableProductId)?.recipeCost ?? 0)
+      }
     }
     const payments = buildPaymentBreakdown(paid, accounts, bcvRate)
     const opex = expenses.filter((x) => x.expenseDate >= sIso && x.expenseDate <= eIso).reduce((sum, x) => sum + x.amount, 0)
@@ -238,7 +246,7 @@ export function Finanzas() {
     return order.status === 'paid' && time >= ranges[period][0].getTime() && time <= ranges[period][1].getTime()
   })
   const missingCostProducts = Array.from(new Set(currentPaidOrders.flatMap(order => order.items)
-    .filter(item => !recipeCost.has(item.sellableProductId) || (recipeCost.get(item.sellableProductId)?.recipeCost ?? 0) <= 0)
+    .filter(item => !isDeliveryItem(item) && (!recipeCost.has(item.sellableProductId) || (recipeCost.get(item.sellableProductId)?.recipeCost ?? 0) <= 0))
     .map(item => item.productName)))
   const unassignedPayments = currentPaidOrders.flatMap(order => order.payments).filter(payment => !payment.accountId).length
   const coverageTarget = cur.cogs + cur.opex + cur.payroll
