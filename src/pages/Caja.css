@@ -1299,6 +1299,30 @@
   .client-modal-box:has(.crm-form > .field:nth-of-type(4)) .crm-form > .client-modal-error { grid-column: 1 / -1; }
 }
 
+/* En pantallas angostas cada fila usa dos líneas: nombre arriba y controles
+   abajo. Así el selector nunca invade el monto ni la acción de eliminar. */
+@media (max-width: 680px) {
+  .cart-item-row {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto 32px;
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 7px;
+  }
+
+  .cart-item-thumb { grid-column: 1; grid-row: 1 / span 2; }
+  .cart-item-details { grid-column: 2 / -1; grid-row: 1; min-width: 0; }
+  .cart-item-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cart-item-controls { grid-column: 2; grid-row: 2; width: max-content; max-width: 100%; }
+  .qty-btn-sm { width: 30px; height: 30px; }
+  .qty-btn-sm svg { width: 16px; height: 16px; }
+  .qty-display { min-width: 16px; font-size: 14px; }
+  .cart-item-price { grid-column: 3; grid-row: 2; justify-self: end; white-space: nowrap; }
+  .cart-item-remove { grid-column: 4; grid-row: 2; width: 32px; height: 32px; }
+  .cart-item-remove svg { width: 16px; height: 16px; }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    MODAL VISUAL POLISH (Nuevo cliente + Cobrar pedido)
    Scoped with caja- prefixed classes so nothing leaks into other pages that

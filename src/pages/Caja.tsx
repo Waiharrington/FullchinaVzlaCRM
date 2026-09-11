@@ -162,9 +162,31 @@ function getProductImage(product: Product): string {
 // refresca en segundo plano.
 const CAJA_PRODUCTS_CACHE_KEY = 'fullchina:caja-products:v1'
 const CAJA_DRAFT_KEY = 'fullchina:caja-draft:v1'
+const CAJA_DRAFT_MAX_AGE_MS = 10 * 60 * 1000
 
-function readCajaDraft(): { cart?: CartItem[]; orderType?: OrderType; tableNumber?: number | null; deliveryFee?: string; customerName?: string; orderNotes?: string } | null {
-  try { return JSON.parse(localStorage.getItem(CAJA_DRAFT_KEY) || 'null') as ReturnType<typeof readCajaDraft> } catch { return null }
+type CajaDraft = {
+  cart?: CartItem[]
+  orderType?: OrderType
+  tableNumber?: number | null
+  deliveryFee?: string
+  customerName?: string
+  orderNotes?: string
+  savedAt?: number
+}
+
+function clearCajaDraft() {
+  try { localStorage.removeItem(CAJA_DRAFT_KEY) } catch { /* storage bloqueado */ }
+}
+
+function readCajaDraft(): CajaDraft | null {
+  try {
+    const draft = JSON.parse(localStorage.getItem(CAJA_DRAFT_KEY) || 'null') as CajaDraft | null
+    if (!draft || typeof draft.savedAt !== 'number' || !Number.isFinite(draft.savedAt) || Date.now() - draft.savedAt > CAJA_DRAFT_MAX_AGE_MS) {
+      if (draft) clearCajaDraft()
+      return null
+    }
+    return draft
+  } catch { return null }
 }
 
 let cajaCache: {
@@ -241,10 +263,14 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   useEffect(() => {
     if (cart.length === 0 && !customerName && !orderNotes && !deliveryFee) {
-      localStorage.removeItem(CAJA_DRAFT_KEY)
+      clearCajaDraft()
       return
     }
-    localStorage.setItem(CAJA_DRAFT_KEY, JSON.stringify({ cart, orderType, tableNumber, deliveryFee, customerName, orderNotes }))
+    try {
+      localStorage.setItem(CAJA_DRAFT_KEY, JSON.stringify({
+        cart, orderType, tableNumber, deliveryFee, customerName, orderNotes, savedAt: Date.now(),
+      }))
+    } catch { /* el pedido sigue funcionando aunque el storage no esté disponible */ }
   }, [cart, orderType, tableNumber, deliveryFee, customerName, orderNotes])
 
   // Customer Search & Auto-complete state
@@ -712,6 +738,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         deliveryFee: deliveryFeeUsd,
       })
       setCurrentOrder(order)
+      // La comanda ya salió de Ventas: no debe reaparecer como borrador al volver.
+      clearCajaDraft()
       setCart([])
       setCustomerName('')
       setSelectedCustomer(null)
@@ -923,6 +951,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         payments: paymentComponents,
       })
       setCurrentOrder(order)
+      // Una venta cobrada tampoco debe volver como borrador al regresar a Ventas.
+      clearCajaDraft()
       closePaymentModal(() => setShowConfirmation(true))
       setTableNumber(null)
       refreshTodayOrders()
