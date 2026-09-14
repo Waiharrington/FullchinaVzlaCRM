@@ -3,10 +3,11 @@ import { deleteWhatsAppSegment, getCustomers, getWhatsAppMessages, getWhatsAppSe
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { dateKeyInTimeZone } from '../lib/money'
-import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound } from 'lucide-react'
+import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
 export function MarketingWhatsApp() {
+  const MODAL_PAGE_SIZE = 10
   const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
@@ -26,6 +27,8 @@ export function MarketingWhatsApp() {
   const [segmentSearch, setSegmentSearch] = useState('')
   const [segmentSaving, setSegmentSaving] = useState(false)
   const [audienceModal, setAudienceModal] = useState<{ title: string; subtitle: string; customers: Customer[] } | null>(null)
+  const [segmentPage, setSegmentPage] = useState(1)
+  const [audiencePage, setAudiencePage] = useState(1)
 
   const todayStr = dateKeyInTimeZone()
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
@@ -51,7 +54,29 @@ export function MarketingWhatsApp() {
         ? inactiveCustomers
         : selectedSegment === 'all'
           ? customers
-          : customers.filter(customer => customSegment?.customerIds.includes(customer.id))
+        : customers.filter(customer => customSegment?.customerIds.includes(customer.id))
+
+  const filteredSegmentCustomers = customers.filter(customer => customer.name.toLowerCase().includes(segmentSearch.toLowerCase()) || customer.phone.includes(segmentSearch))
+  const segmentPageCount = Math.max(1, Math.ceil(filteredSegmentCustomers.length / MODAL_PAGE_SIZE))
+  const visibleSegmentCustomers = filteredSegmentCustomers.slice((segmentPage - 1) * MODAL_PAGE_SIZE, segmentPage * MODAL_PAGE_SIZE)
+  const audiencePageCount = audienceModal ? Math.max(1, Math.ceil(audienceModal.customers.length / MODAL_PAGE_SIZE)) : 1
+  const visibleAudienceCustomers = audienceModal?.customers.slice((audiencePage - 1) * MODAL_PAGE_SIZE, audiencePage * MODAL_PAGE_SIZE) ?? []
+
+  useEffect(() => {
+    setSegmentPage(1)
+  }, [segmentSearch])
+
+  useEffect(() => {
+    setAudiencePage(1)
+  }, [audienceModal])
+
+  useEffect(() => {
+    setSegmentPage(page => Math.min(page, segmentPageCount))
+  }, [segmentPageCount])
+
+  useEffect(() => {
+    setAudiencePage(page => Math.min(page, audiencePageCount))
+  }, [audiencePageCount])
 
   const openAudienceModal = (title: string, subtitle: string, audience: Customer[]) => {
     setAudienceModal({ title, subtitle, customers: audience })
@@ -220,15 +245,15 @@ export function MarketingWhatsApp() {
         </aside>
       </main>
 
-      {audienceModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => setAudienceModal(null)}><section className="wa-audience-modal" role="dialog" aria-modal="true" aria-labelledby="wa-audience-title" onClick={event => event.stopPropagation()}><header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Lista de clientes</span><h2 id="wa-audience-title">{audienceModal.title}</h2><p>{audienceModal.subtitle} · {audienceModal.customers.length} clientes</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setAudienceModal(null)}><X size={18} /></button></header>{audienceModal.customers.length === 0 ? <div className="wa-audience-empty">No hay clientes en esta lista todavía.</div> : <div className="wa-audience-list">{audienceModal.customers.map(customer => <div className="wa-audience-row" key={customer.id}><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><div><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'} · {customer.totalVisits} visitas</small></div><span className={customer.phone ? 'wa-phone-ready' : 'wa-phone-missing'}>{customer.phone ? 'WhatsApp listo' : 'Sin teléfono'}</span></div>)}</div>}</section></div>}
+      {audienceModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => setAudienceModal(null)}><section className="wa-standard-modal wa-audience-modal" role="dialog" aria-modal="true" aria-labelledby="wa-audience-title" onClick={event => event.stopPropagation()}><header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Lista de clientes</span><h2 id="wa-audience-title">{audienceModal.title}</h2><p>{audienceModal.subtitle} · {audienceModal.customers.length} clientes</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setAudienceModal(null)}><X size={18} /></button></header>{audienceModal.customers.length === 0 ? <div className="wa-audience-empty">No hay clientes en esta lista todavía.</div> : <><div className="wa-audience-list">{visibleAudienceCustomers.map(customer => <div className="wa-audience-row" key={customer.id}><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><div><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'} · {customer.totalVisits} visitas</small></div><span className={customer.phone ? 'wa-phone-ready' : 'wa-phone-missing'}>{customer.phone ? 'WhatsApp listo' : 'Sin teléfono'}</span></div>)}</div><div className="wa-modal-pagination"><span>Mostrando {(audiencePage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(audiencePage * MODAL_PAGE_SIZE, audienceModal.customers.length)} de {audienceModal.customers.length}</span><div><button type="button" aria-label="Página anterior" disabled={audiencePage === 1} onClick={() => setAudiencePage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {audiencePage} de {audiencePageCount}</strong><button type="button" aria-label="Página siguiente" disabled={audiencePage === audiencePageCount} onClick={() => setAudiencePage(page => page + 1)}><ChevronRight size={15} /></button></div></div></>}</section></div>}
 
       {showSegmentModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => !segmentSaving && setShowSegmentModal(false)}>
-        <section className="wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-segment-title" onClick={event => event.stopPropagation()}>
+        <section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-segment-title" onClick={event => event.stopPropagation()}>
           <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Audiencias</span><h2 id="wa-segment-title">{editingSegmentId ? 'Editar segmento' : 'Crear segmento'}</h2><p>Arma una lista de difusión con clientes seleccionados.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setShowSegmentModal(false)}><X size={18} /></button></header>
           <form onSubmit={handleSaveSegment} className="wa-segment-form">
             <label><span>Nombre del segmento</span><input value={segmentName} onChange={event => setSegmentName(event.target.value)} maxLength={80} placeholder="Ej. Clientes de cumpleaños" required /></label>
             <label><span>Descripción <small>Opcional</small></span><input value={segmentDescription} onChange={event => setSegmentDescription(event.target.value)} maxLength={160} placeholder="Para explicar cuándo usar esta lista" /></label>
-            <div className="wa-member-picker"><div className="wa-member-picker-head"><span>Clientes de la lista <strong>{segmentCustomerIds.length}</strong></span><input value={segmentSearch} onChange={event => setSegmentSearch(event.target.value)} placeholder="Buscar cliente..." aria-label="Buscar cliente" /></div><div className="wa-member-list">{customers.filter(customer => customer.name.toLowerCase().includes(segmentSearch.toLowerCase()) || customer.phone.includes(segmentSearch)).map(customer => <label key={customer.id} className="wa-member-row"><input type="checkbox" checked={segmentCustomerIds.includes(customer.id)} onChange={event => setSegmentCustomerIds(prev => event.target.checked ? [...prev, customer.id] : prev.filter(id => id !== customer.id))} /><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><span className="wa-member-copy"><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small></span></label>)}</div></div>
+            <div className="wa-member-picker"><div className="wa-member-picker-head"><span>Clientes de la lista <strong>{segmentCustomerIds.length}</strong></span><input value={segmentSearch} onChange={event => setSegmentSearch(event.target.value)} placeholder="Buscar cliente..." aria-label="Buscar cliente" /></div><div className="wa-member-list">{visibleSegmentCustomers.map(customer => <label key={customer.id} className="wa-member-row"><input type="checkbox" checked={segmentCustomerIds.includes(customer.id)} onChange={event => setSegmentCustomerIds(prev => event.target.checked ? [...prev, customer.id] : prev.filter(id => id !== customer.id))} /><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><span className="wa-member-copy"><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small></span></label>)}{visibleSegmentCustomers.length === 0 && <div className="wa-audience-empty">No se encontraron clientes.</div>}</div><div className="wa-modal-pagination"><span>{filteredSegmentCustomers.length === 0 ? 'Sin resultados' : `Mostrando ${(segmentPage - 1) * MODAL_PAGE_SIZE + 1}–${Math.min(segmentPage * MODAL_PAGE_SIZE, filteredSegmentCustomers.length)} de ${filteredSegmentCustomers.length}`}</span><div><button type="button" aria-label="Página anterior" disabled={segmentPage === 1} onClick={() => setSegmentPage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {segmentPage} de {segmentPageCount}</strong><button type="button" aria-label="Página siguiente" disabled={segmentPage === segmentPageCount} onClick={() => setSegmentPage(page => page + 1)}><ChevronRight size={15} /></button></div></div></div>
             <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setShowSegmentModal(false)}>Cancelar</button><button type="submit" className="wa-send-button" disabled={segmentSaving || !segmentName.trim() || segmentCustomerIds.length === 0}>{segmentSaving ? 'Guardando…' : editingSegmentId ? 'Guardar cambios' : 'Crear segmento'}</button></div>
           </form>
         </section>
