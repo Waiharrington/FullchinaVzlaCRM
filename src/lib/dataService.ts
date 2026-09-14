@@ -1388,6 +1388,15 @@ export interface WhatsAppMessage {
   status: 'queued' | 'sent' | 'failed' | 'cancelled'
 }
 
+export interface WhatsAppSegment {
+  id: string
+  name: string
+  description: string | null
+  customerIds: string[]
+  createdAt: string
+  updatedAt: string
+}
+
 export interface LegacyPurchaseOrder {
   id: string
   code: string
@@ -3195,6 +3204,59 @@ export async function deleteCredit(creditId: string): Promise<void> {
     .from('credits')
     .delete()
     .eq('id', creditId)
+  if (error) throw error
+}
+
+export async function queueWhatsAppMessages(params: { customerIds: string[]; customers: Customer[]; message: string; userId: string }): Promise<void> {
+  const rows = params.customers
+    .filter(customer => params.customerIds.includes(customer.id) && customer.phone.trim())
+    .map(customer => ({ customer_id: customer.id, phone: customer.phone, message: params.message, template_type: 'custom', status: 'queued', created_by: params.userId }))
+  if (rows.length === 0) throw new Error('No hay destinatarios con teléfono en esta selección')
+  const { error } = await client().from('whatsapp_messages').insert(rows)
+  if (error) throw error
+}
+
+export async function getWhatsAppSegments(): Promise<WhatsAppSegment[]> {
+  const { data, error } = await client().from('whatsapp_segments')
+    .select('id,name,description,created_at,updated_at,whatsapp_segment_members(customer_id)')
+    .order('name')
+  if (error) throw error
+  return (data ?? []).map(row => ({
+    id: row.id as string,
+    name: row.name as string,
+    description: (row.description as string) ?? null,
+    customerIds: ((row.whatsapp_segment_members as Array<{ customer_id: string }> | null) ?? []).map(member => member.customer_id),
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  }))
+}
+
+export async function saveWhatsAppSegment(params: { id?: string; name: string; description?: string; customerIds: string[]; userId: string }): Promise<WhatsAppSegment> {
+  const sb = client()
+  let segmentId = params.id
+  if (segmentId) {
+    const { error } = await sb.from('whatsapp_segments').update({ name: params.name.trim(), description: params.description?.trim() || null }).eq('id', segmentId)
+    if (error) throw error
+    const { error: deleteError } = await sb.from('whatsapp_segment_members').delete().eq('segment_id', segmentId)
+    if (deleteError) throw deleteError
+  } else {
+    const { data, error } = await sb.from('whatsapp_segments').insert({ name: params.name.trim(), description: params.description?.trim() || null, created_by: params.userId }).select('id').single()
+    if (error) throw error
+    segmentId = data.id as string
+  }
+  const uniqueCustomerIds = [...new Set(params.customerIds)]
+  if (uniqueCustomerIds.length > 0) {
+    const { error } = await sb.from('whatsapp_segment_members').insert(uniqueCustomerIds.map(customerId => ({ segment_id: segmentId, customer_id: customerId })))
+    if (error) throw error
+  }
+  const segments = await getWhatsAppSegments()
+  const saved = segments.find(segment => segment.id === segmentId)
+  if (!saved) throw new Error('No se pudo cargar el segmento guardado')
+  return saved
+}
+
+export async function deleteWhatsAppSegment(segmentId: string): Promise<void> {
+  const { error } = await client().from('whatsapp_segments').delete().eq('id', segmentId)
   if (error) throw error
 }
 

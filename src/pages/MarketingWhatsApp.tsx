@@ -1,21 +1,30 @@
 import { useEffect, useState } from 'react'
-import { getCustomers, getWhatsAppMessages, queueWhatsAppMessage, type Customer, type WhatsAppMessage } from '../lib/dataService'
+import { deleteWhatsAppSegment, getCustomers, getWhatsAppMessages, getWhatsAppSegments, queueWhatsAppMessages, saveWhatsAppSegment, type Customer, type WhatsAppMessage, type WhatsAppSegment } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { dateKeyInTimeZone } from '../lib/money'
-import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock } from 'lucide-react'
+import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
 export function MarketingWhatsApp() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
-  const [selectedSegment, setSelectedSegment] = useState<'all' | 'loyal' | 'inactive' | 'birthday'>('birthday')
+  const [segments, setSegments] = useState<WhatsAppSegment[]>([])
+  const [selectedSegment, setSelectedSegment] = useState('birthday')
+  const [audienceMode, setAudienceMode] = useState<'segment' | 'recipient'>('segment')
   
   // Custom message state
   const [targetCustomer, setTargetCustomer] = useState('')
   const [customMsg, setCustomMsg] = useState('¡Hola! En Full China tenemos promociones especiales en tallarines y arroz frito hoy. ¡Pide tu delivery!')
   const [sentNotice, setSentNotice] = useState('')
+  const [showSegmentModal, setShowSegmentModal] = useState(false)
+  const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null)
+  const [segmentName, setSegmentName] = useState('')
+  const [segmentDescription, setSegmentDescription] = useState('')
+  const [segmentCustomerIds, setSegmentCustomerIds] = useState<string[]>([])
+  const [segmentSearch, setSegmentSearch] = useState('')
+  const [segmentSaving, setSegmentSaving] = useState(false)
 
   const todayStr = dateKeyInTimeZone()
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
@@ -24,30 +33,82 @@ export function MarketingWhatsApp() {
   const loyalCustomers = customers.filter(c => c.totalVisits >= 10)
 
   useEffect(() => {
-    Promise.all([getCustomers(), getWhatsAppMessages()]).then(([customerData, messageData]) => {
+    Promise.all([getCustomers(), getWhatsAppMessages(), getWhatsAppSegments()]).then(([customerData, messageData, segmentData]) => {
       setCustomers(customerData)
       setMessages(messageData)
+      setSegments(segmentData)
       setTargetCustomer(customerData[0]?.id || '')
     }).catch(error => setSentNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos'))
   }, [])
 
+  const customSegment = segments.find(segment => segment.id === selectedSegment)
+  const currentSegmentCustomers = selectedSegment === 'birthday'
+    ? birthdayCustomers
+    : selectedSegment === 'loyal'
+      ? loyalCustomers
+      : selectedSegment === 'inactive'
+        ? inactiveCustomers
+        : selectedSegment === 'all'
+          ? customers
+          : customers.filter(customer => customSegment?.customerIds.includes(customer.id))
+
+  const openNewSegment = () => {
+    setEditingSegmentId(null)
+    setSegmentName('')
+    setSegmentDescription('')
+    setSegmentCustomerIds([])
+    setSegmentSearch('')
+    setShowSegmentModal(true)
+  }
+
+  const openEditSegment = (segment: WhatsAppSegment) => {
+    setEditingSegmentId(segment.id)
+    setSegmentName(segment.name)
+    setSegmentDescription(segment.description ?? '')
+    setSegmentCustomerIds(segment.customerIds)
+    setSegmentSearch('')
+    setShowSegmentModal(true)
+  }
+
+  const handleSaveSegment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!user || !segmentName.trim() || segmentCustomerIds.length === 0) return
+    setSegmentSaving(true)
+    try {
+      const saved = await saveWhatsAppSegment({ id: editingSegmentId ?? undefined, name: segmentName, description: segmentDescription, customerIds: segmentCustomerIds, userId: user.id })
+      setSegments(prev => editingSegmentId ? prev.map(segment => segment.id === saved.id ? saved : segment) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)))
+      setSelectedSegment(saved.id)
+      setShowSegmentModal(false)
+      setSentNotice(`Segmento “${saved.name}” guardado con ${saved.customerIds.length} clientes.`)
+      setTimeout(() => setSentNotice(''), 4000)
+    } catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo guardar el segmento') }
+    finally { setSegmentSaving(false) }
+  }
+
+  const handleDeleteSegment = async (segment: WhatsAppSegment) => {
+    if (!window.confirm(`¿Eliminar el segmento “${segment.name}”?`)) return
+    try {
+      await deleteWhatsAppSegment(segment.id)
+      setSegments(prev => prev.filter(item => item.id !== segment.id))
+      if (selectedSegment === segment.id) setSelectedSegment('birthday')
+    } catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo eliminar el segmento') }
+  }
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
-    const target = customers.find(c => c.id === targetCustomer)
-    if (!target || !user || !target.phone) return
-
-    const newMsg: WhatsAppMessage = {
-      id: `wm-${Date.now()}`,
-      templateType: 'promo',
-      customerName: target.name,
-      phone: target.phone,
-      message: customMsg,
-      sentAt: `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-      status: 'queued'
+    if (!user) return
+    const audience = audienceMode === 'segment' ? currentSegmentCustomers : customers.filter(customer => customer.id === targetCustomer)
+    const recipients = audience.filter(customer => customer.phone.trim())
+    if (recipients.length === 0) {
+      setSentNotice('No hay clientes con teléfono en la selección.')
+      return
     }
-    await queueWhatsAppMessage({ customerId: target.id, phone: target.phone, message: customMsg, userId: user.id })
-    setMessages(prev => [newMsg, ...prev])
-    setSentNotice(`Mensaje guardado en la cola para ${target.name}. Falta conectar el proveedor de WhatsApp para enviarlo.`)
+
+    await queueWhatsAppMessages({ customerIds: recipients.map(customer => customer.id), customers, message: customMsg, userId: user.id })
+    const sentAt = `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    const newMessages: WhatsAppMessage[] = recipients.map((target, index) => ({ id: `wm-${Date.now()}-${index}`, templateType: audienceMode === 'segment' ? (customSegment?.name ?? selectedSegment) : 'custom', customerName: target.name, phone: target.phone, message: customMsg, sentAt, status: 'queued' }))
+    setMessages(prev => [...newMessages, ...prev])
+    setSentNotice(`${recipients.length} mensaje${recipients.length === 1 ? '' : 's'} guardado${recipients.length === 1 ? '' : 's'} en la cola.`)
     setTimeout(() => setSentNotice(''), 4000)
   }
 
@@ -58,7 +119,10 @@ export function MarketingWhatsApp() {
           <h1 className="page-title"><MessageSquare size={22} className="page-title-icon" /> Marketing por WhatsApp</h1>
           <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
         </div>
-        <span className="wa-provider-state"><span /> Proveedor por conectar</span>
+        <div className="wa-header-actions">
+          <button type="button" className="wa-segments-button" onClick={openNewSegment}><Plus size={15} /> Crear segmento</button>
+          <span className="wa-provider-state"><span /> Proveedor por conectar</span>
+        </div>
       </header>
 
       <section className="wa-metrics management-workspace-metrics" aria-label="Resumen de marketing">
@@ -122,18 +186,23 @@ export function MarketingWhatsApp() {
           </header>
 
           {sentNotice && <div className="wa-notice" role="status"><CheckCircle2 size={16} /><span>{sentNotice}</span></div>}
+          {segments.length > 0 && <div className="wa-custom-segments"><div className="wa-custom-segments-title"><span>Mis segmentos</span><strong>{segments.length}</strong></div>{segments.map(segment => <div className="wa-custom-segment" key={segment.id}><div><strong>{segment.name}</strong><small>{segment.customerIds.length} clientes</small></div><div className="wa-custom-segment-actions"><button type="button" aria-label={`Editar ${segment.name}`} onClick={() => openEditSegment(segment)}><Pencil size={14} /></button><button type="button" aria-label={`Eliminar ${segment.name}`} onClick={() => handleDeleteSegment(segment)}><Trash2 size={14} /></button></div></div>)}</div>}
 
           <form onSubmit={handleSendMessage} className="wa-compose-form">
-            <label><span>Segmento</span><StyledSelect value={selectedSegment} onChange={e => setSelectedSegment(e.target.value as 'all' | 'loyal' | 'inactive' | 'birthday')}>
+            <div className="wa-audience-switch" role="tablist" aria-label="Tipo de público">
+              <button type="button" role="tab" aria-selected={audienceMode === 'segment'} className={audienceMode === 'segment' ? 'active' : ''} onClick={() => setAudienceMode('segment')}><Users size={15} /> Segmento</button>
+              <button type="button" role="tab" aria-selected={audienceMode === 'recipient'} className={audienceMode === 'recipient' ? 'active' : ''} onClick={() => setAudienceMode('recipient')}><UserRound size={15} /> Destinatario</button>
+            </div>
+
+            {audienceMode === 'segment' ? <label><span>Lista de difusión</span><StyledSelect value={selectedSegment} onChange={e => setSelectedSegment(e.target.value)}>
               <option value="birthday">Cumpleañeros de hoy ({birthdayCustomers.length})</option>
               <option value="loyal">Clientes fieles / VIP ({loyalCustomers.length})</option>
               <option value="inactive">Clientes inactivos ({inactiveCustomers.length})</option>
               <option value="all">Todos los clientes ({customers.length})</option>
-            </StyledSelect></label>
-
-            <label><span>Destinatario</span><StyledSelect value={targetCustomer} onChange={e => setTargetCustomer(e.target.value)}>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone}) · {c.totalVisits} visitas</option>)}
-            </StyledSelect></label>
+              {segments.map(segment => <option key={segment.id} value={segment.id}>{segment.name} ({segment.customerIds.length})</option>)}
+            </StyledSelect><small className="wa-audience-hint">{currentSegmentCustomers.filter(customer => customer.phone.trim()).length} clientes con WhatsApp disponible</small></label> : <label><span>Destinatario</span><StyledSelect value={targetCustomer} onChange={e => setTargetCustomer(e.target.value)}>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name} ({c.phone || 'sin teléfono'}) · {c.totalVisits} visitas</option>)}
+            </StyledSelect></label>}
 
             <label className="wa-message-field"><span>Mensaje <small>{customMsg.length} caracteres</small></span><textarea rows={5} value={customMsg} onChange={e => setCustomMsg(e.target.value)} /></label>
 
@@ -142,6 +211,18 @@ export function MarketingWhatsApp() {
           </form>
         </aside>
       </main>
+
+      {showSegmentModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => !segmentSaving && setShowSegmentModal(false)}>
+        <section className="wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-segment-title" onClick={event => event.stopPropagation()}>
+          <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Audiencias</span><h2 id="wa-segment-title">{editingSegmentId ? 'Editar segmento' : 'Crear segmento'}</h2><p>Arma una lista de difusión con clientes seleccionados.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setShowSegmentModal(false)}><X size={18} /></button></header>
+          <form onSubmit={handleSaveSegment} className="wa-segment-form">
+            <label><span>Nombre del segmento</span><input value={segmentName} onChange={event => setSegmentName(event.target.value)} maxLength={80} placeholder="Ej. Clientes de cumpleaños" required /></label>
+            <label><span>Descripción <small>Opcional</small></span><input value={segmentDescription} onChange={event => setSegmentDescription(event.target.value)} maxLength={160} placeholder="Para explicar cuándo usar esta lista" /></label>
+            <div className="wa-member-picker"><div className="wa-member-picker-head"><span>Clientes de la lista <strong>{segmentCustomerIds.length}</strong></span><input value={segmentSearch} onChange={event => setSegmentSearch(event.target.value)} placeholder="Buscar cliente..." aria-label="Buscar cliente" /></div><div className="wa-member-list">{customers.filter(customer => customer.name.toLowerCase().includes(segmentSearch.toLowerCase()) || customer.phone.includes(segmentSearch)).map(customer => <label key={customer.id} className="wa-member-row"><input type="checkbox" checked={segmentCustomerIds.includes(customer.id)} onChange={event => setSegmentCustomerIds(prev => event.target.checked ? [...prev, customer.id] : prev.filter(id => id !== customer.id))} /><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><span className="wa-member-copy"><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small></span></label>)}</div></div>
+            <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setShowSegmentModal(false)}>Cancelar</button><button type="submit" className="wa-send-button" disabled={segmentSaving || !segmentName.trim() || segmentCustomerIds.length === 0}>{segmentSaving ? 'Guardando…' : editingSegmentId ? 'Guardar cambios' : 'Crear segmento'}</button></div>
+          </form>
+        </section>
+      </div>}
     </div>
   )
 }
