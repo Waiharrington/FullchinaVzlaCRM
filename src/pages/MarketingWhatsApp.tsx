@@ -25,6 +25,7 @@ export function MarketingWhatsApp() {
   const [segmentCustomerIds, setSegmentCustomerIds] = useState<string[]>([])
   const [segmentSearch, setSegmentSearch] = useState('')
   const [segmentSaving, setSegmentSaving] = useState(false)
+  const [audienceModal, setAudienceModal] = useState<{ title: string; subtitle: string; customers: Customer[] } | null>(null)
 
   const todayStr = dateKeyInTimeZone()
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
@@ -51,6 +52,10 @@ export function MarketingWhatsApp() {
         : selectedSegment === 'all'
           ? customers
           : customers.filter(customer => customSegment?.customerIds.includes(customer.id))
+
+  const openAudienceModal = (title: string, subtitle: string, audience: Customer[]) => {
+    setAudienceModal({ title, subtitle, customers: audience })
+  }
 
   const openNewSegment = () => {
     setEditingSegmentId(null)
@@ -120,16 +125,21 @@ export function MarketingWhatsApp() {
           <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
         </div>
         <div className="wa-header-actions">
-          <button type="button" className="wa-segments-button" onClick={openNewSegment}><Plus size={15} /> Crear segmento</button>
+          <button type="button" className="wa-segments-button" onClick={openNewSegment}><Plus size={15} /> Nueva lista</button>
           <span className="wa-provider-state"><span /> Proveedor por conectar</span>
         </div>
       </header>
 
       <section className="wa-metrics management-workspace-metrics" aria-label="Resumen de marketing">
         <article className="wa-metric wa-metric--green"><span className="wa-metric-icon"><MessageSquare size={20} /></span><div><small>Mensajes</small><strong>{messages.length}</strong><span>En el historial</span></div></article>
-        <article className="wa-metric wa-metric--purple"><span className="wa-metric-icon"><Cake size={20} /></span><div><small>Cumpleañeros</small><strong>{birthdayCustomers.length}</strong><span>Hoy</span></div></article>
-        <article className="wa-metric wa-metric--orange"><span className="wa-metric-icon"><Clock size={20} /></span><div><small>Inactivos</small><strong>{inactiveCustomers.length}</strong><span>Más de 21 días</span></div></article>
-        <article className="wa-metric wa-metric--red"><span className="wa-metric-icon"><Users size={20} /></span><div><small>Clientes VIP</small><strong>{loyalCustomers.length}</strong><span>10 o más visitas</span></div></article>
+        <button type="button" className="wa-metric wa-metric--purple" onClick={() => openAudienceModal('Cumpleañeros de hoy', 'Clientes que cumplen años hoy.', birthdayCustomers)}><span className="wa-metric-icon"><Cake size={20} /></span><div><small>Cumpleañeros</small><strong>{birthdayCustomers.length}</strong><span>Ver lista <span aria-hidden="true">→</span></span></div></button>
+        <button type="button" className="wa-metric wa-metric--orange" onClick={() => openAudienceModal('Clientes inactivos', 'Clientes sin visitas en más de 21 días.', inactiveCustomers)}><span className="wa-metric-icon"><Clock size={20} /></span><div><small>Inactivos</small><strong>{inactiveCustomers.length}</strong><span>Ver lista <span aria-hidden="true">→</span></span></div></button>
+        <button type="button" className="wa-metric wa-metric--red" onClick={() => openAudienceModal('Clientes VIP', 'Clientes con 10 o más visitas.', loyalCustomers)}><span className="wa-metric-icon"><Users size={20} /></span><div><small>Clientes VIP</small><strong>{loyalCustomers.length}</strong><span>Ver lista <span aria-hidden="true">→</span></span></div></button>
+      </section>
+
+      <section className="wa-panel wa-lists-panel" aria-labelledby="wa-lists-title">
+        <header className="wa-panel-header"><span className="wa-panel-icon wa-panel-icon--lists"><Users size={19} /></span><div><span className="wa-eyebrow">Audiencias guardadas</span><h2 id="wa-lists-title">Listas de difusión</h2><p>Crea y administra los grupos de clientes para tus campañas.</p></div><button type="button" className="wa-inline-create" onClick={openNewSegment}><Plus size={14} /> Crear lista</button></header>
+        {segments.length === 0 ? <div className="wa-lists-empty"><Users size={18} /><span>Aún no tienes listas personalizadas. Crea una para agrupar clientes frecuentes, empresas o promociones.</span><button type="button" onClick={openNewSegment}>Crear mi primera lista</button></div> : <div className="wa-lists-grid">{segments.map(segment => <article className="wa-list-card" key={segment.id}><div className="wa-list-card-top"><span className="wa-list-card-icon"><Users size={16} /></span><div><h3>{segment.name}</h3><p>{segment.description || 'Lista personalizada de clientes'}</p></div></div><div className="wa-list-card-meta"><strong>{segment.customerIds.length}</strong><span>clientes seleccionados</span></div><div className="wa-list-card-actions"><button type="button" onClick={() => openAudienceModal(segment.name, segment.description || 'Clientes de esta lista de difusión.', customers.filter(customer => segment.customerIds.includes(customer.id)))}><Users size={14} /> Ver clientes</button><button type="button" aria-label={`Editar ${segment.name}`} onClick={() => openEditSegment(segment)}><Pencil size={14} /></button><button type="button" aria-label={`Eliminar ${segment.name}`} onClick={() => handleDeleteSegment(segment)}><Trash2 size={14} /></button></div></article>)}</div>}
       </section>
 
       <main className="wa-studio">
@@ -186,8 +196,6 @@ export function MarketingWhatsApp() {
           </header>
 
           {sentNotice && <div className="wa-notice" role="status"><CheckCircle2 size={16} /><span>{sentNotice}</span></div>}
-          {segments.length > 0 && <div className="wa-custom-segments"><div className="wa-custom-segments-title"><span>Mis segmentos</span><strong>{segments.length}</strong></div>{segments.map(segment => <div className="wa-custom-segment" key={segment.id}><div><strong>{segment.name}</strong><small>{segment.customerIds.length} clientes</small></div><div className="wa-custom-segment-actions"><button type="button" aria-label={`Editar ${segment.name}`} onClick={() => openEditSegment(segment)}><Pencil size={14} /></button><button type="button" aria-label={`Eliminar ${segment.name}`} onClick={() => handleDeleteSegment(segment)}><Trash2 size={14} /></button></div></div>)}</div>}
-
           <form onSubmit={handleSendMessage} className="wa-compose-form">
             <div className="wa-audience-switch" role="tablist" aria-label="Tipo de público">
               <button type="button" role="tab" aria-selected={audienceMode === 'segment'} className={audienceMode === 'segment' ? 'active' : ''} onClick={() => setAudienceMode('segment')}><Users size={15} /> Segmento</button>
@@ -211,6 +219,8 @@ export function MarketingWhatsApp() {
           </form>
         </aside>
       </main>
+
+      {audienceModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => setAudienceModal(null)}><section className="wa-audience-modal" role="dialog" aria-modal="true" aria-labelledby="wa-audience-title" onClick={event => event.stopPropagation()}><header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Lista de clientes</span><h2 id="wa-audience-title">{audienceModal.title}</h2><p>{audienceModal.subtitle} · {audienceModal.customers.length} clientes</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setAudienceModal(null)}><X size={18} /></button></header>{audienceModal.customers.length === 0 ? <div className="wa-audience-empty">No hay clientes en esta lista todavía.</div> : <div className="wa-audience-list">{audienceModal.customers.map(customer => <div className="wa-audience-row" key={customer.id}><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><div><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'} · {customer.totalVisits} visitas</small></div><span className={customer.phone ? 'wa-phone-ready' : 'wa-phone-missing'}>{customer.phone ? 'WhatsApp listo' : 'Sin teléfono'}</span></div>)}</div>}</section></div>}
 
       {showSegmentModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => !segmentSaving && setShowSegmentModal(false)}>
         <section className="wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-segment-title" onClick={event => event.stopPropagation()}>
