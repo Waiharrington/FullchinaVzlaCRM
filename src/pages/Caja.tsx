@@ -954,6 +954,13 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       // Una venta cobrada tampoco debe volver como borrador al regresar a Ventas.
       clearCajaDraft()
       closePaymentModal(() => setShowConfirmation(true))
+      // Vaciar el formulario en el mismo ciclo evita que el guardado automático
+      // vuelva a persistir la venta mientras se muestra la confirmación.
+      setCart([])
+      setCustomerName('')
+      setSelectedCustomer(null)
+      setOrderNotes('')
+      setDeliveryFee('')
       setTableNumber(null)
       refreshTodayOrders()
       refreshSalesRank()
