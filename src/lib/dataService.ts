@@ -392,6 +392,7 @@ export interface PayrollEntry {
   absenceDays: number
   absenceDeduction: number
   advanceDeduction: number
+  hasBreakdown: boolean
 }
 
 export interface PayrollPayment {
@@ -3078,7 +3079,19 @@ export async function createPayrollPeriod(params: {
 
 export async function deletePayrollPeriod(id: string): Promise<void> {
   const { error } = await client().rpc('fn_delete_payroll_period', { p_period_id: id })
-  if (error) throw error
+  if (!error) return
+  if (error.code !== 'PGRST202' && error.code !== '42883') throw error
+
+  // En instalaciones anteriores a la RPC, RLS permite borrar solo al owner.
+  // Los pagos/ajustes usan ON DELETE RESTRICT y las liquidaciones ON DELETE CASCADE.
+  const { data, error: deleteError } = await client()
+    .from('payroll_periods')
+    .delete()
+    .eq('id', id)
+    .eq('status', 'open')
+    .select('id')
+  if (deleteError) throw deleteError
+  if (!data?.length) throw new Error('El período no existe, no está abierto o no tienes permiso para eliminarlo')
 }
 
 export async function updatePayrollPeriodStatus(id: string, status: PayrollPeriod['status']): Promise<void> {
@@ -3101,8 +3114,8 @@ export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[
       id: r.id as string,
       payrollPeriodId: r.payroll_period_id as string,
       employeeId: r.employee_id as string,
-      employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
-      position: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.position as string ?? null : null,
+      employeeName: String((Array.isArray(r.employees) ? r.employees[0] : r.employees as Record<string, unknown> | null)?.full_name ?? ''),
+      position: ((Array.isArray(r.employees) ? r.employees[0] : r.employees as Record<string, unknown> | null)?.position as string) ?? null,
       hoursWorked: Number(r.hours_worked),
       baseSalary: Number(r.base_salary),
       deductions: Number(r.deductions),
@@ -3112,6 +3125,8 @@ export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[
       overtimeHours: Number(r.overtime_hours ?? 0), overtimeAmount: Number(r.overtime_amount ?? 0),
       transportAmount: Number(r.transport_amount ?? 0), absenceDays: Number(r.absence_days ?? 0),
       absenceDeduction: Number(r.absence_deduction ?? 0), advanceDeduction: Number(r.advance_deduction ?? 0),
+      hasBreakdown: Number(r.weekly_salary ?? 0) > 0 || Number(r.base_salary ?? 0) === 0 ||
+        Number(r.bonus_amount ?? 0) > 0 || Number(r.overtime_amount ?? 0) > 0 || Number(r.transport_amount ?? 0) > 0,
     }))
   } catch (err: unknown) {
     const isColErr = err && typeof err === 'object' && ('code' in err) && ((err as { code: string }).code === '42703' || (err as { code: string }).code === 'PGRST204')
@@ -3126,17 +3141,18 @@ export async function getPayrollEntries(periodId: string): Promise<PayrollEntry[
         id: r.id as string,
         payrollPeriodId: r.payroll_period_id as string,
         employeeId: r.employee_id as string,
-        employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
-        position: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.position as string ?? null : null,
+        employeeName: String((Array.isArray(r.employees) ? r.employees[0] : r.employees as Record<string, unknown> | null)?.full_name ?? ''),
+        position: ((Array.isArray(r.employees) ? r.employees[0] : r.employees as Record<string, unknown> | null)?.position as string) ?? null,
         hoursWorked: Number(r.hours_worked),
         baseSalary: Number(r.base_salary),
         deductions: Number(r.deductions),
         netPay: Number(r.net_pay),
         notes: (r.notes as string) ?? null,
-        weeklySalary: Number(r.base_salary ?? 0), bonusAmount: 0,
+        weeklySalary: 0, bonusAmount: 0,
         overtimeHours: Number(r.hours_worked ?? 0), overtimeAmount: 0,
         transportAmount: 0, absenceDays: 0,
         absenceDeduction: 0, advanceDeduction: Number(r.deductions ?? 0),
+        hasBreakdown: false,
       }))
     }
     throw err
@@ -3181,20 +3197,7 @@ export async function upsertPayrollEntry(params: {
     if (error) throw error
   } catch (err: unknown) {
     const isColErr = err && typeof err === 'object' && ('code' in err) && ((err as { code: string }).code === '42703' || (err as { code: string }).code === 'PGRST204')
-    if (isColErr) {
-      const { error } = await client()
-        .from('payroll_entries')
-        .upsert({
-          payroll_period_id: params.payrollPeriodId,
-          employee_id: params.employeeId,
-          hours_worked: params.hoursWorked,
-          base_salary: params.baseSalary,
-          deductions: params.deductions,
-          notes: params.notes ?? null,
-        }, { onConflict: 'payroll_period_id,employee_id' })
-      if (error) throw error
-      return
-    }
+    if (isColErr) throw new Error('Falta la migración de nómina semanal en el servidor. No se guardó la liquidación para evitar perder el desglose de bonos y ajustes.')
     throw err
   }
 }

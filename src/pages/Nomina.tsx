@@ -82,7 +82,7 @@ export function Nomina() {
       const [emp, per, adv, bon, pays] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords(), getPayrollPayments()])
       setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon); setPayments(pays)
       const byPeriod: Record<string, PayrollEntry[]> = {}
-      await Promise.all(per.map(async (p) => { byPeriod[p.id] = await getPayrollEntries(p.id).catch(() => []) }))
+      await Promise.all(per.map(async (p) => { byPeriod[p.id] = await getPayrollEntries(p.id) }))
       setEntriesByPeriod(byPeriod)
       setSelectedId((cur) => cur ?? (per[0]?.id ?? null))
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando nómina') }
@@ -95,6 +95,15 @@ export function Nomina() {
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
   const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + p.amount), new Map<string, number>()), [payments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
+  const selectedEntries = useMemo(() => selectedId ? entriesByPeriod[selectedId] ?? [] : [], [entriesByPeriod, selectedId])
+  const legacySaved = selectedEntries.some((entry) => !entry.hasBreakdown)
+  const periodEmployees = useMemo(() => selectedEntries.length > 0
+    ? selectedEntries.map((entry) => employees.find((emp) => emp.id === entry.employeeId) ?? {
+      id: entry.employeeId, fullName: entry.employeeName || 'Empleado', position: entry.position,
+      hourlyRate: 0, weeklySalary: entry.weeklySalary, overtimeRate: 0, isActive: false,
+    })
+    : activeEmployees, [activeEmployees, employees, selectedEntries])
+  const savedNet = selectedEntries.reduce((sum, entry) => sum + entry.netPay, 0)
   const bsReference = (usd: number) => bcvRate && bcvRate > 0 ? formatVes(usd * bcvRate) : 'Bs. —'
 
   // Bonos de un empleado dentro del período seleccionado
@@ -106,33 +115,31 @@ export function Nomina() {
   // Inicializar edición al cambiar de período
   useEffect(() => {
     if (!selected) return
-    const selectedEntries = selectedId ? entriesByPeriod[selectedId] ?? [] : []
     const init: Record<string, { bonus: string; overtimeHours: string; transport: string; absenceDays: string; extraDeductions: string }> = {}
-    for (const emp of activeEmployees) {
+    for (const emp of periodEmployees) {
       const ex = selectedEntries.find((e) => e.employeeId === emp.id)
-      init[emp.id] = { bonus: ex ? String(ex.bonusAmount) : String(bonusForEmp(emp.id)), overtimeHours: ex ? String(ex.overtimeHours) : '0', transport: ex ? String(ex.transportAmount) : '0', absenceDays: ex ? String(ex.absenceDays) : '0', extraDeductions: '0' }
+      init[emp.id] = { bonus: ex ? String(ex.bonusAmount) : String(bonusForEmp(emp.id)), overtimeHours: ex ? String(ex.overtimeHours) : '0', transport: ex ? String(ex.transportAmount) : '0', absenceDays: ex ? String(ex.absenceDays) : '0', extraDeductions: ex ? String(Math.max(0, ex.deductions - ex.absenceDeduction - ex.advanceDeduction)) : '0' }
     }
     setEdit(init)
-  }, [selectedId, entriesByPeriod, activeEmployees, selected, bonusForEmp])
+  }, [selectedId, selectedEntries, periodEmployees, selected, bonusForEmp])
 
   const periodNet = useCallback((p: PayrollPeriod) => {
-    const ents = entriesByPeriod[p.id] ?? []
-    const base = ents.reduce((s, e) => s + e.netPay, 0)
-    const bon = bonuses.filter((b) => b.bonusDate >= p.startDate && b.bonusDate <= p.endDate).reduce((s, b) => s + b.amount, 0)
-    return base + bon
-  }, [entriesByPeriod, bonuses])
+    return (entriesByPeriod[p.id] ?? []).reduce((sum, entry) => sum + entry.netPay, 0)
+  }, [entriesByPeriod])
 
   // Totales de la tabla del período seleccionado (desde la edición en vivo)
-  const rows = activeEmployees.map((emp) => {
+  const rows = periodEmployees.map((emp) => {
+    const stored = selectedEntries.find((entry) => entry.employeeId === emp.id)
     const ed = edit[emp.id] ?? { bonus: '0', overtimeHours: '0', transport: '0', absenceDays: '0', extraDeductions: '0' }
-    const weekly = emp.weeklySalary || emp.hourlyRate * 48
+    const weekly = stored?.hasBreakdown ? stored.weeklySalary : emp.weeklySalary || emp.hourlyRate * 48
     const bonus = parseFloat(ed.bonus) || 0
     const overtimeHours = parseFloat(ed.overtimeHours) || 0
-    const overtime = overtimeHours * (emp.overtimeRate || emp.hourlyRate)
+    const overtimeRate = stored?.hasBreakdown && stored.overtimeHours > 0 ? stored.overtimeAmount / stored.overtimeHours : emp.overtimeRate || emp.hourlyRate
+    const overtime = overtimeHours * overtimeRate
     const transport = parseFloat(ed.transport) || 0
     const absenceDays = parseFloat(ed.absenceDays) || 0
-    const absenceDeduction = weekly / 6 * absenceDays
-    const advance = advances.filter((a) => a.employeeId === emp.id && !a.isDeducted && (!selected || a.advanceDate <= selected.endDate)).reduce((s, a) => s + a.amount, 0)
+    const absenceDeduction = stored?.hasBreakdown && absenceDays === stored.absenceDays ? stored.absenceDeduction : weekly / 6 * absenceDays
+    const advance = stored?.hasBreakdown ? stored.advanceDeduction : advances.filter((a) => a.employeeId === emp.id && !a.isDeducted && (!selected || a.advanceDate <= selected.endDate)).reduce((s, a) => s + a.amount, 0)
     const extra = parseFloat(ed.extraDeductions) || 0
     const bruto = weekly + bonus + overtime + transport
     const ded = absenceDeduction + advance + extra
@@ -142,6 +149,7 @@ export function Nomina() {
 
   const handleSaveAll = async () => {
     if (!selected) return
+    if (legacySaved) { setError('Este período tiene liquidaciones antiguas sin desglose. Se conserva su total histórico; no se puede sobrescribir con sueldos actuales.'); return }
     setSaving(true); setError('')
     try {
       for (const r of rows) {
@@ -193,7 +201,24 @@ export function Nomina() {
 
   const pendingAdvances = advances.filter((a) => !a.isDeducted).reduce((s, a) => s + a.amount, 0)
   const pendingCount = advances.filter((a) => !a.isDeducted).length
-  const periodBonuses = selected ? bonuses.filter((b) => b.bonusDate >= selected.startDate && b.bonusDate <= selected.endDate).reduce((s, b) => s + b.amount, 0) : 0
+  const periodBonuses = selectedEntries.length ? selectedEntries.reduce((s, entry) => s + entry.bonusAmount, 0) : selected ? bonuses.filter((b) => b.bonusDate >= selected.startDate && b.bonusDate <= selected.endDate).reduce((s, b) => s + b.amount, 0) : 0
+  const displayedNet = legacySaved ? savedNet : tot.neto
+  const shownBonuses = selectedEntries.length > 0
+    ? selectedEntries.filter((entry) => entry.bonusAmount > 0).map((entry) => ({
+      id: entry.id, date: selected?.endDate ?? '', employeeName: entry.employeeName || employees.find((emp) => emp.id === entry.employeeId)?.fullName || 'Empleado',
+      amount: entry.bonusAmount, reason: 'Liquidación guardada',
+    }))
+    : bonuses.filter((bonus) => !selected || bonus.bonusDate >= selected.startDate && bonus.bonusDate <= selected.endDate).map((bonus) => ({
+      id: bonus.id, date: bonus.bonusDate, employeeName: bonus.employeeName, amount: bonus.amount, reason: bonus.reason || '—',
+    }))
+  const shownAdvances = selectedEntries.length > 0
+    ? selectedEntries.filter((entry) => entry.advanceDeduction > 0).map((entry) => ({
+      id: entry.id, date: selected?.endDate ?? '', employeeName: entry.employeeName || employees.find((emp) => emp.id === entry.employeeId)?.fullName || 'Empleado',
+      amount: entry.advanceDeduction, deducted: true, advanceId: null,
+    }))
+    : advances.filter((advance) => !selected || advance.advanceDate <= selected.endDate).map((advance) => ({
+      id: advance.id, date: advance.advanceDate, employeeName: advance.employeeName, amount: advance.amount, deducted: advance.isDeducted, advanceId: advance.id,
+    }))
   const statusCls = (s: string) => s === 'open' ? 'open' : s === 'paid' ? 'paid' : 'closed'
   const statusLbl = (s: string) => s === 'open' ? 'Abierto' : s === 'paid' ? 'Pagado' : 'Cerrado'
   const fmtRange = (p: PayrollPeriod) => `${new Date(p.startDate).toLocaleDateString('es-VE')} - ${new Date(p.endDate).toLocaleDateString('es-VE')}`
@@ -222,11 +247,11 @@ export function Nomina() {
         </div>
         <div className="nom-sum">
           <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(34,197,94,0.15)', color: '#22c55e' }}><Banknote size={20} /></span>
-            <div><div className="nom-sum-lbl">Liquidación del período</div><div className="nom-sum-val">{formatUsd(tot.neto)}</div><div className="nom-sum-sub">{selected ? `Período actual` : 'Sin período'}</div></div></div>
+            <div><div className="nom-sum-lbl">Liquidación del período</div><div className="nom-sum-val">{formatUsd(displayedNet)}</div><div className="nom-sum-sub">{selected ? `Período seleccionado` : 'Sin período'}</div></div></div>
         </div>
         <div className="nom-sum">
           <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(250, 204, 21,0.15)', color: '#facc15' }}><Gift size={20} /></span>
-            <div><div className="nom-sum-lbl">Bonos totales</div><div className="nom-sum-val">{formatUsd(periodBonuses)}</div><div className="nom-sum-sub">Período actual</div></div></div>
+            <div><div className="nom-sum-lbl">Bonos totales</div><div className="nom-sum-val">{legacySaved ? '—' : formatUsd(periodBonuses)}</div><div className="nom-sum-sub">{legacySaved ? 'Desglose histórico no disponible' : 'Período seleccionado'}</div></div></div>
         </div>
         <div className="nom-sum">
           <div className="nom-sum-top"><span className="nom-sum-ic" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444' }}><Hourglass size={20} /></span>
@@ -265,9 +290,20 @@ export function Nomina() {
         <div className="nom-card">
           <div className="nom-card-head">
             <div><h2>Liquidación del Período: {fmtRange(selected)} <span className={`nom-status ${statusCls(selected.status)}`}>{statusLbl(selected.status)}</span></h2><p>Sueldo semanal, bonos, extras, transporte, ausencias y adelantos pendientes.</p></div>
-            <button className="nom-btn" onClick={handleSaveAll} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>
+            {!legacySaved && <button className="nom-btn" onClick={handleSaveAll} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>}
           </div>
-          {activeEmployees.length === 0 ? <p style={{ color: '#71717a' }}>No hay empleados activos. Agrégalos en Equipo / Usuarios.</p> : (
+          {legacySaved ? (
+            <div className="nom-table-wrap">
+              <p className="nom-history-note">Este período conserva el monto guardado, pero las liquidaciones antiguas no registraron los bonos y ajustes por separado. No se puede reconstruir ese desglose con certeza.</p>
+              <table className="nom-table nom-history-table">
+                <thead><tr><th>Empleado</th><th>Monto guardado</th><th>Deducciones guardadas</th><th>Neto guardado</th></tr></thead>
+                <tbody>
+                  {selectedEntries.map((entry) => <tr key={entry.id}><td>{entry.employeeName || employees.find((emp) => emp.id === entry.employeeId)?.fullName || 'Empleado'}</td><td>{formatUsd(entry.baseSalary)}</td><td>{formatUsd(entry.deductions)}</td><td className="nom-net">{formatUsd(entry.netPay)}</td></tr>)}
+                  <tr className="nom-tot-row"><td>TOTAL GUARDADO</td><td>{formatUsd(selectedEntries.reduce((sum, entry) => sum + entry.baseSalary, 0))}</td><td>{formatUsd(selectedEntries.reduce((sum, entry) => sum + entry.deductions, 0))}</td><td className="nom-net">{formatUsd(savedNet)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          ) : periodEmployees.length === 0 ? <p style={{ color: '#71717a' }}>No hay empleados activos. Agrégalos en Equipo / Usuarios.</p> : (
             <div className="nom-table-wrap">
               <table className="nom-table">
                 <thead>
@@ -404,14 +440,14 @@ export function Nomina() {
           <table className="nom-mini-table">
             <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Estado</th></tr></thead>
             <tbody>
-              {advances.slice(0, 5).map((a) => (
+              {shownAdvances.slice(0, 5).map((a) => (
                 <tr key={a.id}>
-                  <td style={{ color: '#a1a1aa' }}>{new Date(a.advanceDate).toLocaleDateString('es-VE')}</td>
+                  <td style={{ color: '#a1a1aa' }}>{new Date(a.date).toLocaleDateString('es-VE')}</td>
                   <td>{a.employeeName}</td><td><strong>{formatUsd(a.amount)}</strong></td>
-                  <td><span className={`nom-pill ${a.isDeducted ? 'done' : 'pend'}`} onClick={() => setAdvanceDeducted(a.id, !a.isDeducted).then(load)}>{a.isDeducted ? 'Deducido' : 'Pendiente'}</span></td>
+                  <td><span className={`nom-pill ${a.deducted ? 'done' : 'pend'}`} onClick={a.advanceId ? () => { void setAdvanceDeducted(a.advanceId, !a.deducted).then(load) } : undefined}>{a.deducted ? 'Deducido' : 'Pendiente'}</span></td>
                 </tr>
               ))}
-              {advances.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>Sin adelantos.</td></tr>}
+              {shownAdvances.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>{legacySaved ? 'Desglose antiguo no disponible.' : 'Sin adelantos en este período.'}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -421,15 +457,20 @@ export function Nomina() {
           <table className="nom-mini-table">
             <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Motivo</th></tr></thead>
             <tbody>
-              {bonuses.slice(0, 5).map((b) => (
-                <tr key={b.id}><td style={{ color: '#a1a1aa' }}>{new Date(b.bonusDate).toLocaleDateString('es-VE')}</td><td>{b.employeeName}</td><td style={{ color: '#22c55e' }}><strong>{formatUsd(b.amount)}</strong></td><td style={{ color: '#a1a1aa' }}>{b.reason || '—'}</td></tr>
+              {shownBonuses.slice(0, 5).map((b) => (
+                <tr key={b.id}><td style={{ color: '#a1a1aa' }}>{new Date(b.date).toLocaleDateString('es-VE')}</td><td>{b.employeeName}</td><td style={{ color: '#22c55e' }}><strong>{formatUsd(b.amount)}</strong></td><td style={{ color: '#a1a1aa' }}>{b.reason}</td></tr>
               ))}
-              {bonuses.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>Sin bonos.</td></tr>}
+              {shownBonuses.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>{legacySaved ? 'Desglose antiguo no disponible.' : 'Sin bonos en este período.'}</td></tr>}
             </tbody>
           </table>
         </div>
 
-        <div className="nom-card">
+        {legacySaved ? <div className="nom-card">
+          <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Resumen del Período</h2>
+          <p style={{ fontSize: 12, color: '#a1a1aa', margin: '0 0 12px' }}>{selected ? fmtRange(selected) : 'Sin período'}</p>
+          <div className="nom-res-row total"><span>TOTAL GUARDADO</span><span className="nom-net">{formatUsd(savedNet)}</span></div>
+          <p style={{ fontSize: 11, color: '#a1a1aa', marginTop: 10 }}>El desglose de bonos y ajustes no quedó registrado en estas liquidaciones.</p>
+        </div> : <div className="nom-card">
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 2px' }}>Resumen del Período</h2>
           <p style={{ fontSize: 12, color: '#a1a1aa', margin: '0 0 12px' }}>{selected ? fmtRange(selected) : 'Sin período'}</p>
           <div className="nom-res-row"><span className="k">Total Sueldos Base</span><span>{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</span></div>
@@ -440,7 +481,7 @@ export function Nomina() {
           <div className="nom-res-row"><span className="k">Total Días no laborados</span><span style={{ color: '#ef4444' }}>- {formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</span></div>
           <div className="nom-res-row total"><span>TOTAL NETO A PAGAR</span><span className="nom-net">{formatUsd(tot.neto)}</span></div>
           <p style={{ fontSize: 11, color: '#71717a', marginTop: 10 }}>{activeEmployees.length} empleados a liquidar</p>
-        </div>
+        </div>}
       </div>
 
       {/* Modales */}

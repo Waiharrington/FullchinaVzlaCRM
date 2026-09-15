@@ -41,6 +41,9 @@
 
 /* Tabla liquidación */
 .nom-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid rgba(255,255,255,0.06); }
+.nom-history-note { margin: 0; padding: 12px 14px; color: #f4c77d; background: rgba(245, 158, 11, 0.08); border-bottom: 1px solid rgba(245, 158, 11, 0.18); font-size: 13px; line-height: 1.5; }
+.nom-history-table { min-width: 560px; }
+.nom-history-table th, .nom-history-table td { text-align: left; }
 .nom-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 980px; }
 .nom-table th { color: #85858f; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; padding: 12px 10px; background: rgba(255,255,255,0.025); border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
 .nom-table tbody tr { transition: background 0.15s ease; }
