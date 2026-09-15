@@ -356,3 +356,12 @@
    que el contenido obligue a usar desplazamiento horizontal. */
 .nom-periods{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;overflow:visible;padding-bottom:0}
 .nom-period{width:auto;min-width:0;box-sizing:border-box}
+
+/* Ajustes de liquidación: entrada simple y referencia BCV separada. */
+.nom-adjust-cell{display:inline-flex;flex-direction:column;align-items:center;gap:7px;width:92px;max-width:92px;margin:0 auto;box-sizing:border-box}
+.nom-adjust-input{width:92px;height:34px;box-sizing:border-box;padding:0 8px;color:#fff;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:8px;font:inherit;font-size:13px;font-weight:700;text-align:center}
+.nom-adjust-input:focus{outline:none;border-color:rgba(227,27,43,.75);box-shadow:0 0 0 3px rgba(227,27,43,.12)}
+.nom-adjust-input::-webkit-inner-spin-button,.nom-adjust-input::-webkit-outer-spin-button{margin:0;-webkit-appearance:none}
+.nom-adjust-input[type=number]{-moz-appearance:textfield}
+.nom-bs-ref{display:block;min-height:14px;color:#71717a;font-size:10px;font-weight:650;line-height:14px;white-space:nowrap}
+.nom-bs-ref--green{color:#22c55e}

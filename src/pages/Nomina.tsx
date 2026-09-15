@@ -7,7 +7,8 @@ import {
   getPayrollPayments, createPayrollPayment,
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment,
 } from '../lib/dataService'
-import { formatUsd, dateKeyInTimeZone } from '../lib/money'
+import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
+import { useRates } from '../context/rates-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
 import { StyledSelect } from '../components/StyledSelect'
@@ -24,6 +25,7 @@ import { confirmDialog } from '../components/ConfirmDialog'
 const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
 export function Nomina() {
+  const { bcvRate } = useRates()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [periods, setPeriods] = useState<PayrollPeriod[]>([])
   const [entriesByPeriod, setEntriesByPeriod] = useState<Record<string, PayrollEntry[]>>({})
@@ -93,6 +95,7 @@ export function Nomina() {
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
   const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + p.amount), new Map<string, number>()), [payments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
+  const bsReference = (usd: number) => bcvRate && bcvRate > 0 ? formatVes(usd * bcvRate) : 'Bs. —'
 
   // Bonos de un empleado dentro del período seleccionado
   const bonusForEmp = useCallback((empId: string) => {
@@ -293,7 +296,7 @@ export function Nomina() {
                       <td className="nom-col-center">
                         <div className="nom-cell-wrap nom-cell-amount">
                           <strong>{formatUsd(r.weekly)}</strong>
-                          <small className="nom-cell-sub">base</small>
+                          <small className="nom-bs-ref">{bsReference(r.weekly)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
@@ -301,57 +304,37 @@ export function Nomina() {
                           <strong style={{ color: r.advance > 0 ? '#ef4444' : '#a1a1aa' }}>
                             {r.advance > 0 ? `-${formatUsd(r.advance)}` : '$0,00'}
                           </strong>
-                          <small className="nom-cell-sub">{r.advance > 0 ? 'pendiente' : 'sin adelanto'}</small>
+                          <small className="nom-bs-ref">{r.advance > 0 ? `-${bsReference(r.advance)}` : bsReference(0)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
-                        <div className="nom-stepper-cell">
-                          <NumberStepper
-                            step={1}
-                            min={0}
-                            value={edit[r.emp.id]?.bonus ?? '0'}
-                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: v } }))}
-                          />
-                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{formatUsd(r.bonus)}</small>
+                        <div className="nom-adjust-cell">
+                          <input className="nom-adjust-input" type="number" inputMode="decimal" min="0" step="0.01" value={edit[r.emp.id]?.bonus ?? '0'} aria-label={`Bono de ${r.emp.fullName}`} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: e.target.value } }))} />
+                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{bsReference(r.bonus)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
-                        <div className="nom-stepper-cell">
-                          <NumberStepper
-                            step={0.5}
-                            min={0}
-                            value={edit[r.emp.id]?.overtimeHours ?? '0'}
-                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], overtimeHours: v } }))}
-                          />
-                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{formatUsd(r.overtime)}</small>
+                        <div className="nom-adjust-cell">
+                          <input className="nom-adjust-input" type="number" inputMode="decimal" min="0" step="0.5" value={edit[r.emp.id]?.overtimeHours ?? '0'} aria-label={`Horas extra de ${r.emp.fullName}`} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], overtimeHours: e.target.value } }))} />
+                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{bsReference(r.overtime)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
-                        <div className="nom-stepper-cell">
-                          <NumberStepper
-                            step={1}
-                            min={0}
-                            value={edit[r.emp.id]?.transport ?? '0'}
-                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], transport: v } }))}
-                          />
-                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{formatUsd(r.transport)}</small>
+                        <div className="nom-adjust-cell">
+                          <input className="nom-adjust-input" type="number" inputMode="decimal" min="0" step="0.01" value={edit[r.emp.id]?.transport ?? '0'} aria-label={`Transporte de ${r.emp.fullName}`} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], transport: e.target.value } }))} />
+                          <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{bsReference(r.transport)}</small>
                         </div>
                       </td>
                       <td className="nom-col-center">
-                        <div className="nom-stepper-cell">
-                          <NumberStepper
-                            step={1}
-                            min={0}
-                            value={edit[r.emp.id]?.absenceDays ?? '0'}
-                            onChange={(v) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], absenceDays: v } }))}
-                          />
-                          <small className="nom-stepper-hint" style={{ color: '#ef4444' }}>-{formatUsd(r.absenceDeduction)}</small>
+                        <div className="nom-adjust-cell">
+                          <input className="nom-adjust-input" type="number" inputMode="decimal" min="0" step="1" value={edit[r.emp.id]?.absenceDays ?? '0'} aria-label={`Días no laborados de ${r.emp.fullName}`} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], absenceDays: e.target.value } }))} />
+                          <small className="nom-stepper-hint" style={{ color: '#ef4444' }}>-{bsReference(r.absenceDeduction)}</small>
                         </div>
                       </td>
                       <td className="nom-col-right">
                         <div className="nom-cell-wrap nom-cell-right">
                           <strong className="nom-net">{formatUsd(r.neto)}</strong>
-                          <small className="nom-cell-sub" style={{ color: '#22c55e' }}>a liquidar</small>
+                          <small className="nom-bs-ref nom-bs-ref--green">{bsReference(r.neto)}</small>
                         </div>
                       </td>
                     </tr>
@@ -367,43 +350,43 @@ export function Nomina() {
                     <td className="nom-col-center">
                       <div className="nom-cell-wrap nom-cell-amount">
                         <strong>{formatUsd(rows.reduce((s, r) => s + r.weekly, 0))}</strong>
-                        <small className="nom-cell-sub">total base</small>
+                        <small className="nom-bs-ref">{bsReference(rows.reduce((s, r) => s + r.weekly, 0))}</small>
                       </div>
                     </td>
                     <td className="nom-col-center">
                       <div className="nom-cell-wrap nom-cell-amount">
                         <strong style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.advance, 0))}</strong>
-                        <small className="nom-cell-sub">adelantos</small>
+                        <small className="nom-bs-ref">-{bsReference(rows.reduce((s, r) => s + r.advance, 0))}</small>
                       </div>
                     </td>
                     <td className="nom-col-center">
                       <div className="nom-cell-wrap nom-cell-amount">
                         <strong style={{ color: '#22c55e' }}>+{formatUsd(tot.bon)}</strong>
-                        <small className="nom-cell-sub">bonos</small>
+                        <small className="nom-bs-ref">+{bsReference(tot.bon)}</small>
                       </div>
                     </td>
                     <td className="nom-col-center">
                       <div className="nom-cell-wrap nom-cell-amount">
                         <strong style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.overtime, 0))}</strong>
-                        <small className="nom-cell-sub">{tot.hours}h extra</small>
+                        <small className="nom-bs-ref">+{bsReference(rows.reduce((s, r) => s + r.overtime, 0))}</small>
                       </div>
                     </td>
                     <td className="nom-col-center">
                       <div className="nom-cell-wrap nom-cell-amount">
                         <strong style={{ color: '#22c55e' }}>+{formatUsd(rows.reduce((s, r) => s + r.transport, 0))}</strong>
-                        <small className="nom-cell-sub">transporte</small>
+                        <small className="nom-bs-ref">+{bsReference(rows.reduce((s, r) => s + r.transport, 0))}</small>
                       </div>
                     </td>
                     <td className="nom-col-center">
                       <div className="nom-cell-wrap nom-cell-amount">
                         <strong style={{ color: '#ef4444' }}>-{formatUsd(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</strong>
-                        <small className="nom-cell-sub">ausencias</small>
+                        <small className="nom-bs-ref">-{bsReference(rows.reduce((s, r) => s + r.absenceDeduction, 0))}</small>
                       </div>
                     </td>
                     <td className="nom-col-right">
                       <div className="nom-cell-wrap nom-cell-right">
                         <strong className="nom-net" style={{ fontSize: 16 }}>{formatUsd(tot.neto)}</strong>
-                        <small className="nom-cell-sub" style={{ color: '#22c55e' }}>gran total</small>
+                        <small className="nom-bs-ref nom-bs-ref--green">{bsReference(tot.neto)}</small>
                       </div>
                     </td>
                   </tr>
