@@ -55,4 +55,12 @@ describe('Historial de nómina', () => {
     fireEvent.click(within(cards[1]).getByRole('button', { name: /Eliminar período/ }))
     await waitFor(() => expect(mocks.deletePayrollPeriod).toHaveBeenCalledWith('older'))
   })
+
+  it('bloquea un guardado nuevo cuando el servidor aún no tiene las columnas semanales', async () => {
+    mocks.getAllEmployees.mockResolvedValue([{ ...employee, hasWeeklyPayrollColumns: false }])
+    mocks.getPayrollEntries.mockResolvedValue([])
+    render(<Nomina />)
+    expect(await screen.findByText(/El servidor aún no tiene la migración semanal de nómina/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Guardar liquidación' })).toBeDisabled()
+  })
 })

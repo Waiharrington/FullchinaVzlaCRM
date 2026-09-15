@@ -93,6 +93,7 @@ export function Nomina() {
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
+  const weeklySchemaAvailable = employees.every((employee) => employee.hasWeeklyPayrollColumns !== false)
   const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + p.amount), new Map<string, number>()), [payments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
   const selectedEntries = useMemo(() => selectedId ? entriesByPeriod[selectedId] ?? [] : [], [entriesByPeriod, selectedId])
@@ -149,6 +150,7 @@ export function Nomina() {
 
   const handleSaveAll = async () => {
     if (!selected) return
+    if (!weeklySchemaAvailable) { setError('El servidor aún no tiene la migración semanal de nómina. No se pueden guardar bonos y ajustes por empleado hasta aplicarla.'); return }
     if (legacySaved) { setError('Este período tiene liquidaciones antiguas sin desglose. Se conserva su total histórico; no se puede sobrescribir con sueldos actuales.'); return }
     setSaving(true); setError('')
     try {
@@ -290,8 +292,9 @@ export function Nomina() {
         <div className="nom-card">
           <div className="nom-card-head">
             <div><h2>Liquidación del Período: {fmtRange(selected)} <span className={`nom-status ${statusCls(selected.status)}`}>{statusLbl(selected.status)}</span></h2><p>Sueldo semanal, bonos, extras, transporte, ausencias y adelantos pendientes.</p></div>
-            {!legacySaved && <button className="nom-btn" onClick={handleSaveAll} disabled={saving}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>}
+            {!legacySaved && <button className="nom-btn" onClick={handleSaveAll} disabled={saving || !weeklySchemaAvailable}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>}
           </div>
+          {!weeklySchemaAvailable && !legacySaved && <p className="nom-history-note">El servidor aún no tiene la migración semanal de nómina. Puedes consultar los períodos existentes; para guardar nuevos bonos y ajustes hay que actualizar la base de datos.</p>}
           {legacySaved ? (
             <div className="nom-table-wrap">
               <p className="nom-history-note">Este período conserva el monto guardado, pero las liquidaciones antiguas no registraron los bonos y ajustes por separado. No se puede reconstruir ese desglose con certeza.</p>
