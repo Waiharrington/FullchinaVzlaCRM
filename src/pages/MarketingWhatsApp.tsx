@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { deleteWhatsAppSegment, getCustomers, getWhatsAppMessages, getWhatsAppSegments, queueWhatsAppMessages, saveWhatsAppSegment, type Customer, type WhatsAppMessage, type WhatsAppSegment } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
@@ -77,6 +78,13 @@ export function MarketingWhatsApp() {
   useEffect(() => {
     setAudiencePage(page => Math.min(page, audiencePageCount))
   }, [audiencePageCount])
+
+  useEffect(() => {
+    if (!audienceModal && !showSegmentModal) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [audienceModal, showSegmentModal])
 
   const openAudienceModal = (title: string, subtitle: string, audience: Customer[]) => {
     setAudienceModal({ title, subtitle, customers: audience })
@@ -245,9 +253,9 @@ export function MarketingWhatsApp() {
         </aside>
       </main>
 
-      {audienceModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => setAudienceModal(null)}><section className="wa-standard-modal wa-audience-modal" role="dialog" aria-modal="true" aria-labelledby="wa-audience-title" onClick={event => event.stopPropagation()}><header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Lista de clientes</span><h2 id="wa-audience-title">{audienceModal.title}</h2><p>{audienceModal.subtitle} · {audienceModal.customers.length} clientes</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setAudienceModal(null)}><X size={18} /></button></header>{audienceModal.customers.length === 0 ? <div className="wa-audience-empty">No hay clientes en esta lista todavía.</div> : <><div className="wa-audience-list">{visibleAudienceCustomers.map(customer => <div className="wa-audience-row" key={customer.id}><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><div><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'} · {customer.totalVisits} visitas</small></div><span className={customer.phone ? 'wa-phone-ready' : 'wa-phone-missing'}>{customer.phone ? 'WhatsApp listo' : 'Sin teléfono'}</span></div>)}</div><div className="wa-modal-pagination"><span>Mostrando {(audiencePage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(audiencePage * MODAL_PAGE_SIZE, audienceModal.customers.length)} de {audienceModal.customers.length}</span><div><button type="button" aria-label="Página anterior" disabled={audiencePage === 1} onClick={() => setAudiencePage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {audiencePage} de {audiencePageCount}</strong><button type="button" aria-label="Página siguiente" disabled={audiencePage === audiencePageCount} onClick={() => setAudiencePage(page => page + 1)}><ChevronRight size={15} /></button></div></div></>}</section></div>}
+      {audienceModal && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setAudienceModal(null)}><section className="wa-standard-modal wa-audience-modal" role="dialog" aria-modal="true" aria-labelledby="wa-audience-title" onClick={event => event.stopPropagation()}><header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Lista de clientes</span><h2 id="wa-audience-title">{audienceModal.title}</h2><p>{audienceModal.subtitle} · {audienceModal.customers.length} clientes</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setAudienceModal(null)}><X size={18} /></button></header>{audienceModal.customers.length === 0 ? <div className="wa-audience-empty">No hay clientes en esta lista todavía.</div> : <><div className="wa-audience-list">{visibleAudienceCustomers.map(customer => <div className="wa-audience-row" key={customer.id}><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><div><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'} · {customer.totalVisits} visitas</small></div><span className={customer.phone ? 'wa-phone-ready' : 'wa-phone-missing'}>{customer.phone ? 'WhatsApp listo' : 'Sin teléfono'}</span></div>)}</div><div className="wa-modal-pagination"><span>Mostrando {(audiencePage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(audiencePage * MODAL_PAGE_SIZE, audienceModal.customers.length)} de {audienceModal.customers.length}</span><div><button type="button" aria-label="Página anterior" disabled={audiencePage === 1} onClick={() => setAudiencePage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {audiencePage} de {audiencePageCount}</strong><button type="button" aria-label="Página siguiente" disabled={audiencePage === audiencePageCount} onClick={() => setAudiencePage(page => page + 1)}><ChevronRight size={15} /></button></div></div></>}</section></div>, document.body)}
 
-      {showSegmentModal && <div className="wa-modal-backdrop" role="presentation" onClick={() => !segmentSaving && setShowSegmentModal(false)}>
+      {showSegmentModal && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => !segmentSaving && setShowSegmentModal(false)}>
         <section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-segment-title" onClick={event => event.stopPropagation()}>
           <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Audiencias</span><h2 id="wa-segment-title">{editingSegmentId ? 'Editar segmento' : 'Crear segmento'}</h2><p>Arma una lista de difusión con clientes seleccionados.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setShowSegmentModal(false)}><X size={18} /></button></header>
           <form onSubmit={handleSaveSegment} className="wa-segment-form">
@@ -257,7 +265,7 @@ export function MarketingWhatsApp() {
             <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setShowSegmentModal(false)}>Cancelar</button><button type="submit" className="wa-send-button" disabled={segmentSaving || !segmentName.trim() || segmentCustomerIds.length === 0}>{segmentSaving ? 'Guardando…' : editingSegmentId ? 'Guardar cambios' : 'Crear segmento'}</button></div>
           </form>
         </section>
-      </div>}
+      </div>, document.body)}
     </div>
   )
 }
