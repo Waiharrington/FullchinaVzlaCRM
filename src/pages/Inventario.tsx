@@ -104,6 +104,35 @@ function getIngredientCategory(ing: Ingredient): 'raw' | 'packaging' | 'beverage
   return 'raw'
 }
 
+type InventoryDisplayGroup = 'proteins' | 'vegetables' | 'starches' | 'seasonings' | 'beverages' | 'portions' | 'packaging' | 'other'
+
+const INVENTORY_GROUP_ORDER: Record<InventoryDisplayGroup, number> = {
+  proteins: 10,
+  vegetables: 20,
+  starches: 30,
+  seasonings: 40,
+  beverages: 50,
+  portions: 60,
+  packaging: 70,
+  other: 80,
+}
+
+const DISPLAY_GROUP_KEYWORDS: Array<{ group: Exclude<InventoryDisplayGroup, 'beverages' | 'portions' | 'packaging'>; keywords: string[] }> = [
+  { group: 'proteins', keywords: ['pollo', 'huevo', 'carne', 'carne de res', 'cerdo', 'chuleta', 'jamon', 'camaron', 'pescado', 'atun', 'salchicha', 'chorizo', 'tocineta', 'bacon', 'marisco', 'calamar'] },
+  { group: 'vegetables', keywords: ['cebolla', 'tomate', 'lechuga', 'zanahoria', 'pimenton', 'aji', 'ajo', 'cebollin', 'repollo', 'pepino', 'brocoli', 'coliflor', 'cilantro', 'perejil', 'papa', 'yuca', 'calabacin', 'berenjena', 'vainita'] },
+  { group: 'starches', keywords: ['arroz', 'harina', 'pasta', 'tallarin', 'fideo', 'vermicelli', 'pan', 'maizena', 'maiz', 'avena', 'azucar'] },
+  { group: 'seasonings', keywords: ['aceite', 'salsa', 'soya', 'vinagre', 'sal', 'pimienta', 'ajinomoto', 'condimento', 'especia', 'caldo', 'mayonesa', 'ketchup', 'mostaza'] },
+]
+
+function getInventoryDisplayGroup(ing: Ingredient): InventoryDisplayGroup {
+  const category = getIngredientCategory(ing)
+  if (category === 'beverages') return 'beverages'
+  if (category === 'portions') return 'portions'
+  if (category === 'packaging') return 'packaging'
+  const name = normalizeForSearch(ing.name)
+  return DISPLAY_GROUP_KEYWORDS.find(({ keywords }) => keywords.some(keyword => name.includes(keyword)))?.group ?? 'other'
+}
+
 export function Inventario() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -322,6 +351,9 @@ export function Inventario() {
       const cat = getIngredientCategory(ing)
       const matchesCategory = categoryFilter === 'all' || categoryFilter === cat
       return matchesCategory && normalizeForSearch(ing.name).includes(normalizeForSearch(searchTerm))
+    }).sort((a, b) => {
+      const groupDifference = INVENTORY_GROUP_ORDER[getInventoryDisplayGroup(a)] - INVENTORY_GROUP_ORDER[getInventoryDisplayGroup(b)]
+      return groupDifference || a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
     })
   }, [ingredients, searchTerm, categoryFilter])
 
