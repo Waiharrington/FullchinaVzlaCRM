@@ -999,6 +999,21 @@
   margin-left: auto;
 }
 
+.card-total-amounts {
+  margin-left: auto;
+  margin-right: 2px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.card-total-amounts .money-usd,
+.card-total-amounts .money-ves {
+  font-size: 10px;
+  line-height: 1.15;
+}
+.card-footer-line > .status-ready-group,
+.card-footer-line > .badge-delivered-tag,
+.card-footer-line > .timer-mins { margin-left: 0; }
+
 .payment-type-badge {
   font-size: 10px;
   font-weight: 700;

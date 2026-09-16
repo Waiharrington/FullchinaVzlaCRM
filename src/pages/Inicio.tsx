@@ -1,4 +1,5 @@
 import { useMemo, useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
@@ -6,7 +7,7 @@ import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { useSearch } from '../context/search-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { canAccessModule } from '../components/navItems'
-import { formatRateDate, formatVes } from '../lib/money'
+import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient } from '../lib/dataService'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
@@ -21,7 +22,9 @@ import {
   ClipboardList,
   CreditCard,
   AlertTriangle,
-  UtensilsCrossed
+  UtensilsCrossed,
+  X,
+  ExternalLink
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -66,6 +69,8 @@ export function Inicio() {
   const [salesRange, setSalesRange] = useState(7)
   const [dashboardError, setDashboardError] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
+  const [todayOrdersOpen, setTodayOrdersOpen] = useState(false)
 
   const fetchData = useCallback(async (days: number = 7) => {
     setLoading(true)
@@ -170,9 +175,34 @@ export function Inicio() {
   }, [hasAccess, lowStockItems, pendingCredits.length])
 
   const paidOrdersToday = useMemo(() =>
-    todayOrders.filter(o => o.status === 'paid'),
+    todayOrders.filter(o => o.status === 'paid' && dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
     [todayOrders]
   )
+
+  const paymentMethodDetails = useMemo(() => {
+    if (!selectedPaymentMethod) return []
+    return paidOrdersToday.flatMap(order => order.payments
+      .filter(payment => payment.method === selectedPaymentMethod)
+      .map(payment => ({ order, payment })))
+  }, [paidOrdersToday, selectedPaymentMethod])
+
+  useEffect(() => {
+    const modalOpen = Boolean(selectedPaymentMethod || todayOrdersOpen)
+    if (!modalOpen) return
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelectedPaymentMethod(null)
+        setTodayOrdersOpen(false)
+      }
+    }
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [selectedPaymentMethod, todayOrdersOpen])
 
   const recentOrders = useMemo(() => {
     return paidOrdersToday.slice(0, 5)
@@ -325,13 +355,13 @@ export function Inicio() {
                 <MoneyWithBcv usd={totalSales} className="kpi-value" align="start" />
               </div>
             </div>
-            <div className="kpi-card red">
+            <button className="kpi-card red kpi-card-button" type="button" onClick={() => setTodayOrdersOpen(true)} aria-label={`Ver ${ordersCount} comandas de hoy`}>
               <div className="kpi-icon-circle red"><ClipboardList size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">COMANDAS</span>
                 <span className="kpi-value">{ordersCount}</span>
               </div>
-            </div>
+            </button>
             <div className="kpi-card green">
               <div className="kpi-icon-circle green"><TrendingUp size={20} /></div>
               <div className="kpi-data">
@@ -339,13 +369,13 @@ export function Inicio() {
                 <MoneyWithBcv usd={stats?.avgTicket ?? 0} className="kpi-value" align="start" />
               </div>
             </div>
-            <div className="kpi-card red">
+            <button className="kpi-card red kpi-card-button" type="button" onClick={() => hasAccess('/clientes') && navigate('/clientes')} aria-label="Abrir cuentas por cobrar" disabled={!hasAccess('/clientes')}>
               <div className="kpi-icon-circle red"><CreditCard size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label"><span className="kpi-lbl-full">CUENTAS POR COBRAR</span><span className="kpi-lbl-short">POR COBRAR</span></span>
                 <MoneyWithBcv usd={totalPendingCredits} className="kpi-value" align="start" />
               </div>
-            </div>
+            </button>
           </div>
         </div>
         <div className="kpi-banner-img-wrap">
@@ -403,7 +433,7 @@ export function Inicio() {
                 const share = paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0
                 const color = PAYMENT_COLORS[i % PAYMENT_COLORS.length]
                 return (
-                  <div key={m.method} className="pago-legend-row">
+                  <button key={m.method} type="button" className="pago-legend-row pago-legend-button" onClick={() => setSelectedPaymentMethod(m.method)} aria-label={`Ver cobros de ${PAYMENT_METHOD_LABELS[m.method] ?? m.method}`}>
                     <div className="pago-method">
                       <span className="pago-dot" style={{ background: color }} />
                       <span className="pago-name">{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>
@@ -413,7 +443,7 @@ export function Inicio() {
                     <span className="pago-progress" aria-hidden="true">
                       <span style={{ width: `${share}%`, background: color }} />
                     </span>
-                  </div>
+                  </button>
                 )
               })}
             </div>
@@ -550,6 +580,57 @@ export function Inicio() {
           {hasAccess('/clientes') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/clientes')}>Ver todas las cuentas</button> : null}
         </div>
       </div>
+
+      {selectedPaymentMethod && createPortal(
+        <div className="db-modal-backdrop" role="presentation" onClick={() => setSelectedPaymentMethod(null)}>
+          <section className="db-modal db-payment-detail-modal" role="dialog" aria-modal="true" aria-labelledby="payment-detail-title" onClick={event => event.stopPropagation()}>
+            <header className="db-modal-header">
+              <div>
+                <span className="db-modal-eyebrow">Cobros de hoy</span>
+                <h2 id="payment-detail-title">{PAYMENT_METHOD_LABELS[selectedPaymentMethod] ?? selectedPaymentMethod}</h2>
+                <p>Comandas cobradas con este método de pago.</p>
+              </div>
+              <button type="button" className="db-modal-close" aria-label="Cerrar detalle de pago" onClick={() => setSelectedPaymentMethod(null)}><X size={18} /></button>
+            </header>
+            <div className="db-modal-summary">
+              <div><span>Total cobrado</span><MoneyWithBcv usd={paymentMethodDetails.reduce((sum, row) => sum + row.payment.amount, 0)} /></div>
+              <div><span>Movimientos</span><strong>{paymentMethodDetails.length}</strong></div>
+            </div>
+            <div className="db-modal-list">
+              {paymentMethodDetails.length === 0 ? <div className="db-modal-empty"><CreditCard size={24} /><span>No hay cobros registrados con este método hoy.</span></div> : paymentMethodDetails.map(({ order, payment }) => (
+                <div className="db-payment-detail-row" key={payment.id}>
+                  <div><strong>Comanda #{String(order.orderNumber).padStart(4, '0')}</strong><small>{new Date(payment.createdAt || order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
+                  <MoneyWithBcv usd={payment.amount} className="db-payment-detail-amount" compact />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>, document.body
+      )}
+
+      {todayOrdersOpen && createPortal(
+        <div className="db-modal-backdrop" role="presentation" onClick={() => setTodayOrdersOpen(false)}>
+          <section className="db-modal db-orders-detail-modal" role="dialog" aria-modal="true" aria-labelledby="today-orders-title" onClick={event => event.stopPropagation()}>
+            <header className="db-modal-header">
+              <div>
+                <span className="db-modal-eyebrow">Resumen del día</span>
+                <h2 id="today-orders-title">Comandas de hoy</h2>
+                <p>{paidOrdersToday.length} comandas cobradas · desglose por orden.</p>
+              </div>
+              <button type="button" className="db-modal-close" aria-label="Cerrar comandas de hoy" onClick={() => setTodayOrdersOpen(false)}><X size={18} /></button>
+            </header>
+            <div className="db-modal-list db-orders-detail-list">
+              {paidOrdersToday.length === 0 ? <div className="db-modal-empty"><ClipboardList size={24} /><span>No hay comandas cobradas hoy.</span></div> : paidOrdersToday.map(order => (
+                <div className="db-order-detail-row" key={order.id}>
+                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className="ord-badge paid">Pagada</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
+                  <MoneyWithBcv usd={order.totalAmount} className="db-payment-detail-amount" compact />
+                </div>
+              ))}
+            </div>
+            <footer className="db-modal-footer"><button type="button" className="db-modal-secondary" onClick={() => { setTodayOrdersOpen(false); navigate('/comandas') }}><ExternalLink size={14} /> Ver módulo de comandas</button></footer>
+          </section>
+        </div>, document.body
+      )}
 
     </div>
   )

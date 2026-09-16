@@ -128,6 +128,7 @@ export interface ComandaOrder {
   items: ComandaItem[]
   notes?: string
   paymentMethod: string
+  payments?: Array<{ method: PaymentMethod; amount: number }>
   paymentType: 'card' | 'cash' | 'app' | 'pending'
   isPaid: boolean
   totalAmount?: number
@@ -358,6 +359,8 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
         ) : (
           <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
         )}
+
+        {order.isPaid && <MoneyWithBcv usd={order.totalAmount || 0} rate={order.bcvRate} className="card-total-amounts" compact />}
 
         {order.status === 'ready' ? (
           <div className="status-ready-group">
@@ -1038,6 +1041,7 @@ export function Comandas() {
               })),
               notes: o.notes || '',
               paymentMethod: hasPaid ? persistedPaymentLabel : '⚠️ Sin pagar',
+              payments: o.payments.map(payment => ({ method: payment.method, amount: payment.amount })),
               paymentType: hasPaid
                 ? paymentMethods.includes('cash')
                   ? 'cash'
@@ -1271,6 +1275,7 @@ export function Comandas() {
           })),
           notes: o.notes || '',
           paymentMethod: hasPaid ? paymentLabel : 'Sin pago',
+          payments: o.payments.map(payment => ({ method: payment.method, amount: payment.amount })),
           paymentType: hasPaid
             ? paymentMethods.includes('cash') ? 'cash'
               : paymentMethods.includes('mobile') || paymentMethods.includes('transfer') ? 'app'
@@ -2094,7 +2099,15 @@ export function Comandas() {
                   <div className="cmd-breakdown-section">
                     <div className="cmd-summary-row cmd-breakdown-title">Desglose del pago</div>
                     {selectedOrder.isPaid ? (
-                      <div className="cmd-summary-row cmd-breakdown-item">
+                      selectedOrder.payments?.length ? selectedOrder.payments.map((payment, index) => {
+                        const paymentLabels: Record<PaymentMethod, string> = {
+                          cash: 'Efectivo', mobile: 'Pago móvil', card: 'Tarjeta / Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+                        }
+                        return <div className="cmd-summary-row cmd-breakdown-item" key={`${payment.method}-${index}`}>
+                          <span className="cmd-paid-green">{paymentLabels[payment.method] ?? payment.method}</span>
+                          <MoneyWithBcv usd={payment.amount} rate={selectedOrder.bcvRate} compact />
+                        </div>
+                      }) : <div className="cmd-summary-row cmd-breakdown-item">
                         <span className="cmd-paid-green">Pagado ({selectedOrder.paymentMethod})</span>
                         <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} compact />
                       </div>
