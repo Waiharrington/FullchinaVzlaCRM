@@ -101,6 +101,10 @@ export function Nomina() {
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
   const weeklySchemaAvailable = employees.every((employee) => employee.hasWeeklyPayrollColumns !== false)
   const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + (p.currency === 'Bs' && p.exchangeRate ? p.amount / p.exchangeRate : p.amount)), new Map<string, number>()), [payments])
+  const deliveryByEmployee = useMemo(() => deliveryAssignments.reduce((m, assignment) => {
+    if (assignment.status !== 'cancelled') m.set(assignment.employeeId, (m.get(assignment.employeeId) ?? 0) + assignment.employeeAmount)
+    return m
+  }, new Map<string, number>()), [deliveryAssignments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
   const selectedEntries = useMemo(() => selectedId ? entriesByPeriod[selectedId] ?? [] : [], [entriesByPeriod, selectedId])
   const legacySaved = selectedEntries.some((entry) => !entry.hasBreakdown)
@@ -275,7 +279,8 @@ export function Nomina() {
     }))
   const statusCls = (s: string) => s === 'open' ? 'open' : s === 'paid' ? 'paid' : 'closed'
   const statusLbl = (s: string) => s === 'open' ? 'Abierto' : s === 'paid' ? 'Pagado' : 'Cerrado'
-  const fmtRange = (p: PayrollPeriod) => `${new Date(p.startDate).toLocaleDateString('es-VE')} - ${new Date(p.endDate).toLocaleDateString('es-VE')}`
+  const fmtDateOnly = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('es-VE')
+  const fmtRange = (p: PayrollPeriod) => `${fmtDateOnly(p.startDate)} - ${fmtDateOnly(p.endDate)}`
 
   return (
     <div className="page nom-page animate-fade-in management-workspace management-workspace--payroll">
@@ -316,7 +321,13 @@ export function Nomina() {
       <div className="nom-card">
         <div className="nom-card-head"><div><h2>Personal y pagos directos</h2><p>Registra pagos sin crear un período. Los períodos quedan disponibles para reportes.</p></div><button className="nom-btn" onClick={() => setShowPayment(true)}><Plus size={16} /> Registrar pago</button></div>
         <div className="nom-periods">
-          {activeEmployees.map((emp) => <div className="nom-period" key={emp.id}><div className="nom-period-top"><strong>{emp.fullName}</strong><span className="nom-status open">{emp.position || 'Empleado'}</span></div><div className="liq">Pagado acumulado: {formatUsd(paidByEmployee.get(emp.id) ?? 0)}</div><small>{payments.filter((p) => p.employeeId === emp.id).length} pagos registrados · {emp.hourlyRate ? `Tarifa ${formatUsd(emp.hourlyRate)}/h` : 'Pago directo o comisión'}</small></div>)}
+          {activeEmployees.map((emp) => {
+            const isDelivery = emp.position?.toLowerCase() === 'delivery' || employees.find((item) => item.id === emp.id)?.position?.toLowerCase() === 'delivery'
+            const directPayments = payments.filter((p) => p.employeeId === emp.id).length
+            const accrued = paidByEmployee.get(emp.id) ?? 0
+            const deliveryAccrued = deliveryByEmployee.get(emp.id) ?? 0
+            return <div className="nom-period" key={emp.id}><div className="nom-period-top"><strong>{emp.fullName}</strong><span className="nom-status open">{emp.position || 'Empleado'}</span></div><div className="liq">{isDelivery ? `Comisión acumulada: ${formatUsd(deliveryAccrued)}` : `Pagado acumulado: ${formatUsd(accrued)}`}</div><small>{isDelivery ? `${deliveryAccrued > 0 ? 'Comisión pendiente de liquidar' : 'Sin comisiones registradas'} · ${directPayments} pagos directos` : `${directPayments} pagos registrados · ${emp.hourlyRate ? `Tarifa ${formatUsd(emp.hourlyRate)}/h` : 'Pago directo o comisión'}`}</small></div>
+          })}
         </div>
         {payments.length > 0 && <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Cuenta</th><th>Referencia</th></tr></thead><tbody>{payments.slice(0, 8).map((p) => <tr key={p.id}><td>{new Date(p.paymentDate).toLocaleDateString('es-VE')}</td><td>{p.employeeName}</td><td><strong>{formatUsd(p.amount)}</strong></td><td>{p.paymentAccount || '—'}</td><td>{p.reference || '—'}</td></tr>)}</tbody></table></div>}
       </div>
