@@ -81,13 +81,13 @@ describe('Dashboard Inicio', () => {
     mocks.getIngredients.mockResolvedValue([{ id: 'ingredient-1', name: 'Aceite', currentStock: -2, unitSymbol: 'L', stockValue: 0 }])
   })
 
-  it('no muestra el bloque de accesos rápidos eliminado', async () => {
+  it('muestra el bloque de accesos rápidos del dashboard', async () => {
     render(<Inicio />)
 
     await screen.findByText('Resumen del día')
-    expect(screen.queryByText('Acciones rápidas')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /^caja$/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /nueva comanda/i })).not.toBeInTheDocument()
+    expect(screen.getByText('Acciones rápidas')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^comandas$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^ventas$/i })).toBeInTheDocument()
   })
 
   it('evita que el tooltip tape el total del método de pago', async () => {

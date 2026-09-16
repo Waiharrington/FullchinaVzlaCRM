@@ -353,7 +353,8 @@
 .db-modal-summary span { display: block; color: #a1a1aa; font-size: .7rem; margin-bottom: 5px; }
 .db-modal-summary strong, .db-modal-summary .money-with-bcv { color: #fff; font-size: 1.1rem; font-weight: 800; }
 .db-modal-list { overflow-y: auto; min-height: 0; padding: 4px 24px 18px; }
-.db-payment-detail-row, .db-order-detail-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 13px 4px; border-bottom: 1px solid #27272c; }
+.db-payment-detail-row, .db-order-detail-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; width: 100%; box-sizing: border-box; padding: 13px 4px; border: 0; border-bottom: 1px solid #27272c; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.db-payment-detail-row:hover, .db-order-detail-row:hover, .db-payment-detail-row.is-expanded { background: rgba(255,255,255,.035); }
 .db-payment-detail-row > div:first-child, .db-order-detail-row > div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .db-payment-detail-row strong, .db-order-detail-row strong { color: #f4f4f5; font-size: .82rem; }
 .db-payment-detail-row small, .db-order-detail-row small { color: #8f8f98; font-size: .7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -362,6 +363,8 @@
 .db-order-detail-row small { flex-basis: 100%; }
 .db-modal-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 150px; color: #a1a1aa; text-align: center; font-size: .8rem; }
 .db-modal-empty svg { color: #FF4D3D; }
+.db-order-items-detail { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; padding: 8px 10px; border-left: 2px solid #FF4D3D; border-radius: 0 6px 6px 0; background: rgba(255,77,61,.06); color: #d4d4d8; font-size: .7rem; }
+.db-order-items-title { color: #FF756c; font-size: .62rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
 .db-modal-footer { display: flex; justify-content: flex-end; padding: 14px 24px 22px; border-top: 1px solid #27272c; }
 .db-modal-secondary { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #3a3a42; border-radius: 9px; padding: 9px 13px; background: #1b1b1f; color: #e4e4e7; font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; }
 .db-modal-secondary:hover { border-color: #FF4D3D; color: #fff; }
@@ -1540,7 +1543,7 @@
 /* ─── PAYMENT BREAKDOWN WIDGET ─── */
 .db-payment-card {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   background:
     radial-gradient(circle at 12% 20%, rgba(255, 77, 61, 0.065), transparent 34%),
     var(--db-surface);
@@ -1669,6 +1672,8 @@
   justify-self: end;
   font-size: 0.7rem;
 }
+.db-payment-card .pago-amount .money-usd { color: #fff; font-weight: 800; }
+.db-payment-card .pago-amount .money-ves { color: #a1a1aa; }
 
 .pago-progress {
   grid-column: 1 / -1;
@@ -1957,7 +1962,7 @@
 
 /* Alturas de fila mayores en escritorio real (≥1101px) */
 @media (min-width: 1101px) {
-  .db-grid-4 { grid-template-rows: 172px 162px; }
+  .db-grid-4 { grid-template-rows: 172px auto; }
   .db-grid-3 { grid-template-rows: 148px; }
 }
 

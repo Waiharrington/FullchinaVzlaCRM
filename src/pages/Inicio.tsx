@@ -71,6 +71,7 @@ export function Inicio() {
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
   const [todayOrdersOpen, setTodayOrdersOpen] = useState(false)
+  const [expandedPaymentOrderId, setExpandedPaymentOrderId] = useState<string | null>(null)
 
   const fetchData = useCallback(async (days: number = 7) => {
     setLoading(true)
@@ -495,6 +496,18 @@ export function Inicio() {
           )}
         </div>
 
+        <div className="db-card db-quick-card">
+          <div className="db-card-head"><h3>Acciones rápidas</h3></div>
+          <div className="db-quick-grid">
+            {hasAccess('/comandas') && <button className="db-qa-btn" type="button" onClick={() => navigate('/comandas')}><ClipboardList size={20} /><span>Comandas</span></button>}
+            {hasAccess('/ventas') && <button className="db-qa-btn" type="button" onClick={() => navigate('/ventas')}><TrendingUp size={20} /><span>Ventas</span></button>}
+            {hasAccess('/menu') && <button className="db-qa-btn" type="button" onClick={() => navigate('/menu')}><UtensilsCrossed size={20} /><span>Menú</span></button>}
+            {hasAccess('/mesas') && <button className="db-qa-btn" type="button" onClick={() => navigate('/mesas')}><CreditCard size={20} /><span>Mesas</span></button>}
+            {hasAccess('/inventario') && <button className="db-qa-btn" type="button" onClick={() => navigate('/inventario')}><AlertTriangle size={20} /><span>Inventario</span></button>}
+            {hasAccess('/clientes') && <button className="db-qa-btn" type="button" onClick={() => navigate('/clientes')}><DollarSign size={20} /><span>Clientes</span></button>}
+          </div>
+        </div>
+
       </div>
 
       <div className="db-grid-3">
@@ -598,10 +611,10 @@ export function Inicio() {
             </div>
             <div className="db-modal-list">
               {paymentMethodDetails.length === 0 ? <div className="db-modal-empty"><CreditCard size={24} /><span>No hay cobros registrados con este método hoy.</span></div> : paymentMethodDetails.map(({ order, payment }) => (
-                <div className="db-payment-detail-row" key={payment.id}>
-                  <div><strong>Comanda #{String(order.orderNumber).padStart(4, '0')}</strong><small>{new Date(payment.createdAt || order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
+                <button className={`db-payment-detail-row ${expandedPaymentOrderId === order.id ? 'is-expanded' : ''}`} type="button" key={payment.id} onClick={() => setExpandedPaymentOrderId(current => current === order.id ? null : order.id)} aria-expanded={expandedPaymentOrderId === order.id}>
+                  <div><strong>Comanda #{String(order.orderNumber).padStart(4, '0')}</strong><small>{new Date(payment.createdAt || order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small>{expandedPaymentOrderId === order.id && <div className="db-order-items-detail"><span className="db-order-items-title">Detalle de la orden</span>{order.items.map(item => <span key={item.id}>{item.quantity} × {formatProductTitle(item.productName)}</span>)}</div>}</div>
                   <MoneyWithBcv usd={payment.amount} className="db-payment-detail-amount" compact />
-                </div>
+                </button>
               ))}
             </div>
           </section>
