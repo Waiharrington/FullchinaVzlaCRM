@@ -102,7 +102,7 @@ export function Nomina() {
   const weeklySchemaAvailable = employees.every((employee) => employee.hasWeeklyPayrollColumns !== false)
   const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + (p.currency === 'Bs' && p.exchangeRate ? p.amount / p.exchangeRate : p.amount)), new Map<string, number>()), [payments])
   const deliveryByEmployee = useMemo(() => deliveryAssignments.reduce((m, assignment) => {
-    if (assignment.status !== 'cancelled') m.set(assignment.employeeId, (m.get(assignment.employeeId) ?? 0) + assignment.employeeAmount)
+    if (assignment.status === 'pending') m.set(assignment.employeeId, (m.get(assignment.employeeId) ?? 0) + assignment.employeeAmount)
     return m
   }, new Map<string, number>()), [deliveryAssignments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
