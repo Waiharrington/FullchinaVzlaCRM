@@ -367,6 +367,9 @@ export function Inicio() {
               </StyledSelect>
               {chartLoading ? <RefreshCw size={12} className="is-spinning" /> : null}
             </label>
+            <button className="db-link-btn" type="button" onClick={() => void fetchData(salesRange)} disabled={loading || chartLoading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
+              <RefreshCw size={14} className={loading ? 'is-spinning' : ''} />
+            </button>
           </div>
           <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>
         </div>
@@ -462,47 +465,6 @@ export function Inicio() {
           )}
         </div>
 
-        <div className="db-card db-quick-card">
-          <div className="db-card-head"><h3>Acciones rápidas</h3></div>
-          <div className="db-quick-grid">
-            {hasAccess('/comandas') && (
-              <button className="db-qa-btn" onClick={() => navigate('/comandas')}>
-                <ClipboardList size={20} />
-                <span>Comandas</span>
-              </button>
-            )}
-            {hasAccess('/ventas') && (
-              <button className="db-qa-btn" onClick={() => navigate('/ventas')}>
-                <TrendingUp size={20} />
-                <span>Ventas</span>
-              </button>
-            )}
-            {hasAccess('/menu') && (
-              <button className="db-qa-btn" onClick={() => navigate('/menu')}>
-                <UtensilsCrossed size={20} />
-                <span>Menú</span>
-              </button>
-            )}
-            {hasAccess('/mesas') && (
-              <button className="db-qa-btn" onClick={() => navigate('/mesas')}>
-                <CreditCard size={20} />
-                <span>Mesas</span>
-              </button>
-            )}
-            {hasAccess('/inventario') && (
-              <button className="db-qa-btn" onClick={() => navigate('/inventario')}>
-                <AlertTriangle size={20} />
-                <span>Inventario</span>
-              </button>
-            )}
-            {hasAccess('/clientes') && (
-              <button className="db-qa-btn" onClick={() => navigate('/clientes')}>
-                <DollarSign size={20} />
-                <span>Clientes</span>
-              </button>
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="db-grid-3">

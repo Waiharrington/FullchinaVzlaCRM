@@ -115,6 +115,7 @@ export interface OrderItem {
   category: string
   quantity: number
   unitPrice: number
+  modifiers?: SelectedModifier[]
 }
 
 export interface Credit {
@@ -396,6 +397,63 @@ export interface PayrollEntry {
   hasBreakdown: boolean
 }
 
+export interface DeliveryAssignment {
+  id: string
+  employeeId: string
+  employeeName: string
+  orderId: string
+  deliveryFee: number
+  employeePercent: number
+  employeeAmount: number
+  companyAmount: number
+  status: 'pending' | 'paid' | 'cancelled'
+  assignedAt: string
+  payrollPeriodId: string | null
+}
+
+export interface LegacySaleReportRow {
+  id: string
+  orderLabel: string | null
+  customer: string | null
+  closedAt: string | null
+  orderType: string | null
+  subtotal: number
+  itemDiscount: number
+  orderDiscount: number
+  tax: number
+  tips: number
+  total: number
+  cashPaid: number
+  cardPaid: number
+  chequePaid: number
+  otherPaid: number
+}
+
+export interface LegacyDeletedOrderReportRow {
+  id: string
+  orderLabel: string | null
+  description: string | null
+  deletedAt: string | null
+  deletedBy: string | null
+}
+
+export interface LegacyPurchaseOrderReportRow {
+  id: string
+  poCode: string | null
+  supplier: string | null
+  poDate: string | null
+  tax: number
+  discount: number
+  total: number
+  status: string | null
+}
+
+export interface ReportEventRow { id: string; orderId: string; eventType: string; previousValue: string | null; currentValue: string | null; actorId: string | null; occurredAt: string }
+export interface ReportAdjustmentRow { id: string; orderId: string; orderItemId: string | null; adjustmentType: string; amountUsd: number; reason: string | null; employeeId: string | null; createdAt: string }
+export interface ReportAttendanceRow { id: string; employeeId: string; workDate: string; clockIn: string | null; clockOut: string | null; notes: string | null }
+export interface ReportRequisitionRow { id: string; ingredientId: string; quantity: number; unitId: string; fromLocation: string; toLocation: string; status: string; requestedAt: string; fulfilledAt: string | null }
+export interface ReportGiftCardRow { id: string; code: string; initialAmountUsd: number; isActive: boolean; expiresAt: string | null; createdAt: string; transactionType?: string; transactionAmountUsd?: number; transactionAt?: string; orderId?: string | null }
+
 export interface PayrollPayment {
   id: string
   employeeId: string
@@ -404,6 +462,8 @@ export interface PayrollPayment {
   currency: 'USD' | 'Bs'
   exchangeRate: number | null
   paymentAccount: string | null
+  accountId: string | null
+  payrollPeriodId: string | null
   paymentDate: string
   reference: string | null
   notes: string | null
@@ -1248,16 +1308,24 @@ export async function getOccupiedTables(): Promise<number[]> {
 
 // --- Órdenes completas (para Comandas/Cocina) --------------------------------
 
-export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): Promise<FullOrder[]> {
-  let query = client().from('v_orders_with_items').select('*')
-  if (dateStart) query = query.gte('created_at', dateStart)
-  if (dateEnd) query = query.lte('created_at', dateEnd)
-  query = query.order('created_at', { ascending: false })
+export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, allPages = false): Promise<FullOrder[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  do {
+    let query = client().from('v_orders_with_items').select('*')
+    if (dateStart) query = query.gte('created_at', dateStart)
+    if (dateEnd) query = allPages ? query.lt('created_at', dateEnd) : query.lte('created_at', dateEnd)
+    query = query.order('created_at', { ascending: false }).order('id', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  } while (allPages)
 
-  const { data, error } = await query
-  if (error) throw error
-
-  return (data ?? []).map((o) => ({
+  return rows.map((o) => ({
     id: o.id as string,
     orderNumber: o.order_number as number,
     status: o.status as string,
@@ -1281,6 +1349,13 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string): 
       category: (i.category as string) ?? 'plato',
       quantity: Number(i.quantity),
       unitPrice: Number(i.unit_price),
+      modifiers: Array.isArray(i.modifiers) ? i.modifiers.map((modifier: Record<string, unknown>) => ({
+        optionId: modifier.option_id as string,
+        optionName: modifier.option_name as string,
+        modifierName: (modifier.modifier_name as string) ?? 'Modificador',
+        price: Number(modifier.price ?? 0),
+        quantity: Number(modifier.quantity ?? 1),
+      })) : [],
     })) : [],
     payments: Array.isArray(o.payments) ? o.payments.map((p: Record<string, unknown>) => ({
       id: p.id as string,
@@ -1452,15 +1527,21 @@ export interface CashSessionSnapshot {
 
 // --- Créditos ----------------------------------------------------------------
 
-export async function getCredits(): Promise<Credit[]> {
-  const { data, error } = await client()
-    .from('v_credit_balances')
-    .select('*')
-    .order('created_at', { ascending: false })
+export async function getCredits(allPages = false): Promise<Credit[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('v_credit_balances').select('*').order('created_at', { ascending: false }).order('credit_id', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
 
-  if (error) throw error
-
-  return (data ?? []).map((c) => ({
+  return rows.map((c) => ({
     id: c.credit_id as string,
     customerId: (c.customer_id as string) ?? null,
     customerName: c.customer_name as string,
@@ -1785,16 +1866,24 @@ export async function getDailyCloses(): Promise<DailyCloseSummary[]> {
 
 // --- Gastos ------------------------------------------------------------------
 
-export async function getExpenses(dateStart?: string, dateEnd?: string): Promise<Expense[]> {
-  let query = client().from('expenses').select('*')
-  if (dateStart) query = query.gte('expense_date', dateStart)
-  if (dateEnd) query = query.lte('expense_date', dateEnd)
-  query = query.order('expense_date', { ascending: false })
+export async function getExpenses(dateStart?: string, dateEnd?: string, allPages = false): Promise<Expense[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('expenses').select('*')
+    if (dateStart) query = query.gte('expense_date', dateStart)
+    if (dateEnd) query = query.lte('expense_date', dateEnd)
+    query = query.order('expense_date', { ascending: false }).order('id', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
 
-  const { data, error } = await query
-  if (error) throw error
-
-  return (data ?? []).map((e) => ({
+  return rows.map((e) => ({
     id: e.id as string,
     concept: e.concept as string,
     amount: Number(e.amount),
@@ -1849,22 +1938,32 @@ export async function deleteExpense(id: string): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudo eliminar el gasto')
 }
 
-export async function getFinancialOperations(dateStart?: string, dateEnd?: string): Promise<FinancialOperation[]> {
-  let query = client().from('financial_operations').select(`
+export async function getFinancialOperations(dateStart?: string, dateEnd?: string, allPages = false): Promise<FinancialOperation[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('financial_operations').select(`
     id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,
     counterparty,reference_number,affects_profit,
     from_account:financial_accounts!financial_operations_from_account_id_fkey(name),
     to_account:financial_accounts!financial_operations_to_account_id_fkey(name)
   `).eq('status', 'confirmed')
-  if (dateStart) query = query.gte('operation_date', dateStart)
-  if (dateEnd) query = query.lte('operation_date', dateEnd)
-  const { data, error } = await query.order('operation_date', { ascending: false }).limit(100)
-  if (error) throw error
+    if (dateStart) query = query.gte('operation_date', dateStart)
+    if (dateEnd) query = query.lte('operation_date', dateEnd)
+    query = query.order('operation_date', { ascending: false }).order('id', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
   const relationName = (value: unknown) => {
     const row = Array.isArray(value) ? value[0] : value
     return row && typeof row === 'object' && 'name' in row ? String(row.name) : null
   }
-  return (data ?? []).map((row) => ({
+  return rows.map((row) => ({
     id: String(row.id), type: row.operation_type as FinancialOperation['type'], concept: String(row.concept),
     operationDate: String(row.operation_date), amountUsd: Number(row.amount_usd),
     originalCurrency: row.original_currency as 'USD' | 'VES', originalAmount: Number(row.original_amount),
@@ -1873,6 +1972,124 @@ export async function getFinancialOperations(dateStart?: string, dateEnd?: strin
     referenceNumber: row.reference_number ? String(row.reference_number) : null,
     affectsProfit: Boolean(row.affects_profit), fromAccount: relationName(row.from_account), toAccount: relationName(row.to_account),
   }))
+}
+
+/** Registros importados de Invu; son una fuente histórica y no se mezclan con ventas nuevas. */
+export async function getLegacySalesReport(allPages = false): Promise<LegacySaleReportRow[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('legacy_sales').select('id,order_label,customer_text,closed_at,order_type,subtotal,item_discount,order_discount,tax,total_tips,total,cash_paid,card_paid,cheque_paid,other_paid').order('closed_at', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  return rows.map(row => ({
+    id: String(row.id), orderLabel: row.order_label == null ? null : String(row.order_label), customer: row.customer_text == null ? null : String(row.customer_text),
+    closedAt: row.closed_at == null ? null : String(row.closed_at), orderType: row.order_type == null ? null : String(row.order_type),
+    subtotal: Number(row.subtotal ?? 0), itemDiscount: Number(row.item_discount ?? 0), orderDiscount: Number(row.order_discount ?? 0), tax: Number(row.tax ?? 0), tips: Number(row.total_tips ?? 0), total: Number(row.total ?? 0),
+    cashPaid: Number(row.cash_paid ?? 0), cardPaid: Number(row.card_paid ?? 0), chequePaid: Number(row.cheque_paid ?? 0), otherPaid: Number(row.other_paid ?? 0),
+  }))
+}
+
+export async function getLegacyDeletedOrdersReport(allPages = false): Promise<LegacyDeletedOrderReportRow[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('legacy_deleted_orders').select('id,order_label,description,deleted_at,deleted_by').order('deleted_at', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  return rows.map(row => ({ id: String(row.id), orderLabel: row.order_label == null ? null : String(row.order_label), description: row.description == null ? null : String(row.description), deletedAt: row.deleted_at == null ? null : String(row.deleted_at), deletedBy: row.deleted_by == null ? null : String(row.deleted_by) }))
+}
+
+export async function getLegacyPurchaseOrdersReport(allPages = false): Promise<LegacyPurchaseOrderReportRow[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('legacy_purchase_orders').select('id,po_code,supplier_text,po_date,tax,discount,total,status').order('po_date', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  return rows.map(row => ({ id: String(row.id), poCode: row.po_code == null ? null : String(row.po_code), supplier: row.supplier_text == null ? null : String(row.supplier_text), poDate: row.po_date == null ? null : String(row.po_date), tax: Number(row.tax ?? 0), discount: Number(row.discount ?? 0), total: Number(row.total ?? 0), status: row.status == null ? null : String(row.status) }))
+}
+
+export async function getReportEventLogs(allPages = false): Promise<ReportEventRow[]> {
+  const rows: Record<string, unknown>[] = []; let offset = 0
+  for (;;) {
+    let query = client().from('order_event_logs').select('id,order_id,event_type,previous_value,current_value,actor_id,occurred_at').order('occurred_at', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query; if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]; rows.push(...batch)
+    if (!allPages || batch.length < 500) break; offset += 500
+  }
+  return rows.map(row => ({ id: String(row.id), orderId: String(row.order_id), eventType: String(row.event_type), previousValue: row.previous_value == null ? null : String(row.previous_value), currentValue: row.current_value == null ? null : String(row.current_value), actorId: row.actor_id == null ? null : String(row.actor_id), occurredAt: String(row.occurred_at) }))
+}
+
+export async function getReportAdjustments(allPages = false): Promise<ReportAdjustmentRow[]> {
+  const rows: Record<string, unknown>[] = []; let offset = 0
+  for (;;) {
+    let query = client().from('order_adjustments').select('id,order_id,order_item_id,adjustment_type,amount_usd,reason,employee_id,created_at').order('created_at', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query; if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]; rows.push(...batch)
+    if (!allPages || batch.length < 500) break; offset += 500
+  }
+  return rows.map(row => ({ id: String(row.id), orderId: String(row.order_id), orderItemId: row.order_item_id == null ? null : String(row.order_item_id), adjustmentType: String(row.adjustment_type), amountUsd: Number(row.amount_usd), reason: row.reason == null ? null : String(row.reason), employeeId: row.employee_id == null ? null : String(row.employee_id), createdAt: String(row.created_at) }))
+}
+
+export async function getReportAttendance(allPages = false): Promise<ReportAttendanceRow[]> {
+  const rows: Record<string, unknown>[] = []; let offset = 0
+  for (;;) {
+    let query = client().from('employee_attendance').select('id,employee_id,work_date,clock_in,clock_out,notes').order('work_date', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query; if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]; rows.push(...batch)
+    if (!allPages || batch.length < 500) break; offset += 500
+  }
+  return rows.map(row => ({ id: String(row.id), employeeId: String(row.employee_id), workDate: String(row.work_date), clockIn: row.clock_in == null ? null : String(row.clock_in), clockOut: row.clock_out == null ? null : String(row.clock_out), notes: row.notes == null ? null : String(row.notes) }))
+}
+
+export async function getReportRequisitions(allPages = false): Promise<ReportRequisitionRow[]> {
+  const rows: Record<string, unknown>[] = []; let offset = 0
+  for (;;) {
+    let query = client().from('inventory_requisitions').select('id,ingredient_id,quantity,unit_id,from_location,to_location,status,requested_at,fulfilled_at').order('requested_at', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query; if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]; rows.push(...batch)
+    if (!allPages || batch.length < 500) break; offset += 500
+  }
+  return rows.map(row => ({ id: String(row.id), ingredientId: String(row.ingredient_id), quantity: Number(row.quantity), unitId: String(row.unit_id), fromLocation: String(row.from_location), toLocation: String(row.to_location), status: String(row.status), requestedAt: String(row.requested_at), fulfilledAt: row.fulfilled_at == null ? null : String(row.fulfilled_at) }))
+}
+
+export async function getReportGiftCards(allPages = false): Promise<ReportGiftCardRow[]> {
+  const rows: Record<string, unknown>[] = []; let offset = 0
+  for (;;) {
+    let query = client().from('gift_cards').select('id,code,initial_amount_usd,is_active,expires_at,created_at,gift_card_transactions(transaction_type,amount_usd,created_at,order_id)').order('created_at', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query; if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]; rows.push(...batch)
+    if (!allPages || batch.length < 500) break; offset += 500
+  }
+  return rows.flatMap(row => {
+    const transactions = Array.isArray(row.gift_card_transactions) ? row.gift_card_transactions as Record<string, unknown>[] : []
+    if (transactions.length === 0) return [{ id: String(row.id), code: String(row.code), initialAmountUsd: Number(row.initial_amount_usd), isActive: Boolean(row.is_active), expiresAt: row.expires_at == null ? null : String(row.expires_at), createdAt: String(row.created_at) }]
+    return transactions.map(transaction => ({ id: String(row.id), code: String(row.code), initialAmountUsd: Number(row.initial_amount_usd), isActive: Boolean(row.is_active), expiresAt: row.expires_at == null ? null : String(row.expires_at), createdAt: String(row.created_at), transactionType: String(transaction.transaction_type), transactionAmountUsd: Number(transaction.amount_usd), transactionAt: String(transaction.created_at), orderId: transaction.order_id == null ? null : String(transaction.order_id) }))
+  })
 }
 
 // --- Clientes y fidelización ------------------------------------------------
@@ -2572,6 +2789,57 @@ export async function getAllEmployees(): Promise<Employee[]> {
   }))
 }
 
+export async function getDeliveryAssignments(): Promise<DeliveryAssignment[]> {
+  const { data, error } = await client().from('delivery_assignments')
+    .select('id,order_id,employee_id,delivery_fee,employee_percent,employee_amount,company_amount,status,assigned_at,payroll_period_id,employees(full_name)')
+    .order('assigned_at', { ascending: false })
+  if (error) throw error
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id), orderId: String(row.order_id), employeeId: String(row.employee_id),
+    employeeName: Array.isArray(row.employees) ? String((row.employees[0] as Record<string, unknown>)?.full_name ?? '') : '',
+    deliveryFee: Number(row.delivery_fee), employeePercent: Number(row.employee_percent),
+    employeeAmount: Number(row.employee_amount), companyAmount: Number(row.company_amount),
+    status: row.status as DeliveryAssignment['status'], assignedAt: String(row.assigned_at),
+    payrollPeriodId: (row.payroll_period_id as string) ?? null,
+  }))
+}
+
+/** Reportes: recorre todas las páginas del historial en el rango seleccionado. */
+export async function getReportStockMovements(dateStart: string, dateEnd: string): Promise<StockMovement[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    const { data, error } = await client()
+      .from('stock_movements')
+      .select('*, ingredients(name), units(symbol)')
+      .gte('created_at', dateStart)
+      .lt('created_at', dateEnd)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + 499)
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (batch.length < 500) break
+    offset += 500
+  }
+  return rows.map(m => ({
+    id: m.id as string,
+    ingredientId: m.ingredient_id as string,
+    ingredientName: ((m.ingredients as Record<string, unknown>)?.name as string) ?? '-',
+    quantity: Number(m.quantity),
+    unitId: m.unit_id as string,
+    unitSymbol: ((m.units as Record<string, unknown>)?.symbol as string) ?? '',
+    movementType: m.movement_type as string,
+    stockLocation: (m.stock_location as 'warehouse' | 'operational') ?? 'operational',
+    referenceType: (m.reference_type as string) ?? null,
+    referenceId: (m.reference_id as string) ?? null,
+    notes: (m.notes as string) ?? null,
+    createdBy: (m.created_by as string) ?? null,
+    createdAt: m.created_at as string,
+  }))
+}
+
 export async function createEmployee(params: {
   fullName: string
   position?: string | null
@@ -3214,17 +3482,28 @@ export async function deleteDemoCredit(creditId: string): Promise<void> {
   if (error) throw error
 }
 
-export async function getPayrollPayments(): Promise<PayrollPayment[]> {
-  const { data, error } = await client().from('payroll_payments')
-    .select('id,employee_id,amount,currency,exchange_rate,payment_account,payment_date,reference,notes,employees(full_name)')
+export async function getPayrollPayments(allPages = false): Promise<PayrollPayment[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('payroll_payments')
+    .select('id,employee_id,payroll_period_id,amount,currency,exchange_rate,payment_account,account_id,payment_date,reference,notes,employees(full_name)')
     .order('payment_date', { ascending: false }).order('created_at', { ascending: false })
-  if (error) throw error
-  return (data ?? []).map((r) => ({
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  return rows.map((r) => ({
     id: r.id as string, employeeId: r.employee_id as string,
     employeeName: Array.isArray(r.employees) ? String((r.employees[0] as Record<string, unknown>)?.full_name ?? '') : '',
     amount: Number(r.amount), currency: r.currency as 'USD' | 'Bs',
     exchangeRate: r.exchange_rate == null ? null : Number(r.exchange_rate),
-    paymentAccount: (r.payment_account as string) ?? null, paymentDate: r.payment_date as string,
+    paymentAccount: (r.payment_account as string) ?? null, accountId: (r.account_id as string) ?? null,
+    payrollPeriodId: (r.payroll_period_id as string) ?? null, paymentDate: r.payment_date as string,
     reference: (r.reference as string) ?? null, notes: (r.notes as string) ?? null,
   }))
 }
@@ -3242,16 +3521,25 @@ export async function createPayrollPayment(params: {
   if (error) throw error
 }
 
-export async function getAdvances(dateStart?: string, dateEnd?: string): Promise<Advance[]> {
-  let query = client()
+export async function getAdvances(dateStart?: string, dateEnd?: string, allPages = false): Promise<Advance[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client()
     .from('advances')
     .select('id,employee_id,amount,advance_date,is_deducted,notes,created_at,employees(full_name)')
     .order('advance_date', { ascending: false })
   if (dateStart) query = query.gte('advance_date', dateStart)
   if (dateEnd) query = query.lte('advance_date', dateEnd)
-  const { data, error } = await query
-  if (error) throw error
-  return (data ?? []).map((r) => ({
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  return rows.map((r) => ({
     id: r.id as string,
     employeeId: r.employee_id as string,
     employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
@@ -3425,14 +3713,24 @@ export async function updateRecipeComponent(id: string, updates: { quantity: num
 
 // --- Auditoría ----------------------------------------------------------------
 
-export async function getAuditLogs(limit = 200): Promise<AuditLog[]> {
-  const { data, error } = await client()
+export async function getAuditLogs(limit = 200, allPages = false): Promise<AuditLog[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client()
     .from('audit_logs')
     .select('id,occurred_at,actor_name,module,action,details,severity')
     .order('occurred_at', { ascending: false })
-    .limit(limit)
-  if (error) throw error
-  return (data ?? []).map((r) => ({
+    .limit(allPages ? 500 : limit)
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  return rows.map((r) => ({
     id: r.id as string,
     occurredAt: r.occurred_at as string,
     actorName: r.actor_name as string,
@@ -3516,20 +3814,26 @@ export async function updateSupplier(
 
 // --- Compras ------------------------------------------------------------------
 
-export async function getPurchases(): Promise<Purchase[]> {
-  const { data, error } = await client()
-    .from('purchases')
-    .select(`
+export async function getPurchases(allPages = false): Promise<Purchase[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('purchases').select(`
       id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, is_voided, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
       suppliers(name),
       financial_accounts(name,currency),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
-    `)
-    .order('purchase_date', { ascending: false })
+    `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
 
-  if (error) throw error
-
-  return (data ?? []).map((p) => {
+  return rows.map((p) => {
     const items = ((p.purchase_items as Array<Record<string, unknown>>) ?? []).map((pi) => ({
       id: pi.id as string,
       purchaseId: pi.purchase_id as string,
@@ -3567,6 +3871,30 @@ export async function getPurchases(): Promise<Purchase[]> {
 export async function setPurchasePaid(id: string, isPaid: boolean): Promise<void> {
   const { error } = await client().from('purchases').update({ is_paid: isPaid }).eq('id', id)
   if (error) throw error
+}
+
+export async function liquidatePayrollPeriod(params: {
+  periodId: string
+  accountId: string
+  currency: 'USD' | 'Bs'
+  exchangeRate?: number | null
+  reference?: string | null
+  notes?: string | null
+}): Promise<{ totalUsd: number; totalOriginal: number; currency: string; alreadyPaid?: boolean }> {
+  const { data, error } = await client().rpc('fn_liquidate_payroll_period', {
+    p_period_id: params.periodId,
+    p_account_id: params.accountId,
+    p_currency: params.currency,
+    p_exchange_rate: params.exchangeRate ?? null,
+    p_reference: params.reference ?? null,
+    p_notes: params.notes ?? null,
+  })
+  if (error) throw error
+  const result = (data ?? {}) as Record<string, unknown>
+  return {
+    totalUsd: Number(result.total_usd ?? 0), totalOriginal: Number(result.total_original ?? 0),
+    currency: String(result.currency ?? params.currency), alreadyPaid: result.already_paid === true,
+  }
 }
 
 /** Anula una compra conservando su registro y movimientos históricos. */

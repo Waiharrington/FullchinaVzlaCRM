@@ -94,6 +94,9 @@
   grid-template-columns: repeat(3, 1fr);
   align-items: start;
 }
+.report-legacy-summary { margin: 0 0 1.5rem; }
+.report-legacy-summary summary { cursor: pointer; border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-card); color: var(--text-secondary); padding: 1rem 1.25rem; font-size: .88rem; font-weight: 700; }
+.report-legacy-summary[open] summary { margin-bottom: 1.5rem; }
 
 @media (max-width: 1024px) {
   .charts-grid.three-col {

@@ -158,7 +158,6 @@ export function MarketingWhatsApp() {
           <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
         </div>
         <div className="wa-header-actions">
-          <button type="button" className="wa-segments-button" onClick={openNewSegment}><Plus size={15} /> Nueva lista</button>
           <span className="wa-provider-state"><span /> Proveedor por conectar</span>
         </div>
       </header>

@@ -8,6 +8,7 @@ import { formatProductTitle } from '../lib/textFormat'
 import { formatUsd } from '../lib/money'
 import { UtensilsCrossed, BarChart3, CalendarDays, CalendarRange, Gauge, ShoppingBag } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { ReportExplorer } from '../components/ReportExplorer'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -226,6 +227,10 @@ export function Reportes() {
         </div>
       </header>
 
+      <ReportExplorer />
+
+      <details className="report-legacy-summary">
+        <summary>Ver resumen gráfico y comparativo financiero</summary>
       <div className="stats-row management-workspace-metrics">
         <div className="stat-card red">
           <span className="management-metric-icon"><CalendarDays size={20} /></span>
@@ -319,6 +324,7 @@ export function Reportes() {
           </div>
         </div>
       </div>
+      </details>
     </div>
   )
 }

@@ -4,8 +4,8 @@ import {
   getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
   deletePayrollPeriod,
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
-  getPayrollPayments, createPayrollPayment,
-  type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment,
+  getPayrollPayments, createPayrollPayment, getFinancialAccounts, liquidatePayrollPeriod, getDeliveryAssignments,
+  type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment, type FinancialAccount, type DeliveryAssignment,
 } from '../lib/dataService'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import { useRates } from '../context/rates-context'
@@ -32,6 +32,8 @@ export function Nomina() {
   const [advances, setAdvances] = useState<Advance[]>([])
   const [bonuses, setBonuses] = useState<ProductionBonusRecord[]>([])
   const [payments, setPayments] = useState<PayrollPayment[]>([])
+  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
+  const [deliveryAssignments, setDeliveryAssignments] = useState<DeliveryAssignment[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -53,6 +55,10 @@ export function Nomina() {
   const [showPayment, setShowPayment] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
   const [payEmp, setPayEmp] = useState(''); const [payAmt, setPayAmt] = useState(''); const [payAccount, setPayAccount] = useState(''); const [payRef, setPayRef] = useState(''); const [payNotes, setPayNotes] = useState('')
+  const [showSettlement, setShowSettlement] = useState(false)
+  const [settlementAccount, setSettlementAccount] = useState('')
+  const [settlementReference, setSettlementReference] = useState('')
+  const [settlementNotes, setSettlementNotes] = useState('')
   const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
 
   const closePeriod = (then?: () => void) => {
@@ -79,8 +85,8 @@ export function Nomina() {
   const load = useCallback(async () => {
     try {
       setLoading(true); setError('')
-      const [emp, per, adv, bon, pays] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords(), getPayrollPayments()])
-      setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon); setPayments(pays)
+      const [emp, per, adv, bon, pays, financialAccounts, deliveries] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords(), getPayrollPayments(), typeof getFinancialAccounts === 'function' ? getFinancialAccounts() : Promise.resolve([]), typeof getDeliveryAssignments === 'function' ? getDeliveryAssignments() : Promise.resolve([])])
+      setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon); setPayments(pays); setAccounts(financialAccounts); setDeliveryAssignments(deliveries)
       const byPeriod: Record<string, PayrollEntry[]> = {}
       await Promise.all(per.map(async (p) => { byPeriod[p.id] = await getPayrollEntries(p.id) }))
       setEntriesByPeriod(byPeriod)
@@ -94,18 +100,34 @@ export function Nomina() {
 
   const activeEmployees = useMemo(() => employees.filter((e) => e.isActive), [employees])
   const weeklySchemaAvailable = employees.every((employee) => employee.hasWeeklyPayrollColumns !== false)
-  const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + p.amount), new Map<string, number>()), [payments])
+  const paidByEmployee = useMemo(() => payments.reduce((m, p) => m.set(p.employeeId, (m.get(p.employeeId) ?? 0) + (p.currency === 'Bs' && p.exchangeRate ? p.amount / p.exchangeRate : p.amount)), new Map<string, number>()), [payments])
   const selected = periods.find((p) => p.id === selectedId) ?? null
   const selectedEntries = useMemo(() => selectedId ? entriesByPeriod[selectedId] ?? [] : [], [entriesByPeriod, selectedId])
   const legacySaved = selectedEntries.some((entry) => !entry.hasBreakdown)
-  const periodEmployees = useMemo(() => selectedEntries.length > 0
-    ? selectedEntries.map((entry) => employees.find((emp) => emp.id === entry.employeeId) ?? {
-      id: entry.employeeId, fullName: entry.employeeName || 'Empleado', position: entry.position,
-      hourlyRate: 0, weeklySalary: entry.weeklySalary, overtimeRate: 0, isActive: false,
-    })
-    : activeEmployees, [activeEmployees, employees, selectedEntries])
+  const periodEmployees = useMemo(() => {
+    if (selectedEntries.length === 0) return activeEmployees
+    const map = new Map<string, Employee>()
+    for (const entry of selectedEntries) {
+      const employee = employees.find((item) => item.id === entry.employeeId)
+      if (employee) map.set(employee.id, employee)
+      else map.set(entry.employeeId, { id: entry.employeeId, fullName: entry.employeeName || 'Empleado', position: entry.position, hourlyRate: 0, weeklySalary: entry.weeklySalary, overtimeRate: 0, isActive: false })
+    }
+    for (const assignment of deliveryAssignments) {
+      const inPeriod = selected && (assignment.payrollPeriodId === selected.id || (assignment.assignedAt.slice(0, 10) >= selected.startDate && assignment.assignedAt.slice(0, 10) <= selected.endDate))
+      if (assignment.status !== 'cancelled' && inPeriod) {
+        const employee = employees.find((item) => item.id === assignment.employeeId)
+        if (employee) map.set(employee.id, employee)
+      }
+    }
+    return [...map.values()]
+  }, [activeEmployees, deliveryAssignments, employees, selected, selectedEntries])
   const savedNet = selectedEntries.reduce((sum, entry) => sum + entry.netPay, 0)
   const bsReference = (usd: number) => bcvRate && bcvRate > 0 ? formatVes(usd * bcvRate) : 'Bs. —'
+
+  const deliveryForEmp = useCallback((empId: string) => {
+    if (!selected) return 0
+    return deliveryAssignments.filter((assignment) => assignment.employeeId === empId && assignment.status !== 'cancelled' && (assignment.payrollPeriodId === selected.id || (assignment.assignedAt.slice(0, 10) >= selected.startDate && assignment.assignedAt.slice(0, 10) <= selected.endDate))).reduce((sum, assignment) => sum + assignment.employeeAmount, 0)
+  }, [deliveryAssignments, selected])
 
   // Bonos de un empleado dentro del período seleccionado
   const bonusForEmp = useCallback((empId: string) => {
@@ -125,8 +147,9 @@ export function Nomina() {
   }, [selectedId, selectedEntries, periodEmployees, selected, bonusForEmp])
 
   const periodNet = useCallback((p: PayrollPeriod) => {
-    return (entriesByPeriod[p.id] ?? []).reduce((sum, entry) => sum + entry.netPay, 0)
-  }, [entriesByPeriod])
+    const delivery = deliveryAssignments.filter((assignment) => assignment.status !== 'cancelled' && (assignment.payrollPeriodId === p.id || (assignment.assignedAt.slice(0, 10) >= p.startDate && assignment.assignedAt.slice(0, 10) <= p.endDate))).reduce((sum, assignment) => sum + assignment.employeeAmount, 0)
+    return (entriesByPeriod[p.id] ?? []).reduce((sum, entry) => sum + entry.netPay, 0) + delivery
+  }, [deliveryAssignments, entriesByPeriod])
 
   // Totales de la tabla del período seleccionado (desde la edición en vivo)
   const rows = periodEmployees.map((emp) => {
@@ -144,11 +167,12 @@ export function Nomina() {
     const extra = parseFloat(ed.extraDeductions) || 0
     const bruto = weekly + bonus + overtime + transport
     const ded = absenceDeduction + advance + extra
-    return { emp, weekly, bonus, overtimeHours, overtime, transport, absenceDays, absenceDeduction, advance, extra, bruto, ded, neto: bruto - ded }
+    const delivery = deliveryForEmp(emp.id)
+    return { emp, weekly, bonus, delivery, overtimeHours, overtime, transport, absenceDays, absenceDeduction, advance, extra, bruto, ded, neto: bruto - ded + delivery }
   })
-  const tot = rows.reduce((a, r) => ({ hours: a.hours + r.overtimeHours, bruto: a.bruto + r.bruto, ded: a.ded + r.ded, bon: a.bon + r.bonus, neto: a.neto + r.neto }), { hours: 0, bruto: 0, ded: 0, bon: 0, neto: 0 })
+  const tot = rows.reduce((a, r) => ({ hours: a.hours + r.overtimeHours, bruto: a.bruto + r.bruto, ded: a.ded + r.ded, bon: a.bon + r.bonus, delivery: a.delivery + r.delivery, neto: a.neto + r.neto }), { hours: 0, bruto: 0, ded: 0, bon: 0, delivery: 0, neto: 0 })
 
-  const handleSaveAll = async () => {
+  const saveEntries = async () => {
     if (!selected) return
     if (!weeklySchemaAvailable) { setError('El servidor aún no tiene la migración semanal de nómina. No se pueden guardar bonos y ajustes por empleado hasta aplicarla.'); return }
     if (legacySaved) { setError('Este período tiene liquidaciones antiguas sin desglose. Se conserva su total histórico; no se puede sobrescribir con sueldos actuales.'); return }
@@ -159,8 +183,36 @@ export function Nomina() {
       }
       const updated = await getPayrollEntries(selected.id)
       setEntriesByPeriod((prev) => ({ ...prev, [selected.id]: updated }))
-      flash('Liquidación guardada')
+      return true
     } catch (e) { setError(e instanceof Error ? e.message : 'Error guardando liquidación') }
+    finally { setSaving(false) }
+  }
+
+  const handleSaveAll = async () => {
+    const saved = await saveEntries()
+    if (saved) flash('Liquidación guardada')
+  }
+
+  const openSettlement = async () => {
+    if (!selected || selected.status === 'paid') return
+    const saved = await saveEntries()
+    if (saved) {
+      setSettlementAccount(accounts.find((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES'))?.id ?? '')
+      setShowSettlement(true)
+    }
+  }
+
+  const submitSettlement = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selected || !settlementAccount) return
+    const account = accounts.find((item) => item.id === settlementAccount)
+    if (!account) return
+    setSaving(true); setError('')
+    try {
+      const result = await liquidatePayrollPeriod({ periodId: selected.id, accountId: account.id, currency: account.currency === 'VES' ? 'Bs' : 'USD', exchangeRate: account.currency === 'VES' ? bcvRate : 1, reference: settlementReference.trim() || null, notes: settlementNotes.trim() || null })
+      setShowSettlement(false); setSettlementReference(''); setSettlementNotes(''); await load()
+      flash(result.alreadyPaid ? 'Este período ya estaba liquidado' : `Nómina liquidada desde ${account.name}`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'Error liquidando nómina') }
     finally { setSaving(false) }
   }
 
@@ -292,7 +344,7 @@ export function Nomina() {
         <div className="nom-card">
           <div className="nom-card-head">
             <div><h2>Liquidación del Período: {fmtRange(selected)} <span className={`nom-status ${statusCls(selected.status)}`}>{statusLbl(selected.status)}</span></h2><p>Sueldo semanal, bonos, extras, transporte, ausencias y adelantos pendientes.</p></div>
-            {!legacySaved && <button className="nom-btn" onClick={handleSaveAll} disabled={saving || !weeklySchemaAvailable}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Guardar liquidación</button>}
+            {!legacySaved && selected.status === 'open' && <div className="nom-head-actions"><button className="nom-ghost" onClick={handleSaveAll} disabled={saving || !weeklySchemaAvailable}><Save size={16} /> Guardar liquidación</button><button className="nom-btn" onClick={() => void openSettlement()} disabled={saving || !weeklySchemaAvailable}>{saving ? <Loader2 size={16} className="animate-spin" /> : <Banknote size={16} />} Liquidar y pagar</button></div>}
           </div>
           {!weeklySchemaAvailable && !legacySaved && <p className="nom-history-note">El servidor aún no tiene la migración semanal de nómina. Puedes consultar los períodos existentes; para guardar nuevos bonos y ajustes hay que actualizar la base de datos.</p>}
           {legacySaved ? (
@@ -350,6 +402,7 @@ export function Nomina() {
                         <div className="nom-adjust-cell">
                           <input className="nom-adjust-input" type="number" inputMode="decimal" min="0" step="0.01" value={edit[r.emp.id]?.bonus ?? '0'} aria-label={`Bono de ${r.emp.fullName}`} onChange={(e) => setEdit((p) => ({ ...p, [r.emp.id]: { ...p[r.emp.id], bonus: e.target.value } }))} />
                           <small className="nom-stepper-hint" style={{ color: '#22c55e' }}>+{bsReference(r.bonus)}</small>
+                          {r.delivery > 0 && <small className="nom-stepper-hint" style={{ color: '#f97316' }}>Delivery: {formatUsd(r.delivery)}</small>}
                         </div>
                       </td>
                       <td className="nom-col-center">
@@ -558,6 +611,25 @@ export function Nomina() {
               <div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div>
             </div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closePayment()}>Cancelar</button><button type="submit" className="nom-btn">Guardar pago</button></div>
+          </form>
+        </div>,
+        document.body
+      )}
+      {showSettlement && selected && createPortal(
+        <div className="nom-modal-overlay" onClick={() => setShowSettlement(false)}>
+          <form className="nom-modal nom-modal--payment" onClick={(e) => e.stopPropagation()} onSubmit={submitSettlement}>
+            <div className="nom-modal-header">
+              <div className="nom-modal-header-icon"><Banknote size={18} /></div>
+              <h3>Liquidar período de nómina</h3>
+            </div>
+            <p className="nom-history-note">El período se marcará como pagado y se registrará un movimiento de salida en la cuenta seleccionada.</p>
+            <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} required><option value="">Seleccionar cuenta...</option>{accounts.filter((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES')).map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'} · saldo {account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</option>)}</StyledSelect></div>
+            <div className="nom-settlement-total"><strong>Total a liquidar: {formatUsd(tot.neto)}</strong><span>{bsReference(tot.neto)} · la moneda se toma de la cuenta</span></div>
+            <div className="nom-row2">
+              <div className="nom-field"><label>Referencia</label><input value={settlementReference} onChange={(e) => setSettlementReference(e.target.value)} placeholder="Ej. transferencia nómina" /></div>
+              <div className="nom-field"><label>Notas</label><input value={settlementNotes} onChange={(e) => setSettlementNotes(e.target.value)} placeholder="Opcional" /></div>
+            </div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowSettlement(false)}>Cancelar</button><button type="submit" className="nom-btn" disabled={saving}>Confirmar y pagar</button></div>
           </form>
         </div>,
         document.body

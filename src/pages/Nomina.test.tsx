@@ -5,6 +5,7 @@ import { Nomina } from './Nomina'
 const mocks = vi.hoisted(() => ({
   getAllEmployees: vi.fn(), getPayrollPeriods: vi.fn(), getPayrollEntries: vi.fn(),
   getAdvances: vi.fn(), getProductionBonusRecords: vi.fn(), getPayrollPayments: vi.fn(),
+  getFinancialAccounts: vi.fn(), getDeliveryAssignments: vi.fn(), liquidatePayrollPeriod: vi.fn(),
   deletePayrollPeriod: vi.fn(), confirmDialog: vi.fn(),
 }))
 
@@ -32,6 +33,8 @@ describe('Historial de nómina', () => {
     mocks.getAdvances.mockResolvedValue([])
     mocks.getProductionBonusRecords.mockResolvedValue([])
     mocks.getPayrollPayments.mockResolvedValue([])
+    mocks.getFinancialAccounts.mockResolvedValue([])
+    mocks.getDeliveryAssignments.mockResolvedValue([])
     mocks.confirmDialog.mockResolvedValue(true)
     mocks.deletePayrollPeriod.mockResolvedValue(undefined)
   })
