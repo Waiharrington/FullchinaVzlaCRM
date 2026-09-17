@@ -327,6 +327,9 @@
 }
 .nom-settlement-total strong { color: #4ade80; font-size: 15px; }
 .nom-settlement-total span { color: #a1a1aa; font-size: 12px; }
+.nom-settlement-balance { display: flex; flex-direction: column; gap: 4px; margin: -4px 0 2px; font-size: 12px; color: #a1a1aa; }
+.nom-settlement-balance strong { color: #e4e4e7; font-weight: 750; }
+.nom-settlement-warn { color: #fca5a5; font-weight: 650; }
 
 .nom-cancel {
   background: #1c1c22;

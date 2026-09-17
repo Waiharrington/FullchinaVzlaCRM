@@ -719,6 +719,13 @@ export function Nomina() {
             </div>
             <p className="nom-history-note">El período se marcará como pagado y se registrará un movimiento de salida en la cuenta seleccionada.</p>
             <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} required><option value="">Seleccionar cuenta...</option>{accounts.filter((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES')).map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'} · saldo {account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</option>)}</StyledSelect></div>
+            {(() => {
+              const acc = accounts.find((a) => a.id === settlementAccount)
+              if (!acc) return null
+              const totalNative = acc.currency === 'VES' ? tot.neto * (bcvRate || 0) : tot.neto
+              const insufficient = totalNative > (acc.currentBalance ?? 0)
+              return <div className="nom-settlement-balance"><span>Disponible en {acc.name}: <strong>{acc.currency === 'VES' ? formatVes(acc.currentBalance) : formatUsd(acc.currentBalance)}</strong></span>{insufficient && <span className="nom-settlement-warn">El total a pagar ({acc.currency === 'VES' ? formatVes(totalNative) : formatUsd(totalNative)}) supera el disponible.</span>}</div>
+            })()}
             <div className="nom-settlement-total"><strong>Total a liquidar: {formatUsd(tot.neto)}</strong><span>{bsReference(tot.neto)} · la moneda se toma de la cuenta</span></div>
             <div className="nom-row2">
               <div className="nom-field"><label>Referencia</label><input value={settlementReference} onChange={(e) => setSettlementReference(e.target.value)} placeholder="Ej. transferencia nómina" /></div>
