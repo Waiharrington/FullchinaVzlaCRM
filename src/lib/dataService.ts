@@ -2804,6 +2804,36 @@ export async function getDeliveryAssignments(): Promise<DeliveryAssignment[]> {
   }))
 }
 
+/**
+ * Liquida (paga) todas las comisiones de delivery pendientes de un repartidor:
+ * registra un pago directo por el total y marca las asignaciones como pagadas,
+ * enlazándolas al pago creado. Lee lo pendiente en el momento para evitar
+ * pagar de más si algo cambió entre la vista y el clic.
+ */
+export async function payDeliveryCommissions(params: {
+  employeeId: string; paymentAccount?: string | null; reference?: string | null; notes?: string | null
+}): Promise<{ paidCount: number; amount: number }> {
+  const supabase = client()
+  const { data: pending, error: readErr } = await supabase.from('delivery_assignments')
+    .select('id,employee_amount').eq('employee_id', params.employeeId).eq('status', 'pending')
+  if (readErr) throw readErr
+  const rows = (pending ?? []) as Record<string, unknown>[]
+  const ids = rows.map((r) => String(r.id))
+  const amount = Math.round(rows.reduce((sum, r) => sum + Number(r.employee_amount), 0) * 100) / 100
+  if (ids.length === 0 || amount <= 0) return { paidCount: 0, amount: 0 }
+  const { data: payment, error: payErr } = await supabase.from('payroll_payments').insert({
+    employee_id: params.employeeId, amount, currency: 'USD', exchange_rate: null,
+    payment_account: params.paymentAccount ?? null, payment_date: dateKeyInTimeZone(),
+    reference: params.reference ?? null, notes: params.notes ?? 'Pago de comisiones de delivery',
+  }).select('id').single()
+  if (payErr) throw payErr
+  const { error: updErr } = await supabase.from('delivery_assignments')
+    .update({ status: 'paid', paid_at: new Date().toISOString(), payroll_payment_id: (payment as Record<string, unknown>).id })
+    .in('id', ids)
+  if (updErr) throw updErr
+  return { paidCount: ids.length, amount }
+}
+
 /** Reportes: recorre todas las páginas del historial en el rango seleccionado. */
 export async function getReportStockMovements(dateStart: string, dateEnd: string): Promise<StockMovement[]> {
   const rows: Record<string, unknown>[] = []

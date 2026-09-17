@@ -4,7 +4,7 @@ import {
   getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
   deletePayrollPeriod,
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
-  getPayrollPayments, createPayrollPayment, getFinancialAccounts, liquidatePayrollPeriod, getDeliveryAssignments,
+  getPayrollPayments, createPayrollPayment, getFinancialAccounts, liquidatePayrollPeriod, getDeliveryAssignments, payDeliveryCommissions,
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment, type FinancialAccount, type DeliveryAssignment,
 } from '../lib/dataService'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
@@ -56,6 +56,7 @@ export function Nomina() {
   const [closingPayment, setClosingPayment] = useState(false)
   const [payEmp, setPayEmp] = useState(''); const [payAmt, setPayAmt] = useState(''); const [payAccount, setPayAccount] = useState(''); const [payRef, setPayRef] = useState(''); const [payNotes, setPayNotes] = useState('')
   const [detailEmp, setDetailEmp] = useState<Employee | null>(null)
+  const [payingDelivery, setPayingDelivery] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
   const [settlementAccount, setSettlementAccount] = useState('')
   const [settlementReference, setSettlementReference] = useState('')
@@ -254,6 +255,24 @@ export function Nomina() {
     e.preventDefault(); if (!payEmp || !payAmt) return
     try { await createPayrollPayment({ employeeId: payEmp, amount: parseFloat(payAmt) || 0, paymentAccount: payAccount.trim() || null, reference: payRef.trim() || null, notes: payNotes.trim() || null }); closePayment(() => { setPayEmp(''); setPayAmt(''); setPayAccount(''); setPayRef(''); setPayNotes('') }); await load(); flash('Pago registrado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando pago') }
+  }
+
+  const handlePayDelivery = async (emp: Employee) => {
+    const pending = deliveryAssignments.filter((d) => d.employeeId === emp.id && d.status === 'pending')
+    const amount = Math.round(pending.reduce((sum, d) => sum + d.employeeAmount, 0) * 100) / 100
+    if (pending.length === 0 || amount <= 0) return
+    const ok = await confirmDialog({
+      title: 'Pagar comisiones de delivery',
+      message: `Se registrará un pago de ${formatUsd(amount)} a ${emp.fullName} y se marcarán ${pending.length} comisión${pending.length === 1 ? '' : 'es'} como pagada${pending.length === 1 ? '' : 's'}. ¿Continuar?`,
+      confirmText: 'Pagar',
+    })
+    if (!ok) return
+    setPayingDelivery(true); setError('')
+    try {
+      const result = await payDeliveryCommissions({ employeeId: emp.id, notes: 'Pago de comisiones de delivery' })
+      await load(); flash(`Pagadas ${result.paidCount} comisiones (${formatUsd(result.amount)})`)
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron pagar las comisiones') }
+    finally { setPayingDelivery(false) }
   }
 
   if (loading) return <PageSkeleton cards={3} rows={5} />
@@ -663,6 +682,7 @@ export function Nomina() {
                     </tbody><tfoot><tr><td colSpan={3}>Pendiente por liquidar</td><td colSpan={2}><strong>{formatUsd(deliveryPending)}</strong></td></tr></tfoot></table></div>
                   )}
                   <p className="nom-detail-hint">Cada entrega paga {pendingDeliveries[0] ? `${Math.round(pendingDeliveries[0].employeePercent)}%` : 'un %'} del domicilio cobrado. La suma de las pendientes es la comisión acumulada.</p>
+                  {deliveryPending > 0 && <button type="button" className="nom-btn nom-detail-pay" disabled={payingDelivery} onClick={() => handlePayDelivery(emp)}><Banknote size={16} /> {payingDelivery ? 'Pagando…' : `Pagar comisión pendiente (${formatUsd(deliveryPending)})`}</button>}
                 </div>
               )}
 
