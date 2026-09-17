@@ -2267,7 +2267,14 @@ button.mobile-only {
   .public-recommended-card { margin: 0 16px 24px; min-height: 166px; border-radius: 18px; }
   .public-recommended-copy { width: 62%; max-width: none; padding: 18px 15px 29px; }
   .public-recommended-copy > small { font-size: 9px; margin-bottom: 5px; }
-  .public-recommended-copy h2 { font-size: 20px; margin-bottom: 4px; }
+  .public-recommended-copy h2 {
+    font-size: 20px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
   .public-recommended-copy p { font-size: 10px; line-height: 1.25; margin-bottom: 8px; }
   .public-recommended-price { font-size: 16px; margin-bottom: 1px; }
   .public-recommended-copy .public-prod-price-bs { font-size: 11px; margin-bottom: 8px; }
@@ -6089,7 +6096,29 @@ button.mobile-only {
     to { opacity: 1; transform: scale(1) translateY(0); }
   }
 
-  .ppdm-image {
+/* Separación legible entre título, subtítulo y nota en las tarjetas del
+   resumen de confirmación. Se mantiene el alcance dentro de este recibo. */
+.public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-item > div {
+  row-gap: 9px !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div {
+  row-gap: 7px !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer .public-data-intro {
+  row-gap: 7px !important;
+}
+
+@media (min-width: 1280px) {
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-review-heading > p {
+    text-align: center !important;
+    position: relative;
+    left: -38px;
+  }
+}
+
+ .ppdm-image {
     height: 100% !important;
     min-height: 100% !important;
     grid-row: 1 / span 2 !important;
@@ -6594,7 +6623,7 @@ button.mobile-only {
      pegado (sticky) mientras se hace scroll dentro del recibo. */
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-primary.whatsapp {
     position: static !important; margin-top: 10px !important;
-    box-shadow: 0 14px 30px rgba(8,169,67,.28) !important;
+    box-shadow: 0 14px 30px rgba(227,27,43,.28) !important;
   }
 
   /* === Paso "¡Enviado!": misma compactación que el resto de la tarjeta.
@@ -7095,7 +7124,7 @@ button.mobile-only {
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-whatsapp-cta {
     position: static !important;
     margin-top: 8px !important;
-    box-shadow: 0 10px 24px rgba(8, 169, 67, .28) !important;
+    box-shadow: 0 10px 24px rgba(227, 27, 43, .28) !important;
   }
 
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-order-security {
@@ -8172,6 +8201,307 @@ body:has(.public-menu-page) {
   }
 }
 
+/* Tablet: el desplazamiento táctil sigue activo, pero la barra es invisible. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+/* El CTA de confirmación debe proyectar la misma luz roja del botón, nunca
+   la sombra verde del antiguo flujo de WhatsApp. */
+.public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-whatsapp-cta {
+  box-shadow: 0 14px 30px rgba(227, 27, 43, .28) !important;
+}
+
+/* En Chromium, mantener scrollbar-color en auto permite que los pseudo-
+   elementos WebKit controlen el thumb sin generar flechas nativas. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    scrollbar-color: #d93645 transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: block !important;
+    width: 5px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-track,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-thumb,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+    background: #d93645 !important;
+    border-radius: 999px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-button,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  /* El fondo decorativo pertenece al paso de datos y no debe perderse al
+     aplicar el shell estable del checkout. */
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer {
+    background: linear-gradient(rgba(10, 11, 16, .78), rgba(10, 11, 16, .92)), url('/optimized/fondos/public-data-bg.webp') center bottom / cover no-repeat !important;
+    background-color: #0e1016 !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer > .public-review-header .public-review-heading > p {
+    transform: translateX(-20px) !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer > .public-review-header .public-review-heading > h2 {
+    margin-bottom: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-data-intro {
+    row-gap: 10px !important;
+  }
+
+  /* Misma respiración entre título y subtítulo en todos los pasos del pedido. */
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading > h2 {
+    margin-bottom: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading > p {
+    line-height: 1.5 !important;
+  }
+}
+
+/* El override responsive del drawer restablece el transform del subtítulo;
+   este ajuste final sí queda aplicado en computadora. */
+@media (min-width: 1280px) {
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer > .public-review-header .public-review-heading > p {
+    transform: translateX(-20px) !important;
+  }
+}
+
+/* El CTA de confirmación usa luz roja, coherente con su fondo. */
+.public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-whatsapp-cta {
+  box-shadow: 0 14px 30px rgba(227, 27, 43, .28) !important;
+}
+
+/* Corrección final de inicialización del drawer en escritorio. Una regla
+   histórica lo dejaba en height:auto y overflow:visible; durante la recarga
+   eso hacía que las filas y recomendaciones se pintaran superpuestas antes
+   de que el navegador recalculara el layout. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer {
+    position: fixed !important;
+    top: 90px !important;
+    right: max(10px, calc((100vw - 1360px) / 2 + 24px)) !important;
+    bottom: 10px !important;
+    left: auto !important;
+    width: min(350px, calc(100vw - 32px)) !important;
+    max-width: min(350px, calc(100vw - 32px)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 100px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    flex: 0 0 auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* En tablet se conserva el desplazamiento táctil, pero se oculta la barra
+   para que el panel se vea limpio y no compita con las tarjetas. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+}
+
+/* Override final del scroll del drawer: mantiene los extremos redondeados
+   del thumb también cuando el navegador soporta scrollbar-color. */
+.public-drawer-backdrop .public-cart-drawer,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+  scrollbar-color: #d93645 rgba(255, 255, 255, .10) !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-thumb,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+  background: #d93645 !important;
+  border: 1px solid transparent !important;
+  background-clip: padding-box !important;
+  border-radius: 999px !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-track,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, .10) !important;
+  border-radius: 999px !important;
+}
+
+/* Chromium puede dibujar botones de flecha en los extremos del scrollbar.
+   Se ocultan para que el indicador no sobresalga de las esquinas redondeadas
+   del panel. */
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-button,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  background-image: none !important;
+  -webkit-appearance: none !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-button:vertical:start:decrement,
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-button:vertical:end:increment,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-button:vertical:start:decrement,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-button:vertical:end:increment {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: none !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-corner,
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* En tablet: scroll táctil activo, indicador visual oculto. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+/* Scroll del panel de Pedir: carril discreto y thumb rojo más refinado. */
+.public-drawer-backdrop .public-cart-drawer {
+  scrollbar-width: thin !important;
+  /* En Chromium, scrollbar-color puede reemplazar el thumb WebKit y
+     eliminar sus bordes redondeados. El track/thumb se define abajo. */
+  scrollbar-color: auto !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, .10) !important;
+  border-radius: 999px !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-thumb {
+  background: #d93645 !important;
+  border-radius: 999px !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer:hover::-webkit-scrollbar-thumb,
+.public-drawer-backdrop .public-cart-drawer:focus-within::-webkit-scrollbar-thumb {
+  background: #ef3345 !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+  scrollbar-color: auto !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, .10) !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+  background: #d93645 !important;
+}
+
+.public-drawer-backdrop .public-cart-drawer:hover > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+  background: #ef3345 !important;
+}
+
+/* El subtítulo del paso de datos permanece en una sola línea en computadora. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-review-heading {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-review-heading h2 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-review-heading p {
+    position: static !important;
+    align-self: center !important;
+    width: max-content !important;
+    max-width: none !important;
+    margin: 0 !important;
+    transform: none !important;
+    text-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-review-heading h2 {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer .public-review-heading p {
+    white-space: nowrap !important;
+  }
+}
+
 .public-menu-page::-webkit-scrollbar,
 body:has(.public-menu-page)::-webkit-scrollbar {
   display: block !important;
@@ -8236,7 +8566,7 @@ body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
     bottom: 10px;
     margin-top: 10px;
     z-index: 6;
-    box-shadow: 0 0 0 16px rgba(14,16,22,0.98), 0 14px 30px rgba(8,169,67,.28);
+    box-shadow: 0 0 0 16px rgba(14,16,22,0.98), 0 14px 30px rgba(227,27,43,.28);
   }
 }
 
@@ -10183,6 +10513,30 @@ body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
   }
 }
 
+/* En computadora, igual que en teléfono, la tarjeta se integra con el
+   fondo a partir de la mitad inferior: el borde rojo se desvanece en lugar
+   de rodear visiblemente todo el bloque. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-whatsapp-ready-content {
+    border-color: transparent !important;
+  }
+
+  .public-whatsapp-ready-content::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(237,27,47,.82) 0%, rgba(237,27,47,.68) 44%, rgba(237,27,47,.2) 66%, transparent 84%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
 /* El drawer del checkout se monta en document.body mediante un portal, por
    lo que no es descendiente directo de .public-menu-page. Al detectar el
    backdrop desde body se oculta el carrito lateral original y queda una sola
@@ -10860,5 +11214,120 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
 @media (min-width: 1024px) and (orientation: landscape) {
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt {
     border-radius: 0 !important;
+  }
+}
+
+/* Corrección final: el drawer debe iniciar con una región estable y un único
+   scroll interno; evita la superposición de tarjetas durante la recarga. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer {
+    position: fixed !important;
+    top: 90px !important;
+    right: max(10px, calc((100vw - 1360px) / 2 + 24px)) !important;
+    bottom: 10px !important;
+    left: auto !important;
+    width: min(350px, calc(100vw - 32px)) !important;
+    max-width: min(350px, calc(100vw - 32px)) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 100px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    flex: 0 0 auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+}
+
+/* Tablet: el desplazamiento táctil sigue activo, pero la barra es invisible. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: none !important;
+  }
+}
+
+/* En Chromium, el scrollbar estándar puede dibujar flechas aunque se
+   oculten los pseudo-elementos WebKit. Forzamos el modo WebKit en escritorio
+   para que solo exista el thumb rojo, sin botones nativos. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    scrollbar-color: #d93645 transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: block !important;
+    width: 5px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+    background: #d93645 !important;
+    border-radius: 999px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Tu pedido puede desplazar el drawer raíz; se le aplica exactamente el
+     mismo thumb y la misma eliminación de botones nativos. */
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar {
+    display: block !important;
+    width: 5px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-thumb {
+    background: #d93645 !important;
+    border-radius: 999px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar-button {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Restaurar la identidad visual del paso "Tus datos". */
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer {
+    background: linear-gradient(rgba(10, 11, 16, .78), rgba(10, 11, 16, .92)), url('/optimized/fondos/public-data-bg.webp') center bottom / cover no-repeat !important;
+    background-color: #0e1016 !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer > .public-review-header .public-review-heading > p {
+    transform: translateX(-20px) !important;
   }
 }
