@@ -79,6 +79,7 @@ export function Finanzas() {
   const currentMonth = isoDate(new Date()).slice(0, 7)
   const [summaryMonth, setSummaryMonth] = useState(currentMonth)
   const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
+  const [kpiDetail, setKpiDetail] = useState<null | 'sales' | 'cogs' | 'expenses' | 'net' | 'margin'>(null)
   const [showTransfer, setShowTransfer] = useState(false)
   const [closingTransfer, setClosingTransfer] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<FinancialAccount | null>(null)
@@ -490,27 +491,27 @@ export function Finanzas() {
 
       {/* KPIs */}
       <div className="fin-kpis management-workspace-metrics">
-        <div className="fin-kpi green">
+        <div className="fin-kpi green fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('sales')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('sales') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><ShoppingCart size={18} /></span>
             <div><div className="fin-kpi-lbl">Ventas Brutas</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
           <div className="fin-kpi-sub">{salesDelta != null ? <span className={salesDelta >= 0 ? 'fin-up' : 'fin-down'}>{salesDelta >= 0 ? '▲' : '▼'} {Math.abs(salesDelta).toFixed(0)}% vs ayer</span> : periodLabel}</div>
         </div>
-        <div className="fin-kpi red">
+        <div className="fin-kpi red fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('cogs')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('cogs') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><Wallet size={18} /></span>
             <div><div className="fin-kpi-lbl">Costo Insumos</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
           <div className="fin-kpi-sub fin-down">{cogsPctSales.toFixed(1)}% de las ventas</div>
         </div>
-        <div className="fin-kpi purple">
+        <div className="fin-kpi purple fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('expenses')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('expenses') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><DollarSign size={18} /></span>
             <div><div className="fin-kpi-lbl">Gastos + Nómina</div><div className="fin-kpi-val">{formatUsd(cur.opex + cur.payroll)}</div></div></div>
           <div className="fin-kpi-sub">{formatUsd(cur.opex)} gastos · {formatUsd(cur.payroll)} nómina</div>
         </div>
-        <div className="fin-kpi green">
+        <div className="fin-kpi green fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('net')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('net') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><TrendingUp size={18} /></span>
             <div><div className="fin-kpi-lbl">Ganancia Neta</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
           <div className="fin-kpi-sub">{netDelta != null ? <span className={netDelta >= 0 ? 'fin-up' : 'fin-down'}>{netDelta >= 0 ? '▲' : '▼'} {Math.abs(netDelta).toFixed(0)}% vs ayer</span> : `${cur.margin.toFixed(1)}% de las ventas`}</div>
         </div>
-        <div className="fin-kpi blue">
+        <div className="fin-kpi blue fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('margin')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('margin') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><Percent size={18} /></span>
             <div><div className="fin-kpi-lbl">Margen Neto</div><div className="fin-kpi-val">{cur.margin.toFixed(1)}%</div></div></div>
           <div className="fin-kpi-sub"><span className={marginPP >= 0 ? 'fin-up' : 'fin-down'}>{marginPP >= 0 ? '▲' : '▼'} {Math.abs(marginPP).toFixed(1)} pp vs ayer</span></div>
@@ -689,6 +690,59 @@ export function Finanzas() {
           <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeLedger()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
+      {kpiDetail && createPortal((() => {
+        const meta = {
+          sales: { title: 'Ventas Brutas', icon: <ShoppingCart size={20} />, sub: 'Todo lo cobrado en pedidos pagados' },
+          cogs: { title: 'Costo de Insumos', icon: <Wallet size={20} />, sub: 'Lo que costó producir lo vendido' },
+          expenses: { title: 'Gastos + Nómina', icon: <DollarSign size={20} />, sub: 'Gastos operativos y pago de personal' },
+          net: { title: 'Ganancia Neta', icon: <TrendingUp size={20} />, sub: 'Lo que queda al final' },
+          margin: { title: 'Margen Neto', icon: <Percent size={20} />, sub: 'Qué porcentaje de las ventas es ganancia' },
+        }[kpiDetail]
+        const [curStart, curEnd] = ranges[period]
+        const sIso = isoDate(curStart), eIso = isoDate(curEnd)
+        const periodExpenses = expenses.filter(x => x.expenseDate >= sIso && x.expenseDate <= eIso).sort((a, b) => b.amount - a.amount)
+        const periodPayrollPeriods = payroll.periods.filter(p => p.endDate >= sIso && p.endDate <= eIso)
+        const periodBonuses = payroll.bonuses.filter(b => b.date >= sIso && b.date <= eIso)
+        const paymentRowsList = Object.values(cur.payments).sort((a, b) => b.amountUsd - a.amountUsd)
+        let body: React.ReactNode = null
+        if (kpiDetail === 'sales') body = <>
+          <div className="fin-kd-stats"><div className="fin-kd-stat"><span>Total</span><strong>{formatUsd(cur.grossSales)}</strong></div><div className="fin-kd-stat"><span>Pedidos pagados</span><strong>{cur.ordersCount}</strong></div><div className="fin-kd-stat"><span>Ticket promedio</span><strong>{formatUsd(cur.avgTicket)}</strong></div></div>
+          <h4 className="fin-kd-h">Por método de pago <span>{paymentRowsList.length}</span></h4>
+          {paymentRowsList.length === 0 ? <p className="fin-kd-empty">Sin pagos en el período.</p> : <div className="fin-kd-rows">{paymentRowsList.map(p => <div className="fin-kd-row" key={p.key}><span>{(PAY_META[p.method] ?? PAY_META.other).label}{p.currency === 'VES' && p.amountNative ? ` · ${formatVes(p.amountNative)}` : ''}</span><strong>{formatUsd(p.amountUsd)}</strong></div>)}</div>}
+          <p className="fin-kd-hint">Suma del total de todos los pedidos pagados en el período.</p>
+        </>
+        else if (kpiDetail === 'cogs') body = <>
+          <div className="fin-kd-stats"><div className="fin-kd-stat"><span>Costo de insumos</span><strong>{formatUsd(cur.cogs)}</strong></div><div className="fin-kd-stat"><span>% de ventas</span><strong>{(cur.grossSales > 0 ? (cur.cogs / cur.grossSales) * 100 : 0).toFixed(1)}%</strong></div><div className="fin-kd-stat"><span>Ganancia bruta</span><strong className="fin-kd-pos">{formatUsd(cur.grossProfit)}</strong></div></div>
+          <div className="fin-kd-rows"><div className="fin-kd-row"><span>Ventas brutas</span><strong>{formatUsd(cur.grossSales)}</strong></div><div className="fin-kd-row fin-kd-neg"><span>− Costo de insumos</span><strong>-{formatUsd(cur.cogs)}</strong></div><div className="fin-kd-row fin-kd-total"><span>= Ganancia bruta</span><strong>{formatUsd(cur.grossProfit)}</strong></div></div>
+          <p className="fin-kd-hint">Costo de receta de cada producto vendido. En delivery cuenta el 70% del cargo que recibe el repartidor; el resto es margen del negocio.</p>
+        </>
+        else if (kpiDetail === 'expenses') body = <>
+          <div className="fin-kd-stats"><div className="fin-kd-stat"><span>Gastos operativos</span><strong>{formatUsd(cur.opex)}</strong></div><div className="fin-kd-stat"><span>Nómina</span><strong>{formatUsd(cur.payroll)}</strong></div><div className="fin-kd-stat"><span>Total</span><strong>{formatUsd(cur.opex + cur.payroll)}</strong></div></div>
+          <h4 className="fin-kd-h">Gastos del período <span>{periodExpenses.length}</span></h4>
+          {periodExpenses.length === 0 ? <p className="fin-kd-empty">Sin gastos en el período.</p> : <div className="fin-kd-rows">{periodExpenses.slice(0, 15).map(x => <div className="fin-kd-row" key={x.id}><span>{x.concept}{x.category ? ` · ${x.category}` : ''}</span><strong>{formatUsd(x.amount)}</strong></div>)}</div>}
+          <h4 className="fin-kd-h">Nómina del período <span>{periodPayrollPeriods.length + periodBonuses.length}</span></h4>
+          {periodPayrollPeriods.length === 0 && periodBonuses.length === 0 ? <p className="fin-kd-empty">Sin nómina liquidada en el período.</p> : <div className="fin-kd-rows">{periodPayrollPeriods.map((p, i) => <div className="fin-kd-row" key={`p${i}`}><span>Liquidación (semana al {p.endDate})</span><strong>{formatUsd(p.total)}</strong></div>)}{periodBonuses.map((b, i) => <div className="fin-kd-row" key={`b${i}`}><span>Bono ({b.date})</span><strong>{formatUsd(b.amount)}</strong></div>)}</div>}
+          <p className="fin-kd-hint">Gastos con fecha dentro del período, más la nómina liquidada y los bonos del mismo rango.</p>
+        </>
+        else if (kpiDetail === 'net') body = <>
+          <div className="fin-kd-rows fin-kd-waterfall"><div className="fin-kd-row"><span>Ventas brutas</span><strong>{formatUsd(cur.grossSales)}</strong></div><div className="fin-kd-row fin-kd-neg"><span>− Costo de insumos</span><strong>-{formatUsd(cur.cogs)}</strong></div><div className="fin-kd-row fin-kd-sub"><span>= Ganancia bruta</span><strong>{formatUsd(cur.grossProfit)}</strong></div><div className="fin-kd-row fin-kd-neg"><span>− Gastos operativos</span><strong>-{formatUsd(cur.opex)}</strong></div><div className="fin-kd-row fin-kd-neg"><span>− Nómina</span><strong>-{formatUsd(cur.payroll)}</strong></div><div className="fin-kd-row fin-kd-total"><span>= Ganancia neta</span><strong className={cur.netProfit >= 0 ? 'fin-kd-pos' : 'fin-kd-negv'}>{formatUsd(cur.netProfit)}</strong></div></div>
+          <p className="fin-kd-hint">Lo que queda después de restar el costo de lo vendido, los gastos operativos y la nómina.</p>
+        </>
+        else body = <>
+          <div className="fin-kd-bigval" style={{ color: cur.margin >= 0 ? '#22c55e' : '#ef4444' }}>{cur.margin.toFixed(1)}%</div>
+          <div className="fin-kd-rows"><div className="fin-kd-row"><span>Ganancia neta</span><strong>{formatUsd(cur.netProfit)}</strong></div><div className="fin-kd-row"><span>÷ Ventas brutas</span><strong>{formatUsd(cur.grossSales)}</strong></div><div className="fin-kd-row fin-kd-total"><span>× 100 = Margen neto</span><strong>{cur.margin.toFixed(1)}%</strong></div></div>
+          <p className="fin-kd-hint">De cada dólar vendido, el porcentaje que queda como ganancia después de todos los costos.</p>
+        </>
+        return <div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => setKpiDetail(null)}><div className="modal-card fin-dialog fin-kpi-modal" role="dialog" aria-modal="true" onClick={event => event.stopPropagation()}>
+          <header className="fin-dialog-header">
+            <span className="fin-dialog-icon">{meta.icon}</span>
+            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Desglose · {periodLabel}</span><h2>{meta.title}</h2><p>{meta.sub}</p></div>
+            <button type="button" className="fin-dialog-close" onClick={() => setKpiDetail(null)} aria-label="Cerrar ventana"><X size={18} /></button>
+          </header>
+          <div className="fin-dialog-body fin-kd-body">{body}</div>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setKpiDetail(null)}>Cerrar</button></footer>
+        </div></div>
+      })(), document.body)}
       {(showTransfer || closingTransfer) && createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingTransfer ? 'closing' : ''}`} role="presentation" onClick={() => { if (!transferSaving) closeTransfer() }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>
         <header className="fin-dialog-header">
           <span className="fin-dialog-icon">{isConvertMode ? <DollarSign size={20}/> : <ArrowRightLeft size={20}/>}</span>
