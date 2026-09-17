@@ -186,7 +186,20 @@
 .fin-op-delete:hover { background: #7f1d1d; color: #fff; }
 .fin-neutral { color:#facc15 !important; }
 .fin-transfer-modal{width:min(620px,100%)}.fin-transfer-body{display:grid;gap:16px}.fin-transfer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.fin-field{display:grid;gap:7px;min-width:0;color:#d4d4d8;font-size:12px;font-weight:700}.fin-field>span b{color:#ff554f}.fin-field small{color:#777781;font-size:10px;font-weight:500;line-height:1.45}.fin-field-control{width:100%;min-height:46px;box-sizing:border-box;margin:0;padding:11px 13px;border:1px solid rgba(255,255,255,.1);border-radius:9px;outline:0;background:var(--fin-dialog-surface-raised);color:#fff;font:inherit;font-size:13px;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease}.fin-field-control::placeholder{color:#6f6f78}.fin-field-control:hover{border-color:rgba(255,255,255,.16)}.fin-field-control:focus{border-color:#e31b2b;box-shadow:0 0 0 3px rgba(227,27,43,.16);background:#232328}.fin-field textarea{resize:vertical;min-height:82px}.fin-field-select{width:100%}.fin-field-select .fc-select-trigger{min-height:46px!important;border-color:rgba(255,255,255,.1)!important;background:var(--fin-dialog-surface-raised)!important}.fin-dialog-error{display:flex;align-items:center;gap:8px;margin:0;padding:11px 12px;border:1px solid rgba(248,113,113,.28);border-radius:9px;background:rgba(127,29,29,.2);color:#fecaca;font-size:12px;font-weight:650}
-@media (max-width: 560px) { .fin-transfer-grid { grid-template-columns: 1fr; } }
+.fin-ops-actions{display:flex;flex-wrap:wrap;gap:10px}
+.fin-export--convert{background:rgba(255,255,255,.06);color:#fde68a;border:1px solid rgba(250,204,21,.4)}
+.fin-export--convert:hover{background:rgba(250,204,21,.14)}
+.fin-field-hint{display:block;color:#8a8a94;font-size:10.5px;font-weight:600;line-height:1.4}
+.fin-field-hint b{color:#e4e4e7;font-weight:750}
+.fin-field-hint--warn{color:#fca5a5}
+.fin-field-hint--warn b{color:#fca5a5}
+.fin-field-cur{color:#8a8a94;font-weight:600}
+.fin-field--spacer{visibility:hidden}
+.fin-convert-preview{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:12px 14px;border:1px solid rgba(250,204,21,.28);border-radius:11px;background:rgba(250,204,21,.07);color:#d4d4d8;font-size:13px}
+.fin-convert-preview b{color:#fff;font-weight:800}
+.fin-convert-preview>svg{color:#facc15}
+.fin-convert-preview small{margin-left:auto;color:#a1a1aa;font-size:11px;font-weight:600}
+@media (max-width: 560px) { .fin-transfer-grid { grid-template-columns: 1fr; } .fin-field--spacer{display:none} .fin-convert-preview small{margin-left:0} }
 @media (max-width:640px) { .fin-op { grid-template-columns: auto 1fr auto auto; } .fin-op-route { grid-column:1/-1; grid-row:2; margin-left: 44px; } }
 /* Grupos por moneda: USD naranja, VES azul (mismo código de color que ya
    usa Caja/Operaciones), así el ojo separa los dos mundos sin leer texto. */

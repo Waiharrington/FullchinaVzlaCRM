@@ -85,7 +85,7 @@ export function Finanzas() {
   const [selectedLedgerCurrency, setSelectedLedgerCurrency] = useState<'USD' | 'VES' | null>(null)
   const [closingAccount, setClosingAccount] = useState(false)
   const [closingLedger, setClosingLedger] = useState(false)
-  const [transfer, setTransfer] = useState({ concept: '', from: '', to: '', currency: 'VES' as 'USD' | 'VES', amount: '', rate: '', reference: '', notes: '' })
+  const [transfer, setTransfer] = useState({ mode: 'transfer' as 'transfer' | 'convert', concept: '', from: '', to: '', amount: '', rate: '', reference: '', notes: '' })
   const [transferSaving, setTransferSaving] = useState(false)
   const [transferError, setTransferError] = useState('')
   const [opsError, setOpsError] = useState('')
@@ -95,6 +95,11 @@ export function Finanzas() {
     setClosingTransfer(true)
     window.setTimeout(() => { setShowTransfer(false); setClosingTransfer(false) }, 180)
   }, [closingTransfer])
+  const openTransfer = useCallback((mode: 'transfer' | 'convert') => {
+    setTransferError('')
+    setTransfer({ mode, concept: '', from: '', to: '', amount: '', rate: '', reference: '', notes: '' })
+    setShowTransfer(true)
+  }, [])
   const closeAccount = useCallback((then?: () => void) => {
     if (!selectedAccount || closingAccount) return
     setClosingAccount(true)
@@ -303,12 +308,19 @@ export function Finanzas() {
   }
   const saveTransfer = async () => {
     setTransferError('')
-    if (!user || !transfer.from || !transfer.to || !transfer.concept) return setTransferError('Completa concepto y cuentas')
+    const fromAcc = accounts.find(a => a.id === transfer.from)
+    const toAcc = accounts.find(a => a.id === transfer.to)
+    if (!user || !fromAcc || !toAcc || !transfer.concept.trim()) return setTransferError('Completa concepto y cuentas')
+    if (fromAcc.id === toAcc.id) return setTransferError('Las cuentas deben ser diferentes')
+    const isConvert = fromAcc.currency !== toAcc.currency
+    if (isConvert && !(Number(transfer.rate) > 0)) return setTransferError('Indica la tasa de cambio de la conversión')
+    // La moneda del movimiento la define la cuenta de origen; no se pregunta aparte.
+    const currency = fromAcc.currency
+    const exchangeRate = isConvert ? Number(transfer.rate) : (currency === 'VES' ? bcvRate : null)
     try {
       setTransferSaving(true)
-      const exchangeRate = transfer.currency === 'VES' ? (transferCrossCurrency ? Number(transfer.rate) : bcvRate) : null
-      await createFinancialTransfer({ concept: transfer.concept, operationDate: isoDate(new Date()), fromAccountId: transfer.from, toAccountId: transfer.to, originalCurrency: transfer.currency, originalAmount: Number(transfer.amount), exchangeRate, referenceNumber: transfer.reference, notes: transfer.notes, userId: user.id })
-      closeTransfer(); setTransfer({ concept: '', from: '', to: '', currency: 'VES', amount: '', rate: '', reference: '', notes: '' }); await load()
+      await createFinancialTransfer({ concept: transfer.concept, operationDate: isoDate(new Date()), fromAccountId: transfer.from, toAccountId: transfer.to, originalCurrency: currency, originalAmount: Number(transfer.amount), exchangeRate, referenceNumber: transfer.reference, notes: transfer.notes, userId: user.id })
+      closeTransfer(); setTransfer({ mode: 'transfer', concept: '', from: '', to: '', amount: '', rate: '', reference: '', notes: '' }); await load()
     } catch (error) { setTransferError(error instanceof Error ? error.message : 'No se pudo guardar la transferencia') } finally { setTransferSaving(false) }
   }
 
@@ -381,6 +393,16 @@ export function Finanzas() {
   const transferFromAccount = accounts.find(a => a.id === transfer.from)
   const transferToAccount = accounts.find(a => a.id === transfer.to)
   const transferCrossCurrency = !!(transferFromAccount && transferToAccount && transferFromAccount.currency !== transferToAccount.currency)
+  const isConvertMode = transfer.mode === 'convert'
+  // En "Transferir" el destino debe ser de la MISMA moneda que el origen; en
+  // "Convertir divisa" el destino debe ser de OTRA moneda. Así cada operación
+  // queda blindada y la moneda nunca se pregunta por separado.
+  const eligibleToAccounts = accounts.filter(a => a.id !== transfer.from && (!transferFromAccount || (isConvertMode ? a.currency !== transferFromAccount.currency : a.currency === transferFromAccount.currency)))
+  const fmtNative = (amount: number, currency: 'USD' | 'VES') => currency === 'VES' ? formatVes(amount) : formatUsd(amount)
+  const transferAmountNum = Number(transfer.amount) || 0
+  const transferRateNum = Number(transfer.rate) || 0
+  const transferConverted = transferFromAccount && transferFromAccount.currency === 'USD' ? transferAmountNum * transferRateNum : (transferRateNum ? transferAmountNum / transferRateNum : 0)
+  const transferInsufficient = !!(transferFromAccount && transferAmountNum > 0 && transferAmountNum > (transferFromAccount.currentBalance ?? 0))
 
   const salesDelta = pct(cur.grossSales, prev.grossSales)
   const netDelta = pct(cur.netProfit, prev.netProfit)
@@ -582,7 +604,10 @@ export function Finanzas() {
       <div className="fin-card">
         <h2>Movimientos administrativos</h2>
         <p className="sub">Traspasos, cobros, adelantos y propinas, sin afectar la utilidad.</p>
-        <button className="fin-export" onClick={() => setShowTransfer(true)}><ArrowRightLeft size={15} /> Registrar transferencia</button>
+        <div className="fin-ops-actions">
+          <button className="fin-export" onClick={() => openTransfer('transfer')}><ArrowRightLeft size={15} /> Registrar transferencia</button>
+          <button className="fin-export fin-export--convert" onClick={() => openTransfer('convert')}><DollarSign size={15} /> Convertir divisa</button>
+        </div>
         {opsError && <p className="fin-dialog-error" role="alert" style={{ margin: '10px 0 0' }}><CircleAlert size={16}/>{opsError}</p>}
         <div className="fin-ops">
           {periodOperations.slice(0, 12).map((op) => {
@@ -633,7 +658,7 @@ export function Finanzas() {
               <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
             </tbody></table></div>
           </div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeAccount()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => setShowTransfer(true))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeAccount()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {selectedLedgerCurrency && (() => {
@@ -661,31 +686,33 @@ export function Finanzas() {
               <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
               <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
             </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}</div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeLedger()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => setShowTransfer(true))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeLedger()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {(showTransfer || closingTransfer) && createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingTransfer ? 'closing' : ''}`} role="presentation" onClick={() => { if (!transferSaving) closeTransfer() }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>
         <header className="fin-dialog-header">
-          <span className="fin-dialog-icon"><ArrowRightLeft size={20}/></span>
-          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento administrativo</span><h2 id="fin-transfer-dialog-title">Registrar transferencia</h2><p>Mueve dinero entre cuentas sin afectar la utilidad.</p></div>
+          <span className="fin-dialog-icon">{isConvertMode ? <DollarSign size={20}/> : <ArrowRightLeft size={20}/>}</span>
+          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento administrativo</span><h2 id="fin-transfer-dialog-title">{isConvertMode ? 'Convertir divisa' : 'Registrar transferencia'}</h2><p>{isConvertMode ? 'Cambia dinero entre monedas (USD ↔ Bs) a la tasa que indiques.' : 'Mueve dinero entre cuentas de la misma moneda, sin afectar la utilidad.'}</p></div>
           <button type="button" className="fin-dialog-close" disabled={transferSaving} onClick={() => closeTransfer()} aria-label="Cerrar ventana"><X size={18}/></button>
         </header>
         <div className="fin-dialog-body fin-transfer-body">
           <label className="fin-field fin-field-wide"><span>Concepto <b>*</b></span><input className="fin-field-control" required autoFocus placeholder="Ej. Depósito del punto a Banesco" value={transfer.concept} onChange={e => setTransfer({...transfer, concept: e.target.value})}/></label>
           <div className="fin-transfer-grid">
-            <label className="fin-field"><span>Desde <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value})}><option value="">Selecciona una cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></label>
-            <label className="fin-field"><span>Hacia <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})}><option value="">Selecciona una cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></label>
+            <label className="fin-field"><span>Desde <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={transfer.from} onChange={e => setTransfer({...transfer, from: e.target.value, to: ''})}><option value="">Selecciona una cuenta</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect>{transferFromAccount && <small className="fin-field-hint">Disponible: <b>{fmtNative(transferFromAccount.currentBalance ?? 0, transferFromAccount.currency)}</b></small>}</label>
+            <label className="fin-field"><span>Hacia <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={transfer.to} onChange={e => setTransfer({...transfer, to: e.target.value})} disabled={!transferFromAccount}><option value="">{transferFromAccount ? 'Selecciona una cuenta' : 'Elige primero el origen'}</option>{eligibleToAccounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect>{transferToAccount ? <small className="fin-field-hint">Disponible: <b>{fmtNative(transferToAccount.currentBalance ?? 0, transferToAccount.currency)}</b></small> : (transferFromAccount && eligibleToAccounts.length === 0 && <small className="fin-field-hint fin-field-hint--warn">No hay otra cuenta en {isConvertMode ? 'otra moneda' : `${transferFromAccount.currency}`}.</small>)}</label>
           </div>
           <div className="fin-transfer-grid">
-            <label className="fin-field"><span>Moneda <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" value={transfer.currency} onChange={e => setTransfer({...transfer, currency: e.target.value as 'USD'|'VES'})}><option value="VES">Bolívares</option><option value="USD">Dólares</option></StyledSelect></label>
-            <label className="fin-field"><span>Monto <b>*</b></span><input className="fin-field-control" required type="number" min="0.01" step="0.01" placeholder="0,00" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})}/></label>
+            <label className="fin-field"><span>Monto <b>*</b>{transferFromAccount && <span className="fin-field-cur"> ({transferFromAccount.currency})</span>}</span><input className="fin-field-control" required type="number" min="0.01" step="0.01" placeholder="0,00" value={transfer.amount} onChange={e => setTransfer({...transfer, amount: e.target.value})}/>{transferInsufficient && <small className="fin-field-hint fin-field-hint--warn">Supera el disponible de la cuenta origen.</small>}</label>
+            {transferCrossCurrency
+              ? <label className="fin-field"><span>Tasa de cambio <b>*</b></span><input className="fin-field-control" required type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/><small className="fin-field-hint">{transferFromAccount?.currency === 'USD' ? 'Bs por cada dólar' : 'Bs por cada dólar'} · BCV hoy: {bcvRate || '—'}</small></label>
+              : <div className="fin-field fin-field--spacer" aria-hidden="true" />}
           </div>
-          {transferCrossCurrency && <label className="fin-field"><span>Tasa de cambio <b>*</b></span><input className="fin-field-control" required type="number" min="0" step="0.000001" placeholder={String(bcvRate || '')} value={transfer.rate} onChange={e => setTransfer({...transfer, rate: e.target.value})}/><small>Esta transferencia cambia de moneda ({transferFromAccount?.currency} → {transferToAccount?.currency}); usa la tasa BCV del día si no necesitas registrar una distinta.</small></label>}
+          {transferCrossCurrency && transferAmountNum > 0 && transferRateNum > 0 && transferFromAccount && transferToAccount && <div className="fin-convert-preview"><span>Entregas <b>{fmtNative(transferAmountNum, transferFromAccount.currency)}</b></span><ArrowRight size={15}/><span>Recibes <b>{fmtNative(transferConverted, transferToAccount.currency)}</b></span><small>@ {transferRateNum} Bs/$</small></div>}
           <label className="fin-field"><span>Referencia</span><input className="fin-field-control" placeholder="Opcional" value={transfer.reference} onChange={e => setTransfer({...transfer, reference: e.target.value})}/></label>
           <label className="fin-field"><span>Notas</span><textarea className="fin-field-control" rows={3} placeholder="Información adicional del movimiento" value={transfer.notes} onChange={e => setTransfer({...transfer, notes: e.target.value})}/></label>
           {transferError && <p className="fin-dialog-error" role="alert"><CircleAlert size={16}/>{transferError}</p>}
         </div>
-        <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={transferSaving} onClick={() => closeTransfer()}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={transferSaving}>{transferSaving ? 'Guardando…' : <><Check size={16}/> Guardar transferencia</>}</button></footer>
+        <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={transferSaving} onClick={() => closeTransfer()}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={transferSaving}>{transferSaving ? 'Guardando…' : <><Check size={16}/> {isConvertMode ? 'Guardar conversión' : 'Guardar transferencia'}</>}</button></footer>
       </form></div>, document.body)}
     </div>
   )
