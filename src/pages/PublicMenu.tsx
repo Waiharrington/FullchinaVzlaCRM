@@ -1,6 +1,6 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type SyntheticEvent } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
+import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
@@ -240,6 +240,7 @@ function readCheckoutAttempt(): { signature: string; key: string } | null {
 export function PublicMenu() {
   const pageRef = useRef<HTMLElement>(null)
   const designMode = new URLSearchParams(window.location.search).get('modo') === 'diseno'
+  const showDemoTools = designMode || window.location.hostname === 'localhost'
   const isDesktopViewport = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
   const initialCatalog = useMemo(() => {
     const cached = designMode ? null : readCatalogCache()
@@ -287,7 +288,9 @@ export function PublicMenu() {
   const [showSearch, setShowSearch] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [closingCart, setClosingCart] = useState(false)
-  const [step, setStep] = useState<'cart' | 'delivery' | 'address' | 'details' | 'confirm' | 'preparing' | 'sent'>('cart')
+  const [step, setStep] = useState<'cart' | 'delivery' | 'address' | 'details' | 'confirm' | 'preparing' | 'whatsapp' | 'sent'>('cart')
+  const [returnToConfirmAfterEdit, setReturnToConfirmAfterEdit] = useState(false)
+  const previousStepRef = useRef(step)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [identification, setIdentification] = useState('')
@@ -359,12 +362,18 @@ export function PublicMenu() {
   const restoringFlow = useRef(true)
   const [orderCode, setOrderCode] = useState('')
   const [draftOrderCode, setDraftOrderCode] = useState('')
-  const [, setWhatsappUrl] = useState('')
+  const [whatsappUrl, setWhatsappUrl] = useState('')
   const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string } | null>(null)
   const [addFeedbackClosing, setAddFeedbackClosing] = useState(false)
   const [cartPulse, setCartPulse] = useState(false)
+  const sidebarCardRef = useRef<HTMLDivElement>(null)
+  const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false)
   const [recommendedIndex, setRecommendedIndex] = useState(0)
+  const [recommendedPaused, setRecommendedPaused] = useState(false)
   const recommendedTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const recommendedResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const recommendedSwipeStart = useRef<number | null>(null)
+  const recommendedWasSwiped = useRef(false)
   const [sidebarRecoIndex, setSidebarRecoIndex] = useState(0)
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -387,6 +396,23 @@ export function PublicMenu() {
     try { return JSON.parse(localStorage.getItem(LAST_ORDER_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
   const [currentTab, setCurrentTab] = useState<DesktopTab>(readDesktopTab)
+
+  // Cuando Editar se pulsa desde el resumen, el flujo vuelve al carrito para
+  // modificar el producto. Al continuar (o cerrar ese carrito) debe regresar
+  // al resumen que originó la edición, no reiniciar checkout desde entrega.
+  useEffect(() => {
+    const previousStep = previousStepRef.current
+    if (cart.length === 0 && step === 'confirm') {
+      setReturnToConfirmAfterEdit(false)
+      setStep('cart')
+    } else if (cart.length > 0 && step === 'cart' && previousStep === 'confirm') {
+      setReturnToConfirmAfterEdit(true)
+    } else if (cart.length > 0 && returnToConfirmAfterEdit && step === 'delivery') {
+      setReturnToConfirmAfterEdit(false)
+      setStep('confirm')
+    }
+    previousStepRef.current = step
+  }, [cart, cartOpen, returnToConfirmAfterEdit, step])
 
   const revealDecodedImage = (image: HTMLImageElement) => {
     const source = image.currentSrc || image.src
@@ -565,6 +591,22 @@ export function PublicMenu() {
     const qty = getCardQty(group.key)
     requestQuickAdd(group, qty)
   }
+  const stopProductCardInteraction = (event: SyntheticEvent) => {
+    // Algunos navegadores entregan el click del control después del pointer
+    // al contenedor. Cancelar ambos niveles evita que la tarjeta abra detalle.
+    event.preventDefault()
+    event.stopPropagation()
+    event.nativeEvent.stopImmediatePropagation()
+  }
+  const openProductFromCard = (group: MenuProductGroup, event: ReactMouseEvent<HTMLElement>) => {
+    if (event.defaultPrevented || (event.target as HTMLElement).closest('button, a, input, select, textarea')) return
+    openGroup(group, event)
+  }
+  const openProductFromCardKeyboard = (group: MenuProductGroup, event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+    event.preventDefault()
+    openGroup(group)
+  }
   const categorySections = useMemo(() => categories
     .filter(category => category !== 'Todos')
     .map(category => ({ category, groups: visibleGroups.filter(group => group.variants.some(v => v.product.categories.includes(category))) }))
@@ -606,12 +648,13 @@ export function PublicMenu() {
     const source = activeCategory === 'Todos'
       ? groups
       : groups.filter(group => group.variants.some(v => v.product.categories.includes(activeCategory)))
-    const pool = [...(source.length > 0 ? source : groups)]
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]]
-    }
-    return pool.slice(0, 8)
+    // El pool debe ser estable durante el montaje. Un shuffle con Math.random
+    // aquí cambia de recomendación cada vez que llegan los productos, y en
+    // desarrollo StrictMode puede hacer que se vean varias tarjetas entrando
+    // fugazmente al recargar la página.
+    return [...(source.length > 0 ? source : groups)]
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .slice(0, 8)
   }, [groups, activeCategory])
 
   useEffect(() => {
@@ -619,12 +662,41 @@ export function PublicMenu() {
   }, [activeCategory])
 
   useEffect(() => {
-    if (recommendedPool.length <= 1) return
+    if (recommendedPool.length <= 1 || recommendedPaused) return
     recommendedTimer.current = setInterval(() => {
       setRecommendedIndex(prev => (prev + 1) % recommendedPool.length)
     }, 4500)
     return () => { if (recommendedTimer.current) clearInterval(recommendedTimer.current) }
-  }, [recommendedPool.length])
+  }, [recommendedPool.length, recommendedPaused])
+
+  const clearRecommendedResumeTimer = () => {
+    if (recommendedResumeTimer.current) {
+      clearTimeout(recommendedResumeTimer.current)
+      recommendedResumeTimer.current = null
+    }
+  }
+
+  const resumeRecommendedAutoplay = () => {
+    clearRecommendedResumeTimer()
+    recommendedResumeTimer.current = setTimeout(() => {
+      setRecommendedPaused(false)
+      recommendedResumeTimer.current = null
+    }, 5200)
+  }
+
+  const pauseRecommendedAutoplay = () => {
+    clearRecommendedResumeTimer()
+    setRecommendedPaused(true)
+  }
+
+  const moveRecommended = (direction: 1 | -1) => {
+    if (recommendedPool.length <= 1) return
+    setRecommendedIndex(prev => (prev + direction + recommendedPool.length) % recommendedPool.length)
+    pauseRecommendedAutoplay()
+    resumeRecommendedAutoplay()
+  }
+
+  useEffect(() => () => clearRecommendedResumeTimer(), [])
 
   const recommendedGroup = recommendedPool[recommendedIndex] ?? recommendedPool[0] ?? groups[0]
   const isStoreOpen = (() => {
@@ -649,6 +721,19 @@ export function PublicMenu() {
       : 'Por confirmar'
   const cartProductIds = useMemo(() => new Set(cart.map(item => item.productId)), [cart])
   const recommendations = groups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))).slice(0, 3)
+  useEffect(() => {
+    const card = sidebarCardRef.current
+    if (!card) return
+    const checkOverflow = () => {
+      // Ignoramos diferencias mínimas producidas por redondeos del viewport;
+      // un scroll debe aparecer solo cuando realmente haya contenido oculto.
+      setSidebarHasOverflow(card.scrollHeight - card.clientHeight > 8)
+    }
+    checkOverflow()
+    const observer = new ResizeObserver(checkOverflow)
+    observer.observe(card)
+    return () => observer.disconnect()
+  }, [cart, recommendations, orderType, address, total, currentTab])
 
   useEffect(() => {
     setSidebarRecoIndex(0)
@@ -685,7 +770,10 @@ export function PublicMenu() {
     try {
       if (designMode) {
         setCartOpen(true)
-        setStep('preparing')
+        // El modo diseño siempre empieza desde el carrito para poder recorrer
+        // el checkout y probar el botón de datos demo.
+        setReturnToConfirmAfterEdit(false)
+        setStep('cart')
         restoringFlow.current = false
         return
       }
@@ -718,6 +806,13 @@ export function PublicMenu() {
   }, [cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod])
 
   const toggleFavorite = (groupKey: string) => setFavoriteIds(current => current.includes(groupKey) ? current.filter(id => id !== groupKey) : [...current, groupKey])
+  const fillDemoData = () => {
+    setName('Cliente Demo')
+    setIdPrefix('V')
+    setIdentification('V-12345678')
+    setPhone('04120000000')
+    setFieldError('')
+  }
   const startNewOrder = () => {
     setCart([])
     setName('')
@@ -1062,13 +1157,21 @@ export function PublicMenu() {
     setStep('confirm')
   }
 
+  const openWhatsApp = () => {
+    if (!whatsappUrl) return
+    const whatsappWindow = window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+    if (!whatsappWindow) window.location.href = whatsappUrl
+    setStep('sent')
+  }
+
   const submitOrder = async () => {
     if (submitLockRef.current || submitting) return
     if (designMode) {
       setError('')
       setOrderCode('WEB-DEMO')
       setSubmitting(false)
-      setStep('preparing')
+      setWhatsappUrl('https://wa.me/?text=Pedido%20de%20demostraci%C3%B3n%20Full%20China')
+      setStep('whatsapp')
       return
     }
     setError('')
@@ -1101,12 +1204,9 @@ export function PublicMenu() {
     try { sessionStorage.setItem(CHECKOUT_ATTEMPT_KEY, JSON.stringify(checkoutAttemptRef.current)) } catch { /* storage unavailable */ }
     submitLockRef.current = true
     setSubmitting(true)
-    setStep('preparing')
-    // Abrir la pestaña inmediatamente conserva el gesto del usuario y evita
-    // que el navegador bloquee WhatsApp después de la respuesta del servidor.
-    // OJO: sin 'noopener' a propósito — con noopener window.open devuelve null
-    // y no podríamos redirigir la pestaña a WhatsApp (se quedaría en blanco).
-    const whatsappWindow = window.open('about:blank', '_blank')
+    // Mantener la pantalla final visible durante la petición evita mostrar la
+    // antigua pantalla intermedia antes de que esté listo el mensaje.
+    setStep('whatsapp')
     try {
       const result = await createWebOrder({
         customerName: name.trim(), customerPhone: phone.trim(), customerIdentification: identification.trim().toUpperCase(), orderType,
@@ -1157,17 +1257,14 @@ export function PublicMenu() {
         ...(notes.trim() ? ['', separator, '*📝 INDICACIONES*', '', notes.trim()] : []),
         '',
         separator,
-        '☝🏻 Envía este mensaje para que podamos confirmar tu pedido.',
+        'Envía este mensaje para que podamos confirmar tu pedido.',
       ].join('\n')
       const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
       if (configuredPhone.length < 7) throw new Error('WhatsApp no está configurado todavía. Completa VITE_FULLCHINA_WHATSAPP para continuar.')
-      const whatsappNative = `whatsapp://send?phone=${configuredPhone}&text=${encodeURIComponent(message)}`
       const whatsappFallback = `https://wa.me/${configuredPhone}?text=${encodeURIComponent(message)}`
       setWhatsappUrl(whatsappFallback)
-      if (whatsappWindow) whatsappWindow.location.href = whatsappNative
-      setStep('sent')
+      setStep('whatsapp')
     } catch (cause) {
-      whatsappWindow?.close()
       setError(cause instanceof Error ? cause.message : 'No pudimos registrar el pedido.')
       setStep('confirm')
     } finally {
@@ -1189,12 +1286,13 @@ export function PublicMenu() {
     const isBeverage = group.variants.some(({ product }) => product.categories.includes('bebidas'))
     const isTallBottle = /^(agua|refresco\s+2\s+litros)$/i.test(group.name.trim())
     const isLiptonBottle = /^lipton\b/i.test(group.name.trim())
+    const hasOptions = group.variants.length > 1
     return (
-      <article className="public-prod-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+      <article className="public-prod-card" key={group.key}>
         {group.variants.find(v => v.product.menuLabel)?.product.menuLabel === 'free_drink' && (
           <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="public-free-drink-sticker" />
         )}
-        <div className="public-prod-img-wrap">
+        <div className="public-prod-img-wrap" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
           {(() => {
             const label = menuLabelMeta[group.variants.find(v => v.product.menuLabel)?.product.menuLabel as keyof typeof menuLabelMeta]
             if (!label || label.className === 'free-drink') return null
@@ -1202,9 +1300,16 @@ export function PublicMenu() {
             return <span className={`public-menu-label ${label.className}`}><LabelIcon size={12} strokeWidth={2.4} aria-hidden="true" /> {label.text}</span>
           })()}
           <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
-          <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
+          <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onPointerDown={stopProductCardInteraction} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         </div>
-        <div className="public-prod-info">
+        <button type="button" className="public-prod-add" aria-label={hasOptions ? `Ver opciones de ${group.name}` : `Agregar ${group.name} al carrito`} onPointerDown={stopProductCardInteraction} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
+          {hasOptions
+            ? <ChevronRight size={18} strokeWidth={2.4} aria-hidden="true" />
+            : <ShoppingCart size={18} strokeWidth={2.4} aria-hidden="true" />}
+          <span className="public-prod-add-label-full">{hasOptions ? 'Ver opciones' : 'Agregar al carrito'}</span>
+          <span className="public-prod-add-label-short">{hasOptions ? 'Opciones' : 'Agregar'}</span>
+        </button>
+        <div className="public-prod-info" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
           <h3 className="public-prod-title">{productTitle(group.name)}</h3>
           <p className="public-prod-desc">{groupDescription(group)}</p>
           <div className="public-prod-footer-row">
@@ -1212,10 +1317,6 @@ export function PublicMenu() {
               <span className="public-prod-price">{group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}</span>
               {priceBs(group.minPrice) && <span className="public-prod-price-bs">{priceBs(group.minPrice)}</span>}
             </div>
-            <button className="public-prod-add" aria-label={`Agregar ${group.name} al carrito`} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
-              <span>Agregar</span>
-              <ShoppingCart size={15} />
-            </button>
           </div>
         </div>
       </article>
@@ -1226,7 +1327,7 @@ export function PublicMenu() {
     const qty = getCardQty(group.key)
 
     return (
-      <article className="public-home-product-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+      <article className="public-home-product-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
         <div className="public-home-prod-img-wrap">
           <img 
             src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
@@ -1238,6 +1339,7 @@ export function PublicMenu() {
           <button 
             type="button" 
             className={`public-home-fav-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`}
+            onPointerDown={stopProductCardInteraction}
             onClick={(e) => { e.stopPropagation(); toggleFavorite(group.key) }}
             aria-label="Favorito"
           >
@@ -1257,18 +1359,19 @@ export function PublicMenu() {
 
           <div className="public-home-prod-actions" onClick={(e) => e.stopPropagation()}>
             <div className="public-home-stepper">
-              <button type="button" onClick={() => changeCardQty(group.key, -1)} aria-label="Disminuir">
+              <button type="button" onPointerDown={stopProductCardInteraction} onClick={() => changeCardQty(group.key, -1)} aria-label="Disminuir">
                 <Minus size={13} />
               </button>
               <span>{qty}</span>
-              <button type="button" onClick={() => changeCardQty(group.key, 1)} aria-label="Aumentar">
+              <button type="button" onPointerDown={stopProductCardInteraction} onClick={() => changeCardQty(group.key, 1)} aria-label="Aumentar">
                 <Plus size={13} />
               </button>
             </div>
             <button 
               type="button" 
               className="public-home-add-btn"
-              onClick={() => handleCardAdd(group)}
+              onPointerDown={stopProductCardInteraction}
+              onClick={(event) => { event.stopPropagation(); handleCardAdd(group) }}
             >
               Agregar
             </button>
@@ -1280,7 +1383,7 @@ export function PublicMenu() {
 
   const renderDesktopPromoCard = (group: MenuProductGroup) => {
     return (
-      <article className="public-home-promo-card" key={group.key} onClick={event => openGroup(group, event)} role="button" tabIndex={0} onKeyDown={event => event.key === 'Enter' && openGroup(group)}>
+      <article className="public-home-promo-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
         <div className="public-home-promo-top">
           <h3 className="public-home-promo-title">{productTitle(group.name)}</h3>
           <div className="public-home-promo-price-row">
@@ -1303,7 +1406,8 @@ export function PublicMenu() {
           <button 
             type="button" 
             className="public-home-promo-add-btn"
-            onClick={() => handleCardAdd(group)}
+            onPointerDown={stopProductCardInteraction}
+            onClick={(event) => { event.stopPropagation(); handleCardAdd(group) }}
           >
             <Plus size={15} />
             <span>Pedir promo</span>
@@ -1316,7 +1420,7 @@ export function PublicMenu() {
   return (
     <main
       ref={pageRef}
-      className="public-menu-page"
+      className={`public-menu-page ${cartOpen ? 'has-public-drawer' : ''}`}
       style={{ '--cat-accent': accentRgb } as CSSProperties}
       onLoadCapture={handleImageLoad}
       onErrorCapture={handleImageError}
@@ -1416,7 +1520,43 @@ export function PublicMenu() {
         </div>
 
         {/* 3. Recommended Card */}
-        <div className="public-recommended-card">
+        <div
+          className="public-recommended-card"
+          onClick={(event) => {
+            if (recommendedWasSwiped.current) {
+              recommendedWasSwiped.current = false
+              return
+            }
+            if ((event.target as HTMLElement).closest('button, .public-recommended-dots-overlay')) return
+            if (recommendedGroup) openGroup(recommendedGroup)
+          }}
+          onPointerDown={(event) => {
+            recommendedSwipeStart.current = event.clientX
+            recommendedWasSwiped.current = false
+            pauseRecommendedAutoplay()
+          }}
+          onPointerUp={(event) => {
+            const start = recommendedSwipeStart.current
+            recommendedSwipeStart.current = null
+            if (start == null || recommendedPool.length <= 1) {
+              resumeRecommendedAutoplay()
+              return
+            }
+            const distance = event.clientX - start
+            if (Math.abs(distance) >= 42) {
+              recommendedWasSwiped.current = true
+              moveRecommended(distance < 0 ? 1 : -1)
+            } else {
+              resumeRecommendedAutoplay()
+            }
+          }}
+          onPointerCancel={() => {
+            recommendedSwipeStart.current = null
+            resumeRecommendedAutoplay()
+          }}
+          onMouseEnter={pauseRecommendedAutoplay}
+          onMouseLeave={resumeRecommendedAutoplay}
+        >
           <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
             <small>RECOMENDADO <Flame size={12} /></small>
             <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
@@ -1425,19 +1565,19 @@ export function PublicMenu() {
             {recommendedGroup && priceBs(recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedGroup.minPrice)}</span>}
             <button
               className="public-recommended-btn"
-              onClick={() => {
-                if (recommendedGroup) openGroup(recommendedGroup)
-              }}
+              onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup) }}
               aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
             >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
           </div>
           <img key={`img-${recommendedGroup?.key ?? 'empty'}`} src={optimizedProductImage(recommendedGroup?.variants[0]?.product.imageUrl) || (recommendedGroup ? productImage(recommendedGroup.category) : '/optimized/login-carousel/slide3.webp')} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
           <div className="public-recommended-dots-overlay">
             {recommendedPool.map((_, i) => (
-              <span key={i} className={i === recommendedIndex ? 'active' : ''} onClick={() => {
+              <button key={i} type="button" className={i === recommendedIndex ? 'active' : ''} aria-label={`Ver recomendación ${i + 1}`} aria-current={i === recommendedIndex ? 'true' : undefined} onClick={(event) => {
+                event.stopPropagation()
                 if (i === recommendedIndex) return
-                if (recommendedTimer.current) clearInterval(recommendedTimer.current)
                 setRecommendedIndex(i)
+                pauseRecommendedAutoplay()
+                resumeRecommendedAutoplay()
               }} />
             ))}
           </div>
@@ -2125,7 +2265,7 @@ export function PublicMenu() {
 
         {/* Desktop Sticky Sidebar (Live Cart & Checkout) */}
         <aside className="public-desktop-sidebar">
-          <div className={`public-sidebar-card ${cartPulse ? 'is-pulsing' : ''}`}>
+          <div ref={sidebarCardRef} className={`public-sidebar-card ${cartPulse ? 'is-pulsing' : ''} ${sidebarHasOverflow ? 'has-overflow' : ''}`}>
             {/* Sidebar Header */}
             <div className="public-sidebar-head">
               <div className="public-sidebar-title">
@@ -2216,6 +2356,7 @@ export function PublicMenu() {
                   })}
                 </div>
 
+                <div className="public-sidebar-secondary">
                 {/* Sidebar Recommendations (carrusel: una tarjeta a la vez,
                     rota sola — el espacio es angosto para varias en fila) */}
                 {recommendations.length > 0 && (() => {
@@ -2224,7 +2365,7 @@ export function PublicMenu() {
                     <section className="public-cart-recommendations public-sidebar-recommendations public-sidebar-reco-carousel">
                       <div className="public-cart-recommendations-head">
                         <h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3>
-                        <button type="button" onClick={() => { setStep('cart'); setCartOpen(true); setShowAllExtras(true) }}>Ver todos <ChevronRight size={13} /></button>
+                        <button type="button" onClick={() => { setReturnToConfirmAfterEdit(false); setStep('cart'); setCartOpen(true); setShowAllExtras(true) }}>Ver todos <ChevronRight size={13} /></button>
                       </div>
                       <div className="public-sidebar-reco-card" key={activeReco.key}>
                         <img src={optimizedProductImage(activeReco.variants[0]?.product.imageUrl) || productImage(activeReco.category)} alt="" />
@@ -2303,6 +2444,7 @@ export function PublicMenu() {
                     <span className="public-sidebar-address-edit">Editar</span>
                   </div>
                 )}
+                </div>
 
                 {/* Big Checkout CTA Button */}
                 <button 
@@ -2312,14 +2454,16 @@ export function PublicMenu() {
                   onClick={() => {
                     if (!cart.length) return;
                     setCartOpen(true);
-                    setStep(orderType === 'delivery' && !address ? 'address' : 'details');
+                    // Desde el resumen siempre se inicia el flujo de entrega;
+                    // todavía faltan tipo de entrega, dirección y datos.
+                    setStep('delivery');
                   }}
                 >
                   <div className="public-sidebar-checkout-main">
-                    <span>Finalizar pedido</span>
+                    <span>Continuar con el pedido</span>
                     <MessageSquareText size={18} />
                   </div>
-                  <small>Confirmación directa por WhatsApp</small>
+                  <small>Configura la entrega y tus datos</small>
                 </button>
               </>
             )}
@@ -2333,7 +2477,7 @@ export function PublicMenu() {
           <span className="public-cart-fab-tooltip">
             Toca aquí para ver tu pedido <ChevronRight size={14} />
           </span>
-          <button className="public-cart-fab" onClick={() => { setCartOpen(true); setStep('cart') }}>
+          <button className="public-cart-fab" onClick={() => { setReturnToConfirmAfterEdit(false); setCartOpen(true); setStep('cart') }}>
             <ShoppingCart size={24} />
             <span className="public-cart-fab-badge">{itemCount}</span>
           </button>
@@ -2498,9 +2642,35 @@ export function PublicMenu() {
         document.body
       )}
 
-      {cartOpen && createPortal(
+      {cartOpen && step === 'whatsapp' && createPortal(
+        <div className={`public-whatsapp-ready-backdrop ${closingCart ? 'closing' : ''}`}>
+          <section className={`public-whatsapp-ready-page ${closingCart ? 'closing' : ''}`} aria-labelledby="whatsapp-ready-title">
+            <header className="public-whatsapp-ready-header"><img src="/optimized/root/logo.webp" alt="Full China" /><button type="button" className="public-whatsapp-ready-close" onClick={closeCart} aria-label="Cerrar confirmación"><X size={20} /></button></header>
+            <div className="public-preparing-visual public-whatsapp-ready-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div>
+            <div className="public-whatsapp-ready-content">
+              <div className="public-whatsapp-ready-hero">
+              <span className="public-whatsapp-ready-icon" aria-hidden="true"><span className="public-whatsapp-mark"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span></span>
+              <h1 id="whatsapp-ready-title">{submitting ? 'Preparando tu pedido…' : '¡Pedido registrado!'}</h1>
+              <strong>#{orderCode || 'WEB-PENDIENTE'}</strong>
+              </div>
+              <section className="public-whatsapp-ready-card">
+              <span className="public-whatsapp-ready-kicker">{submitting ? 'Un momento:' : 'Muy importante:'}</span>
+              <h2>{submitting ? 'Estamos preparando tu solicitud para abrir WhatsApp.' : 'Como último paso, envía tu pedido por WhatsApp a Full China para coordinar los detalles finales.'}</h2>
+              <p>{submitting ? 'Conserva esta pantalla abierta; el botón se habilitará cuando tu mensaje esté listo.' : 'Presiona ahora el botón de “Enviar pedido por WhatsApp” y se abrirá una conversación donde debes enviar el mensaje que hemos preparado para ti.'}</p>
+              <span className="public-whatsapp-ready-arrow" aria-hidden="true">↓</span>
+              <button type="button" className="public-whatsapp-ready-btn" onClick={openWhatsApp} disabled={!whatsappUrl}>
+                <span className="public-whatsapp-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3-.7-3.1Z" /></svg></span>
+                <span>Enviar pedido por WhatsApp</span><ChevronRight aria-hidden="true" />
+              </button>
+              <small className="public-whatsapp-ready-footnote">Full China recibirá tu solicitud por esta conversación.</small>
+              </section>
+            </div>
+          </section>
+        </div>, document.body
+      )}
+      {cartOpen && step !== 'whatsapp' && createPortal(
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { if (isDesktop) { if (orderType === 'delivery') { setStep('address'); } else { closeCart(); } } else { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { if (isDesktop) { closeCart(); } else { setStep('delivery'); } } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? 'Dirección de entrega' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? <>Confirma que todo esté correcto antes de enviarlo.<br />Luego lo enviaremos por WhatsApp.</> : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : 'Revisa tu pedido antes de continuar.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
+        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { setStep('delivery'); } else if (step === 'delivery') { if (isDesktop) closeCart(); else setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? 'Confirma que todo esté correcto antes de enviarlo.' : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : 'Revisa tu pedido antes de continuar.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId)); if (group) openGroup(group) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
@@ -2511,6 +2681,7 @@ export function PublicMenu() {
               <strong>¿A nombre de quién?</strong>
               <span>Solo para coordinar tu pedido.</span>
             </div>
+            {showDemoTools && <button type="button" className="public-demo-data-button" onClick={fillDemoData}><Zap size={15} /> Rellenar datos demo</button>}
             <div className="public-data-form-card">
               <label className={`public-data-field${fieldError === 'name' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={nameRef} autoComplete="name" value={name} onChange={event => { setName(event.target.value); if (fieldError === 'name') setFieldError('') }} placeholder="Nombre y apellido" /></div>{fieldError === 'name' && <em className="public-field-error" role="alert">Escribe tu nombre.</em>}</span></label>
               <label className={`public-data-field${fieldError === 'identification' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula <em className="public-data-req">*</em></span><div className="public-data-input"><div className="public-id-prefix-toggle">{(['V', 'E', 'J'] as const).map(p => <button key={p} type="button" className={idPrefix === p ? 'active' : ''} onClick={() => { setIdPrefix(p); setIdentification(`${p}-${identification.replace(/^[VEJ]-?/i, '')}`); if (fieldError === 'identification') setFieldError('') }}>{p}</button>)}</div><input ref={identificationRef} inputMode="numeric" autoComplete="off" value={identification.replace(/^[VEJ]-?/i, '')} maxLength={8} onChange={event => { const digits = event.target.value.replace(/\D/g, ''); setIdentification(`${idPrefix}-${digits}`); if (fieldError === 'identification') setFieldError('') }} onBlur={() => { const digits = identification.replace(/^[VEJ]-?/i, ''); if (digits && (digits.length < 6 || digits.length > 8)) setFieldError('identification') }} placeholder="12345678" /></div>{fieldError === 'identification' ? <em className="public-field-error" role="alert">La cédula debe tener entre 6 y 8 dígitos.</em> : <small>La usaremos para conservar tu historial de pedidos</small>}</span></label>
@@ -2541,7 +2712,7 @@ export function PublicMenu() {
           </div>
         )}
         {step === 'confirm' && <div className="public-confirm-page"><div className="public-receipt"><div className="public-receipt-head"><img src="/optimized/root/logo.webp" alt="Full China" /><div><span>Solicitud</span><strong>{orderCode || draftOrderCode || 'WEB-PENDIENTE'}</strong><small>Ahora · pedido web</small></div></div>
-          <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div><div className="public-confirm-item-name-row"><strong>{cartProductName(item.productName)}</strong><button type="button" onClick={() => setStep('cart')}>Editar</button></div><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b></div>)}</div>
+          <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || '/optimized/login-carousel/slide3.webp'} alt="" /><div><div className="public-confirm-item-name-row"><strong>{cartProductName(item.productName)}</strong><button type="button" aria-label={`Editar ${item.productName}`} onClick={() => { setReturnToConfirmAfterEdit(true); setStep('cart'); closeCart() }}><Pencil aria-hidden="true" /><span>Editar</span></button></div><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b></div>)}</div>
           <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><div className="public-delivery-total-label">{orderType === 'delivery' ? 'Delivery' : 'Retiro'}</div><div className={`public-delivery-total-value ${orderType === 'takeaway' ? 'is-pickup' : ''}`}>{orderType === 'delivery' ? deliveryFeeText : 'En el local'}</div><b>Total del pedido <em>{money(orderTotal)}{priceBs(orderTotal) && <small className="public-total-bs">{priceBs(orderTotal)}</small>}</em></b></div>
           <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'delivery')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button></div>{error && <Toast type="error" message={error} onClose={() => setError('')} />}</div>
           <button className="public-primary whatsapp public-whatsapp-cta" disabled={submitting} onClick={submitOrder}><span className="public-whatsapp-mark" aria-hidden="true"><svg viewBox="0 0 32 32" role="img"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4.4 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span><span className="public-whatsapp-copy"><strong>{submitting ? 'Preparando pedido…' : 'Enviar pedido'}</strong><small>Se abrirá WhatsApp para confirmar</small></span><b className="public-whatsapp-total">{money(total)}{priceBs(total) && <small className="public-whatsapp-total-bs">{priceBs(total)}</small>}</b><span className="public-whatsapp-arrow"><ChevronRight /></span></button><p className="public-order-security">⌕ &nbsp; Tu pedido será confirmado directamente por Full China</p>

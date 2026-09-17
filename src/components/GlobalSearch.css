@@ -67,7 +67,10 @@
   font-family: inherit;
 }
 .gs-input:focus {
-  box-shadow: none;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 .gs-input::placeholder {
   color: #3f3f46;
@@ -221,29 +224,35 @@
 /* ═══ Inline mode (dashboard search bar) ═══ */
 .gs-inline-wrapper {
   position: relative;
-  display: contents;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  height: 100%;
 }
 
 .gs-inline-field {
-  background: transparent;
+  flex: 1;
+  min-width: 0;
+  background: transparent !important;
   border: none;
   outline: none;
-  color: #e4e4e7;
-  font-size: 0.78rem;
-  width: 100%;
+  color: #e4e4e7 !important;
+  font-size: 0.82rem;
   font-family: inherit;
+  box-shadow: none !important;
 }
 .gs-inline-field:focus {
-  border-color: transparent;
-  background: transparent;
-  box-shadow: none;
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
 }
 .gs-inline-field::placeholder {
-  color: #52525b;
+  color: #6b6b75;
 }
 
 .gs-inline-icon {
-  color: #52525b;
+  color: #6b6b75;
   flex-shrink: 0;
 }
 

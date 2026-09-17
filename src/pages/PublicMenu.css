@@ -543,20 +543,186 @@ button.mobile-only {
   gap: 6px;
   z-index: 3;
 }
-.public-recommended-dots-overlay span {
+.public-recommended-dots-overlay button {
   width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.42);
-  cursor: pointer;
+  border: 0; padding: 0; cursor: pointer;
   transition: all 300ms ease;
 }
-.public-recommended-dots-overlay span:hover {
+
+/* Nueva pantalla de entrega a WhatsApp: una escena única y guiada. El fondo
+   deja la zona superior oscura para el logo y la zona inferior para el CTA. */
+.public-whatsapp-ready-backdrop {
+  padding: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, .18) 0%, rgba(0, 0, 0, .08) 34%, rgba(0, 0, 0, .72) 68%, rgba(0, 0, 0, .94) 100%),
+    url('/fondos/whatsapp-ready-bg.png') center top / cover no-repeat;
+  background-color: #050505;
+}
+
+.public-whatsapp-ready-page {
+  position: relative;
+  width: min(100%, 980px);
+  min-height: 100dvh;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 470px);
+  align-content: center;
+  align-items: center;
+  gap: clamp(32px, 6vw, 92px);
+  padding: clamp(28px, 5vw, 64px) clamp(24px, 5vw, 72px);
+  overflow: hidden;
+  background: transparent;
+}
+
+.public-whatsapp-ready-page::before {
+  content: '';
+  position: absolute;
+  inset: 12% 45% 16% 2%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 74, 24, .18), transparent 68%);
+  filter: blur(22px);
+  pointer-events: none;
+}
+
+.public-whatsapp-ready-header {
+  position: absolute;
+  z-index: 3;
+  inset: 0 clamp(24px, 5vw, 72px) auto;
+  width: auto;
+  margin: 0;
+  padding: 22px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, .16);
+}
+
+.public-whatsapp-ready-header img { width: clamp(88px, 10vw, 132px); }
+.public-whatsapp-ready-header > span { color: rgba(255,255,255,.74); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+
+.public-whatsapp-ready-visual { display: none !important; }
+
+.public-whatsapp-ready-hero {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.public-whatsapp-ready-icon { display: none; }
+.public-whatsapp-ready-hero h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(38px, 5vw, 72px);
+  line-height: .98;
+  letter-spacing: -.045em;
+  text-shadow: 0 4px 24px rgba(0,0,0,.45);
+}
+.public-whatsapp-ready-hero > strong {
+  order: -1;
+  padding: 9px 18px;
+  border: 1px solid rgba(255, 70, 50, .8);
+  border-radius: 999px;
+  color: #ff8774;
+  background: rgba(18, 4, 4, .58);
+  font-size: 12px;
+  letter-spacing: .28em;
+}
+
+.public-whatsapp-ready-card {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 14px;
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.public-whatsapp-ready-kicker { color: #ff806b; font-size: 12px; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.public-whatsapp-ready-card h2 { margin: 0; color: #fff; font-size: clamp(21px, 2.4vw, 32px); line-height: 1.16; }
+.public-whatsapp-ready-card p { max-width: 560px; margin: 0; color: rgba(255,255,255,.84); font-size: 15px; line-height: 1.52; }
+.public-whatsapp-ready-hint { color: rgba(255,255,255,.58) !important; font-size: 12px !important; }
+.public-whatsapp-ready-arrow { margin: 0; color: #fff; font-size: 44px; line-height: .58; text-shadow: 0 0 16px rgba(255,255,255,.38); animation: public-whatsapp-arrow-down 1.25s ease-in-out infinite; }
+
+.public-whatsapp-ready-btn {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 82px;
+  box-sizing: border-box;
+  padding: 12px 18px;
+  border: 1px solid rgba(91, 255, 143, .9);
+  border-radius: 24px;
+  color: #fff;
+  background: linear-gradient(105deg, #08ab48, #15d95f 55%, #07a341);
+  box-shadow: 0 0 0 1px rgba(0,0,0,.24), 0 12px 34px rgba(0, 177, 70, .38), inset 0 1px 0 rgba(255,255,255,.3);
+  font: 900 16px/1.1 'DM Sans', sans-serif;
+  text-align: left;
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease;
+}
+.public-whatsapp-ready-btn::after { content: ''; position: absolute; }
+.public-whatsapp-ready-btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(0,0,0,.24), 0 18px 40px rgba(0, 177, 70, .48), inset 0 1px 0 rgba(255,255,255,.35); }
+.public-whatsapp-ready-btn:active { transform: translateY(0) scale(.985); }
+.public-whatsapp-ready-btn .public-whatsapp-mark { width: 48px; height: 48px; }
+.public-whatsapp-ready-btn .public-whatsapp-mark svg { width: 48px; height: 48px; }
+.public-whatsapp-ready-btn > b { display: grid; justify-items: end; color: #fff; font-size: 14px; white-space: nowrap; }
+.public-whatsapp-ready-btn > b small { margin-top: 3px; color: rgba(255,255,255,.78); font-size: 10px; }
+.public-whatsapp-ready-btn > svg { width: 24px; }
+.public-whatsapp-ready-footnote { color: rgba(255,255,255,.62); font-size: 11px; text-align: center; }
+
+@media (max-width: 760px) {
+  .public-whatsapp-ready-backdrop { overflow-y: auto; }
+  .public-whatsapp-ready-page {
+    width: 100%;
+    min-height: 100dvh;
+    grid-template-columns: 1fr;
+    align-content: end;
+    gap: 0;
+    padding: 84px 20px calc(24px + env(safe-area-inset-bottom));
+  }
+  .public-whatsapp-ready-page::before { inset: 48% -20% 0; background: radial-gradient(circle, rgba(0, 0, 0, .04), rgba(0,0,0,.72) 65%); filter: none; }
+  .public-whatsapp-ready-header { inset: 0 20px auto; padding: 16px 0 12px; }
+  .public-whatsapp-ready-header img { width: 82px; }
+  .public-whatsapp-ready-header > span { font-size: 9px; }
+  .public-whatsapp-ready-hero { justify-items: center; gap: 10px; margin-bottom: 18px; text-align: center; }
+  .public-whatsapp-ready-hero h1 { font-size: clamp(38px, 12vw, 54px); }
+  .public-whatsapp-ready-hero > strong { font-size: 11px; letter-spacing: .22em; }
+  .public-whatsapp-ready-card { align-items: center; gap: 11px; padding: 18px 0 0; border-top: 1px solid rgba(255, 64, 47, .48); text-align: center; }
+  .public-whatsapp-ready-card h2 { max-width: 370px; font-size: 20px; line-height: 1.26; }
+  .public-whatsapp-ready-card p { max-width: 360px; font-size: 13px; line-height: 1.44; }
+  .public-whatsapp-ready-hint { max-width: 330px !important; font-size: 11px !important; }
+  .public-whatsapp-ready-arrow { font-size: 38px; }
+  .public-whatsapp-ready-btn { min-height: 68px; padding: 9px 12px; border-radius: 20px; font-size: 13px; }
+  .public-whatsapp-ready-btn .public-whatsapp-mark,
+  .public-whatsapp-ready-btn .public-whatsapp-mark svg { width: 38px; height: 38px; }
+  .public-whatsapp-ready-btn > b { grid-column: 2; justify-items: start; font-size: 11px; }
+  .public-whatsapp-ready-btn > svg { grid-column: 4; grid-row: 1 / span 2; width: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-whatsapp-ready-arrow { animation: none; }
+}
+
+.public-recommended-dots-overlay button:hover {
   background: rgba(255,255,255,0.7);
 }
-.public-recommended-dots-overlay span.active {
+.public-recommended-dots-overlay button.active {
   width: 16px;
   border-radius: 999px;
   background: #E31B2B;
   box-shadow: 0 0 9px rgba(227,27,43,.55);
 }
+.public-recommended-dots-overlay button:focus-visible { outline: 2px solid #FFD23F; outline-offset: 3px; }
 @keyframes public-recommended-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes public-recommended-copy-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes public-recommended-image-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: scale(1); } }
@@ -776,7 +942,7 @@ button.mobile-only {
 .public-prod-footer-row {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   margin-top: auto;
   padding-top: 6px;
@@ -821,22 +987,44 @@ button.mobile-only {
 }
 .public-prod-add {
   position: static;
-  width: 32px;
-  height: 32px;
-  background: #E31B2B;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  background: linear-gradient(135deg, #C91625 0%, #E31B2B 52%, #F2383C 100%);
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   color: #FFF;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 4px 12px rgba(227,27,43,0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 8px 18px rgba(227,27,43,0.28), inset 0 1px 0 rgba(255,255,255,.16);
   cursor: pointer;
-  transition: transform var(--public-motion-fast) var(--public-ease), background var(--public-motion-fast) ease;
+  font: 800 11.5px/1 'DM Sans', sans-serif;
+  letter-spacing: 0;
+  white-space: nowrap;
+  transition: transform var(--public-motion-fast) var(--public-ease), background var(--public-motion-fast) ease, box-shadow var(--public-motion-fast) ease;
 }
 .public-prod-add span {
-  display: none;
+  display: inline;
 }
+.public-prod-add-label-short {
+  display: none !important;
+}
+.public-prod-add:hover { background: linear-gradient(135deg, #E31B2B 0%, #F2383C 55%, #FF5A52 100%); box-shadow: 0 10px 24px rgba(227,27,43,.42), inset 0 1px 0 rgba(255,255,255,.2); }
+.public-prod-add:focus-visible { outline: 3px solid rgba(255,210,63,.78); outline-offset: 3px; }
+.public-prod-add svg { width: 16px; height: 16px; flex: 0 0 auto; }
 .public-prod-add:active, .public-favorite-btn:active, .public-primary:active { transform: scale(.94); }
+
+@media (max-width: 380px) {
+  .public-prod-add {
+    min-height: 42px;
+    padding: 0 6px;
+    gap: 5px;
+    font-size: 10.5px;
+    letter-spacing: -.01em;
+  }
+}
 .public-favorite-btn {
   position: absolute;
   top: 18px;
@@ -1257,6 +1445,9 @@ button.mobile-only {
 .public-data-intro { display: grid; gap: 5px; padding: 0 4px; }
 .public-data-intro strong { color: #fff; font-size: clamp(18px, 3vw, 24px); line-height: 1.2; }
 .public-data-intro span { color: #aeb3ba; font-size: 13px; line-height: 1.45; }
+.public-demo-data-button { display: inline-flex; align-items: center; justify-content: center; align-self: start; gap: 7px; width: fit-content; min-height: 34px; margin: -4px 0 2px 4px; padding: 7px 12px; border: 1px solid rgba(255, 214, 102, .46); border-radius: 999px; background: rgba(255, 214, 102, .1); color: #FFD666; font: 800 11px/1 'DM Sans', sans-serif; cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.public-demo-data-button:hover { border-color: rgba(255, 214, 102, .8); background: rgba(255, 214, 102, .18); transform: translateY(-1px); }
+.public-demo-data-button:active { transform: translateY(0); }
 .public-data-form-card { display: grid; gap: 10px; padding: 0; }
 .public-data-form-card::before { display: none; }
 .public-data-form-card > label { padding: 0; }
@@ -1500,12 +1691,14 @@ button.mobile-only {
 .public-confirm-item strong { font-size: 23px; line-height: 1.15; white-space: pre-line; }
 .public-confirm-item span, .public-confirm-item small { color: #666a70; font-size: 16px; }
 .public-confirm-item b { align-self: start; color: #141518; font-size: 22px; white-space: nowrap; }
-.public-confirm-item button { position: static; border: 1px solid rgba(237,27,47,.3); background: rgba(237,27,47,.08); color: #ed1b2f; font: 700 13px 'DM Sans'; cursor: pointer; border-radius: 10px; padding: 7px 16px; transition: background .15s, border-color .15s; white-space: nowrap; align-self: start; margin-top: 2px; width: fit-content; }
+.public-confirm-item button { position: static; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid rgba(237,27,47,.3); background: rgba(237,27,47,.08); color: #ed1b2f; font: 700 13px 'DM Sans'; cursor: pointer; border-radius: 10px; padding: 7px 16px; transition: background .15s, border-color .15s; white-space: nowrap; align-self: start; margin-top: 2px; width: fit-content; }
+.public-confirm-item button svg { width: 14px; height: 14px; flex: 0 0 auto; }
 .public-confirm-item button:hover { background: rgba(237,27,47,.16); border-color: rgba(237,27,47,.5); }
 .public-confirm-info { display: grid; gap: 12px; }
 .public-confirm-info button { position: relative; display: grid; gap: 4px; padding: 18px 22px; border: 1px solid #d0d0d0; border-radius: 18px; background: #fff; color: #141518; text-align: left; cursor: pointer; }
 .public-confirm-page .public-confirm-info { gap: 0; }
 .public-confirm-page .public-confirm-info button { border: 0; border-radius: 0; border-top: 1px solid #d7d7d7; padding: 16px 4px; }
+.public-confirm-page .public-confirm-info button:first-child { border-top: 0; }
 .public-confirm-page .public-confirm-info button:last-child { border-bottom: 1px solid #d7d7d7; }
 .public-confirm-page .public-confirm-info button > svg { width: 30px; height: 30px; padding: 7px; box-sizing: border-box; border: 1px solid #ed1b2f; border-radius: 50%; }
 .public-confirm-page .public-confirm-info button > div strong { color: #65686d; font-size: 13px; font-weight: 500; }
@@ -1907,14 +2100,7 @@ button.mobile-only {
 }
 
 .public-skeleton-block::after {
-  content: '' !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent) !important;
-  animation: public-skeleton-shimmer 2s ease-in-out infinite !important;
+  display: none !important;
 }
 
 @keyframes public-skeleton-shimmer {
@@ -2094,8 +2280,68 @@ button.mobile-only {
 }
 @keyframes public-hint-nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
 
+/* El fondo del catálogo no debe convertirse en un bloque negro en móvil.
+   public-flow-bg aporta las brasas y las ondas, pero su parte superior es
+   prácticamente negra; estas capas mantienen la textura sin dejar huecos
+   visuales alrededor del recomendado y de las primeras categorías. */
+@media (max-width: 1279px) {
+  .public-menu-page {
+    background-color: #190408;
+    background-image:
+      radial-gradient(ellipse 105% 34% at 50% 17%, rgba(122, 8, 23, 0.5), transparent 78%),
+      linear-gradient(180deg, rgba(30, 4, 10, 0.94) 0%, rgba(23, 3, 9, 0.78) 47%, rgba(18, 3, 8, 0.38) 100%),
+      url('/optimized/fondos/public-flow-bg.webp');
+    background-position: center top, center, center bottom;
+    background-size: 100% 100%, 100% 100%, cover;
+    background-attachment: scroll, scroll, scroll;
+  }
+
+  .public-menu-page::before {
+    background: rgba(5, 6, 8, 0.12);
+  }
+
+  .public-mobile-view,
+  .public-content,
+  .public-category-section {
+    background: transparent;
+  }
+
+  .public-recommended-card {
+    background: linear-gradient(135deg, rgba(35, 7, 13, 0.92), rgba(17, 11, 17, 0.88));
+  }
+}
+
 /* Desktop & Tablet Layout */
 @media (min-width: 768px) {
+  /* En computadora Favoritos pertenece al encabezado del catálogo, igual que
+     en teléfono; no debe aparecer como una franja separada junto al hero. */
+  .public-menu-discovery > .public-favorites-inline {
+    display: none !important;
+  }
+
+  .public-list-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    min-height: 72px !important;
+    margin: 0 20px 18px !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+    background: linear-gradient(120deg, rgba(20,21,27,.9), rgba(12,13,17,.78)) !important;
+  }
+
+  .public-list-header > h2 {
+    display: block !important;
+  }
+
+  .public-list-header .public-favorites-inline {
+    display: inline-flex !important;
+    min-height: 40px !important;
+    padding: 7px 12px !important;
+    border-radius: 11px !important;
+    background: rgba(255,255,255,.04) !important;
+  }
+
   .public-top-bar, .public-hero-header,
   .public-categories-scroll, .public-list-header, .public-product-list {
     max-width: 860px;
@@ -3397,9 +3643,9 @@ button.mobile-only {
 
   .public-prod-add {
     position: static !important;
-    width: auto !important;
-    min-width: 92px !important;
-    height: 36px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 44px !important;
     padding: 0 14px !important;
     border-radius: 999px !important;
     background: linear-gradient(135deg, #CC1A1A 0%, #E62B20 50%, #FF3D2E 100%) !important;
@@ -3415,7 +3661,7 @@ button.mobile-only {
     box-shadow: 0 3px 12px rgba(227, 27, 43, 0.4) !important;
     transition: all 0.2s ease !important;
     white-space: nowrap !important;
-    margin-left: 0 !important;
+    margin: 0 !important;
     flex-shrink: 0 !important;
   }
 
@@ -5731,16 +5977,7 @@ button.mobile-only {
 
   .public-sidebar-checkout-btn:not(:disabled)::after,
   .public-hero-btn::after {
-    content: '' !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: -120% !important;
-    width: 60% !important;
-    height: 100% !important;
-    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.22) 50%, transparent 100%) !important;
-    transform: skewX(-25deg) !important;
-    animation: btnLightSweep 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
-    pointer-events: none !important;
+    display: none !important;
   }
 
   .public-sidebar-checkout-btn:not(:disabled):hover {
@@ -5841,6 +6078,15 @@ button.mobile-only {
     grid-template-rows: minmax(0, 1fr) auto !important;
     overflow: hidden !important;
     transform-origin: center center !important;
+    animation: public-detail-desktop-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  /* El backdrop ya controla el fundido. El modal conserva movimiento y escala,
+     pero no se vuelve transparente, evitando que el degradado se descomponga
+     durante el primer frame de la apertura. */
+  @keyframes public-detail-desktop-enter {
+    from { opacity: 1; transform: scale(0.985) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
   }
 
   .ppdm-image {
@@ -5857,12 +6103,11 @@ button.mobile-only {
   .ppdm-image-gradient {
     background:
       linear-gradient(to right, transparent 60%, rgba(14, 16, 21, 0.95)),
-      linear-gradient(to bottom, transparent 45%, rgba(6,7,9,0.75)) !important;
-    height: 100% !important;
-    width: 100% !important;
-    right: 0 !important;
-    left: 0 !important;
-    top: 0 !important;
+      linear-gradient(to bottom, transparent 38%, rgba(6,7,9,0.55) 65%, #0D0F12 100%) !important;
+    inset: 0 -1px -1px 0 !important;
+    width: auto !important;
+    height: auto !important;
+    z-index: 1 !important;
   }
 
   /* En escritorio la foto es solo la columna izquierda (44%): el nombre
@@ -6290,25 +6535,26 @@ button.mobile-only {
   .public-drawer-backdrop .public-cart-drawer .public-address-continue { min-height: 46px !important; font-size: 15px !important; margin-top: 4px !important; }
   .public-drawer-backdrop .public-cart-drawer .public-address-step-suggestions { top: 50px !important; }
 
-  /* === Paso "Confirmar pedido": recibo compacto que entra en la tarjeta === */
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page { padding: 14px !important; gap: 8px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-receipt { padding: 10px 12px 12px !important; gap: 8px !important; border-radius: 0 !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head { padding: 0 0 8px !important; gap: 8px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head img { width: 48px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head strong { font-size: 13px !important; }
+  /* === Paso "Confirmar pedido": el recibo conserva en escritorio la misma
+     jerarquía visual del teléfono, adaptada al ancho del drawer. === */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page { padding: 14px !important; gap: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-receipt { padding: 14px 16px 18px !important; gap: 10px !important; border-radius: 6px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head { padding: 4px 0 12px !important; gap: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head img { width: 76px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head strong { font-size: 15px !important; }
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head span,
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head small { font-size: 11px !important; }
 
   .public-drawer-backdrop .public-cart-drawer .public-confirm-item {
-    grid-template-columns: 38px minmax(0,1fr) auto !important;
-    gap: 6px 10px !important; min-height: 0 !important; padding: 8px 0 !important;
+    grid-template-columns: 64px minmax(0,1fr) auto !important;
+    gap: 8px 12px !important; min-height: 0 !important; padding: 12px 0 !important;
   }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-item img { width: 38px !important; height: 38px !important; border-radius: 8px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-item strong { font-size: 13px !important; line-height: 1.15 !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item img { width: 64px !important; height: 64px !important; border-radius: 10px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item strong { font-size: 15px !important; line-height: 1.2 !important; }
   .public-drawer-backdrop .public-cart-drawer .public-confirm-item span,
   .public-drawer-backdrop .public-cart-drawer .public-confirm-item small { font-size: 11.5px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-item b { font-size: 13px !important; align-self: start !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-item button { position: static !important; font-size: 11px !important; padding: 5px 12px !important; border-radius: 8px !important; margin-top: 2px !important; width: fit-content !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item b { font-size: 15px !important; align-self: start !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item button { position: static !important; font-size: 12px !important; padding: 6px 13px !important; border-radius: 10px !important; margin-top: 4px !important; width: fit-content !important; }
   /* La lista y el bloque de totales ya no arrastran el espaciado alto del
      diseño móvil original: se comprimen para que la tarjeta se lea de una
      sola vez, sin aire vacío entre el producto y el subtotal. */
@@ -6326,19 +6572,23 @@ button.mobile-only {
 
   /* Totales del recibo, más compactos */
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total > strong,
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total em { font-size: 13px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total > span { font-size: 12px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b { padding-top: 8px !important; margin-top: 4px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total em { font-size: 14px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total > span { font-size: 13px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total .public-total-bs {
+    margin-top: -1px !important;
+    line-height: 1.05 !important;
+  }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b { padding-top: 10px !important; margin-top: 6px !important; font-size: 22px !important; }
 
   /* Bloque "Entrega" / "Datos de contacto": misma compactación que el resto
      de la tarjeta (heredaba el espaciado alto del diseño móvil original). */
   .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info { margin-top: 2px !important; gap: 0 !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button { padding: 6px 4px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > svg { left: 4px !important; width: 18px !important; height: 18px !important; padding: 3px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div { padding-left: 28px !important; gap: 1px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div strong { font-size: 11.5px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div span { font-size: 12px !important; }
-  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div small { font-size: 11px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button { padding: 10px 4px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > svg { left: 4px !important; width: 22px !important; height: 22px !important; padding: 3px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div { padding-left: 34px !important; gap: 2px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div strong { font-size: 12.5px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div span { font-size: 13px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button > div small { font-size: 11.5px !important; }
 
   /* CTA "Enviar pedido": fluye normal al final de la tarjeta, sin quedar
      pegado (sticky) mientras se hace scroll dentro del recibo. */
@@ -6461,6 +6711,468 @@ button.mobile-only {
     transition-duration: .01ms !important;
   }
 }
+
+/* Confirmar pedido es una accion propia de Full China, no el envio por
+   WhatsApp. Se separa visualmente del CTA verde de la pantalla siguiente. */
+.public-step-confirm .public-whatsapp-cta {
+  justify-content: center !important;
+  gap: 12px !important;
+  background: linear-gradient(135deg, #CC1A1A 0%, #E31B2B 55%, #FF3D2E 100%) !important;
+  border-color: rgba(255, 108, 98, .7) !important;
+  box-shadow: 0 12px 26px rgba(227, 27, 43, .3) !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-mark,
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-arrow,
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-copy small {
+  display: none !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-copy {
+  display: block !important;
+  text-align: center !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong {
+  font-size: 16px !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong::after {
+  content: none !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-total {
+  margin-left: 0 !important;
+  font-size: 15px !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong {
+  font-size: 0 !important;
+}
+.public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong::after {
+  content: 'Confirmar pedido' !important;
+  font-size: 16px !important;
+}
+
+/* Pantalla intermedia de confirmacion: conserva el lenguaje visual del flujo
+   publico, pero marca con claridad que aun falta el envio por WhatsApp. */
+.public-whatsapp-ready-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  overflow-y: auto;
+  padding: 18px;
+  background: url('/optimized/fondos/public-flow-bg.webp') center bottom / cover no-repeat;
+  animation: public-whatsapp-ready-in 320ms var(--public-ease) both;
+}
+.public-whatsapp-ready-page {
+  width: min(100%, 620px);
+  min-height: calc(100dvh - 36px);
+  margin: 0 auto;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  color: #FFF;
+}
+.public-whatsapp-ready-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 4px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  font-size: 12px;
+  font-weight: 800;
+  color: #D9DCE2;
+}
+.public-whatsapp-ready-header img { width: 92px; height: auto; object-fit: contain; }
+.public-whatsapp-ready-hero {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  padding: 24px 16px 22px;
+  border: 1px solid rgba(227,27,43,.28);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(86,8,17,.9), rgba(19,12,16,.96));
+  box-shadow: 0 18px 42px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
+  text-align: center;
+}
+.public-whatsapp-ready-icon {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  background: #08A943;
+  color: #FFF;
+  box-shadow: 0 0 0 9px rgba(8,169,67,.12), 0 10px 26px rgba(8,169,67,.28);
+}
+.public-whatsapp-ready-icon .public-whatsapp-mark { width: 40px; height: 40px; }
+.public-whatsapp-ready-icon .public-whatsapp-mark svg { width: 40px; height: 40px; }
+.public-whatsapp-ready-hero h1 { margin: 0; font-size: clamp(24px, 7vw, 34px); line-height: 1.08; }
+.public-whatsapp-ready-hero > strong { color: #FFD666; font-size: 20px; letter-spacing: .04em; }
+.public-whatsapp-ready-card {
+  display: grid;
+  gap: 10px;
+  padding: 22px 20px 20px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  background: rgba(14,16,21,.9);
+  box-shadow: 0 16px 36px rgba(0,0,0,.24);
+}
+.public-whatsapp-ready-kicker { color: #FF5A52; font-size: 11px; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.public-whatsapp-ready-card h2 { margin: 0; font-size: 25px; line-height: 1.1; }
+.public-whatsapp-ready-card p { margin: 0; color: #D8DBE1; font-size: 15px; line-height: 1.45; }
+.public-whatsapp-ready-hint { color: #979DA8 !important; font-size: 12px !important; }
+.public-whatsapp-ready-btn {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 62px;
+  margin-top: 5px;
+  padding: 10px 14px;
+  border: 1px solid #20DC67;
+  border-radius: 16px;
+  background: linear-gradient(105deg, #04A945, #0ACB57 55%, #079B40);
+  color: #FFF;
+  box-shadow: 0 12px 26px rgba(0,145,61,.25);
+  cursor: pointer;
+  font: 800 14px/1.1 'DM Sans', sans-serif;
+  text-align: left;
+}
+.public-whatsapp-ready-btn:hover { transform: translateY(-1px); box-shadow: 0 16px 30px rgba(0,145,61,.35); }
+.public-whatsapp-ready-btn .public-whatsapp-mark { width: 30px; height: 30px; }
+.public-whatsapp-ready-btn .public-whatsapp-mark svg { width: 30px; height: 30px; }
+.public-whatsapp-ready-btn > b { display: grid; justify-items: end; color: #FFF; font-size: 13px; white-space: nowrap; }
+.public-whatsapp-ready-btn > b small { color: rgba(255,255,255,.75); font-size: 9px; margin-top: 2px; }
+.public-whatsapp-ready-btn > svg { width: 18px; flex: 0 0 auto; }
+.public-whatsapp-ready-footnote { color: #858B96; font-size: 11px; text-align: center; }
+@keyframes public-whatsapp-ready-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* Composicion final de confirmacion: zona roja de exito arriba y zona oscura
+   de instrucciones abajo, como una sola pagina continua. */
+.public-whatsapp-ready-page { width: min(100%, 660px); gap: 0; padding-top: 0; overflow: hidden; background: rgba(6,7,9,.58); }
+.public-whatsapp-ready-page .public-whatsapp-ready-header { width: calc(100% - 28px); margin: 0 auto; padding: 18px 0 12px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual { width: 100%; height: 158px; margin: 0; padding: 0 20px; box-sizing: border-box; background: linear-gradient(180deg, #8f0c19 0%, #c81727 100%); }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green { width: 17%; top: 28%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new { top: 0; width: min(32%, 230px); }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow { top: 45%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero { width: 100%; padding: 0 18px 18px; border: 0; border-radius: 0; background: linear-gradient(180deg, #c81727 0%, #a50d1b 100%); box-shadow: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero h1 { font-size: clamp(25px, 6vw, 34px); line-height: 1.08; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero > strong { font-size: 19px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card { width: 100%; padding: 22px 20px 20px; gap: 10px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-kicker { margin: 0; color: #ff5a52; font-size: 12px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card h2 { margin: 0; font-size: clamp(19px, 4.5vw, 25px); line-height: 1.28; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card p { font-size: 14px; line-height: 1.42; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hint { color: #969ca6 !important; font-size: 11px !important; }
+.public-whatsapp-ready-arrow { display: block; margin: 2px auto 0; color: #FFD666; font-size: 40px; font-weight: 800; line-height: .7; text-shadow: 0 0 12px rgba(255,214,102,.42); animation: public-whatsapp-arrow-down 1.25s ease-in-out infinite; }
+@keyframes public-whatsapp-arrow-down { 0%, 100% { transform: translateY(0); opacity: .72; } 50% { transform: translateY(8px); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .public-whatsapp-ready-arrow { animation: none; } }
+
+/* Override final de posición: la tarjeta nace sobre el último tramo del wok y
+   queda por encima del fondo hasta fundirse suavemente en su borde inferior. */
+.public-whatsapp-ready-page {
+  display: block !important;
+  padding-top: clamp(270px, 32vh, 390px) !important;
+  padding-bottom: 48px !important;
+  overflow-y: auto !important;
+}
+.public-whatsapp-ready-content { margin: 0 auto !important; }
+@media (max-width: 760px) {
+  .public-whatsapp-ready-page {
+    display: block !important;
+    padding: 245px 20px calc(30px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* La tarjeta de confirmación contiene todo el mensaje y se funde por abajo
+   con la escena, como en la referencia visual. */
+.public-whatsapp-ready-page {
+  display: block !important;
+  padding-top: clamp(230px, 31vh, 340px) !important;
+  overflow-y: auto !important;
+}
+.public-whatsapp-ready-content {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 660px);
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 26px 30px 40px;
+  border: 1px solid rgba(237, 27, 47, .82);
+  border-bottom-color: transparent;
+  border-radius: 28px 28px 45% 45% / 24px 24px 9% 9%;
+  background: linear-gradient(180deg, rgba(34, 3, 7, .94) 0%, rgba(18, 3, 6, .84) 66%, rgba(8, 3, 5, .12) 100%);
+  box-shadow: 0 0 0 1px rgba(255, 59, 48, .08), 0 -8px 32px rgba(227, 27, 43, .16), inset 0 1px 0 rgba(255, 106, 92, .16);
+}
+.public-whatsapp-ready-content::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  right: 6%;
+  bottom: -18%;
+  left: 6%;
+  height: 34%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(11, 3, 6, .5), transparent);
+  filter: blur(7px);
+  pointer-events: none;
+}
+.public-whatsapp-ready-content .public-whatsapp-ready-hero,
+.public-whatsapp-ready-content .public-whatsapp-ready-card {
+  width: 100% !important;
+  box-sizing: border-box;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.public-whatsapp-ready-content .public-whatsapp-ready-hero {
+  justify-items: center;
+  gap: 10px;
+  padding: 0 0 22px !important;
+  border-bottom: 1px solid rgba(237, 27, 47, .34) !important;
+  text-align: center;
+}
+.public-whatsapp-ready-content .public-whatsapp-ready-hero h1 { font-size: clamp(32px, 5vw, 54px); }
+.public-whatsapp-ready-content .public-whatsapp-ready-hero > strong { font-size: 12px; }
+.public-whatsapp-ready-content .public-whatsapp-ready-card {
+  align-items: center;
+  gap: 12px;
+  padding: 22px 0 0 !important;
+  text-align: center;
+}
+.public-whatsapp-ready-content .public-whatsapp-ready-card h2 { max-width: 560px; font-size: clamp(19px, 2.6vw, 27px); }
+.public-whatsapp-ready-content .public-whatsapp-ready-card p { max-width: 520px; }
+.public-whatsapp-ready-content .public-whatsapp-ready-btn { width: min(100%, 560px); }
+
+@media (max-width: 760px) {
+  .public-whatsapp-ready-page { padding: 230px 20px calc(30px + env(safe-area-inset-bottom)) !important; }
+  .public-whatsapp-ready-content {
+    width: 100%;
+    padding: 22px 16px 34px;
+    border-radius: 22px 22px 42% 42% / 20px 20px 7% 7%;
+  }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero { padding-bottom: 18px !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 { font-size: clamp(31px, 9.5vw, 46px); }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card { padding-top: 18px !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 { font-size: 19px; line-height: 1.25; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p { font-size: 13px; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn { width: 100%; }
+}
+.public-whatsapp-ready-page .public-whatsapp-ready-btn { min-height: 52px; margin-top: 2px; border-radius: 10px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn .public-whatsapp-mark { width: 30px; height: 30px; background: url('/optimized/cargando-pedido/whatsapp-circulo-verde.webp') center / contain no-repeat; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn .public-whatsapp-mark svg { display: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn .public-whatsapp-copy { min-width: 0; white-space: nowrap; }
+
+/* La pantalla de WhatsApp se lee como una sola pagina, no como tres tarjetas
+   apiladas. Conserva los bordes de marca solo donde ayudan a orientar. */
+.public-whatsapp-ready-page { width: min(100%, 660px); gap: 10px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero,
+.public-whatsapp-ready-page .public-whatsapp-ready-card { width: 100%; box-sizing: border-box; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero { padding: 8px 4px 4px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-icon { display: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card { gap: 9px; padding: 8px 4px 4px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-kicker { margin-top: 6px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card h2 { font-size: clamp(21px, 4vw, 28px); }
+.public-whatsapp-ready-page .public-whatsapp-ready-card p { max-width: 590px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hint { margin-top: 1px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn { grid-template-columns: auto minmax(0,1fr) auto auto; min-height: 52px; border-radius: 14px; padding: 7px 12px; font-size: 13px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn > b { grid-column: auto; justify-items: end; font-size: 13px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn > svg { grid-column: auto; grid-row: auto; }
+.public-whatsapp-ready-page { gap: 0; padding-top: 0; overflow: hidden; }
+.public-whatsapp-ready-page .public-whatsapp-ready-header { width: calc(100% - 28px); margin: 0 auto; padding: 18px 0 12px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual { width: 100%; height: 158px; margin: 0; padding: 0 20px; box-sizing: border-box; background: linear-gradient(180deg, #8f0c19 0%, #c81727 100%); }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green { width: 17%; top: 28%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new { top: 0; width: min(32%, 230px); }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow { top: 45%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero { width: 100%; padding: 0 18px 18px; border: 0; border-radius: 0; background: linear-gradient(180deg, #c81727 0%, #a50d1b 100%); box-shadow: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card { width: 100%; padding: 22px 20px 20px; gap: 10px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.public-whatsapp-ready-page .public-whatsapp-ready-kicker { margin: 0; color: #ff5a52; font-size: 12px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card h2 { margin: 0; font-size: clamp(19px, 4.5vw, 25px); line-height: 1.28; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card p { font-size: 14px; line-height: 1.42; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hint { color: #969ca6 !important; font-size: 11px !important; }
+.public-whatsapp-ready-arrow { display: block; margin: -2px auto 0; color: #fff; font-size: 44px; line-height: .7; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn { min-height: 52px; margin-top: 2px; border-radius: 10px; }
+
+/* Ajuste final de composicion: menos bloques, mas continuidad y una lectura
+   centrada de confirmacion. */
+.public-whatsapp-ready-page { width: min(100%, 620px); min-height: 100dvh; gap: 0; padding: 0 14px 24px; background: transparent; }
+.public-whatsapp-ready-page .public-whatsapp-ready-header { width: 100%; padding: 14px 0 10px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-header img { width: 82px; }
+.public-whatsapp-ready-close { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; background: rgba(255,255,255,.06); color: #fff; cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.public-whatsapp-ready-close:hover { border-color: rgba(255,90,82,.8); background: rgba(227,27,43,.22); transform: scale(1.05); }
+.public-whatsapp-ready-close:active { transform: scale(.95); }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual { height: 142px; padding: 0; background: transparent; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green { width: 15%; top: 30%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red { left: 9%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green { right: 9%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new { top: -2%; width: min(29%, 205px); }
+.public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow { top: 46%; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero { padding: 0 8px 15px; border-top: 1px solid rgba(227,27,43,.48); border-bottom: 1px solid rgba(227,27,43,.28); background: linear-gradient(180deg, rgba(120,7,18,.78), rgba(64,5,12,.32)); }
+.public-whatsapp-ready-page .public-whatsapp-ready-hero h1 { font-size: clamp(25px, 6vw, 33px); }
+.public-whatsapp-ready-page .public-whatsapp-ready-card { align-items: center; padding: 20px 4px 0; text-align: center; }
+.public-whatsapp-ready-page .public-whatsapp-ready-kicker { align-self: center; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card h2,
+.public-whatsapp-ready-page .public-whatsapp-ready-card p { max-width: 350px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card h2 { font-size: 19px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-card p { font-size: 13px; }
+.public-whatsapp-ready-page .public-whatsapp-ready-hint { max-width: 320px !important; }
+.public-whatsapp-ready-page .public-whatsapp-ready-arrow { font-size: 34px; margin: 2px auto 0; }
+.public-whatsapp-ready-page .public-whatsapp-ready-btn { width: min(100%, 470px); min-height: 50px; }
+
+@media (max-width: 560px) {
+  .public-whatsapp-ready-page .public-whatsapp-ready-btn { grid-template-columns: auto minmax(0,1fr) auto auto; min-height: 50px; padding: 6px 9px; font-size: 11px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-btn > b { grid-column: auto; justify-items: end; font-size: 11px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-btn > svg { grid-column: auto; grid-row: auto; }
+}
+.public-whatsapp-ready-visual { width: min(100%, 620px); height: 176px; margin: -2px auto 0; transform: none; overflow: visible; }
+.public-whatsapp-ready-visual .preparing-fire-red,
+.public-whatsapp-ready-visual .preparing-whatsapp-green { width: 17%; top: 32%; }
+.public-whatsapp-ready-visual .preparing-fire-red { left: 5%; }
+.public-whatsapp-ready-visual .preparing-whatsapp-green { right: 5%; }
+.public-whatsapp-ready-visual .preparing-wok-new { top: 2%; width: min(32%, 240px); }
+.public-whatsapp-ready-visual .preparing-composition-arrow { top: 47%; }
+
+@media (max-width: 560px) {
+  .public-whatsapp-ready-page { gap: 0; padding-top: 0; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-header { width: calc(100% - 20px); padding: 14px 0 10px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual { height: 146px; padding: 0 12px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green { width: 17%; top: 29%; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new { top: 0; width: 32%; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-hero { padding: 0 14px 15px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-card { padding: 18px 14px 16px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-card h2 { font-size: 19px; line-height: 1.3; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-card p { font-size: 13px; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-btn { min-height: 50px; }
+
+  .public-whatsapp-ready-backdrop { padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); }
+  .public-whatsapp-ready-page { min-height: calc(100dvh - 28px); gap: 10px; }
+  .public-whatsapp-ready-header { padding-bottom: 10px; }
+  .public-whatsapp-ready-header img { width: 74px; }
+  .public-whatsapp-ready-hero { padding: 20px 12px 18px; border-radius: 18px; }
+  .public-whatsapp-ready-card { padding: 18px 14px 16px; border-radius: 16px; }
+  .public-whatsapp-ready-card h2 { font-size: 21px; }
+  .public-whatsapp-ready-card p { font-size: 14px; }
+  .public-whatsapp-ready-btn { grid-template-columns: auto minmax(0,1fr) auto; min-height: 58px; padding: 8px 10px; font-size: 12px; }
+  .public-whatsapp-ready-btn > b { grid-column: 2; justify-items: start; font-size: 11px; }
+  .public-whatsapp-ready-btn > svg { grid-column: 3; grid-row: 1 / span 2; }
+  .public-whatsapp-ready-visual { height: 156px; margin-top: 0; }
+  .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-visual .preparing-whatsapp-green { width: 18%; top: 33%; }
+  .public-whatsapp-ready-visual .preparing-wok-new { top: 1%; width: 34%; }
+  .public-whatsapp-ready-visual .preparing-composition-arrow { top: 47%; }
+  .public-whatsapp-ready-page { gap: 0; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual { margin-bottom: 0; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-hero { margin-top: 0; }
+}
+
+/* Reserva espacio para los CTAs sticky de los pasos móviles restantes, de
+   modo que el contenido final pueda desplazarse por encima del botón y nunca
+   quede oculto detrás de su superficie o sombra. La confirmación tiene su
+   propio tratamiento estático más arriba. */
+@media (max-width: 1023px) {
+  .public-drawer-backdrop .public-cart-drawer .public-review-page,
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-step,
+  .public-drawer-backdrop .public-cart-drawer .public-address-step,
+  .public-drawer-backdrop .public-cart-drawer .public-checkout {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* En el recibo móvil el CTA debe formar parte del flujo del contenido. Si se
+   deja sticky, su sombra y su superficie pueden tapar la nota de seguridad
+   que aparece justo debajo al llegar al final del scroll. */
+@media (max-width: 560px) {
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt {
+    border-radius: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-whatsapp-cta {
+    position: static !important;
+    margin-top: 8px !important;
+    box-shadow: 0 10px 24px rgba(8, 169, 67, .28) !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-order-security {
+    margin: 0 !important;
+    padding: 0 4px !important;
+  }
+
+  /* El resumen heredaba el margen amplio del layout de escritorio y dejaba
+     huecos innecesarios entre el pedido, el total y los datos. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total {
+    margin: 8px 0 !important;
+  }
+
+  /* En confirmar pedido se conserva la accion con el nombre correcto. La
+     regla anterior ocultaba el texto real para reemplazarlo visualmente,
+     pero su `content: none !important` tambien anulaba ese reemplazo. */
+  .public-drawer-backdrop .public-cart-drawer .public-step-confirm .public-whatsapp-cta .public-whatsapp-copy {
+    width: auto !important;
+    min-width: max-content !important;
+    flex: 0 0 auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong {
+    display: block !important;
+    font-size: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong::after {
+    content: 'Confirmar pedido' !important;
+    font-size: 14px !important;
+    line-height: 1.15 !important;
+  }
+
+  /* El precio permanece arriba a la derecha; editar queda debajo como una
+     accion secundaria y deja de competir con el monto. El area completa
+     sigue midiendo 36px para que sea facil tocarla. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row {
+    padding-right: 44px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div {
+    position: relative;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button {
+    position: absolute !important;
+    top: 8px;
+    right: 0;
+    width: 36px;
+    height: 36px;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > b {
+    right: 42px !important;
+    top: 10px !important;
+  }
+}
 .ppdm-image {
   position: relative;
   /* La foto domina la apertura del modal en vez de ceder rápido al texto. */
@@ -6473,9 +7185,12 @@ button.mobile-only {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  animation: public-detail-img-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* Foto y degradado deben aparecer como una sola composición. La entrada
+     del modal/backdrop conserva el movimiento general sin desincronizarlos. */
+  animation: none;
+  opacity: 1;
+  transform: none;
 }
-@keyframes public-detail-img-in { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: scale(1); } }
 .ppdm-close {
   position: absolute;
   top: 12px;
@@ -6502,10 +7217,10 @@ button.mobile-only {
 .ppdm-close:active { transform: scale(0.9); }
 .ppdm-image-gradient {
   position: absolute;
-  bottom: 0;
   left: 0;
   right: 0;
-  height: 65%;
+  height: calc(65% + 16px);
+  bottom: -16px;
   background: linear-gradient(to bottom, transparent, rgba(6,7,9,0.55) 55%, #0D0F12 100%);
   pointer-events: none;
 }
@@ -6528,6 +7243,15 @@ button.mobile-only {
   letter-spacing: -0.01em;
   text-shadow: 0 2px 16px rgba(0,0,0,0.5);
   animation: public-text-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+}
+.ppdm-hero-copy h1 {
+  max-width: 100%;
+  font-size: clamp(22px, 5.2vw, 28px);
+  line-height: 1.12;
+  text-wrap: balance;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 .ppdm-hero-copy .ppdm-price {
   animation: public-text-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.22s both;
@@ -7418,19 +8142,62 @@ button.mobile-only {
   visibility: hidden !important;
 }
 
-/* Hide scrollbars across the ordering app (page scroll, the window
-   scrollbar it drives, and every scrollable panel inside it) */
+/* El scroll de la página completa debe poder encontrarse, pero sin competir
+   con el menú ni parecer una segunda línea de borde. Los paneles internos
+   mantienen sus propias reglas cuando realmente tienen overflow. */
 .public-menu-page,
-.public-menu-page *,
 body:has(.public-menu-page) {
-  scrollbar-width: none !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 90, 82, .38) transparent !important;
 }
+
+/* Corrección de alineación del producto confirmado en escritorio: la
+   porción y Editar se acercan al título de la comida. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div > span {
+    position: relative !important;
+    top: -24px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button {
+    top: 8px !important;
+  }
+}
+
+/* La hoja blanca de la factura debe continuar el borde dentado: en
+   computadora se eliminan únicamente sus esquinas redondeadas. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt {
+    border-radius: 0 !important;
+  }
+}
+
 .public-menu-page::-webkit-scrollbar,
-.public-menu-page *::-webkit-scrollbar,
 body:has(.public-menu-page)::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  display: block !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.public-menu-page::-webkit-scrollbar-track,
+body:has(.public-menu-page)::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.public-menu-page::-webkit-scrollbar-thumb,
+body:has(.public-menu-page)::-webkit-scrollbar-thumb {
+  background: rgba(255, 90, 82, .38) !important;
+  border-radius: 999px !important;
+}
+
+.public-menu-page:hover,
+body:has(.public-menu-page):hover {
+  scrollbar-color: rgba(255, 90, 82, .7) transparent !important;
+}
+
+.public-menu-page:hover::-webkit-scrollbar-thumb,
+body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 90, 82, .7) !important;
 }
 
 .public-img--top-align {
@@ -7812,4 +8579,2286 @@ body:has(.public-menu-page)::-webkit-scrollbar {
   .public-variant-picker,
   .public-variant-backdrop.closing,
   .public-variant-backdrop.closing .public-variant-picker { animation: none; }
+}
+
+/* CTA de escritorio: visible para facilitar el descubrimiento, pero con un
+   estado reposado que se activa al pasar el mouse. El móvil conserva su
+   botón rojo compacto definido arriba. */
+@media (min-width: 768px) {
+  /* En escritorio el CTA comparte la línea inferior con el precio para
+     aprovechar el ancho de la tarjeta y evitar un vacío visual a la derecha. */
+  .public-prod-card {
+    position: relative !important;
+    padding-bottom: 12px !important;
+  }
+
+  .public-prod-card .public-prod-info {
+    padding-bottom: 0 !important;
+  }
+
+  .public-prod-card .public-prod-footer-row {
+    padding-right: 100px !important;
+  }
+
+  .public-prod-card .public-prod-price {
+    font-size: 15px !important;
+    white-space: nowrap !important;
+  }
+
+  .public-prod-card .public-prod-add {
+    position: absolute !important;
+    right: 10px !important;
+    bottom: 12px !important;
+    z-index: 4 !important;
+    pointer-events: auto !important;
+    width: auto !important;
+    min-width: 90px !important;
+    max-width: 96px !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 8px !important;
+    font-size: 10px !important;
+  }
+
+  .public-prod-card .public-prod-add-label-full {
+    display: none !important;
+  }
+
+  .public-prod-card .public-prod-add-label-short {
+    display: inline !important;
+  }
+
+  .public-prod-add {
+    min-height: 44px !important;
+    border: 1px solid rgba(255, 255, 255, .24) !important;
+    background: rgba(255, 255, 255, .035) !important;
+    color: #F3F4F6 !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05) !important;
+    transition: transform .2s ease, background .2s ease, border-color .2s ease, color .2s ease, box-shadow .2s ease !important;
+  }
+
+  .public-prod-add svg { color: #FF5A52 !important; transition: color .2s ease, transform .2s ease !important; }
+
+  .public-prod-add:hover,
+  .public-prod-card:hover .public-prod-add {
+    transform: translateY(-1px) !important;
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #D71929 0%, #E83232 55%, #FF4A43 100%) !important;
+    color: #FFF !important;
+    box-shadow: 0 9px 22px rgba(227, 27, 43, .38), inset 0 1px 0 rgba(255, 255, 255, .18) !important;
+  }
+
+  .public-prod-add:hover svg,
+  .public-prod-card:hover .public-prod-add svg { color: #FFF !important; transform: translateX(1px) !important; }
+
+  .public-prod-add:focus-visible {
+    border-color: #FFD23F !important;
+    background: rgba(227, 27, 43, .2) !important;
+    color: #FFF !important;
+    outline: 2px solid rgba(255, 210, 63, .7) !important;
+    outline-offset: 3px !important;
+  }
+}
+
+/* En el drawer de escritorio los dos mensajes del encabezado deben leerse
+   como subtítulos independientes, sin el salto forzado que usa el JSX para
+   la composición móvil. */
+@media (min-width: 561px) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading p {
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+    max-width: 100% !important;
+    overflow-wrap: normal !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading p br {
+    display: block !important;
+  }
+
+  /* En computadora el precio ocupa la columna derecha y Editar debe quedar
+     debajo de ese precio, no debajo del nombre del producto. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button {
+    position: static !important;
+    grid-column: 3 !important;
+    grid-row: 2 !important;
+    justify-self: end !important;
+    align-self: start !important;
+    margin: 2px 0 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row {
+    display: contents !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > strong {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: start !important;
+  }
+
+  /* El contenedor de nombre también debe ceder sus hijos al grid del
+     producto; de lo contrario Editar continúa quedándose debajo del nombre. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div {
+    display: contents !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div > span,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div > small {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    align-self: start !important;
+  }
+
+  /* El total es una etiqueta indivisible en todas las anchuras de drawer. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b em {
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b em {
+    font-size: 17px !important;
+  }
+}
+
+/* En computadora el encabezado de confirmación debe conservar una jerarquía
+   compacta dentro del drawer angosto: el título baja ligeramente de tamaño y
+   el subtítulo se mantiene como una sola línea. */
+@media (min-width: 1280px) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading h2 {
+    font-size: 20px !important;
+    letter-spacing: -.45px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading p {
+    font-size: 10px !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading p br {
+    display: none !important;
+  }
+}
+
+/* Ultimo ajuste del recibo movil: reducir scroll sin sacrificar legibilidad. */
+@media (max-width: 560px) {
+  /* En teléfono el desplazamiento sigue siendo táctil, pero la barra no se
+     dibuja: la barra roja gruesa competía con el recibo y con el contenido. */
+  .public-menu-page,
+  .public-drawer-backdrop .public-cart-drawer,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-items {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .public-menu-page::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page::-webkit-scrollbar,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-items::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* El encabezado tenía una altura mínima heredada del layout anterior y
+     dejaba demasiado aire antes del recibo. */
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-header {
+    min-height: 156px !important;
+    padding-top: 12px !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* El título y sus subtítulos forman un bloque compacto: no dejamos que el
+     título se parta ni que el salto explícito del JSX cree una línea huérfana
+     detrás del recibo. */
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading h2 {
+    white-space: nowrap !important;
+    font-size: 20px !important;
+    letter-spacing: -.6px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading p {
+    font-size: 11.5px !important;
+    line-height: 1.25 !important;
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-review-heading p br {
+    display: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page {
+    padding: 8px 10px 16px !important;
+    gap: 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt {
+    padding: 6px 8px 8px !important;
+    gap: 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt-head {
+    padding: 0 0 6px !important;
+  }
+
+  /* Reserva una columna visual para el importe: el nombre puede ocupar dos
+     lineas, pero nunca debe quedar pegado ni por debajo del precio. */
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div {
+    min-width: 0 !important;
+    padding-right: 0 !important;
+    position: static !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item {
+    grid-template-columns: 70px minmax(0, 1fr) 78px !important;
+    column-gap: 10px !important;
+    min-height: 98px !important;
+    padding-bottom: 40px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item img {
+    width: 70px !important;
+    height: 60px !important;
+    border-radius: 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row {
+    display: block !important;
+    min-width: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > strong {
+    display: block !important;
+    max-width: none !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > b {
+    position: static !important;
+    align-self: start !important;
+    min-width: 82px !important;
+    text-align: right !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > b .public-cart-item-bs {
+    margin-top: -2px !important;
+    line-height: 1.05 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button {
+    position: absolute !important;
+    right: -4px !important;
+    margin-right: 0 !important;
+    top: 48px !important;
+    justify-self: auto !important;
+    width: fit-content !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: 4px 10px !important;
+    gap: 4px !important;
+    border-radius: 999px !important;
+    font-size: 11px !important;
+    background: rgba(255, 75, 92, .08) !important;
+    border-color: rgba(255, 75, 92, .55) !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button > span {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    clip-path: none !important;
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item {
+    padding: 6px 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total {
+    margin: 4px 0 !important;
+    padding: 6px 4px 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-review-total b {
+    padding-top: 6px !important;
+    margin-top: 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-confirm-info button {
+    padding: 6px 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page > .public-primary.whatsapp {
+    min-height: 54px !important;
+    margin-top: 16px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-order-security {
+    margin-top: 0 !important;
+  }
+}
+
+/* WhatsApp handoff final composition. Kept at the end so it intentionally
+   overrides the older layered handoff experiments above. */
+.public-whatsapp-ready-backdrop {
+  padding: 0 !important;
+  background: linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.08) 34%, rgba(0,0,0,.72) 68%, rgba(0,0,0,.94) 100%), url('/fondos/whatsapp-ready-bg.png') center top / cover no-repeat !important;
+  background-color: #050505 !important;
+}
+.public-whatsapp-ready-page {
+  position: relative !important;
+  width: min(100%, 980px) !important;
+  min-height: 100dvh !important;
+  box-sizing: border-box !important;
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) minmax(360px,470px) !important;
+  align-content: center !important;
+  align-items: center !important;
+  gap: clamp(32px,6vw,92px) !important;
+  padding: clamp(28px,5vw,64px) clamp(24px,5vw,72px) !important;
+  overflow: hidden !important;
+  background: transparent !important;
+}
+.public-whatsapp-ready-page::before { content: ''; position: absolute; inset: 12% 45% 16% 2%; border-radius: 50%; background: radial-gradient(circle,rgba(255,74,24,.18),transparent 68%); filter: blur(22px); pointer-events: none; }
+.public-whatsapp-ready-header { position: absolute !important; z-index: 3; inset: 0 clamp(24px,5vw,72px) auto !important; width: auto !important; margin: 0 !important; padding: 22px 0 !important; border-bottom: 1px solid rgba(255,255,255,.16); }
+.public-whatsapp-ready-header img { width: clamp(88px,10vw,132px) !important; }
+.public-whatsapp-ready-header > span { color: rgba(255,255,255,.74); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.public-whatsapp-ready-visual { display: none !important; }
+.public-whatsapp-ready-hero { position: relative; z-index: 1; display: grid; justify-items: start; gap: 12px; width: auto !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; text-align: left; }
+.public-whatsapp-ready-icon { display: none !important; }
+.public-whatsapp-ready-hero h1 { margin: 0; color: #fff; font-size: clamp(38px,5vw,72px); line-height: .98; letter-spacing: -.045em; text-shadow: 0 4px 24px rgba(0,0,0,.45); }
+.public-whatsapp-ready-hero > strong { order: -1; padding: 9px 18px; border: 1px solid rgba(255,70,50,.8); border-radius: 999px; color: #ff8774; background: rgba(18,4,4,.58); font-size: 12px; letter-spacing: .28em; }
+.public-whatsapp-ready-card { position: relative; z-index: 1; display: grid; gap: 14px; width: auto !important; padding: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; text-align: left; }
+.public-whatsapp-ready-kicker { color: #ff806b; font-size: 12px; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.public-whatsapp-ready-card h2 { margin: 0; color: #fff; font-size: clamp(21px,2.4vw,32px); line-height: 1.16; }
+.public-whatsapp-ready-card p { max-width: 560px; margin: 0; color: rgba(255,255,255,.84); font-size: 15px; line-height: 1.52; }
+.public-whatsapp-ready-hint { color: rgba(255,255,255,.58) !important; font-size: 12px !important; }
+.public-whatsapp-ready-arrow { margin: 0; color: #fff; font-size: 44px; line-height: .58; text-shadow: 0 0 16px rgba(255,255,255,.38); animation: public-whatsapp-arrow-down 1.25s ease-in-out infinite; }
+.public-whatsapp-ready-btn { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 12px; width: 100%; min-height: 82px !important; box-sizing: border-box; padding: 12px 18px; border: 1px solid rgba(91,255,143,.9); border-radius: 24px; color: #fff; background: linear-gradient(105deg,#08ab48,#15d95f 55%,#07a341); box-shadow: 0 0 0 1px rgba(0,0,0,.24),0 12px 34px rgba(0,177,70,.38),inset 0 1px 0 rgba(255,255,255,.3); font: 900 16px/1.1 'DM Sans',sans-serif; text-align: left; transition: transform .18s ease,filter .18s ease,box-shadow .18s ease; }
+.public-whatsapp-ready-btn:hover { filter: brightness(1.08); transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(0,0,0,.24),0 18px 40px rgba(0,177,70,.48),inset 0 1px 0 rgba(255,255,255,.35); }
+.public-whatsapp-ready-btn:active { transform: translateY(0) scale(.985); }
+.public-whatsapp-ready-btn .public-whatsapp-mark,.public-whatsapp-ready-btn .public-whatsapp-mark svg { width: 48px; height: 48px; }
+.public-whatsapp-ready-btn > b { display: grid; justify-items: end; color: #fff; font-size: 14px; white-space: nowrap; }
+.public-whatsapp-ready-btn > b small { margin-top: 3px; color: rgba(255,255,255,.78); font-size: 10px; }
+.public-whatsapp-ready-btn > svg { width: 24px; }
+.public-whatsapp-ready-footnote { color: rgba(255,255,255,.62); font-size: 11px; text-align: center; }
+@media (max-width: 760px) {
+  .public-whatsapp-ready-backdrop { overflow-y: auto !important; }
+  .public-whatsapp-ready-page { width: 100% !important; min-height: 100dvh !important; grid-template-columns: 1fr !important; align-content: end !important; gap: 0 !important; padding: 84px 20px calc(24px + env(safe-area-inset-bottom)) !important; }
+  .public-whatsapp-ready-page::before { inset: 48% -20% 0; background: radial-gradient(circle,rgba(0,0,0,.04),rgba(0,0,0,.72) 65%); filter: none; }
+  .public-whatsapp-ready-header { inset: 0 20px auto !important; padding: 16px 0 12px !important; }
+  .public-whatsapp-ready-header img { width: 82px !important; }
+  .public-whatsapp-ready-header > span { font-size: 9px; }
+  .public-whatsapp-ready-hero { justify-items: center; gap: 10px; margin-bottom: 18px; text-align: center; }
+  .public-whatsapp-ready-hero h1 { font-size: clamp(38px,12vw,54px); }
+  .public-whatsapp-ready-hero > strong { font-size: 11px; letter-spacing: .22em; }
+  .public-whatsapp-ready-card { align-items: center; gap: 11px; padding: 18px 0 0 !important; border-top: 1px solid rgba(255,64,47,.48) !important; text-align: center; }
+  .public-whatsapp-ready-card h2 { max-width: 370px; font-size: 20px; line-height: 1.26; }
+  .public-whatsapp-ready-card p { max-width: 360px; font-size: 13px; line-height: 1.44; }
+  .public-whatsapp-ready-hint { max-width: 330px !important; font-size: 11px !important; }
+  .public-whatsapp-ready-arrow { font-size: 38px; }
+  .public-whatsapp-ready-btn { min-height: 68px !important; padding: 9px 12px; border-radius: 20px; font-size: 13px; }
+  .public-whatsapp-ready-btn .public-whatsapp-mark,.public-whatsapp-ready-btn .public-whatsapp-mark svg { width: 38px; height: 38px; }
+  .public-whatsapp-ready-btn > b { grid-column: 2; justify-items: start; font-size: 11px; }
+  .public-whatsapp-ready-btn > svg { grid-column: 4; grid-row: 1 / span 2; width: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .public-whatsapp-ready-arrow { animation: none; } }
+
+/* Position override after the legacy responsive rules. */
+.public-whatsapp-ready-page { display: block !important; padding-top: clamp(270px, 32vh, 390px) !important; padding-bottom: 48px !important; overflow-y: auto !important; }
+.public-whatsapp-ready-content { margin: 0 auto !important; }
+@media (max-width: 760px) {
+  .public-whatsapp-ready-page { display: block !important; padding: 245px 20px calc(30px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* El encabezado conserva solo el logo centrado y el control de cierre. */
+.public-whatsapp-ready-header {
+  justify-content: center !important;
+}
+.public-whatsapp-ready-header img {
+  width: clamp(112px, 14vw, 154px) !important;
+}
+.public-whatsapp-ready-close {
+  position: absolute !important;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+}
+.public-whatsapp-ready-close:hover { transform: translateY(-50%) scale(1.05); }
+.public-whatsapp-ready-close:active { transform: translateY(-50%) scale(.95); }
+@media (max-width: 760px) {
+  .public-whatsapp-ready-header img { width: 108px !important; }
+  .public-whatsapp-ready-close { right: 0; }
+}
+
+.public-whatsapp-ready-header { border-bottom: 0 !important; }
+
+/* Eleva la escena para que el wok quede más visible sobre la tarjeta. */
+.public-whatsapp-ready-backdrop {
+  background-position: center -42px !important;
+}
+@media (max-width: 760px) {
+  .public-whatsapp-ready-backdrop {
+    background-position: center -68px !important;
+  }
+}
+
+/* En teléfonos compactos, toda la tarjeta cabe en la primera pantalla. */
+@media (max-width: 760px) {
+  .public-whatsapp-ready-page {
+    box-sizing: border-box !important;
+    padding-top: 220px !important;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+  }
+  .public-whatsapp-ready-content {
+    padding: 14px 12px 16px;
+    border-radius: 20px 20px 40% 40% / 18px 18px 6% 6%;
+  }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero {
+    gap: 6px;
+    padding-bottom: 10px !important;
+  }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 { font-size: clamp(29px, 8.5vw, 40px); }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero > strong { padding: 6px 14px; font-size: 10px; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card {
+    gap: 7px;
+    padding-top: 11px !important;
+  }
+  .public-whatsapp-ready-content .public-whatsapp-ready-kicker { font-size: 10px; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 { font-size: 16px; line-height: 1.18; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p { font-size: 11px; line-height: 1.25; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hint { font-size: 9px !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-arrow { font-size: 27px; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+    min-height: 56px !important;
+    padding: 7px 9px;
+    border-radius: 16px;
+    font-size: 11px;
+  }
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark,
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark svg { width: 32px; height: 32px; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn > b { font-size: 10px; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn > b small { font-size: 8px; }
+    .public-whatsapp-ready-content .public-whatsapp-ready-footnote { font-size: 9px; }
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+      grid-template-columns: auto minmax(0, 1fr) auto !important;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-btn > span:nth-of-type(2) {
+      min-width: 0;
+      white-space: nowrap;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark {
+      background: none !important;
+      border: 0 !important;
+      box-shadow: none !important;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark svg circle {
+      display: block !important;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark svg {
+      display: block !important;
+      color: #fff;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-arrow {
+      color: #ffd21a !important;
+      margin: 0 auto 10px !important;
+      line-height: .8 !important;
+      text-shadow: 0 0 12px rgba(255, 210, 26, .45) !important;
+    }
+
+    .public-whatsapp-ready-content {
+      isolation: isolate;
+      border: 0 !important;
+      border-radius: 28px !important;
+      background: transparent !important;
+      box-shadow: none !important;
+    }
+
+    .public-whatsapp-ready-content::before {
+      content: '';
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      border: 1px solid rgba(237, 27, 47, .82);
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(34, 3, 7, .94) 0%, rgba(18, 3, 6, .84) 58%, rgba(8, 3, 5, .08) 100%);
+      -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 54%, rgba(0, 0, 0, .68) 75%, transparent 100%);
+      mask-image: linear-gradient(180deg, #000 0%, #000 54%, rgba(0, 0, 0, .68) 75%, transparent 100%);
+      pointer-events: none;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+      font-family: var(--font-display, 'Graduate', sans-serif) !important;
+      font-weight: 700 !important;
+      color: #ffd21a !important;
+      letter-spacing: .015em;
+    }
+
+    @media (max-width: 760px) {
+      .public-whatsapp-ready-page {
+        /* La tarjeta debe nacer cerca del wok, no dejar una franja vacía
+           entre la escena y la confirmación. */
+        padding-top: 158px !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+        font-size: clamp(20px, 6.6vw, 27px) !important;
+        white-space: nowrap;
+        letter-spacing: .005em;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-btn > span:nth-of-type(2) {
+        font-size: 13px !important;
+        font-weight: 900;
+        letter-spacing: -.015em;
+      }
+    }
+
+    @keyframes public-whatsapp-ready-backdrop-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes public-whatsapp-ready-backdrop-out {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+
+    @keyframes public-whatsapp-ready-page-in {
+      from { opacity: 0; transform: translateY(18px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes public-whatsapp-ready-page-out {
+      from { opacity: 1; transform: translateY(0) scale(1); }
+      to { opacity: 0; transform: translateY(12px) scale(.99); }
+    }
+
+    @keyframes public-whatsapp-ready-item-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .public-whatsapp-ready-backdrop {
+      animation: public-whatsapp-ready-backdrop-in .28s ease both;
+    }
+
+    .public-whatsapp-ready-page {
+      animation: public-whatsapp-ready-page-in .48s cubic-bezier(.16, 1, .3, 1) both;
+    }
+
+    .public-whatsapp-ready-header {
+      animation: public-whatsapp-ready-item-in .38s ease .06s both;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-hero,
+    .public-whatsapp-ready-content .public-whatsapp-ready-card {
+      animation: public-whatsapp-ready-item-in .42s cubic-bezier(.16, 1, .3, 1) both;
+    }
+
+    .public-whatsapp-ready-content .public-whatsapp-ready-hero { animation-delay: .1s; }
+    .public-whatsapp-ready-content .public-whatsapp-ready-card { animation-delay: .18s; }
+    .public-whatsapp-ready-content .public-whatsapp-ready-btn { animation: public-whatsapp-ready-item-in .42s cubic-bezier(.16, 1, .3, 1) .28s both; }
+
+    .public-whatsapp-ready-backdrop.closing {
+      animation: public-whatsapp-ready-backdrop-out .22s ease both;
+      pointer-events: none;
+    }
+
+    .public-whatsapp-ready-page.closing {
+      animation: public-whatsapp-ready-page-out .22s ease both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .public-whatsapp-ready-backdrop,
+      .public-whatsapp-ready-page,
+      .public-whatsapp-ready-header,
+      .public-whatsapp-ready-content .public-whatsapp-ready-hero,
+      .public-whatsapp-ready-content .public-whatsapp-ready-card,
+      .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+        animation: none !important;
+      }
+    }
+
+    /* Desktop uses its own proportioned composition. The mobile card rules
+       must never leak into the wide confirmation screen. */
+    @media (min-width: 761px) {
+      .public-whatsapp-ready-backdrop {
+        z-index: 9999 !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+      }
+
+      .public-whatsapp-ready-page {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 100dvh !important;
+        box-sizing: border-box !important;
+        padding: 112px 40px 44px !important;
+        overflow: auto !important;
+      }
+
+      .public-whatsapp-ready-header {
+        inset: 0 40px auto !important;
+        padding: 22px 0 !important;
+      }
+
+      .public-whatsapp-ready-content {
+        width: min(620px, 100%) !important;
+        margin: 0 auto !important;
+        padding: 30px 36px 42px !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+        font-size: clamp(34px, 3.4vw, 52px) !important;
+        white-space: nowrap;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-card h2 {
+        font-size: clamp(20px, 2vw, 27px) !important;
+      }
+
+      .public-drawer-backdrop {
+        z-index: 150 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      .public-drawer-backdrop .public-cart-drawer {
+        background: #0e1016 !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+
+      .public-drawer-backdrop .public-data-drawer {
+        background: linear-gradient(rgba(10, 11, 16, .78), rgba(10, 11, 16, .92)), url('/optimized/fondos/public-data-bg.webp') center bottom / cover no-repeat !important;
+      }
+
+      /* Todos los pasos de escritorio comparten el mismo shell lateral. La
+         tarjeta original del carrito queda oculta mientras el paso activo
+         ocupa su lugar; si ambas quedan visibles se perciben dos tarjetas
+         superpuestas. */
+      .public-menu-page:has(> .public-drawer-backdrop) .public-desktop-sidebar {
+        visibility: hidden !important;
+      }
+
+      /* "Pedido registrado" también es un paso del checkout en escritorio.
+         En móvil conserva la escena completa; en computadora debe ser solo
+         la tarjeta derecha, igual que Tus datos y Revisa tu pedido. */
+      .public-whatsapp-ready-backdrop {
+        z-index: 150 !important;
+        inset: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+        background: transparent !important;
+        pointer-events: none !important;
+      }
+
+      .public-whatsapp-ready-page {
+        position: fixed !important;
+        top: 104px !important;
+        right: max(24px, calc((100vw - 1312px) / 2)) !important;
+        bottom: auto !important;
+        left: auto !important;
+        width: 350px !important;
+        max-width: 350px !important;
+        min-height: 0 !important;
+        height: auto !important;
+        max-height: calc(100vh - 128px) !important;
+        box-sizing: border-box !important;
+        display: block !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding: 0 16px 18px !important;
+        border: 1px solid rgba(255,255,255,.10) !important;
+        border-radius: 20px !important;
+        background: #0e1016 !important;
+        box-shadow: 0 24px 70px rgba(0,0,0,.6) !important;
+        color: #fff !important;
+        pointer-events: auto !important;
+      }
+
+      .public-whatsapp-ready-header {
+        position: relative !important;
+        inset: auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 16px 0 12px !important;
+        border-bottom: 1px solid rgba(255,255,255,.08) !important;
+      }
+
+      .public-whatsapp-ready-header img { width: 76px !important; }
+      .public-whatsapp-ready-close { right: 0 !important; }
+
+      .public-whatsapp-ready-content {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 16px 0 0 !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-hero {
+        gap: 6px !important;
+        padding-bottom: 12px !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+        font-size: 24px !important;
+        white-space: nowrap !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-hero > strong {
+        padding: 6px 12px !important;
+        font-size: 10px !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-card {
+        gap: 9px !important;
+        padding: 14px 0 0 !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-card h2 {
+        font-size: 17px !important;
+        line-height: 1.22 !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-card p {
+        font-size: 11px !important;
+        line-height: 1.32 !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-arrow {
+        font-size: 30px !important;
+        margin-bottom: 6px !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+        min-height: 56px !important;
+        border-radius: 16px !important;
+      }
+
+      .public-whatsapp-ready-content .public-whatsapp-ready-footnote {
+        font-size: 9px !important;
+      }
+    }
+
+/* Shell único del checkout en computadora. Las reglas históricas que están
+   arriba siguen definiendo cada pantalla y se conservan; esta capa final solo
+   normaliza el marco que todas comparten para que Datos, Entrega, Dirección,
+   Revisión y el resultado no parezcan modales distintos. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  html:has(.public-menu-page.has-public-drawer),
+  html:has(.public-menu-page.has-public-drawer) body,
+  html:has(.public-menu-page.has-public-drawer) .app-main {
+    overflow-y: auto !important;
+    overscroll-behavior: auto !important;
+  }
+
+  .public-menu-page.has-public-drawer .public-desktop-sidebar {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .public-drawer-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    pointer-events: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer {
+    position: fixed !important;
+    top: 104px !important;
+    right: max(24px, calc((100vw - 1312px) / 2)) !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 350px !important;
+    max-width: 350px !important;
+    height: min(734px, calc(100vh - 128px)) !important;
+    max-height: calc(100vh - 128px) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255, 80, 80, 0.22) !important;
+    border-radius: 22px !important;
+    background: #0e1016 !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65) !important;
+    pointer-events: auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 16px 16px 12px !important;
+    border-bottom: 1px solid rgba(255,255,255,.08) !important;
+    background: transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header > img {
+    width: 64px !important;
+    margin: 0 auto 7px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading h2,
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading p {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255,90,82,.55) transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar { width: 5px !important; }
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb { background: rgba(255,90,82,.55) !important; border-radius: 999px !important; }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout) > .public-primary:last-child {
+    position: sticky !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    margin-top: 12px !important;
+    z-index: 2 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer {
+    background: #0e1016 !important;
+    background-image: none !important;
+  }
+
+  /* El divisor del pedido se dibuja una sola vez. Las capas recuperadas
+     aportaban un borde al encabezado y otro contiguo al listado, que juntos
+     se leían como una raya doble. */
+  .public-sidebar-head {
+    position: relative !important;
+    border-bottom: 0 !important;
+  }
+
+  .public-sidebar-head::after {
+    content: '' !important;
+    position: absolute !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 1px !important;
+    background: rgba(255,255,255,.08) !important;
+    box-shadow: none !important;
+  }
+
+  .public-sidebar-items {
+    border-top: 0 !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ============================================================================
+   Checkout de escritorio: shell único y scroll real por contenido
+
+   El checkout se monta en document.body mediante un portal. Por eso el panel
+   no puede depender del alto de .public-menu-page para crecer: cuando se deja
+   en height:auto y overflow:visible, los pasos largos (sobre todo Tus datos y
+   Dirección) salen del viewport y no queda ningún ancestro que pueda
+   desplazarlos. Esta capa final reemplaza esas combinaciones históricas por
+   un único marco fijo, con header estable y una sola región desplazable.
+   ============================================================================ */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  /* motion.css aplica un bloqueo global a cualquier clase *-drawer-backdrop.
+     Este checkout no es una pantalla modal: el menú debe conservar el scroll
+     del .app-main mientras la tarjeta fija recibe sus propios desplazamientos. */
+  :root:has(.public-menu-page.has-public-drawer),
+  :root:has(.public-menu-page.has-public-drawer) body,
+  :root:has(.public-menu-page.has-public-drawer) .app-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  html:has(.public-menu-page.has-public-drawer),
+  html:has(.public-menu-page.has-public-drawer) body {
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  .public-drawer-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    pointer-events: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer {
+    --public-checkout-width: min(350px, calc(100vw - 32px));
+    position: fixed !important;
+    top: 90px !important;
+    right: max(10px, calc((100vw - 1360px) / 2 + 24px)) !important;
+    bottom: 10px !important;
+    left: auto !important;
+    width: var(--public-checkout-width) !important;
+    max-width: var(--public-checkout-width) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 100px) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255, 80, 80, .22) !important;
+    border-radius: 22px !important;
+    background: #0e1016 !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .65) !important;
+    pointer-events: auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 14px 16px 12px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, .08) !important;
+    background: transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header > img {
+    width: clamp(58px, 5vw, 76px) !important;
+    margin: 0 auto 6px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading h2,
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading p {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading h2 {
+    max-width: 100% !important;
+    font-size: clamp(17px, 1.55vw, 21px) !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading p {
+    max-width: 34ch !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-back {
+    top: 14px !important;
+    left: 14px !important;
+    width: 34px !important;
+    height: 34px !important;
+    transform: none !important;
+  }
+
+  /* El guard y el paso activo son hermanos directos del header. El guard no
+     debe consumir la región desplazable ni empujar el CTA fuera de la tarjeta. */
+  .public-drawer-backdrop .public-cart-drawer > .public-cart-guard {
+    flex: 0 0 auto !important;
+    margin: 10px 14px 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 90, 82, .62) transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: block !important;
+    width: 6px !important;
+    height: 6px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+    background: rgba(255, 90, 82, .62) !important;
+    border-radius: 999px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout) > .public-primary:last-child {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 2 !important;
+    width: 100% !important;
+    margin-top: 12px !important;
+  }
+
+  /* En confirmación el CTA está fuera del receipt; se mantiene anclado dentro
+     del mismo shell, sin crear una segunda tarjeta ni un segundo scroll. */
+  .public-drawer-backdrop .public-cart-drawer > .public-confirm-page + .public-primary {
+    flex: 0 0 auto !important;
+    width: calc(100% - 28px) !important;
+    margin: 0 14px 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-confirm-page + .public-order-security {
+    flex: 0 0 auto !important;
+    margin: 0 14px 12px !important;
+  }
+
+  /* Todos los pasos usan el mismo inset para que ninguna tarjeta se vea más
+     ancha o más gorda que otra al cambiar de pantalla. */
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page,
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step,
+  .public-drawer-backdrop .public-cart-drawer > .public-address-step,
+  .public-drawer-backdrop .public-cart-drawer > .public-checkout,
+  .public-drawer-backdrop .public-cart-drawer > .public-confirm-page,
+  .public-drawer-backdrop .public-cart-drawer > .public-preparing-page,
+  .public-drawer-backdrop .public-cart-drawer > .public-success {
+    padding: 14px !important;
+  }
+
+  /* El resumen del checkout usa la misma escala compacta que la tarjeta
+     lateral original. Las reglas generales de PublicMenu fueron creadas para
+     una pantalla completa y aquí inflaban la foto a 170px y cada fila a
+     180px, de ahí la apariencia "gruesa" al volver desde Entrega. */
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page {
+    gap: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-items {
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 8px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item {
+    grid-template-columns: 48px minmax(0, 1fr) auto !important;
+    min-height: 0 !important;
+    gap: 8px !important;
+    padding: 10px 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-image {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-main {
+    gap: 3px !important;
+    padding-top: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-main strong,
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-total {
+    font-size: 13px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-main span {
+    font-size: 11px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-qty {
+    gap: 10px !important;
+    margin-top: 5px !important;
+    padding: 3px 7px !important;
+    border-radius: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-qty svg {
+    width: 15px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step {
+    gap: 10px !important;
+    padding: 12px 4px 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step .public-delivery-choice {
+    grid-template-columns: 36% minmax(0, 1fr) 30px !important;
+    height: 150px !important;
+    min-height: 150px !important;
+    border-radius: 18px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step .public-delivery-choice > div {
+    gap: 6px !important;
+    padding: 12px 6px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step .public-choice-radio {
+    width: 24px !important;
+    height: 24px !important;
+    margin-right: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step .public-delivery-choice strong {
+    font-size: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-delivery-step .public-delivery-choice span {
+    font-size: 11px !important;
+    line-height: 1.25 !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .public-drawer-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    height: 100dvh !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+  }
+
+  /* Un solo scroll: la página completa. El checkout crece con su contenido. */
+  .public-drawer-backdrop {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    min-height: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    align-items: flex-start !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer {
+    position: fixed !important;
+    top: 20px !important;
+    right: 16px !important;
+    bottom: auto !important;
+    width: 350px !important;
+    max-width: 350px !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice {
+    grid-template-columns: 40% minmax(0, 1fr) 28px !important;
+    gap: 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice strong {
+    font-size: 15px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice span {
+    font-size: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice > div {
+    min-width: 0 !important;
+    align-self: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-hint {
+    margin: 2px 0 !important;
+    font-size: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-continue {
+    min-height: 48px !important;
+  }
+
+  /* Todos los pasos del checkout comparten la maqueta compacta del teléfono. */
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page,
+  .public-drawer-backdrop .public-cart-drawer > .public-address-step,
+  .public-drawer-backdrop .public-cart-drawer > .public-checkout,
+  .public-drawer-backdrop .public-cart-drawer > .public-confirm-page,
+  .public-drawer-backdrop .public-cart-drawer > .public-success,
+  .public-drawer-backdrop .public-cart-drawer > .public-preparing-page {
+    padding: 14px !important;
+    font-size: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-primary {
+    min-height: 48px !important;
+    padding: 10px 14px !important;
+    border-radius: 14px !important;
+    font-size: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer input,
+  .public-drawer-backdrop .public-cart-drawer textarea,
+  .public-drawer-backdrop .public-cart-drawer select {
+    min-height: 42px !important;
+    padding: 9px 11px !important;
+    font-size: 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-info button {
+    padding: 11px 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item strong,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-info strong {
+    font-size: 13px !important;
+  }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow {
+    display: none !important;
+  }
+}
+
+/* La entrega a WhatsApp conserva en escritorio la misma escena que en el
+   teléfono. Solo cambia la escala para caber en la columna derecha: no se
+   elimina el wok, el fuego ni el fondo ilustrado. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-whatsapp-ready-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    pointer-events: none !important;
+  }
+
+  .public-whatsapp-ready-page {
+    position: fixed !important;
+    top: 104px !important;
+    right: max(24px, calc((100vw - 1312px) / 2)) !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: 350px !important;
+    max-width: 350px !important;
+    height: min(734px, calc(100vh - 128px)) !important;
+    min-height: 0 !important;
+    max-height: calc(100vh - 128px) !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255,80,80,.22) !important;
+    border-radius: 22px !important;
+    background: linear-gradient(180deg, rgba(4,5,7,.05), rgba(4,5,7,.86) 48%, #08090c 100%), url('/fondos/whatsapp-ready-bg.png') center top / cover no-repeat !important;
+    box-shadow: 0 20px 50px rgba(0,0,0,.65) !important;
+    color: #fff !important;
+    pointer-events: auto !important;
+  }
+
+  .public-whatsapp-ready-header {
+    position: absolute !important;
+    z-index: 3 !important;
+    inset: 0 14px auto !important;
+    width: auto !important;
+    padding: 14px 0 !important;
+    border-bottom: 0 !important;
+  }
+
+  .public-whatsapp-ready-header img { width: 76px !important; }
+  .public-whatsapp-ready-close { right: 0 !important; }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual {
+    display: block !important;
+    width: 100% !important;
+    height: 245px !important;
+    margin: 0 !important;
+    padding: 0 12px !important;
+    box-sizing: border-box !important;
+    background: transparent !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green { width: 18% !important; top: 30% !important; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new { top: 16px !important; width: min(68%, 235px) !important; }
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow { top: 47% !important; }
+
+  .public-whatsapp-ready-content {
+    position: relative !important;
+    z-index: 2 !important;
+    width: calc(100% - 24px) !important;
+    box-sizing: border-box !important;
+    margin: -12px auto 16px !important;
+    padding: 18px 14px 16px !important;
+    border: 1px solid rgba(237,27,47,.82) !important;
+    border-radius: 24px !important;
+    background: linear-gradient(180deg, rgba(38,3,8,.96), rgba(15,7,10,.93) 72%, rgba(8,9,12,.94)) !important;
+    box-shadow: 0 0 0 1px rgba(255,59,48,.08), 0 -8px 28px rgba(227,27,43,.16), inset 0 1px rgba(255,106,92,.16) !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero {
+    gap: 7px !important;
+    padding: 0 0 12px !important;
+    border-bottom: 1px solid rgba(237,27,47,.38) !important;
+    text-align: center !important;
+  }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 { font-size: 27px !important; color: #ffd21a !important; white-space: nowrap !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero > strong { padding: 6px 11px !important; font-size: 10px !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card { gap: 8px !important; padding: 14px 0 0 !important; text-align: center !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 { font-size: 17px !important; line-height: 1.22 !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p { font-size: 11px !important; line-height: 1.3 !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-arrow { font-size: 28px !important; color: #ffd21a !important; margin: 0 auto 2px !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn { min-height: 58px !important; border-radius: 17px !important; }
+  .public-whatsapp-ready-content .public-whatsapp-ready-footnote { font-size: 9px !important; }
+}
+
+/* En teléfono, los bloques informativos necesitan respirar para que el
+   mensaje se lea por niveles y no como una sola masa de texto. */
+@media (max-width: 760px) {
+  .public-whatsapp-ready-content {
+    padding-top: 20px !important;
+    padding-bottom: 22px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero {
+    gap: 9px !important;
+    padding-bottom: 14px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card {
+    gap: 12px !important;
+    padding-top: 14px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-kicker {
+    margin-bottom: 2px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 {
+    margin: 4px 0 !important;
+    line-height: 1.28 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p {
+    margin: 4px 0 !important;
+    line-height: 1.4 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card {
+    gap: 5px !important;
+    padding-top: 9px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-arrow {
+    font-size: 22px !important;
+    margin: 0 auto !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-arrow {
+    margin: 7px auto 11px !important;
+  }
+}
+
+/* La confirmación de escritorio usa la misma tarjeta ilustrada de teléfono,
+   pero condensada para que sea una conclusión breve del checkout lateral y no
+   una segunda pantalla alta con scroll. Esto también mantiene visible el CTA
+   en alturas de portátil como la de la vista de menú. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-whatsapp-ready-page {
+    height: min(760px, calc(100dvh - 108px)) !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual {
+    height: 188px !important;
+    padding: 0 10px !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green {
+    width: 17% !important;
+    top: 28% !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new {
+    top: 8px !important;
+    width: min(61%, 202px) !important;
+  }
+
+  .public-whatsapp-ready-content {
+    width: calc(100% - 22px) !important;
+    margin: -10px auto 12px !important;
+    padding: 14px 12px 12px !important;
+    border-radius: 22px !important;
+    scrollbar-width: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+  }
+
+  /* Todas las zonas desplazables del checkout conservan el gesto/rueda,
+     pero nunca muestran una barra visible. */
+  .public-drawer-backdrop,
+  .public-drawer-backdrop * {
+    scrollbar-width: none !important;
+  }
+
+  .public-drawer-backdrop ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero {
+    gap: 5px !important;
+    padding-bottom: 9px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+    font-size: 24px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero > strong {
+    padding: 5px 10px !important;
+    font-size: 9px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card {
+    gap: 7px !important;
+    padding-top: 10px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-kicker {
+    font-size: 9px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p {
+    font-size: 10px !important;
+    line-height: 1.28 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-arrow {
+    font-size: 24px !important;
+    margin: 0 auto !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+    min-height: 52px !important;
+    padding: 7px 9px !important;
+    border-radius: 16px !important;
+    font-size: 12px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark,
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark svg {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-footnote {
+    font-size: 8px !important;
+  }
+}
+
+/* En computadora la confirmación debe verse completa, sin un segundo scroll
+   dentro de la tarjeta. Se usa todo el alto disponible y se vuelve a dar
+   espacio al wok, al mensaje y al CTA. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual {
+    display: block !important;
+    height: 136px !important;
+    padding: 0 10px !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .public-whatsapp-ready-visual-arrow,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow {
+    display: none !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new {
+    display: block !important;
+    top: 20px !important;
+    width: min(62%, 198px) !important;
+  }
+
+  .public-whatsapp-ready-page {
+    top: 104px !important;
+    height: min(760px, calc(100dvh - 108px)) !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    scrollbar-width: none !important;
+  }
+
+  .public-whatsapp-ready-page::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual {
+    height: 238px !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new {
+    top: 12px !important;
+    width: min(68%, 230px) !important;
+  }
+
+  .public-whatsapp-ready-content {
+    margin-top: -10px !important;
+    padding: 12px 12px 10px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+    font-size: 23px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 {
+    font-size: 15px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p {
+    font-size: 10px !important;
+    line-height: 1.2 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+    min-height: 48px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* El drawer del checkout se monta en document.body mediante un portal, por
+   lo que no es descendiente directo de .public-menu-page. Al detectar el
+   backdrop desde body se oculta el carrito lateral original y queda una sola
+   ventana activa en Delivery, Dirección, Datos y Confirmación. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
+/* También aplica en ventanas de escritorio compactas (por ejemplo, 949 px):
+   el carrito fijo y el paso activo nunca deben mostrarse simultáneamente. */
+body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Checkout comparte el mismo marco del carrito lateral en escritorio
+   intermedio: un solo panel, con igual ancho, posición y altura. */
+@media (min-width: 900px) and (max-width: 1279px) and (orientation: landscape) {
+  .public-drawer-backdrop {
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    pointer-events: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer {
+    position: fixed !important;
+    inset: 20px 16px 20px auto !important;
+    width: 300px !important;
+    max-width: 300px !important;
+    height: auto !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    border-radius: 22px !important;
+    padding: 18px 16px !important;
+    overflow: hidden !important;
+    pointer-events: auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > * {
+    min-width: 0;
+  }
+}
+
+/* El carrito lateral debe respirar como una tarjeta, no como una tabla
+   llena de líneas. Conservamos solo los cortes entre secciones principales. */
+.public-desktop-sidebar .public-sidebar-item {
+  border-bottom: 0 !important;
+}
+
+.public-desktop-sidebar .public-sidebar-recommendations {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.public-desktop-sidebar .public-sidebar-summary {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-bottom: 0 !important;
+  padding-top: 14px !important;
+  padding-bottom: 4px !important;
+}
+
+.public-desktop-sidebar .public-sidebar-row.total {
+  border-top: 0 !important;
+  padding-top: 8px !important;
+  margin-top: 4px !important;
+}
+
+/* Control de cantidad del carrito: áreas táctiles cómodas y visibles. */
+.public-desktop-sidebar .public-sidebar-stepper {
+  min-height: 30px !important;
+  gap: 6px !important;
+  padding: 3px 6px !important;
+  border-radius: 8px !important;
+}
+
+.public-desktop-sidebar .public-sidebar-stepper button {
+  width: 25px !important;
+  height: 25px !important;
+  min-width: 25px !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+}
+
+.public-desktop-sidebar .public-sidebar-stepper button svg {
+  width: 15px !important;
+  height: 15px !important;
+  stroke-width: 2.5 !important;
+}
+
+/* Llamita decorativa liviana: reutiliza el asset existente y solo anima
+   transform/opacity para no introducir partículas ni trabajo continuo pesado. */
+@keyframes public-floating-flame {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-4deg); opacity: .72; }
+  50% { transform: translate3d(0, -7px, 0) rotate(4deg); opacity: 1; }
+}
+
+.public-whatsapp-ready-visual .preparing-fire-red {
+  display: block !important;
+  width: clamp(22px, 8%, 42px) !important;
+  top: 42% !important;
+  left: 13% !important;
+  animation: public-floating-flame 2.8s ease-in-out infinite !important;
+  will-change: transform, opacity;
+}
+
+/* Brasas flotantes, iguales a las de la pantalla de preparación; son simples
+   gradientes CSS y no nodos/partículas adicionales. */
+.public-whatsapp-ready-visual::before,
+.public-whatsapp-ready-visual::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 8% 4% 4%;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 13% 30%, rgba(255, 167, 58, .9) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 18%, rgba(255, 91, 26, .82) 0 1px, transparent 2px),
+    radial-gradient(circle at 66% 52%, rgba(255, 190, 80, .72) 0 1px, transparent 2px),
+    radial-gradient(circle at 26% 70%, rgba(255, 82, 25, .85) 0 1px, transparent 2px),
+    radial-gradient(circle at 91% 76%, rgba(255, 157, 41, .72) 0 1px, transparent 2px);
+  opacity: .62;
+  animation: preparing-embers-float 7s ease-in-out infinite alternate;
+}
+
+.public-whatsapp-ready-visual::after {
+  inset: 2% 10% 2%;
+  opacity: .36;
+  background-image:
+    radial-gradient(circle at 34% 15%, rgba(255, 229, 142, .75) 0 1px, transparent 2px),
+    radial-gradient(circle at 92% 37%, rgba(255, 74, 19, .8) 0 1px, transparent 2px),
+    radial-gradient(circle at 48% 58%, rgba(255, 140, 35, .75) 0 1px, transparent 2px),
+    radial-gradient(circle at 7% 84%, rgba(255, 75, 20, .8) 0 1px, transparent 2px);
+  animation: preparing-embers-float-reverse 9s ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public-whatsapp-ready-visual::before,
+  .public-whatsapp-ready-visual::after {
+    animation: none !important;
+  }
+
+  .public-whatsapp-ready-visual .preparing-fire-red {
+    animation: none !important;
+  }
+}
+
+.public-desktop-sidebar .public-stepper-num {
+  min-width: 16px !important;
+  font-size: 13px !important;
+  text-align: center !important;
+}
+
+/* Las fotos de las opciones de entrega deben conservarse completas; el fondo
+   de la tarjeta rellena el espacio restante sin recortar el arte. */
+.public-delivery-choice > img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  background: transparent !important;
+}
+
+/* La llamita también se conserva en la variante compacta de computadora. */
+@media (min-width: 1024px) {
+  .public-drawer-backdrop .public-cart-drawer {
+    width: 350px !important;
+    max-width: 350px !important;
+    box-sizing: border-box !important;
+    padding: 16px !important;
+    border-radius: 22px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-data-drawer,
+  .public-drawer-backdrop .public-cart-drawer.public-step-address,
+  .public-drawer-backdrop .public-cart-drawer.public-step-delivery,
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm,
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart {
+    width: 350px !important;
+    max-width: 350px !important;
+    box-sizing: border-box !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-review-header {
+    padding: 10px 8px 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-review-header > img {
+    width: 58px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading h2 {
+    font-size: 18px !important;
+    line-height: 1.2 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-review-heading p {
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-step {
+    gap: 8px !important;
+    padding: 10px 4px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice {
+    grid-template-columns: 32% minmax(0, 1fr) 34px !important;
+    height: 166px !important;
+    min-height: 166px !important;
+    gap: 8px !important;
+    border-radius: 16px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice strong {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+    max-width: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice span {
+    display: block !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-continue,
+  .public-drawer-backdrop .public-cart-drawer .public-primary {
+    min-height: 52px !important;
+    font-size: 15px !important;
+  }
+
+  .public-whatsapp-ready-page {
+    background: url('/fondos/whatsapp-ready-computer.png') center top / cover no-repeat !important;
+    border: 0 !important;
+    border-radius: 22px !important;
+    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%) !important;
+    mask-image: linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%) !important;
+  }
+
+  /* La foto entregada reemplaza la composición anterior en computadora. */
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-wok-new,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-whatsapp-green,
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-composition-arrow {
+    display: none !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual {
+    height: 230px !important;
+    background: transparent !important;
+  }
+
+  .public-whatsapp-ready-content {
+    border-bottom-color: transparent !important;
+    box-shadow: 0 0 0 1px rgba(255,59,48,.08), 0 -8px 28px rgba(227,27,43,.16), inset 0 1px rgba(255,106,92,.16), 0 18px 30px rgba(4, 8, 8, .42) !important;
+  }
+
+  .public-whatsapp-ready-page .public-whatsapp-ready-visual .preparing-fire-red {
+    display: none !important;
+    width: clamp(22px, 8%, 42px) !important;
+    top: 42% !important;
+    left: 13% !important;
+    animation: public-floating-flame 2.8s ease-in-out infinite !important;
+  }
+}
+
+/* Override final: estas reglas deben permanecer al final de la cascada porque
+   el archivo conserva varias iteraciones históricas del checkout de escritorio. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  :root:has(.public-menu-page.has-public-drawer),
+  :root:has(.public-menu-page.has-public-drawer) body,
+  :root:has(.public-menu-page.has-public-drawer) .app-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  html:has(.public-menu-page.has-public-drawer),
+  html:has(.public-menu-page.has-public-drawer) body,
+  html:has(.public-menu-page.has-public-drawer) .app-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  .public-drawer-backdrop {
+    position: fixed !important;
+    inset: 0 !important;
+    display: block !important;
+    padding: 0 !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    pointer-events: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer {
+    --public-checkout-width: min(350px, calc(100vw - 32px));
+    position: fixed !important;
+    top: 90px !important;
+    right: max(10px, calc((100vw - 1360px) / 2 + 24px)) !important;
+    bottom: 10px !important;
+    left: auto !important;
+    width: var(--public-checkout-width) !important;
+    max-width: var(--public-checkout-width) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 100px) !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255, 80, 80, .22) !important;
+    border-radius: 22px !important;
+    background: #0e1016 !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .65) !important;
+    pointer-events: auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 14px 16px 12px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, .08) !important;
+    background: transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header > img {
+    width: clamp(58px, 5vw, 76px) !important;
+    margin: 0 auto 6px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading h2,
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading p {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading h2 {
+    max-width: 100% !important;
+    font-size: clamp(17px, 1.55vw, 21px) !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading p {
+    max-width: 34ch !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-back {
+    top: 14px !important;
+    left: 14px !important;
+    width: 34px !important;
+    height: 34px !important;
+    transform: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-cart-guard {
+    flex: 0 0 auto !important;
+    margin: 10px 14px 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success) {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 90, 82, .62) transparent !important;
+    padding: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar {
+    display: block !important;
+    width: 6px !important;
+    height: 6px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success)::-webkit-scrollbar-thumb {
+    background: rgba(255, 90, 82, .62) !important;
+    border-radius: 999px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(.public-review-page, .public-delivery-step, .public-address-step, .public-checkout) > .public-primary:last-child {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 2 !important;
+    width: 100% !important;
+    margin-top: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-confirm-page + .public-primary {
+    flex: 0 0 auto !important;
+    width: calc(100% - 28px) !important;
+    margin: 0 14px 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-confirm-page + .public-order-security {
+    flex: 0 0 auto !important;
+    margin: 0 14px 12px !important;
+  }
+}
+
+/* En escritorio el carrito se lee como una tarjeta completa: productos,
+   recomendaciones, total y CTA pertenecen al mismo recorrido visual. La
+   tarjeta conserva su propio scroll para que nunca corte los controles cuando
+   el pedido o las recomendaciones ocupan más altura que la ventana. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-desktop-sidebar {
+    /* La tarjeta comienza debajo del encabezado del menú; reservar ese
+       espacio evita que su base quede fuera del viewport. */
+    max-height: calc(100dvh - 96px) !important;
+    overflow: hidden !important;
+  }
+
+  .public-sidebar-card {
+    max-height: calc(100dvh - 96px) !important;
+    box-sizing: border-box !important;
+    overflow-y: hidden !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 90, 82, .42) transparent !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .public-sidebar-card::-webkit-scrollbar {
+    width: 5px !important;
+  }
+
+  .public-sidebar-card::-webkit-scrollbar-track {
+    background: transparent !important;
+    border-radius: 999px !important;
+  }
+
+  .public-sidebar-card::-webkit-scrollbar-thumb {
+    background: rgba(255, 90, 82, .42) !important;
+    border-radius: 999px !important;
+  }
+
+  .public-sidebar-card:hover {
+    scrollbar-color: rgba(255, 90, 82, .72) transparent !important;
+  }
+
+  .public-sidebar-card:hover::-webkit-scrollbar-thumb,
+  .public-sidebar-card:focus-within::-webkit-scrollbar-thumb {
+    background: rgba(255, 90, 82, .72) !important;
+  }
+
+  .public-sidebar-card.has-overflow {
+    overflow-y: auto !important;
+  }
+
+  .public-sidebar-items {
+    flex: 0 0 auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .public-sidebar-secondary {
+    display: flex !important;
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    overflow: visible !important;
+  }
+
+  .public-sidebar-checkout-btn {
+    flex: 0 0 auto !important;
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  /* La foto ocupa toda la fila. Elevamos levemente el bloque de texto sin
+     pegarlo al borde superior; así queda alineado ópticamente con la foto.
+     El radio se conserva centrado de forma independiente. */
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice > div {
+    align-self: center !important;
+    padding: 12px 6px !important;
+    transform: translateY(-18px) !important;
+  }
+
+  /* En las opciones de entrega debe verse el arte completo. Contain evita
+     sacrificar la parte delantera o la marca para llenar la columna; el
+     espacio sobrante se integra con el fondo oscuro de la tarjeta. */
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice > img {
+    object-fit: contain !important;
+    object-position: left center !important;
+    background: #08090b !important;
+  }
+
+  /* Evita que Delivery deje "estés." como una línea huérfana. */
+  .public-drawer-backdrop .public-cart-drawer .public-delivery-choice:nth-child(2) > div span {
+    max-width: 122px !important;
+  }
+}
+
+/* El nombre, la porción y Editar forman un bloque compacto en el recibo de
+   escritorio. El alto reservado del renglón estaba empujando los dos últimos
+   elementos hacia abajo. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item {
+    grid-template-rows: auto auto !important;
+    min-height: 0 !important;
+    padding-top: 6px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div > span,
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div > small {
+    align-self: start !important;
+    transform: translateY(-4px) !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button {
+    top: 30px !important;
+  }
+}
+
+/* Ajuste final del encabezado de confirmación en computadora. */
+@media (min-width: 1280px) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm > .public-review-header .public-review-heading h2 {
+    font-size: 20px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm > .public-review-header .public-review-heading p {
+    font-size: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm > .public-review-header .public-review-heading p br {
+    display: none !important;
+  }
+}
+
+/* El paso de entrega es corto: en laptops no debe ocupar toda la altura del
+   viewport ni repartir espacio vacío entre sus opciones. Mantiene el mismo
+   ancho compacto, pero su tarjeta termina después del CTA. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-delivery {
+    bottom: auto !important;
+    height: fit-content !important;
+    max-height: calc(100dvh - 104px) !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-delivery > .public-delivery-step {
+    flex: 0 0 auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+}
+
+/* Pantalla final de confirmación: la composición del wok debe respirar arriba
+   y la información debe leerse por niveles, sin amontonarse en el centro. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-whatsapp-ready-backdrop {
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+  }
+
+  .public-whatsapp-ready-page {
+    overflow: hidden !important;
+    overflow-x: hidden !important;
+    height: min(760px, calc(100dvh - 108px)) !important;
+    max-height: calc(100dvh - 108px) !important;
+  }
+
+  .public-whatsapp-ready-page {
+    background-position: center -58px !important;
+  }
+
+  .public-whatsapp-ready-content {
+    width: calc(100% - 28px) !important;
+    margin: -12px auto 10px !important;
+    padding: 12px 14px 10px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero {
+    gap: 5px !important;
+    padding-bottom: 10px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero h1 {
+    font-size: 22px !important;
+    line-height: 1.12 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-hero > strong {
+    padding: 5px 10px !important;
+    font-size: 9px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card {
+    gap: 7px !important;
+    padding-top: 10px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-kicker {
+    font-size: 8px !important;
+    letter-spacing: .13em !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card h2 {
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-card p {
+    margin: 0 0 2px !important;
+    font-size: 9px !important;
+    line-height: 1.28 !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-arrow {
+    margin: 0 auto 1px !important;
+    font-size: 22px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn {
+    min-height: 50px !important;
+    padding: 6px 9px !important;
+    border-radius: 15px !important;
+    font-size: 11px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark,
+  .public-whatsapp-ready-content .public-whatsapp-ready-btn .public-whatsapp-mark svg {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .public-whatsapp-ready-content .public-whatsapp-ready-footnote {
+    margin-top: 1px !important;
+    font-size: 7px !important;
+  }
+}
+
+/* Corrección final de alineación del producto confirmado en escritorio. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item > div > span {
+    position: relative !important;
+    top: -47px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-item-name-row > button {
+    top: 12px !important;
+    transform: translateY(-30px) !important;
+  }
+}
+
+/* Override final: factura lineal en computadora, sin esquinas redondeadas. */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer .public-confirm-page .public-receipt {
+    border-radius: 0 !important;
+  }
 }
