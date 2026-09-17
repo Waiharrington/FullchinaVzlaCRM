@@ -602,10 +602,6 @@ export function Equipo() {
                   <NumberStepper min={0} step={0.5} value={String(overtimeRate)} onChange={(v) => setOvertimeRate(parseFloat(v) || 0)} />
                 </div>
               </div>
-              <div className="form-group">
-                <label style={{ color: '#71717a' }}>Tarifa histórica por hora (opcional)</label>
-                <NumberStepper min={0} step={1} value={String(hourlyRate)} onChange={(v) => setHourlyRate(parseFloat(v) || 0)} />
-              </div>
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => closeModal()}>Cancelar</button>
                 <button type="submit" className="btn-save">{editingId ? 'Guardar Cambios' : 'Crear Miembro'}</button>
