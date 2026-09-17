@@ -3927,6 +3927,31 @@ export async function liquidatePayrollPeriod(params: {
   }
 }
 
+/**
+ * Liquida un período pagando desde varias cuentas (pago dividido). Cada fuente
+ * lleva el monto en la moneda de su cuenta y, si es en Bs, su tasa. El backend
+ * valida que la suma en USD cuadre con el total del período.
+ */
+export async function liquidatePayrollPeriodSplit(params: {
+  periodId: string
+  sources: Array<{ accountId: string; amount: number; rate?: number | null }>
+  reference?: string | null
+  notes?: string | null
+}): Promise<{ totalUsd: number; assignedUsd: number; sources: number; alreadyPaid?: boolean }> {
+  const { data, error } = await client().rpc('fn_liquidate_payroll_period_split', {
+    p_period_id: params.periodId,
+    p_sources: params.sources.map((s) => ({ account_id: s.accountId, amount: s.amount, rate: s.rate ?? null })),
+    p_reference: params.reference ?? null,
+    p_notes: params.notes ?? null,
+  })
+  if (error) throw error
+  const result = (data ?? {}) as Record<string, unknown>
+  return {
+    totalUsd: Number(result.total_usd ?? 0), assignedUsd: Number(result.assigned_usd ?? 0),
+    sources: Number(result.sources ?? 0), alreadyPaid: result.already_paid === true,
+  }
+}
+
 /** Anula una compra conservando su registro y movimientos históricos. */
 export async function voidPurchase(id: string): Promise<void> {
   const { error } = await client().rpc('fn_void_purchase', { p_purchase_id: id })

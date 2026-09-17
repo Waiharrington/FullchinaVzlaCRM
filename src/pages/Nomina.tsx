@@ -4,7 +4,7 @@ import {
   getAllEmployees, getPayrollPeriods, createPayrollPeriod, getPayrollEntries, upsertPayrollEntry,
   deletePayrollPeriod,
   getAdvances, createAdvance, setAdvanceDeducted, getProductionBonusRecords, createProductionBonus,
-  getPayrollPayments, createPayrollPayment, getFinancialAccounts, liquidatePayrollPeriod, getDeliveryAssignments, payDeliveryCommissions,
+  getPayrollPayments, createPayrollPayment, getFinancialAccounts, liquidatePayrollPeriodSplit, getDeliveryAssignments, payDeliveryCommissions,
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment, type FinancialAccount, type DeliveryAssignment,
 } from '../lib/dataService'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
@@ -58,7 +58,7 @@ export function Nomina() {
   const [detailEmp, setDetailEmp] = useState<Employee | null>(null)
   const [payingDelivery, setPayingDelivery] = useState(false)
   const [showSettlement, setShowSettlement] = useState(false)
-  const [settlementAccount, setSettlementAccount] = useState('')
+  const [settlementSources, setSettlementSources] = useState<Array<{ accountId: string; amount: string; rate: string }>>([])
   const [settlementReference, setSettlementReference] = useState('')
   const [settlementNotes, setSettlementNotes] = useState('')
   const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
@@ -203,21 +203,56 @@ export function Nomina() {
     if (!selected || selected.status === 'paid') return
     const saved = await saveEntries()
     if (saved) {
-      setSettlementAccount(accounts.find((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES'))?.id ?? '')
+      const firstAccount = accounts.find((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES'))
+      // Precarga una sola fuente con el total completo (caso común: una cuenta).
+      const totalUsd = tot.neto
+      const amount = firstAccount ? (firstAccount.currency === 'VES' ? (totalUsd * (bcvRate || 0)) : totalUsd) : 0
+      setSettlementSources([{ accountId: firstAccount?.id ?? '', amount: amount ? String(Math.round(amount * 100) / 100) : '', rate: firstAccount?.currency === 'VES' ? String(bcvRate || '') : '' }])
       setShowSettlement(true)
     }
   }
 
+  const settlementEligible = accounts.filter((a) => a.isActive && (a.currency === 'USD' || a.currency === 'VES'))
+  const sourceUsd = (row: { accountId: string; amount: string; rate: string }) => {
+    const acc = accounts.find((a) => a.id === row.accountId)
+    const amt = parseFloat(row.amount) || 0
+    if (!acc || amt <= 0) return 0
+    if (acc.currency === 'VES') { const r = parseFloat(row.rate) || 0; return r > 0 ? amt / r : 0 }
+    return amt
+  }
+  const settlementAssignedUsd = settlementSources.reduce((s, row) => s + sourceUsd(row), 0)
+  const settlementRemainingUsd = Math.round((tot.neto - settlementAssignedUsd) * 100) / 100
+  const settlementBalanced = Math.abs(settlementRemainingUsd) <= 0.05
+  const settlementRowsValid = settlementSources.length > 0 && settlementSources.every((row) => {
+    const acc = accounts.find((a) => a.id === row.accountId)
+    if (!acc || !((parseFloat(row.amount) || 0) > 0)) return false
+    if (acc.currency === 'VES' && !((parseFloat(row.rate) || 0) > 0)) return false
+    return true
+  })
+  const updateSource = (i: number, patch: Partial<{ accountId: string; amount: string; rate: string }>) =>
+    setSettlementSources((prev) => prev.map((row, idx) => idx === i ? { ...row, ...patch } : row))
+  const fillRemaining = (i: number) => {
+    const acc = accounts.find((a) => a.id === settlementSources[i]?.accountId)
+    if (!acc) return
+    const otherUsd = settlementSources.reduce((s, row, idx) => idx === i ? s : s + sourceUsd(row), 0)
+    const needUsd = Math.max(0, Math.round((tot.neto - otherUsd) * 100) / 100)
+    const rate = acc.currency === 'VES' ? (parseFloat(settlementSources[i].rate) || bcvRate || 0) : 1
+    const native = acc.currency === 'VES' ? needUsd * rate : needUsd
+    updateSource(i, { amount: String(Math.round(native * 100) / 100) })
+  }
+
   const submitSettlement = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selected || !settlementAccount) return
-    const account = accounts.find((item) => item.id === settlementAccount)
-    if (!account) return
+    if (!selected || !settlementRowsValid || !settlementBalanced) return
     setSaving(true); setError('')
     try {
-      const result = await liquidatePayrollPeriod({ periodId: selected.id, accountId: account.id, currency: account.currency === 'VES' ? 'Bs' : 'USD', exchangeRate: account.currency === 'VES' ? bcvRate : 1, reference: settlementReference.trim() || null, notes: settlementNotes.trim() || null })
-      setShowSettlement(false); setSettlementReference(''); setSettlementNotes(''); await load()
-      flash(result.alreadyPaid ? 'Este período ya estaba liquidado' : `Nómina liquidada desde ${account.name}`)
+      const sources = settlementSources.map((row) => {
+        const acc = accounts.find((a) => a.id === row.accountId)!
+        return { accountId: row.accountId, amount: parseFloat(row.amount) || 0, rate: acc.currency === 'VES' ? (parseFloat(row.rate) || 0) : 1 }
+      })
+      const result = await liquidatePayrollPeriodSplit({ periodId: selected.id, sources, reference: settlementReference.trim() || null, notes: settlementNotes.trim() || null })
+      setShowSettlement(false); setSettlementReference(''); setSettlementNotes(''); setSettlementSources([]); await load()
+      flash(result.alreadyPaid ? 'Este período ya estaba liquidado' : `Nómina liquidada desde ${result.sources} cuenta${result.sources === 1 ? '' : 's'}`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error liquidando nómina') }
     finally { setSaving(false) }
   }
@@ -717,21 +752,40 @@ export function Nomina() {
               <div className="nom-modal-header-icon"><Banknote size={18} /></div>
               <h3>Liquidar período de nómina</h3>
             </div>
-            <p className="nom-history-note">El período se marcará como pagado y se registrará un movimiento de salida en la cuenta seleccionada.</p>
-            <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={settlementAccount} onChange={(e) => setSettlementAccount(e.target.value)} required><option value="">Seleccionar cuenta...</option>{accounts.filter((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES')).map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'} · saldo {account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</option>)}</StyledSelect></div>
-            {(() => {
-              const acc = accounts.find((a) => a.id === settlementAccount)
-              if (!acc) return null
-              const totalNative = acc.currency === 'VES' ? tot.neto * (bcvRate || 0) : tot.neto
-              const insufficient = totalNative > (acc.currentBalance ?? 0)
-              return <div className="nom-settlement-balance"><span>Disponible en {acc.name}: <strong>{acc.currency === 'VES' ? formatVes(acc.currentBalance) : formatUsd(acc.currentBalance)}</strong></span>{insufficient && <span className="nom-settlement-warn">El total a pagar ({acc.currency === 'VES' ? formatVes(totalNative) : formatUsd(totalNative)}) supera el disponible.</span>}</div>
-            })()}
-            <div className="nom-settlement-total"><strong>Total a liquidar: {formatUsd(tot.neto)}</strong><span>{bsReference(tot.neto)} · la moneda se toma de la cuenta</span></div>
+            <p className="nom-history-note">El período se marcará como pagado y se registrará un movimiento de salida por cada cuenta. Puedes pagar desde varias (una parte de cada una).</p>
+            <div className="nom-settlement-total"><strong>Total a liquidar: {formatUsd(tot.neto)}</strong><span>{bsReference(tot.neto)}</span></div>
+            <div className="nom-src-list">
+              {settlementSources.map((row, i) => {
+                const acc = accounts.find((a) => a.id === row.accountId)
+                const isVes = acc?.currency === 'VES'
+                const amt = parseFloat(row.amount) || 0
+                const insufficient = acc ? amt > (acc.currentBalance ?? 0) : false
+                return <div className="nom-src-row" key={i}>
+                  <div className="nom-src-grid">
+                    <div className="nom-field"><label>Cuenta {settlementSources.length > 1 ? `#${i + 1}` : ''}</label><StyledSelect value={row.accountId} onChange={(e) => { const na = accounts.find((a) => a.id === e.target.value); updateSource(i, { accountId: e.target.value, rate: na?.currency === 'VES' ? (row.rate || String(bcvRate || '')) : '' }) }} required><option value="">Seleccionar cuenta...</option>{settlementEligible.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'}</option>)}</StyledSelect></div>
+                    <div className="nom-field"><label>Monto {acc ? (isVes ? '(Bs)' : '(USD)') : ''}</label><input type="number" inputMode="decimal" min="0" step="0.01" value={row.amount} onChange={(e) => updateSource(i, { amount: e.target.value })} placeholder="0,00" /></div>
+                    {isVes && <div className="nom-field"><label>Tasa</label><input type="number" inputMode="decimal" min="0" step="0.01" value={row.rate} onChange={(e) => updateSource(i, { rate: e.target.value })} placeholder={String(bcvRate || '')} /></div>}
+                  </div>
+                  <div className="nom-src-meta">
+                    {acc && <span className={insufficient ? 'nom-settlement-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsd(acc.currentBalance)}{amt > 0 && !isVes ? '' : amt > 0 && isVes ? ` · ${formatUsd(sourceUsd(row))}` : ''}</span>}
+                    <span className="nom-src-actions">
+                      <button type="button" className="nom-src-link" onClick={() => fillRemaining(i)}>Poner resto</button>
+                      {settlementSources.length > 1 && <button type="button" className="nom-src-remove" onClick={() => setSettlementSources((prev) => prev.filter((_, idx) => idx !== i))}>Quitar</button>}
+                    </span>
+                  </div>
+                </div>
+              })}
+              <button type="button" className="nom-src-add" onClick={() => setSettlementSources((prev) => [...prev, { accountId: '', amount: '', rate: '' }])}><Plus size={14} /> Agregar cuenta</button>
+            </div>
+            <div className={`nom-src-summary ${settlementBalanced ? 'ok' : ''}`}>
+              <span>Asignado <strong>{formatUsd(settlementAssignedUsd)}</strong> de {formatUsd(tot.neto)}</span>
+              <span>{settlementBalanced ? '✓ Cuadra' : settlementRemainingUsd > 0 ? `Faltan ${formatUsd(settlementRemainingUsd)}` : `Sobran ${formatUsd(-settlementRemainingUsd)}`}</span>
+            </div>
             <div className="nom-row2">
               <div className="nom-field"><label>Referencia</label><input value={settlementReference} onChange={(e) => setSettlementReference(e.target.value)} placeholder="Ej. transferencia nómina" /></div>
               <div className="nom-field"><label>Notas</label><input value={settlementNotes} onChange={(e) => setSettlementNotes(e.target.value)} placeholder="Opcional" /></div>
             </div>
-            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowSettlement(false)}>Cancelar</button><button type="submit" className="nom-btn" disabled={saving}>Confirmar y pagar</button></div>
+            <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setShowSettlement(false)}>Cancelar</button><button type="submit" className="nom-btn" disabled={saving || !settlementRowsValid || !settlementBalanced}>Confirmar y pagar</button></div>
           </form>
         </div>,
         document.body
