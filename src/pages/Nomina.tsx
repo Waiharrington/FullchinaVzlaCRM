@@ -16,7 +16,7 @@ import NumberStepper from '../components/NumberStepper'
 import {
   Plus, Loader2, Users, Banknote, Gift, Hourglass,
   HelpCircle, Save,
-  Trash2,
+  Trash2, X, Bike,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import './Nomina.css'
@@ -55,6 +55,7 @@ export function Nomina() {
   const [showPayment, setShowPayment] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
   const [payEmp, setPayEmp] = useState(''); const [payAmt, setPayAmt] = useState(''); const [payAccount, setPayAccount] = useState(''); const [payRef, setPayRef] = useState(''); const [payNotes, setPayNotes] = useState('')
+  const [detailEmp, setDetailEmp] = useState<Employee | null>(null)
   const [showSettlement, setShowSettlement] = useState(false)
   const [settlementAccount, setSettlementAccount] = useState('')
   const [settlementReference, setSettlementReference] = useState('')
@@ -326,7 +327,7 @@ export function Nomina() {
             const directPayments = payments.filter((p) => p.employeeId === emp.id).length
             const accrued = paidByEmployee.get(emp.id) ?? 0
             const deliveryAccrued = deliveryByEmployee.get(emp.id) ?? 0
-            return <div className="nom-period" key={emp.id}><div className="nom-period-top"><strong>{emp.fullName}</strong><span className="nom-status open">{emp.position || 'Empleado'}</span></div><div className="liq">{isDelivery ? `Comisión acumulada: ${formatUsd(deliveryAccrued)}` : `Pagado acumulado: ${formatUsd(accrued)}`}</div><small>{isDelivery ? `${deliveryAccrued > 0 ? 'Comisión pendiente de liquidar' : 'Sin comisiones registradas'} · ${directPayments} pagos directos` : `${directPayments} pagos registrados · ${emp.hourlyRate ? `Tarifa ${formatUsd(emp.hourlyRate)}/h` : 'Pago directo o comisión'}`}</small></div>
+            return <button type="button" className="nom-period nom-period--clickable" key={emp.id} onClick={() => setDetailEmp(emp)}><div className="nom-period-top"><strong>{emp.fullName}</strong><span className="nom-status open">{emp.position || 'Empleado'}</span></div><div className="liq">{isDelivery ? `Comisión acumulada: ${formatUsd(deliveryAccrued)}` : `Pagado acumulado: ${formatUsd(accrued)}`}</div><small>{isDelivery ? `${deliveryAccrued > 0 ? 'Comisión pendiente de liquidar' : 'Sin comisiones registradas'} · ${directPayments} pagos directos` : `${directPayments} pagos registrados · ${emp.hourlyRate ? `Tarifa ${formatUsd(emp.hourlyRate)}/h` : 'Pago directo o comisión'}`}</small><span className="nom-period-more">Ver detalle →</span></button>
           })}
         </div>
         {payments.length > 0 && <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Cuenta</th><th>Referencia</th></tr></thead><tbody>{payments.slice(0, 8).map((p) => <tr key={p.id}><td>{new Date(p.paymentDate).toLocaleDateString('es-VE')}</td><td>{p.employeeName}</td><td><strong>{formatUsd(p.amount)}</strong></td><td>{p.paymentAccount || '—'}</td><td>{p.reference || '—'}</td></tr>)}</tbody></table></div>}
@@ -626,6 +627,69 @@ export function Nomina() {
         </div>,
         document.body
       )}
+      {detailEmp && createPortal((() => {
+        const emp = detailEmp
+        const isDelivery = emp.position?.toLowerCase() === 'delivery'
+        const empPayments = payments.filter((p) => p.employeeId === emp.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
+        const paidTotal = paidByEmployee.get(emp.id) ?? 0
+        const empDeliveries = deliveryAssignments.filter((d) => d.employeeId === emp.id && d.status !== 'cancelled').sort((a, b) => b.assignedAt.localeCompare(a.assignedAt))
+        const pendingDeliveries = empDeliveries.filter((d) => d.status === 'pending')
+        const deliveryPending = pendingDeliveries.reduce((s, d) => s + d.employeeAmount, 0)
+        const pendingAdvances = advances.filter((a) => a.employeeId === emp.id && !a.isDeducted)
+        const advancesPending = pendingAdvances.reduce((s, a) => s + a.amount, 0)
+        const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' })
+        return (
+          <div className="nom-modal-overlay" onClick={() => setDetailEmp(null)}>
+            <div className="nom-modal nom-modal--detail" onClick={(e) => e.stopPropagation()}>
+              <div className="nom-modal-header">
+                <div className="nom-modal-header-icon">{isDelivery ? <Bike size={18} /> : <Users size={18} />}</div>
+                <h3>{emp.fullName}</h3>
+                <span className="nom-status open">{emp.position || 'Empleado'}</span>
+                <button type="button" className="nom-detail-close" onClick={() => setDetailEmp(null)} aria-label="Cerrar"><X size={18} /></button>
+              </div>
+
+              <div className="nom-detail-summary">
+                {isDelivery && <div className="nom-detail-stat"><span>Comisión pendiente</span><strong>{formatUsd(deliveryPending)}</strong><small>{bsReference(deliveryPending)}</small></div>}
+                <div className="nom-detail-stat"><span>Pagado acumulado</span><strong>{formatUsd(paidTotal)}</strong><small>{empPayments.length} pago{empPayments.length === 1 ? '' : 's'}</small></div>
+                {advancesPending > 0 && <div className="nom-detail-stat"><span>Adelantos pendientes</span><strong className="nom-neg">-{formatUsd(advancesPending)}</strong><small>{pendingAdvances.length} sin descontar</small></div>}
+              </div>
+
+              {isDelivery && (
+                <div className="nom-detail-section">
+                  <h4>Comisiones de delivery <span>{pendingDeliveries.length} pendiente{pendingDeliveries.length === 1 ? '' : 's'}</span></h4>
+                  {empDeliveries.length === 0 ? <p className="nom-detail-empty">Sin entregas registradas.</p> : (
+                    <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Domicilio</th><th>%</th><th>Comisión</th><th>Estado</th></tr></thead><tbody>
+                      {empDeliveries.slice(0, 30).map((d) => <tr key={d.id}><td>{fmtDate(d.assignedAt)}</td><td>{formatUsd(d.deliveryFee)}</td><td>{Math.round(d.employeePercent)}%</td><td><strong>{formatUsd(d.employeeAmount)}</strong></td><td><span className={`nom-chip ${d.status === 'paid' ? 'nom-chip--paid' : 'nom-chip--pending'}`}>{d.status === 'paid' ? 'Pagada' : 'Pendiente'}</span></td></tr>)}
+                    </tbody><tfoot><tr><td colSpan={3}>Pendiente por liquidar</td><td colSpan={2}><strong>{formatUsd(deliveryPending)}</strong></td></tr></tfoot></table></div>
+                  )}
+                  <p className="nom-detail-hint">Cada entrega paga {pendingDeliveries[0] ? `${Math.round(pendingDeliveries[0].employeePercent)}%` : 'un %'} del domicilio cobrado. La suma de las pendientes es la comisión acumulada.</p>
+                </div>
+              )}
+
+              <div className="nom-detail-section">
+                <h4>Pagos directos <span>{empPayments.length}</span></h4>
+                {empPayments.length === 0 ? <p className="nom-detail-empty">Todavía no se le han registrado pagos directos.</p> : (
+                  <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Monto</th><th>Cuenta</th><th>Referencia</th></tr></thead><tbody>
+                    {empPayments.slice(0, 30).map((p) => <tr key={p.id}><td>{fmtDate(p.paymentDate)}</td><td><strong>{p.currency === 'Bs' ? formatVes(p.amount) : formatUsd(p.amount)}</strong></td><td>{p.paymentAccount || '—'}</td><td>{p.reference || '—'}</td></tr>)}
+                  </tbody></table></div>
+                )}
+              </div>
+
+              {pendingAdvances.length > 0 && (
+                <div className="nom-detail-section">
+                  <h4>Adelantos sin descontar <span>{pendingAdvances.length}</span></h4>
+                  <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Monto</th><th>Nota</th></tr></thead><tbody>
+                    {pendingAdvances.map((a) => <tr key={a.id}><td>{fmtDate(a.advanceDate)}</td><td><strong className="nom-neg">-{formatUsd(a.amount)}</strong></td><td>{a.notes || '—'}</td></tr>)}
+                  </tbody></table></div>
+                  <p className="nom-detail-hint">Se descontarán del neto cuando se liquide un período.</p>
+                </div>
+              )}
+
+              <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setDetailEmp(null)}>Cerrar</button></div>
+            </div>
+          </div>
+        )
+      })(), document.body)}
       {showSettlement && selected && createPortal(
         <div className="nom-modal-overlay" onClick={() => setShowSettlement(false)}>
           <form className="nom-modal nom-modal--payment" onClick={(e) => e.stopPropagation()} onSubmit={submitSettlement}>
