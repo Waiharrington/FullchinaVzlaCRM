@@ -9,6 +9,7 @@ import NumberStepper from '../components/NumberStepper'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { normalizeForSearch } from '../lib/textFormat'
+import { formatUsdPrecise } from '../lib/money'
 import './Almacen.css'
 
 type WarehouseItem = {
@@ -360,7 +361,7 @@ export function Almacen() {
                       <td><span className="almacen-category">{item.category}</span></td>
                       <td className="almacen-stock-value">{item.quantity} <small>{item.unit}</small></td>
                       <td className="almacen-stock-operational">{operationalQty} <small>{item.unit}</small></td>
-                      <td>${item.costPerUnit.toFixed(2)}</td>
+                      <td>{formatUsdPrecise(item.costPerUnit)}</td>
                       <td className="almacen-total-value">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
                       <td>
                         <span className={`badge-stock ${isLow ? 'low' : 'normal'}`}>

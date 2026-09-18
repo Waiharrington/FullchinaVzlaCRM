@@ -10,7 +10,7 @@ import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes } from '../lib/money'
+import { formatUsd, formatVes, formatUsdPrecise } from '../lib/money'
 import {
   Plus, Trash2, Pencil, Check, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
   List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
@@ -576,7 +576,7 @@ export function RecetasReal() {
                     <span className="rec-card-name">{formatProductTitle(p.name)}</span>
                     <span className="rec-card-meta">
                       {complete
-                        ? `${s.componentCount} ingrediente${s.componentCount === 1 ? '' : 's'}${s.recipeCost != null ? ` · Costo ${formatUsd(s.recipeCost)}` : ''}`
+                        ? `${s.componentCount} ingrediente${s.componentCount === 1 ? '' : 's'}${s.recipeCost != null ? ` · Costo ${formatUsdPrecise(s.recipeCost)}` : ''}`
                         : 'Sin ingredientes configurados'}
                     </span>
                     <span className={`rec-badge ${complete ? 'ok' : 'warn'}`}>
@@ -640,7 +640,7 @@ export function RecetasReal() {
                 <div className="rec-price-box">
                   <div className="lbl">Precio de venta</div>
                   <div className="price">{formatUsd(sel.salePrice)}</div>
-                  <div className="cost">Costo estimado<br />{cost != null ? formatUsd(cost) : 'Sin costo'}</div>
+                  <div className="cost">Costo estimado<br />{cost != null ? formatUsdPrecise(cost) : 'Sin costo'}</div>
                 </div>
               </div>
 
@@ -695,7 +695,7 @@ export function RecetasReal() {
                               </StyledSelect>
                             </div>
                           ) : <span className="rec-ing-qty">{c.quantity} {c.unitSymbol}</span>}
-                          <span className="rec-ing-cost">{c.costPerUnit == null ? 'Sin costo' : formatUsd(c.costPerUnit * c.quantity)}</span>
+                          <span className="rec-ing-cost">{c.costPerUnit == null ? 'Sin costo' : formatUsdPrecise(c.costPerUnit * c.quantity)}</span>
                           {c.ingredientId && (
                             editingComponentId === c.id ? (
                               <>
@@ -731,7 +731,7 @@ export function RecetasReal() {
               <div className="rec-stats">
                 <div className="rec-stat">
                   <div className="rec-stat-lbl"><Coins size={13} /> Costo total</div>
-                  <div className="rec-stat-val">{cost != null ? formatUsd(cost) : '$0.00'}</div>
+                  <div className="rec-stat-val">{cost != null ? formatUsdPrecise(cost) : '$0.00'}</div>
                   <div className="rec-stat-sub">{selComplete ? `${selSummary?.componentCount} ingredientes` : 'Sin ingredientes'}</div>
                 </div>
                 <div className="rec-stat">
