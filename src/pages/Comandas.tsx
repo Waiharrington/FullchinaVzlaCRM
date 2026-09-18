@@ -525,6 +525,7 @@ export function Comandas() {
   const [refNumber, setRefNumber] = useState('')
   const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('')
+  const [amountReceivedSecondary, setAmountReceivedSecondary] = useState('')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
   const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
   const [splitPrimaryReference, setSplitPrimaryReference] = useState('')
@@ -765,6 +766,21 @@ export function Comandas() {
   }
   const paymentRate = paymentOrder?.bcvRate && paymentOrder.bcvRate > 0 ? paymentOrder.bcvRate : bcvRate
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
+  const splitSecondaryAmountUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, paymentRate)
+  // Los dos métodos del pago combinado están enlazados: editar uno recalcula el
+  // otro para que siempre sumen el total (bidireccional Bs<->USD).
+  const syncSplitFromPrimary = (input: string) => {
+    setAmountReceived(input)
+    const primaryUsd = paymentInputToUsd(input, splitPrimaryMethod, paymentRate)
+    const secUsd = Math.max(0, Math.round(((paymentOrder?.totalAmount ?? 0) - primaryUsd) * 100) / 100)
+    setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, paymentRate))
+  }
+  const syncSplitFromSecondary = (input: string) => {
+    setAmountReceivedSecondary(input)
+    const secUsd = paymentInputToUsd(input, splitSecondaryMethod, paymentRate)
+    const priUsd = Math.max(0, Math.round(((paymentOrder?.totalAmount ?? 0) - secUsd) * 100) / 100)
+    setAmountReceived(usdToPaymentInput(priUsd, splitPrimaryMethod, paymentRate))
+  }
 
   const handleOpenPaymentForOrder = async (order: ComandaOrder) => {
     // Abrir primero el modal para que el clic siempre tenga respuesta visual,
@@ -818,7 +834,9 @@ export function Comandas() {
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     if (method === 'split' && paymentOrder?.totalAmount) {
-      setAmountReceived(usdToPaymentInput(paymentOrder.totalAmount / 2, 'cash', paymentRate))
+      const half = paymentOrder.totalAmount / 2
+      setAmountReceived(usdToPaymentInput(half, splitPrimaryMethod, paymentRate))
+      setAmountReceivedSecondary(usdToPaymentInput(paymentOrder.totalAmount - half, splitSecondaryMethod, paymentRate))
     } else {
       const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method
       setAmountReceived(usdToPaymentInput(paymentOrder?.totalAmount || 0, inputMethod, paymentRate))
@@ -2279,12 +2297,14 @@ export function Comandas() {
                         const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
                         setSplitPrimaryMethod(nextMethod)
                         setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, paymentRate))
+                        const secUsd = Math.max(0, Math.round(((paymentOrder?.totalAmount ?? 0) - currentUsd) * 100) / 100)
+                        setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, paymentRate))
                         setSplitPrimaryReference('')
                         setPaymentError('')
                       }} />
                       <label className="payment-field-label">Monto del primer método</label>
                       <div className="payment-input-wrap">
-                        <input type="text" inputMode="decimal" className="payment-field-input" value={amountReceived} onChange={(event) => setAmountReceived(event.target.value)} />
+                        <input type="text" inputMode="decimal" className="payment-field-input" value={amountReceived} onChange={(event) => syncSplitFromPrimary(event.target.value)} />
                         <span className="currency-tag-right">{usesBolivares(splitPrimaryMethod) ? 'Bs' : 'USD'}</span>
                       </div>
                       <span className="payment-hint-sub">
@@ -2303,19 +2323,22 @@ export function Comandas() {
                     <section className="split-method-card">
                       <div className="split-method-heading"><span className="split-method-number">2</span><span>Segundo método</span></div>
                       <PaymentMethodSelect ariaLabel="Segundo método de pago" value={splitSecondaryMethod} options={SPLIT_PAYMENT_METHODS} disabledMethod={splitPrimaryMethod} onChange={(nextMethod) => {
+                        const currentUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, paymentRate)
                         setSplitSecondaryMethod(nextMethod)
+                        setAmountReceivedSecondary(usdToPaymentInput(currentUsd, nextMethod, paymentRate))
                         setSplitSecondaryReference('')
                         setPaymentError('')
                       }} />
                       <label className="payment-field-label">Monto del segundo método</label>
-                      <div className="split-readonly-amount">
-                        <MoneyWithBcv
-                          usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - splitPrimaryAmountUsd)}
-                          rate={paymentRate}
-                          primaryCurrency={usesBolivares(splitSecondaryMethod) ? 'VES' : 'USD'}
-                          compact
-                        />
+                      <div className="payment-input-wrap">
+                        <input type="text" inputMode="decimal" className="payment-field-input" value={amountReceivedSecondary} onChange={(event) => syncSplitFromSecondary(event.target.value)} />
+                        <span className="currency-tag-right">{usesBolivares(splitSecondaryMethod) ? 'Bs' : 'USD'}</span>
                       </div>
+                      <span className="payment-hint-sub">
+                        {usesBolivares(splitSecondaryMethod)
+                          ? `Ref. ${formatUsd(splitSecondaryAmountUsd)}`
+                          : paymentRate ? `Ref. ${formatVes(splitSecondaryAmountUsd * paymentRate)}` : 'Referencia BCV no disponible'}
+                      </span>
                       {requiresPaymentReference(splitSecondaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
