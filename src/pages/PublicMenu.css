@@ -9141,6 +9141,174 @@ body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
   .public-variant-backdrop.closing .public-variant-picker { animation: none; }
 }
 
+/* Un solo scroll cuando hay un overlay: el gesto queda contenido dentro de
+   la ventana activa y no puede encadenarse con el documento de fondo. */
+.public-modal-backdrop,
+.public-drawer-backdrop,
+.public-variant-backdrop,
+.public-whatsapp-ready-backdrop {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.public-product-detail-modal,
+.public-cart-drawer,
+.public-variant-picker,
+.public-whatsapp-ready-card {
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* Las presentaciones comparten foto, así que la información debe vivir en
+   la tarjeta y no quedar escondida debajo de una imagen dominante. */
+@media (min-width: 561px) {
+  .public-variant-picker {
+    width: min(760px, 100%);
+    max-height: min(680px, calc(100dvh - 36px));
+  }
+
+  .public-variant-options {
+    grid-auto-rows: minmax(0, auto);
+    align-items: stretch;
+  }
+
+  .public-variant-option-media {
+    aspect-ratio: 16 / 7;
+    max-height: 145px;
+  }
+
+  .public-variant-option-copy {
+    min-height: 94px;
+    box-sizing: border-box;
+    justify-content: flex-start;
+  }
+
+  .public-variant-option-copy > strong {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+.public-variant-option-description {
+  display: -webkit-box;
+  width: 100%;
+  margin-top: 5px;
+  overflow: hidden;
+  color: #aeb2bb;
+  font-size: 11px;
+  line-height: 1.3;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* El contenido de la variante nunca puede desaparecer por el alto de la
+   imagen o por reglas generales aplicadas a botones. */
+.public-variant-option-copy {
+  position: relative !important;
+  z-index: 2 !important;
+  display: flex !important;
+  flex: 0 0 auto !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 104px !important;
+  box-sizing: border-box !important;
+  background: #15171d !important;
+}
+
+.public-variant-option-copy > small,
+.public-variant-option-copy > strong,
+.public-variant-option-copy > span {
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.public-variant-option-copy > small {
+  display: block !important;
+}
+
+.public-variant-option-copy > strong {
+  display: block !important;
+  color: #fff !important;
+}
+
+.public-variant-option-copy .public-variant-option-description {
+  display: -webkit-box !important;
+  color: #c5c8cf !important;
+}
+
+.public-variant-option-copy .public-variant-option-price {
+  display: flex !important;
+  color: #ffd23f !important;
+}
+
+/* Con cinco o más presentaciones, tres columnas aprovechan el ancho del
+   modal sin comprimir el contenido. Las filas crecen según la descripción y
+   el scroll se mantiene dentro del selector. */
+@media (min-width: 561px) {
+  .public-variant-options.is-many {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-auto-rows: max-content !important;
+    align-content: start !important;
+    align-items: start !important;
+    gap: 12px !important;
+    padding-top: 14px !important;
+    padding-bottom: 14px !important;
+  }
+
+  .public-variant-options.is-many .public-variant-option {
+    display: flex !important;
+    flex-direction: column !important;
+    align-self: start !important;
+    min-height: 0 !important;
+    height: auto !important;
+    border-radius: 15px !important;
+  }
+
+  .public-variant-options.is-many .public-variant-option-media {
+    width: 100% !important;
+    flex: 0 0 136px !important;
+    height: 136px !important;
+    min-height: 136px !important;
+    aspect-ratio: auto !important;
+    max-height: none !important;
+  }
+
+  .public-variant-options.is-many .public-variant-option-copy {
+    flex: 1 1 auto !important;
+    min-height: 166px !important;
+    height: auto !important;
+    justify-content: flex-start !important;
+    padding: 11px 12px 13px !important;
+  }
+
+  .public-variant-options.is-many .public-variant-option-copy > strong {
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+  }
+
+  .public-variant-options.is-many .public-variant-option-description {
+    display: block !important;
+    overflow: visible !important;
+    -webkit-line-clamp: unset !important;
+    overflow-wrap: anywhere !important;
+    font-size: 10px !important;
+    line-height: 1.35 !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .public-variant-option-media { aspect-ratio: 4 / 3; }
+  .public-variant-option-copy > strong {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .public-variant-option-description { font-size: 10px; }
+}
+
 /* CTA de escritorio: visible para facilitar el descubrimiento, pero con un
    estado reposado que se activa al pasar el mouse. El móvil conserva su
    botón rojo compacto definido arriba. */

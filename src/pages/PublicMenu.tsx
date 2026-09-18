@@ -291,6 +291,39 @@ export function PublicMenu() {
   const [step, setStep] = useState<'cart' | 'delivery' | 'address' | 'details' | 'confirm' | 'preparing' | 'whatsapp' | 'sent'>('cart')
   const [returnToConfirmAfterEdit, setReturnToConfirmAfterEdit] = useState(false)
   const [editingCartLineKey, setEditingCartLineKey] = useState<string | null>(null)
+
+  // Regla global de overlays: mientras exista una ventana abierta, el
+  // documento que queda detrás no puede desplazarse. El scroll pertenece
+  // exclusivamente al modal o drawer activo.
+  useEffect(() => {
+    const overlayOpen = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras)
+    const root = document.documentElement
+    const body = document.body
+
+    if (!overlayOpen) return
+
+    const previousRootOverflow = root.style.overflow
+    const previousRootOverscroll = root.style.overscrollBehavior
+    const previousBodyOverflow = body.style.overflow
+    const previousBodyOverscroll = body.style.overscrollBehavior
+    const previousBodyPaddingRight = body.style.paddingRight
+    const scrollbarWidth = window.innerWidth - root.clientWidth
+
+    root.style.overflow = 'hidden'
+    root.style.overscrollBehavior = 'none'
+    body.style.overflow = 'hidden'
+    body.style.overscrollBehavior = 'none'
+    if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`
+
+    return () => {
+      root.style.overflow = previousRootOverflow
+      root.style.overscrollBehavior = previousRootOverscroll
+      body.style.overflow = previousBodyOverflow
+      body.style.overscrollBehavior = previousBodyOverscroll
+      body.style.paddingRight = previousBodyPaddingRight
+    }
+  }, [cartOpen, quickVariantGroup, selectedGroup, showAllExtras])
+
   const previousStepRef = useRef(step)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -2558,7 +2591,7 @@ export function PublicMenu() {
               <button type="button" className="public-variant-close" onClick={closeQuickVariant} aria-label="Cerrar selector"><X size={18} /></button>
             </header>
 
-            <div className="public-variant-options">
+            <div className={`public-variant-options ${quickVariantGroup.variants.length > 4 ? 'is-many' : ''}`}>
               {quickVariantGroup.variants.map(({ product, label }) => {
                 const selected = product.id === quickVariantId
                 const inheritedImage = optimizedProductImage(product.imageUrl)
@@ -2580,6 +2613,9 @@ export function PublicMenu() {
                     <span className="public-variant-option-copy">
                       <small>Presentación</small>
                       <strong>{formatSpanishText(label)}</strong>
+                      <span className="public-variant-option-description">
+                        {formatSpanishText(product.description || 'Preparación Full China')}
+                      </span>
                       <span className="public-variant-option-price">{money(product.price)}{priceBs(product.price) && <em>{priceBs(product.price)}</em>}</span>
                     </span>
                   </button>
