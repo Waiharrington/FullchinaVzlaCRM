@@ -53,15 +53,12 @@ export function ComprasReal() {
   const [invoiceNumber, setInvoiceNumber] = useState('')
   const [notes, setNotes] = useState('')
   const [markPaid, setMarkPaid] = useState(true)
-  const [accountId, setAccountId] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('pago_movil')
-  const [paymentReference, setPaymentReference] = useState('')
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [items, setItems] = useState<ItemForm[]>([])
+  const [purchaseSources, setPurchaseSources] = useState<Array<{ accountId: string; amount: string; reference: string }>>([])
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null)
   const [editingOriginal, setEditingOriginal] = useState<Purchase | null>(null)
   const [saving, setSaving] = useState(false)
-  const selectedAccount = accounts.find(account => account.id === accountId) ?? null
 
   const [showSupplierForm, setShowSupplierForm] = useState(false)
   const [newSupplierName, setNewSupplierName] = useState('')
@@ -154,6 +151,37 @@ export function ComprasReal() {
 
   const totalForm = items.reduce((s, it) => s + (parseFloat(it.quantity) || 0) * (parseFloat(it.unitCost) || 0), 0)
 
+  const methodForAccount = (account: FinancialAccount | undefined): string => {
+    if (!account) return 'pago_movil'
+    if (account.accountType === 'pos') return 'punto'
+    if (account.name.toLowerCase().includes('binance')) return 'binance'
+    if (account.accountType === 'cash') return account.currency === 'VES' ? 'efectivo_bs' : 'efectivo_usd'
+    return account.currency === 'VES' ? 'pago_movil' : 'transferencia'
+  }
+  const purchaseSourceUsd = (row: { accountId: string; amount: string }) => {
+    const acc = accounts.find((a) => a.id === row.accountId)
+    const amt = parseFloat(row.amount) || 0
+    if (!acc || amt <= 0) return 0
+    return acc.currency === 'VES' ? (effectiveBcvRate > 0 ? amt / effectiveBcvRate : 0) : amt
+  }
+  const purchaseAssignedUsd = purchaseSources.reduce((s, r) => s + purchaseSourceUsd(r), 0)
+  const purchaseRemainingUsd = Math.round((totalForm - purchaseAssignedUsd) * 100) / 100
+  const purchaseBalanced = Math.abs(purchaseRemainingUsd) <= 0.02
+  const purchaseSourcesValid = purchaseSources.length > 0 && purchaseSources.every((r) => {
+    const acc = accounts.find((a) => a.id === r.accountId)
+    return !!acc && (parseFloat(r.amount) || 0) > 0
+  })
+  const updatePurchaseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string }>) =>
+    setPurchaseSources((prev) => prev.map((row, idx) => idx === i ? { ...row, ...patch } : row))
+  const fillPurchaseRemaining = (i: number) => {
+    const acc = accounts.find((a) => a.id === purchaseSources[i]?.accountId)
+    if (!acc) return
+    const otherUsd = purchaseSources.reduce((s, row, idx) => idx === i ? s : s + purchaseSourceUsd(row), 0)
+    const needUsd = Math.max(0, Math.round((totalForm - otherUsd) * 100) / 100)
+    const native = acc.currency === 'VES' ? needUsd * effectiveBcvRate : needUsd
+    updatePurchaseSource(i, { amount: String(Math.round(native * 100) / 100) })
+  }
+
   const addItem = () => setItems([...items, { ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }])
   const removeItem = (i: number) => setItems(items.filter((_, x) => x !== i))
   const changeItem = (i: number, f: keyof ItemForm, v: string) => setItems(items.map((it, x) => {
@@ -163,12 +191,13 @@ export function ComprasReal() {
     return up
   }))
 
-  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setAccountId(''); setPaymentMethod('pago_movil'); setPaymentReference(''); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
+  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setPurchaseSources([]); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
 
   const openPurchaseForm = () => {
     resetForm()
     setClosingForm(false)
     setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }])
+    setPurchaseSources([{ accountId: '', amount: '', reference: '' }])
     setShowForm(true)
   }
 
@@ -180,37 +209,31 @@ export function ComprasReal() {
     setInvoiceNumber(p.invoiceNumber ?? '')
     setNotes(p.notes ?? '')
     setMarkPaid(p.isPaid)
-    setAccountId(p.accountId ?? '')
-    setPaymentMethod(p.paymentMethod ?? 'pago_movil')
-    setPaymentReference(p.paymentReference ?? '')
     setItems(p.items.map((it) => ({ ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost) })))
+    setPurchaseSources(p.payments.length > 0
+      ? p.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '' }))
+      : [{ accountId: p.accountId ?? '', amount: '', reference: p.paymentReference ?? '' }])
     setClosingForm(false)
     setShowForm(true)
-  }
-
-  const changePaymentAccount = (nextAccountId: string) => {
-    setAccountId(nextAccountId)
-    const account = accounts.find(item => item.id === nextAccountId)
-    if (!account) return
-    if (account.accountType === 'pos') setPaymentMethod('punto')
-    else if (account.name.toLowerCase().includes('binance')) setPaymentMethod('binance')
-    else if (account.accountType === 'cash') setPaymentMethod(account.currency === 'VES' ? 'efectivo_bs' : 'efectivo_usd')
-    else if (account.currency === 'VES') setPaymentMethod('pago_movil')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supplierId || items.length === 0) return
-    if (markPaid && !accountId) { setError('Selecciona la cuenta desde donde se pagó la compra'); return }
-    if (markPaid && selectedAccount?.currency === 'VES' && effectiveBcvRate <= 0) { setError('No hay una tasa BCV válida para registrar el pago en bolívares'); return }
+    if (markPaid) {
+      if (!purchaseSourcesValid) { setError('Completa las cuentas de pago (cuenta y monto).'); return }
+      if (purchaseSources.some((r) => accounts.find((a) => a.id === r.accountId)?.currency === 'VES') && effectiveBcvRate <= 0) { setError('No hay una tasa BCV válida para registrar pagos en bolívares'); return }
+      if (!purchaseBalanced) { setError(`El pago no cuadra: asignado ${formatUsdPrecise(purchaseAssignedUsd)} de ${formatUsdPrecise(totalForm)}`); return }
+    }
     setSaving(true); setError('')
+    const payments = markPaid ? purchaseSources.map((r) => {
+      const acc = accounts.find((a) => a.id === r.accountId)!
+      return { accountId: r.accountId, amount: parseFloat(r.amount) || 0, currency: acc.currency, exchangeRate: acc.currency === 'VES' ? effectiveBcvRate : null, method: methodForAccount(acc), reference: r.reference.trim() || null }
+    }) : undefined
     const payload = {
       supplierId, purchaseDate, invoiceNumber: invoiceNumber.trim() || undefined,
       notes: notes.trim() || undefined, userId: user?.id ?? '', isPaid: markPaid,
-      accountId: markPaid ? accountId : null, exchangeRate: markPaid ? effectiveBcvRate : null,
-      paymentCurrency: markPaid ? selectedAccount?.currency ?? null : null,
-      paymentMethod: markPaid ? paymentMethod : null,
-      paymentReference: markPaid ? paymentReference.trim() || null : null,
+      exchangeRate: markPaid ? effectiveBcvRate : null, payments,
       items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0 })),
     }
     try {
@@ -227,9 +250,9 @@ export function ComprasReal() {
           await createPurchase({
             supplierId: original.supplierId, purchaseDate: original.purchaseDate,
             invoiceNumber: original.invoiceNumber ?? undefined, notes: original.notes ?? undefined,
-            userId: user?.id ?? '', isPaid: original.isPaid, accountId: original.accountId,
-            exchangeRate: original.exchangeRate, paymentCurrency: original.paymentCurrency,
-            paymentMethod: original.paymentMethod, paymentReference: original.paymentReference,
+            userId: user?.id ?? '', isPaid: original.isPaid, exchangeRate: original.exchangeRate,
+            payments: original.payments.length > 0 ? original.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, exchangeRate: pp.exchangeRate, method: pp.method, reference: pp.reference })) : undefined,
+            accountId: original.accountId, paymentCurrency: original.paymentCurrency, paymentMethod: original.paymentMethod, paymentReference: original.paymentReference,
             items: original.items.map((it) => ({ ingredientId: it.ingredientId, quantity: it.quantity, unitId: it.unitId, unitCost: it.unitCost })),
           }).catch(() => {})
           throw createErr
@@ -453,19 +476,35 @@ export function ComprasReal() {
             <label className="cmp-field" style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, fontSize: 13, color: '#d4d4d8', cursor: 'pointer' }}>
               <input type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#e11d2a' }} /> Marcar como pagada
             </label>
-            {markPaid && <div className="cmp-payment-grid">
-              <div className="cmp-field"><label>Cuenta de salida *</label><StyledSelect value={accountId} onChange={(e) => changePaymentAccount(e.target.value)}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
-              <div className="cmp-field"><label>Método de pago *</label><StyledSelect value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>{PAYMENT_METHODS.map(method => <option key={method.value} value={method.value}>{method.label}</option>)}</StyledSelect></div>
-              <div className="cmp-field"><label>Referencia</label><input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="N° de operación (opcional)" /></div>
+            {markPaid && <div className="cmp-src-block">
+              {purchaseSources.map((row, i) => {
+                const acc = accounts.find((a) => a.id === row.accountId)
+                const isVes = acc?.currency === 'VES'
+                const amt = parseFloat(row.amount) || 0
+                const insufficient = acc ? amt > (acc.currentBalance ?? 0) : false
+                return <div className="cmp-src-row" key={i}>
+                  <div className="cmp-src-grid">
+                    <div className="cmp-field"><label>Cuenta {purchaseSources.length > 1 ? `#${i + 1}` : ''} *</label><StyledSelect value={row.accountId} onChange={(e) => updatePurchaseSource(i, { accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
+                    <div className="cmp-field"><label>Monto {acc ? (isVes ? '(Bs)' : '(USD)') : ''}</label><input type="number" inputMode="decimal" min="0" step="any" value={row.amount} onChange={(e) => updatePurchaseSource(i, { amount: e.target.value })} placeholder="0,00" /></div>
+                    <div className="cmp-field"><label>Referencia</label><input value={row.reference} onChange={(e) => updatePurchaseSource(i, { reference: e.target.value })} placeholder="N° operación" /></div>
+                  </div>
+                  <div className="cmp-src-meta">
+                    {acc && <span className={insufficient ? 'cmp-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsdPrecise(acc.currentBalance)}</span>}
+                    <span className="cmp-src-actions"><button type="button" className="cmp-src-link" onClick={() => fillPurchaseRemaining(i)}>Poner resto</button>{purchaseSources.length > 1 && <button type="button" className="cmp-src-remove" onClick={() => setPurchaseSources((prev) => prev.filter((_, idx) => idx !== i))}>Quitar</button>}</span>
+                  </div>
+                </div>
+              })}
+              <button type="button" className="cmp-src-add" onClick={() => setPurchaseSources((prev) => [...prev, { accountId: '', amount: '', reference: '' }])}><Plus size={14} /> Agregar cuenta</button>
+              <div className={`cmp-src-summary ${purchaseBalanced ? 'ok' : ''}`}><span>Asignado <strong>{formatUsdPrecise(purchaseAssignedUsd)}</strong> de {formatUsdPrecise(totalForm)}</span><span>{purchaseBalanced ? '✓ Cuadra' : purchaseRemainingUsd > 0 ? `Faltan ${formatUsdPrecise(purchaseRemainingUsd)}` : `Sobran ${formatUsdPrecise(-purchaseRemainingUsd)}`}</span></div>
             </div>}
 
             <div className="cmp-form-foot">
               <span style={{ color: '#a1a1aa', fontSize: 13 }}>Total de ítems: <strong style={{ color: '#fff' }}>{items.length}</strong></span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                <div className="cmp-total"><div className="lbl">Total a pagar</div><div className="val">{selectedAccount?.currency === 'VES' ? formatVes(totalForm * effectiveBcvRate) : formatUsdPrecise(totalForm)}</div>{selectedAccount?.currency === 'VES' && <div className="cmp-payment-ref">Ref. {formatUsdPrecise(totalForm)} · BCV {formatVes(effectiveBcvRate)}</div>}</div>
+                <div className="cmp-total"><div className="lbl">Total a pagar</div><div className="val">{formatUsdPrecise(totalForm)}</div>{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Ref. {formatVes(totalForm * effectiveBcvRate)} · BCV {formatVes(effectiveBcvRate)}</div>}</div>
                 <div className="cmp-actions">
                   <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
-                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
+                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0 || (markPaid && (!purchaseSourcesValid || !purchaseBalanced))}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
                 </div>
               </div>
             </div>
@@ -497,7 +536,7 @@ export function ComprasReal() {
                   <td>
                     {p.isPaid ? <div className="cmp-paid-amount"><strong>{p.paymentCurrency === 'VES' && p.exchangeRate ? formatVes(p.totalAmount * p.exchangeRate) : formatUsdPrecise(p.totalAmount)}</strong>{p.paymentCurrency === 'VES' && p.exchangeRate && <small>Ref. {formatUsdPrecise(p.totalAmount)} · BCV {formatVes(p.exchangeRate)}</small>}</div> : <span>—</span>}
                   </td>
-                  <td><div className="cmp-payment-info"><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</div></td>
+                  <td><div className="cmp-payment-info">{p.payments.length > 1 ? <><strong>Varias cuentas</strong><small>{p.payments.map((pp) => pp.accountName).join(' · ')}</small></> : <><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</>}</div></td>
                   <td><span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Clic para cambiar'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>{p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
                   <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>{!p.isVoided && <button className="cmp-icon-btn" onClick={() => openEditPurchase(p)} title="Editar compra" aria-label={`Editar compra de ${p.supplierName}`}><Pencil size={16} /></button>}{p.isVoided ? <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeleteVoidedPurchase(p)} title="Borrar compra demo permanentemente" aria-label={`Borrar compra demo de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button> : <><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></>}</div></td>
                 </tr>
@@ -535,8 +574,14 @@ export function ComprasReal() {
             </div>
             <div className="cmp-detail-row"><span className="k">Fecha</span><span>{new Date(detail.purchaseDate).toLocaleDateString('es-VE')}</span></div>
             <div className="cmp-detail-row"><span className="k">Factura</span><span>{detail.invoiceNumber || '—'}</span></div>
-            <div className="cmp-detail-row"><span className="k">Método / cuenta</span><span>{detail.isPaid ? `${paymentMethodLabel(detail.paymentMethod)} · ${detail.accountName ?? 'Sin registrar'}` : 'Pendiente de pago'}</span></div>
-            {detail.paymentReference && <div className="cmp-detail-row"><span className="k">Referencia</span><span>{detail.paymentReference}</span></div>}
+            {detail.payments.length > 1 ? (
+              <div className="cmp-detail-row"><span className="k">Pagos</span><span>{detail.payments.map((pp, idx) => <div key={idx}>{pp.accountName}: {pp.currency === 'VES' ? formatVes(pp.amount) : formatUsdPrecise(pp.amount)}{pp.reference ? ` · Ref. ${pp.reference}` : ''}</div>)}</span></div>
+            ) : (
+              <>
+                <div className="cmp-detail-row"><span className="k">Método / cuenta</span><span>{detail.isPaid ? `${paymentMethodLabel(detail.paymentMethod)} · ${detail.accountName ?? 'Sin registrar'}` : 'Pendiente de pago'}</span></div>
+                {detail.paymentReference && <div className="cmp-detail-row"><span className="k">Referencia</span><span>{detail.paymentReference}</span></div>}
+              </>
+            )}
             {detail.notes && <div className="cmp-detail-row"><span className="k">Notas</span><span>{detail.notes}</span></div>}
             <div style={{ margin: '12px 0 4px', fontSize: 12, color: '#71717a', textTransform: 'uppercase' }}>Ítems</div>
             {detail.items.map((it) => (

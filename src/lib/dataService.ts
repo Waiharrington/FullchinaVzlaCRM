@@ -295,6 +295,19 @@ export interface Purchase {
   paymentReference: string | null
   exchangeRate: number | null
   isVoided: boolean
+  payments: PurchasePayment[]
+}
+
+export interface PurchasePayment {
+  id: string
+  accountId: string
+  accountName: string
+  amount: number
+  amountUsd: number
+  currency: 'USD' | 'VES'
+  exchangeRate: number | null
+  method: string | null
+  reference: string | null
 }
 
 export interface PurchaseItem {
@@ -3896,7 +3909,8 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, is_voided, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
       suppliers(name),
       financial_accounts(name,currency),
-      purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol))
+      purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol)),
+      purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, financial_accounts(name))
     `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
     if (allPages) query = query.range(offset, offset + 499)
     const { data, error } = await query
@@ -3938,6 +3952,17 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       paymentMethod: (p.payment_method as string) ?? null,
       paymentReference: (p.payment_reference as string) ?? null,
       exchangeRate: p.exchange_rate == null ? null : Number(p.exchange_rate),
+      payments: ((p.purchase_payments as Array<Record<string, unknown>>) ?? []).map((pp) => ({
+        id: pp.id as string,
+        accountId: pp.account_id as string,
+        accountName: ((pp.financial_accounts as unknown as Record<string, unknown>)?.name as string) ?? '',
+        amount: Number(pp.amount),
+        amountUsd: Number(pp.amount_usd),
+        currency: pp.currency as 'USD' | 'VES',
+        exchangeRate: pp.exchange_rate == null ? null : Number(pp.exchange_rate),
+        method: (pp.method as string) ?? null,
+        reference: (pp.reference as string) ?? null,
+      })),
     }
   })
 }
