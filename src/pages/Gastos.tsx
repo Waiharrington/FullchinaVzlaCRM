@@ -171,10 +171,12 @@ export function Gastos() {
     setSaving(true); setError('')
     const notesJson = JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() })
     try {
+      const expensePayments = [{ accountId: form.accountId, amount: amountNum, currency: amountCurrency, exchangeRate: amountCurrency === 'VES' ? rate : null, method: form.paymentMethod, reference: form.reference.trim() || null }]
       if (editingExpenseId) {
         await updateExpense(editingExpenseId, {
           concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
           expenseDate: dateKeyInTimeZone(), accountId: form.accountId, exchangeRate: rate, notes: notesJson,
+          payments: expensePayments,
         })
         setExpenses((prev) => prev.map((item) => item.id === editingExpenseId ? { ...item, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined, accountId: form.accountId, exchangeRate: rate, extra: form.notes.trim() } : item))
         flash('Gasto actualizado')
@@ -186,6 +188,7 @@ export function Gastos() {
           concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
           expenseDate: dateKeyInTimeZone(), userId: user.id,
           accountId: form.accountId, exchangeRate: rate, notes: notesJson,
+          payments: expensePayments,
         })
         setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined, accountId: form.accountId, exchangeRate: rate, extra: form.notes.trim() }, ...prev])
         flash(`Gasto de ${amountCurrency === 'VES' ? formatVes(amountNum) : formatUsd(amountNum)} registrado`)

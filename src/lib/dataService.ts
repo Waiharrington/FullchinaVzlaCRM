@@ -1897,6 +1897,20 @@ export async function getExpenses(dateStart?: string, dateEnd?: string, allPages
   }))
 }
 
+/** Reemplaza las filas de pago de un gasto (borra e inserta). */
+async function writeExpensePayments(expenseId: string, payments: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>): Promise<void> {
+  const sb = client()
+  await sb.from('expense_payments').delete().eq('expense_id', expenseId)
+  if (payments.length === 0) return
+  const { error } = await sb.from('expense_payments').insert(payments.map((s) => ({
+    expense_id: expenseId, account_id: s.accountId,
+    amount: Math.round(s.amount * 100) / 100,
+    amount_usd: Math.round((s.currency === 'VES' ? s.amount / (Number(s.exchangeRate) || 1) : s.amount) * 100) / 100,
+    currency: s.currency, exchange_rate: s.exchangeRate ?? null, method: s.method ?? null, reference: s.reference ?? null,
+  })))
+  if (error) throw error
+}
+
 export async function createExpense(params: {
   concept: string
   amount: number
@@ -1906,18 +1920,23 @@ export async function createExpense(params: {
   accountId?: string | null
   exchangeRate?: number | null
   userId: string
+  /** Pago dividido: una fila por cuenta. Si se omite, se deriva del pago único. */
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>
 }): Promise<Expense> {
-  const { data, error } = await client().from('expenses').insert({
+  const sb = client()
+  const primary = params.payments && params.payments.length > 0 ? params.payments[0] : null
+  const { data, error } = await sb.from('expenses').insert({
     concept: params.concept,
     amount: params.amount,
     category: params.category,
     expense_date: params.expenseDate,
     notes: params.notes ?? null,
-    account_id: params.accountId ?? null,
-    exchange_rate: params.exchangeRate ?? null,
+    account_id: primary?.accountId ?? params.accountId ?? null,
+    exchange_rate: primary?.exchangeRate ?? params.exchangeRate ?? null,
     created_by: params.userId,
   }).select('*').single()
   if (error) throw error
+  await writeExpensePayments(data.id as string, params.payments ?? [])
   return {
     id: data.id as string,
     concept: data.concept as string,
@@ -1947,17 +1966,20 @@ export async function updateExpense(id: string, params: {
   notes?: string | null
   accountId?: string | null
   exchangeRate?: number | null
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>
 }): Promise<void> {
+  const primary = params.payments && params.payments.length > 0 ? params.payments[0] : null
   const { error } = await client().from('expenses').update({
     concept: params.concept,
     amount: params.amount,
     category: params.category,
     expense_date: params.expenseDate,
     notes: params.notes ?? null,
-    account_id: params.accountId ?? null,
-    exchange_rate: params.exchangeRate ?? null,
+    account_id: primary?.accountId ?? params.accountId ?? null,
+    exchange_rate: primary?.exchangeRate ?? params.exchangeRate ?? null,
   }).eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo actualizar el gasto')
+  if (params.payments) await writeExpensePayments(id, params.payments)
 }
 
 export async function getFinancialOperations(dateStart?: string, dateEnd?: string, allPages = false): Promise<FinancialOperation[]> {
@@ -4004,6 +4026,8 @@ export async function createPurchase(params: {
   paymentMethod?: string | null
   paymentReference?: string | null
   exchangeRate?: number | null
+  /** Pago dividido: una fila por cuenta. Si se omite, se deriva del pago único. */
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>
   items: Array<{
     ingredientId: string
     quantity: number
@@ -4012,6 +4036,15 @@ export async function createPurchase(params: {
   }>
 }): Promise<string> {
   const sb = client()
+  const isPaid = params.isPaid ?? true
+  const totalUsd = params.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0)
+  // Fuentes de pago: las provistas, o una sola derivada del pago único legacy.
+  const sources = (params.payments && params.payments.length > 0)
+    ? params.payments
+    : (isPaid && params.accountId
+      ? [{ accountId: params.accountId, amount: params.paymentCurrency === 'VES' ? totalUsd * Number(params.exchangeRate ?? 0) : totalUsd, currency: (params.paymentCurrency ?? 'USD') as 'USD' | 'VES', exchangeRate: params.exchangeRate ?? null, method: params.paymentMethod ?? null, reference: params.paymentReference ?? null }]
+      : [])
+  const primary = sources[0]
 
   const { data: purchase, error: purchaseErr } = await sb
     .from('purchases')
@@ -4020,17 +4053,29 @@ export async function createPurchase(params: {
       purchase_date: params.purchaseDate,
       invoice_number: params.invoiceNumber ?? null,
       notes: params.notes ?? null,
-      is_paid: params.isPaid ?? true,
-      account_id: params.accountId ?? null,
-      payment_currency: params.paymentCurrency ?? null,
-      payment_method: params.paymentMethod ?? null,
-      payment_reference: params.paymentReference ?? null,
-      exchange_rate: params.exchangeRate ?? null,
+      is_paid: isPaid,
+      account_id: primary?.accountId ?? params.accountId ?? null,
+      payment_currency: primary?.currency ?? params.paymentCurrency ?? null,
+      payment_method: sources.length > 1 ? 'mixed' : (primary?.method ?? params.paymentMethod ?? null),
+      payment_reference: primary?.reference ?? params.paymentReference ?? null,
+      exchange_rate: primary?.exchangeRate ?? params.exchangeRate ?? null,
       created_by: params.userId,
     })
     .select('id')
     .single()
   if (purchaseErr) throw purchaseErr
+
+  if (isPaid && sources.length > 0) {
+    const { error: payErr } = await sb.from('purchase_payments').insert(
+      sources.map((s) => ({
+        purchase_id: purchase.id, account_id: s.accountId,
+        amount: Math.round(s.amount * 100) / 100,
+        amount_usd: Math.round((s.currency === 'VES' ? s.amount / (Number(s.exchangeRate) || 1) : s.amount) * 100) / 100,
+        currency: s.currency, exchange_rate: s.exchangeRate ?? null, method: s.method ?? null, reference: s.reference ?? null,
+      })),
+    )
+    if (payErr) throw payErr
+  }
 
   if (params.items.length > 0) {
     const { error: itemsErr } = await sb.from('purchase_items').insert(
