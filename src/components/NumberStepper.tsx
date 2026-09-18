@@ -50,7 +50,7 @@ export default function NumberStepper({
         className="num-stepper-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        step={step}
+        step="any"
         min={min}
         max={max}
         placeholder={placeholder}
