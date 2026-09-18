@@ -12,7 +12,7 @@ import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
+import { formatUsd, formatVes, formatUsdPrecise, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import {
   ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart, Ban,
@@ -382,7 +382,7 @@ export function ComprasReal() {
                   <NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} />
                   <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
                   <NumberStepper prefix="$" step={0.01} min={0} value={it.unitCost} onChange={(v) => changeItem(i, 'unitCost', v)} />
-                  <span className="cmp-subtotal" style={{ textAlign: 'right' }}>{formatUsd(sub)}</span>
+                  <span className="cmp-subtotal" style={{ textAlign: 'right' }}>{formatUsdPrecise(sub)}</span>
                   <button type="button" className="cmp-del" onClick={() => removeItem(i)}><Trash2 size={16} /></button>
                 </div>
               )
@@ -418,7 +418,7 @@ export function ComprasReal() {
             <div className="cmp-form-foot">
               <span style={{ color: '#a1a1aa', fontSize: 13 }}>Total de ítems: <strong style={{ color: '#fff' }}>{items.length}</strong></span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                <div className="cmp-total"><div className="lbl">Total a pagar</div><div className="val">{selectedAccount?.currency === 'VES' ? formatVes(totalForm * effectiveBcvRate) : formatUsd(totalForm)}</div>{selectedAccount?.currency === 'VES' && <div className="cmp-payment-ref">Ref. {formatUsd(totalForm)} · BCV {formatVes(effectiveBcvRate)}</div>}</div>
+                <div className="cmp-total"><div className="lbl">Total a pagar</div><div className="val">{selectedAccount?.currency === 'VES' ? formatVes(totalForm * effectiveBcvRate) : formatUsdPrecise(totalForm)}</div>{selectedAccount?.currency === 'VES' && <div className="cmp-payment-ref">Ref. {formatUsdPrecise(totalForm)} · BCV {formatVes(effectiveBcvRate)}</div>}</div>
                 <div className="cmp-actions">
                   <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
                   <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Guardar Compra</button>
@@ -451,7 +451,7 @@ export function ComprasReal() {
                   <td style={{ color: '#a1a1aa' }}>{p.invoiceNumber || '—'}</td>
                   <td>{p.items.length}</td>
                   <td>
-                    {p.isPaid ? <div className="cmp-paid-amount"><strong>{p.paymentCurrency === 'VES' && p.exchangeRate ? formatVes(p.totalAmount * p.exchangeRate) : formatUsd(p.totalAmount)}</strong>{p.paymentCurrency === 'VES' && p.exchangeRate && <small>Ref. {formatUsd(p.totalAmount)} · BCV {formatVes(p.exchangeRate)}</small>}</div> : <span>—</span>}
+                    {p.isPaid ? <div className="cmp-paid-amount"><strong>{p.paymentCurrency === 'VES' && p.exchangeRate ? formatVes(p.totalAmount * p.exchangeRate) : formatUsdPrecise(p.totalAmount)}</strong>{p.paymentCurrency === 'VES' && p.exchangeRate && <small>Ref. {formatUsdPrecise(p.totalAmount)} · BCV {formatVes(p.exchangeRate)}</small>}</div> : <span>—</span>}
                   </td>
                   <td><div className="cmp-payment-info"><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</div></td>
                   <td><span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Clic para cambiar'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>{p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
@@ -497,13 +497,13 @@ export function ComprasReal() {
             <div style={{ margin: '12px 0 4px', fontSize: 12, color: '#71717a', textTransform: 'uppercase' }}>Ítems</div>
             {detail.items.map((it) => (
               <div className="cmp-detail-row" key={it.id}>
-                <span>{it.ingredientName} · {it.quantity} {it.unitSymbol} × {formatUsd(it.unitCost)}</span>
-                <span className="cmp-subtotal">{formatUsd(it.total)}</span>
+                <span>{it.ingredientName} · {it.quantity} {it.unitSymbol} × {formatUsdPrecise(it.unitCost)}</span>
+                <span className="cmp-subtotal">{formatUsdPrecise(it.total)}</span>
               </div>
             ))}
             <div className="cmp-modal-total-row">
               <span className="k">Total</span>
-              <span className="cmp-total"><span className="val">{detail.paymentCurrency === 'VES' && detail.exchangeRate ? formatVes(detail.totalAmount * detail.exchangeRate) : formatUsd(detail.totalAmount)}</span>{detail.paymentCurrency === 'VES' && detail.exchangeRate && <small className="cmp-payment-ref">Ref. {formatUsd(detail.totalAmount)} · BCV {formatVes(detail.exchangeRate)}</small>}</span>
+              <span className="cmp-total"><span className="val">{detail.paymentCurrency === 'VES' && detail.exchangeRate ? formatVes(detail.totalAmount * detail.exchangeRate) : formatUsdPrecise(detail.totalAmount)}</span>{detail.paymentCurrency === 'VES' && detail.exchangeRate && <small className="cmp-payment-ref">Ref. {formatUsdPrecise(detail.totalAmount)} · BCV {formatVes(detail.exchangeRate)}</small>}</span>
             </div>
           </div>
         </div>,

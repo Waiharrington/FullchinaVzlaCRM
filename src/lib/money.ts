@@ -12,6 +12,19 @@ export function formatVes(value: number) {
   })}`
 }
 
+/**
+ * Igual que formatUsd pero muestra hasta `maxDecimals` decimales cuando el
+ * valor los tiene (sin rellenar con ceros más allá de 2). Útil para costos
+ * unitarios o subtotales que se ingresan con 3-4 decimales para cálculos
+ * exactos; los montos "redondos" siguen viéndose con 2 decimales.
+ */
+export function formatUsdPrecise(value: number, maxDecimals = 4) {
+  return `$${Number(value || 0).toLocaleString('es-VE', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: maxDecimals,
+  })}`
+}
+
 export function usdToVes(usd: number, bcvRate: number | null | undefined) {
   return bcvRate && bcvRate > 0 ? usd * bcvRate : null
 }
