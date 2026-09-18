@@ -8337,6 +8337,160 @@ body:has(.public-menu-page) {
   }
 }
 
+/* ========================================================================
+   INICIO + MENÚ — sistema visual compartido en escritorio
+   Inicio conserva su función de vitrina, pero usa las mismas proporciones,
+   superficies y acciones que el catálogo para que ambas pestañas se sientan
+   parte de una sola experiencia.
+   ======================================================================== */
+@media (min-width: 1280px) {
+  .public-desktop-layout .public-home-section {
+    gap: 18px !important;
+    margin-bottom: 22px !important;
+  }
+
+  .public-desktop-layout .public-home-section-title {
+    font-size: 1.05rem !important;
+    letter-spacing: .035em !important;
+  }
+
+  .public-desktop-layout .public-home-section-sub {
+    color: #8f939c !important;
+    font-size: .82rem !important;
+  }
+
+  .public-desktop-layout .public-home-see-all-btn {
+    min-height: 32px !important;
+    padding: 6px 9px !important;
+    border: 1px solid rgba(255,255,255,.1) !important;
+    border-radius: 999px !important;
+    background: rgba(20,22,28,.72) !important;
+    color: #f05a58 !important;
+    font-size: .78rem !important;
+  }
+
+  .public-desktop-layout .public-home-see-all-btn:hover {
+    border-color: rgba(239,51,69,.58) !important;
+    background: rgba(239,51,69,.12) !important;
+    color: #fff !important;
+    transform: translateY(-1px) !important;
+  }
+
+  .public-desktop-layout .public-home-category-card,
+  .public-desktop-layout .public-home-product-card,
+  .public-desktop-layout .public-home-promo-card,
+  .public-desktop-layout .public-home-delivery-card {
+    border: 1px solid rgba(255,255,255,.11) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 12px 28px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.025) !important;
+  }
+
+  .public-desktop-layout .public-home-category-card {
+    min-height: 116px !important;
+    padding: 13px 7px !important;
+    background: rgba(20,22,28,.82) !important;
+  }
+
+  .public-desktop-layout .public-home-category-card:hover,
+  .public-desktop-layout .public-home-product-card:hover,
+  .public-desktop-layout .public-home-promo-card:hover,
+  .public-desktop-layout .public-home-delivery-card:hover {
+    border-color: rgba(239,51,69,.62) !important;
+    box-shadow: 0 16px 30px rgba(0,0,0,.32), 0 0 0 1px rgba(239,51,69,.08) !important;
+  }
+
+  .public-desktop-layout .public-home-category-card.active,
+  .public-desktop-layout .public-home-category-card.promo-card {
+    border-color: rgba(239,51,69,.72) !important;
+    background: linear-gradient(180deg, rgba(239,51,69,.14), rgba(20,22,28,.88)) !important;
+    box-shadow: 0 10px 26px rgba(239,51,69,.13) !important;
+  }
+
+  .public-desktop-layout .public-home-cat-dish-circle {
+    width: 52px !important;
+    height: 52px !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+    background: radial-gradient(circle, rgba(255,255,255,.12), rgba(8,9,12,.82)) !important;
+  }
+
+  .public-desktop-layout .public-home-cat-name {
+    font-size: .76rem !important;
+    font-weight: 700 !important;
+  }
+
+  .public-desktop-layout .public-home-product-card,
+  .public-desktop-layout .public-home-promo-card {
+    background: rgba(20,22,28,.86) !important;
+  }
+
+  .public-desktop-layout .public-home-product-card {
+    border-radius: 18px !important;
+  }
+
+  .public-desktop-layout .public-home-prod-img-wrap,
+  .public-desktop-layout .public-home-promo-img-wrap {
+    background: #0b0d12 !important;
+  }
+
+  .public-desktop-layout .public-home-prod-body {
+    padding: 15px 14px 14px !important;
+  }
+
+  .public-desktop-layout .public-home-prod-title,
+  .public-desktop-layout .public-home-promo-title {
+    font-size: .94rem !important;
+    font-weight: 800 !important;
+  }
+
+  .public-desktop-layout .public-home-prod-price,
+  .public-desktop-layout .public-home-promo-price {
+    color: #ffd666 !important;
+    font-size: 1.08rem !important;
+  }
+
+  .public-desktop-layout .public-home-stepper {
+    border-radius: 10px !important;
+    background: rgba(255,255,255,.045) !important;
+    border-color: rgba(255,255,255,.14) !important;
+  }
+
+  .public-desktop-layout .public-home-add-btn,
+  .public-desktop-layout .public-home-promo-add-btn {
+    min-height: 36px !important;
+    border-radius: 10px !important;
+    background: #ed1b2f !important;
+    box-shadow: 0 6px 16px rgba(237,27,47,.12) !important;
+  }
+
+  .public-desktop-layout .public-home-add-btn:hover,
+  .public-desktop-layout .public-home-promo-add-btn:hover {
+    background: #f33b49 !important;
+    box-shadow: 0 8px 20px rgba(237,27,47,.28) !important;
+  }
+
+  .public-desktop-layout .public-home-delivery-card {
+    min-height: 184px !important;
+    padding: 24px !important;
+    background-color: rgba(20,22,28,.86) !important;
+  }
+
+  .public-desktop-layout .public-home-delivery-content h3 {
+    font-size: 1.12rem !important;
+  }
+
+  .public-desktop-layout .public-home-delivery-content p {
+    color: #b9bdc5 !important;
+    font-size: .82rem !important;
+  }
+
+  .public-desktop-layout .del-badge {
+    border-color: rgba(255,255,255,.12) !important;
+    border-radius: 999px !important;
+    background: rgba(20,22,28,.78) !important;
+    color: #dfe1e5 !important;
+  }
+}
+
 /* En escritorio, la pantalla final tiene espacio vertical disponible. Se
    distribuyen los bloques para que la confirmación respire sin agrandar los
    textos ni convertir el panel en un scroll innecesario. */
