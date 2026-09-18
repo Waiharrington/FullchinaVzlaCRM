@@ -116,6 +116,20 @@
 .gst-icon-btn:disabled { opacity: .45; cursor: wait; }
 .gst-icon-btn:hover:not(:disabled) { color: #fff; }
 .gst-row-actions { display: inline-flex; gap: 4px; align-items: center; }
+.gst-field-label-txt { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 4px; }
+.gst-src-block { display: flex; flex-direction: column; gap: 10px; }
+.gst-src-row { padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 11px; background: rgba(255,255,255,.02); }
+.gst-src-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 10px; }
+.gst-src-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 11px; color: #9ca3af; flex-wrap: wrap; }
+.gst-src-actions { margin-left: auto; }
+.gst-src-remove { background: none; border: 0; padding: 0; font: inherit; font-size: 11px; font-weight: 700; color: #f87171; cursor: pointer; }
+.gst-src-warn { color: #fca5a5; font-weight: 650; }
+.gst-src-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gst-src-add { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; color: #86efac; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.28); border-radius: 9px; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
+.gst-src-add:hover { background: rgba(34,197,94,.18); }
+.gst-src-total { font-size: 13px; color: #cbd5e1; }
+.gst-src-total strong { color: #fff; }
+@media (max-width: 560px) { .gst-src-grid { grid-template-columns: 1fr 1fr; } }
 .gst-spinner { width: 14px; height: 14px; border: 2px solid rgba(248,113,113,.3); border-top-color: currentColor; border-radius: 50%; animation: gst-spin .7s linear infinite; }
 @keyframes gst-spin { to { transform: rotate(360deg); } }
 .gst-badge { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 10px; border-radius: 8px; font-weight: 600; border: 1px solid transparent; }

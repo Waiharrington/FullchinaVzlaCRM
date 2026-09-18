@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import { createExpense, updateExpense, deleteExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
-import NumberStepper from '../components/NumberStepper'
 import { getExchangeRates } from '../lib/rates'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
@@ -17,7 +16,8 @@ import { confirmDialog } from '../components/ConfirmDialog'
 import './Gastos.css'
 
 type ExpenseType = 'fixed' | 'variable' | 'other'
-type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string; accountId: string | null; exchangeRate: number | null; extra: string }
+type ExpenseSourceView = { accountId: string; amount: number; currency: 'USD' | 'VES'; reference: string | null }
+type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string; accountId: string | null; exchangeRate: number | null; extra: string; payments: ExpenseSourceView[] }
 const CATEGORIES = [
   { v: 'supermarket', l: 'Supermercado' }, { v: 'delivery', l: 'Delivery' }, { v: 'pos_commission', l: 'Comisión' },
   { v: 'payroll', l: 'Nómina' }, { v: 'cleaning', l: 'Limpieza' }, { v: 'services', l: 'Servicios' },
@@ -29,11 +29,6 @@ const METHODS = [
   { v: 'efectivo_bs', l: 'Efectivo Bs' }, { v: 'transferencia', l: 'Transferencia' }, { v: 'punto', l: 'Punto' },
 ]
 const methodLabel = (v: string) => METHODS.find((m) => m.v === v)?.l ?? v
-const methodCurrency = (method: string): 'USD' | 'VES' | null => {
-  if (method === 'efectivo_usd') return 'USD'
-  if (method === 'efectivo_bs' || method === 'pago_movil') return 'VES'
-  return null
-}
 const PAGE_SIZE = 8
 const emptyForm = { description: '', type: 'variable' as ExpenseType, category: 'supermarket', vendor: '', amountUsd: '', paymentMethod: 'pago_movil', accountId: '', reference: '', notes: '' }
 
@@ -51,6 +46,7 @@ export function Gastos() {
   const [page, setPage] = useState(1)
 
   const [form, setForm] = useState(emptyForm)
+  const [expenseSources, setExpenseSources] = useState<Array<{ accountId: string; amount: string; reference: string }>>([{ accountId: '', amount: '', reference: '' }])
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)
@@ -62,20 +58,21 @@ export function Gastos() {
   const openExpenseForm = () => {
     setEditingExpenseId(null)
     setForm(emptyForm)
+    setExpenseSources([{ accountId: '', amount: '', reference: '' }])
     setClosingExpense(false)
     setExpenseModalOpen(true)
   }
 
   const openEditExpense = (e: ExpenseView) => {
-    const account = accounts.find((a) => a.id === e.accountId)
-    const curr: 'USD' | 'VES' = methodCurrency(e.paymentMethod) ?? account?.currency ?? 'VES'
-    const native = curr === 'VES' ? e.amountUsd * (e.exchangeRate || rate || 0) : e.amountUsd
     setEditingExpenseId(e.id)
     setForm({
       description: e.description, type: e.type, category: e.category, vendor: e.vendor === 'Sin proveedor' ? '' : e.vendor,
-      amountUsd: String(Math.round(native * 100) / 100), paymentMethod: e.paymentMethod === 'other' ? 'pago_movil' : e.paymentMethod,
+      amountUsd: '', paymentMethod: e.paymentMethod === 'other' ? 'pago_movil' : e.paymentMethod,
       accountId: e.accountId ?? '', reference: e.reference ?? '', notes: e.extra ?? '',
     })
+    setExpenseSources(e.payments.length > 0
+      ? e.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '' }))
+      : [{ accountId: e.accountId ?? '', amount: e.amountUsd ? String(Math.round(e.amountUsd * 100) / 100) : '', reference: e.reference ?? '' }])
     setClosingExpense(false)
     setExpenseModalOpen(true)
   }
@@ -113,7 +110,7 @@ export function Gastos() {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
       const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
-      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '' }
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference })) }
     }))).catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar los gastos'))
   }, [])
 
@@ -147,52 +144,64 @@ export function Gastos() {
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
   useEffect(() => { setPage(1) }, [search, typeFilter])
 
-  const amountNum = parseFloat(form.amountUsd) || 0
-  const selectedAccount = accounts.find((account) => account.id === form.accountId)
-  const fixedPaymentCurrency = methodCurrency(form.paymentMethod)
-  const amountCurrency: 'USD' | 'VES' = fixedPaymentCurrency ?? selectedAccount?.currency ?? 'VES'
-  const availableAccounts = accounts.filter((account) => !fixedPaymentCurrency || account.currency === fixedPaymentCurrency)
-  const amountUsdToSave = amountCurrency === 'VES' ? amountNum / rate : amountNum
-
-  const handlePaymentMethodChange = (paymentMethod: string) => {
-    const fixedCurrency = methodCurrency(paymentMethod)
-    const currentAccount = accounts.find((account) => account.id === form.accountId)
-    setForm({
-      ...form,
-      paymentMethod,
-      accountId: fixedCurrency && currentAccount && currentAccount.currency !== fixedCurrency ? '' : form.accountId,
-    })
+  // Pago con varias cuentas: el total del gasto es la suma de las fuentes.
+  const methodForExpenseAccount = (account: FinancialAccount | undefined): string => {
+    if (!account) return 'pago_movil'
+    if (account.accountType === 'pos') return 'punto'
+    if (account.accountType === 'cash') return account.currency === 'VES' ? 'efectivo_bs' : 'efectivo_usd'
+    return account.currency === 'VES' ? 'pago_movil' : 'transferencia'
   }
+  const expenseSourceUsd = (row: { accountId: string; amount: string }) => {
+    const acc = accounts.find((a) => a.id === row.accountId)
+    const amt = parseFloat(row.amount) || 0
+    if (!acc || amt <= 0) return 0
+    return acc.currency === 'VES' ? (rate > 0 ? amt / rate : 0) : amt
+  }
+  const expenseTotalUsd = expenseSources.reduce((s, r) => s + expenseSourceUsd(r), 0)
+  const expenseSourcesValid = expenseSources.length > 0 && expenseSources.every((r) => {
+    const acc = accounts.find((a) => a.id === r.accountId)
+    return !!acc && (parseFloat(r.amount) || 0) > 0
+  })
+  const updateExpenseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string }>) =>
+    setExpenseSources((prev) => prev.map((row, idx) => idx === i ? { ...row, ...patch } : row))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!user || !form.description.trim() || amountNum <= 0) return
-    if (!form.accountId) { setError('Selecciona la cuenta desde donde salió el dinero'); return }
+    if (!user || !form.description.trim()) return
+    if (!expenseSourcesValid || expenseTotalUsd <= 0) { setError('Completa las cuentas de pago (cuenta y monto).'); return }
+    if (expenseSources.some((r) => accounts.find((a) => a.id === r.accountId)?.currency === 'VES') && rate <= 0) { setError('No hay una tasa BCV válida para pagos en bolívares'); return }
     setSaving(true); setError('')
-    const notesJson = JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() })
+    const firstSourceMethod = methodForExpenseAccount(accounts.find((a) => a.id === expenseSources[0]?.accountId))
+    const firstRef = expenseSources[0]?.reference.trim() ?? ''
+    const notesJson = JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: firstSourceMethod, reference: firstRef, extra: form.notes.trim() })
+    const payments = expenseSources.map((r) => {
+      const acc = accounts.find((a) => a.id === r.accountId)!
+      return { accountId: r.accountId, amount: parseFloat(r.amount) || 0, currency: acc.currency, exchangeRate: acc.currency === 'VES' ? rate : null, method: methodForExpenseAccount(acc), reference: r.reference.trim() || null }
+    })
+    const viewPayments = payments.map((p) => ({ accountId: p.accountId, amount: p.amount, currency: p.currency, reference: p.reference }))
+    const totalUsd = Math.round(expenseTotalUsd * 100) / 100
     try {
-      const expensePayments = [{ accountId: form.accountId, amount: amountNum, currency: amountCurrency, exchangeRate: amountCurrency === 'VES' ? rate : null, method: form.paymentMethod, reference: form.reference.trim() || null }]
       if (editingExpenseId) {
         await updateExpense(editingExpenseId, {
-          concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
-          expenseDate: dateKeyInTimeZone(), accountId: form.accountId, exchangeRate: rate, notes: notesJson,
-          payments: expensePayments,
+          concept: form.description.trim(), amount: totalUsd, category: form.type,
+          expenseDate: dateKeyInTimeZone(), accountId: payments[0].accountId, exchangeRate: rate, notes: notesJson,
+          payments,
         })
-        setExpenses((prev) => prev.map((item) => item.id === editingExpenseId ? { ...item, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined, accountId: form.accountId, exchangeRate: rate, extra: form.notes.trim() } : item))
+        setExpenses((prev) => prev.map((item) => item.id === editingExpenseId ? { ...item, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments } : item))
         flash('Gasto actualizado')
         setEditingExpenseId(null); setForm(emptyForm)
         setClosingExpense(true)
         window.setTimeout(() => { setExpenseModalOpen(false); setClosingExpense(false) }, 200)
       } else {
         const saved = await createExpense({
-          concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
+          concept: form.description.trim(), amount: totalUsd, category: form.type,
           expenseDate: dateKeyInTimeZone(), userId: user.id,
-          accountId: form.accountId, exchangeRate: rate, notes: notesJson,
-          payments: expensePayments,
+          accountId: payments[0].accountId, exchangeRate: rate, notes: notesJson,
+          payments,
         })
-        setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined, accountId: form.accountId, exchangeRate: rate, extra: form.notes.trim() }, ...prev])
-        flash(`Gasto de ${amountCurrency === 'VES' ? formatVes(amountNum) : formatUsd(amountNum)} registrado`)
-        if (keepOpen) setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor, paymentMethod: form.paymentMethod })
+        setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, date: saved.expenseDate, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments }, ...prev])
+        flash(`Gasto de ${formatUsd(totalUsd)} registrado`)
+        if (keepOpen) { setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor }); setExpenseSources([{ accountId: '', amount: '', reference: '' }]) }
         else {
           setForm(emptyForm)
           setClosingExpense(true)
@@ -357,18 +366,29 @@ export function Gastos() {
               <datalist id="gst-vendors">{vendors.map((v) => <option key={v} value={v} />)}</datalist>
             </div>
 
-            <div className="gst-field gst-amount-field"><label>Monto ({amountCurrency === 'VES' ? 'Bs' : 'USD'}) <span className="gst-req">*</span></label>
-              <NumberStepper step={amountCurrency === 'VES' ? 0.5 : 0.01} min={0} value={form.amountUsd} onChange={(v) => setForm({ ...form, amountUsd: v })} placeholder={amountCurrency === 'VES' ? '0,00' : '0.00'} />
-              <small className="gst-amount-hint">{amountCurrency === 'VES' ? `Se guardará como ${formatUsd(amountUsdToSave)} de referencia` : 'Monto expresado en dólares'}</small>
-            </div>
-
-            <div className="gst-row2">
-              <div className="gst-field"><label>Método de Pago <span className="gst-req">*</span></label>
-                <StyledSelect value={form.paymentMethod} onChange={(e) => handlePaymentMethodChange(e.target.value)}>{METHODS.map((m) => <option key={m.v} value={m.v}>{m.l}{methodCurrency(m.v) ? ` · ${methodCurrency(m.v)}` : ''}</option>)}</StyledSelect></div>
-              <div className="gst-field"><label>Cuenta de salida <span className="gst-req">*</span></label>
-                <StyledSelect value={form.accountId} onChange={(e) => setForm({ ...form, accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{availableAccounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
-              <div className="gst-field"><label>N° de Referencia</label>
-                <input value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} placeholder="Ej: 8841023" /></div>
+            <label className="gst-field"><span className="gst-field-label-txt">Pago <span className="gst-req">*</span> <small style={{ color: '#71717a', fontWeight: 400 }}>· puedes usar varias cuentas</small></span></label>
+            <div className="gst-src-block">
+              {expenseSources.map((row, i) => {
+                const acc = accounts.find((a) => a.id === row.accountId)
+                const isVes = acc?.currency === 'VES'
+                const amt = parseFloat(row.amount) || 0
+                const insufficient = acc ? amt > (acc.currentBalance ?? 0) : false
+                return <div className="gst-src-row" key={i}>
+                  <div className="gst-src-grid">
+                    <div className="gst-field"><label>Cuenta {expenseSources.length > 1 ? `#${i + 1}` : ''}</label><StyledSelect value={row.accountId} onChange={(e) => updateExpenseSource(i, { accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
+                    <div className="gst-field"><label>Monto {acc ? (isVes ? '(Bs)' : '(USD)') : ''}</label><input type="number" inputMode="decimal" min="0" step="any" value={row.amount} onChange={(e) => updateExpenseSource(i, { amount: e.target.value })} placeholder="0,00" /></div>
+                    <div className="gst-field"><label>Referencia</label><input value={row.reference} onChange={(e) => updateExpenseSource(i, { reference: e.target.value })} placeholder="N° operación" /></div>
+                  </div>
+                  <div className="gst-src-meta">
+                    {acc && <span className={insufficient ? 'gst-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsd(acc.currentBalance)}{amt > 0 ? ` · ${formatUsd(expenseSourceUsd(row))}` : ''}</span>}
+                    <span className="gst-src-actions"><button type="button" className="gst-src-remove" onClick={() => setExpenseSources((prev) => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)} style={{ visibility: expenseSources.length > 1 ? 'visible' : 'hidden' }}>Quitar</button></span>
+                  </div>
+                </div>
+              })}
+              <div className="gst-src-foot">
+                <button type="button" className="gst-src-add" onClick={() => setExpenseSources((prev) => [...prev, { accountId: '', amount: '', reference: '' }])}><Plus size={14} /> Agregar cuenta</button>
+                <span className="gst-src-total">Total: <strong>{formatUsd(Math.round(expenseTotalUsd * 100) / 100)}</strong></span>
+              </div>
             </div>
 
             <div className="gst-field"><label>Notas (Opcional)</label>
@@ -376,7 +396,7 @@ export function Gastos() {
 
             <div className="gst-form-actions">
               {!editingExpenseId && <label className="gst-check"><input type="checkbox" checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} /> Registrar otro</label>}
-              <button type="submit" className="gst-btn" disabled={saving || !form.description.trim() || amountNum <= 0}>{saving ? '...' : <><Plus size={16} /> {editingExpenseId ? 'Guardar cambios' : 'Registrar Gasto'}</>}</button>
+              <button type="submit" className="gst-btn" disabled={saving || !form.description.trim() || !expenseSourcesValid || expenseTotalUsd <= 0}>{saving ? '...' : <><Plus size={16} /> {editingExpenseId ? 'Guardar cambios' : 'Registrar Gasto'}</>}</button>
             </div>
           </form>
         </div>,

@@ -174,6 +174,19 @@ export interface Expense {
   createdAt: string
   accountId: string | null
   exchangeRate: number | null
+  payments: ExpensePayment[]
+}
+
+export interface ExpensePayment {
+  id: string
+  accountId: string
+  accountName: string
+  amount: number
+  amountUsd: number
+  currency: 'USD' | 'VES'
+  exchangeRate: number | null
+  method: string | null
+  reference: string | null
 }
 
 export interface FinancialOperation {
@@ -1883,7 +1896,7 @@ export async function getExpenses(dateStart?: string, dateEnd?: string, allPages
   const rows: Record<string, unknown>[] = []
   let offset = 0
   for (;;) {
-    let query = client().from('expenses').select('*')
+    let query = client().from('expenses').select('*, expense_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, financial_accounts(name))')
     if (dateStart) query = query.gte('expense_date', dateStart)
     if (dateEnd) query = query.lte('expense_date', dateEnd)
     query = query.order('expense_date', { ascending: false }).order('id', { ascending: false })
@@ -1907,6 +1920,17 @@ export async function getExpenses(dateStart?: string, dateEnd?: string, allPages
     createdAt: e.created_at as string,
     accountId: (e.account_id as string) ?? null,
     exchangeRate: e.exchange_rate == null ? null : Number(e.exchange_rate),
+    payments: ((e.expense_payments as Array<Record<string, unknown>>) ?? []).map((pp) => ({
+      id: pp.id as string,
+      accountId: pp.account_id as string,
+      accountName: ((pp.financial_accounts as unknown as Record<string, unknown>)?.name as string) ?? '',
+      amount: Number(pp.amount),
+      amountUsd: Number(pp.amount_usd),
+      currency: pp.currency as 'USD' | 'VES',
+      exchangeRate: pp.exchange_rate == null ? null : Number(pp.exchange_rate),
+      method: (pp.method as string) ?? null,
+      reference: (pp.reference as string) ?? null,
+    })),
   }))
 }
 
@@ -1961,6 +1985,7 @@ export async function createExpense(params: {
     createdAt: data.created_at as string,
     accountId: (data.account_id as string) ?? null,
     exchangeRate: data.exchange_rate == null ? null : Number(data.exchange_rate),
+    payments: (params.payments ?? []).map((p, i) => ({ id: String(i), accountId: p.accountId, accountName: '', amount: p.amount, amountUsd: p.currency === 'VES' ? p.amount / (Number(p.exchangeRate) || 1) : p.amount, currency: p.currency, exchangeRate: p.exchangeRate ?? null, method: p.method ?? null, reference: p.reference ?? null })),
   }
 }
 
