@@ -114,6 +114,8 @@
 .gst-icon-btn.gst-icon-danger { color: #f87171; }
 .gst-icon-btn.gst-icon-danger:hover { color: #ff4d5a; }
 .gst-icon-btn:disabled { opacity: .45; cursor: wait; }
+.gst-icon-btn:hover:not(:disabled) { color: #fff; }
+.gst-row-actions { display: inline-flex; gap: 4px; align-items: center; }
 .gst-spinner { width: 14px; height: 14px; border: 2px solid rgba(248,113,113,.3); border-top-color: currentColor; border-radius: 50%; animation: gst-spin .7s linear infinite; }
 @keyframes gst-spin { to { transform: rotate(360deg); } }
 .gst-badge { display: inline-flex; align-items: center; font-size: 12px; padding: 3px 10px; border-radius: 8px; font-weight: 600; border: 1px solid transparent; }

@@ -1938,6 +1938,28 @@ export async function deleteExpense(id: string): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudo eliminar el gasto')
 }
 
+/** Edita un gasto en sitio. El saldo de la cuenta se recalcula solo desde la tabla. */
+export async function updateExpense(id: string, params: {
+  concept: string
+  amount: number
+  category: 'fixed' | 'variable' | 'other'
+  expenseDate: string
+  notes?: string | null
+  accountId?: string | null
+  exchangeRate?: number | null
+}): Promise<void> {
+  const { error } = await client().from('expenses').update({
+    concept: params.concept,
+    amount: params.amount,
+    category: params.category,
+    expense_date: params.expenseDate,
+    notes: params.notes ?? null,
+    account_id: params.accountId ?? null,
+    exchange_rate: params.exchangeRate ?? null,
+  }).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo actualizar el gasto')
+}
+
 export async function getFinancialOperations(dateStart?: string, dateEnd?: string, allPages = false): Promise<FinancialOperation[]> {
   const rows: Record<string, unknown>[] = []
   let offset = 0

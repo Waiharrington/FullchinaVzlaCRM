@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { createExpense, deleteExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
+import { createExpense, updateExpense, deleteExpense, getExpenses, getFinancialAccounts, type FinancialAccount } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
@@ -9,7 +9,7 @@ import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import {
   Receipt, Store, Plus, TrendingDown, Wallet, Activity,
-  Search, Filter, Download, HelpCircle, X, Trash2,
+  Search, Filter, Download, HelpCircle, X, Trash2, Pencil,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
@@ -17,7 +17,7 @@ import { confirmDialog } from '../components/ConfirmDialog'
 import './Gastos.css'
 
 type ExpenseType = 'fixed' | 'variable' | 'other'
-type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string }
+type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string; accountId: string | null; exchangeRate: number | null; extra: string }
 const CATEGORIES = [
   { v: 'supermarket', l: 'Supermercado' }, { v: 'delivery', l: 'Delivery' }, { v: 'pos_commission', l: 'Comisión' },
   { v: 'payroll', l: 'Nómina' }, { v: 'cleaning', l: 'Limpieza' }, { v: 'services', l: 'Servicios' },
@@ -54,11 +54,28 @@ export function Gastos() {
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [closingExpense, setClosingExpense] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
 
   const openExpenseForm = () => {
+    setEditingExpenseId(null)
+    setForm(emptyForm)
+    setClosingExpense(false)
+    setExpenseModalOpen(true)
+  }
+
+  const openEditExpense = (e: ExpenseView) => {
+    const account = accounts.find((a) => a.id === e.accountId)
+    const curr: 'USD' | 'VES' = methodCurrency(e.paymentMethod) ?? account?.currency ?? 'VES'
+    const native = curr === 'VES' ? e.amountUsd * (e.exchangeRate || rate || 0) : e.amountUsd
+    setEditingExpenseId(e.id)
+    setForm({
+      description: e.description, type: e.type, category: e.category, vendor: e.vendor === 'Sin proveedor' ? '' : e.vendor,
+      amountUsd: String(Math.round(native * 100) / 100), paymentMethod: e.paymentMethod === 'other' ? 'pago_movil' : e.paymentMethod,
+      accountId: e.accountId ?? '', reference: e.reference ?? '', notes: e.extra ?? '',
+    })
     setClosingExpense(false)
     setExpenseModalOpen(true)
   }
@@ -69,6 +86,7 @@ export function Gastos() {
     window.setTimeout(() => {
       setExpenseModalOpen(false)
       setClosingExpense(false)
+      setEditingExpenseId(null)
     }, 200)
   }, [closingExpense, saving])
 
@@ -95,7 +113,7 @@ export function Gastos() {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
       const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
-      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined }
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '' }
     }))).catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar los gastos'))
   }, [])
 
@@ -151,20 +169,32 @@ export function Gastos() {
     if (!user || !form.description.trim() || amountNum <= 0) return
     if (!form.accountId) { setError('Selecciona la cuenta desde donde salió el dinero'); return }
     setSaving(true); setError('')
+    const notesJson = JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() })
     try {
-      const saved = await createExpense({
-        concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
-        expenseDate: dateKeyInTimeZone(), userId: user.id,
-        accountId: form.accountId, exchangeRate: rate,
-        notes: JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: form.paymentMethod, reference: form.reference.trim(), extra: form.notes.trim() }),
-      })
-      setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined }, ...prev])
-      flash(`Gasto de ${amountCurrency === 'VES' ? formatVes(amountNum) : formatUsd(amountNum)} registrado`)
-      if (keepOpen) setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor, paymentMethod: form.paymentMethod })
-      else {
-        setForm(emptyForm)
+      if (editingExpenseId) {
+        await updateExpense(editingExpenseId, {
+          concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
+          expenseDate: dateKeyInTimeZone(), accountId: form.accountId, exchangeRate: rate, notes: notesJson,
+        })
+        setExpenses((prev) => prev.map((item) => item.id === editingExpenseId ? { ...item, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined, accountId: form.accountId, exchangeRate: rate, extra: form.notes.trim() } : item))
+        flash('Gasto actualizado')
+        setEditingExpenseId(null); setForm(emptyForm)
         setClosingExpense(true)
         window.setTimeout(() => { setExpenseModalOpen(false); setClosingExpense(false) }, 200)
+      } else {
+        const saved = await createExpense({
+          concept: form.description.trim(), amount: amountUsdToSave, category: form.type,
+          expenseDate: dateKeyInTimeZone(), userId: user.id,
+          accountId: form.accountId, exchangeRate: rate, notes: notesJson,
+        })
+        setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: amountUsdToSave, date: saved.expenseDate, paymentMethod: form.paymentMethod, reference: form.reference.trim() || undefined, accountId: form.accountId, exchangeRate: rate, extra: form.notes.trim() }, ...prev])
+        flash(`Gasto de ${amountCurrency === 'VES' ? formatVes(amountNum) : formatUsd(amountNum)} registrado`)
+        if (keepOpen) setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor, paymentMethod: form.paymentMethod })
+        else {
+          setForm(emptyForm)
+          setClosingExpense(true)
+          window.setTimeout(() => { setExpenseModalOpen(false); setClosingExpense(false) }, 200)
+        }
       }
     } catch (e) { setError(e instanceof Error ? e.message : 'Error al registrar el gasto') }
     finally { setSaving(false) }
@@ -273,7 +303,7 @@ export function Gastos() {
                     <td>{e.vendor}</td>
                     <td className="gst-usd">{formatUsd(e.amountUsd)}</td>
                     <td className="gst-bs">{formatVes(e.amountUsd * rate)}</td>
-                    <td><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={15} />}</button></td>
+                    <td><div className="gst-row-actions"><button type="button" className="gst-icon-btn" title="Editar gasto" aria-label={`Editar gasto ${e.description}`} onClick={() => openEditExpense(e)}><Pencil size={15} /></button><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={15} />}</button></div></td>
                   </tr>
                 ))}
                 {pageItems.length === 0 && (
@@ -305,7 +335,7 @@ export function Gastos() {
         <div className={`gst-form-col open ${closingExpense ? 'closing' : ''}`} role="presentation" onMouseDown={(ev) => { if (ev.target === ev.currentTarget) closeExpenseForm() }}>
           <form id="expense-form" className="gst-card gst-expense-modal" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title" onSubmit={handleSubmit}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div><h3 id="expense-modal-title" className="gst-form-title">Registrar Nuevo Gasto</h3><p className="gst-form-sub">Carga egresos desde el teléfono o laptop</p></div>
+              <div><h3 id="expense-modal-title" className="gst-form-title">{editingExpenseId ? 'Editar Gasto' : 'Registrar Nuevo Gasto'}</h3><p className="gst-form-sub">Carga egresos desde el teléfono o laptop</p></div>
               <button type="button" className="gst-close" aria-label="Cerrar" onClick={closeExpenseForm}><X size={18} /></button>
             </div>
 
@@ -342,8 +372,8 @@ export function Gastos() {
               <textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Agregar notas adicionales..." /></div>
 
             <div className="gst-form-actions">
-              <label className="gst-check"><input type="checkbox" checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} /> Registrar otro</label>
-              <button type="submit" className="gst-btn" disabled={saving || !form.description.trim() || amountNum <= 0}>{saving ? '...' : <><Plus size={16} /> Registrar Gasto</>}</button>
+              {!editingExpenseId && <label className="gst-check"><input type="checkbox" checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} /> Registrar otro</label>}
+              <button type="submit" className="gst-btn" disabled={saving || !form.description.trim() || amountNum <= 0}>{saving ? '...' : <><Plus size={16} /> {editingExpenseId ? 'Guardar cambios' : 'Registrar Gasto'}</>}</button>
             </div>
           </form>
         </div>,

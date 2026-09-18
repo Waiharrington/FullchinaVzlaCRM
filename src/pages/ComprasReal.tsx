@@ -16,7 +16,7 @@ import { formatUsd, formatVes, formatUsdPrecise, dateKeyInTimeZone } from '../li
 import { normalizeForSearch } from '../lib/textFormat'
 import {
   ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart, Ban,
-  ClipboardList, Package, CalendarClock, Search, Download, Eye, X,
+  ClipboardList, Package, CalendarClock, Search, Download, Eye, X, Pencil,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
@@ -58,6 +58,8 @@ export function ComprasReal() {
   const [paymentReference, setPaymentReference] = useState('')
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [items, setItems] = useState<ItemForm[]>([])
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null)
+  const [editingOriginal, setEditingOriginal] = useState<Purchase | null>(null)
   const [saving, setSaving] = useState(false)
   const selectedAccount = accounts.find(account => account.id === accountId) ?? null
 
@@ -103,6 +105,8 @@ export function ComprasReal() {
     window.setTimeout(() => {
       setShowForm(false)
       setClosingForm(false)
+      setEditingPurchaseId(null)
+      setEditingOriginal(null)
     }, 200)
   }, [closingForm, saving])
 
@@ -159,12 +163,28 @@ export function ComprasReal() {
     return up
   }))
 
-  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setAccountId(''); setPaymentMethod('pago_movil'); setPaymentReference(''); setPurchaseDate(dateKeyInTimeZone()) }
+  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setAccountId(''); setPaymentMethod('pago_movil'); setPaymentReference(''); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
 
   const openPurchaseForm = () => {
     resetForm()
     setClosingForm(false)
     setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }])
+    setShowForm(true)
+  }
+
+  const openEditPurchase = (p: Purchase) => {
+    setEditingPurchaseId(p.id)
+    setEditingOriginal(p)
+    setSupplierId(p.supplierId)
+    setPurchaseDate(p.purchaseDate)
+    setInvoiceNumber(p.invoiceNumber ?? '')
+    setNotes(p.notes ?? '')
+    setMarkPaid(p.isPaid)
+    setAccountId(p.accountId ?? '')
+    setPaymentMethod(p.paymentMethod ?? 'pago_movil')
+    setPaymentReference(p.paymentReference ?? '')
+    setItems(p.items.map((it) => ({ ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost) })))
+    setClosingForm(false)
     setShowForm(true)
   }
 
@@ -184,17 +204,41 @@ export function ComprasReal() {
     if (markPaid && !accountId) { setError('Selecciona la cuenta desde donde se pagó la compra'); return }
     if (markPaid && selectedAccount?.currency === 'VES' && effectiveBcvRate <= 0) { setError('No hay una tasa BCV válida para registrar el pago en bolívares'); return }
     setSaving(true); setError('')
+    const payload = {
+      supplierId, purchaseDate, invoiceNumber: invoiceNumber.trim() || undefined,
+      notes: notes.trim() || undefined, userId: user?.id ?? '', isPaid: markPaid,
+      accountId: markPaid ? accountId : null, exchangeRate: markPaid ? effectiveBcvRate : null,
+      paymentCurrency: markPaid ? selectedAccount?.currency ?? null : null,
+      paymentMethod: markPaid ? paymentMethod : null,
+      paymentReference: markPaid ? paymentReference.trim() || null : null,
+      items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0 })),
+    }
     try {
-      await createPurchase({
-        supplierId, purchaseDate, invoiceNumber: invoiceNumber.trim() || undefined,
-        notes: notes.trim() || undefined, userId: user?.id ?? '', isPaid: markPaid,
-        accountId: markPaid ? accountId : null, exchangeRate: markPaid ? effectiveBcvRate : null,
-        paymentCurrency: markPaid ? selectedAccount?.currency ?? null : null,
-        paymentMethod: markPaid ? paymentMethod : null,
-        paymentReference: markPaid ? paymentReference.trim() || null : null,
-        items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0 })),
-      })
-      flash('Compra registrada · inventario actualizado')
+      if (editingPurchaseId && editingOriginal) {
+        // Editar = reemplazar: revierte la compra anterior (devuelve stock y saldo)
+        // y crea la corregida. Si la vieja no se puede revertir (insumo ya usado),
+        // deletePurchase lanza y no se toca nada.
+        const original = editingOriginal
+        await deletePurchase(editingPurchaseId)
+        try {
+          await createPurchase(payload)
+        } catch (createErr) {
+          // Rollback: recrea la compra original para no perder datos.
+          await createPurchase({
+            supplierId: original.supplierId, purchaseDate: original.purchaseDate,
+            invoiceNumber: original.invoiceNumber ?? undefined, notes: original.notes ?? undefined,
+            userId: user?.id ?? '', isPaid: original.isPaid, accountId: original.accountId,
+            exchangeRate: original.exchangeRate, paymentCurrency: original.paymentCurrency,
+            paymentMethod: original.paymentMethod, paymentReference: original.paymentReference,
+            items: original.items.map((it) => ({ ingredientId: it.ingredientId, quantity: it.quantity, unitId: it.unitId, unitCost: it.unitCost })),
+          }).catch(() => {})
+          throw createErr
+        }
+        flash('Compra actualizada · inventario ajustado')
+      } else {
+        await createPurchase(payload)
+        flash('Compra registrada · inventario actualizado')
+      }
       setClosingForm(true)
       window.setTimeout(() => { setShowForm(false); setClosingForm(false); resetForm() }, 200)
       await load()
@@ -347,7 +391,7 @@ export function ComprasReal() {
       {showForm && createPortal(
         <div className={`cmp-modal-overlay cmp-purchase-overlay ${closingForm ? 'closing' : ''}`} onMouseDown={(event) => { if (event.target === event.currentTarget) closePurchaseForm() }}>
         <div className="cmp-card cmp-purchase-modal" role="dialog" aria-modal="true" aria-labelledby="new-purchase-title">
-          <div className="cmp-purchase-header"><h3 id="new-purchase-title" className="cmp-card-title"><ShoppingBag size={18} style={{ color: '#e11d2a' }} /> Nueva Compra</h3><button type="button" className="cmp-icon-btn" aria-label="Cerrar" onClick={closePurchaseForm}><X size={20} /></button></div>
+          <div className="cmp-purchase-header"><h3 id="new-purchase-title" className="cmp-card-title"><ShoppingBag size={18} style={{ color: '#e11d2a' }} /> {editingPurchaseId ? 'Editar Compra' : 'Nueva Compra'}</h3><button type="button" className="cmp-icon-btn" aria-label="Cerrar" onClick={closePurchaseForm}><X size={20} /></button></div>
           <form onSubmit={handleSubmit}>
             <div className="cmp-form-grid">
               <div className="cmp-field"><label>Proveedor *</label>
@@ -421,7 +465,7 @@ export function ComprasReal() {
                 <div className="cmp-total"><div className="lbl">Total a pagar</div><div className="val">{selectedAccount?.currency === 'VES' ? formatVes(totalForm * effectiveBcvRate) : formatUsdPrecise(totalForm)}</div>{selectedAccount?.currency === 'VES' && <div className="cmp-payment-ref">Ref. {formatUsdPrecise(totalForm)} · BCV {formatVes(effectiveBcvRate)}</div>}</div>
                 <div className="cmp-actions">
                   <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
-                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} Guardar Compra</button>
+                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
                 </div>
               </div>
             </div>
@@ -455,7 +499,7 @@ export function ComprasReal() {
                   </td>
                   <td><div className="cmp-payment-info"><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</div></td>
                   <td><span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Clic para cambiar'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>{p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
-                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>{p.isVoided ? <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeleteVoidedPurchase(p)} title="Borrar compra demo permanentemente" aria-label={`Borrar compra demo de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button> : <><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></>}</div></td>
+                  <td><div className="cmp-row-actions"><button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>{!p.isVoided && <button className="cmp-icon-btn" onClick={() => openEditPurchase(p)} title="Editar compra" aria-label={`Editar compra de ${p.supplierName}`}><Pencil size={16} /></button>}{p.isVoided ? <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeleteVoidedPurchase(p)} title="Borrar compra demo permanentemente" aria-label={`Borrar compra demo de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button> : <><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button><button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button></>}</div></td>
                 </tr>
               ))}
               {pageItems.length === 0 && (
