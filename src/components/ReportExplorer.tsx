@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Download, Search, Star, ArrowLeft, Printer, FileSpreadsheet, ArrowUpDown } from 'lucide-react'
+import { CalendarDays, Download, Search, Star, ArrowLeft, Printer, FileSpreadsheet, ArrowUpDown, X } from 'lucide-react'
 import { getAdvances, getAuditLogs, getCredits, getCustomers, getDailyCloses, getExpenses, getFinancialOperations, getIngredients, getLegacyDeletedOrdersReport, getLegacyPurchaseOrdersReport, getLegacySalesReport, getOrdersWithItems, getPayrollPayments, getProducts, getProductionBatches, getPurchases, getRecipeSummaries, getReportAdjustments, getReportAttendance, getReportEventLogs, getReportGiftCards, getReportRequisitions, getReportStockMovements, getWarehouseIngredients, type Advance, type AuditLog, type Credit, type DailyCloseSummary, type Expense, type FinancialOperation, type FullOrder, type Ingredient, type LegacyDeletedOrderReportRow, type LegacyPurchaseOrderReportRow, type LegacySaleReportRow, type PayrollPayment, type ProductionBatch, type Product, type Purchase, type ReportAdjustmentRow, type ReportAttendanceRow, type ReportEventRow, type ReportGiftCardRow, type ReportRequisitionRow, type StockMovement, type WarehouseIngredient } from '../lib/dataService'
-import { dateKeyInTimeZone } from '../lib/money'
+import { dateKeyInTimeZone, formatUsd, formatVes } from '../lib/money'
 import { buildReport, REPORTS, SOURCE_REPORT_IDS, type ReportData, type ReportId } from '../lib/reporting'
 import './ReportExplorer.css'
 
@@ -9,6 +9,9 @@ type Loaded = ReportData & { family?: string; start?: string; end?: string }
 const favoritesKey = 'fullchina-report-favorites'
 const dateShift = (date: Date, days: number) => { const result = new Date(date); result.setDate(result.getDate() + days); return result }
 const iso = (date: Date) => dateKeyInTimeZone(date)
+const detailPaymentNames: Record<string, string> = { cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto de venta', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro' }
+const detailOrderType = (value: string) => ({ 'dine-in': 'Mesa', dine_in: 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery', pickup: 'Para llevar' } as Record<string, string>)[value] ?? value
+const detailUsesBolivares = (method: string) => method === 'mobile' || method === 'card' || method === 'transfer'
 const downloadCsv = (name: string, columns: string[], rows: string[][]) => {
   const escape = (value: string) => `"${value.replace(/"/g, '""')}"`
   const csv = '\uFEFF' + [columns, ...rows].map(row => row.map(escape).join(';')).join('\r\n')
@@ -47,6 +50,7 @@ export function ReportExplorer() {
   const [loaded, setLoaded] = useState<Loaded>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [detailOrder, setDetailOrder] = useState<FullOrder | null>(null)
   const definition = REPORTS.find(report => report.id === active)
   const family = definition?.group
 
@@ -109,10 +113,16 @@ export function ReportExplorer() {
 
   const table = useMemo(() => active && loaded.family === family && loaded.start === start && loaded.end === end ? buildReport(active, start, end, loaded, startHour, endHour) : null, [active, end, endHour, family, loaded, start, startHour])
   const filteredRows = useMemo(() => {
-    const rows = table?.rows.filter(row => row.join(' ').toLocaleLowerCase('es').includes(tableSearch.toLocaleLowerCase('es'))) ?? []
-    if (sortColumn === null) return rows
-    return [...rows].sort((left, right) => left[sortColumn].localeCompare(right[sortColumn], 'es', { numeric: true, sensitivity: 'base' }) * (sortAscending ? 1 : -1))
+    const pairs = (table?.rows ?? []).map((row, index) => ({ row, orderId: table?.orderIds?.[index] }))
+      .filter(pair => pair.row.join(' ').toLocaleLowerCase('es').includes(tableSearch.toLocaleLowerCase('es')))
+    if (sortColumn === null) return pairs
+    return [...pairs].sort((left, right) => left.row[sortColumn].localeCompare(right.row[sortColumn], 'es', { numeric: true, sensitivity: 'base' }) * (sortAscending ? 1 : -1))
   }, [sortAscending, sortColumn, table, tableSearch])
+  const openOrderDetail = (orderId?: string) => {
+    if (!orderId) return
+    const order = (loaded.orders ?? []).find(o => o.id === orderId)
+    if (order) setDetailOrder(order)
+  }
   const pages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
   const visibleRows = filteredRows.slice((Math.min(page, pages) - 1) * pageSize, Math.min(page, pages) * pageSize)
   const matching = REPORTS.filter(report => `${report.title} ${report.description} ${report.group}`.toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es')))
@@ -141,15 +151,52 @@ export function ReportExplorer() {
       {matching.length > 0 && <div className="report-pagination report-catalog-pagination" aria-label="Paginación del catálogo de reportes"><label>Reportes por página <select value={catalogPageSize} onChange={event => { setCatalogPageSize(Number(event.target.value)); setCatalogPage(1) }}><option value={12}>12</option><option value={24}>24</option><option value={48}>48</option></select></label><span>Página {Math.min(catalogPage, catalogPages)} de {catalogPages} · {matching.length} reportes</span><button onClick={() => setCatalogPage(value => Math.max(1, value - 1))} disabled={catalogPage <= 1}>Anterior</button><button onClick={() => setCatalogPage(value => Math.min(catalogPages, value + 1))} disabled={catalogPage >= catalogPages}>Siguiente</button></div>}
     </> : <>
       <div className="report-explorer-heading"><div><button className="report-back" onClick={() => setActive(null)}><ArrowLeft size={17} /> Todos los reportes</button><span className="report-eyebrow">{family?.toUpperCase()}</span><h2>{definition?.title}</h2><p>{definition?.description}</p></div></div>
-      <div className="report-filters"><label><span>Fecha inicial</span><input type="date" value={start} onChange={event => setStart(event.target.value)} /></label><label><span>Fecha final</span><input type="date" value={end} onChange={event => setEnd(event.target.value)} /></label>{(family === 'Ventas' || active === 'movements') && <><label><span>Hora inicial</span><input type="time" value={startHour} onChange={event => { setStartHour(event.target.value); setPage(1) }} /></label><label><span>Hora final</span><input type="time" value={endHour} onChange={event => { setEndHour(event.target.value); setPage(1) }} /></label></>}<button className="report-refresh" onClick={() => void load()} disabled={loading}><CalendarDays size={17} /> {loading ? 'Cargando...' : 'Actualizar'}</button></div>
-      <div className="report-presets">{['Hoy', 'Ayer', 'Semana', 'Mes'].map(preset => <button key={preset} onClick={() => setPreset(preset)}>{preset}</button>)}</div>
+      <div className="report-filters"><label><span>Fecha inicial</span><input type="date" value={start} onChange={event => setStart(event.target.value)} /></label><label><span>Fecha final</span><input type="date" value={end} onChange={event => setEnd(event.target.value)} /></label>{(family === 'Ventas' || active === 'movements') && <><label><span>Hora inicial</span><input type="time" value={startHour} onChange={event => { setStartHour(event.target.value); setPage(1) }} /></label><label><span>Hora final</span><input type="time" value={endHour} onChange={event => { setEndHour(event.target.value); setPage(1) }} /></label></>}<button className="report-refresh" onClick={() => void load()} disabled={loading}><CalendarDays size={17} /> {loading ? 'Cargando...' : 'Actualizar'}</button><div className="report-presets">{['Hoy', 'Ayer', 'Semana', 'Mes'].map(preset => <button key={preset} onClick={() => setPreset(preset)}>{preset}</button>)}</div></div>
       {error && <p className="report-error" role="alert">{error}</p>}
       {table && !error && <>
-        <div className="report-result-heading"><span>{filteredRows.length} resultados {table.total && <strong>· Total: {table.total}</strong>}</span><div><label className="report-table-search"><Search size={16} /><input value={tableSearch} onChange={event => { setTableSearch(event.target.value); setPage(1) }} placeholder="Buscar en tabla..." aria-label="Buscar en tabla" /></label><button onClick={() => downloadCsv(active, table.columns, filteredRows)}><Download size={16} /> CSV</button><button onClick={() => downloadExcel(active, table.columns, filteredRows)}><FileSpreadsheet size={16} /> Excel</button><button onClick={() => window.print()}><Printer size={16} /> Imprimir / PDF</button></div></div>
+        <div className="report-result-heading"><span>{filteredRows.length} resultados {table.total && <strong>· Total: {table.total}</strong>}</span><div><label className="report-table-search"><Search size={16} /><input value={tableSearch} onChange={event => { setTableSearch(event.target.value); setPage(1) }} placeholder="Buscar en tabla..." aria-label="Buscar en tabla" /></label><button onClick={() => downloadCsv(active, table.columns, filteredRows.map(pair => pair.row))}><Download size={16} /> CSV</button><button onClick={() => downloadExcel(active, table.columns, filteredRows.map(pair => pair.row))}><FileSpreadsheet size={16} /> Excel</button><button onClick={() => window.print()}><Printer size={16} /> Imprimir / PDF</button></div></div>
         {table.note && <p className="report-note">{table.note}</p>}
-        <div className="report-table-wrap"><table><thead><tr>{table.columns.map((column, index) => <th key={column}><button className="report-sort" onClick={() => { setSortColumn(index); setSortAscending(current => sortColumn === index ? !current : true); setPage(1) }}>{column}<ArrowUpDown size={13} aria-hidden="true" /></button></th>)}</tr></thead><tbody className="report-screen-rows">{visibleRows.map((row, index) => <tr key={`${page}-${index}`}>{row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody><tbody className="report-print-rows">{filteredRows.map((row, index) => <tr key={index}>{row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody></table>{filteredRows.length === 0 && <p className="report-empty">No hay datos registrados para este período.</p>}</div>
+        <div className="report-table-wrap"><table><thead><tr>{table.columns.map((column, index) => <th key={column}><button className="report-sort" onClick={() => { setSortColumn(index); setSortAscending(current => sortColumn === index ? !current : true); setPage(1) }}>{column}<ArrowUpDown size={13} aria-hidden="true" /></button></th>)}</tr></thead><tbody className="report-screen-rows">{visibleRows.map((pair, index) => <tr key={`${page}-${index}`} className={pair.orderId ? 'report-row-clickable' : ''} onClick={pair.orderId ? () => openOrderDetail(pair.orderId) : undefined} title={pair.orderId ? 'Ver detalle de la comanda' : undefined}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody><tbody className="report-print-rows">{filteredRows.map((pair, index) => <tr key={index}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody></table>{filteredRows.length === 0 && <p className="report-empty">No hay datos registrados para este período.</p>}</div>
         <div className="report-pagination"><label>Filas por página <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label><span>Página {Math.min(page, pages)} de {pages}</span><button onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Anterior</button><button onClick={() => setPage(value => Math.min(pages, value + 1))} disabled={page >= pages}>Siguiente</button></div>
       </>}
     </>}
+    {detailOrder && (() => {
+      const order = detailOrder
+      const rate = order.bcvRate ?? 0
+      const itemsSubtotal = order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+      return <div className="report-detail-overlay" role="presentation" onClick={() => setDetailOrder(null)}>
+        <div className="report-detail-modal" role="dialog" aria-modal="true" aria-label={`Comanda ${order.orderNumber}`} onClick={event => event.stopPropagation()}>
+          <div className="report-detail-head">
+            <div>
+              <span className="report-eyebrow">COMANDA</span>
+              <h3>#{order.orderNumber}</h3>
+              <p>{order.customerName || 'Cliente'} · {order.tableNumber ? `Mesa ${order.tableNumber}` : detailOrderType(order.orderType)} · {dateKeyInTimeZone(new Date(order.createdAt))} {new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(order.createdAt))}</p>
+            </div>
+            <button type="button" className="report-detail-close" onClick={() => setDetailOrder(null)} aria-label="Cerrar"><X size={18} /></button>
+          </div>
+          <div className="report-detail-body">
+            <table className="report-detail-items"><thead><tr><th>Producto</th><th>Cant.</th><th>P. unit</th><th>Subtotal</th></tr></thead><tbody>
+              {order.items.map(item => <tr key={item.id}><td>{item.productName}</td><td>{item.quantity}</td><td>{formatUsd(item.unitPrice)}</td><td>{formatUsd(item.quantity * item.unitPrice)}</td></tr>)}
+            </tbody></table>
+            <div className="report-detail-totals">
+              <div><span>Subtotal ítems</span><strong>{formatUsd(itemsSubtotal)}</strong></div>
+              {Math.abs(order.totalAmount - itemsSubtotal) > 0.001 && <div><span>Otros / delivery</span><strong>{formatUsd(order.totalAmount - itemsSubtotal)}</strong></div>}
+              <div className="report-detail-total"><span>Total</span><strong>{formatUsd(order.totalAmount)}{rate > 0 ? ` · ${formatVes(order.totalAmount * rate)}` : ''}</strong></div>
+              {rate > 0 && <div className="report-detail-rate"><span>Tasa del día</span><strong>{formatVes(rate)}</strong></div>}
+            </div>
+            <h4 className="report-detail-subtitle">Pagos</h4>
+            {order.payments.length === 0 ? <p className="report-empty">Sin pagos registrados.</p> : <div className="report-detail-payments">
+              {order.payments.map((payment, index) => {
+                const bs = detailUsesBolivares(payment.method) && rate > 0
+                return <div className="report-detail-payment" key={index}>
+                  <span>{detailPaymentNames[payment.method] ?? payment.method}{payment.referenceNumber ? ` · Ref. ${payment.referenceNumber}` : ''}</span>
+                  <strong>{bs ? <>{formatVes(payment.amount * rate)} <small>({formatUsd(payment.amount)})</small></> : formatUsd(payment.amount)}</strong>
+                </div>
+              })}
+            </div>}
+          </div>
+        </div>
+      </div>
+    })()}
   </section>
 }

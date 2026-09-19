@@ -1,10 +1,10 @@
-import { dateKeyInTimeZone, formatUsd } from './money'
+import { dateKeyInTimeZone, formatUsd, formatVes } from './money'
 import type { Advance, AuditLog, Credit, DailyCloseSummary, Expense, FinancialOperation, FullOrder, Ingredient, PayrollPayment, ProductionBatch, Purchase, StockMovement, Customer, Product, LegacySaleReportRow, LegacyDeletedOrderReportRow, LegacyPurchaseOrderReportRow, ReportEventRow, ReportAdjustmentRow, ReportAttendanceRow, ReportRequisitionRow, ReportGiftCardRow, WarehouseIngredient, RecipeSummary } from './dataService'
 
 export type ReportId = 'orders' | 'items' | 'categories' | 'payments' | 'tables' | 'orderTypes' | 'hours' | 'customers' | 'expenses' | 'purchases' | 'purchaseItems' | 'credits' | 'closes' | 'inventory' | 'movements' | 'productionWaste' | string
 export type ReportGroup = 'Ventas' | 'Finanzas' | 'Inventario'
 export interface ReportDefinition { id: ReportId; title: string; group: ReportGroup; description: string; ready?: boolean; requirement?: string }
-export interface ReportTable { columns: string[]; rows: string[][]; total?: string; note?: string }
+export interface ReportTable { columns: string[]; rows: string[][]; total?: string; note?: string; orderIds?: string[] }
 export interface ReportData { orders?: FullOrder[]; expenses?: Expense[]; purchases?: Purchase[]; credits?: Credit[]; closes?: DailyCloseSummary[]; ingredients?: Ingredient[]; warehouseIngredients?: WarehouseIngredient[]; movements?: StockMovement[]; batches?: ProductionBatch[]; customers?: Customer[]; operations?: FinancialOperation[]; payrollPayments?: PayrollPayment[]; advances?: Advance[]; auditLogs?: AuditLog[]; products?: Product[]; recipeSummaries?: Map<string, RecipeSummary>; legacySales?: LegacySaleReportRow[]; legacyDeletedOrders?: LegacyDeletedOrderReportRow[]; legacyPurchaseOrders?: LegacyPurchaseOrderReportRow[]; events?: ReportEventRow[]; adjustments?: ReportAdjustmentRow[]; attendance?: ReportAttendanceRow[]; requisitions?: ReportRequisitionRow[]; giftCards?: ReportGiftCardRow[]; sourceUnavailable?: boolean }
 
 export const REPORTS: ReportDefinition[] = [
@@ -166,6 +166,26 @@ const grouped = (rows: Array<{ label: string; quantity: number; amount: number }
   total: total(rows),
 })
 const paymentNames: Record<string, string> = { cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto de venta', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro' }
+const orderTypeName = (value: string) => ({ 'dine-in': 'Mesa', dine_in: 'Mesa', dinein: 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery', pickup: 'Para llevar' } as Record<string, string>)[value] ?? value
+// Métodos que se cobran en bolívares (el monto guardado está en USD; el Bs se
+// obtiene multiplicando por la tasa del día del pedido).
+const paymentUsesBolivares = (method: string) => method === 'mobile' || method === 'card' || method === 'transfer'
+const orderPaymentMethods = (order: FullOrder) => {
+  const names = [...new Set((order.payments ?? []).map(p => paymentNames[p.method] ?? p.method))]
+  return names.length === 0 ? '—' : names.length === 1 ? names[0] : names.join(' + ')
+}
+const orderAmountSummary = (order: FullOrder) => {
+  const rate = order.bcvRate ?? 0
+  const paidUsdBs = (order.payments ?? []).filter(p => paymentUsesBolivares(p.method)).reduce((s, p) => s + p.amount, 0)
+  const paidUsdUsd = (order.payments ?? []).filter(p => !paymentUsesBolivares(p.method)).reduce((s, p) => s + p.amount, 0)
+  if (paidUsdBs > 0 && paidUsdUsd <= 0.001) {
+    // Pagado en Bs: monto en Bs y referencia en USD del día.
+    return rate > 0 ? `${formatVes(paidUsdBs * rate)}  (${formatUsd(paidUsdBs)})` : formatUsd(paidUsdBs)
+  }
+  if (paidUsdBs <= 0.001) return formatUsd(paidUsdUsd || order.totalAmount) // solo dólares
+  // Mixto: parte en USD y parte en Bs.
+  return `${formatUsd(paidUsdUsd)} + ${rate > 0 ? formatVes(paidUsdBs * rate) : formatUsd(paidUsdBs)}`
+}
 
 export function buildReport(id: ReportId, start: string, end: string, data: ReportData, startHour = '', endHour = ''): ReportTable {
   if (data.sourceUnavailable) return { columns: ['Estado', 'Reporte', 'Detalle'], rows: [['Fuente pendiente', REPORTS.find(report => report.id === id)?.title ?? id, 'Aplica la migración de fuentes de reportes para habilitar este reporte.']], note: 'Este reporte se activará automáticamente cuando exista su fuente de datos.' }
@@ -173,9 +193,10 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
   const salesItems = paid.flatMap(order => order.items)
   switch (id) {
     case 'orders': return {
-      columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Total (USD)'],
-      rows: paid.map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : order.orderType, count(order.items.reduce((sum, item) => sum + item.quantity, 0)), formatUsd(order.totalAmount)]),
+      columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Método de pago', 'Tasa del día', 'Cobrado', 'Total (USD)'],
+      rows: paid.map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), orderPaymentMethods(order), order.bcvRate ? formatVes(order.bcvRate) : '—', orderAmountSummary(order), formatUsd(order.totalAmount)]),
       total: formatUsd(paid.reduce((sum, order) => sum + order.totalAmount, 0)),
+      orderIds: paid.map(order => order.id),
     }
     case 'items': return { ...grouped(aggregate(salesItems, item => item.productName, item => item.quantity * item.unitPrice, item => item.quantity), 'Producto', 'Unidades'), note: 'El total proviene de líneas de productos; puede diferir de ventas brutas por delivery u otros cargos.' }
     case 'categories': return { ...grouped(aggregate(salesItems, item => item.category, item => item.quantity * item.unitPrice, item => item.quantity), 'Categoría', 'Unidades'), note: 'El total proviene de líneas de productos; puede diferir de ventas brutas por delivery u otros cargos.' }
@@ -227,7 +248,7 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
     case 'customersList': return { columns: ['Cliente', 'Teléfono', 'Visitas', 'Última visita', 'Producto favorito', 'Estado'], rows: (data.customers ?? []).filter(row => row.isActive).map(row => [row.name, row.phone || 'Sin teléfono', String(row.totalVisits), row.lastVisit ? localDate(row.lastVisit) : 'Sin visitas', row.favoriteProduct || 'Sin datos', 'Activo']) }
     case 'openOrders': return {
       columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Total (USD)'],
-      rows: (data.orders ?? []).filter(order => order.status !== 'paid' && inRange(order.createdAt, start, end, startHour, endHour)).map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : order.orderType, count(order.items.reduce((sum, item) => sum + item.quantity, 0)), formatUsd(order.totalAmount)]),
+      rows: (data.orders ?? []).filter(order => order.status !== 'paid' && inRange(order.createdAt, start, end, startHour, endHour)).map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), formatUsd(order.totalAmount)]),
       note: 'Incluye comandas que todavía no tienen estado pagado en el período seleccionado.',
     }
     case 'salesDetail': return {
