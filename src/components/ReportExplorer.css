@@ -26,6 +26,9 @@
 .report-filters button, .report-presets button, .report-result-heading button, .report-pagination button { display: flex; gap: .4rem; align-items: center; border: 1px solid var(--border-color); background: #28282a; color: var(--text-primary); border-radius: .7rem; padding: .6rem .8rem; cursor: pointer; font: inherit; font-size: .78rem; }
 .report-filters .report-refresh { background: #d9182a; border-color: #d9182a; color: white; font-weight: 700; }
 .report-presets { margin: 0 0 0 .35rem; padding-left: .5rem; border-left: 1px solid var(--border-color); }
+.report-filters-tools { display: flex; gap: .5rem; align-items: center; margin-left: auto; }
+.report-filters-tools .report-table-search { width: 220px; }
+@media (max-width: 760px) { .report-filters-tools { margin-left: 0; width: 100%; } .report-filters-tools .report-table-search { flex: 1; width: auto; } }
 .report-result-heading { justify-content: space-between; align-items: center; margin-bottom: .7rem; font-size: .85rem; color: var(--text-muted); }
 .report-result-heading strong { color: var(--text-primary); }
 .report-table-search { padding: .5rem .7rem; width: 190px; }
