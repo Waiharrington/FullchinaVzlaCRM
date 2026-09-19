@@ -193,8 +193,8 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
   const salesItems = paid.flatMap(order => order.items)
   switch (id) {
     case 'orders': return {
-      columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Método de pago', 'Tasa del día', 'Cobrado', 'Total (USD)'],
-      rows: paid.map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), orderPaymentMethods(order), order.bcvRate ? formatVes(order.bcvRate) : '—', orderAmountSummary(order), formatUsd(order.totalAmount)]),
+      columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Método de pago', 'Tasa del día', 'Cobrado'],
+      rows: paid.map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), orderPaymentMethods(order), order.bcvRate ? formatVes(order.bcvRate) : '—', orderAmountSummary(order)]),
       total: formatUsd(paid.reduce((sum, order) => sum + order.totalAmount, 0)),
       orderIds: paid.map(order => order.id),
     }
