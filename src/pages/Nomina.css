@@ -283,6 +283,14 @@
   margin-bottom: 5px;
 }
 
+.nom-field-help {
+  display: block;
+  margin-top: 5px;
+  color: #71717a;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .nom-field > input,
 .nom-field > select {
   width: 100%;

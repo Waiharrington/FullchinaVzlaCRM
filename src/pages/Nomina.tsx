@@ -49,7 +49,7 @@ export function Nomina() {
   const [pStart, setPStart] = useState(''); const [pEnd, setPEnd] = useState(''); const [pNotes, setPNotes] = useState('')
   const [showAdvance, setShowAdvance] = useState(false)
   const [closingAdvance, setClosingAdvance] = useState(false)
-  const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advDate, setAdvDate] = useState(dateKeyInTimeZone()); const [advNotes, setAdvNotes] = useState('')
+  const [advEmp, setAdvEmp] = useState(''); const [advAmt, setAdvAmt] = useState(''); const [advAccount, setAdvAccount] = useState(''); const [advRate, setAdvRate] = useState(''); const [advDate, setAdvDate] = useState(dateKeyInTimeZone()); const [advNotes, setAdvNotes] = useState('')
   const [showBonus, setShowBonus] = useState(false)
   const [closingBonus, setClosingBonus] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
@@ -61,7 +61,7 @@ export function Nomina() {
   const [settlementSources, setSettlementSources] = useState<Array<{ accountId: string; amount: string; rate: string }>>([])
   const [settlementReference, setSettlementReference] = useState('')
   const [settlementNotes, setSettlementNotes] = useState('')
-  const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
+  const [bonEmp, setBonEmp] = useState(''); const [bonAmt, setBonAmt] = useState(''); const [bonAccount, setBonAccount] = useState(''); const [bonRate, setBonRate] = useState(''); const [bonDate, setBonDate] = useState(dateKeyInTimeZone()); const [bonReason, setBonReason] = useState('')
 
   const closePeriod = (then?: () => void) => {
     if (closingPeriod) return
@@ -278,12 +278,20 @@ export function Nomina() {
   }
   const submitAdvance = async (e: React.FormEvent) => {
     e.preventDefault(); if (!advEmp || !advAmt) return
-    try { await createAdvance({ employeeId: advEmp, amount: parseFloat(advAmt) || 0, advanceDate: advDate, notes: advNotes.trim() || undefined }); closeAdvance(() => { setAdvEmp(''); setAdvAmt(''); setAdvNotes('') }); await load(); flash('Adelanto registrado') }
+    const account = accounts.find((item) => item.id === advAccount)
+    if (!account) { setError('Selecciona la cuenta desde la que saldrá el adelanto'); return }
+    const rate = account.currency === 'VES' ? (parseFloat(advRate) || bcvRate || 0) : 1
+    if (account.currency === 'VES' && rate <= 0) { setError('Indica la tasa BCV para registrar el adelanto en bolívares'); return }
+    try { await createAdvance({ employeeId: advEmp, amount: parseFloat(advAmt) || 0, accountId: account.id, exchangeRate: rate, advanceDate: advDate, notes: advNotes.trim() || undefined }); closeAdvance(() => { setAdvEmp(''); setAdvAmt(''); setAdvAccount(''); setAdvRate(''); setAdvNotes('') }); await load(); flash('Adelanto registrado y descontado de Finanzas') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando adelanto') }
   }
   const submitBonus = async (e: React.FormEvent) => {
     e.preventDefault(); if (!bonEmp || !bonAmt) return
-    try { await createProductionBonus({ employeeId: bonEmp, amount: parseFloat(bonAmt) || 0, bonusDate: bonDate, reason: bonReason.trim() || undefined }); closeBonus(() => { setBonEmp(''); setBonAmt(''); setBonReason('') }); await load(); flash('Bono registrado') }
+    const account = accounts.find((item) => item.id === bonAccount)
+    if (!account) { setError('Selecciona la cuenta desde la que saldrá el bono'); return }
+    const rate = account.currency === 'VES' ? (parseFloat(bonRate) || bcvRate || 0) : 1
+    if (account.currency === 'VES' && rate <= 0) { setError('Indica la tasa BCV para registrar el bono en bolívares'); return }
+    try { await createProductionBonus({ employeeId: bonEmp, amount: parseFloat(bonAmt) || 0, accountId: account.id, exchangeRate: rate, bonusDate: bonDate, reason: bonReason.trim() || undefined }); closeBonus(() => { setBonEmp(''); setBonAmt(''); setBonAccount(''); setBonRate(''); setBonReason('') }); await load(); flash('Bono registrado y descontado de Finanzas') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando bono') }
   }
   const submitPayment = async (e: React.FormEvent) => {
@@ -319,23 +327,30 @@ export function Nomina() {
   const shownBonuses = selectedEntries.length > 0
     ? selectedEntries.filter((entry) => entry.bonusAmount > 0).map((entry) => ({
       id: entry.id, date: selected?.endDate ?? '', employeeName: entry.employeeName || employees.find((emp) => emp.id === entry.employeeId)?.fullName || 'Empleado',
-      amount: entry.bonusAmount, reason: 'Liquidación guardada',
+      amount: entry.bonusAmount, originalAmount: null, currency: null, accountName: null, reason: 'Liquidación guardada',
     }))
     : bonuses.filter((bonus) => !selected || bonus.bonusDate >= selected.startDate && bonus.bonusDate <= selected.endDate).map((bonus) => ({
-      id: bonus.id, date: bonus.bonusDate, employeeName: bonus.employeeName, amount: bonus.amount, reason: bonus.reason || '—',
+      id: bonus.id, date: bonus.bonusDate, employeeName: bonus.employeeName, amount: bonus.amount, originalAmount: bonus.originalAmount, currency: bonus.currency, accountName: bonus.accountName, reason: bonus.reason || '—',
     }))
   const shownAdvances = selectedEntries.length > 0
     ? selectedEntries.filter((entry) => entry.advanceDeduction > 0).map((entry) => ({
       id: entry.id, date: selected?.endDate ?? '', employeeName: entry.employeeName || employees.find((emp) => emp.id === entry.employeeId)?.fullName || 'Empleado',
-      amount: entry.advanceDeduction, deducted: true, advanceId: null,
+      amount: entry.advanceDeduction, originalAmount: null, currency: null, accountName: null, deducted: true, advanceId: null,
     }))
     : advances.filter((advance) => !selected || advance.advanceDate <= selected.endDate).map((advance) => ({
-      id: advance.id, date: advance.advanceDate, employeeName: advance.employeeName, amount: advance.amount, deducted: advance.isDeducted, advanceId: advance.id,
+      id: advance.id, date: advance.advanceDate, employeeName: advance.employeeName, amount: advance.amount, originalAmount: advance.originalAmount, currency: advance.currency, accountName: advance.accountName, deducted: advance.isDeducted, advanceId: advance.id,
     }))
   const statusCls = (s: string) => s === 'open' ? 'open' : s === 'paid' ? 'paid' : 'closed'
   const statusLbl = (s: string) => s === 'open' ? 'Abierto' : s === 'paid' ? 'Pagado' : 'Cerrado'
   const fmtDateOnly = (value: string) => new Date(`${value}T00:00:00`).toLocaleDateString('es-VE')
   const fmtRange = (p: PayrollPeriod) => `${fmtDateOnly(p.startDate)} - ${fmtDateOnly(p.endDate)}`
+  const activeAccounts = accounts.filter((account) => account.isActive && (account.currency === 'USD' || account.currency === 'VES'))
+  const selectedAdvanceAccount = activeAccounts.find((account) => account.id === advAccount)
+  const selectedBonusAccount = activeAccounts.find((account) => account.id === bonAccount)
+  const displayNativeAmount = (amount: number, originalAmount: number | null, currency: 'USD' | 'VES' | null) => {
+    if (originalAmount == null || !currency) return formatUsd(amount)
+    return currency === 'VES' ? formatVes(originalAmount) : formatUsd(originalAmount)
+  }
 
   return (
     <div className="page nom-page animate-fade-in management-workspace management-workspace--payroll">
@@ -560,16 +575,17 @@ export function Nomina() {
         <div className="nom-card">
           <div className="nom-card-head"><div><h2>Adelantos de Salario</h2></div><button className="nom-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={() => setShowAdvance(true)}><Plus size={14} /> Nuevo</button></div>
           <table className="nom-mini-table">
-            <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Cuenta</th><th>Estado</th></tr></thead>
             <tbody>
               {shownAdvances.slice(0, 5).map((a) => (
                 <tr key={a.id}>
                   <td style={{ color: '#a1a1aa' }}>{new Date(a.date).toLocaleDateString('es-VE')}</td>
-                  <td>{a.employeeName}</td><td><strong>{formatUsd(a.amount)}</strong></td>
+                  <td>{a.employeeName}</td><td><strong>{displayNativeAmount(a.amount, a.originalAmount, a.currency)}</strong>{a.currency === 'VES' && <small className="nom-bs-ref">{formatUsd(a.amount)} normalizado</small>}</td>
+                  <td style={{ color: '#a1a1aa' }}>{a.accountName || 'Histórico'}</td>
                   <td><span className={`nom-pill ${a.deducted ? 'done' : 'pend'}`} onClick={a.advanceId ? () => { void setAdvanceDeducted(a.advanceId, !a.deducted).then(load) } : undefined}>{a.deducted ? 'Deducido' : 'Pendiente'}</span></td>
                 </tr>
               ))}
-              {shownAdvances.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>{legacySaved ? 'Desglose antiguo no disponible.' : 'Sin adelantos en este período.'}</td></tr>}
+              {shownAdvances.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>{legacySaved ? 'Desglose antiguo no disponible.' : 'Sin adelantos en este período.'}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -577,12 +593,12 @@ export function Nomina() {
         <div className="nom-card">
           <div className="nom-card-head"><div><h2>Bonos de Producción</h2></div><button className="nom-btn" style={{ padding: '7px 12px', fontSize: 13 }} onClick={() => setShowBonus(true)}><Plus size={14} /> Nuevo</button></div>
           <table className="nom-mini-table">
-            <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Motivo</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Empleado</th><th>Monto</th><th>Cuenta</th><th>Motivo</th></tr></thead>
             <tbody>
               {shownBonuses.slice(0, 5).map((b) => (
-                <tr key={b.id}><td style={{ color: '#a1a1aa' }}>{new Date(b.date).toLocaleDateString('es-VE')}</td><td>{b.employeeName}</td><td style={{ color: '#22c55e' }}><strong>{formatUsd(b.amount)}</strong></td><td style={{ color: '#a1a1aa' }}>{b.reason}</td></tr>
+                <tr key={b.id}><td style={{ color: '#a1a1aa' }}>{new Date(b.date).toLocaleDateString('es-VE')}</td><td>{b.employeeName}</td><td style={{ color: '#22c55e' }}><strong>{displayNativeAmount(b.amount, b.originalAmount, b.currency)}</strong>{b.currency === 'VES' && <small className="nom-bs-ref">{formatUsd(b.amount)} normalizado</small>}</td><td style={{ color: '#a1a1aa' }}>{b.accountName || 'Histórico'}</td><td style={{ color: '#a1a1aa' }}>{b.reason}</td></tr>
               ))}
-              {shownBonuses.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>{legacySaved ? 'Desglose antiguo no disponible.' : 'Sin bonos en este período.'}</td></tr>}
+              {shownBonuses.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: '#71717a', padding: 16 }}>{legacySaved ? 'Desglose antiguo no disponible.' : 'Sin bonos en este período.'}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -632,10 +648,12 @@ export function Nomina() {
               <h3>Nuevo adelanto</h3>
             </div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={advEmp} onChange={(e) => setAdvEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
+            <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={advAccount} onChange={(e) => { const account = activeAccounts.find((item) => item.id === e.target.value); setAdvAccount(e.target.value); setAdvRate(account?.currency === 'VES' ? String(bcvRate || '') : '') }} required><option value="">Seleccionar cuenta...</option>{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'}</option>)}</StyledSelect><small className="nom-field-help">El adelanto se descuenta inmediatamente de esta cuenta y queda pendiente de descontar en nómina.</small></div>
             <div className="nom-row2">
-              <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={advAmt} onChange={(v) => setAdvAmt(v)} required /></div>
+              <div className="nom-field"><label>Monto {selectedAdvanceAccount ? `(${selectedAdvanceAccount.currency === 'VES' ? 'Bs' : 'USD'})` : ''} *</label><NumberStepper step={0.01} min={0.01} value={advAmt} onChange={(v) => setAdvAmt(v)} required /></div>
               <div className="nom-field"><label>Fecha</label><DateField value={advDate} onChange={setAdvDate} /></div>
             </div>
+            {selectedAdvanceAccount?.currency === 'VES' && <div className="nom-field"><label>Tasa BCV *</label><input type="number" inputMode="decimal" min="0" step="0.01" value={advRate} onChange={(e) => setAdvRate(e.target.value)} placeholder={String(bcvRate || '')} required /><small className="nom-field-help">Se guardará el monto en bolívares y su equivalente en USD para la nómina.</small></div>}
             <div className="nom-field"><label>Notas</label><input value={advNotes} onChange={(e) => setAdvNotes(e.target.value)} placeholder="Opcional" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closeAdvance()}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
           </form>
@@ -650,10 +668,12 @@ export function Nomina() {
               <h3>Nuevo bono de producción</h3>
             </div>
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={bonEmp} onChange={(e) => setBonEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName}</option>)}</StyledSelect></div>
+            <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={bonAccount} onChange={(e) => { const account = activeAccounts.find((item) => item.id === e.target.value); setBonAccount(e.target.value); setBonRate(account?.currency === 'VES' ? String(bcvRate || '') : '') }} required><option value="">Seleccionar cuenta...</option>{activeAccounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'}</option>)}</StyledSelect><small className="nom-field-help">El bono se registra como salida de la cuenta y como ingreso adicional en la liquidación.</small></div>
             <div className="nom-row2">
-              <div className="nom-field"><label>Monto ($) *</label><NumberStepper step={0.01} min={0.01} value={bonAmt} onChange={(v) => setBonAmt(v)} required /></div>
+              <div className="nom-field"><label>Monto {selectedBonusAccount ? `(${selectedBonusAccount.currency === 'VES' ? 'Bs' : 'USD'})` : ''} *</label><NumberStepper step={0.01} min={0.01} value={bonAmt} onChange={(v) => setBonAmt(v)} required /></div>
               <div className="nom-field"><label>Fecha</label><DateField value={bonDate} onChange={setBonDate} /></div>
             </div>
+            {selectedBonusAccount?.currency === 'VES' && <div className="nom-field"><label>Tasa BCV *</label><input type="number" inputMode="decimal" min="0" step="0.01" value={bonRate} onChange={(e) => setBonRate(e.target.value)} placeholder={String(bcvRate || '')} required /><small className="nom-field-help">Se guardará el monto en bolívares y su equivalente en USD para la nómina.</small></div>}
             <div className="nom-field"><label>Motivo</label><input value={bonReason} onChange={(e) => setBonReason(e.target.value)} placeholder="Ej: Ventas destacadas" /></div>
             <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => closeBonus()}>Cancelar</button><button type="submit" className="nom-btn">Registrar</button></div>
           </form>

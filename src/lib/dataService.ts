@@ -500,6 +500,11 @@ export interface Advance {
   employeeId: string
   employeeName: string
   amount: number
+  accountId: string | null
+  accountName: string | null
+  currency: 'USD' | 'VES' | null
+  originalAmount: number | null
+  exchangeRate: number | null
   advanceDate: string
   isDeducted: boolean
   notes: string | null
@@ -3639,7 +3644,7 @@ export async function getAdvances(dateStart?: string, dateEnd?: string, allPages
   for (;;) {
     let query = client()
     .from('advances')
-    .select('id,employee_id,amount,advance_date,is_deducted,notes,created_at,employees(full_name)')
+    .select('id,employee_id,amount,account_id,currency,original_amount,exchange_rate,advance_date,is_deducted,notes,created_at,employees(full_name),financial_accounts(name)')
     .order('advance_date', { ascending: false })
   if (dateStart) query = query.gte('advance_date', dateStart)
   if (dateEnd) query = query.lte('advance_date', dateEnd)
@@ -3656,6 +3661,11 @@ export async function getAdvances(dateStart?: string, dateEnd?: string, allPages
     employeeId: r.employee_id as string,
     employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
     amount: Number(r.amount),
+    accountId: (r.account_id as string) ?? null,
+    accountName: Array.isArray(r.financial_accounts) ? String((r.financial_accounts[0] as Record<string, unknown>)?.name ?? '') : null,
+    currency: (r.currency as Advance['currency']) ?? null,
+    originalAmount: r.original_amount == null ? null : Number(r.original_amount),
+    exchangeRate: r.exchange_rate == null ? null : Number(r.exchange_rate),
     advanceDate: r.advance_date as string,
     isDeducted: r.is_deducted as boolean,
     notes: (r.notes as string) ?? null,
@@ -3666,14 +3676,18 @@ export async function getAdvances(dateStart?: string, dateEnd?: string, allPages
 export async function createAdvance(params: {
   employeeId: string
   amount: number
+  accountId: string
+  exchangeRate?: number | null
   advanceDate?: string
   notes?: string | null
 }): Promise<void> {
-  const { error } = await client().from('advances').insert({
-    employee_id: params.employeeId,
-    amount: params.amount,
-    advance_date: params.advanceDate ?? dateKeyInTimeZone(),
-    notes: params.notes ?? null,
+  const { error } = await client().rpc('fn_create_employee_advance', {
+    p_employee_id: params.employeeId,
+    p_original_amount: params.amount,
+    p_account_id: params.accountId,
+    p_exchange_rate: params.exchangeRate ?? null,
+    p_advance_date: params.advanceDate ?? dateKeyInTimeZone(),
+    p_notes: params.notes ?? null,
   })
   if (error) throw error
 }
@@ -3689,14 +3703,18 @@ export async function setAdvanceDeducted(id: string, deducted: boolean): Promise
 export async function createProductionBonus(params: {
   employeeId: string
   amount: number
+  accountId: string
+  exchangeRate?: number | null
   bonusDate?: string
   reason?: string | null
 }): Promise<void> {
-  const { error } = await client().from('production_bonuses').insert({
-    employee_id: params.employeeId,
-    amount: params.amount,
-    bonus_date: params.bonusDate ?? dateKeyInTimeZone(),
-    reason: params.reason ?? null,
+  const { error } = await client().rpc('fn_create_production_bonus', {
+    p_employee_id: params.employeeId,
+    p_original_amount: params.amount,
+    p_account_id: params.accountId,
+    p_exchange_rate: params.exchangeRate ?? null,
+    p_bonus_date: params.bonusDate ?? dateKeyInTimeZone(),
+    p_reason: params.reason ?? null,
   })
   if (error) throw error
 }
@@ -3706,6 +3724,11 @@ export interface ProductionBonusRecord {
   employeeId: string
   employeeName: string
   amount: number
+  accountId: string | null
+  accountName: string | null
+  currency: 'USD' | 'VES' | null
+  originalAmount: number | null
+  exchangeRate: number | null
   bonusDate: string
   reason: string | null
   createdAt: string
@@ -3733,7 +3756,7 @@ export async function getPayrollSummary(): Promise<{
 export async function getProductionBonusRecords(): Promise<ProductionBonusRecord[]> {
   const { data, error } = await client()
     .from('production_bonuses')
-    .select('id,employee_id,amount,bonus_date,reason,created_at,employees(full_name)')
+    .select('id,employee_id,amount,account_id,currency,original_amount,exchange_rate,bonus_date,reason,created_at,employees(full_name),financial_accounts(name)')
     .order('bonus_date', { ascending: false })
   if (error) throw error
   return (data ?? []).map((r) => ({
@@ -3741,6 +3764,11 @@ export async function getProductionBonusRecords(): Promise<ProductionBonusRecord
     employeeId: r.employee_id as string,
     employeeName: Array.isArray(r.employees) ? (r.employees[0] as Record<string, unknown>)?.full_name as string ?? '' : '',
     amount: Number(r.amount),
+    accountId: (r.account_id as string) ?? null,
+    accountName: Array.isArray(r.financial_accounts) ? String((r.financial_accounts[0] as Record<string, unknown>)?.name ?? '') : null,
+    currency: (r.currency as ProductionBonusRecord['currency']) ?? null,
+    originalAmount: r.original_amount == null ? null : Number(r.original_amount),
+    exchangeRate: r.exchange_rate == null ? null : Number(r.exchange_rate),
     bonusDate: r.bonus_date as string,
     reason: (r.reason as string) ?? null,
     createdAt: r.created_at as string,
