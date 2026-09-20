@@ -424,7 +424,7 @@ export function RecetasReal() {
         ingredientId: addComponentType === 'ingredient' ? addIngredientId : undefined,
         preparationBatchId: undefined,
         portionRecipeId: addComponentType === 'portion' ? addPortionId : undefined,
-        quantity: parseFloat(addQuantity) || 1,
+        quantity: Number.parseFloat(addQuantity.replace(',', '.')) || 1,
         unitId: addUnitId,
       })
       setNotice('Ingrediente agregado')
@@ -467,7 +467,7 @@ export function RecetasReal() {
   }
 
   const handleUpdateComponent = async (component: RecipeComponent) => {
-    const quantity = Number.parseFloat(editingQuantity)
+    const quantity = Number.parseFloat(editingQuantity.replace(',', '.'))
     if (!Number.isFinite(quantity) || quantity <= 0 || !editingUnitId) {
       setError('Indica una cantidad válida mayor que cero')
       return
@@ -667,7 +667,7 @@ export function RecetasReal() {
                         placeholder="Buscar ingrediente..."
                         emptyText="Sin ingredientes"
                       /> : <SearchSelect options={portions.map(p => ({ value: p.id, label: `${p.name} (${p.quantity} ${p.unitSymbol})` }))} value={addPortionId} onChange={id => { setAddPortionId(id); setAddUnitId(portions.find(p => p.id === id)?.unitId ?? '') }} placeholder="Escribe para buscar porción..." emptyText="Sin porciones" />}
-                      <NumberStepper step={0.01} min={0.01} placeholder="Cant." value={addQuantity} onChange={(v) => setAddQuantity(v)} required />
+                      <NumberStepper step={0.001} min={0.000001} placeholder="Cant." value={addQuantity} onChange={(v) => setAddQuantity(v)} required allowComma />
                       <StyledSelect value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
                         {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
                       </StyledSelect>
@@ -689,7 +689,7 @@ export function RecetasReal() {
                           <span className="rec-ing-name">{c.ingredientName ?? 'Preparación'}</span>
                           {editingComponentId === c.id ? (
                             <div className="rec-ing-edit-fields">
-                              <NumberStepper step={0.01} min={0.01} value={editingQuantity} onChange={setEditingQuantity} />
+                              <NumberStepper step={0.001} min={0.000001} value={editingQuantity} onChange={setEditingQuantity} allowComma />
                               <StyledSelect value={editingUnitId} onChange={(e) => setEditingUnitId(e.target.value)}>
                                 {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
                               </StyledSelect>

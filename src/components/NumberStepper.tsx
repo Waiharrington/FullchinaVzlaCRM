@@ -15,6 +15,7 @@ interface NumberStepperProps {
   id?: string
   autoFocus?: boolean
   hideControls?: boolean
+  allowComma?: boolean
 }
 
 function decimalsOf(n: number) {
@@ -24,10 +25,10 @@ function decimalsOf(n: number) {
 }
 
 export default function NumberStepper({
-  value, onChange, step = 1, min, max, placeholder, prefix, required, disabled, className = '', id, autoFocus, hideControls,
+  value, onChange, step = 1, min, max, placeholder, prefix, required, disabled, className = '', id, autoFocus, hideControls, allowComma,
 }: NumberStepperProps) {
   const bump = (dir: 1 | -1) => {
-    const current = parseFloat(value) || 0
+    const current = parseFloat(value.replace(',', '.')) || 0
     const precision = Math.max(decimalsOf(step), decimalsOf(current))
     const factor = 10 ** precision
     let next = Math.round((current + dir * step) * factor) / factor
@@ -45,7 +46,7 @@ export default function NumberStepper({
       {prefix && <span className="num-stepper-prefix">{prefix}</span>}
       <input
         id={id}
-        type="number"
+        type={allowComma ? 'text' : 'number'}
         inputMode="decimal"
         className="num-stepper-input"
         value={value}
