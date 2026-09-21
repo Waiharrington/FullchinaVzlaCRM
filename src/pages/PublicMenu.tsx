@@ -47,13 +47,22 @@ const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
 }
 
 const INSTAGRAM_REELS = [
-  { src: '/videos/instagram/reel-1.mp4', href: 'https://www.instagram.com/p/DR7aYwlDsTD/?hl=es' },
-  { src: '/videos/instagram/reel-2.mp4', href: 'https://www.instagram.com/p/DPj331MCW87/?hl=es' },
-  { src: '/videos/instagram/reel-3.mp4', href: 'https://www.instagram.com/p/DQANX2cCVkj/?hl=es' },
-  { src: '/videos/instagram/reel-4.mp4', href: 'https://www.instagram.com/p/DZLUKT5sKeW/?hl=es' },
-  { src: '/videos/instagram/reel-5.mp4', href: 'https://www.instagram.com/p/DYnlFGtNg93/?hl=es' },
-  { src: '/videos/instagram/reel-6.mp4', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
+  { src: '/videos/instagram/reel-1.mp4', poster: '/optimized/instagram/reel-1.webp', href: 'https://www.instagram.com/p/DR7aYwlDsTD/?hl=es' },
+  { src: '/videos/instagram/reel-2.mp4', poster: '/optimized/instagram/reel-2.webp', href: 'https://www.instagram.com/p/DPj331MCW87/?hl=es' },
+  { src: '/videos/instagram/reel-3.mp4', poster: '/optimized/instagram/reel-3.webp', href: 'https://www.instagram.com/p/DQANX2cCVkj/?hl=es' },
+  { src: '/videos/instagram/reel-4.mp4', poster: '/optimized/instagram/reel-4.webp', href: 'https://www.instagram.com/p/DZLUKT5sKeW/?hl=es' },
+  { src: '/videos/instagram/reel-5.mp4', poster: '/optimized/instagram/reel-5.webp', href: 'https://www.instagram.com/p/DYnlFGtNg93/?hl=es' },
+  { src: '/videos/instagram/reel-6.mp4', poster: '/optimized/instagram/reel-6.webp', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
 ] as const
+
+function startInstagramVideo(video: HTMLVideoElement) {
+  if (video.src) return
+  const source = video.dataset.src || video.querySelector('source')?.dataset.src
+  if (!source) return
+  video.src = source
+  video.load()
+  void video.play().catch(() => undefined)
+}
 
 type MapCoordinates = { lat: number; lng: number }
 const AddressMap = lazy(() => import('../components/PublicAddressMap').then(module => ({ default: module.PublicAddressMap })))
@@ -743,6 +752,20 @@ export function PublicMenu() {
     sections.forEach(el => observer.observe(el))
     return () => observer.disconnect()
   }, [activeCategory, categorySections])
+
+  // Las previews se muestran de inmediato. Solo se activan los dos primeros
+  // videos visibles cuando el navegador queda libre; los demás se cargan al
+  // pasar el puntero por encima. Esto evita descargar ~17 MB al abrir Contacto.
+  useEffect(() => {
+    if (currentTab !== 'contacto') return
+    const timer = window.setTimeout(() => {
+      const visibleVideos = Array.from(document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video'))
+        .filter(video => video.offsetParent !== null)
+        .slice(0, 2)
+      visibleVideos.forEach(startInstagramVideo)
+    }, 1200)
+    return () => window.clearTimeout(timer)
+  }, [currentTab])
 
   const displayAccentCategory = activeCategory !== 'Todos' ? activeCategory : scrollCategory
   const orderedCategories = useMemo(() => categories.filter(category => category !== 'Todos'), [categories])
@@ -1892,10 +1915,11 @@ export function PublicMenu() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`public-instagram-reel is-reel-${index + 1}`}
+                      onPointerEnter={(event) => startInstagramVideo(event.currentTarget.querySelector('video') as HTMLVideoElement)}
                       aria-label={`Ver reel ${index + 1} de Full China en Instagram`}
                     >
-                      <video autoPlay muted loop playsInline preload="metadata">
-                        <source src={reel.src} type="video/mp4" />
+                      <video autoPlay muted loop playsInline preload="none" poster={reel.poster}>
+                        <source data-src={reel.src} type="video/mp4" />
                       </video>
                       <span className="public-instagram-reel-shade" aria-hidden="true" />
                       <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
@@ -2383,10 +2407,11 @@ export function PublicMenu() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`public-instagram-reel is-reel-${index + 1}`}
+                        onPointerEnter={(event) => startInstagramVideo(event.currentTarget.querySelector('video') as HTMLVideoElement)}
                         aria-label={`Ver reel ${index + 1} de Full China en Instagram`}
                       >
-                        <video autoPlay muted loop playsInline preload="metadata">
-                          <source src={reel.src} type="video/mp4" />
+                        <video autoPlay muted loop playsInline preload="none" poster={reel.poster}>
+                          <source data-src={reel.src} type="video/mp4" />
                         </video>
                         <span className="public-instagram-reel-shade" aria-hidden="true" />
                         <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
