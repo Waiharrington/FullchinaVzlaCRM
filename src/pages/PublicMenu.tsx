@@ -762,20 +762,19 @@ export function PublicMenu() {
     return () => observer.disconnect()
   }, [activeCategory, categorySections])
 
-  // Las previews se muestran de inmediato. Solo se activan los dos primeros
-  // videos visibles cuando el navegador queda libre; los demás se cargan al
-  // pasar el puntero por encima. Esto evita descargar ~17 MB al abrir Contacto.
+  // Las previews se muestran de inmediato. Solo se activa el video que ocupa
+  // el centro; las demás tarjetas permanecen pausadas hasta su turno.
   useEffect(() => {
     if (currentTab !== 'contacto') return
     const timer = window.setTimeout(() => {
-      const visibleVideos = Array.from(document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video'))
-        .filter(video => video.offsetParent !== null)
-        .sort((a, b) => Number(b.dataset.active === 'true') - Number(a.dataset.active === 'true'))
-        .slice(0, 2)
-      visibleVideos.forEach(startInstagramVideo)
+      const videos = Array.from(document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video'))
+      videos.forEach(video => {
+        if (video.dataset.active === 'true' && video.offsetParent !== null) startInstagramVideo(video)
+        else { video.pause(); video.currentTime = 0 }
+      })
     }, 1200)
     return () => window.clearTimeout(timer)
-  }, [currentTab])
+  }, [currentTab, instagramActiveIndex])
 
   const displayAccentCategory = activeCategory !== 'Todos' ? activeCategory : scrollCategory
   const orderedCategories = useMemo(() => categories.filter(category => category !== 'Todos'), [categories])
@@ -1928,7 +1927,7 @@ export function PublicMenu() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`public-instagram-reel is-reel-${position + 1}`}
-                      onPointerEnter={(event) => startInstagramVideo(event.currentTarget.querySelector('video') as HTMLVideoElement)}
+                      onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
                       aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                     >
                       <video autoPlay={isActive} muted playsInline preload="none" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex((instagramActiveIndex + 1) % INSTAGRAM_REELS.length)}>
@@ -2424,7 +2423,7 @@ export function PublicMenu() {
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`public-instagram-reel is-reel-${position + 1}`}
-                        onPointerEnter={(event) => startInstagramVideo(event.currentTarget.querySelector('video') as HTMLVideoElement)}
+                        onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
                         aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                       >
                         <video autoPlay={isActive} muted playsInline preload="none" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex((instagramActiveIndex + 1) % INSTAGRAM_REELS.length)}>
