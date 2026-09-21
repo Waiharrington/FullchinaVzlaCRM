@@ -1928,6 +1928,12 @@ export function PublicMenu() {
                       rel="noopener noreferrer"
                       className={`public-instagram-reel is-reel-${position + 1}`}
                       onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
+                      onClick={(event) => {
+                        if (!isActive) {
+                          event.preventDefault()
+                          setInstagramActiveIndex(reelIndex)
+                        }
+                      }}
                       aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                     >
                       <video autoPlay={isActive} muted playsInline preload="none" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex((instagramActiveIndex + 1) % INSTAGRAM_REELS.length)}>
@@ -2424,6 +2430,12 @@ export function PublicMenu() {
                         rel="noopener noreferrer"
                         className={`public-instagram-reel is-reel-${position + 1}`}
                         onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
+                        onClick={(event) => {
+                          if (!isActive) {
+                            event.preventDefault()
+                            setInstagramActiveIndex(reelIndex)
+                          }
+                        }}
                         aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                       >
                         <video autoPlay={isActive} muted playsInline preload="none" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex((instagramActiveIndex + 1) % INSTAGRAM_REELS.length)}>
