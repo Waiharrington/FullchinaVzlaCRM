@@ -66,6 +66,7 @@ const FAVORITES_KEY = 'fullchina_public_favorites'
 const CART_KEY = 'fullchina_public_cart'
 const LAST_ORDER_KEY = 'fullchina_public_last_order'
 const FLOW_STATE_KEY = 'fullchina_public_flow_state'
+const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
@@ -356,18 +357,8 @@ export function PublicMenu() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
-  useEffect(() => {
-    const preload = [
-      '/optimized/root/logo.webp',
-      '/optimized/fondos/pickup-card.webp',
-      '/optimized/fondos/delivery-card.webp',
-      '/optimized/fondos/carrito-vacio.webp',
-      '/optimized/cargando-pedido/fuego-circulo-rojo.webp',
-      '/optimized/cargando-pedido/wok-nuevo.webp',
-      '/optimized/cargando-pedido/whatsapp-circulo-verde.webp',
-    ]
-    preload.forEach(src => { const img = new Image(); img.src = src })
-  }, [])
+  // Las imágenes de checkout se cargan cuando el cliente llega a ese paso;
+  // precargarlas aquí competía con el catálogo en conexiones móviles lentas.
   useEffect(() => {
     if (!error) return
     document.querySelector('.public-cart-drawer')?.scrollTo({ top: 0, behavior: 'smooth' })
@@ -535,25 +526,66 @@ export function PublicMenu() {
       window.__removeFCSplash?.()
       return
     }
-    getPublicDeliverySettings().then(setDeliverySettings).catch(() => setDeliverySettings(null))
-    // La tasa es información secundaria: nunca debe bloquear la aparición del menú.
-    getExchangeRates().then(rates => setBcvRate(rates.bcv || null)).catch(() => setBcvRate(null))
-    Promise.all([getPublicCatalog(), getPublicMenuCategories().catch(() => [] as PublicMenuCategory[])])
-      .then(([catalog, cats]) => {
-        if (cats.length) hydrateMenuCategories(cats)
+    let active = true
+    let secondaryTimer: number | null = null
+
+    // Solo el catálogo es crítico para pintar el menú. Las categorías, la tasa
+    // y delivery llegan después para que una respuesta lenta no mantenga al
+    // cliente mirando la pantalla de carga.
+    const catalogPromise = getPublicCatalog()
+      .then(catalog => {
         const resolved = prepareCatalog(catalog)
-        saveCatalogCache(resolved, cats)
+        if (!active) return resolved
+        saveCatalogCache(resolved, initialCatalog?.categories ?? [])
         setExtrasProducts(resolved.filter(p => p.categories.includes('extras')))
         setProducts(resolved.filter(p => !p.categories.includes('extras')))
-      })
-      .catch(() => {
-        if (!initialCatalog) setError('No pudimos cargar el menú. Intenta nuevamente.')
-      })
-      .finally(() => {
         setLoading(false)
         window.__removeFCSplash?.()
+        return resolved
       })
+      .catch(() => {
+        if (active) {
+          if (!initialCatalog) setError('No pudimos cargar el menú. Intenta nuevamente.')
+          setLoading(false)
+          window.__removeFCSplash?.()
+        }
+        return null
+      })
+
+    void catalogPromise.then(resolved => {
+      if (!resolved || !active) return
+
+      void getPublicMenuCategories()
+        .then(cats => {
+          if (!active || !cats.length) return
+          hydrateMenuCategories(cats)
+          saveCatalogCache(resolved, cats)
+          // hydrateMenuCategories actualiza un mapa compartido; clonar la
+          // lista fuerza el render que refresca etiquetas y búsquedas.
+          setProducts(current => [...current])
+        })
+        .catch(() => { /* el catálogo ya puede funcionar con categorías locales */ })
+
+      // La tasa y la configuración de delivery son secundarias. Se difieren
+      // un poco más para dejar libre la conexión durante el primer render.
+      secondaryTimer = window.setTimeout(() => {
+        if (!active) return
+        getExchangeRates().then(rates => setBcvRate(rates.bcv || null)).catch(() => setBcvRate(null))
+        getPublicDeliverySettings().then(setDeliverySettings).catch(() => setDeliverySettings(null))
+      }, 500)
+    })
+
+    return () => {
+      active = false
+      if (secondaryTimer !== null) window.clearTimeout(secondaryTimer)
+    }
   }, [designMode, initialCatalog])
+
+  useEffect(() => {
+    if (!loading) {
+      window.__removeFCSplash?.()
+    }
+  }, [loading])
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
@@ -812,6 +844,7 @@ export function PublicMenu() {
         return
       }
       const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
+      const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
       if (saved && cart.length > 0) {
         setName(saved.name || '')
         setPhone(saved.phone || '')
@@ -824,15 +857,39 @@ export function PublicMenu() {
         setNotes(saved.notes || '')
         setGeoCoords(saved.geoCoords || null)
         setAddressMethod(saved.addressMethod || null)
-        // Persistimos los datos para no perder el pedido en progreso, pero no
-        // reabrimos el drawer después de una recarga. El usuario debe decidir
-        // cuándo volver a entrar al checkout.
-        setCartOpen(false)
-        setStep('cart')
+        if (sent?.sentAt) {
+          setOrderCode(sent.code || '')
+          setWhatsappUrl('')
+          setCartOpen(true)
+          setStep('sent')
+        } else {
+          // Persistimos los datos para no perder el pedido en progreso, pero no
+          // reabrimos el drawer después de una recarga. El usuario debe decidir
+          // cuándo volver a entrar al checkout.
+          setCartOpen(false)
+          setStep('cart')
+        }
       }
     } catch { /* ignore malformed local flow state */ }
     restoringFlow.current = false
   }, [cart.length, designMode])
+  useEffect(() => {
+    // Volver desde WhatsApp puede recuperar esta página desde el bfcache sin
+    // montar de nuevo React. Sincronizamos el estado también en pageshow para
+    // que el resultado sea el mismo con recarga o con el botón Atrás.
+    const restoreSentState = () => {
+      try {
+        const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
+        if (!sent?.sentAt || cart.length === 0) return
+        setOrderCode(sent.code || '')
+        setWhatsappUrl('')
+        setCartOpen(true)
+        setStep('sent')
+      } catch { /* ignore malformed sent state */ }
+    }
+    window.addEventListener('pageshow', restoreSentState)
+    return () => window.removeEventListener('pageshow', restoreSentState)
+  }, [cart.length])
   useEffect(() => { localStorage.setItem(CART_KEY, JSON.stringify(cart)) }, [cart])
   useEffect(() => { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds)) }, [favoriteIds])
   useEffect(() => {
@@ -877,6 +934,7 @@ export function PublicMenu() {
     try {
       localStorage.removeItem(CART_KEY)
       localStorage.removeItem(FLOW_STATE_KEY)
+      localStorage.removeItem(WHATSAPP_SENT_KEY)
       sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY)
     } catch { /* storage unavailable */ }
     closeCart()
@@ -1227,6 +1285,13 @@ export function PublicMenu() {
 
   const openWhatsApp = () => {
     if (!whatsappUrl) return
+    try {
+      localStorage.setItem(WHATSAPP_SENT_KEY, JSON.stringify({
+        code: orderCode || draftOrderCode || '',
+        sentAt: Date.now(),
+      }))
+      localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen: true, step: 'sent', name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
+    } catch { /* storage unavailable */ }
     // Navegar en la pestaña actual evita duplicar WhatsApp en una pestaña
     // nueva y conserva una sola salida clara del checkout.
     window.location.assign(whatsappUrl)
@@ -1706,9 +1771,9 @@ export function PublicMenu() {
               ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
                 <section className="public-category-section" key={section.category} data-category={section.category}>
                   <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><span>{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span></div>
-                  <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < 4))}</div>
+                  <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
                 </section>
-              )) : visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < 4))}
+              )) : visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < (isDesktopViewport ? 4 : 2)))}
             </div>
           )}
         </section>
@@ -2193,11 +2258,11 @@ export function PublicMenu() {
                           </div>
                           <span className="public-category-count-badge">{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span>
                         </div>
-                        <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < 4))}</div>
+                        <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
                       </section>
                     )) : (
                       <div className="public-category-grid">
-                        {visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < 4))}
+                        {visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < (isDesktopViewport ? 4 : 2)))}
                       </div>
                     )}
                   </div>

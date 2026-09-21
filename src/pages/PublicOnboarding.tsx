@@ -27,13 +27,21 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
   const [isExiting, setIsExiting] = useState(false)
   const desktop = window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches
   const fullBackgroundAsset = desktop
-    ? '/fondos/fondo_onboarding_compu.png'
+    ? '/optimized/fondos/onboarding-bg-desktop.webp'
     : '/optimized/fondos/onboarding-bg-phone.webp'
   const previewBackgroundAsset = desktop
-    ? '/fondos/fondo_onboarding_compu.png'
+    ? '/optimized/previews/fondos/onboarding-bg-desktop.webp'
     : '/optimized/previews/fondos/onboarding-bg-phone.webp'
   const [backgroundAsset, setBackgroundAsset] = useState(previewBackgroundAsset)
   const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
+
+  useEffect(() => {
+    // La pantalla de bienvenida suele permanecer visible varios segundos.
+    // Aprovechamos ese tiempo para traer el chunk del menú sin bloquear la
+    // primera pintura del onboarding; al pulsar "Ver menú" ya estará caliente.
+    const timer = window.setTimeout(() => { void import('./PublicMenu') }, 900)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const image = new Image()

@@ -555,7 +555,7 @@ button.mobile-only {
   padding: 0;
   background:
     linear-gradient(180deg, rgba(0, 0, 0, .18) 0%, rgba(0, 0, 0, .08) 34%, rgba(0, 0, 0, .72) 68%, rgba(0, 0, 0, .94) 100%),
-    url('/fondos/whatsapp-ready-bg.png') center top / cover no-repeat;
+    url('/optimized/fondos/whatsapp-ready-bg.webp') center top / cover no-repeat;
   background-color: #050505;
 }
 
@@ -2582,7 +2582,7 @@ button.mobile-only {
     max-width: none !important;
     margin: 0 !important;
     padding: 0 0 80px 0 !important;
-    background: url('/fondos/fondo_menu_compu.png') center center / cover fixed no-repeat !important;
+    background: url('/optimized/fondos/fondo-compu.webp') center center / cover fixed no-repeat !important;
   }
 
   /* Top Navbar */
@@ -9644,7 +9644,7 @@ body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
    overrides the older layered handoff experiments above. */
 .public-whatsapp-ready-backdrop {
   padding: 0 !important;
-  background: linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.08) 34%, rgba(0,0,0,.72) 68%, rgba(0,0,0,.94) 100%), url('/fondos/whatsapp-ready-bg.png') center top / cover no-repeat !important;
+  background: linear-gradient(180deg, rgba(0,0,0,.18) 0%, rgba(0,0,0,.08) 34%, rgba(0,0,0,.72) 68%, rgba(0,0,0,.94) 100%), url('/optimized/fondos/whatsapp-ready-bg.webp') center top / cover no-repeat !important;
   background-color: #050505 !important;
 }
 .public-whatsapp-ready-page {
@@ -10622,7 +10622,7 @@ body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
     padding: 0 !important;
     border: 1px solid rgba(255,80,80,.22) !important;
     border-radius: 22px !important;
-    background: linear-gradient(180deg, rgba(4,5,7,.05), rgba(4,5,7,.86) 48%, #08090c 100%), url('/fondos/whatsapp-ready-bg.png') center top / cover no-repeat !important;
+    background: linear-gradient(180deg, rgba(4,5,7,.05), rgba(4,5,7,.86) 48%, #08090c 100%), url('/optimized/fondos/whatsapp-ready-bg.webp') center top / cover no-repeat !important;
     box-shadow: 0 20px 50px rgba(0,0,0,.65) !important;
     color: #fff !important;
     pointer-events: auto !important;
@@ -11176,7 +11176,7 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   }
 
   .public-whatsapp-ready-page {
-    background: url('/fondos/whatsapp-ready-computer.png') center top / cover no-repeat !important;
+    background: url('/optimized/fondos/whatsapp-ready-computer.webp') center top / cover no-repeat !important;
     border: 0 !important;
     border-radius: 22px !important;
     -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%) !important;

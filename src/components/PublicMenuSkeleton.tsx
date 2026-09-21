@@ -14,8 +14,8 @@ export function PublicMenuSkeleton() {
   const [fadeState, setFadeState] = useState('fade-in');
   const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 1280px) and (pointer: fine)').matches;
   const backgroundAsset = isDesktop
-    ? '/fondos/fondo_pagina_carga_compu.png'
-    : '/fondos/fondo_pagina_carga_phone.png';
+    ? '/optimized/fondos/fondo-compu.webp'
+    : '/optimized/fondos/fondo-pagina-carga.webp';
 
   useEffect(() => {
     const interval = setInterval(() => {
