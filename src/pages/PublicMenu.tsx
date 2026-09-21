@@ -197,8 +197,11 @@ function previewImageSource(source: string) {
   return match ? `/optimized/previews/${match[1]}/${match[2]}${match[3] || ''}` : null
 }
 
+const USD_FORMATTER = new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' })
+const BS_FORMATTER = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 function money(value: number) {
-  return new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(value)
+  return USD_FORMATTER.format(value)
 }
 
 function productTitle(name: string) {
@@ -495,16 +498,40 @@ export function PublicMenu() {
     if (image instanceof HTMLImageElement) image.classList.add('public-image-error')
   }
 
-  // Before every paint, hide any node whose src changed. It becomes visible
-  // only after the browser confirms the replacement image is fully decoded.
-  useLayoutEffect(() => {
-    const images = pageRef.current?.querySelectorAll('img') ?? []
+  const prepareImagesIn = (root: ParentNode) => {
+    const images: HTMLImageElement[] = []
+    if (root instanceof HTMLImageElement) images.push(root)
+    root.querySelectorAll('img').forEach(image => images.push(image))
     images.forEach(image => {
       const source = image.currentSrc || image.src
       if (image.dataset.revealedSrc !== source) image.classList.remove('public-image-ready', 'public-image-error')
       prepareImage(image)
     })
-  })
+  }
+  const prepareImagesInRef = useRef(prepareImagesIn)
+  prepareImagesInRef.current = prepareImagesIn
+
+  // Las imágenes se preparan al montarse y cuando React añade o cambia un
+  // nodo. Antes este escaneo recorría todos los <img> después de cada render,
+  // incluso al escribir en un formulario o cambiar una cantidad del carrito.
+  useLayoutEffect(() => {
+    const root = pageRef.current
+    if (!root) return
+    prepareImagesInRef.current(root)
+    const observer = new MutationObserver(records => {
+      records.forEach(record => {
+        if (record.type === 'attributes' && record.target instanceof HTMLImageElement) {
+          prepareImagesInRef.current(record.target)
+          return
+        }
+        record.addedNodes.forEach(node => {
+          if (node instanceof HTMLElement) prepareImagesInRef.current(node)
+        })
+      })
+    })
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (typeof window.matchMedia !== 'function' || !window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return
@@ -571,7 +598,6 @@ export function PublicMenu() {
       secondaryTimer = window.setTimeout(() => {
         if (!active) return
         getExchangeRates().then(rates => setBcvRate(rates.bcv || null)).catch(() => setBcvRate(null))
-        getPublicDeliverySettings().then(setDeliverySettings).catch(() => setDeliverySettings(null))
       }, 500)
     })
 
@@ -586,6 +612,19 @@ export function PublicMenu() {
       window.__removeFCSplash?.()
     }
   }, [loading])
+
+  // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
+  // descargues zonas y coordenadas en cada visita al menú: en conexiones
+  // móviles esa RPC competía con el catálogo aunque el cliente fuera a
+  // retirar el pedido en el local.
+  useEffect(() => {
+    if (designMode || orderType !== 'delivery' || deliverySettings) return
+    let active = true
+    getPublicDeliverySettings()
+      .then(settings => { if (active) setDeliverySettings(settings) })
+      .catch(() => { if (active) setDeliverySettings(null) })
+    return () => { active = false }
+  }, [designMode, orderType, deliverySettings])
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
@@ -1422,7 +1461,7 @@ export function PublicMenu() {
 
   // Monto en Bs (referencia) calculado con la tasa BCV actual. null si no hay tasa.
   const priceBs = (usd: number) =>
-    bcvRate ? `Bs. ${(usd * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null
+    bcvRate ? `Bs. ${BS_FORMATTER.format(usd * bcvRate)}` : null
 
   const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
 
