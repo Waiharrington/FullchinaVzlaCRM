@@ -82,7 +82,7 @@ const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
 // v2 intentionally drops caches created while the public RPC still returned
 // inline Base64 images (those entries could occupy several megabytes).
 // v3 descarta catálogos que guardaron las rutas estáticas antiguas M*.jpg.
-const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v3'
+const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v4'
 const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // Debe coincidir exactamente con el breakpoint de PublicMenu.css: escritorio
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
