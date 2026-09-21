@@ -5,8 +5,9 @@
 -- productos llegaron a representar aproximadamente 3.7 MB de una respuesta
 -- de 3.75 MB. Para los productos importados con imagen estática conocida,
 -- devolvemos la ruta local que el frontend transforma a WebP. Para cualquier
--- imagen inline sin equivalente estático, devolvemos NULL y la UI usa su
--- fallback de categoría.
+-- imagen inline sin código conocido se sirve desde un WebP estático nombrado
+-- con el id del producto; así no se pierde la imagen y tampoco se incrusta en
+-- la respuesta JSON.
 --
 -- Esta migración se aplica al VPS solamente después de contar con un backup.
 -- =============================================================================
@@ -48,7 +49,7 @@ AS $$
             'M54', 'M55', 'M60', 'M64', 'M66', 'M67', 'P41', 'P54'
           ])
           THEN '/productos/' || split_part(p.source_code, ':', 1) || '.jpg'
-          ELSE NULL
+          ELSE '/optimized/productos/public-' || p.id || '.webp'
         END
       ELSE p.image_url
     END
