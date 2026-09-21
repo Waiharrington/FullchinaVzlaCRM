@@ -38,7 +38,7 @@ AS $$
     'menu_label', p.menu_label,
     'image_url', CASE
       WHEN p.image_url LIKE 'data:image/%'
-        THEN '/optimized/productos/public-' || p.id || '.webp'
+        THEN '/optimized/productos/' || p.id || '.webp'
       ELSE p.image_url
     END
   ) ORDER BY p.category, p.name), '[]'::jsonb)
