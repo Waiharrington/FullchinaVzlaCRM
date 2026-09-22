@@ -1505,6 +1505,18 @@ export interface WhatsAppSegment {
   updatedAt: string
 }
 
+export interface WhatsAppTemplate {
+  id: string
+  name: string
+  category: string
+  description: string | null
+  message: string
+  scheduleLabel: string | null
+  isActive: boolean
+  createdAt: string
+  updatedAt: string
+}
+
 export interface LegacyPurchaseOrder {
   id: string
   code: string
@@ -3547,6 +3559,38 @@ export async function queueWhatsAppMessages(params: { customerIds: string[]; cus
     .map(customer => ({ customer_id: customer.id, phone: customer.phone, message: params.message, template_type: 'custom', status: 'queued', created_by: params.userId }))
   if (rows.length === 0) throw new Error('No hay destinatarios con teléfono en esta selección')
   const { error } = await client().from('whatsapp_messages').insert(rows)
+  if (error) throw error
+}
+
+export async function getWhatsAppTemplates(): Promise<WhatsAppTemplate[]> {
+  const { data, error } = await client().from('whatsapp_templates')
+    .select('id,name,category,description,message,schedule_label,is_active,created_at,updated_at')
+    .order('name')
+  if (error) throw error
+  return (data ?? []).map(row => ({
+    id: row.id as string, name: row.name as string, category: row.category as string,
+    description: (row.description as string) ?? null, message: row.message as string,
+    scheduleLabel: (row.schedule_label as string) ?? null, isActive: row.is_active as boolean,
+    createdAt: row.created_at as string, updatedAt: row.updated_at as string,
+  }))
+}
+
+export async function saveWhatsAppTemplate(params: { id?: string; name: string; category: string; description?: string; message: string; scheduleLabel?: string; isActive: boolean; userId: string }): Promise<WhatsAppTemplate> {
+  const payload = { name: params.name.trim(), category: params.category.trim() || 'custom', description: params.description?.trim() || null, message: params.message.trim(), schedule_label: params.scheduleLabel?.trim() || null, is_active: params.isActive, created_by: params.userId }
+  const sb = client()
+  let query
+  if (params.id) query = sb.from('whatsapp_templates').update(payload).eq('id', params.id)
+  else query = sb.from('whatsapp_templates').insert(payload)
+  const { error } = await query
+  if (error) throw error
+  const templates = await getWhatsAppTemplates()
+  const saved = templates.find(template => template.id === params.id) ?? templates.find(template => template.name === payload.name)
+  if (!saved) throw new Error('No se pudo cargar la plantilla guardada')
+  return saved
+}
+
+export async function deleteWhatsAppTemplate(templateId: string): Promise<void> {
+  const { error } = await client().from('whatsapp_templates').delete().eq('id', templateId)
   if (error) throw error
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { deleteWhatsAppSegment, getCustomers, getWhatsAppMessages, getWhatsAppSegments, queueWhatsAppMessages, saveWhatsAppSegment, type Customer, type WhatsAppMessage, type WhatsAppSegment } from '../lib/dataService'
+import { deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAppMessages, getWhatsAppSegments, getWhatsAppTemplates, queueWhatsAppMessages, saveWhatsAppSegment, saveWhatsAppTemplate, type Customer, type WhatsAppMessage, type WhatsAppSegment, type WhatsAppTemplate } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { dateKeyInTimeZone } from '../lib/money'
@@ -13,6 +13,8 @@ export function MarketingWhatsApp() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [messages, setMessages] = useState<WhatsAppMessage[]>([])
   const [segments, setSegments] = useState<WhatsAppSegment[]>([])
+  const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
+  const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null)
   const [selectedSegment, setSelectedSegment] = useState('birthday')
   const [audienceMode, setAudienceMode] = useState<'segment' | 'recipient'>('segment')
   
@@ -38,13 +40,32 @@ export function MarketingWhatsApp() {
   const loyalCustomers = customers.filter(c => c.totalVisits >= 10)
 
   useEffect(() => {
-    Promise.all([getCustomers(), getWhatsAppMessages(), getWhatsAppSegments()]).then(([customerData, messageData, segmentData]) => {
+    Promise.all([getCustomers(), getWhatsAppMessages(), getWhatsAppSegments(), getWhatsAppTemplates()]).then(([customerData, messageData, segmentData, templateData]) => {
       setCustomers(customerData)
       setMessages(messageData)
       setSegments(segmentData)
+      setTemplates(templateData)
       setTargetCustomer(customerData[0]?.id || '')
     }).catch(error => setSentNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos'))
   }, [])
+
+  const openNewTemplate = () => setEditingTemplate({ id: '', name: '', category: 'custom', description: '', message: '', scheduleLabel: '', isActive: true, createdAt: '', updatedAt: '' })
+  const saveTemplate = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!user || !editingTemplate?.name.trim() || !editingTemplate.message.trim()) return
+    try {
+      const saved = await saveWhatsAppTemplate({ id: editingTemplate.id || undefined, name: editingTemplate.name, category: editingTemplate.category, description: editingTemplate.description ?? '', message: editingTemplate.message, scheduleLabel: editingTemplate.scheduleLabel ?? '', isActive: editingTemplate.isActive, userId: user.id })
+      setTemplates(prev => editingTemplate.id ? prev.map(item => item.id === saved.id ? saved : item) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)))
+      setEditingTemplate(null)
+      setSentNotice('Plantilla guardada correctamente.')
+      setTimeout(() => setSentNotice(''), 4000)
+    } catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo guardar la plantilla') }
+  }
+  const removeTemplate = async (template: WhatsAppTemplate) => {
+    if (!window.confirm(`¿Eliminar la plantilla “${template.name}”?`)) return
+    try { await deleteWhatsAppTemplate(template.id); setTemplates(prev => prev.filter(item => item.id !== template.id)) }
+    catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo eliminar la plantilla') }
+  }
 
   const customSegment = segments.find(segment => segment.id === selectedSegment)
   const currentSegmentCustomers = selectedSegment === 'birthday'
@@ -180,27 +201,17 @@ export function MarketingWhatsApp() {
             <header className="wa-panel-header">
               <span className="wa-panel-icon"><Bot size={19} /></span>
               <div><span className="wa-eyebrow">Siempre activas</span><h2>Automatizaciones</h2><p>Mensajes preparados para cada momento del cliente.</p></div>
-              <span className="wa-count">3 plantillas</span>
+              <button type="button" className="wa-inline-create" onClick={openNewTemplate}><Plus size={14} /> Nueva plantilla</button>
             </header>
 
             <div className="wa-template-grid">
-              <article className="wa-template wa-template--birthday">
-                <header><span className="wa-template-icon"><Cake size={17} /></span><span className="wa-template-badge">8:00 a. m.</span></header>
-                <div><small>Cumpleaños</small><h3>Un detalle en su día</h3><p>Se activa automáticamente para los clientes que cumplen años hoy.</p></div>
-                <blockquote>¡Feliz cumpleaños [Nombre]! 🎉 En <strong>Full China</strong> te regalamos una ración de lumpias gratis hoy.</blockquote>
-              </article>
-
-              <article className="wa-template wa-template--thanks">
-                <header><span className="wa-template-icon"><MessageSquare size={17} /></span><span className="wa-template-badge">10 min después</span></header>
-                <div><small>Post-compra</small><h3>Gracias por elegirnos</h3><p>Acompaña cada compra y mantiene presente la marca.</p></div>
-                <blockquote>¡Muchas gracias por tu compra, [Nombre]! 🥡 Esperamos que disfrutes tu pedido. ¡Vuelve pronto!</blockquote>
-              </article>
-
-              <article className="wa-template wa-template--inactive">
-                <header><span className="wa-template-icon"><Clock size={17} /></span><span className="wa-template-badge">21 días</span></header>
-                <div><small>Reactivación</small><h3>Es hora de volver</h3><p>Recupera clientes que llevan más de tres semanas sin visitarnos.</p></div>
-                <blockquote>¡Hola [Nombre]! Te extrañamos en <strong>Full China</strong>. 🍜 Recibe 15% de descuento esta semana.</blockquote>
-              </article>
+              {templates.map(template => <article className="wa-template" key={template.id}>
+                <header><span className="wa-template-icon"><Bot size={17} /></span><span className="wa-template-badge">{template.scheduleLabel || (template.isActive ? 'Activa' : 'Pausada')}</span></header>
+                <div><small>{template.category}</small><h3>{template.name}</h3><p>{template.description || 'Plantilla editable para campañas y mensajes de Full China.'}</p></div>
+                <blockquote>{template.message}</blockquote>
+                <footer><button type="button" onClick={() => setEditingTemplate(template)}><Pencil size={13} /> Editar</button><button type="button" onClick={() => removeTemplate(template)}><Trash2 size={13} /> Eliminar</button></footer>
+              </article>)}
+              {templates.length === 0 && <div className="wa-empty"><strong>No hay plantillas todavía</strong><p>Crea la primera plantilla para comenzar.</p></div>}
             </div>
           </section>
 
@@ -251,6 +262,19 @@ export function MarketingWhatsApp() {
           </form>
         </aside>
       </main>
+
+      {editingTemplate && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setEditingTemplate(null)}><section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-template-title" onClick={event => event.stopPropagation()}>
+        <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Plantillas</span><h2 id="wa-template-title">{editingTemplate.id ? 'Editar plantilla' : 'Nueva plantilla'}</h2><p>Personaliza el contenido que usará Full China.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setEditingTemplate(null)}><X size={18} /></button></header>
+        <form onSubmit={saveTemplate} className="wa-segment-form">
+          <label><span>Nombre</span><input value={editingTemplate.name} onChange={event => setEditingTemplate({ ...editingTemplate, name: event.target.value })} maxLength={100} placeholder="Ej. Promoción de viernes" required /></label>
+          <label><span>Categoría</span><input value={editingTemplate.category} onChange={event => setEditingTemplate({ ...editingTemplate, category: event.target.value })} maxLength={60} placeholder="Promoción, cumpleaños, post-compra..." required /></label>
+          <label><span>Descripción <small>Opcional</small></span><input value={editingTemplate.description ?? ''} onChange={event => setEditingTemplate({ ...editingTemplate, description: event.target.value })} maxLength={180} /></label>
+          <label><span>Horario o condición <small>Opcional</small></span><input value={editingTemplate.scheduleLabel ?? ''} onChange={event => setEditingTemplate({ ...editingTemplate, scheduleLabel: event.target.value })} maxLength={80} placeholder="Ej. Viernes 11:00 a. m." /></label>
+          <label className="wa-message-field"><span>Mensaje <small>{editingTemplate.message.length} caracteres</small></span><textarea rows={7} value={editingTemplate.message} onChange={event => setEditingTemplate({ ...editingTemplate, message: event.target.value })} placeholder="Usa [Nombre] para personalizar" required /></label>
+          <label className="wa-template-active-toggle"><input type="checkbox" checked={editingTemplate.isActive} onChange={event => setEditingTemplate({ ...editingTemplate, isActive: event.target.checked })} /> Plantilla activa</label>
+          <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setEditingTemplate(null)}>Cancelar</button><button type="submit" className="wa-send-button">Guardar plantilla</button></div>
+        </form>
+      </section></div>, document.body)}
 
       {audienceModal && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setAudienceModal(null)}><section className="wa-standard-modal wa-audience-modal" role="dialog" aria-modal="true" aria-labelledby="wa-audience-title" onClick={event => event.stopPropagation()}><header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Lista de clientes</span><h2 id="wa-audience-title">{audienceModal.title}</h2><p>{audienceModal.subtitle} · {audienceModal.customers.length} clientes</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setAudienceModal(null)}><X size={18} /></button></header>{audienceModal.customers.length === 0 ? <div className="wa-audience-empty">No hay clientes en esta lista todavía.</div> : <><div className="wa-audience-list">{visibleAudienceCustomers.map(customer => <div className="wa-audience-row" key={customer.id}><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><div><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'} · {customer.totalVisits} visitas</small></div><span className={customer.phone ? 'wa-phone-ready' : 'wa-phone-missing'}>{customer.phone ? 'WhatsApp listo' : 'Sin teléfono'}</span></div>)}</div><div className="wa-modal-pagination"><span>Mostrando {(audiencePage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(audiencePage * MODAL_PAGE_SIZE, audienceModal.customers.length)} de {audienceModal.customers.length}</span><div><button type="button" aria-label="Página anterior" disabled={audiencePage === 1} onClick={() => setAudiencePage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {audiencePage} de {audiencePageCount}</strong><button type="button" aria-label="Página siguiente" disabled={audiencePage === audiencePageCount} onClick={() => setAudiencePage(page => page + 1)}><ChevronRight size={15} /></button></div></div></>}</section></div>, document.body)}
 
