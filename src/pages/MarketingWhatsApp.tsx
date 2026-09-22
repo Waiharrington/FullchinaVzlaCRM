@@ -4,7 +4,7 @@ import { deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAp
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { dateKeyInTimeZone } from '../lib/money'
-import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight } from 'lucide-react'
+import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
 export function MarketingWhatsApp() {
@@ -32,6 +32,12 @@ export function MarketingWhatsApp() {
   const [audienceModal, setAudienceModal] = useState<{ title: string; subtitle: string; customers: Customer[] } | null>(null)
   const [segmentPage, setSegmentPage] = useState(1)
   const [audiencePage, setAudiencePage] = useState(1)
+  const [historyPage, setHistoryPage] = useState(1)
+  const [scheduleMode, setScheduleMode] = useState<'none' | 'time' | 'delay' | 'date'>('none')
+  const [scheduleTime, setScheduleTime] = useState('08:00')
+  const [scheduleAmount, setScheduleAmount] = useState('10')
+  const [scheduleUnit, setScheduleUnit] = useState<'minutos' | 'horas' | 'días'>('minutos')
+  const [scheduleDate, setScheduleDate] = useState('')
 
   const todayStr = dateKeyInTimeZone()
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
@@ -49,12 +55,26 @@ export function MarketingWhatsApp() {
     }).catch(error => setSentNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos'))
   }, [])
 
-  const openNewTemplate = () => setEditingTemplate({ id: '', name: '', category: 'custom', description: '', message: '', scheduleLabel: '', isActive: true, createdAt: '', updatedAt: '' })
+  const openNewTemplate = () => {
+    setScheduleMode('none'); setScheduleTime('08:00'); setScheduleAmount('10'); setScheduleUnit('minutos'); setScheduleDate('')
+    setEditingTemplate({ id: '', name: '', category: 'custom', description: '', message: '', scheduleLabel: '', isActive: true, createdAt: '', updatedAt: '' })
+  }
+  const openEditTemplate = (template: WhatsAppTemplate) => {
+    const label = template.scheduleLabel?.toLowerCase() ?? ''
+    const timeMatch = label.match(/(\d{1,2}):(\d{2})/)
+    const delayMatch = label.match(/(\d+)\s*(min|hora|día)/)
+    if (timeMatch) { setScheduleMode('time'); setScheduleTime(`${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}`) }
+    else if (delayMatch) { setScheduleMode('delay'); setScheduleAmount(delayMatch[1]); setScheduleUnit(delayMatch[2].startsWith('min') ? 'minutos' : delayMatch[2].startsWith('hora') ? 'horas' : 'días') }
+    else if (/^\d{4}-\d{2}-\d{2}$/.test(label)) { setScheduleMode('date'); setScheduleDate(label) }
+    else setScheduleMode('none')
+    setEditingTemplate(template)
+  }
+  const scheduleLabel = scheduleMode === 'time' ? `A las ${scheduleTime}` : scheduleMode === 'delay' ? `${scheduleAmount} ${scheduleUnit} después` : scheduleMode === 'date' ? `El ${scheduleDate}` : ''
   const saveTemplate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!user || !editingTemplate?.name.trim() || !editingTemplate.message.trim()) return
     try {
-      const saved = await saveWhatsAppTemplate({ id: editingTemplate.id || undefined, name: editingTemplate.name, category: editingTemplate.category, description: editingTemplate.description ?? '', message: editingTemplate.message, scheduleLabel: editingTemplate.scheduleLabel ?? '', isActive: editingTemplate.isActive, userId: user.id })
+      const saved = await saveWhatsAppTemplate({ id: editingTemplate.id || undefined, name: editingTemplate.name, category: editingTemplate.category, description: editingTemplate.description ?? '', message: editingTemplate.message, scheduleLabel, isActive: editingTemplate.isActive, userId: user.id })
       setTemplates(prev => editingTemplate.id ? prev.map(item => item.id === saved.id ? saved : item) : [...prev, saved].sort((a, b) => a.name.localeCompare(b.name)))
       setEditingTemplate(null)
       setSentNotice('Plantilla guardada correctamente.')
@@ -83,6 +103,8 @@ export function MarketingWhatsApp() {
   const visibleSegmentCustomers = filteredSegmentCustomers.slice((segmentPage - 1) * MODAL_PAGE_SIZE, segmentPage * MODAL_PAGE_SIZE)
   const audiencePageCount = audienceModal ? Math.max(1, Math.ceil(audienceModal.customers.length / MODAL_PAGE_SIZE)) : 1
   const visibleAudienceCustomers = audienceModal?.customers.slice((audiencePage - 1) * MODAL_PAGE_SIZE, audiencePage * MODAL_PAGE_SIZE) ?? []
+  const historyPageCount = Math.max(1, Math.ceil(messages.length / MODAL_PAGE_SIZE))
+  const visibleMessages = messages.slice((historyPage - 1) * MODAL_PAGE_SIZE, historyPage * MODAL_PAGE_SIZE)
 
   useEffect(() => {
     setSegmentPage(1)
@@ -99,6 +121,10 @@ export function MarketingWhatsApp() {
   useEffect(() => {
     setAudiencePage(page => Math.min(page, audiencePageCount))
   }, [audiencePageCount])
+
+  useEffect(() => {
+    setHistoryPage(page => Math.min(page, historyPageCount))
+  }, [historyPageCount])
 
   useEffect(() => {
     if (!audienceModal && !showSegmentModal) return
@@ -209,7 +235,7 @@ export function MarketingWhatsApp() {
                 <header><span className="wa-template-icon"><Bot size={17} /></span><span className="wa-template-badge">{template.scheduleLabel || (template.isActive ? 'Activa' : 'Pausada')}</span></header>
                 <div><small>{template.category}</small><h3>{template.name}</h3><p>{template.description || 'Plantilla editable para campañas y mensajes de Full China.'}</p></div>
                 <blockquote>{template.message}</blockquote>
-                <footer><button type="button" onClick={() => setEditingTemplate(template)}><Pencil size={13} /> Editar</button><button type="button" onClick={() => removeTemplate(template)}><Trash2 size={13} /> Eliminar</button></footer>
+                <footer><button className="wa-template-action wa-template-action--edit" type="button" onClick={() => openEditTemplate(template)}><Pencil size={13} /> Editar</button><button className="wa-template-action wa-template-action--delete" type="button" onClick={() => removeTemplate(template)}><Trash2 size={13} /> Eliminar</button></footer>
               </article>)}
               {templates.length === 0 && <div className="wa-empty"><strong>No hay plantillas todavía</strong><p>Crea la primera plantilla para comenzar.</p></div>}
             </div>
@@ -226,8 +252,8 @@ export function MarketingWhatsApp() {
               <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
             ) : (
               <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
-                {messages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{msg.sentAt}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
-              </tbody></table></div>
+                {visibleMessages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{msg.sentAt}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
+              </tbody></table><div className="wa-modal-pagination wa-history-pagination"><span>Mostrando {(historyPage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(historyPage * MODAL_PAGE_SIZE, messages.length)} de {messages.length}</span><div><button type="button" aria-label="Página anterior" disabled={historyPage === 1} onClick={() => setHistoryPage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {historyPage} de {historyPageCount}</strong><button type="button" aria-label="Página siguiente" disabled={historyPage === historyPageCount} onClick={() => setHistoryPage(page => page + 1)}><ChevronRight size={15} /></button></div></div></div>
             )}
           </section>
         </div>
@@ -263,15 +289,15 @@ export function MarketingWhatsApp() {
         </aside>
       </main>
 
-      {editingTemplate && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setEditingTemplate(null)}><section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-template-title" onClick={event => event.stopPropagation()}>
+      {editingTemplate && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setEditingTemplate(null)}><section className="wa-standard-modal wa-segment-modal wa-template-modal" role="dialog" aria-modal="true" aria-labelledby="wa-template-title" onClick={event => event.stopPropagation()}>
         <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Plantillas</span><h2 id="wa-template-title">{editingTemplate.id ? 'Editar plantilla' : 'Nueva plantilla'}</h2><p>Personaliza el contenido que usará Full China.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setEditingTemplate(null)}><X size={18} /></button></header>
         <form onSubmit={saveTemplate} className="wa-segment-form">
           <label><span>Nombre</span><input value={editingTemplate.name} onChange={event => setEditingTemplate({ ...editingTemplate, name: event.target.value })} maxLength={100} placeholder="Ej. Promoción de viernes" required /></label>
           <label><span>Categoría</span><input value={editingTemplate.category} onChange={event => setEditingTemplate({ ...editingTemplate, category: event.target.value })} maxLength={60} placeholder="Promoción, cumpleaños, post-compra..." required /></label>
           <label><span>Descripción <small>Opcional</small></span><input value={editingTemplate.description ?? ''} onChange={event => setEditingTemplate({ ...editingTemplate, description: event.target.value })} maxLength={180} /></label>
-          <label><span>Horario o condición <small>Opcional</small></span><input value={editingTemplate.scheduleLabel ?? ''} onChange={event => setEditingTemplate({ ...editingTemplate, scheduleLabel: event.target.value })} maxLength={80} placeholder="Ej. Viernes 11:00 a. m." /></label>
+          <div className="wa-schedule-field"><span className="wa-field-label">Programación <small>Opcional</small></span><div className="wa-schedule-mode"><select value={scheduleMode} onChange={event => setScheduleMode(event.target.value as typeof scheduleMode)}><option value="none">Sin programación</option><option value="time">A una hora fija</option><option value="delay">Después de un evento</option><option value="date">En una fecha</option></select>{scheduleMode === 'time' && <label className="wa-schedule-control"><Clock3 size={15} /><input type="time" value={scheduleTime} onChange={event => setScheduleTime(event.target.value)} aria-label="Hora de envío" /></label>}{scheduleMode === 'delay' && <label className="wa-schedule-control"><Timer size={15} /><input type="number" min="1" value={scheduleAmount} onChange={event => setScheduleAmount(event.target.value)} aria-label="Cantidad de demora" /><select value={scheduleUnit} onChange={event => setScheduleUnit(event.target.value as typeof scheduleUnit)} aria-label="Unidad de demora"><option>minutos</option><option>horas</option><option>días</option></select></label>}{scheduleMode === 'date' && <label className="wa-schedule-control"><CalendarDays size={15} /><input type="date" value={scheduleDate} onChange={event => setScheduleDate(event.target.value)} aria-label="Fecha de envío" /></label>}</div></div>
           <label className="wa-message-field"><span>Mensaje <small>{editingTemplate.message.length} caracteres</small></span><textarea rows={7} value={editingTemplate.message} onChange={event => setEditingTemplate({ ...editingTemplate, message: event.target.value })} placeholder="Usa [Nombre] para personalizar" required /></label>
-          <label className="wa-template-active-toggle"><input type="checkbox" checked={editingTemplate.isActive} onChange={event => setEditingTemplate({ ...editingTemplate, isActive: event.target.checked })} /> Plantilla activa</label>
+          <label className="wa-template-active-toggle"><input type="checkbox" checked={editingTemplate.isActive} onChange={event => setEditingTemplate({ ...editingTemplate, isActive: event.target.checked })} /><span className="wa-toggle-track" aria-hidden="true"><span /></span><span><strong>Plantilla activa</strong><small>Disponible para automatizaciones</small></span></label>
           <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setEditingTemplate(null)}>Cancelar</button><button type="submit" className="wa-send-button">Guardar plantilla</button></div>
         </form>
       </section></div>, document.body)}
