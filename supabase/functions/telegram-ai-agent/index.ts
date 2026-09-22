@@ -17,7 +17,7 @@ Clasifica cada salida de dinero según su efecto: purchase es compra de ingredie
 Entiende también la administración completa del restaurante. transfer mueve dinero entre cuentas y nunca es gasto ni ingreso; receivable crea una cuenta por cobrar; receivable_collection registra su cobro sin duplicar el ingreso original; tip y tip_distribution controlan propinas; employee_advance es adelanto de nómina y no gasto adicional al pagarse la nómina; loan y loan_payment controlan préstamos; bank_fee sí es un gasto financiero; adjustment solo se usa cuando la persona explica una corrección. Usa get_financial_accounts para resolver expresiones como Banesco, Exterior, pago móvil, punto, efectivo en dólares o efectivo en bolívares. Si falta la cuenta exacta, pregunta; no inventes una.
 Las palabras Compras, Gastos F, Gastos V y Otros reflejan el lenguaje histórico de la familia: Compras solo significa inventario; Gastos F equivale a fixed; Gastos V equivale a variable. Depósitos y traspasos no se clasifican como gasto. Adelantos, préstamos, cuentas por cobrar y propinas deben conservar contraparte y referencia cuando se conozcan.
 Para gastos, ingresos o ajustes: reúne únicamente la información realmente faltante y pide confirmación antes de registrar. Una consulta nunca reemplaza un borrador pendiente.
-No menciones JSON, tablas, RPC, campos internos ni detalles técnicos. Responde de manera breve y útil. Si el usuario saluda y además pregunta algo, responde el saludo y atiende también la pregunta.`
+Puedes consultar plantillas y listas de WhatsApp. Cuando el usuario pida preparar automatizaciones, muestra primero qué tipos se van a preparar y exige confirmación explícita antes de ejecutar prepare_whatsapp_automations. No envíes ni prometas envíos masivos desde WhatsApp Web; solo prepara la cola auditable. No menciones JSON, tablas, RPC, campos internos ni detalles técnicos. Responde de manera breve y útil. Si el usuario saluda y además pregunta algo, responde el saludo y atiende también la pregunta.`
 
 const tools = [
   { type: 'function', function: { name: 'get_today_stats', description: 'Consulta ventas, comandas, pendientes y ticket promedio de hoy.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
@@ -33,6 +33,9 @@ const tools = [
   { type: 'function', function: { name: 'prepare_operation', description: 'Guarda un borrador resuelto para cualquier operación del restaurante. Los IDs deben provenir de las herramientas de consulta.', parameters: { type: 'object', properties: { type: { type: 'string', enum: ['purchase','expense','income','inventory','transfer','receivable','receivable_collection','tip','tip_distribution','employee_advance','loan','loan_payment','bank_fee','adjustment'] }, expense_category: { type: ['string', 'null'] }, supplier: { type: ['string', 'null'] }, supplier_id: { type: ['string', 'null'] }, concept: { type: ['string', 'null'] }, date: { type: ['string', 'null'] }, total: { type: ['number', 'null'] }, currency: { type: ['string', 'null'] }, exchange_rate: { type: ['number', 'null'] }, payment_account: { type: ['string', 'null'] }, from_account_id: { type: ['string','null'] }, to_account_id: { type: ['string','null'] }, counterparty: { type: ['string','null'] }, reference_number: { type: ['string','null'] }, affects_profit: { type: ['boolean','null'] }, notes: { type: ['string', 'null'] }, items: { type: 'array', items: { type: 'object', properties: { description: { type: 'string' }, ingredient_id: { type: ['string', 'null'] }, quantity: { type: 'number' }, unit: { type: ['string', 'null'] }, unit_id: { type: ['string', 'null'] }, unit_cost: { type: ['number', 'null'] }, unit_cost_usd: { type: ['number', 'null'] } }, required: ['description', 'quantity'] } } }, required: ['type'], additionalProperties: false } } },
   { type: 'function', function: { name: 'confirm_latest_draft', description: 'Confirma el último borrador pendiente cuando el usuario da aprobación inequívoca.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
   { type: 'function', function: { name: 'cancel_latest_draft', description: 'Cancela el último borrador pendiente cuando el usuario lo solicita.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_whatsapp_templates', description: 'Consulta las plantillas editables de WhatsApp y su estado.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'get_whatsapp_segments', description: 'Consulta las listas de difusión guardadas y su cantidad de clientes.', parameters: { type: 'object', properties: {}, additionalProperties: false } } },
+  { type: 'function', function: { name: 'prepare_whatsapp_automations', description: 'Prepara en la cola las automatizaciones de cumpleaños, post-compra y reactivación. Solo usar después de confirmación explícita.', parameters: { type: 'object', properties: { explicitly_confirmed: { type: 'boolean' } }, required: ['explicitly_confirmed'], additionalProperties: false } } },
 ]
 
 function parseEnv(name: string) {
@@ -106,6 +109,17 @@ async function hydratePurchaseItems(url: string, key: string, operation: Json) {
 
 async function executeTool(name: string, args: Json, ctx: Json) {
   const { supabaseUrl, serviceKey, chatId, userId, messageId, rawText } = ctx
+  if (name === 'get_whatsapp_templates') return db(supabaseUrl, serviceKey, 'whatsapp_templates?select=id,name,category,description,message,schedule_label,is_active&order=name')
+  if (name === 'get_whatsapp_segments') {
+    const segments = await db(supabaseUrl, serviceKey, 'whatsapp_segments?select=id,name,description,whatsapp_segment_members(customer_id)&order=name')
+    return (segments ?? []).map((segment: Json) => ({ id: segment.id, name: segment.name, description: segment.description, customer_count: Array.isArray(segment.whatsapp_segment_members) ? segment.whatsapp_segment_members.length : 0 }))
+  }
+  if (name === 'prepare_whatsapp_automations') {
+    if (args.explicitly_confirmed !== true) return { ok: false, message: 'Debes pedir confirmación explícita antes de preparar las automatizaciones.' }
+    const identities = await db(supabaseUrl, serviceKey, `ai_agent_identities?source=eq.telegram&source_user_id=eq.${encodeURIComponent(String(userId))}&is_active=eq.true&select=profile_id&limit=1`)
+    if (!identities?.length) return { ok: false, message: 'Este usuario de Telegram no está autorizado para preparar automatizaciones.' }
+    return db(supabaseUrl, serviceKey, 'rpc/fn_queue_whatsapp_automations', { method: 'POST', body: '{}' })
+  }
   if (name === 'get_today_stats') return db(supabaseUrl, serviceKey, 'rpc/fn_get_today_stats', { method: 'POST', body: '{}' })
   if (name === 'get_daily_sales') return db(supabaseUrl, serviceKey, 'rpc/fn_get_daily_sales', { method: 'POST', body: JSON.stringify({ p_days: args.days || 7 }) })
   if (name === 'get_product_ranking') return db(supabaseUrl, serviceKey, 'rpc/fn_get_product_ranking', { method: 'POST', body: '{}' })
