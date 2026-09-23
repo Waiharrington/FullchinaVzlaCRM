@@ -1095,7 +1095,17 @@ export function Comandas() {
               customerIdentification: order.customerIdentification,
               address: order.deliveryAddress || '',
               orderType: order.orderType === 'delivery' ? 'Delivery' : 'Para llevar',
-              items: order.items.map(item => ({ id: item.id, name: item.productName, quantity: item.quantity, unitPrice: item.price, subtotal: item.price * item.quantity })),
+              items: order.items.map(item => ({
+                id: item.id,
+                name: item.productName,
+                quantity: item.quantity,
+                unitPrice: item.price,
+                subtotal: item.price * item.quantity,
+                observations: [
+                  ...item.modifiers.map(modifier => `${modifier.groupName}: ${modifier.optionName}${modifier.quantity > 1 ? ` ×${modifier.quantity}` : ''}`),
+                  ...(item.notes ? [item.notes] : []),
+                ].join(' · ') || undefined,
+              })),
               notes: order.notes || '',
               paymentMethod: 'Pendiente de confirmar',
               paymentType: 'pending',

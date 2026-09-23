@@ -9,6 +9,7 @@ export interface WebOrderCartItem {
   imageUrl?: string
   /** Indicaciones y extras elegidos para esta línea; se envían a cocina en las notas. */
   notes?: string
+  modifiers?: Array<{ optionId: string; quantity: number }>
 }
 
 export interface Promotion {
@@ -28,6 +29,11 @@ export interface WebOrderResult {
   id: string
   code: string
   total: number
+  subtotal?: number
+  deliveryFee?: number
+  priceChanged?: boolean
+  legacyReview?: boolean
+  items?: Array<{ lineNumber: number; productId: string; unitPrice: number }>
 }
 
 export interface PendingWebOrder {
@@ -42,7 +48,10 @@ export interface PendingWebOrder {
   subtotal: number
   bcvRate: number | null
   createdAt: string
-  items: Array<WebOrderCartItem & { id: string }>
+  items: Array<Omit<WebOrderCartItem, 'modifiers'> & {
+    id: string
+    modifiers: Array<{ optionId: string; modifierId: string; groupName: string; optionName: string; quantity: number; unitPrice: number }>
+  }>
 }
 
 function db() {
@@ -161,7 +170,7 @@ export async function createWebOrder(params: {
     p_order_type: params.orderType,
     p_delivery_address: params.deliveryAddress || null,
     p_notes: params.notes || null,
-    p_items: params.items.map(item => ({ productId: item.productId, quantity: item.quantity, notes: item.notes || undefined })),
+    p_items: params.items.map(item => ({ productId: item.productId, quantity: item.quantity, expectedUnitPrice: item.price, notes: item.notes || undefined, modifiers: item.modifiers ?? [] })),
     p_bcv_rate: params.bcvRate,
     p_idempotency_key: params.idempotencyKey,
     p_delivery_fee: params.deliveryFee ?? 0,
@@ -170,13 +179,24 @@ export async function createWebOrder(params: {
   })
   if (error) throw error
   const result = data as Record<string, unknown>
-  return { id: String(result.id), code: String(result.code), total: Number(result.total) }
+  return {
+    id: result.id == null ? '' : String(result.id),
+    code: result.code == null ? '' : String(result.code),
+    total: Number(result.total),
+    subtotal: result.subtotal == null ? undefined : Number(result.subtotal),
+    deliveryFee: result.deliveryFee == null ? undefined : Number(result.deliveryFee),
+    priceChanged: result.status === 'price_changed',
+    legacyReview: result.status === 'legacy_review',
+    items: Array.isArray(result.items) ? (result.items as Record<string, unknown>[]).map(item => ({
+      lineNumber: Number(item.lineNumber), productId: String(item.productId), unitPrice: Number(item.unitPrice),
+    })) : undefined,
+  }
 }
 
 export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
   const { data, error } = await db()
     .from('web_order_requests')
-    .select('id,request_number,customer_name,customer_phone,customer_identification,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price)')
+    .select('id,request_number,customer_name,customer_phone,customer_identification,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price,notes,modifiers,line_number)')
     .eq('status', 'pending_confirmation')
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -199,6 +219,15 @@ export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
       productName: String(item.product_name),
       quantity: Number(item.quantity),
       price: Number(item.unit_price),
+      notes: item.notes ? String(item.notes) : undefined,
+      modifiers: Array.isArray(item.modifiers) ? (item.modifiers as Array<Record<string, unknown>>).map(modifier => ({
+        optionId: String(modifier.optionId),
+        modifierId: String(modifier.modifierId),
+        groupName: String(modifier.groupName),
+        optionName: String(modifier.optionName),
+        quantity: Number(modifier.quantity),
+        unitPrice: Number(modifier.unitPrice),
+      })) : [],
     })),
   }))
 }

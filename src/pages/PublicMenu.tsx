@@ -1,9 +1,10 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
+import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
-import { estimateDelivery, type DeliverySettings, type DeliveryEstimate } from '../lib/delivery'
+import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
+import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getModifierSelectionError, hasInvalidModifierSelection } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -47,12 +48,12 @@ const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
 }
 
 const INSTAGRAM_REELS = [
-  { src: '/videos/instagram/reel-1.mp4', poster: '/optimized/instagram/reel-1.webp', href: 'https://www.instagram.com/p/DR7aYwlDsTD/?hl=es' },
-  { src: '/videos/instagram/reel-2.mp4', poster: '/optimized/instagram/reel-2.webp', href: 'https://www.instagram.com/p/DPj331MCW87/?hl=es' },
-  { src: '/videos/instagram/reel-3.mp4', poster: '/optimized/instagram/reel-3.webp', href: 'https://www.instagram.com/p/DQANX2cCVkj/?hl=es' },
-  { src: '/videos/instagram/reel-4.mp4', poster: '/optimized/instagram/reel-4.webp', href: 'https://www.instagram.com/p/DZLUKT5sKeW/?hl=es' },
-  { src: '/videos/instagram/reel-5.mp4', poster: '/optimized/instagram/reel-5.webp', href: 'https://www.instagram.com/p/DYnlFGtNg93/?hl=es' },
-  { src: '/videos/instagram/reel-6.mp4', poster: '/optimized/instagram/reel-6.webp', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
+  { src: '/videos/instagram/reel-1.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-1.webp', href: 'https://www.instagram.com/p/DR7aYwlDsTD/?hl=es' },
+  { src: '/videos/instagram/reel-2.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-2.webp', href: 'https://www.instagram.com/p/DPj331MCW87/?hl=es' },
+  { src: '/videos/instagram/reel-3.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-3.webp', href: 'https://www.instagram.com/p/DQANX2cCVkj/?hl=es' },
+  { src: '/videos/instagram/reel-4.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-4.webp', href: 'https://www.instagram.com/p/DZLUKT5sKeW/?hl=es' },
+  { src: '/videos/instagram/reel-5.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-5.webp', href: 'https://www.instagram.com/p/DYnlFGtNg93/?hl=es' },
+  { src: '/videos/instagram/reel-6.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-6.webp', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
 ] as const
 
 function instagramReelOrder(activeIndex: number) {
@@ -63,11 +64,14 @@ function instagramReelOrder(activeIndex: number) {
 }
 
 function startInstagramVideo(video: HTMLVideoElement) {
-  if (video.src) return
-  const source = video.dataset.src || video.querySelector('source')?.dataset.src
-  if (!source) return
-  video.src = source
-  video.load()
+  if (!video.src) {
+    const source = video.dataset.src || video.querySelector('source')?.dataset.src
+    if (!source) return
+    video.src = source
+    video.load()
+  }
+  // Los videos ya visitados conservan src. Aun así deben reproducirse de
+  // nuevo al seleccionarlos o cuando el carrusel completa su vuelta.
   void video.play().catch(() => undefined)
 }
 
@@ -83,6 +87,7 @@ const CART_KEY = 'fullchina_public_cart'
 const LAST_ORDER_KEY = 'fullchina_public_last_order'
 const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
+const PUBLIC_WHATSAPP_PHONE = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
@@ -246,8 +251,9 @@ function cartProductName(name: string) {
   return `${words.slice(0, 3).join(' ')}\n${words.slice(3).join(' ')}`
 }
 
-function cartLineKey(item: Pick<WebOrderCartItem, 'productId' | 'notes'>) {
-  return `${item.productId}::${item.notes || ''}`
+function cartLineKey(item: Pick<WebOrderCartItem, 'productId' | 'notes' | 'modifiers'>) {
+  const mods = [...(item.modifiers ?? [])].sort((a, b) => a.optionId.localeCompare(b.optionId)).map(m => `${m.optionId}:${m.quantity}`).join(',')
+  return `${item.productId}::${item.notes || ''}::${mods}`
 }
 
 function readCheckoutAttempt(): { signature: string; key: string } | null {
@@ -259,6 +265,8 @@ function readCheckoutAttempt(): { signature: string; key: string } | null {
 
 export function PublicMenu() {
   const pageRef = useRef<HTMLElement>(null)
+  const imageWarmupObserverRef = useRef<IntersectionObserver | null>(null)
+  const fullImageRequestsRef = useRef(new WeakMap<HTMLImageElement, string>())
   const designMode = new URLSearchParams(window.location.search).get('modo') === 'diseno'
   const showDemoTools = designMode || window.location.hostname === 'localhost'
   const isDesktopViewport = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
@@ -268,9 +276,9 @@ export function PublicMenu() {
     return cached
   }, [designMode])
   const [products, setProducts] = useState<Product[]>(() => initialCatalog?.products.filter(product => !product.categories.includes('extras')) ?? [])
-  // Los productos de categoría "extras" no se muestran como tarjeta en el menú;
-  // solo se ofrecen como add-on dentro del detalle de cada plato (el check).
   const [extrasProducts, setExtrasProducts] = useState<Product[]>(() => initialCatalog?.products.filter(product => product.categories.includes('extras')) ?? [])
+  // Los extras de catálogo siguen disponibles desde sus propias tarjetas;
+  // el configurador de platos solo muestra modificadores asociados al producto.
   const [cart, setCart] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
@@ -280,13 +288,16 @@ export function PublicMenu() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null)
   const [quickVariantGroup, setQuickVariantGroup] = useState<MenuProductGroup | null>(null)
   const [quickVariantId, setQuickVariantId] = useState<string | null>(null)
+  const [quickVariantHasModifiers, setQuickVariantHasModifiers] = useState(false)
   const [quickVariantQuantity, setQuickVariantQuantity] = useState(1)
   const [closingQuickVariant, setClosingQuickVariant] = useState(false)
   const [detailQuantity, setDetailQuantity] = useState(1)
   const [detailNotes, setDetailNotes] = useState('')
   const [detailModifierGroups, setDetailModifierGroups] = useState<ProductModifierGroup[]>([])
   const [loadingModifiers, setLoadingModifiers] = useState(false)
-  const [selectedExtras, setSelectedExtras] = useState<string[]>([])
+  const [modifierLoadError, setModifierLoadError] = useState(false)
+  const [modifierValidationError, setModifierValidationError] = useState('')
+  const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [scrollCategory, setScrollCategory] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -368,10 +379,15 @@ export function PublicMenu() {
   const referenceRef = useRef<HTMLInputElement>(null)
   const addressSelectedRef = useRef<HTMLDivElement>(null)
   const addressSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const addressActionRef = useRef(0)
   const [notes, setNotes] = useState('')
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null)
-  const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null)
+  const [serverDeliveryFeeOverride, setServerDeliveryFeeOverride] = useState<{ lat: number; lng: number; fee: number } | null>(null)
+  const deliveryEstimate = useMemo(() => {
+    if (orderType !== 'delivery' || !geoCoords || !deliverySettings?.enabled) return null
+    return estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng)
+  }, [orderType, geoCoords, deliverySettings])
   const [loading, setLoading] = useState(() => !initialCatalog)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -413,6 +429,9 @@ export function PublicMenu() {
   const sidebarCardRef = useRef<HTMLDivElement>(null)
   const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false)
   const [recommendedIndex, setRecommendedIndex] = useState(0)
+  const [requestedRecommendedIndex, setRequestedRecommendedIndex] = useState<number | null>(null)
+  const [recommendedImageSrc, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
+  const loadedRecommendedImageKey = useRef<string | null>(null)
   const [recommendedPaused, setRecommendedPaused] = useState(false)
   const recommendedTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const recommendedResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -420,6 +439,7 @@ export function PublicMenu() {
   const recommendedWasSwiped = useRef(false)
   const [sidebarRecoIndex, setSidebarRecoIndex] = useState(0)
   const [instagramActiveIndex, setInstagramActiveIndex] = useState(0)
+  const [instagramAudioEnabled, setInstagramAudioEnabled] = useState(false)
   const instagramReels = useMemo(() => instagramReelOrder(instagramActiveIndex), [instagramActiveIndex])
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -471,11 +491,37 @@ export function PublicMenu() {
     else reveal()
   }
 
+  const startFullImageUpgrade = (image: HTMLImageElement, fullSource: string) => {
+    if (fullImageRequestsRef.current.get(image) === fullSource) return
+    fullImageRequestsRef.current.set(image, fullSource)
+    image.dataset.imageQuality = 'loading-full'
+
+    const fullImage = new Image()
+    fullImage.decoding = 'async'
+    fullImage.src = fullSource
+    fullImage.onload = () => {
+      const decoded = typeof fullImage.decode === 'function' ? fullImage.decode() : Promise.resolve()
+      void decoded.catch(() => undefined).then(() => {
+        if (image.dataset.fullSrc !== fullSource) return
+        image.dataset.imageQuality = 'full'
+        image.src = fullSource
+      })
+    }
+    fullImage.onerror = () => {
+      if (image.dataset.fullSrc !== fullSource) return
+      image.dataset.imageQuality = 'preview'
+      fullImageRequestsRef.current.delete(image)
+    }
+  }
+
   const prepareImage = (image: HTMLImageElement) => {
     const domSource = image.getAttribute('src') || ''
     const trackedSource = image.dataset.fullSrc
 
-    if (trackedSource && image.dataset.imageQuality === 'preview' && domSource === image.dataset.previewSrc) return
+    if (trackedSource && ['preview', 'loading-full'].includes(image.dataset.imageQuality || '') && domSource === image.dataset.previewSrc) {
+      if (image.loading === 'eager') startFullImageUpgrade(image, trackedSource)
+      return
+    }
     if (trackedSource && image.dataset.imageQuality === 'full' && domSource === trackedSource) return
 
     const fullSource = domSource
@@ -492,18 +538,8 @@ export function PublicMenu() {
     image.dataset.imageQuality = 'preview'
     image.classList.remove('public-image-ready', 'public-image-error')
     image.src = previewSource
-
-    const fullImage = new Image()
-    fullImage.decoding = 'async'
-    fullImage.src = fullSource
-    fullImage.onload = () => {
-      const decoded = typeof fullImage.decode === 'function' ? fullImage.decode() : Promise.resolve()
-      void decoded.catch(() => undefined).then(() => {
-        if (image.dataset.fullSrc !== fullSource) return
-        image.dataset.imageQuality = 'full'
-        image.src = fullSource
-      })
-    }
+    if (image.loading === 'lazy' && imageWarmupObserverRef.current) imageWarmupObserverRef.current.observe(image)
+    else startFullImageUpgrade(image, fullSource)
   }
 
   const handleImageLoad = (event: SyntheticEvent<HTMLElement>) => {
@@ -521,8 +557,15 @@ export function PublicMenu() {
     if (root instanceof HTMLImageElement) images.push(root)
     root.querySelectorAll('img').forEach(image => images.push(image))
     images.forEach(image => {
+      // El banner tiene su propia precarga/decodificación antes de cambiar
+      // de producto. No debe entrar al swap global de preview: ese flujo
+      // oculta el <img> al cambiar src y deja ver el fondo oscuro un instante.
+      if (image.classList.contains('public-recommended-img')) return
       const source = image.currentSrc || image.src
-      if (image.dataset.revealedSrc !== source) image.classList.remove('public-image-ready', 'public-image-error')
+      const decodedFullUpgrade = image.dataset.imageQuality === 'full'
+        && image.dataset.fullSrc === image.getAttribute('src')
+        && image.classList.contains('public-image-ready')
+      if (!decodedFullUpgrade && image.dataset.revealedSrc !== source) image.classList.remove('public-image-ready', 'public-image-error')
       prepareImage(image)
     })
   }
@@ -535,6 +578,21 @@ export function PublicMenu() {
   useLayoutEffect(() => {
     const root = pageRef.current
     if (!root) return
+    const warmupObserver = typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting || !(entry.target instanceof HTMLImageElement)) return
+          const image = entry.target
+          warmupObserver?.unobserve(image)
+          // Dos pantallas de anticipación dejan que la foto esté lista antes
+          // de que el usuario llegue a su categoría, sin pedir todo el menú a la vez.
+          image.loading = 'eager'
+          const fullSource = image.dataset.fullSrc
+          if (fullSource) startFullImageUpgrade(image, fullSource)
+        })
+      }, { rootMargin: '1600px 0px' })
+    imageWarmupObserverRef.current = warmupObserver
     prepareImagesInRef.current(root)
     const observer = new MutationObserver(records => {
       records.forEach(record => {
@@ -548,7 +606,11 @@ export function PublicMenu() {
       })
     })
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      warmupObserver?.disconnect()
+      if (imageWarmupObserverRef.current === warmupObserver) imageWarmupObserverRef.current = null
+    }
   }, [])
 
   useEffect(() => {
@@ -582,7 +644,7 @@ export function PublicMenu() {
         const resolved = prepareCatalog(catalog)
         if (!active) return resolved
         saveCatalogCache(resolved, initialCatalog?.categories ?? [])
-        setExtrasProducts(resolved.filter(p => p.categories.includes('extras')))
+        setExtrasProducts(resolved.filter(product => product.categories.includes('extras')))
         setProducts(resolved.filter(p => !p.categories.includes('extras')))
         setLoading(false)
         window.__removeFCSplash?.()
@@ -769,12 +831,24 @@ export function PublicMenu() {
     const timer = window.setTimeout(() => {
       const videos = Array.from(document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video'))
       videos.forEach(video => {
+        video.muted = !instagramAudioEnabled
         if (video.dataset.active === 'true' && video.offsetParent !== null) startInstagramVideo(video)
         else { video.pause(); video.currentTime = 0 }
       })
-    }, 1200)
+    }, 180)
     return () => window.clearTimeout(timer)
-  }, [currentTab, instagramActiveIndex])
+  }, [currentTab, instagramActiveIndex, instagramAudioEnabled])
+
+  const toggleInstagramAudio = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const nextEnabled = !instagramAudioEnabled
+    setInstagramAudioEnabled(nextEnabled)
+    document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video').forEach(video => {
+      video.muted = !nextEnabled
+      if (video.dataset.active === 'true' && video.offsetParent !== null) void video.play().catch(() => undefined)
+    })
+  }
 
   const displayAccentCategory = activeCategory !== 'Todos' ? activeCategory : scrollCategory
   const orderedCategories = useMemo(() => categories.filter(category => category !== 'Todos'), [categories])
@@ -795,16 +869,60 @@ export function PublicMenu() {
   }, [groups, activeCategory])
 
   useEffect(() => {
-    setRecommendedIndex(0)
+    setRequestedRecommendedIndex(0)
   }, [activeCategory])
 
   useEffect(() => {
-    if (recommendedPool.length <= 1 || recommendedPaused) return
+    const targetIndex = requestedRecommendedIndex ?? recommendedIndex
+    const targetGroup = recommendedPool[targetIndex]
+    if (!targetGroup) return
+    if (loadedRecommendedImageKey.current === targetGroup.key) {
+      setRecommendedIndex(targetIndex)
+      if (requestedRecommendedIndex != null) setRequestedRecommendedIndex(null)
+      return
+    }
+
+    let cancelled = false
+    const sources = Array.from(new Set([
+      optimizedProductImage(targetGroup.variants[0]?.product.imageUrl),
+      productImage(targetGroup.category),
+      '/optimized/fondos/hero-banner-food.webp',
+    ].filter((source): source is string => Boolean(source))))
+
+    void (async () => {
+      for (const source of sources) {
+        const loaded = await new Promise<boolean>(resolve => {
+          const image = new Image()
+          image.onload = () => {
+            if (typeof image.decode === 'function') image.decode().then(() => resolve(true)).catch(() => resolve(true))
+            else resolve(true)
+          }
+          image.onerror = () => resolve(false)
+          image.src = source
+          if (image.complete && image.naturalWidth > 0) resolve(true)
+        })
+        if (!loaded || cancelled) continue
+        loadedRecommendedImageKey.current = targetGroup.key
+        setRecommendedImageSrc(source)
+        setRecommendedIndex(targetIndex)
+        setRequestedRecommendedIndex(current => current === targetIndex ? null : current)
+        return
+      }
+      // Si la imagen actual y sus respaldos fallan, conserva el slide que sí
+      // estaba visible: nunca lo reemplaza por un espacio negro/vacío.
+      if (!cancelled && requestedRecommendedIndex != null) setRequestedRecommendedIndex(null)
+    })()
+
+    return () => { cancelled = true }
+  }, [recommendedIndex, recommendedPool, requestedRecommendedIndex])
+
+  useEffect(() => {
+    if (recommendedPool.length <= 1 || recommendedPaused || requestedRecommendedIndex != null) return
     recommendedTimer.current = setInterval(() => {
-      setRecommendedIndex(prev => (prev + 1) % recommendedPool.length)
+      setRequestedRecommendedIndex(prev => ((prev ?? recommendedIndex) + 1) % recommendedPool.length)
     }, 4500)
     return () => { if (recommendedTimer.current) clearInterval(recommendedTimer.current) }
-  }, [recommendedPool.length, recommendedPaused])
+  }, [recommendedPool.length, recommendedPaused, recommendedIndex, requestedRecommendedIndex])
 
   const clearRecommendedResumeTimer = () => {
     if (recommendedResumeTimer.current) {
@@ -828,7 +946,7 @@ export function PublicMenu() {
 
   const moveRecommended = (direction: 1 | -1) => {
     if (recommendedPool.length <= 1) return
-    setRecommendedIndex(prev => (prev + direction + recommendedPool.length) % recommendedPool.length)
+    setRequestedRecommendedIndex(prev => ((prev ?? recommendedIndex) + direction + recommendedPool.length) % recommendedPool.length)
     pauseRecommendedAutoplay()
     resumeRecommendedAutoplay()
   }
@@ -842,19 +960,16 @@ export function PublicMenu() {
   })()
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const deliveryFee = orderType === 'delivery' && deliveryEstimate?.fee != null ? deliveryEstimate.fee : 0
+  const deliveryFee = orderType === 'delivery' && deliveryEstimate?.fee != null
+    ? serverDeliveryFeeOverride && serverDeliveryFeeOverride.lat === geoCoords?.lat && serverDeliveryFeeOverride.lng === geoCoords?.lng
+      ? serverDeliveryFeeOverride.fee
+      : deliveryEstimate.fee
+    : 0
   const orderTotal = total + deliveryFee
-  useEffect(() => {
-    if (orderType !== 'delivery' || !geoCoords || !deliverySettings?.enabled) {
-      setDeliveryEstimate(null)
-      return
-    }
-    setDeliveryEstimate(estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng))
-  }, [orderType, geoCoords, deliverySettings])
   const deliveryFeeText = orderType !== 'delivery'
     ? 'No aplica'
     : deliveryEstimate && deliveryEstimate.fee != null
-      ? `$${deliveryEstimate.fee.toFixed(2)}`
+      ? `$${deliveryFee.toFixed(2)}${serverDeliveryFeeOverride && serverDeliveryFeeOverride.lat === geoCoords?.lat && serverDeliveryFeeOverride.lng === geoCoords?.lng ? ' (actualizado)' : ''}`
       : 'Por confirmar'
   const cartProductIds = useMemo(() => new Set(cart.map(item => item.productId)), [cart])
   const recommendations = groups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))).slice(0, 3)
@@ -886,7 +1001,7 @@ export function PublicMenu() {
   // "Ver todos" belongs to the cart, not to the currently selected menu tab.
   // Build it from the complete catalog so a mobile category filter cannot leak
   // into the quick catalog (e.g. Promociones showing only more promotions).
-  const allCatalogGroups = useMemo(() => groupMenuProducts(products), [products])
+  const allCatalogGroups = useMemo(() => groupMenuProducts([...products, ...extrasProducts]), [products, extrasProducts])
   const allExtras = useMemo(
     () => allCatalogGroups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))),
     [allCatalogGroups, cartProductIds],
@@ -915,11 +1030,13 @@ export function PublicMenu() {
         return
       }
       const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
-      const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
+      const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number; whatsappUrl?: string } | null
       if (saved && cart.length > 0) {
         setName(saved.name || '')
         setPhone(saved.phone || '')
         setIdentification(saved.identification || '')
+        const savedPrefix = saved.identification?.match(/^[VEJ]/i)?.[0]?.toUpperCase()
+        if (savedPrefix === 'V' || savedPrefix === 'E' || savedPrefix === 'J') setIdPrefix(savedPrefix)
         setEmail(saved.email || '')
         setOrderType(saved.orderType === 'delivery' ? 'delivery' : 'takeaway')
         setDeliveryChosen(Boolean(saved.deliveryChosen))
@@ -930,7 +1047,7 @@ export function PublicMenu() {
         setAddressMethod(saved.addressMethod || null)
         if (sent?.sentAt) {
           setOrderCode(sent.code || '')
-          setWhatsappUrl('')
+          setWhatsappUrl(sent.whatsappUrl || '')
           setCartOpen(true)
           setStep('sent')
         } else {
@@ -950,10 +1067,10 @@ export function PublicMenu() {
     // que el resultado sea el mismo con recarga o con el botón Atrás.
     const restoreSentState = () => {
       try {
-        const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
+        const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number; whatsappUrl?: string } | null
         if (!sent?.sentAt || cart.length === 0) return
         setOrderCode(sent.code || '')
-        setWhatsappUrl('')
+        setWhatsappUrl(sent.whatsappUrl || '')
         setCartOpen(true)
         setStep('sent')
       } catch { /* ignore malformed sent state */ }
@@ -986,10 +1103,13 @@ export function PublicMenu() {
     setFieldError('')
   }
   const startNewOrder = () => {
+    addressActionRef.current += 1
+    setLocating(false)
     setCart([])
     setName('')
     setPhone('')
     setIdentification('')
+    setIdPrefix('V')
     setEmail('')
     setOrderType('takeaway')
     setDeliveryChosen(false)
@@ -1041,9 +1161,20 @@ export function PublicMenu() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0) => {
+  const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0, modifiers: WebOrderCartItem['modifiers'] = []) => {
     const imageUrl = optimizedProductImage(product.imageUrl) || undefined
     const linePrice = product.price + extrasPrice
+    const prospectiveLine = { productId: product.id, notes, modifiers }
+    const prospectiveKey = cartLineKey(prospectiveLine)
+    const existingLine = cart.find(item => cartLineKey(item) === prospectiveKey)
+    if (!existingLine && cart.length >= 40) {
+      setError('Tu pedido llegó al máximo de 40 productos distintos. Quita uno para agregar otro.')
+      return
+    }
+    if ((existingLine?.quantity ?? 0) + quantity > 30) {
+      setError('Puedes pedir hasta 30 unidades de una misma presentación.')
+      return
+    }
     setAddFeedback({ name: formatProductTitle(product.name), imageUrl })
     setAddFeedbackClosing(false)
     setCartPulse(true)
@@ -1056,10 +1187,11 @@ export function PublicMenu() {
     }, 1800)
     cartPulseTimer.current = setTimeout(() => setCartPulse(false), 520)
     setCart(current => {
-      const existing = current.find(item => item.productId === product.id && (item.notes || '') === notes)
+      const key = prospectiveKey
+      const existing = current.find(item => cartLineKey(item) === key)
       return existing
-        ? current.map(item => item.productId === product.id && (item.notes || '') === notes ? { ...item, quantity: item.quantity + quantity } : item)
-        : [...current, { productId: product.id, productName: formatProductTitle(product.name), price: linePrice, quantity, imageUrl, notes: notes || undefined }]
+        ? current.map(item => cartLineKey(item) === key ? { ...item, quantity: item.quantity + quantity } : item)
+        : [...current, { productId: product.id, productName: formatProductTitle(product.name), price: linePrice, quantity, imageUrl, notes: notes || undefined, modifiers }]
     })
     closeProductDetail()
   }
@@ -1075,10 +1207,24 @@ export function PublicMenu() {
     }, 200)
   }
 
-  const requestQuickAdd = (group: MenuProductGroup, quantity = 1) => {
+  const requestQuickAdd = async (group: MenuProductGroup, quantity = 1) => {
     if (group.variants.length <= 1) {
       const product = group.variants[0]?.product
       if (product) {
+        let modifierGroups = PUBLIC_MODIFIER_CACHE.get(product.id)
+        if (!modifierGroups) {
+          try {
+            modifierGroups = await getPublicProductModifiers(product.id)
+            PUBLIC_MODIFIER_CACHE.set(product.id, modifierGroups)
+          } catch {
+            openGroup(group, undefined, product.id)
+            return
+          }
+        }
+        if (modifierGroups.some(modifier => modifier.minSelections > 0)) {
+          openGroup(group, undefined, product.id)
+          return
+        }
         addProduct(product, quantity)
         setCardQtys(prev => ({ ...prev, [group.key]: 1 }))
       }
@@ -1091,9 +1237,23 @@ export function PublicMenu() {
     setClosingQuickVariant(false)
   }
 
-  const confirmQuickVariant = () => {
+  const confirmQuickVariant = async () => {
     const variant = quickVariantGroup?.variants.find(({ product }) => product.id === quickVariantId)
     if (!variant || !quickVariantGroup) return
+    let modifierGroups = PUBLIC_MODIFIER_CACHE.get(variant.product.id)
+    if (!modifierGroups) {
+      try {
+        modifierGroups = await getPublicProductModifiers(variant.product.id)
+        PUBLIC_MODIFIER_CACHE.set(variant.product.id, modifierGroups)
+      } catch {
+        setError('No pudimos verificar las opciones obligatorias. Inténtalo de nuevo.')
+        return
+      }
+    }
+    if (modifierGroups.some(group => group.minSelections > 0)) {
+      personalizeQuickVariant()
+      return
+    }
     addProduct(variant.product, quickVariantQuantity)
     setCardQtys(prev => ({ ...prev, [quickVariantGroup.key]: 1 }))
     closeQuickVariant()
@@ -1103,6 +1263,7 @@ export function PublicMenu() {
     const group = quickVariantGroup
     const variant = group?.variants.find(({ product }) => product.id === quickVariantId)
     if (!group || !variant || closingQuickVariant) return
+    const quantity = quickVariantQuantity
     setClosingQuickVariant(true)
     window.setTimeout(() => {
       setQuickVariantGroup(null)
@@ -1110,19 +1271,27 @@ export function PublicMenu() {
       setQuickVariantQuantity(1)
       setClosingQuickVariant(false)
       openGroup(group, undefined, variant.product.id)
+      setDetailQuantity(quantity)
     }, 200)
   }
 
   const [deletingKeys, setDeletingKeys] = useState<string[]>([])
-  const updateQuantity = (productId: string, delta: number, notes = '') => setCart(current => current
-    .map(item => item.productId === productId && (item.notes || '') === notes ? { ...item, quantity: item.quantity + delta } : item)
-    .filter(item => item.quantity > 0))
+  const updateQuantity = (itemKey: string, delta: number, legacyNotes?: string) => {
+    const target = cart.find(item => cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || '')))
+    if (target && target.quantity + delta > 30) {
+      setError('Puedes pedir hasta 30 unidades de una misma presentación.')
+      return
+    }
+    setCart(current => current
+      .map(item => (cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || ''))) ? { ...item, quantity: item.quantity + delta } : item)
+      .filter(item => item.quantity > 0))
+  }
 
-  const handleRemoveSidebarItem = (productId: string, qty: number, notes = '') => {
-    const key = `${productId}-${notes}`
+  const handleRemoveSidebarItem = (itemKey: string, qty: number) => {
+    const key = itemKey
     setDeletingKeys(prev => [...prev, key])
     window.setTimeout(() => {
-      updateQuantity(productId, -qty, notes)
+      updateQuantity(itemKey, -qty)
       setDeletingKeys(prev => prev.filter(k => k !== key))
     }, 220)
   }
@@ -1138,7 +1307,9 @@ export function PublicMenu() {
       setDetailQuantity(1)
       setDetailNotes('')
       setDetailModifierGroups([])
-      setSelectedExtras([])
+      setSelectedExtras({})
+      setModifierLoadError(false)
+      setModifierValidationError('')
     }, 220)
   }
 
@@ -1152,29 +1323,16 @@ export function PublicMenu() {
     setSelectedVariantId(initialVariant?.product.id ?? null)
     setDetailQuantity(1)
     setDetailNotes('')
-    setSelectedExtras([])
+    setSelectedExtras({})
+    setModifierLoadError(false)
+    setModifierValidationError('')
     const productId = initialVariant?.product.id
-    const isExtrasEligible = !group.variants.some(v =>
-      v.product.categories.includes('bebidas') || v.product.categories.includes('extras')
-    )
     const prepareModifierGroups = (remoteGroups: ProductModifierGroup[]) => {
       const resolved = remoteGroups
-        .filter(item => item.options.length > 0)
+        .filter(item => item.options.length > 0 || item.minSelections > 0)
         .map(item => ({ ...item, options: [...item.options] }))
-      if (isExtrasEligible && extrasProducts.length > 0) {
-        resolved.push({
-          modifierId: '__catalog_extras__',
-          name: 'Extras',
-          minSelections: 0,
-          maxSelections: null,
-          allowRepeat: false,
-          options: extrasProducts.map(product => ({
-            id: product.id,
-            name: product.name.replace(/^[^—]+—\s*/, ''),
-            price: product.price,
-          })),
-        })
-      }
+      // Los extras del catálogo son productos independientes, no modificadores.
+      // No deben sumarse al producto como si fueran opciones sin una línea propia.
       return resolved
     }
 
@@ -1202,7 +1360,10 @@ export function PublicMenu() {
         setDetailModifierGroups(prepareModifierGroups(remoteGroups))
       })
       .catch(() => {
-        if (modifierRequestRef.current === requestId) setDetailModifierGroups(prepareModifierGroups([]))
+        if (modifierRequestRef.current === requestId) {
+          setDetailModifierGroups([])
+          setModifierLoadError(true)
+        }
       })
       .finally(() => {
         if (modifierRequestRef.current === requestId) setLoadingModifiers(false)
@@ -1212,19 +1373,51 @@ export function PublicMenu() {
   const selectedProduct = selectedGroup?.variants.find(({ product }) => product.id === selectedVariantId)?.product
     ?? selectedGroup?.variants[0]?.product
   const quickSelectedVariant = quickVariantGroup?.variants.find(({ product }) => product.id === quickVariantId)
-  const detailExtrasTotal = detailModifierGroups
-    .flatMap(g => g.options.filter(o => selectedExtras.includes(o.id)))
-    .reduce((sum, o) => sum + o.price, 0)
+  useEffect(() => {
+    let cancelled = false
+    setQuickVariantHasModifiers(false)
+    if (!quickSelectedVariant) return () => { cancelled = true }
+    const productId = quickSelectedVariant.product.id
+    const cached = PUBLIC_MODIFIER_CACHE.get(productId)
+    if (cached) {
+      setQuickVariantHasModifiers(cached.some(group => group.options.length > 0))
+      return () => { cancelled = true }
+    }
+    getPublicProductModifiers(productId).then(groups => {
+      PUBLIC_MODIFIER_CACHE.set(productId, groups)
+      if (!cancelled) setQuickVariantHasModifiers(groups.some(group => group.options.length > 0))
+    }).catch(() => {
+      if (!cancelled) setQuickVariantHasModifiers(false)
+    })
+    return () => { cancelled = true }
+  }, [quickSelectedVariant])
+  const detailExtrasTotal = calculateModifierTotal(detailModifierGroups, selectedExtras)
+  const invalidModifierSelection = hasInvalidModifierSelection(detailModifierGroups, selectedExtras)
+  const modifierSelectionError = getModifierSelectionError(detailModifierGroups, selectedExtras)
 
   const addSelectedProduct = () => {
     if (selectedProduct) {
-      const chosen = detailModifierGroups.flatMap(group => group.options.filter(option => selectedExtras.includes(option.id)))
-      const extrasPrice = chosen.reduce((sum, option) => sum + option.price, 0)
-      const extras = chosen.map(option => option.price > 0 ? `${option.name} (+${money(option.price)})` : option.name)
+      if (loadingModifiers) return
+      if (modifierLoadError) {
+        setModifierValidationError('No pudimos cargar las opciones. Cierra y vuelve a abrir el producto para intentarlo de nuevo.')
+        return
+      }
+      if (modifierSelectionError) {
+        setModifierValidationError(`Completa las opciones requeridas de “${modifierSelectionError.name}”.`)
+        return
+      }
+      if (invalidModifierSelection) {
+        setModifierValidationError('Algunas opciones guardadas ya no están disponibles. Límpialas o vuelve al carrito y agrega este producto nuevamente.')
+        return
+      }
+      const chosen = detailModifierGroups.flatMap(group => group.options.filter(option => (selectedExtras[option.id] ?? 0) > 0).map(option => ({ option, quantity: selectedExtras[option.id] })))
+      const extrasPrice = chosen.reduce((sum, item) => sum + item.option.price * item.quantity, 0)
+      const extras = chosen.map(({ option, quantity }) => `${option.name}${quantity > 1 ? ` ×${quantity}` : ''}${option.price > 0 ? ` (+${money(option.price * quantity)})` : ''}`)
       const lineNotes = [extras.length ? `Extras: ${extras.join(', ')}` : '', detailNotes.trim()].filter(Boolean).join(' · ')
+      const modifiers = chosen.map(({ option, quantity }) => ({ optionId: option.id, quantity: quantity ?? 1 }))
       if (editingCartLineKey) {
         const imageUrl = optimizedProductImage(selectedProduct.imageUrl) || undefined
-        const editedLine = { productId: selectedProduct.id, productName: formatProductTitle(selectedProduct.name), price: selectedProduct.price + extrasPrice, quantity: detailQuantity, imageUrl, notes: lineNotes || undefined }
+        const editedLine = { productId: selectedProduct.id, productName: formatProductTitle(selectedProduct.name), price: selectedProduct.price + extrasPrice, quantity: detailQuantity, imageUrl, notes: lineNotes || undefined, modifiers }
         setCart(current => [...current.filter(item => cartLineKey(item) !== editingCartLineKey), editedLine])
         setEditingCartLineKey(null)
         closeProductDetail()
@@ -1232,7 +1425,7 @@ export function PublicMenu() {
         setCartOpen(true)
         setStep('confirm')
       } else {
-        addProduct(selectedProduct, detailQuantity, lineNotes, extrasPrice)
+        addProduct(selectedProduct, detailQuantity, lineNotes, extrasPrice, modifiers)
       }
     }
   }
@@ -1246,14 +1439,23 @@ export function PublicMenu() {
     setStep('cart')
     openGroup(group, undefined, item.productId)
     setDetailQuantity(item.quantity)
-    setDetailNotes(item.notes || '')
+    const savedNotes = item.notes || ''
+    const userNotes = item.modifiers?.length
+      ? savedNotes.replace(/^Extras: .*?(?: · |$)/, '')
+      : savedNotes
+    setDetailNotes(userNotes)
+    setSelectedExtras(Object.fromEntries((item.modifiers ?? []).map(modifier => [modifier.optionId, modifier.quantity])))
   }
 
   const useMyLocation = () => {
     if (!navigator.geolocation) return setError('Tu navegador no soporta geolocalización.')
+    setError('')
+    const requestId = ++addressActionRef.current
+    if (addressSearchTimer.current) clearTimeout(addressSearchTimer.current)
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        if (addressActionRef.current !== requestId) return
         const { latitude: lat, longitude: lng } = pos.coords
         setGeoCoords({ lat, lng })
         setAddressMethod('gps')
@@ -1263,19 +1465,23 @@ export function PublicMenu() {
             headers: { 'Accept-Language': 'es' }
           })
           const data = await res.json()
+          if (addressActionRef.current !== requestId) return
           if (data.display_name) {
             setAddress(data.display_name.length > 120 ? data.display_name.substring(0, 120) + '…' : data.display_name)
             setShowSuggestions(false)
-          }
+          } else setAddress(`Ubicación seleccionada (${lat.toFixed(5)}, ${lng.toFixed(5)})`)
         } catch { /* silently keep coordinates */ }
-        setLocating(false)
+        if (addressActionRef.current === requestId) setLocating(false)
       },
-      () => { setLocating(false); setError('No pudimos ubicarte automáticamente. Puedes buscar tu dirección o elegirla directamente en el mapa.') },
+      () => { if (addressActionRef.current === requestId) { setLocating(false); setError('No pudimos ubicarte automáticamente. Puedes buscar tu dirección o elegirla directamente en el mapa.') } },
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }
 
   const searchAddress = (query: string) => {
+    setError('')
+    const requestId = ++addressActionRef.current
+    setLocating(false)
     setAddress(query)
     setShowSuggestions(true)
     setGeoCoords(null)
@@ -1284,29 +1490,35 @@ export function PublicMenu() {
     if (addressSearchTimer.current) clearTimeout(addressSearchTimer.current)
     if (query.trim().length < 4) { setAddressSuggestions([]); setSearchingAddress(false); return }
     addressSearchTimer.current = setTimeout(async () => {
+      if (addressActionRef.current !== requestId) return
       setSearchingAddress(true)
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ve&limit=5`, {
           headers: { 'Accept-Language': 'es' }
         })
         const data = await res.json()
+        if (addressActionRef.current !== requestId) return
         if (Array.isArray(data) && data.length > 0) setAddressSuggestions(data)
         else {
           const fallback = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
           const photon = await fallback.json() as { features?: Array<{ geometry: { coordinates: [number, number] }; properties: Record<string, string> }> }
+          if (addressActionRef.current !== requestId) return
           setAddressSuggestions((photon.features || []).map(feature => ({
             lat: String(feature.geometry.coordinates[1]), lon: String(feature.geometry.coordinates[0]),
             display_name: [feature.properties.name, feature.properties.city, feature.properties.state].filter(Boolean).join(', ')
           })))
         }
-      } catch { setAddressSuggestions([]) }
-      finally { setSearchingAddress(false) }
+      } catch { if (addressActionRef.current === requestId) setAddressSuggestions([]) }
+      finally { if (addressActionRef.current === requestId) setSearchingAddress(false) }
     }, 350)
   }
 
   useEffect(() => () => { if (addressSearchTimer.current) clearTimeout(addressSearchTimer.current) }, [])
 
   const selectSuggestion = (s: { display_name: string; lat: string; lon: string }) => {
+    setError('')
+    addressActionRef.current += 1
+    setLocating(false)
     setAddress(s.display_name.length > 120 ? s.display_name.substring(0, 120) + '…' : s.display_name)
     setGeoCoords({ lat: parseFloat(s.lat), lng: parseFloat(s.lon) })
     setAddressMethod('search')
@@ -1316,6 +1528,9 @@ export function PublicMenu() {
   }
 
   const selectMapLocation = async (coordinates: MapCoordinates) => {
+    setError('')
+    const requestId = ++addressActionRef.current
+    setLocating(false)
     setGeoCoords(coordinates)
     setAddressMethod('map')
     setAddressFieldError(value => value === 'reference' ? value : '')
@@ -1323,8 +1538,10 @@ export function PublicMenu() {
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.lat}&lon=${coordinates.lng}&addressdetails=1`, { headers: { 'Accept-Language': 'es' } })
       const data = await res.json() as { display_name?: string }
+      if (addressActionRef.current !== requestId) return
       if (data.display_name) setAddress(data.display_name.length > 120 ? `${data.display_name.substring(0, 120)}…` : data.display_name)
     } catch {
+      if (addressActionRef.current !== requestId) return
       setAddress(`Ubicación seleccionada (${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)})`)
     }
   }
@@ -1349,6 +1566,11 @@ export function PublicMenu() {
       if (!geoCoords) return setAddressFieldError('geo')
       return setAddressFieldError('reference')
     }
+    if (orderType === 'delivery' && (!deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
+      setStep('address')
+      setError('No podemos confirmar el costo de entrega para esa ubicación. Revisa el punto en el mapa o elige retiro en el local.')
+      return
+    }
     if (!cart.length) return setError('Tu carrito está vacío.')
     if (!draftOrderCode) setDraftOrderCode(`WEB-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
     setStep('confirm')
@@ -1360,6 +1582,7 @@ export function PublicMenu() {
       localStorage.setItem(WHATSAPP_SENT_KEY, JSON.stringify({
         code: orderCode || draftOrderCode || '',
         sentAt: Date.now(),
+        whatsappUrl,
       }))
       localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen: true, step: 'sent', name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
     } catch { /* storage unavailable */ }
@@ -1397,6 +1620,15 @@ export function PublicMenu() {
     if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return setFieldError('phone') }
     if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return setAddressFieldError('address') }
     if (!cart.length) return setError('Tu carrito está vacío.')
+    if (PUBLIC_WHATSAPP_PHONE.length < 7) {
+      setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
+      return
+    }
+    if (orderType === 'delivery' && (!deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
+      setStep('address')
+      setError('No podemos confirmar el costo de entrega para esa ubicación. Revisa el punto en el mapa o elige retiro en el local.')
+      return
+    }
 
     const lineNotes = cart.filter(item => item.notes).map(item => `${item.productName}: ${item.notes}`).join(' | ')
     // El link de Google Maps con las coordenadas va en su propia línea para que
@@ -1409,10 +1641,12 @@ export function PublicMenu() {
     const paymentCodes = payMode === 'mixed' ? `${payPrimary}+${paySecondary}` : payPrimary
     const paymentLabels = payMode === 'mixed' ? `${payLabel(payPrimary)} + ${payLabel(paySecondary)}` : payLabel(payPrimary)
     const payLine = `\nPago preferido: ${paymentCodes}`
-    const orderNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ').slice(0, 400) + mapsLine + payLine
+    const primaryNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ')
+    const orderNotes = appendRequiredOrderMetadata(primaryNotes, `${mapsLine}${payLine}`)
     const checkoutSignature = JSON.stringify({
-      cart: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: item.price, notes: item.notes || '' })),
-      name: name.trim(), phone: phone.trim(), identification: identification.trim().toUpperCase(), orderType, address: address.trim(), orderNotes,
+      cart: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: item.price, notes: item.notes || '', modifiers: item.modifiers ?? [] })),
+      name: name.trim(), phone: phone.trim(), identification: identification.trim().toUpperCase(), bcvRate, orderType, address: address.trim(), orderNotes,
+      deliveryFee, deliveryLat: geoCoords?.lat ?? null, deliveryLng: geoCoords?.lng ?? null,
     })
     const savedAttempt = checkoutAttemptRef.current?.signature === checkoutSignature ? checkoutAttemptRef.current : null
     const idempotencyKey = savedAttempt?.key || crypto.randomUUID()
@@ -1429,13 +1663,43 @@ export function PublicMenu() {
         deliveryAddress: address.trim(), notes: orderNotes, items: cart, bcvRate,
         idempotencyKey, deliveryFee, deliveryLat: geoCoords?.lat, deliveryLng: geoCoords?.lng,
       })
-      localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(cart))
+      if (result.legacyReview) {
+        setOrderCode(result.code)
+        const reviewMessage = `Hola, tengo una solicitud anterior ${result.code} creada antes de la actualización del sistema. Por favor revisen sus productos y personalizaciones antes de confirmarla; no quiero duplicar el pedido.`
+        setWhatsappUrl(`https://wa.me/${PUBLIC_WHATSAPP_PHONE}?text=${encodeURIComponent(reviewMessage)}`)
+        setError('Ya existe una solicitud anterior con ese código. La enviamos a revisión por WhatsApp para evitar duplicarla o confirmar datos incompletos.')
+        setStep('whatsapp')
+        return
+      }
+      if (result.priceChanged) {
+        const repricedCart = cart.map((item, index) => {
+          const current = result.items?.find(line => line.lineNumber === index + 1 && line.productId === item.productId)
+          return current ? { ...item, price: current.unitPrice } : item
+        })
+        setCart(repricedCart)
+        if (orderType === 'delivery' && result.deliveryFee != null && geoCoords) {
+          setServerDeliveryFeeOverride({ lat: geoCoords.lat, lng: geoCoords.lng, fee: result.deliveryFee })
+        }
+        checkoutAttemptRef.current = null
+        try { sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY) } catch { /* storage unavailable */ }
+        setError('Actualizamos los precios vigentes del menú. Revisa el nuevo total y vuelve a confirmar para registrar el pedido.')
+        setStep('confirm')
+        return
+      }
+      const pricedCart = cart.map((item, index) => {
+        const current = result.items?.find(line => line.lineNumber === index + 1 && line.productId === item.productId)
+        return current ? { ...item, price: current.unitPrice } : item
+      })
+      const serverSubtotal = result.subtotal ?? pricedCart.reduce((sum, item) => sum + item.price * item.quantity, 0)
+      const serverDeliveryFee = result.deliveryFee ?? Math.max(0, result.total - serverSubtotal)
+      setCart(pricedCart)
+      try { localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(pricedCart)) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
       checkoutAttemptRef.current = null
       try { sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY) } catch { /* storage unavailable */ }
-      setLastOrder(cart)
+      setLastOrder(pricedCart)
       setOrderCode(result.code)
       const separator = '━━━━━━━━━━━━━━'
-      const itemLines = cart.flatMap(item => [
+      const itemLines = pricedCart.flatMap(item => [
         `• *${item.quantity}x ${item.productName}* — ${money(item.price * item.quantity)}`,
         ...(item.notes ? [`  _${item.notes}_`] : []),
         '',
@@ -1461,8 +1725,8 @@ export function PublicMenu() {
         separator,
         '*💰 RESUMEN DE PAGO*',
         '',
-        `Subtotal productos: ${money(total)}`,
-        `Delivery: ${deliveryFeeText}`,
+        `Subtotal productos: ${money(serverSubtotal)}`,
+        `Delivery: ${orderType === 'delivery' ? money(serverDeliveryFee) : 'No aplica'}`,
         `*Total del pedido: ${money(result.total)}*`,
         ...(bcvRate ? [`*Referencia BCV: Bs. ${(result.total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*`] : []),
         '',
@@ -1475,9 +1739,7 @@ export function PublicMenu() {
         separator,
         'Envía este mensaje para que podamos confirmar tu pedido.',
       ].join('\n')
-      const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
-      if (configuredPhone.length < 7) throw new Error('WhatsApp no está configurado todavía. Completa VITE_FULLCHINA_WHATSAPP para continuar.')
-      const whatsappFallback = `https://wa.me/${configuredPhone}?text=${encodeURIComponent(message)}`
+      const whatsappFallback = `https://wa.me/${PUBLIC_WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`
       setWhatsappUrl(whatsappFallback)
       setStep('whatsapp')
     } catch (cause) {
@@ -1494,9 +1756,6 @@ export function PublicMenu() {
   // Monto en Bs (referencia) calculado con la tasa BCV actual. null si no hay tasa.
   const priceBs = (usd: number) =>
     bcvRate ? `Bs. ${BS_FORMATTER.format(usd * bcvRate)}` : null
-
-  const configuredPhone = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
-
 
   const renderProductCard = (group: MenuProductGroup, priority = false) => {
     const isBeverage = group.variants.some(({ product }) => product.categories.includes('bebidas'))
@@ -1785,13 +2044,20 @@ export function PublicMenu() {
               aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
             >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
           </div>
-          <img key={`img-${recommendedGroup?.key ?? 'empty'}`} src={optimizedProductImage(recommendedGroup?.variants[0]?.product.imageUrl) || (recommendedGroup ? productImage(recommendedGroup.category) : '/optimized/login-carousel/slide3.webp')} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
+          <img src={recommendedImageSrc} onError={event => {
+            if (event.currentTarget.getAttribute('src') !== '/optimized/fondos/hero-banner-food.webp') {
+              setRecommendedImageSrc('/optimized/fondos/hero-banner-food.webp')
+            }
+          }} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
           <div className="public-recommended-dots-overlay">
             {recommendedPool.map((_, i) => (
               <button key={i} type="button" className={i === recommendedIndex ? 'active' : ''} aria-label={`Ver recomendación ${i + 1}`} aria-current={i === recommendedIndex ? 'true' : undefined} onClick={(event) => {
                 event.stopPropagation()
-                if (i === recommendedIndex) return
-                setRecommendedIndex(i)
+                if (i === recommendedIndex) {
+                  setRequestedRecommendedIndex(null)
+                  return
+                }
+                setRequestedRecommendedIndex(i)
                 pauseRecommendedAutoplay()
                 resumeRecommendedAutoplay()
               }} />
@@ -1867,8 +2133,8 @@ export function PublicMenu() {
                 </h1>
                 <p className="public-hero-desc">Escríbenos, estamos para servirte.</p>
                 <div className="public-hero-search-row public-contact-hero-actions">
-                  {configuredPhone && (
-                    <a href={`https://wa.me/${configuredPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
+                  {PUBLIC_WHATSAPP_PHONE && (
+                    <a href={`https://wa.me/${PUBLIC_WHATSAPP_PHONE}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
                       Escríbenos ahora <ChevronRight size={16} />
                     </a>
                   )}
@@ -1914,9 +2180,12 @@ export function PublicMenu() {
                   <h2>El wok en movimiento</h2>
                 </header>
                 <div className="public-instagram-intro">
-                  <p>Seis momentos, un solo antojo. Explora lo que está pasando en Full China.</p>
+                  <p><span>Fuego alto.</span> El wok en acción.</p>
+                  <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
+                    {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
+                  </button>
                 </div>
-                <div className="public-instagram-reel-stage" aria-label="Reels de Full China en Instagram">
+                <div className="public-instagram-reel-stage public-instagram-mobile-stage" aria-label="Reel destacado de Full China">
                   {instagramReels.map(({ reel, position }) => {
                     const reelIndex = INSTAGRAM_REELS.indexOf(reel)
                     const isActive = reelIndex === instagramActiveIndex
@@ -1927,6 +2196,7 @@ export function PublicMenu() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`public-instagram-reel is-reel-${position + 1}`}
+                      data-active={isActive ? 'true' : undefined}
                       onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
                       onClick={(event) => {
                         if (!isActive) {
@@ -1936,14 +2206,23 @@ export function PublicMenu() {
                       }}
                       aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                     >
-                      <video autoPlay={isActive} muted playsInline preload="none" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex((instagramActiveIndex + 1) % INSTAGRAM_REELS.length)}>
+                      <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
                         <source data-src={reel.src} type="video/mp4" />
                       </video>
                       <span className="public-instagram-reel-shade" aria-hidden="true" />
+                      {isActive && <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(reelIndex + 1).padStart(2, '0')} / 06</b></span>}
                       <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
                     </a>
                     )
                   })}
+                </div>
+                <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
+                  {INSTAGRAM_REELS.map((reel, reelIndex) => (
+                    <button key={reel.href} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => setInstagramActiveIndex(reelIndex)}>
+                      <img src={reel.poster} alt="" loading="lazy" />
+                      <span>{String(reelIndex + 1).padStart(2, '0')}</span>
+                    </button>
+                  ))}
                 </div>
                 <a
                   href="https://www.instagram.com/fullchinavzla/?hl=es"
@@ -2369,8 +2648,8 @@ export function PublicMenu() {
                 <p className="public-hero-desc">¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.</p>
 
                   <div className="public-hero-search-row public-contact-hero-actions">
-                    {configuredPhone ? (
-                      <a href={`https://wa.me/${configuredPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
+                    {PUBLIC_WHATSAPP_PHONE ? (
+                      <a href={`https://wa.me/${PUBLIC_WHATSAPP_PHONE}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
                         Escríbenos ahora <ChevronRight size={16} />
                       </a>
                     ) : null}
@@ -2416,7 +2695,10 @@ export function PublicMenu() {
                     <h2>El wok en movimiento</h2>
                   </header>
                   <div className="public-instagram-intro">
-                    <p>Seis momentos, un solo antojo. Explora lo que está pasando en Full China.</p>
+                    <p><span>Fuego alto.</span> El wok en acción.</p>
+                    <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
+                      {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
+                    </button>
                   </div>
                   <div className="public-instagram-reel-stage" aria-label="Reels de Full China en Instagram">
                     {instagramReels.map(({ reel, position }) => {
@@ -2438,7 +2720,7 @@ export function PublicMenu() {
                         }}
                         aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                       >
-                        <video autoPlay={isActive} muted playsInline preload="none" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex((instagramActiveIndex + 1) % INSTAGRAM_REELS.length)}>
+                        <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
                           <source data-src={reel.src} type="video/mp4" />
                         </video>
                         <span className="public-instagram-reel-shade" aria-hidden="true" />
@@ -2550,7 +2832,7 @@ export function PublicMenu() {
                 <div className="public-sidebar-items">
                   {cart.map(item => {
                     const lineKey = cartLineKey(item)
-                    const isDeleting = deletingKeys.includes(`${item.productId}-${item.notes || ''}`)
+                    const isDeleting = deletingKeys.includes(lineKey)
                     return (
                       <div className={`public-sidebar-item ${isDeleting ? 'is-deleting' : ''}`} key={lineKey}>
                         <img 
@@ -2566,9 +2848,9 @@ export function PublicMenu() {
                               type="button" 
                               onClick={() => {
                                 if (item.quantity === 1) {
-                                  handleRemoveSidebarItem(item.productId, 1, item.notes || '')
+                                  handleRemoveSidebarItem(lineKey, 1)
                                 } else {
-                                  updateQuantity(item.productId, -1, item.notes || '')
+                                  updateQuantity(lineKey, -1)
                                 }
                               }} 
                               aria-label="Disminuir"
@@ -2576,7 +2858,7 @@ export function PublicMenu() {
                               {item.quantity === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
                             </button>
                             <span key={item.quantity} className="public-stepper-num">{item.quantity}</span>
-                            <button type="button" onClick={() => updateQuantity(item.productId, 1, item.notes || '')} aria-label="Aumentar">
+                            <button type="button" onClick={() => updateQuantity(lineKey, 1)} aria-label="Aumentar">
                               <Plus size={12} />
                             </button>
                           </div>
@@ -2584,7 +2866,7 @@ export function PublicMenu() {
                         <button 
                           type="button" 
                           className="public-sidebar-trash" 
-                          onClick={() => handleRemoveSidebarItem(item.productId, item.quantity, item.notes || '')}
+                          onClick={() => handleRemoveSidebarItem(lineKey, item.quantity)}
                           aria-label="Eliminar producto"
                         >
                           <Trash2 size={14} />
@@ -2788,7 +3070,7 @@ export function PublicMenu() {
                 <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
               </div>
               <div className="public-variant-actions">
-                <button type="button" className="public-variant-customize" disabled={!quickSelectedVariant} onClick={personalizeQuickVariant}>Personalizar</button>
+                {quickSelectedVariant && quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>Personalizar</button>}
                 <button type="button" className="public-variant-add" disabled={!quickSelectedVariant} onClick={confirmQuickVariant}>
                   <ShoppingCart size={16} />
                   <span>{quickSelectedVariant ? <>Agregar · {money(quickSelectedVariant.product.price * quickVariantQuantity)}</> : 'Elige una presentación'}</span>
@@ -2827,7 +3109,32 @@ export function PublicMenu() {
                         type="button"
                         className="ppdm-option"
                         key={product.id}
-                        onClick={() => setSelectedVariantId(product.id)}
+                        onClick={() => {
+                          if (product.id === selectedVariantId) return
+                          setSelectedVariantId(product.id)
+                          setSelectedExtras({})
+                          setModifierValidationError('')
+                          setModifierLoadError(false)
+                          setDetailModifierGroups([])
+                          setLoadingModifiers(true)
+                          const requestId = modifierRequestRef.current + 1
+                          modifierRequestRef.current = requestId
+                          const cached = PUBLIC_MODIFIER_CACHE.get(product.id)
+                          const applyGroups = (groups: ProductModifierGroup[]) => groups.filter(item => item.options.length > 0).map(item => ({ ...item, options: [...item.options] }))
+                          if (cached) {
+                            setDetailModifierGroups(applyGroups(cached))
+                            setLoadingModifiers(false)
+                          } else {
+                            getPublicProductModifiers(product.id).then(groups => {
+                              PUBLIC_MODIFIER_CACHE.set(product.id, groups)
+                              if (modifierRequestRef.current === requestId) setDetailModifierGroups(applyGroups(groups))
+                            }).catch(() => {
+                              if (modifierRequestRef.current === requestId) setModifierLoadError(true)
+                            }).finally(() => {
+                              if (modifierRequestRef.current === requestId) setLoadingModifiers(false)
+                            })
+                          }
+                        }}
                       >
                         <span className="ppdm-radio"><span className={`ppdm-radio-inner ${selectedProduct.id === product.id ? 'active' : ''}`} /></span>
                         <span className="ppdm-option-name">{label}</span>
@@ -2848,26 +3155,42 @@ export function PublicMenu() {
                 </div>
               ) : detailModifierGroups.length > 0 && (
                 <div className="ppdm-section ppdm-extras-section">
-                  <div className="ppdm-section-header"><h3>Extras <small>(opcionales)</small></h3></div>
-                  <div className="ppdm-chip-row">
-                    {detailModifierGroups.flatMap(group => group.options.map(option => {
-                      const active = selectedExtras.includes(option.id)
-                      return (
-                        <button
-                          type="button"
-                          className={`ppdm-chip ${active ? 'active' : ''}`}
-                          key={option.id}
-                          onClick={() => setSelectedExtras(current => current.includes(option.id) ? current.filter(id => id !== option.id) : [...current, option.id])}
-                        >
+                  {detailModifierGroups.map(group => {
+                    const count = countModifierSelections(group, selectedExtras)
+                    return <div className="ppdm-modifier-group" key={group.modifierId}>
+                      <div className="ppdm-section-header"><h3>{group.name} <small>{group.minSelections > 0 ? `· Elige al menos ${group.minSelections}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
+                      <div className="ppdm-chip-row">{group.options.map(option => {
+                        const selectedCount = selectedExtras[option.id] ?? 0
+                        const active = selectedCount > 0
+                        const countReached = group.maxSelections !== null && count >= group.maxSelections
+                        return <button type="button" className={`ppdm-chip ${active ? 'active' : ''}`} key={option.id} aria-pressed={active}
+                          disabled={!active && (countReached || (group.allowRepeat && selectedCount >= 30))}
+                          onClick={() => {
+                            setModifierValidationError('')
+                            setSelectedExtras(current => {
+                              const next = { ...current }
+                              if (active && !group.allowRepeat) delete next[option.id]
+                              else if (active && group.allowRepeat) {
+                                if (selectedCount <= 1) delete next[option.id]
+                                else next[option.id] = selectedCount - 1
+                              } else if (!countReached) next[option.id] = 1
+                              return next
+                            })
+                          }}>
                           <span className="ppdm-chip-name">{option.name}</span>
+                          {group.allowRepeat && active && <span className="ppdm-chip-count">×{selectedCount}</span>}
                           {option.price > 0 && <span className="ppdm-chip-price">+{money(option.price)}</span>}
                           <span className="ppdm-chip-check"><Check size={12} /></span>
                         </button>
-                      )
-                    }))}
-                  </div>
+                      })}</div>
+                    </div>
+                  })}
                 </div>
               )}
+              {modifierSelectionError && <p className="ppdm-modifier-error" role="status">{modifierSelectionError.options.length === 0 ? `“${modifierSelectionError.name}” no tiene opciones disponibles. Elige otro producto o contacta al local.` : `Debes completar las selecciones del grupo “${modifierSelectionError.name}”.`}</p>}
+              {invalidModifierSelection && <p className="ppdm-modifier-error" role="alert">Algunas opciones guardadas ya no están disponibles. <button type="button" onClick={() => { setSelectedExtras({}); setModifierValidationError('') }}>Limpiar opciones anteriores</button></p>}
+              {modifierLoadError && <p className="ppdm-modifier-error" role="alert">No pudimos cargar las opciones de este producto. Inténtalo de nuevo.</p>}
+              {modifierValidationError && <p className="ppdm-modifier-error" role="alert">{modifierValidationError}</p>}
               <label className="ppdm-instructions-field">Indicaciones <small>(opcional)</small><textarea value={detailNotes} maxLength={160} onChange={event => setDetailNotes(event.target.value)} placeholder="Ej. Sin cebollín, por favor…" /><span>{detailNotes.length}/160</span></label>
             </div>
             <footer className="ppdm-footer">
@@ -2876,7 +3199,7 @@ export function PublicMenu() {
                 <span>{detailQuantity}</span>
                 <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
               </div>
-              <button type="button" className="ppdm-add-btn" onClick={addSelectedProduct}>Agregar · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal) * detailQuantity)}</span></button>
+              <button type="button" className="ppdm-add-btn" disabled={loadingModifiers || Boolean(modifierLoadError) || Boolean(modifierSelectionError) || invalidModifierSelection} onClick={addSelectedProduct}>Agregar · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal) * detailQuantity)}</span></button>
             </footer>
           </section>
         </div>,
@@ -2961,7 +3284,7 @@ export function PublicMenu() {
           <button className="public-primary whatsapp public-whatsapp-cta" disabled={submitting} onClick={submitOrder}><span className="public-confirm-check" aria-hidden="true"><Check /></span><span className="public-whatsapp-copy"><strong>{submitting ? 'Preparando pedido…' : 'Confirmar pedido'}</strong></span></button><p className="public-order-security">⌕ &nbsp; Tu pedido será confirmado directamente por Full China</p>
         </div>}
         {step === 'preparing' && <div className="public-preparing-page"><img className="preparing-logo" src="/optimized/root/logo.webp" alt="Full China" /><div className="public-preparing-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div><h3>Preparando tu pedido<br />para WhatsApp<span className="preparing-ellipsis">…</span></h3><p>Estamos creando tu solicitud segura.</p><div className="public-preparing-progress" aria-label="Progreso del pedido"><div className="public-progress-rail"><span /></div><div className="public-progress-step progress-step-one"><i><Check size={22} /></i><strong>Solicitud<br />creada</strong></div><div className="public-progress-step progress-step-two"><i><Check size={22} /></i><strong>Armando tu<br />pedido</strong></div><div className="public-progress-step progress-step-three"><i><LoaderCircle size={22} /></i><strong>Abriendo<br />WhatsApp</strong></div></div><div className="public-preparing-security"><ShieldCheck size={20} /><div><strong>Tus datos viajan seguros</strong><span>Solo los usamos para confirmar tu pedido.</span></div></div></div>}
-        {step === 'sent' && <div className="public-success"><span><Check /></span><h3>¡Enviado!</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>Espera la confirmación de Full China por <b>WhatsApp</b>.</p><div className="public-status-timeline"><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido fue registrado correctamente.</small></div><time>Ahora</time></div><div className="complete"><i><Check size={18} /></i><div><strong>Enviado por WhatsApp</strong><small>Tu solicitud fue enviada a Full China.</small></div><time>Ahora</time></div><div className="pending"><i>3</i><div><strong>Esperando confirmación</strong><small>Te confirmaremos tu pedido por WhatsApp.</small></div><time>◷</time></div></div><div className="public-success-actions"><button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div>}
+        {step === 'sent' && <div className="public-success"><span><Check /></span><h3>¡Solicitud registrada!</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>La solicitud quedó guardada. En WhatsApp debes revisar el mensaje y pulsar <b>Enviar</b>; no podemos verificarlo desde esta página.</p><div className="public-status-timeline"><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido quedó registrado correctamente.</small></div><time>Ahora</time></div><div className="pending"><i>2</i><div><strong>Enviar por WhatsApp</strong><small>Confirma el envío en la aplicación para que Full China reciba tu pedido.</small></div><time>◷</time></div><div className="pending"><i>3</i><div><strong>Esperando confirmación</strong><small>Full China te confirmará el pedido por WhatsApp.</small></div><time>◷</time></div></div><div className="public-success-actions">{whatsappUrl && <button type="button" className="public-secondary" onClick={openWhatsApp}>Abrir WhatsApp si todavía no enviaste</button>}<button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div>}
         {showAllExtras && step === 'cart' && <div className={`public-cart-all-extras ${closingAllExtras ? 'closing' : ''}`}><div className="public-cart-all-extras-head"><div><span>CATÁLOGO RÁPIDO</span><h3>Agrega algo más</h3></div><button type="button" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; closeAllExtras(); if (isDesktop) closeCart() }} aria-label="Cerrar">×</button></div><label className="public-cart-extras-search"><Search size={16} /><input value={extrasSearch} onChange={event => setExtrasSearch(event.target.value)} placeholder="Buscar un plato, bebida o extra" /><button type="button" onClick={() => setExtrasSearch('')} aria-label="Limpiar búsqueda">×</button></label><div className="public-cart-extra-sections">{extrasSections.length === 0 ? <p className="public-cart-extras-empty">No encontramos ese producto. Prueba con otro nombre.</p> : extrasSections.map(([category, categoryGroups]) => <section key={category}><div className="public-cart-extra-section-head"><h4>{categoryLabel(category)}</h4><span>{categoryGroups.length}</span></div><div className="public-cart-all-extras-grid">{categoryGroups.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>)}</div></div>}
       </aside></div>,
         document.body
