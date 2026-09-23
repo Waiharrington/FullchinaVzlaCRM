@@ -1516,7 +1516,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
                   const lineKey = item.lineId ?? item.productId
                   const mods = item.selectedModifiers && item.selectedModifiers.length > 0
-                    ? item.selectedModifiers.map((m) => m.optionName).join(', ')
+                    ? item.selectedModifiers.map((m) => `${m.optionName}${m.quantity > 1 ? ` ×${m.quantity}` : ''}`).join(', ')
                     : null
                   return (
                     <div key={lineKey} className="cart-item-row">

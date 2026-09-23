@@ -359,7 +359,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                     <div className="aito-pending-info">
                       <span className="aito-pending-name">{i.productName}</span>
                       {i.selectedModifiers && i.selectedModifiers.length > 0 && (
-                        <span className="aito-pending-mods">{i.selectedModifiers.map((m) => m.optionName).join(', ')}</span>
+                        <span className="aito-pending-mods">{i.selectedModifiers.map((m) => `${m.optionName}${m.quantity > 1 ? ` ×${m.quantity}` : ''}`).join(', ')}</span>
                       )}
                     </div>
                     <div className="aito-qty">
