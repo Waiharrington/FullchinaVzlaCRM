@@ -44,7 +44,7 @@ BEGIN
 
     SELECT i.id, u.id INTO v_ingredient_id, v_unit_id
     FROM fullchinavzla.ingredients i CROSS JOIN LATERAL (SELECT id FROM fullchinavzla.units WHERE symbol IN ('kg', 'Kg', 'KG') OR name ILIKE '%kilogram%' LIMIT 1) u
-    WHERE i.name ILIKE v_name LIMIT 1;
+    WHERE i.name ILIKE translate(v_name, 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU') LIMIT 1;
     IF v_ingredient_id IS NOT NULL AND v_unit_id IS NOT NULL THEN
       INSERT INTO fullchinavzla.modifier_option_ingredients (modifier_option_id, ingredient_id, quantity, unit_id, order_type_code)
       VALUES (v_option_id, v_ingredient_id, 0.25, v_unit_id, 'all') ON CONFLICT DO NOTHING;
