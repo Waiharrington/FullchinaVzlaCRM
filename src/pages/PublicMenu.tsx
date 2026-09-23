@@ -845,8 +845,24 @@ export function PublicMenu() {
     const nextEnabled = !instagramAudioEnabled
     setInstagramAudioEnabled(nextEnabled)
     document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video').forEach(video => {
+      const isActiveReel = video.dataset.active === 'true' && video.offsetParent !== null
+      if (!isActiveReel) {
+        video.muted = true
+        return
+      }
+
+      // The reel source is lazy-loaded after entering the tab. If the user
+      // taps the audio control before that timer fires, attach it here so
+      // unmuting and play() still happen in the same user gesture.
+      if (!video.src) {
+        const source = video.dataset.src || video.querySelector('source')?.dataset.src
+        if (source) {
+          video.src = source
+          video.load()
+        }
+      }
       video.muted = !nextEnabled
-      if (video.dataset.active === 'true' && video.offsetParent !== null) void video.play().catch(() => undefined)
+      void video.play().catch(() => undefined)
     })
   }
 
@@ -3063,19 +3079,21 @@ export function PublicMenu() {
               })}
             </div>
 
-            <footer className="public-variant-footer">
-              <div className="public-variant-quantity" aria-label="Cantidad">
-                <button type="button" onClick={() => setQuickVariantQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus size={15} /></button>
-                <span><small>Cantidad</small><strong>{quickVariantQuantity}</strong></span>
-                <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
-              </div>
-              <div className="public-variant-actions">
-                {quickSelectedVariant && quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>Personalizar</button>}
-                <button type="button" className="public-variant-add" disabled={!quickSelectedVariant} onClick={confirmQuickVariant}>
-                  <ShoppingCart size={16} />
-                  <span>{quickSelectedVariant ? <>Agregar · {money(quickSelectedVariant.product.price * quickVariantQuantity)}</> : 'Elige una presentación'}</span>
-                </button>
-              </div>
+            <footer className={`public-variant-footer ${quickSelectedVariant ? 'has-selection' : 'needs-selection'}`}>
+              {quickSelectedVariant ? <>
+                <div className="public-variant-quantity" aria-label="Cantidad">
+                  <button type="button" onClick={() => setQuickVariantQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus size={15} /></button>
+                  <span><small>Cantidad</small><strong>{quickVariantQuantity}</strong></span>
+                  <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
+                </div>
+                <div className="public-variant-actions">
+                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>Personalizar</button>}
+                  <button type="button" className="public-variant-add" onClick={confirmQuickVariant}>
+                    <ShoppingCart size={16} />
+                    <span>Agregar · {money(quickSelectedVariant.product.price * quickVariantQuantity)}</span>
+                  </button>
+                </div>
+              </> : <p className="public-variant-selection-hint" role="status"><span className="public-variant-tap-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12V5.75a1.75 1.75 0 0 1 3.5 0V12l.45-1.1a1.75 1.75 0 0 1 3.3.65v1.02l.45-.43a1.7 1.7 0 0 1 2.87 1.17l-.4 3.72A5 5 0 0 1 14.2 21h-1.45a5.1 5.1 0 0 1-3.95-1.87L5.6 15.2a1.6 1.6 0 0 1 2.26-2.27L9 14.1" /><path d="m6.1 5.1-1-1M18 6l1-1M4.5 9H3" /></svg></span><span>Toca una presentación para continuar</span></p>}
             </footer>
           </section>
         </div>,
