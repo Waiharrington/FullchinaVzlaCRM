@@ -419,7 +419,7 @@ export function PublicMenu() {
   const recommendedSwipeStart = useRef<number | null>(null)
   const recommendedWasSwiped = useRef(false)
   const [sidebarRecoIndex, setSidebarRecoIndex] = useState(0)
-  const [instagramActiveIndex, setInstagramActiveIndex] = useState(2)
+  const [instagramActiveIndex, setInstagramActiveIndex] = useState(0)
   const instagramReels = useMemo(() => instagramReelOrder(instagramActiveIndex), [instagramActiveIndex])
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
