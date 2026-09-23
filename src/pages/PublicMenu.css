@@ -12531,3 +12531,159 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
     paint-order: stroke fill !important;
   }
 }
+
+/* Instagram comparte el fondo sobrio de "Pide sin complicarte" en móvil y desktop. */
+.public-contact-instagram-studio,
+.public-mobile-view .public-contact-instagram-studio,
+.public-desktop-layout .public-contact-instagram-studio {
+  background:
+    linear-gradient(115deg, rgba(227, 27, 43, 0.07), transparent 38%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 5px),
+    #0d0f13 !important;
+}
+
+.public-instagram-reel-progress {
+  position: absolute !important;
+  z-index: 3 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  height: 3px !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, .25) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.public-instagram-reel[data-active='true'] .public-instagram-reel-progress {
+  opacity: 1 !important;
+}
+
+.public-instagram-reel-progress::after {
+  content: '' !important;
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: linear-gradient(90deg, #e31b2b, #ffc83d) !important;
+  box-shadow: 0 0 8px rgba(255, 200, 61, .7) !important;
+  transform: scaleX(var(--reel-progress, 0)) !important;
+  transform-origin: left center !important;
+}
+
+.public-desktop-layout .public-instagram-desktop-stage {
+  display: grid !important;
+  place-items: center !important;
+  height: auto !important;
+  min-height: clamp(350px, 29vw, 380px) !important;
+  margin: 6px 0 0 !important;
+  overflow: visible !important;
+}
+
+.public-desktop-layout .public-instagram-desktop-stage .public-instagram-desktop-reel {
+  position: relative !important;
+  inset: auto !important;
+  display: block !important;
+  width: clamp(185px, 15vw, 210px) !important;
+  height: clamp(300px, 25vw, 340px) !important;
+  border: 1px solid rgba(255, 200, 61, .78) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .62), 0 0 24px rgba(227, 27, 43, .24), inset 0 0 0 1px rgba(227, 27, 43, .42) !important;
+  transform: none !important;
+}
+
+.public-desktop-layout .public-instagram-desktop-reel video {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.public-desktop-layout .public-instagram-desktop-reel .public-instagram-mobile-frame-label {
+  position: absolute !important;
+  z-index: 2 !important;
+  top: 10px !important;
+  left: 10px !important;
+  right: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 7px 9px !important;
+  border: 1px solid rgba(255, 255, 255, .16) !important;
+  border-radius: 999px !important;
+  background: rgba(10, 10, 12, .68) !important;
+  color: #f4f0e8 !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+  text-shadow: 0 1px 5px #000 !important;
+  pointer-events: none !important;
+}
+
+.public-desktop-layout .public-instagram-desktop-reel .public-instagram-mobile-frame-label i {
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #ff3d32 !important;
+  box-shadow: 0 0 10px #ff3d32 !important;
+}
+
+.public-desktop-layout .public-instagram-desktop-reel .public-instagram-mobile-frame-label b {
+  margin-left: auto !important;
+  color: #ffd666 !important;
+}
+
+.public-desktop-layout .public-instagram-filmstrip {
+  position: relative !important;
+  display: flex !important;
+  justify-content: center !important;
+  gap: clamp(6px, .6vw, 8px) !important;
+  width: 100% !important;
+  margin: 5px auto 2px !important;
+  padding: 4px 0 !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  scrollbar-width: none !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.public-desktop-layout .public-instagram-filmstrip::-webkit-scrollbar { display: none !important; }
+
+.public-desktop-layout .public-instagram-filmstrip > button {
+  position: relative !important;
+  display: block !important;
+  flex: 0 0 clamp(46px, 4vw, 54px) !important;
+  width: clamp(46px, 4vw, 54px) !important;
+  height: clamp(70px, 6vw, 82px) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, .24) !important;
+  border-radius: 9px !important;
+  background: #17181d !important;
+  opacity: .72 !important;
+  cursor: pointer !important;
+  transition: transform .2s ease, opacity .2s ease, border-color .2s ease, box-shadow .2s ease !important;
+}
+
+.public-desktop-layout .public-instagram-filmstrip > button.is-active {
+  border: 2px solid #ffc83d !important;
+  opacity: 1 !important;
+  box-shadow: 0 0 0 1px rgba(227, 27, 43, .8), 0 0 16px rgba(227, 27, 43, .35) !important;
+  transform: translateY(-3px) !important;
+}
+
+.public-desktop-layout .public-instagram-filmstrip > button img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+.public-desktop-layout .public-instagram-filmstrip > button > span {
+  position: absolute !important;
+  right: 4px !important;
+  bottom: 3px !important;
+  color: #fff !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  text-shadow: 0 1px 4px #000 !important;
+}

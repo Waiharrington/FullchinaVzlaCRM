@@ -2249,20 +2249,25 @@ export function PublicMenu() {
                       rel="noopener noreferrer"
                       className={`public-instagram-reel is-reel-${position + 1}`}
                       data-active={isActive ? 'true' : undefined}
-                      onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
                       onClick={(event) => {
                         if (!isActive) {
                           event.preventDefault()
                           setInstagramActiveIndex(reelIndex)
                         }
                       }}
-                      aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
+                      aria-label={`Ver reel ${reelIndex + 1} de Full China en Instagram`}
                     >
-                      <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
+                      <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onTimeUpdate={event => {
+                        if (!isActive) return
+                        const video = event.currentTarget
+                        const progress = video.duration > 0 ? video.currentTime / video.duration : 0
+                        video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
+                      }} onEnded={() => isActive && !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
                         <source data-src={reel.src} type="video/mp4" />
                       </video>
                       <span className="public-instagram-reel-shade" aria-hidden="true" />
                       {isActive && <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(reelIndex + 1).padStart(2, '0')} / 06</b></span>}
+                      <span className="public-instagram-reel-progress" aria-hidden="true" />
                       <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
                     </a>
                     )
@@ -2752,34 +2757,41 @@ export function PublicMenu() {
                       {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
                     </button>
                   </div>
-                  <div className="public-instagram-reel-stage" aria-label="Reels de Full China en Instagram">
-                    {instagramReels.map(({ reel, position }) => {
-                      const reelIndex = INSTAGRAM_REELS.indexOf(reel)
-                      const isActive = reelIndex === instagramActiveIndex
+                  <div className="public-instagram-reel-stage public-instagram-desktop-stage" aria-label="Reel destacado de Full China">
+                    {(() => {
+                      const reel = INSTAGRAM_REELS[instagramActiveIndex]
                       return (
-                      <a
-                        key={reel.href}
-                        href={reel.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`public-instagram-reel is-reel-${position + 1}`}
-                        onPointerEnter={() => setInstagramActiveIndex(reelIndex)}
-                        onClick={(event) => {
-                          if (!isActive) {
-                            event.preventDefault()
-                            setInstagramActiveIndex(reelIndex)
-                          }
-                        }}
-                        aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
-                      >
-                        <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
-                          <source data-src={reel.src} type="video/mp4" />
-                        </video>
-                        <span className="public-instagram-reel-shade" aria-hidden="true" />
-                        <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
-                      </a>
+                        <a
+                          key={reel.href}
+                          href={reel.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="public-instagram-reel public-instagram-desktop-reel"
+                          data-active="true"
+                          aria-label={`Ver reel ${instagramActiveIndex + 1} de Full China en Instagram`}
+                        >
+                          <video autoPlay muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active="true" onTimeUpdate={event => {
+                            const video = event.currentTarget
+                            const progress = video.duration > 0 ? video.currentTime / video.duration : 0
+                            video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
+                          }} onEnded={() => !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
+                            <source data-src={reel.src} type="video/mp4" />
+                          </video>
+                          <span className="public-instagram-reel-shade" aria-hidden="true" />
+                          <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(instagramActiveIndex + 1).padStart(2, '0')} / 06</b></span>
+                          <span className="public-instagram-reel-progress" aria-hidden="true" />
+                          <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
+                        </a>
                       )
-                    })}
+                    })()}
+                  </div>
+                  <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
+                    {INSTAGRAM_REELS.map((reel, reelIndex) => (
+                      <button key={reel.href} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => setInstagramActiveIndex(reelIndex)}>
+                        <img src={reel.poster} alt="" loading="lazy" />
+                        <span>{String(reelIndex + 1).padStart(2, '0')}</span>
+                      </button>
+                    ))}
                   </div>
                   <a
                     href="https://www.instagram.com/fullchinavzla/?hl=es"
