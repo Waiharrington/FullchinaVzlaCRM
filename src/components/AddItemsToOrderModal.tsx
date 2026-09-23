@@ -11,6 +11,7 @@ import {
   type CartItem,
   type ProductModifierGroup,
   type SelectedModifier,
+  isQuantityModifierGroup,
 } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
 import { EmptyState } from './EmptyState'
@@ -105,6 +106,8 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
         init[g.modifierId] = {}
         if (g.minSelections >= 1 && g.maxSelections === 1 && g.options.length > 0) {
           init[g.modifierId][g.options[0].id] = 1
+        } else if (isQuantityModifierGroup(g)) {
+          g.options.slice(0, g.maxSelections ?? g.options.length).forEach((option) => { init[g.modifierId][option.id] = 1 })
         }
       }
       setModSel(init)
@@ -131,12 +134,29 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
       }
       const current = groupSel[optionId] ?? 0
       const totalSelected = Object.values(groupSel).reduce((s, n) => s + n, 0)
-      if (current > 0 && !group.allowRepeat) {
+      if (isQuantityModifierGroup(group)) {
+        if (current > 0) delete groupSel[optionId]
+        else if (group.maxSelections == null || totalSelected < group.maxSelections) groupSel[optionId] = 1
+      } else if (current > 0 && !group.allowRepeat) {
         delete groupSel[optionId]
       } else {
         if (group.maxSelections != null && totalSelected >= group.maxSelections) return prev
         groupSel[optionId] = group.allowRepeat ? current + 1 : 1
       }
+      return { ...prev, [group.modifierId]: groupSel }
+    })
+  }
+
+  const changeQuantityModifier = (group: ProductModifierGroup, optionId: string, delta: number) => {
+    if (!isQuantityModifierGroup(group)) return
+    setModSel((prev) => {
+      const current = prev[group.modifierId]?.[optionId] ?? 0
+      const total = Object.values(prev[group.modifierId] ?? {}).reduce((sum, qty) => sum + qty, 0)
+      if (delta > 0 && total >= (group.maxSelections ?? Number.MAX_SAFE_INTEGER)) return prev
+      const next = Math.max(0, current + delta)
+      const groupSel = { ...(prev[group.modifierId] ?? {}) }
+      if (next === 0) delete groupSel[optionId]
+      else groupSel[optionId] = next
       return { ...prev, [group.modifierId]: groupSel }
     })
   }
@@ -274,7 +294,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                             ) : (
                               <span className="aito-opt-incl">Incluido</span>
                             )}
-                            <span className="aito-opt-add">{selected ? 'Quitar' : 'Elegir'}</span>
+                            {isQuantityModifierGroup(group) ? <span className="quantity-modifier-controls"><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, -1) }} disabled={!selected} aria-label={`Quitar ${opt.name}`}>−</button><strong>{qty}</strong><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, 1) }} aria-label={`Agregar ${opt.name}`}>+</button></span> : <span className="aito-opt-add">{selected ? 'Quitar' : 'Elegir'}</span>}
                           </button>
                         )
                       })}

@@ -50,6 +50,12 @@ export interface ProductModifierGroup {
   options: ModifierOption[]
 }
 
+/** Grupos como la composición del Full Kilo: el total incluido se reparte
+ * entre opciones y cada opción puede repetirse sin recargo. */
+export function isQuantityModifierGroup(group: ProductModifierGroup): boolean {
+  return group.allowRepeat && group.maxSelections != null && group.maxSelections > 1 && group.options.length > 1
+}
+
 export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle' | 'other'
 
 export interface OrderPaymentComponent {

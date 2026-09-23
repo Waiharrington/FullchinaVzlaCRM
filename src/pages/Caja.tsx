@@ -26,6 +26,7 @@ import {
   getOccupiedTables,
   getMenuCategories,
   getFinancialAccounts,
+  isQuantityModifierGroup,
   type Product,
   type CartItem,
   type OrderResult,
@@ -624,6 +625,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         // Grupo obligatorio de selección única: preselecciona la primera opción.
         if (g.minSelections >= 1 && g.maxSelections === 1 && g.options.length > 0) {
           init[g.modifierId][g.options[0].id] = 1
+        } else if (isQuantityModifierGroup(g)) {
+          g.options.slice(0, g.maxSelections ?? g.options.length).forEach((option) => { init[g.modifierId][option.id] = 1 })
         }
       }
       setModifierSelections(init)
@@ -656,12 +659,32 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       }
       const current = groupSel[optionId] ?? 0
       const totalSelected = Object.values(groupSel).reduce((s, n) => s + n, 0)
-      if (current > 0 && !group.allowRepeat) {
+      if (isQuantityModifierGroup(group)) {
+        if (current > 0) {
+          delete groupSel[optionId]
+        } else if (group.maxSelections == null || totalSelected < group.maxSelections) {
+          groupSel[optionId] = 1
+        }
+      } else if (current > 0 && !group.allowRepeat) {
         delete groupSel[optionId]
       } else {
         if (group.maxSelections != null && totalSelected >= group.maxSelections) return prev
         groupSel[optionId] = group.allowRepeat ? current + 1 : 1
       }
+      return { ...prev, [group.modifierId]: groupSel }
+    })
+  }
+
+  const changeQuantityModifier = (group: ProductModifierGroup, optionId: string, delta: number) => {
+    if (!isQuantityModifierGroup(group)) return
+    setModifierSelections((prev) => {
+      const current = prev[group.modifierId]?.[optionId] ?? 0
+      const total = Object.values(prev[group.modifierId] ?? {}).reduce((sum, qty) => sum + qty, 0)
+      const next = Math.max(0, Math.min(current + delta, group.maxSelections ?? Number.MAX_SAFE_INTEGER))
+      if (delta > 0 && total >= (group.maxSelections ?? Number.MAX_SAFE_INTEGER)) return prev
+      const groupSel = { ...(prev[group.modifierId] ?? {}) }
+      if (next === 0) delete groupSel[optionId]
+      else groupSel[optionId] = next
       return { ...prev, [group.modifierId]: groupSel }
     })
   }
@@ -1433,7 +1456,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                             {opt.price > 0
                               ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact />
                               : <span className="variant-option-price" style={{ opacity: 0.6 }}>Incluido</span>}
-                            <span className="variant-option-add">{selected ? 'Quitar' : 'Elegir'}</span>
+                            {isQuantityModifierGroup(group) ? <span className="quantity-modifier-controls"><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, -1) }} disabled={!selected} aria-label={`Quitar ${opt.name}`}>−</button><strong>{qty}</strong><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, 1) }} aria-label={`Agregar ${opt.name}`}>+</button></span> : <span className="variant-option-add">{selected ? 'Quitar' : 'Elegir'}</span>}
                           </button>
                         )
                       })}

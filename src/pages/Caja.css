@@ -469,6 +469,10 @@
 .variant-option-copy small { color: #a1a1aa; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .variant-option-price { min-width: 108px; }
 .variant-option-add { padding: 8px 12px; background: #E31B2B; border-radius: 8px; font-size: 12px; font-weight: 800; }
+.quantity-modifier-controls { display: inline-flex; align-items: center; gap: 7px; padding: 4px; border: 1px solid rgba(255,77,61,.35); border-radius: 9px; background: rgba(255,77,61,.08); }
+.quantity-modifier-controls button { width: 25px; height: 25px; padding: 0; color: #fff; background: #e31b2b; border: 0; border-radius: 6px; font-size: 17px; line-height: 1; cursor: pointer; }
+.quantity-modifier-controls button:disabled { opacity: .35; cursor: not-allowed; }
+.quantity-modifier-controls strong { min-width: 14px; color: #fff; font-size: 12px; text-align: center; }
 
 .product-card-meta {
   display: flex;

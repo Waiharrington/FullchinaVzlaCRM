@@ -258,3 +258,4 @@
 @media (max-width: 380px) {
   .aito-grid { grid-template-columns: 1fr; }
 }
+.quantity-modifier-controls{display:inline-flex;align-items:center;gap:7px;padding:4px;border:1px solid rgba(227,27,43,.35);border-radius:9px;background:rgba(227,27,43,.08)}.quantity-modifier-controls button{width:25px;height:25px;padding:0;color:#fff;background:#e31b2b;border:0;border-radius:6px;font-size:17px;line-height:1;cursor:pointer}.quantity-modifier-controls button:disabled{opacity:.35;cursor:not-allowed}.quantity-modifier-controls strong{min-width:14px;color:#fff;font-size:12px;text-align:center}
