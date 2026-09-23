@@ -56,6 +56,29 @@ const INSTAGRAM_REELS = [
   { src: '/videos/instagram/reel-6.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-6.webp', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
 ] as const
 
+type InstagramNetworkInfo = {
+  type?: string
+  effectiveType?: string
+  saveData?: boolean
+  addEventListener?: (type: 'change', listener: EventListener) => void
+  removeEventListener?: (type: 'change', listener: EventListener) => void
+}
+
+function getInstagramNetworkInfo() {
+  return (navigator as Navigator & { connection?: InstagramNetworkInfo }).connection
+}
+
+function shouldSaveInstagramDataAutomatically() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
+  const connection = getInstagramNetworkInfo()
+  if (connection?.saveData || connection?.type === 'cellular') return true
+  if (['slow-2g', '2g', '3g'].includes(connection?.effectiveType ?? '')) return true
+  if (connection?.type === 'wifi' || connection?.type === 'ethernet') return false
+  // Algunos navegadores móviles no revelan si usan Wi-Fi o datos celulares.
+  // En esos teléfonos evitamos descargar reels en cadena de forma silenciosa.
+  return window.matchMedia('(max-width: 767px)').matches
+}
+
 function instagramReelOrder(activeIndex: number) {
   return Array.from({ length: INSTAGRAM_REELS.length }, (_, position) => ({
     reel: INSTAGRAM_REELS[(activeIndex - 2 + position + INSTAGRAM_REELS.length) % INSTAGRAM_REELS.length],
@@ -440,6 +463,7 @@ export function PublicMenu() {
   const [sidebarRecoIndex, setSidebarRecoIndex] = useState(0)
   const [instagramActiveIndex, setInstagramActiveIndex] = useState(0)
   const [instagramAudioEnabled, setInstagramAudioEnabled] = useState(false)
+  const [instagramDataSaverEnabled, setInstagramDataSaverEnabled] = useState(shouldSaveInstagramDataAutomatically)
   const instagramReels = useMemo(() => instagramReelOrder(instagramActiveIndex), [instagramActiveIndex])
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -838,6 +862,18 @@ export function PublicMenu() {
     }, 180)
     return () => window.clearTimeout(timer)
   }, [currentTab, instagramActiveIndex, instagramAudioEnabled])
+
+  useEffect(() => {
+    const updateDataSaver = () => setInstagramDataSaverEnabled(shouldSaveInstagramDataAutomatically())
+    const connection = getInstagramNetworkInfo()
+    connection?.addEventListener?.('change', updateDataSaver)
+    window.addEventListener('resize', updateDataSaver, { passive: true })
+    updateDataSaver()
+    return () => {
+      connection?.removeEventListener?.('change', updateDataSaver)
+      window.removeEventListener('resize', updateDataSaver)
+    }
+  }, [])
 
   const toggleInstagramAudio = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -2196,7 +2232,7 @@ export function PublicMenu() {
                   <h2>El wok en movimiento</h2>
                 </header>
                 <div className="public-instagram-intro">
-                  <p><span>Fuego alto.</span> El wok en acción.</p>
+                  <p><span>Fuego alto.</span> {instagramDataSaverEnabled ? 'Ahorro de datos: elige cada reel.' : 'El wok en acción.'}</p>
                   <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
                     {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
                   </button>
@@ -2222,7 +2258,7 @@ export function PublicMenu() {
                       }}
                       aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                     >
-                      <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
+                      <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
                         <source data-src={reel.src} type="video/mp4" />
                       </video>
                       <span className="public-instagram-reel-shade" aria-hidden="true" />
@@ -2711,7 +2747,7 @@ export function PublicMenu() {
                     <h2>El wok en movimiento</h2>
                   </header>
                   <div className="public-instagram-intro">
-                    <p><span>Fuego alto.</span> El wok en acción.</p>
+                    <p><span>Fuego alto.</span> {instagramDataSaverEnabled ? 'Ahorro de datos: elige cada reel.' : 'El wok en acción.'}</p>
                     <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
                       {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
                     </button>
@@ -2736,7 +2772,7 @@ export function PublicMenu() {
                         }}
                         aria-label={`Ver reel ${position + 1} de Full China en Instagram`}
                       >
-                        <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
+                        <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onEnded={() => isActive && !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
                           <source data-src={reel.src} type="video/mp4" />
                         </video>
                         <span className="public-instagram-reel-shade" aria-hidden="true" />
