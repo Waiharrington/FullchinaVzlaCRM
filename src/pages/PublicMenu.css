@@ -12693,7 +12693,7 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
     background-image:
       linear-gradient(90deg, rgba(3, 3, 4, .98) 0%, rgba(3, 3, 4, .92) 35%, rgba(3, 3, 4, .55) 55%, rgba(3, 3, 4, .05) 80%),
       url('/optimized/fondos/contacto-banner-mobile-chatgpt.webp') !important;
-    background-position: center, 42% center !important;
+    background-position: center, 8% center !important;
     background-size: auto, cover !important;
     background-repeat: no-repeat, no-repeat !important;
   }
