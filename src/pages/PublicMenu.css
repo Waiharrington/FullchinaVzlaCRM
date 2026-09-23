@@ -12697,6 +12697,10 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
     background-size: auto, cover !important;
     background-repeat: no-repeat, no-repeat !important;
   }
+
+  .public-mobile-view .public-contact-hero .public-hero-tag > svg {
+    display: none !important;
+  }
 }
 
 .public-contact-location-overlay > strong {
