@@ -7,6 +7,18 @@ import { dateKeyInTimeZone } from '../lib/money'
 import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
+const formatMessageDate = (value: string) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  const datePart = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(date)
+  const timePart = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Caracas', hour: 'numeric', minute: '2-digit', hour12: true,
+  }).format(date).toLowerCase()
+  return `${datePart} ${timePart}`
+}
+
 export function MarketingWhatsApp() {
   const MODAL_PAGE_SIZE = 10
   const { user } = useAuth()
@@ -244,15 +256,15 @@ export function MarketingWhatsApp() {
           <section className="wa-panel wa-history">
             <header className="wa-panel-header">
               <span className="wa-panel-icon wa-panel-icon--history"><MessageSquare size={19} /></span>
-              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Mensajes manuales y automatizados registrados.</p></div>
-              <span className="wa-count">{messages.length} envíos</span>
+              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Mensajes manuales y automatizados recientes.</p></div>
+              <span className="wa-count">{messages.length} recientes</span>
             </header>
 
             {messages.length === 0 ? (
               <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
             ) : (
               <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
-                {visibleMessages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{msg.sentAt}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
+                {visibleMessages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{formatMessageDate(msg.sentAt)}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
               </tbody></table><div className="wa-modal-pagination wa-history-pagination"><span>Mostrando {(historyPage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(historyPage * MODAL_PAGE_SIZE, messages.length)} de {messages.length}</span><div><button type="button" aria-label="Página anterior" disabled={historyPage === 1} onClick={() => setHistoryPage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {historyPage} de {historyPageCount}</strong><button type="button" aria-label="Página siguiente" disabled={historyPage === historyPageCount} onClick={() => setHistoryPage(page => page + 1)}><ChevronRight size={15} /></button></div></div></div>
             )}
           </section>
