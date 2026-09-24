@@ -282,7 +282,7 @@ export function RecetasReal() {
       unitId: item.unitId,
       unitSymbol: item.unitSymbol,
       baseQuantity: item.quantity,
-      overrideQuantity: Number((item.quantity * 4).toFixed(3)),
+      overrideQuantity: item.quantity * 4,
       active: true,
     })))
     setShowConsumeModal(true)
@@ -294,7 +294,7 @@ export function RecetasReal() {
     setConsumeServings(s)
     setConsumeItems((prev) => prev.map((item) => ({
       ...item,
-      overrideQuantity: Number((item.baseQuantity * s).toFixed(3)),
+      overrideQuantity: item.baseQuantity * s,
     })))
   }
 
@@ -1064,7 +1064,7 @@ export function RecetasReal() {
                     unitId: item.unitId,
                     unitSymbol: item.unitSymbol,
                     baseQuantity: item.quantity,
-                    overrideQuantity: Number((item.quantity * consumeServings).toFixed(3)),
+                    overrideQuantity: item.quantity * consumeServings,
                     active: true,
                   })))
                 }}
@@ -1083,7 +1083,7 @@ export function RecetasReal() {
                     unitId: item.unitId,
                     unitSymbol: item.unitSymbol,
                     baseQuantity: item.quantity,
-                    overrideQuantity: Number((item.quantity * consumeServings).toFixed(3)),
+                    overrideQuantity: item.quantity * consumeServings,
                     active: true,
                   })))
                 }}

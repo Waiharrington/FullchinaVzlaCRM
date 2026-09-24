@@ -146,7 +146,7 @@ const inRange = (value: string, start: string, end: string, startHour = '', endH
   const time = localTime(value)
   return time >= (startHour || '00:00') && time <= (endHour || '23:59')
 }
-const count = (value: number) => Number(value.toFixed(3)).toLocaleString('es-VE')
+const count = (value: number) => value.toLocaleString('es-VE', { maximumFractionDigits: 12 })
 const total = (rows: Array<{ amount: number }>) => formatUsd(rows.reduce((sum, row) => sum + row.amount, 0))
 const ordered = <T extends { amount: number }>(rows: T[]) => rows.sort((a, b) => b.amount - a.amount)
 const aggregate = <T>(items: T[], key: (item: T) => string, amount: (item: T) => number, quantity: (item: T) => number = () => 1) => {
