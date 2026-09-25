@@ -19,6 +19,7 @@ import {
   type CartItem,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
+import { DateField } from '../components/DateField'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
@@ -570,6 +571,7 @@ export function Comandas() {
   const [historyOrders, setHistoryOrders] = useState<ComandaOrder[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historySearch, setHistorySearch] = useState('')
+  const [historySelectedDate, setHistorySelectedDate] = useState('')
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
   const [closingNewOrder, setClosingNewOrder] = useState(false)
   const closeNewOrderModal = useCallback(() => {
@@ -1200,6 +1202,7 @@ export function Comandas() {
         return new Date(n.getFullYear(), n.getMonth(), 1)
       })
       setHistoryWeekStartKey(null)
+      setHistorySelectedDate('')
       then?.()
     }, 200)
   }
@@ -1236,8 +1239,29 @@ export function Comandas() {
     return weeks.reverse()
   }, [historyMonthCursor])
 
+  const handleHistoryDateChange = (value: string) => {
+    setHistorySelectedDate(value)
+    if (!value) {
+      setHistoryWeekStartKey(historyWeeksInMonth[0]?.key ?? null)
+      return
+    }
+    const [year, month] = value.split('-').map(Number)
+    setHistoryMonthCursor(new Date(year, month - 1, 1))
+    setHistoryWeekStartKey(null)
+  }
+
+  const clearHistoryDate = () => {
+    if (historySelectedDate) {
+      const [year, month, day] = historySelectedDate.split('-').map(Number)
+      const weekStart = mondayOf(new Date(year, month - 1, day))
+      setHistoryWeekStartKey(weekStart.toISOString().slice(0, 10))
+    }
+    setHistorySelectedDate('')
+  }
+
   useEffect(() => {
     if (!showHistoryModal) return
+    if (historySelectedDate) return
     if (historyWeeksInMonth.length === 0) {
       setHistoryWeekStartKey(null)
       return
@@ -1245,7 +1269,7 @@ export function Comandas() {
     if (!historyWeeksInMonth.some(w => w.key === historyWeekStartKey)) {
       setHistoryWeekStartKey(historyWeeksInMonth[0].key)
     }
-  }, [historyWeeksInMonth, showHistoryModal, historyWeekStartKey])
+  }, [historyWeeksInMonth, showHistoryModal, historyWeekStartKey, historySelectedDate])
 
   const canGoNextMonth = useMemo(() => {
     const now = new Date()
@@ -1363,6 +1387,10 @@ export function Comandas() {
     const filtered = filteredHistoryOrders.filter(order => {
       const d = parseDdMmYyyy(order.date)
       if (!d) return true
+      if (historySelectedDate) {
+        const orderDateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        return orderDateKey === historySelectedDate
+      }
       if (!selectedWeek) return false
       return d.getTime() >= selectedWeek.start.getTime() && d.getTime() <= selectedWeek.end.getTime()
     })
@@ -1388,7 +1416,7 @@ export function Comandas() {
       }
       return { key, label, orders }
     })
-  }, [filteredHistoryOrders, historyWeeksInMonth, historyWeekStartKey])
+  }, [filteredHistoryOrders, historyWeeksInMonth, historyWeekStartKey, historySelectedDate])
 
   // Simulation timer for elapsed mins
   useEffect(() => {
@@ -2539,7 +2567,7 @@ export function Comandas() {
                   type="button"
                   className="cmd-history-month-btn"
                   aria-label="Mes anterior"
-                  onClick={() => setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                  onClick={() => { setHistorySelectedDate(''); setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)) }}
                 >
                   <ChevronLeft size={16} />
                 </button>
@@ -2554,38 +2582,57 @@ export function Comandas() {
                   className="cmd-history-month-btn"
                   aria-label="Mes siguiente"
                   disabled={!canGoNextMonth}
-                  onClick={() => setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                  onClick={() => { setHistorySelectedDate(''); setHistoryMonthCursor(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)) }}
                 >
                   <ChevronRight size={16} />
                 </button>
               </div>
-              <div className="filter-dropdown-wrap" ref={historyYearMenuRef}>
-                <button
-                  type="button"
-                  className="cmd-history-year-btn"
-                  aria-label="Año"
-                  onClick={() => setShowHistoryYearMenu(v => !v)}
-                >
-                  <span>{historyMonthCursor.getFullYear()}</span>
-                  <ChevronDown size={12} />
-                </button>
-                {showHistoryYearMenu && (
-                  <div className="filter-dropdown-menu cmd-history-year-menu">
-                    {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i).map(y => (
-                      <button
-                        key={y}
-                        type="button"
-                        className={historyMonthCursor.getFullYear() === y ? 'active' : ''}
-                        onClick={() => {
-                          setHistoryMonthCursor(prev => new Date(y, prev.getMonth(), 1))
-                          setShowHistoryYearMenu(false)
-                        }}
-                      >
-                        {y}
-                      </button>
-                    ))}
-                  </div>
+              <div className="cmd-history-nav-actions">
+                <label className={`cmd-history-date-filter ${historySelectedDate ? 'active' : ''}`}>
+                  <Calendar size={15} />
+                  <span>Día</span>
+                  <DateField
+                    value={historySelectedDate}
+                    onChange={handleHistoryDateChange}
+                    className="cmd-history-date-input"
+                    calendar
+                    placeholder="Filtrar por día"
+                  />
+                </label>
+                {historySelectedDate && (
+                  <button type="button" className="cmd-history-clear-date" onClick={clearHistoryDate}>
+                    Ver semanas
+                  </button>
                 )}
+                <div className="filter-dropdown-wrap" ref={historyYearMenuRef}>
+                  <button
+                    type="button"
+                    className="cmd-history-year-btn"
+                    aria-label="Año"
+                    onClick={() => setShowHistoryYearMenu(v => !v)}
+                  >
+                    <span>{historyMonthCursor.getFullYear()}</span>
+                    <ChevronDown size={12} />
+                  </button>
+                  {showHistoryYearMenu && (
+                    <div className="filter-dropdown-menu cmd-history-year-menu">
+                      {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                        <button
+                          key={y}
+                          type="button"
+                          className={historyMonthCursor.getFullYear() === y ? 'active' : ''}
+                          onClick={() => {
+                            setHistorySelectedDate('')
+                            setHistoryMonthCursor(prev => new Date(y, prev.getMonth(), 1))
+                            setShowHistoryYearMenu(false)
+                          }}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -2597,7 +2644,7 @@ export function Comandas() {
                   role="tab"
                   aria-selected={historyWeekStartKey === w.key}
                   className={`cmd-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
-                  onClick={() => setHistoryWeekStartKey(w.key)}
+                  onClick={() => { setHistorySelectedDate(''); setHistoryWeekStartKey(w.key) }}
                 >
                   {w.label}
                 </button>

@@ -2670,6 +2670,65 @@
   color: #fff;
 }
 
+.cmd-history-nav-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.cmd-history-date-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 9px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #aaa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.cmd-history-date-filter:focus-within,
+.cmd-history-date-filter.active {
+  border-color: rgba(227, 27, 43, 0.55);
+  background: rgba(227, 27, 43, 0.08);
+  color: #fff;
+}
+.cmd-history-date-input {
+  width: 140px;
+  min-width: 140px;
+  height: 28px;
+  padding: 2px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #ccc;
+  cursor: pointer;
+  color-scheme: dark;
+}
+.cmd-history-date-input::-webkit-calendar-picker-indicator {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  opacity: 0.8;
+  cursor: pointer;
+}
+.cmd-history-clear-date {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ccc;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cmd-history-clear-date:hover { background: rgba(255, 255, 255, 0.11); color: #fff; }
+
 .cmd-history-year-btn {
   display: flex;
   align-items: center;
@@ -2945,6 +3004,14 @@
   }
   .cmd-history-toolbar {
     flex-wrap: wrap;
+  }
+  .cmd-history-nav {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .cmd-history-nav-actions {
+    width: 100%;
+    justify-content: space-between;
   }
   .cmd-history-range {
     width: 100%;
