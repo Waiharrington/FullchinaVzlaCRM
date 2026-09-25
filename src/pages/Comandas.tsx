@@ -19,6 +19,7 @@ import {
   type CartItem,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
+import { CalendarPicker } from '../components/CalendarPicker'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
@@ -297,13 +298,6 @@ const COLUMNS: Array<{ key: ComandaStatus; label: string; icon: React.ReactNode;
   { key: 'delivered', label: 'Entregadas', icon: <Truck size={16} />, color: '#3b82f6' },
 ]
 
-function toLocalDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function HistoryDayPicker({
   value,
   monthCursor,
@@ -313,141 +307,17 @@ function HistoryDayPicker({
   monthCursor: Date
   onChange: (value: string) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [viewMonth, setViewMonth] = useState(() => new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1))
-  const triggerRef = useRef<HTMLButtonElement>(null)
-  const popoverRef = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
-  const today = new Date()
-  const todayKey = toLocalDateKey(today)
-  const selected = value ? new Date(`${value}T12:00:00`) : null
-  const monthTitle = viewMonth.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
-  const selectedLabel = selected
-    ? selected.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    : 'Elegir fecha'
-
-  const updatePosition = useCallback(() => {
-    const rect = triggerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const width = 292
-    const height = popoverRef.current?.offsetHeight ?? 344
-    const left = Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12))
-    const below = rect.bottom + 8
-    const top = below + height <= window.innerHeight - 12 ? below : Math.max(12, rect.top - height - 8)
-    setPosition({ top, left })
-  }, [])
-
-  useEffect(() => {
-    if (!open) return
-    updatePosition()
-    const handlePointerDown = (event: PointerEvent) => {
-      if (triggerRef.current?.contains(event.target as Node) || popoverRef.current?.contains(event.target as Node)) return
-      setOpen(false)
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    window.addEventListener('resize', updatePosition)
-    window.addEventListener('scroll', updatePosition, true)
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('resize', updatePosition)
-      window.removeEventListener('scroll', updatePosition, true)
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open, updatePosition])
-
-  const openPicker = () => {
-    setViewMonth(selected
-      ? new Date(selected.getFullYear(), selected.getMonth(), 1)
-      : new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1))
-    setOpen(current => !current)
-  }
-
-  const firstOfMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1)
-  const mondayOffset = (firstOfMonth.getDay() + 6) % 7
-  const gridStart = new Date(firstOfMonth.getFullYear(), firstOfMonth.getMonth(), 1 - mondayOffset)
-  const days = Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index)
-    return { date, key: toLocalDateKey(date), inMonth: date.getMonth() === viewMonth.getMonth() }
-  })
-  const canGoNext = viewMonth.getFullYear() < today.getFullYear()
-    || (viewMonth.getFullYear() === today.getFullYear() && viewMonth.getMonth() < today.getMonth())
-
-  const chooseDate = (dateKey: string) => {
-    onChange(dateKey)
-    setOpen(false)
-  }
-
   return (
-    <>
-      <button
-        ref={triggerRef}
-        type="button"
-        className={`cmd-history-date-filter ${value ? 'active' : ''} ${open ? 'is-open' : ''}`}
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={openPicker}
-      >
-        <Calendar size={15} />
-        <span>Día</span>
-        <span className="cmd-history-date-label">{selectedLabel}</span>
-        <ChevronDown size={13} />
-      </button>
-      {open && createPortal(
-        <div
-          ref={popoverRef}
-          className="cmd-history-calendar-popover"
-          role="dialog"
-          aria-label="Seleccionar día del historial"
-          style={{ top: position?.top ?? -1000, left: position?.left ?? -1000 }}
-        >
-          <div className="cmd-history-calendar-header">
-            <button type="button" aria-label="Mes anterior" onClick={() => setViewMonth(month => new Date(month.getFullYear(), month.getMonth() - 1, 1))}>
-              <ChevronLeft size={16} />
-            </button>
-            <span>{monthTitle}</span>
-            <button type="button" aria-label="Mes siguiente" disabled={!canGoNext} onClick={() => setViewMonth(month => new Date(month.getFullYear(), month.getMonth() + 1, 1))}>
-              <ChevronRight size={16} />
-            </button>
-          </div>
-          <div className="cmd-history-calendar-grid" role="grid">
-            {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((day, index) => (
-              <span key={`${day}-${index}`} className="cmd-history-calendar-weekday" role="columnheader">{day}</span>
-            ))}
-            {days.map(({ date, key, inMonth }) => {
-              const isFuture = key > todayKey
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  role="gridcell"
-                  disabled={isFuture}
-                  aria-label={date.toLocaleDateString('es-VE', { dateStyle: 'full' })}
-                  aria-pressed={value === key}
-                  className={[
-                    'cmd-history-calendar-day',
-                    !inMonth && 'outside',
-                    value === key && 'selected',
-                    key === todayKey && 'today',
-                  ].filter(Boolean).join(' ')}
-                  onClick={() => chooseDate(key)}
-                >
-                  {date.getDate()}
-                </button>
-              )
-            })}
-          </div>
-          <div className="cmd-history-calendar-footer">
-            <span>Selecciona un día para filtrar</span>
-            <button type="button" onClick={() => chooseDate(todayKey)}>Hoy</button>
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
+    <CalendarPicker
+      value={value}
+      onChange={onChange}
+      monthCursor={monthCursor}
+      label="Día"
+      placeholder="Elegir fecha"
+      trigger="field"
+      disableFuture
+      className={`cmd-history-date-filter ${value ? 'active' : ''}`}
+    />
   )
 }
 

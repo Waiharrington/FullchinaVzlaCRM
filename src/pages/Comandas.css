@@ -2690,8 +2690,12 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  min-height: 32px;
+  font-size: 12px;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
+.cmd-history-date-filter .fc-calendar-prefix { flex: 0 0 auto; }
+.cmd-history-date-filter .fc-calendar-value { flex: 0 0 auto; }
 .cmd-history-date-filter:hover,
 .cmd-history-date-filter:focus-visible,
 .cmd-history-date-filter.active,
@@ -2706,122 +2710,6 @@
 }
 .cmd-history-date-filter.active .cmd-history-date-label,
 .cmd-history-date-filter.is-open .cmd-history-date-label {
-  color: #fff;
-}
-.cmd-history-calendar-popover {
-  position: fixed;
-  z-index: 100000;
-  width: 292px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 14px;
-  background: #191a1f;
-  color: #f4f4f5;
-  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(227, 27, 43, 0.08);
-  animation: cmd-calendar-in 120ms ease-out;
-}
-@keyframes cmd-calendar-in {
-  from { opacity: 0; transform: translateY(4px) scale(0.985); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-.cmd-history-calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1px 10px;
-  text-transform: capitalize;
-  font-size: 13px;
-  font-weight: 700;
-}
-.cmd-history-calendar-header button {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  color: #d4d4d8;
-  cursor: pointer;
-}
-.cmd-history-calendar-header button:hover:not(:disabled) {
-  border-color: rgba(227, 27, 43, 0.5);
-  color: #fff;
-}
-.cmd-history-calendar-header button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-.cmd-history-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 3px;
-}
-.cmd-history-calendar-weekday,
-.cmd-history-calendar-day {
-  display: grid;
-  width: 34px;
-  height: 32px;
-  place-items: center;
-  justify-self: center;
-}
-.cmd-history-calendar-weekday {
-  height: 26px;
-  color: #85858f;
-  font-size: 10px;
-  font-weight: 700;
-}
-.cmd-history-calendar-day {
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: #e4e4e7;
-  font-size: 12px;
-  cursor: pointer;
-  transition: background 100ms ease, color 100ms ease, border-color 100ms ease;
-}
-.cmd-history-calendar-day:hover:not(:disabled) {
-  border-color: rgba(227, 27, 43, 0.48);
-  background: rgba(227, 27, 43, 0.13);
-  color: #fff;
-}
-.cmd-history-calendar-day.outside { color: #666671; }
-.cmd-history-calendar-day.today:not(.selected) {
-  border-color: rgba(227, 27, 43, 0.55);
-  color: #ff737d;
-}
-.cmd-history-calendar-day.selected {
-  background: #e31b2b;
-  color: #fff;
-  font-weight: 700;
-  box-shadow: 0 3px 10px rgba(227, 27, 43, 0.28);
-}
-.cmd-history-calendar-day:disabled {
-  color: #45454d;
-  cursor: not-allowed;
-}
-.cmd-history-calendar-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 10px;
-  padding-top: 9px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  color: #85858f;
-  font-size: 10px;
-}
-.cmd-history-calendar-footer button {
-  padding: 5px 9px;
-  border: 0;
-  border-radius: 7px;
-  background: rgba(227, 27, 43, 0.12);
-  color: #ff737d;
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.cmd-history-calendar-footer button:hover {
-  background: rgba(227, 27, 43, 0.22);
   color: #fff;
 }
 .cmd-history-clear-date {

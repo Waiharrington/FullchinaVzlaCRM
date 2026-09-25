@@ -297,6 +297,7 @@
   font-size: 14px;
   box-sizing: border-box;
 }
+.nom-field > .fc-date-field-shell { width: 100%; }
 
 .nom-field .num-stepper {
   width: 100%;

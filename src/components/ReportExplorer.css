@@ -23,6 +23,7 @@
 .report-filters, .report-presets, .report-result-heading, .report-result-heading > div, .report-pagination { display: flex; flex-wrap: wrap; gap: .65rem; align-items: end; }
 .report-filters label { display: flex; flex-direction: column; gap: .35rem; color: var(--text-muted); font-size: .76rem; }
 .report-filters input { background: #242426; color: var(--text-primary); border: 1px solid var(--border-color); border-radius: .7rem; padding: .65rem .75rem; font: inherit; }
+.report-filters .report-date-picker { min-width: 155px; min-height: 38px; padding: .55rem .7rem; border-color: var(--border-color); border-radius: .7rem; background: #242426; font: inherit; font-size: .8rem; }
 .report-filters button, .report-presets button, .report-result-heading button, .report-pagination button { display: flex; gap: .4rem; align-items: center; border: 1px solid var(--border-color); background: #28282a; color: var(--text-primary); border-radius: .7rem; padding: .6rem .8rem; cursor: pointer; font: inherit; font-size: .78rem; }
 .report-filters .report-refresh { background: #d9182a; border-color: #d9182a; color: white; font-weight: 700; }
 .report-presets { margin: 0 0 0 .35rem; padding-left: .5rem; border-left: 1px solid var(--border-color); }

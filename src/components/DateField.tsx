@@ -1,4 +1,5 @@
 import { useEffect, useState, type InputHTMLAttributes } from 'react'
+import { CalendarPicker } from './CalendarPicker'
 
 // Convierte una fecha ISO (yyyy-mm-dd) al formato que el usuario escribe (dd/mm/aaaa).
 function isoToDisplay(iso: string): string {
@@ -34,10 +35,12 @@ interface DateFieldProps {
   id?: string
   name?: InputHTMLAttributes<HTMLInputElement>['name']
   calendar?: boolean
+  showCalendarIcon?: boolean
+  disableFuture?: boolean
 }
 
-/** Campo de fecha escrito a mano (dd/mm/aaaa), sin calendario nativo. */
-export function DateField({ value, onChange, required, className, placeholder = 'dd/mm/aaaa', id, name, calendar = false }: DateFieldProps) {
+/** Campo de fecha uniforme dd/mm/aaaa con calendario oscuro compartido. */
+export function DateField({ value, onChange, required, className, placeholder = 'dd/mm/aaaa', id, name, calendar = false, showCalendarIcon = true, disableFuture = false }: DateFieldProps) {
   const [text, setText] = useState(() => isoToDisplay(value))
 
   // Si el valor viene de afuera (p. ej. se limpia el formulario), refleja el cambio.
@@ -47,15 +50,15 @@ export function DateField({ value, onChange, required, className, placeholder = 
 
   if (calendar) {
     return (
-      <input
-        type="date"
+      <CalendarPicker
         id={id}
-        name={name}
-        className={className}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        required={required}
-        aria-label={placeholder}
+        onChange={onChange}
+        placeholder={placeholder}
+        trigger="field"
+        className={className}
+        showCalendarIcon={showCalendarIcon}
+        disableFuture={disableFuture}
       />
     )
   }
@@ -69,18 +72,21 @@ export function DateField({ value, onChange, required, className, placeholder = 
   }
 
   return (
-    <input
-      type="text"
-      inputMode="numeric"
-      autoComplete="off"
-      id={id}
-      name={name}
-      className={className}
-      value={text}
-      onChange={(e) => handleChange(e.target.value)}
-      placeholder={placeholder}
-      maxLength={10}
-      required={required}
-    />
+    <div className="fc-date-field-shell">
+      <input
+        type="text"
+        inputMode="numeric"
+        autoComplete="off"
+        id={id}
+        name={name}
+        className={className}
+        value={text}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder={placeholder}
+        maxLength={10}
+        required={required}
+      />
+      <CalendarPicker value={value} onChange={onChange} placeholder="Seleccionar fecha" showCalendarIcon={showCalendarIcon} disableFuture={disableFuture} />
+    </div>
   )
 }
