@@ -339,6 +339,7 @@ export interface PurchaseItem {
   unitSymbol: string
   unitCost: number
   total: number
+  stockLocation: 'warehouse' | 'operational'
 }
 
 export interface SellableProduct {
@@ -4012,7 +4013,7 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, is_voided, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
       suppliers(name),
       financial_accounts(name,currency),
-      purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, ingredients(name), units(symbol)),
+      purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, stock_location, ingredients(name), units(symbol)),
       purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, financial_accounts(name))
     `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
     if (allPages) query = query.range(offset, offset + 499)
@@ -4035,6 +4036,7 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       unitSymbol: ((pi.units as unknown as Record<string, unknown>)?.symbol as string) ?? '',
       unitCost: Number(pi.unit_cost),
       total: Number(pi.quantity) * Number(pi.unit_cost),
+      stockLocation: (pi.stock_location as 'warehouse' | 'operational') ?? 'warehouse',
     }))
     return {
       id: p.id as string,
@@ -4161,6 +4163,7 @@ export async function createPurchase(params: {
     quantity: number
     unitId: string
     unitCost: number
+    stockLocation?: 'warehouse' | 'operational'
   }>
 }): Promise<string> {
   const sb = client()
@@ -4213,6 +4216,7 @@ export async function createPurchase(params: {
         quantity: item.quantity,
         unit_id: item.unitId,
         unit_cost: item.unitCost,
+        stock_location: item.stockLocation ?? 'operational',
       })),
     )
     if (itemsErr) throw itemsErr

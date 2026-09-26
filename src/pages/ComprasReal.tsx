@@ -23,7 +23,8 @@ import { EmptyState } from '../components/EmptyState'
 import { confirmDialog } from '../components/ConfirmDialog'
 import './ComprasReal.css'
 
-interface ItemForm { ingredientId: string; quantity: string; unitId: string; unitCost: string }
+interface ItemForm { ingredientId: string; quantity: string; unitId: string; unitCost: string; stockLocation: 'warehouse' | 'operational' }
+type PurchaseCostCurrency = 'VES' | 'USD'
 const PAGE_SIZE = 8
 type PaidFilter = 'todos' | 'pagados' | 'pendientes'
 const PAYMENT_METHODS = [
@@ -55,6 +56,7 @@ export function ComprasReal() {
   const [markPaid, setMarkPaid] = useState(true)
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [items, setItems] = useState<ItemForm[]>([])
+  const [costCurrency, setCostCurrency] = useState<PurchaseCostCurrency>('VES')
   const [purchaseSources, setPurchaseSources] = useState<Array<{ accountId: string; amount: string; reference: string }>>([])
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null)
   const [editingOriginal, setEditingOriginal] = useState<Purchase | null>(null)
@@ -182,7 +184,7 @@ export function ComprasReal() {
     updatePurchaseSource(i, { amount: String(Math.round(native * 100) / 100) })
   }
 
-  const addItem = () => setItems([...items, { ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }])
+  const addItem = () => setItems([...items, { ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0', stockLocation: 'operational' }])
   const removeItem = (i: number) => setItems(items.filter((_, x) => x !== i))
   const changeItem = (i: number, f: keyof ItemForm, v: string) => setItems(items.map((it, x) => {
     if (x !== i) return it
@@ -191,17 +193,18 @@ export function ComprasReal() {
     return up
   }))
 
-  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setMarkPaid(true); setPurchaseSources([]); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
+  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setCostCurrency('VES'); setMarkPaid(true); setPurchaseSources([]); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
 
   const openPurchaseForm = () => {
     resetForm()
     setClosingForm(false)
-    setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0' }])
+    setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0', stockLocation: 'operational' }])
     setPurchaseSources([{ accountId: '', amount: '', reference: '' }])
     setShowForm(true)
   }
 
   const openEditPurchase = (p: Purchase) => {
+    setCostCurrency('VES')
     setEditingPurchaseId(p.id)
     setEditingOriginal(p)
     setSupplierId(p.supplierId)
@@ -209,7 +212,7 @@ export function ComprasReal() {
     setInvoiceNumber(p.invoiceNumber ?? '')
     setNotes(p.notes ?? '')
     setMarkPaid(p.isPaid)
-    setItems(p.items.map((it) => ({ ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost) })))
+    setItems(p.items.map((it) => ({ ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost), stockLocation: it.stockLocation })))
     setPurchaseSources(p.payments.length > 0
       ? p.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '' }))
       : [{ accountId: p.accountId ?? '', amount: '', reference: p.paymentReference ?? '' }])
@@ -220,6 +223,7 @@ export function ComprasReal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supplierId || items.length === 0) return
+    if (costCurrency === 'VES' && items.some((item) => (parseFloat(item.unitCost) || 0) > 0) && effectiveBcvRate <= 0) { setError('No hay una tasa BCV válida para registrar costos en bolívares.'); return }
     if (markPaid) {
       if (!purchaseSourcesValid) { setError('Completa las cuentas de pago (cuenta y monto).'); return }
       if (purchaseSources.some((r) => accounts.find((a) => a.id === r.accountId)?.currency === 'VES') && effectiveBcvRate <= 0) { setError('No hay una tasa BCV válida para registrar pagos en bolívares'); return }
@@ -234,7 +238,7 @@ export function ComprasReal() {
       supplierId, purchaseDate, invoiceNumber: invoiceNumber.trim() || undefined,
       notes: notes.trim() || undefined, userId: user?.id ?? '', isPaid: markPaid,
       exchangeRate: markPaid ? effectiveBcvRate : null, payments,
-      items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0 })),
+      items: items.map((it) => ({ ingredientId: it.ingredientId, quantity: parseFloat(it.quantity) || 0, unitId: it.unitId, unitCost: parseFloat(it.unitCost) || 0, stockLocation: it.stockLocation })),
     }
     try {
       if (editingPurchaseId && editingOriginal) {
@@ -253,7 +257,7 @@ export function ComprasReal() {
             userId: user?.id ?? '', isPaid: original.isPaid, exchangeRate: original.exchangeRate,
             payments: original.payments.length > 0 ? original.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, exchangeRate: pp.exchangeRate, method: pp.method, reference: pp.reference })) : undefined,
             accountId: original.accountId, paymentCurrency: original.paymentCurrency, paymentMethod: original.paymentMethod, paymentReference: original.paymentReference,
-            items: original.items.map((it) => ({ ingredientId: it.ingredientId, quantity: it.quantity, unitId: it.unitId, unitCost: it.unitCost })),
+            items: original.items.map((it) => ({ ingredientId: it.ingredientId, quantity: it.quantity, unitId: it.unitId, unitCost: it.unitCost, stockLocation: it.stockLocation })),
           }).catch(() => {})
           throw createErr
         }
@@ -288,7 +292,7 @@ export function ComprasReal() {
       const unit = units.find((u) => u.id === unitId)
       const ing: Ingredient = { id, name: newIngredientName.trim(), unitId, unitName: unit?.name ?? '', unitSymbol: unit?.symbol ?? '', isActive: true, currentStock: 0, pricePerUnit: null, stockValue: null, inventoryClass: 'raw_material' }
       setIngredients((prev) => [...prev, ing].sort((a, b) => a.name.localeCompare(b.name)))
-      setItems((prev) => [...prev, { ingredientId: id, quantity: '1', unitId, unitCost: '0' }])
+      setItems((prev) => [...prev, { ingredientId: id, quantity: '1', unitId, unitCost: '0', stockLocation: 'operational' }])
       setShowIngredientForm(false); setNewIngredientName(''); setNewIngredientUnitId('')
       flash(`Ingrediente "${ing.name}" creado y agregado a la compra`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error creando ingrediente') }
@@ -438,8 +442,12 @@ export function ComprasReal() {
               </div>
             )}
 
+            <div className="cmp-items-scroll">
             <div className="cmp-items-head">
-              <span>Ingrediente</span><span>Cantidad</span><span>Unidad</span><span>Costo unitario</span><span style={{ textAlign: 'right' }}>Subtotal</span><span></span>
+              <span>Ingrediente</span><span>Cantidad</span><span>Unidad</span><span className="cmp-cost-heading"><span>Costo unitario</span><span className="cmp-cost-currency" aria-label="Moneda del costo unitario">
+                <button type="button" className={costCurrency === 'VES' ? 'active' : ''} onClick={() => setCostCurrency('VES')} aria-pressed={costCurrency === 'VES'}>Bs</button>
+                <button type="button" className={costCurrency === 'USD' ? 'active' : ''} onClick={() => setCostCurrency('USD')} aria-pressed={costCurrency === 'USD'} aria-label="Mostrar costos en dólares">$</button>
+              </span></span><span>Destino</span><span style={{ textAlign: 'right' }}>Subtotal</span><span></span>
             </div>
             {items.map((it, i) => {
               const sub = (parseFloat(it.quantity) || 0) * (parseFloat(it.unitCost) || 0)
@@ -448,15 +456,24 @@ export function ComprasReal() {
                   <SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />
                   <NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} />
                   <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
-                  <NumberStepper prefix="$" step={0.01} min={0} value={it.unitCost} onChange={(v) => changeItem(i, 'unitCost', v)} />
+                  <NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={costCurrency === 'VES' ? 0.01 : 0.01} min={0} value={costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 100) / 100) : '') : it.unitCost} onChange={(v) => {
+                    const entered = Number.parseFloat(v.replace(',', '.')) || 0
+                    const costUsd = costCurrency === 'VES' ? (effectiveBcvRate > 0 ? entered / effectiveBcvRate : 0) : entered
+                    changeItem(i, 'unitCost', String(costUsd))
+                  }} disabled={costCurrency === 'VES' && effectiveBcvRate <= 0} />
+                  <StyledSelect aria-label={`Destino de ${ingredients.find((ingredient) => ingredient.id === it.ingredientId)?.name ?? 'ítem'}`} value={it.stockLocation} onChange={(e) => changeItem(i, 'stockLocation', e.target.value)}>
+                    <option value="operational">Inventario operativo</option>
+                    <option value="warehouse">Almacén</option>
+                  </StyledSelect>
                   <span className="cmp-subtotal" style={{ textAlign: 'right' }}>{formatUsdPrecise(sub)}</span>
                   <button type="button" className="cmp-del" onClick={() => removeItem(i)}><Trash2 size={16} /></button>
                 </div>
               )
             })}
+            </div>
             {items.length === 0 && <p style={{ color: '#71717a', fontSize: 13 }}>Agrega ítems a la compra.</p>}
             <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
-              <button type="button" className="cmp-add-item" onClick={addItem}><Plus size={14} /> Agregar ítem</button>
+              <button type="button" className="cmp-add-item" onClick={addItem}><Plus size={14} /> Agregar ítem del inventario</button>
               <button type="button" className="cmp-ghost-btn" style={{ padding: '8px 14px' }} onClick={() => setShowIngredientForm(!showIngredientForm)}><Plus size={14} /> Nuevo Ingrediente</button>
             </div>
 
@@ -586,7 +603,7 @@ export function ComprasReal() {
             <div style={{ margin: '12px 0 4px', fontSize: 12, color: '#71717a', textTransform: 'uppercase' }}>Ítems</div>
             {detail.items.map((it) => (
               <div className="cmp-detail-row" key={it.id}>
-                <span>{it.ingredientName} · {it.quantity} {it.unitSymbol} × {formatUsdPrecise(it.unitCost)}</span>
+                <span>{it.ingredientName} · {it.quantity} {it.unitSymbol} × {formatUsdPrecise(it.unitCost)}<small className="cmp-item-destination">{it.stockLocation === 'warehouse' ? 'Almacén' : 'Inventario operativo'}</small></span>
                 <span className="cmp-subtotal">{formatUsdPrecise(it.total)}</span>
               </div>
             ))}
