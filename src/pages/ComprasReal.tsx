@@ -456,7 +456,7 @@ export function ComprasReal() {
                   <SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />
                   <NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} />
                   <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
-                  <NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={costCurrency === 'VES' ? 0.01 : 0.01} min={0} value={costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 100) / 100) : '') : it.unitCost} onChange={(v) => {
+                  <NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={0.01} min={0} hideControls allowComma value={costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 100) / 100) : '') : it.unitCost} onChange={(v) => {
                     const entered = Number.parseFloat(v.replace(',', '.')) || 0
                     const costUsd = costCurrency === 'VES' ? (effectiveBcvRate > 0 ? entered / effectiveBcvRate : 0) : entered
                     changeItem(i, 'unitCost', String(costUsd))
