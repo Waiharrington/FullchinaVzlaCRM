@@ -96,7 +96,7 @@
 .cmp-items-scroll { overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 4px; }
 .cmp-items-head, .cmp-item-row { display: grid; grid-template-columns: minmax(220px, 2fr) 74px 86px 120px 140px 95px 34px; gap: 10px; align-items: center; min-width: 830px; }
 .cmp-items-head { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #71717a; padding: 0 2px 8px; }
-.cmp-cost-heading { display: flex; align-items: center; justify-content: space-between; gap: 4px; white-space: nowrap; }
+.cmp-cost-heading { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; white-space: nowrap; }
 .cmp-cost-currency { display: inline-flex; align-items: center; padding: 2px; gap: 1px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; background: #1c1c22; }
 .cmp-cost-currency button { min-width: 23px; padding: 3px 5px; border: 0; border-radius: 5px; background: transparent; color: #a1a1aa; font: inherit; font-size: 10px; font-weight: 800; line-height: 1; cursor: pointer; }
 .cmp-cost-currency button.active { background: #e11d2a; color: #fff; }
