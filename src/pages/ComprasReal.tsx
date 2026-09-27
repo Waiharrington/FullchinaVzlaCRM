@@ -57,6 +57,7 @@ export function ComprasReal() {
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [items, setItems] = useState<ItemForm[]>([])
   const [costCurrency, setCostCurrency] = useState<PurchaseCostCurrency>('VES')
+  const [unitCostDrafts, setUnitCostDrafts] = useState<Record<number, string>>({})
   const [purchaseSources, setPurchaseSources] = useState<Array<{ accountId: string; amount: string; reference: string }>>([])
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null)
   const [editingOriginal, setEditingOriginal] = useState<Purchase | null>(null)
@@ -184,16 +185,32 @@ export function ComprasReal() {
     updatePurchaseSource(i, { amount: String(Math.round(native * 100) / 100) })
   }
 
-  const addItem = () => setItems([...items, { ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0', stockLocation: 'operational' }])
-  const removeItem = (i: number) => setItems(items.filter((_, x) => x !== i))
+  const addItem = () => {
+    setUnitCostDrafts({})
+    setItems([...items, { ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0', stockLocation: 'operational' }])
+  }
+  const removeItem = (i: number) => {
+    setUnitCostDrafts({})
+    setItems(items.filter((_, x) => x !== i))
+  }
   const changeItem = (i: number, f: keyof ItemForm, v: string) => setItems(items.map((it, x) => {
     if (x !== i) return it
     const up = { ...it, [f]: v }
     if (f === 'ingredientId') { const ing = ingredients.find((y) => y.id === v); if (ing) up.unitId = ing.unitId }
     return up
   }))
+  const updateUnitCostDraft = (i: number, raw: string) => {
+    setUnitCostDrafts((prev) => ({ ...prev, [i]: raw }))
+    const entered = Number.parseFloat(raw.replace(',', '.')) || 0
+    const costUsd = costCurrency === 'VES' ? (effectiveBcvRate > 0 ? entered / effectiveBcvRate : 0) : entered
+    changeItem(i, 'unitCost', String(costUsd))
+  }
+  const switchCostCurrency = (currency: PurchaseCostCurrency) => {
+    setUnitCostDrafts({})
+    setCostCurrency(currency)
+  }
 
-  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setCostCurrency('VES'); setMarkPaid(true); setPurchaseSources([]); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
+  const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setCostCurrency('VES'); setUnitCostDrafts({}); setMarkPaid(true); setPurchaseSources([]); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null) }
 
   const openPurchaseForm = () => {
     resetForm()
@@ -205,6 +222,7 @@ export function ComprasReal() {
 
   const openEditPurchase = (p: Purchase) => {
     setCostCurrency('VES')
+    setUnitCostDrafts({})
     setEditingPurchaseId(p.id)
     setEditingOriginal(p)
     setSupplierId(p.supplierId)
@@ -445,22 +463,19 @@ export function ComprasReal() {
             <div className="cmp-items-scroll">
             <div className="cmp-items-head">
               <span>Ingrediente</span><span>Cantidad</span><span>Unidad</span><span className="cmp-cost-heading"><span>Costo unitario</span><span className="cmp-cost-currency" aria-label="Moneda del costo unitario">
-                <button type="button" className={costCurrency === 'VES' ? 'active' : ''} onClick={() => setCostCurrency('VES')} aria-pressed={costCurrency === 'VES'}>Bs</button>
-                <button type="button" className={costCurrency === 'USD' ? 'active' : ''} onClick={() => setCostCurrency('USD')} aria-pressed={costCurrency === 'USD'} aria-label="Mostrar costos en dólares">$</button>
+                <button type="button" className={costCurrency === 'VES' ? 'active' : ''} onClick={() => switchCostCurrency('VES')} aria-pressed={costCurrency === 'VES'}>Bs</button>
+                <button type="button" className={costCurrency === 'USD' ? 'active' : ''} onClick={() => switchCostCurrency('USD')} aria-pressed={costCurrency === 'USD'} aria-label="Mostrar costos en dólares">$</button>
               </span></span><span>Destino</span><span style={{ textAlign: 'right' }}>Subtotal</span><span></span>
             </div>
             {items.map((it, i) => {
               const sub = (parseFloat(it.quantity) || 0) * (parseFloat(it.unitCost) || 0)
+              const shownUnitCost = unitCostDrafts[i] ?? (costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 100) / 100) : '') : it.unitCost)
               return (
                 <div className="cmp-item-row" key={i}>
                   <SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />
                   <NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} />
                   <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
-                  <NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={0.01} min={0} hideControls allowComma value={costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 100) / 100) : '') : it.unitCost} onChange={(v) => {
-                    const entered = Number.parseFloat(v.replace(',', '.')) || 0
-                    const costUsd = costCurrency === 'VES' ? (effectiveBcvRate > 0 ? entered / effectiveBcvRate : 0) : entered
-                    changeItem(i, 'unitCost', String(costUsd))
-                  }} disabled={costCurrency === 'VES' && effectiveBcvRate <= 0} />
+                  <NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={0.01} min={0} hideControls allowComma value={shownUnitCost} onChange={(v) => updateUnitCostDraft(i, v)} disabled={costCurrency === 'VES' && effectiveBcvRate <= 0} />
                   <StyledSelect aria-label={`Destino de ${ingredients.find((ingredient) => ingredient.id === it.ingredientId)?.name ?? 'ítem'}`} value={it.stockLocation} onChange={(e) => changeItem(i, 'stockLocation', e.target.value)}>
                     <option value="operational">Inventario operativo</option>
                     <option value="warehouse">Almacén</option>
