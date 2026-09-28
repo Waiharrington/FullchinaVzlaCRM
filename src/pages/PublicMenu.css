@@ -439,7 +439,15 @@ button.mobile-only {
   box-shadow: 0 12px 34px rgba(0,0,0,0.28), inset 0 0 0 1px rgba(255,255,255,0.03);
   display: flex;
   animation: public-recommended-enter 420ms cubic-bezier(.22,.8,.3,1) both;
+  /* Permite el gesto horizontal en la tarjeta sin bloquear el scroll vertical
+     normal de la página en teléfonos y tablets. */
+  touch-action: pan-y;
+  overscroll-behavior-x: contain;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
 }
+.public-recommended-card:active { cursor: grabbing; }
 .public-recommended-card::after {
   content: '';
   position: absolute;
@@ -12188,6 +12196,63 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   }
 }
 
+/* En teléfono, cada presentación ocupa una fila completa. La foto queda como
+   miniatura lateral y el texto conserva todo su contenido sin truncarse. */
+@media (max-width: 560px) {
+  .public-variant-options {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 12px 14px !important;
+  }
+
+  .public-variant-option {
+    flex-direction: row !important;
+    align-items: stretch !important;
+    border-radius: 15px !important;
+  }
+
+  .public-variant-option-media {
+    align-self: stretch !important;
+    width: clamp(92px, 29vw, 112px) !important;
+    min-width: clamp(92px, 29vw, 112px) !important;
+    min-height: 112px !important;
+    flex: 0 0 clamp(92px, 29vw, 112px) !important;
+    aspect-ratio: auto !important;
+  }
+
+  .public-variant-option-copy {
+    min-width: 0 !important;
+    width: auto !important;
+    flex: 1 1 auto !important;
+    padding: 12px 12px 13px !important;
+  }
+
+  .public-variant-option-copy > strong {
+    overflow: visible !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+
+  .public-variant-option-copy .public-variant-option-description {
+    display: block !important;
+    margin-top: 6px !important;
+    overflow: visible !important;
+    color: #d0d2d8 !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+  }
+
+  .public-variant-option-price {
+    margin-top: 8px !important;
+    font-size: 15px !important;
+  }
+}
+
 .ppdm-modifier-error {
   margin: 8px 0 0;
   color: #ff8585;
@@ -12705,4 +12770,47 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
 
 .public-contact-location-overlay > strong {
   font-weight: 900 !important;
+}
+
+/* La cantidad se lee como metadato, no pegada al nombre de la presentación. */
+.public-variant-option-count {
+  display: inline-flex !important;
+  align-items: center;
+  margin-top: 5px;
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 210, 63, .22);
+  border-radius: 999px;
+  background: rgba(255, 210, 63, .08);
+  color: #ffd23f !important;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ppdm-option-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.ppdm-option-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border: 1px solid rgba(255, 210, 63, .2);
+  border-radius: 999px;
+  background: rgba(255, 210, 63, .07);
+  color: #d8b842;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.public-variant-option-price em {
+  color: #b8bbc4 !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
 }

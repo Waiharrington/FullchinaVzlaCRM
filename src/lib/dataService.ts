@@ -228,6 +228,7 @@ export interface DailySales {
 export interface ProductRanking {
   name: string
   emoji: string
+  imageUrl: string | null
   count: number
   revenue: number
 }
@@ -1704,12 +1705,35 @@ export async function getProductRanking(): Promise<ProductRanking[]> {
   const { data, error } = await client().rpc('fn_get_product_ranking')
   if (error) throw error
 
-  return (data ?? []).map((r: Record<string, unknown>) => ({
+  const ranking: ProductRanking[] = (data ?? []).map((r: Record<string, unknown>) => ({
     name: r.product_name as string,
     emoji: (r.emoji as string) ?? '🍽️', /* DB default: emoji */
+    imageUrl: null,
     count: Number(r.total_quantity ?? 0),
     revenue: Number(r.total_revenue ?? 0),
   }))
+
+  if (ranking.length === 0) return ranking
+
+  try {
+    const { data: products, error: imagesError } = await client()
+      .from('sellable_products')
+      .select('name,image_url')
+      .in('name', ranking.map(item => item.name))
+
+    if (imagesError) throw imagesError
+
+    const imageByName = new Map((products ?? []).map(product => [
+      product.name as string,
+      (product.image_url as string | null) ?? null,
+    ]))
+
+    return ranking.map(item => ({ ...item, imageUrl: imageByName.get(item.name) ?? null }))
+  } catch (imageError) {
+    // Las imágenes son decorativas: no ocultar el ranking si el catálogo no está disponible.
+    console.warn('No se pudieron cargar las fotos de los platos más vendidos:', imageError)
+    return ranking
+  }
 }
 
 // --- Ventas por categoría (RPC) ----------------------------------------------

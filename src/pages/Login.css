@@ -421,7 +421,10 @@ body:has(.login-page) {
 /* index.css le pone box-shadow naranja a todo input:focus por defecto; acá
    ya tenemos el resplandor rojo en .input-wrapper:focus-within. */
 .input-wrapper input:focus {
-  box-shadow: none;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 /* Fix for Chrome, Safari & Edge Autofill background & text */

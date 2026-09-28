@@ -283,11 +283,12 @@
 .filter-search-inline input {
   background: transparent;
   border: none;
+  border-radius: 0;
   color: #fff;
   outline: none;
   font-size: 13px;
   width: 100%;
-  height: 100%;
+  height: 1.35em !important;
   padding: 0;
   margin: 0;
   line-height: normal;
@@ -295,9 +296,12 @@
 
 /* index.css le pone box-shadow naranja a todo input:focus por defecto; acá
    ya tenemos el resplandor rojo en .filter-search-inline:focus-within. */
-.filter-search-inline input:focus {
-  box-shadow: none;
-  background: transparent;
+.filter-search-inline input:focus,
+.filter-search-inline input:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 
 .filter-search-inline input::placeholder {
@@ -2612,18 +2616,26 @@
 .cmd-history-search:focus-within {
   border-color: #E31B2B;
   background: rgba(227, 27, 43, 0.06);
-  box-shadow: 0 0 0 3px rgba(227, 27, 43, 0.14);
+  box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.09);
 }
 .cmd-history-search input {
   background: none;
   border: none;
+  border-radius: 0;
   outline: none;
   color: #fff;
   font-size: 12.5px;
+  height: 1.35em !important;
+  min-width: 0;
+  padding: 0;
   width: 100%;
 }
-.cmd-history-search input:focus {
-  box-shadow: none;
+.cmd-history-search input:focus,
+.cmd-history-search input:focus-visible {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 .cmd-history-search input::placeholder { color: #666; }
 

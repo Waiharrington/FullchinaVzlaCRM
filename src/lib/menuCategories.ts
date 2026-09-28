@@ -81,13 +81,18 @@ export function classifyMenuCategory(name: string, rawCategory = ''): MenuCatego
   const n = normalize(name).replace(/[()/.-]/g, ' ')
   const raw = normalize(rawCategory)
 
+  // El nombre de una promoción puede mencionar una bebida incluida; el tipo
+  // del producto tiene prioridad sobre las palabras de sus complementos.
+  if (/promo|imperdible|pa\s*'?\s*todos|de panas/.test(n)) return 'promociones'
+
   if (/refresco|lipton|agua( mineral)?/.test(n)) return 'bebidas'
 
   if (/especial de la casa|bolo[nñ]esa|full tentaci[oó]n|pasta con camarones? al ajillo/.test(n)) return 'ejecutivos'
 
   if (/^extra\b|extra[s]?\s+(camar[oó]n|pollo|jam[oó]n|cerdo|carne|vegetales)/.test(n)) return 'extras'
 
-  if (/promo|imperdible|pa\s*'?\s*todos|de panas/.test(n)) return 'promociones'
+  // El catálogo también usa la variante "Arroz Cantonés Medio Kilo".
+  if (/\barroz\s+cantones\b/.test(n)) return 'arroz'
 
   if (/full kilo|medio kilo|arroz con camarones? y pollo|el clasico|clasico/.test(n)) return 'arroz'
 

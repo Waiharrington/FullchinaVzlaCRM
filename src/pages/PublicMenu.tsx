@@ -1,7 +1,9 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
+import { getCartRecommendations } from '../lib/cartRecommendations'
+import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
 import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getModifierSelectionError, hasInvalidModifierSelection } from '../lib/publicOrderRules'
@@ -268,7 +270,11 @@ const menuLabelMeta = {
 
 function cartProductName(name: string) {
   const parts = productTitle(name).split(/\s+—\s+/)
-  if (parts.length > 1) return `${parts[0]}\n${parts.slice(1).join(' — ')}`
+  if (parts.length > 1) {
+    const variant = parts.slice(1).join(' — ')
+    const displayVariant = publicVariantLabel(parts[0], variant)
+    return `${parts[0]}\n${displayVariant}`
+  }
   const words = productTitle(name).split(/\s+/)
   if (words.length <= 3) return words.join(' ')
   return `${words.slice(0, 3).join(' ')}\n${words.slice(3).join(' ')}`
@@ -460,6 +466,9 @@ export function PublicMenu() {
   const recommendedResumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const recommendedSwipeStart = useRef<number | null>(null)
   const recommendedWasSwiped = useRef(false)
+  const recommendedWheelDelta = useRef(0)
+  const recommendedWheelLocked = useRef(false)
+  const recommendedWheelUnlockTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [sidebarRecoIndex, setSidebarRecoIndex] = useState(0)
   const [instagramActiveIndex, setInstagramActiveIndex] = useState(0)
   const [instagramAudioEnabled, setInstagramAudioEnabled] = useState(false)
@@ -1003,7 +1012,34 @@ export function PublicMenu() {
     resumeRecommendedAutoplay()
   }
 
-  useEffect(() => () => clearRecommendedResumeTimer(), [])
+  const handleRecommendedWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    // En laptop, el gesto horizontal del touchpad llega como WheelEvent,
+    // no como PointerEvent. Ignoramos el scroll vertical normal.
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY) || Math.abs(event.deltaX) < 1) return
+    event.preventDefault()
+
+    if (recommendedWheelUnlockTimer.current) clearTimeout(recommendedWheelUnlockTimer.current)
+    recommendedWheelUnlockTimer.current = setTimeout(() => {
+      recommendedWheelLocked.current = false
+      recommendedWheelDelta.current = 0
+      recommendedWheelUnlockTimer.current = null
+    }, 360)
+
+    if (recommendedWheelLocked.current) return
+
+    const deltaScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientWidth : 1
+    recommendedWheelDelta.current += event.deltaX * deltaScale
+    if (Math.abs(recommendedWheelDelta.current) < 36) return
+
+    recommendedWheelLocked.current = true
+    moveRecommended(recommendedWheelDelta.current > 0 ? 1 : -1)
+    recommendedWheelDelta.current = 0
+  }
+
+  useEffect(() => () => {
+    clearRecommendedResumeTimer()
+    if (recommendedWheelUnlockTimer.current) clearTimeout(recommendedWheelUnlockTimer.current)
+  }, [])
 
   const recommendedGroup = recommendedPool[recommendedIndex] ?? recommendedPool[0] ?? groups[0]
   const isStoreOpen = (() => {
@@ -1024,7 +1060,13 @@ export function PublicMenu() {
       ? `$${deliveryFee.toFixed(2)}${serverDeliveryFeeOverride && serverDeliveryFeeOverride.lat === geoCoords?.lat && serverDeliveryFeeOverride.lng === geoCoords?.lng ? ' (actualizado)' : ''}`
       : 'Por confirmar'
   const cartProductIds = useMemo(() => new Set(cart.map(item => item.productId)), [cart])
-  const recommendations = groups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))).slice(0, 3)
+  // "Ver todos" y las sugerencias se basan en el catálogo completo, no en la
+  // categoría que el cliente tenga abierta en el menú.
+  const allCatalogGroups = useMemo(() => groupMenuProducts([...products, ...extrasProducts]), [products, extrasProducts])
+  const recommendations = useMemo(
+    () => getCartRecommendations(cart, allCatalogGroups),
+    [cart, allCatalogGroups],
+  )
   useEffect(() => {
     const card = sidebarCardRef.current
     if (!card) return
@@ -1041,7 +1083,7 @@ export function PublicMenu() {
 
   useEffect(() => {
     setSidebarRecoIndex(0)
-  }, [recommendations.length])
+  }, [recommendations])
 
   useEffect(() => {
     if (recommendations.length <= 1) return
@@ -1051,9 +1093,6 @@ export function PublicMenu() {
     return () => { if (sidebarRecoTimer.current) clearInterval(sidebarRecoTimer.current) }
   }, [recommendations.length])
   // "Ver todos" belongs to the cart, not to the currently selected menu tab.
-  // Build it from the complete catalog so a mobile category filter cannot leak
-  // into the quick catalog (e.g. Promociones showing only more promotions).
-  const allCatalogGroups = useMemo(() => groupMenuProducts([...products, ...extrasProducts]), [products, extrasProducts])
   const allExtras = useMemo(
     () => allCatalogGroups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))),
     [allCatalogGroups, cartProductIds],
@@ -2058,10 +2097,15 @@ export function PublicMenu() {
             if (recommendedGroup) openGroup(recommendedGroup)
           }}
           onPointerDown={(event) => {
+            // Los botones (CTA e indicadores) conservan su interacción normal;
+            // solo el gesto iniciado sobre la tarjeta cambia de recomendación.
+            if ((event.target as HTMLElement).closest('button') || !event.isPrimary || event.button !== 0) return
             recommendedSwipeStart.current = event.clientX
             recommendedWasSwiped.current = false
+            event.currentTarget.setPointerCapture(event.pointerId)
             pauseRecommendedAutoplay()
           }}
+          onWheel={handleRecommendedWheel}
           onPointerUp={(event) => {
             const start = recommendedSwipeStart.current
             recommendedSwipeStart.current = null
@@ -3098,6 +3142,7 @@ export function PublicMenu() {
             <div className={`public-variant-options ${quickVariantGroup.variants.length > 4 ? 'is-many' : ''}`}>
               {quickVariantGroup.variants.map(({ product, label }) => {
                 const selected = product.id === quickVariantId
+                const variantCopy = publicVariantCopy(quickVariantGroup.name, label)
                 const inheritedImage = optimizedProductImage(product.imageUrl)
                   || optimizedProductImage(quickVariantGroup.variants[0]?.product.imageUrl)
                   || productImage(quickVariantGroup.category)
@@ -3116,7 +3161,8 @@ export function PublicMenu() {
                     </span>
                     <span className="public-variant-option-copy">
                       <small>Presentación</small>
-                      <strong>{formatSpanishText(label)}</strong>
+                      <strong>{variantCopy.name}</strong>
+                      {variantCopy.count && <span className="public-variant-option-count">×{variantCopy.count}</span>}
                       <span className="public-variant-option-description">
                         {formatSpanishText(product.description || 'Preparación Full China')}
                       </span>
@@ -3170,7 +3216,9 @@ export function PublicMenu() {
                 <div className="ppdm-section">
                   <div className="ppdm-section-header"><h3>Elige tu presentación</h3><span>Obligatorio</span></div>
                   <div className="ppdm-options">
-                    {selectedGroup.variants.map(({ product, label }) => (
+                    {selectedGroup.variants.map(({ product, label }) => {
+                      const variantCopy = publicVariantCopy(selectedGroup.name, label)
+                      return (
                       <button
                         type="button"
                         className="ppdm-option"
@@ -3203,10 +3251,14 @@ export function PublicMenu() {
                         }}
                       >
                         <span className="ppdm-radio"><span className={`ppdm-radio-inner ${selectedProduct.id === product.id ? 'active' : ''}`} /></span>
-                        <span className="ppdm-option-name">{label}</span>
+                        <span className="ppdm-option-name">
+                          <span>{variantCopy.name}</span>
+                          {variantCopy.count && <small className="ppdm-option-count">×{variantCopy.count}</small>}
+                        </span>
                         <span className="ppdm-option-price">{money(product.price)}</span>
                       </button>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

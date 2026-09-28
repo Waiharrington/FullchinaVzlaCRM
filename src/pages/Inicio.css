@@ -422,6 +422,9 @@
 .st-row:hover { background: rgba(255,255,255,0.025); }
 .st-idx { font-size: 0.65rem; font-weight: 800; color: #e4e4e7; align-self: center; }
 .st-idx.top { color: #FF4D3D; }
+.st-product-cell,
+.st-product-copy { display: contents; }
+.st-thumb { display: none; }
 .st-name { font-size: 0.72rem; font-weight: 500; color: #e4e4e7; align-self: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .st-qty { font-size: 0.68rem; color: #e4e4e7; align-self: center; text-align: right; white-space: nowrap; }
 .st-rev { font-size: 0.72rem; font-weight: 700; color: #fff; align-self: center; text-align: right; white-space: nowrap; }
@@ -860,13 +863,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.6rem;
   padding: 0.8rem 0.9rem;
   border-bottom: 1px solid var(--db-border);
   color: #ededf0;
   font-size: 0.78rem;
 }
 
-.db-notifications-head span {
+.db-notifications-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+
+.db-notifications-tools > span {
   min-width: 20px;
   height: 20px;
   padding: 0 0.35rem;
@@ -880,15 +891,44 @@
   font-weight: 700;
 }
 
+.db-notifications-tools button,
+.db-notification-dismiss {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #a6a6af;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.db-notifications-tools button:hover,
+.db-notification-dismiss:hover {
+  border-color: rgba(255, 77, 61, 0.35);
+  background: rgba(255, 77, 61, 0.08);
+  color: #ff756c;
+}
+
+.db-notification-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
 .db-notification-item {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   display: grid;
   grid-template-columns: 8px 1fr;
   gap: 0.65rem;
   align-items: start;
   padding: 0.8rem 0.9rem;
   border: 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  border-bottom: 0;
   background: transparent;
   color: inherit;
   text-align: left;
@@ -896,10 +936,12 @@
   cursor: pointer;
 }
 
-.db-notification-item:last-child { border-bottom: 0; }
 .db-notification-item:hover { background: rgba(255, 255, 255, 0.035); }
+.db-notification-item.is-read { opacity: 0.62; }
+.db-notification-row .db-notification-dismiss { margin-right: 0.55rem; flex: 0 0 28px; }
 .db-notification-dot { width: 7px; height: 7px; margin-top: 0.3rem; border-radius: 50%; background: #f59e0b; }
 .db-notification-item.critical .db-notification-dot { background: #FF4D3D; }
+.db-notification-item.is-read .db-notification-dot { background: #686870; }
 .db-notification-item > span:last-child { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
 .db-notification-item strong { color: #ededf0; font-size: 0.74rem; }
 .db-notification-item small { color: #92929c; font-size: 0.67rem; line-height: 1.35; }
@@ -1012,6 +1054,13 @@
   font-size: 0.78rem;
   letter-spacing: -0.01em;
   text-transform: none;
+}
+
+.db-chart-heading-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .db-period-control {
@@ -1306,7 +1355,7 @@
   margin-top: 0.45rem;
   color: #8d8d97;
   font-size: 0.82rem;
-  margin-left: calc(22px + 0.5rem);
+  margin-left: 0;
 }
 
 .db-header-tools {
@@ -1849,7 +1898,7 @@
   /* db-grid-4: 2 filas fijas × 12 columnas */
   .db-grid-4 {
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    grid-template-rows: 155px 148px;
+    grid-template-rows: 155px minmax(190px, auto);
     gap: 0.5rem;
   }
   /* Fila 1: gráfico (7 cols) | comandas (5 cols) */
@@ -1899,7 +1948,6 @@
   /* Platos más vendidos: tabla compacta — clip al espacio disponible */
   .db-grid-4 > .db-card:nth-child(4) { overflow: hidden; }
   .db-grid-4 > .db-card:nth-child(4) .db-sellers-table { overflow: hidden; flex: 1; min-height: 0; }
-  .db-grid-4 > .db-card:nth-child(4) .db-sellers-table .st-row:nth-child(n+5) { display: none; }
   .st-row { padding: 0.28rem 0.25rem; }
   .st-name { font-size: 0.64rem; }
   .st-rev { font-size: 0.64rem; }
@@ -1973,4 +2021,479 @@
   .kpi-banner-gradient { 
     background: linear-gradient(to right, #141416 0%, rgba(20, 20, 22, 0.9) 0%, rgba(20, 20, 22, 0.4) 32%, rgba(20, 20, 22, 0.0) 55%) !important; 
   }
+}
+
+/* Portada móvil: jerarquía y controles de app, manteniendo datos y acciones. */
+@media (max-width: 767px) {
+  .db-page {
+    gap: 0.9rem !important;
+    padding: 0 !important;
+  }
+
+  .db-header {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    gap: 0.15rem 0.6rem !important;
+    padding: 0.15rem 0 0.55rem !important;
+    border-bottom: 1px solid rgba(255,255,255,.07) !important;
+  }
+
+  .db-header-copy { display: contents !important; }
+
+  .db-header-copy .page-title {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.4rem !important;
+    font-size: clamp(1.15rem, 5.3vw, 1.35rem) !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.045em !important;
+  }
+
+  .db-header-copy .page-title .page-title-icon {
+    width: 19px !important;
+    height: 19px !important;
+    flex: 0 0 auto !important;
+  }
+
+  .db-header-copy .db-greeting-sub {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    margin: 0.22rem 0 0 !important;
+    color: #a5a7b0 !important;
+    font-size: 0.74rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .db-header-tools {
+    position: relative !important;
+    display: contents !important;
+  }
+
+  .db-header-search-row {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    gap: 0.4rem !important;
+  }
+  .db-header-icon-btn,
+  .db-header-search-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 12px !important;
+    background: #17191f !important;
+  }
+
+  .db-bell-dot {
+    top: -2px !important;
+    right: 1px !important;
+    z-index: 1 !important;
+  }
+
+  .db-header-meta-row {
+    grid-column: 2 !important;
+    grid-row: 2 !important;
+    justify-self: end !important;
+    align-self: center !important;
+    width: auto !important;
+    justify-content: flex-end !important;
+  }
+
+  .db-notifications {
+    position: fixed !important;
+    top: 7rem !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    width: auto !important;
+  }
+  .db-greeting-rates {
+    min-height: 27px !important;
+    padding: 0.25rem 0.55rem !important;
+    font-size: 0.58rem !important;
+    white-space: nowrap !important;
+  }
+
+  .kpi-banner {
+    min-height: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .kpi-banner-content { width: 100% !important; padding: 0 !important; }
+  .db-section-label { margin: 0 0 0.55rem 0.1rem !important; font-size: 0.64rem !important; letter-spacing: 0.12em !important; }
+  .kpi-row {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr) !important;
+    grid-auto-rows: minmax(72px, auto) !important;
+    gap: 0.5rem !important;
+    margin: 0 !important;
+  }
+
+  .kpi-card {
+    min-width: 0 !important;
+    min-height: 72px !important;
+    padding: 0.62rem 0.65rem !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    border-radius: 14px !important;
+    background: #15171d !important;
+    box-shadow: inset 0 1px rgba(255,255,255,.025) !important;
+  }
+
+  .kpi-card:nth-child(1) {
+    border-color: rgba(227, 27, 43, .34) !important;
+    background: linear-gradient(120deg, rgba(227,27,43,.13), #15171d 70%) !important;
+  }
+
+  .kpi-card:nth-child(2) {
+    border-color: rgba(227, 27, 43, .22) !important;
+    background: linear-gradient(145deg, rgba(227,27,43,.075), #15171d 70%) !important;
+  }
+
+  .kpi-card:nth-child(n+3) {
+    min-height: 62px !important;
+    padding: 0.5rem 0.6rem !important;
+    background: #121419 !important;
+  }
+
+  .kpi-icon-circle {
+    width: 30px !important;
+    height: 30px !important;
+    flex: 0 0 30px !important;
+    border-radius: 9px !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .kpi-icon-circle svg { width: 15px !important; height: 15px !important; }
+  .kpi-card:nth-child(n+3) .kpi-icon-circle { width: 26px !important; height: 26px !important; flex-basis: 26px !important; opacity: .85 !important; }
+  .kpi-data { min-width: 0 !important; flex: 1 1 auto !important; }
+  .kpi-label {
+    display: block !important;
+    overflow: visible !important;
+    color: #9b9eaa !important;
+    font-size: 0.52rem !important;
+    line-height: 1.2 !important;
+    letter-spacing: .045em !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+  }
+  .kpi-lbl-full { display: none !important; }
+  .kpi-lbl-short { display: inline !important; }
+  .kpi-value { margin-top: 0.1rem !important; font-size: 1.08rem !important; line-height: 1.05 !important; }
+  .kpi-card:nth-child(n+3) .kpi-value { font-size: .94rem !important; }
+
+  .db-quick-card {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .db-quick-card .db-card-head { margin: 0 0 0.5rem !important; padding: 0 0.1rem !important; }
+  .db-quick-card .db-card-head h3 { color: #f0f1f4 !important; font-size: 0.78rem !important; font-weight: 750 !important; letter-spacing: 0 !important; text-transform: none !important; }
+  .db-quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 0.45rem !important; overflow: visible !important; }
+  .db-qa-btn {
+    min-width: 0 !important;
+    min-height: 66px !important;
+    padding: 0.55rem 0.25rem !important;
+    gap: 0.35rem !important;
+    border: 1px solid #292c34 !important;
+    border-radius: 13px !important;
+    background: linear-gradient(155deg, #1a1c22, #15171c) !important;
+    color: #e6e7eb !important;
+    font-size: 0.64rem !important;
+    font-weight: 650 !important;
+  }
+
+  .db-qa-btn svg { width: 19px !important; height: 19px !important; color: #ff695e !important; }
+  .db-qa-btn:active { transform: scale(.97) !important; }
+}
+
+@media (max-width: 359px) {
+  .db-header-copy .page-title { font-size: 1.08rem !important; }
+  .db-greeting-rates { padding-inline: 0.4rem !important; font-size: 0.54rem !important; }
+  .kpi-card { padding-inline: 0.48rem !important; gap: 0.38rem !important; }
+  .kpi-icon-circle { width: 27px !important; height: 27px !important; flex-basis: 27px !important; }
+}
+
+/* Empty payment state: don't reserve chart space when there are no payments. */
+.db-payment-card .db-pago-layout.is-empty {
+  display: block;
+  min-height: 0;
+  margin-top: 0.7rem;
+}
+
+.db-payment-card .db-pago-layout.is-empty .db-pago-legend {
+  width: 100%;
+  gap: 0;
+}
+
+.db-payment-card .db-pago-empty {
+  box-sizing: border-box;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-content: initial;
+  align-items: center;
+  gap: 0.12rem 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: linear-gradient(110deg, rgba(255, 77, 61, 0.055), rgba(255, 255, 255, 0.012));
+  text-align: left;
+}
+
+/* Portada de marca solo en teléfonos; tabletas y escritorio conservan su header actual. */
+@media (max-width: 600px) {
+  .db-header {
+    position: relative !important;
+    isolation: isolate !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    grid-template-rows: 36px 28px !important;
+    align-content: center !important;
+    align-items: center !important;
+    gap: 0.2rem 0.55rem !important;
+    min-height: 110px !important;
+    box-sizing: border-box !important;
+    padding: 0.65rem 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .db-header::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    top: 0;
+    bottom: -36px;
+    left: 50%;
+    width: 100vw;
+    transform: translateX(-50%);
+    border-radius: 0;
+    background-image:
+      linear-gradient(90deg, rgba(7, 8, 10, 0.92) 0%, rgba(7, 8, 10, 0.72) 38%, rgba(7, 8, 10, 0.34) 66%, rgba(7, 8, 10, 0.62) 100%),
+      linear-gradient(0deg, rgba(9, 10, 12, 0.98) 0%, rgba(9, 10, 12, 0.72) 24%, rgba(9, 10, 12, 0) 76%),
+      url("/dashboard-header-mobile.webp");
+    background-size: cover;
+    background-position: center 49%;
+    pointer-events: none;
+  }
+
+  .db-header-copy .page-title {
+    font-size: clamp(1.02rem, 4.8vw, 1.22rem) !important;
+  }
+
+  .db-header-copy .db-greeting-sub {
+    font-size: 0.69rem !important;
+    margin-left: 0 !important;
+  }
+
+  .db-header .db-greeting-rates {
+    position: relative !important;
+    top: 12px !important;
+    border: 1px solid rgba(255, 77, 61, 0.4) !important;
+    background: #111215 !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.42) !important;
+    color: #c9cad1 !important;
+  }
+}
+
+.db-payment-card .db-pago-empty svg {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  box-sizing: content-box;
+  width: 20px;
+  height: 20px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 77, 61, 0.1);
+}
+
+.db-payment-card .db-pago-empty span {
+  grid-column: 2;
+  grid-row: 1;
+  color: #dedee3;
+  font-size: 0.72rem;
+}
+
+.db-payment-card .db-pago-empty small {
+  grid-column: 2;
+  grid-row: 2;
+  color: #898993;
+  font-size: 0.62rem;
+  line-height: 1.35;
+}
+
+.db-production-card.is-empty .db-prod-layout {
+  min-height: 0;
+  flex: 0 0 auto;
+  margin: 0.15rem 0 0.55rem;
+  padding: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 12px;
+  background: linear-gradient(110deg, rgba(255, 77, 61, 0.055), rgba(255, 255, 255, 0.012));
+}
+
+.db-prod-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 48px;
+}
+
+.db-prod-empty-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border: 1px solid rgba(255, 77, 61, 0.14);
+  border-radius: 11px;
+  background: rgba(255, 77, 61, 0.1);
+  color: #ff695e;
+}
+
+.db-prod-empty-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.db-prod-empty-copy strong { color: #e8e8ec; font-size: 0.72rem; }
+.db-prod-empty-copy small { color: #90909a; font-size: 0.62rem; line-height: 1.4; }
+
+.db-production-card.is-empty .db-prod-plan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  margin-top: 0;
+  padding: 0.45rem 0.15rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: #ff756c;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: left;
+}
+
+.db-production-card.is-empty .db-prod-plan-btn::after {
+  content: '›';
+  color: #ff756c;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+/* Ranking unificado: miniatura, nombre con unidades y total en una sola fila. */
+.db-sellers-table .st-header { display: none !important; }
+
+.db-sellers-table .st-row {
+  grid-template-columns: 18px minmax(0, 1fr) minmax(86px, auto) !important;
+  align-items: center !important;
+  gap: 0.55rem !important;
+  padding: 0.44rem 0.18rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055) !important;
+  border-radius: 0 !important;
+}
+
+.db-sellers-table .st-row:last-child { border-bottom: 0 !important; }
+.db-sellers-table .st-product-cell { display: flex !important; align-items: center !important; min-width: 0 !important; gap: 0.55rem !important; }
+.db-sellers-table .st-thumb {
+  position: relative !important;
+  display: grid !important;
+  width: 42px !important;
+  height: 42px !important;
+  flex: 0 0 42px !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  background: linear-gradient(145deg, rgba(255, 77, 61, 0.14), #202126) !important;
+  font-size: 1.2rem !important;
+}
+.db-sellers-table .st-thumb img { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; object-fit: cover !important; }
+.db-sellers-table .st-product-copy { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 0.16rem !important; min-width: 0 !important; }
+.db-sellers-table .st-name { align-self: flex-start !important; max-width: 100% !important; font-size: 0.7rem !important; font-weight: 650 !important; line-height: 1.2 !important; }
+.db-sellers-table .st-qty { display: inline-flex !important; align-self: flex-start !important; align-items: baseline !important; gap: 0.22rem !important; color: #9698a2 !important; font-size: 0.62rem !important; text-align: left !important; }
+.db-sellers-table .st-qty strong { color: #ffb23f !important; font-size: 0.68rem !important; font-weight: 750 !important; }
+.db-sellers-table .st-rev { align-self: center !important; font-size: 0.7rem !important; line-height: 1.15 !important; text-align: right !important; }
+
+/* En tablet horizontal y computadora se destacan los tres primeros; el móvil conserva cinco. */
+@media (min-width: 768px) {
+  /* El encabezado también es hijo: n+5 oculta desde el cuarto plato. */
+  .db-sellers-table .st-row:nth-child(n+5) { display: none !important; }
+}
+
+@media (min-width: 900px) {
+  .db-grid-4 > .db-card:nth-child(4) .st-row { padding: 0.22rem 0.18rem !important; }
+  .db-grid-4 > .db-card:nth-child(4) .st-product-cell { gap: 0.42rem !important; }
+  .db-grid-4 > .db-card:nth-child(4) .st-thumb { width: 34px !important; height: 34px !important; flex-basis: 34px !important; }
+  .db-grid-4 > .db-card:nth-child(4) .st-name { font-size: 0.65rem !important; }
+  .db-grid-4 > .db-card:nth-child(4) .st-qty { font-size: 0.58rem !important; }
+  .db-grid-4 > .db-card:nth-child(4) .st-qty strong { font-size: 0.62rem !important; }
+  .db-grid-4 > .db-card:nth-child(4) .st-rev { font-size: 0.65rem !important; }
+}
+
+@media (min-width: 1101px) {
+  .db-grid-4 { grid-template-rows: 172px minmax(190px, auto) !important; }
+}
+
+/* En teléfono se conserva el mismo patrón y solo se compactan los tamaños. */
+@media (max-width: 600px) {
+  .db-sellers-table .st-row { grid-template-columns: 15px minmax(0, 1fr) minmax(72px, auto) !important; gap: 0.5rem !important; padding: 0.42rem 0.08rem !important; }
+  .db-sellers-table .st-idx { align-self: center !important; font-size: 0.66rem !important; }
+  .db-sellers-table .st-product-cell { gap: 0.52rem !important; }
+
+  .db-sellers-table .st-thumb {
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important;
+    font-size: 1.15rem !important;
+  }
+
+  .db-sellers-table .st-name {
+    max-width: 100% !important;
+    font-size: 0.68rem !important;
+    font-weight: 650 !important;
+    line-height: 1.2 !important;
+  }
+
+  .db-sellers-table .st-qty {
+    color: #9698a2 !important;
+    font-size: 0.59rem !important;
+  }
+
+  .db-sellers-table .st-qty strong {
+    color: #ffb23f !important;
+    font-size: 0.65rem !important;
+    font-weight: 750 !important;
+  }
+
+  .db-sellers-table .st-rev {
+    font-size: 0.66rem !important;
+    line-height: 1.15 !important;
+  }
+}
+
+/* El resumen vuelve a 2×2 cuando el ancho útil no alcanza para cuatro KPIs legibles. */
+@media (min-width: 768px) and (max-width: 900px) {
+  .kpi-banner-img-wrap { display: none !important; }
+  .kpi-banner-content { width: 100% !important; padding: 1rem 1.1rem !important; }
+  .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 0.65rem !important; }
+  .kpi-card { min-width: 0 !important; min-height: 68px !important; padding: 0.7rem 0.8rem !important; gap: 0.6rem !important; }
+  .kpi-data { min-width: 0 !important; }
+  .kpi-label { font-size: 0.61rem !important; }
+  .kpi-value { font-size: 1.08rem !important; }
 }

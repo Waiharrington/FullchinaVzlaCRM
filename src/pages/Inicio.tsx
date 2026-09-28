@@ -6,6 +6,7 @@ import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { useSearch } from '../context/search-context'
 import { StyledSelect } from '../components/StyledSelect'
+import { DashboardQuickAccess, type DashboardShortcut } from '../components/DashboardQuickAccess'
 import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -24,6 +25,8 @@ import {
   AlertTriangle,
   UtensilsCrossed,
   X,
+  CheckCheck,
+  Trash2,
   ExternalLink
 } from 'lucide-react'
 import Toast from '../components/Toast'
@@ -51,6 +54,12 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 }
 const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '#10b981', '#8b5cf6']
 
+function optimizedDashboardProductImage(imageUrl: string | null) {
+  if (!imageUrl) return null
+  const match = imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
+  return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imageUrl
+}
+
 export function Inicio() {
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -67,8 +76,11 @@ export function Inicio() {
   const [loading, setLoading] = useState(!inicioCache)
   const [chartLoading, setChartLoading] = useState(false)
   const [salesRange, setSalesRange] = useState(7)
+  const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
   const [dashboardError, setDashboardError] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(() => new Set())
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState<Set<string>>(() => new Set())
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
   const [todayOrdersOpen, setTodayOrdersOpen] = useState(false)
   const [expandedPaymentOrderId, setExpandedPaymentOrderId] = useState<string | null>(null)
@@ -151,6 +163,7 @@ export function Inicio() {
   const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
   const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
   const hasAccess = useCallback((path: string) => canAccessModule(path, user?.role, user?.allowedModules), [user?.role, user?.allowedModules])
+  const closeQuickAccess = useCallback(() => setActiveQuickAccess(null), [])
   const notifications = useMemo(() => {
     const items: Array<{ id: string; title: string; detail: string; path: string; tone: 'critical' | 'warning' }> = []
     const unavailableItems = lowStockItems.filter(item => item.currentStock <= 0)
@@ -174,6 +187,27 @@ export function Inicio() {
     }
     return items
   }, [hasAccess, lowStockItems, pendingCredits.length])
+  const visibleNotifications = useMemo(
+    () => notifications.filter(notification => !dismissedNotificationIds.has(notification.id)),
+    [notifications, dismissedNotificationIds]
+  )
+  const unreadNotificationCount = visibleNotifications.filter(notification => !readNotificationIds.has(notification.id)).length
+
+  const markNotificationsAsRead = () => {
+    setReadNotificationIds(previous => new Set([...previous, ...visibleNotifications.map(notification => notification.id)]))
+  }
+
+  const markNotificationAsRead = (id: string) => {
+    setReadNotificationIds(previous => new Set(previous).add(id))
+  }
+
+  const dismissNotification = (id: string) => {
+    setDismissedNotificationIds(previous => new Set(previous).add(id))
+  }
+
+  const dismissAllNotifications = () => {
+    setDismissedNotificationIds(previous => new Set([...previous, ...visibleNotifications.map(notification => notification.id)]))
+  }
 
   const paidOrdersToday = useMemo(() =>
     todayOrders.filter(o => o.status === 'paid' && dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
@@ -302,9 +336,9 @@ export function Inicio() {
             <button className="db-header-icon-btn db-header-search-btn" type="button" onClick={openSearch} aria-label="Buscar">
               <Search size={18} />
             </button>
-            <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${notifications.length} pendiente${notifications.length === 1 ? '' : 's'}`}>
+            <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${visibleNotifications.length} pendiente${visibleNotifications.length === 1 ? '' : 's'}, ${unreadNotificationCount} sin leer`}>
               <Bell size={18} />
-              {notifications.length > 0 ? <span className="db-bell-dot">{notifications.length}</span> : null}
+              {unreadNotificationCount > 0 ? <span className="db-bell-dot">{unreadNotificationCount}</span> : null}
             </button>
           </div>
 
@@ -319,15 +353,32 @@ export function Inicio() {
 
           {notificationsOpen ? (
             <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
-              <div className="db-notifications-head"><strong>Alertas operativas</strong><span>{notifications.length}</span></div>
-              {notifications.length === 0 ? (
-                <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas pendientes</span></div>
-              ) : notifications.map(notification => (
-                <button key={notification.id} type="button" className={`db-notification-item ${notification.tone}`} onClick={() => { setNotificationsOpen(false); navigate(notification.path) }}>
-                  <span className="db-notification-dot" />
-                  <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
-                </button>
-              ))}
+              <div className="db-notifications-head">
+                <strong>Alertas operativas</strong>
+                <div className="db-notifications-tools">
+                  <span aria-label={`${unreadNotificationCount} sin leer`}>{unreadNotificationCount}</span>
+                  {visibleNotifications.some(notification => !readNotificationIds.has(notification.id)) ? (
+                    <button type="button" onClick={markNotificationsAsRead} aria-label="Marcar todas como leídas" title="Marcar todas como leídas"><CheckCheck size={14} /></button>
+                  ) : null}
+                  {visibleNotifications.length > 0 ? (
+                    <button type="button" onClick={dismissAllNotifications} aria-label="Borrar todas las notificaciones" title="Borrar todas"><Trash2 size={14} /></button>
+                  ) : null}
+                </div>
+              </div>
+              {visibleNotifications.length === 0 ? (
+                <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas para mostrar</span></div>
+              ) : visibleNotifications.map(notification => {
+                const isRead = readNotificationIds.has(notification.id)
+                return (
+                  <div key={notification.id} className="db-notification-row">
+                    <button type="button" className={`db-notification-item ${notification.tone}${isRead ? ' is-read' : ''}`} aria-label={`Abrir alerta: ${notification.title}`} onClick={() => { markNotificationAsRead(notification.id); setNotificationsOpen(false); navigate(notification.path) }}>
+                      <span className="db-notification-dot" />
+                      <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
+                    </button>
+                    <button type="button" className="db-notification-dismiss" onClick={() => dismissNotification(notification.id)} aria-label={`Borrar alerta: ${notification.title}`} title="Borrar alerta"><X size={14} /></button>
+                  </div>
+                )
+              })}
             </div>
           ) : null}
         </div>
@@ -342,6 +393,8 @@ export function Inicio() {
           onAction={() => void fetchData(salesRange)}
         />
       )}
+
+      {activeQuickAccess ? <DashboardQuickAccess shortcut={activeQuickAccess} onClose={closeQuickAccess} /> : null}
 
       <div className="kpi-banner">
         <div className="kpi-banner-content">
@@ -388,16 +441,18 @@ export function Inicio() {
       <div className="db-grid-4">
         <div className="db-card">
           <div className="db-card-head">
-            <h3>Resumen de ventas</h3>
-            <label className="db-period-control">
-              <span className="sr-only">Período de ventas</span>
-              <StyledSelect aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
-                <option value={7}>Últimos 7 días</option>
-                <option value={14}>Últimos 14 días</option>
-                <option value={30}>Últimos 30 días</option>
-              </StyledSelect>
-              {chartLoading ? <RefreshCw size={12} className="is-spinning" /> : null}
-            </label>
+            <div className="db-chart-heading-group">
+              <h3>Resumen de ventas</h3>
+              <label className="db-period-control">
+                <span className="sr-only">Período de ventas</span>
+                <StyledSelect aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
+                  <option value={7}>Últimos 7 días</option>
+                  <option value={14}>Últimos 14 días</option>
+                  <option value={30}>Últimos 30 días</option>
+                </StyledSelect>
+                {chartLoading ? <RefreshCw size={12} className="is-spinning" /> : null}
+              </label>
+            </div>
             <button className="db-link-btn" type="button" onClick={() => void fetchData(salesRange)} disabled={loading || chartLoading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
               <RefreshCw size={14} className={loading ? 'is-spinning' : ''} />
             </button>
@@ -413,22 +468,24 @@ export function Inicio() {
             </div>
             <span className="db-payment-count">{paymentMethods.length} medio{paymentMethods.length === 1 ? '' : 's'}</span>
           </div>
-          <div className="db-pago-layout">
-            <div className="db-pago-chart" aria-label={`Total cobrado hoy: ${paymentTotal.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}`}>
-              <div className="db-donut-wrap">
-                <Doughnut data={paymentData} options={paymentDoughnutOptions} />
-                <div className="db-donut-center" aria-hidden="true">
-                  <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                  <span>cobrado hoy</span>
+          <div className={`db-pago-layout${paymentMethods.length === 0 ? ' is-empty' : ''}`}>
+            {paymentMethods.length > 0 && (
+              <div className="db-pago-chart" aria-label={`Total cobrado hoy: ${paymentTotal.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}`}>
+                <div className="db-donut-wrap">
+                  <Doughnut data={paymentData} options={paymentDoughnutOptions} />
+                  <div className="db-donut-center" aria-hidden="true">
+                    <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    <span>cobrado hoy</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             <div className="db-pago-legend">
               {paymentMethods.length === 0 ? (
-                <div className="db-pago-empty">
+                <div className="db-pago-empty" role="status">
                   <CreditCard size={22} />
-                  <span>Sin cobros registrados hoy</span>
-                  <small>El desglose aparecerá con la primera venta.</small>
+                  <span>Aún no hay cobros hoy</span>
+                  <small>El desglose aparecerá al registrar el primer pago.</small>
                 </div>
               ) : paymentMethods.map((m, i) => {
                 const share = paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0
@@ -487,8 +544,23 @@ export function Inicio() {
               {productRanking.slice(0, 5).map((d, i) => (
                 <div key={d.name} className="st-row">
                   <span className={`st-idx${i < 3 ? ' top' : ''}`}>{i + 1}</span>
-                  <span className="st-name">{formatProductTitle(d.name)}</span>
-                  <span className="st-qty">{d.count}</span>
+                  <span className="st-product-cell">
+                    <span className="st-thumb" aria-hidden="true">
+                      <span className="st-thumb-fallback">{d.emoji}</span>
+                      {optimizedDashboardProductImage(d.imageUrl) && (
+                        <img
+                          src={optimizedDashboardProductImage(d.imageUrl) ?? undefined}
+                          alt=""
+                          loading="lazy"
+                          onError={event => { event.currentTarget.hidden = true }}
+                        />
+                      )}
+                    </span>
+                    <span className="st-product-copy">
+                      <span className="st-name">{formatProductTitle(d.name)}</span>
+                      <span className="st-qty"><strong>{d.count}</strong><span>unidades</span></span>
+                    </span>
+                  </span>
                   <MoneyWithBcv usd={d.revenue} className="st-rev" compact />
                 </div>
               ))}
@@ -499,12 +571,12 @@ export function Inicio() {
         <div className="db-card db-quick-card">
           <div className="db-card-head"><h3>Acciones rápidas</h3></div>
           <div className="db-quick-grid">
-            {hasAccess('/comandas') && <button className="db-qa-btn" type="button" onClick={() => navigate('/comandas')}><ClipboardList size={20} /><span>Comandas</span></button>}
-            {hasAccess('/ventas') && <button className="db-qa-btn" type="button" onClick={() => navigate('/ventas')}><TrendingUp size={20} /><span>Ventas</span></button>}
-            {hasAccess('/menu') && <button className="db-qa-btn" type="button" onClick={() => navigate('/menu')}><UtensilsCrossed size={20} /><span>Menú</span></button>}
-            {hasAccess('/mesas') && <button className="db-qa-btn" type="button" onClick={() => navigate('/mesas')}><CreditCard size={20} /><span>Mesas</span></button>}
-            {hasAccess('/inventario') && <button className="db-qa-btn" type="button" onClick={() => navigate('/inventario')}><AlertTriangle size={20} /><span>Inventario</span></button>}
-            {hasAccess('/clientes') && <button className="db-qa-btn" type="button" onClick={() => navigate('/clientes')}><DollarSign size={20} /><span>Clientes</span></button>}
+            {hasAccess('/comandas') && <button className="db-qa-btn" type="button" onClick={() => setActiveQuickAccess('comandas')}><ClipboardList size={20} /><span>Comandas</span></button>}
+            {hasAccess('/caja') && <button className="db-qa-btn" type="button" onClick={() => setActiveQuickAccess('ventas')}><TrendingUp size={20} /><span>Ventas</span></button>}
+            {hasAccess('/menu') && <button className="db-qa-btn" type="button" onClick={() => setActiveQuickAccess('menu')}><UtensilsCrossed size={20} /><span>Menú</span></button>}
+            {hasAccess('/mesas') && <button className="db-qa-btn" type="button" onClick={() => setActiveQuickAccess('mesas')}><CreditCard size={20} /><span>Mesas</span></button>}
+            {hasAccess('/inventario') && <button className="db-qa-btn" type="button" onClick={() => setActiveQuickAccess('inventario')}><AlertTriangle size={20} /><span>Inventario</span></button>}
+            {hasAccess('/clientes') && <button className="db-qa-btn" type="button" onClick={() => setActiveQuickAccess('clientes')}><DollarSign size={20} /><span>Clientes</span></button>}
           </div>
         </div>
 
@@ -535,37 +607,43 @@ export function Inicio() {
           {hasAccess('/inventario') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/inventario')}>Ir a inventario</button> : null}
         </div>
 
-        <div className="db-card">
+        <div className={`db-card db-production-card${(productionStats?.batchesToday ?? 0) === 0 ? ' is-empty' : ''}`}>
           <div className="db-card-head"><h3>Producción de hoy</h3></div>
-          <div className="db-prod-layout">
-            <div className="db-prod-donut-wrap">
-              <Doughnut data={productionData} options={doughnutOptions} />
-              <div className="db-prod-center">
-                <span className="prod-center-pct">{Math.round(productionStats?.avgYield ?? 0)}%</span>
-                <span className="prod-center-lbl">Rendimiento</span>
+          <div className={`db-prod-layout${(productionStats?.batchesToday ?? 0) === 0 ? ' is-empty' : ''}`}>
+            {(productionStats?.batchesToday ?? 0) === 0 ? (
+              <div className="db-prod-empty" role="status">
+                <span className="db-prod-empty-icon"><ClipboardList size={19} /></span>
+                <span className="db-prod-empty-copy">
+                  <strong>Aún no hay producción</strong>
+                  <small>Registra un lote para ver aquí el rendimiento y las mermas.</small>
+                </span>
               </div>
-            </div>
-            <div className="db-prod-items">
-              {(productionStats?.batchesToday ?? 0) === 0 ? (
-                <div className="prod-item-row"><span className="prod-item-name">Sin lotes de producción hoy</span></div>
-              ) : (
-                <>
+            ) : (
+              <>
+                <div className="db-prod-donut-wrap">
+                  <Doughnut data={productionData} options={doughnutOptions} />
+                  <div className="db-prod-center">
+                    <span className="prod-center-pct">{Math.round(productionStats?.avgYield ?? 0)}%</span>
+                    <span className="prod-center-lbl">Rendimiento</span>
+                  </div>
+                </div>
+                <div className="db-prod-items">
                   <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Lotes de hoy</span><span className="prod-item-qty">{productionStats?.batchesToday ?? 0}</span></div>
                   <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Rendimiento promedio</span><span className="prod-item-qty">{(productionStats?.avgYield ?? 0).toFixed(1)}%</span></div>
                   <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Merma total</span><span className="prod-item-qty">{(productionStats?.totalWaste ?? 0).toFixed(2)}</span></div>
                   <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Costo/porción</span><span className="prod-item-qty">${(productionStats?.avgCostPerPortion ?? 0).toFixed(2)}</span></div>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
           </div>
-          {hasAccess('/produccion') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/produccion')}>Ver plan de producción</button> : null}
+          {hasAccess('/produccion') ? <button className={`db-link-btn full-w mt${(productionStats?.batchesToday ?? 0) === 0 ? ' db-prod-plan-btn' : ''}`} onClick={() => navigate('/produccion')}>Ver plan de producción</button> : null}
         </div>
 
         <div className="db-card db-credit-card">
           <div className="db-card-head db-credit-head">
             <div>
               <h3>Clientes con saldo pendiente</h3>
-              <span className="db-card-support">Prioriza los cobros que requieren seguimiento</span>
+              <span className="db-card-support">Da seguimiento a los cobros</span>
             </div>
             <span className="db-credit-count">{pendingCredits.length}</span>
           </div>

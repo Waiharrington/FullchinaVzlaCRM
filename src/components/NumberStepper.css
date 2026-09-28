@@ -39,7 +39,13 @@
   text-align: center;
   padding: 11px 4px 11px 12px !important;
 }
-.num-stepper-input:focus { box-shadow: none !important; }
+.num-stepper-input:focus,
+.num-stepper-input:focus-visible {
+  background: transparent !important;
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
 .num-stepper-prefix + .num-stepper-input { padding-left: 6px; }
 
 .num-stepper-input::placeholder { color: var(--text-muted, #71717a); font-weight: 500; }

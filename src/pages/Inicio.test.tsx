@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Inicio } from './Inicio'
 
@@ -31,6 +31,14 @@ vi.mock('../context/rates-context', () => ({
 
 vi.mock('../components/GlobalSearch', () => ({
   GlobalSearch: () => <input aria-label="Búsqueda global" />,
+}))
+
+vi.mock('../components/DashboardQuickAccess', () => ({
+  DashboardQuickAccess: ({ shortcut, onClose }: { shortcut: string; onClose: () => void }) => (
+    <section role="dialog" aria-label={`Acceso directo: ${shortcut}`}>
+      <button type="button" onClick={onClose}>Cerrar panel</button>
+    </section>
+  ),
 }))
 
 vi.mock('../components/MoneyWithBcv', () => ({
@@ -90,11 +98,66 @@ describe('Dashboard Inicio', () => {
     expect(screen.getByRole('button', { name: /^ventas$/i })).toBeInTheDocument()
   })
 
+  it('abre los accesos rápidos dentro del dashboard sin cambiar de ruta', async () => {
+    render(<Inicio />)
+    await screen.findByText('Resumen del día')
+
+    const quickActions = screen.getByRole('heading', { name: 'Acciones rápidas' }).closest('.db-quick-card')
+    expect(quickActions).not.toBeNull()
+    const actions = within(quickActions as HTMLElement)
+    const shortcuts = [
+      ['Comandas', 'comandas'],
+      ['Ventas', 'ventas'],
+      ['Menú', 'menu'],
+      ['Mesas', 'mesas'],
+      ['Inventario', 'inventario'],
+      ['Clientes', 'clientes'],
+    ]
+
+    for (const [label, shortcut] of shortcuts) {
+      fireEvent.click(actions.getByRole('button', { name: new RegExp(`^${label}$`) }))
+      expect(screen.getByRole('dialog', { name: `Acceso directo: ${shortcut}` })).toBeInTheDocument()
+      expect(mocks.navigate).not.toHaveBeenCalled()
+      fireEvent.click(screen.getByRole('button', { name: 'Cerrar panel' }))
+    }
+  })
+
+  it('muestra la foto del plato y aclara cuántas unidades se vendieron', async () => {
+    mocks.getProductRanking.mockResolvedValue([{
+      name: 'Promo Full Kilo y Refresco',
+      emoji: '🍱',
+      imageUrl: '/optimized/productos/full-kilo.webp',
+      count: 14,
+      revenue: 165.2,
+    }])
+    const { container } = render(<Inicio />)
+
+    expect(await screen.findByText('Platos más vendidos')).toBeInTheDocument()
+    expect(container.querySelector('.st-thumb img')).toHaveAttribute('src', '/optimized/productos/full-kilo.webp')
+    expect(screen.getByText('unidades')).toBeInTheDocument()
+    expect(screen.getByText('14')).toBeInTheDocument()
+  })
+
   it('evita que el tooltip tape el total del método de pago', async () => {
+    mocks.getPaymentMethodSales.mockResolvedValue([{ method: 'cash', total: 45, count: 3 }])
     render(<Inicio />)
 
     await screen.findByText('Método de pago')
     expect(screen.getAllByTestId('doughnut-chart')[0]).toHaveAttribute('data-tooltip-enabled', 'false')
+  })
+
+  it('muestra un estado vacío compacto si todavía no hay cobros', async () => {
+    render(<Inicio />)
+
+    expect(await screen.findByText('Aún no hay cobros hoy')).toBeInTheDocument()
+    expect(screen.queryByTestId('doughnut-chart[data-tooltip-enabled="false"]')).not.toBeInTheDocument()
+  })
+
+  it('presenta el acceso al plan cuando todavía no hay lotes de producción', async () => {
+    render(<Inicio />)
+
+    expect(await screen.findByText('Aún no hay producción')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ver plan de producción' })).toBeInTheDocument()
   })
 
   it('permite cambiar el período de la gráfica de ventas', async () => {
@@ -117,8 +180,20 @@ describe('Dashboard Inicio', () => {
 
     expect(screen.getByText('Inventario requiere atención')).toBeInTheDocument()
     expect(screen.getByText('Cobros pendientes')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /inventario requiere atención/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir alerta: Inventario requiere atención' }))
     expect(mocks.navigate).toHaveBeenCalledWith('/inventario')
+  })
+
+  it('permite marcar todas las alertas como leídas y borrarlas del panel', async () => {
+    render(<Inicio />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /notificaciones: 2 pendientes/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Marcar todas como leídas' }))
+    expect(screen.getByRole('button', { name: /notificaciones: 2 pendientes, 0 sin leer/i })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Borrar todas las notificaciones' }))
+    expect(screen.queryByText('Inventario requiere atención')).not.toBeInTheDocument()
+    expect(screen.getByText('No hay alertas para mostrar')).toBeInTheDocument()
   })
 
   it('oculta accesos rápidos que el usuario no tiene autorizados', async () => {

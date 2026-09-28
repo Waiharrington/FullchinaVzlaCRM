@@ -50,7 +50,7 @@ export function BottomNav() {
                   <Icon size={20} strokeWidth={isActive ? 2.2 : 1.6} />
                   {isActive && <div className="bottom-nav-active-dot" />}
                 </div>
-                <span className="bottom-nav-label">{item.label}</span>
+                <span className="bottom-nav-label">{item.path === '/' ? 'Inicio' : item.label}</span>
               </NavLink>
             )
           })}
@@ -64,7 +64,7 @@ export function BottomNav() {
               {isMenuOpen ? <X size={20} strokeWidth={2.2} /> : <Menu size={20} strokeWidth={1.6} />}
               {isMenuOpen && <div className="bottom-nav-active-dot" />}
             </div>
-            <span className="bottom-nav-label">Menú</span>
+            <span className="bottom-nav-label">Más</span>
           </button>
         </div>
       </nav>

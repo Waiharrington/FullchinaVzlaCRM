@@ -669,6 +669,8 @@
 .cart-notes {
   appearance: none;
   -webkit-appearance: none;
+  height: 1.35em !important;
+  border-radius: 0 !important;
   background: transparent !important;
   border: none !important;
   color: #fff;
@@ -718,6 +720,9 @@
 .delivery-fee-input input {
   flex: 1;
   min-width: 0;
+  height: 1.35em !important;
+  padding: 0;
+  border-radius: 0;
   background: transparent;
   border: none;
   outline: none;
@@ -727,7 +732,10 @@
 }
 
 .delivery-fee-input input:focus {
-  box-shadow: none;
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }
 .delivery-fee-input input::placeholder { color: #52525b; font-weight: 500; }
 .delivery-fee-bs { color: #71717a; font-size: 12px; white-space: nowrap; }
@@ -879,6 +887,8 @@
 .customer-input {
   appearance: none;
   -webkit-appearance: none;
+  height: 1.35em !important;
+  border-radius: 0 !important;
   background: transparent !important;
   border: none !important;
   color: #fff;

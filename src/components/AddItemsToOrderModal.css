@@ -70,8 +70,9 @@
   border-color: #E31B2B;
   box-shadow: 0 0 0 2px rgba(227, 27, 43, 0.2);
 }
-.aito-search input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font-size: 14px; }
-.aito-search input:focus { box-shadow: none; }
+.aito-search input { flex: 1; min-width: 0; height: 1.3em !important; padding: 0; border: none; border-radius: 0; background: transparent; outline: none; color: #fff; font-size: 14px; }
+.aito-search input:focus,
+.aito-search input:focus-visible { border: 0 !important; outline: 0 !important; box-shadow: none !important; background: transparent !important; }
 .aito-search input::placeholder { color: #71717a; }
 
 .aito-body {

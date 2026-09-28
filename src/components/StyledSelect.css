@@ -163,7 +163,8 @@
   box-shadow: none;
   font-size: 0.82rem;
 }
-.fc-select-search input:focus { border: 0; background: transparent; box-shadow: none; }
+.fc-select-search input:focus,
+.fc-select-search input:focus-visible { border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; }
 
 .fc-select-options { min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
 .fc-select-options::-webkit-scrollbar { display: block !important; width: 5px !important; }
