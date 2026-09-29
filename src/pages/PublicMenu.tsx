@@ -6,7 +6,7 @@ import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getModifierSelectionError, hasInvalidModifierSelection } from '../lib/publicOrderRules'
+import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, hasInvalidModifierSelection, isIncludedProteinGroup, replaceIncludedProteinPortion, type PublicModifierSelection } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -327,6 +327,7 @@ export function PublicMenu() {
   const [modifierLoadError, setModifierLoadError] = useState(false)
   const [modifierValidationError, setModifierValidationError] = useState('')
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
+  const [proteinSwapSourceId, setProteinSwapSourceId] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [scrollCategory, setScrollCategory] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -1390,6 +1391,7 @@ export function PublicMenu() {
   const closeProductDetail = () => {
     if (!selectedGroup || closingDetail) return
     modifierRequestRef.current += 1
+    setProteinSwapSourceId(null)
     setClosingDetail(true)
     window.setTimeout(() => {
       setSelectedGroup(null)
@@ -1404,7 +1406,7 @@ export function PublicMenu() {
     }, 220)
   }
 
-  const openGroup = (group: MenuProductGroup, originEvent?: { clientX: number; clientY: number }, initialVariantId?: string) => {
+  const openGroup = (group: MenuProductGroup, originEvent?: { clientX: number; clientY: number }, initialVariantId?: string, initialModifiers?: PublicModifierSelection) => {
     const requestId = modifierRequestRef.current + 1
     modifierRequestRef.current = requestId
     const initialVariant = group.variants.find(({ product }) => product.id === initialVariantId) ?? group.variants[0]
@@ -1412,9 +1414,10 @@ export function PublicMenu() {
     setClosingDetail(false)
     setSelectedGroup(group)
     setSelectedVariantId(initialVariant?.product.id ?? null)
+    setProteinSwapSourceId(null)
     setDetailQuantity(1)
     setDetailNotes('')
-    setSelectedExtras({})
+    setSelectedExtras(initialModifiers ?? {})
     setModifierLoadError(false)
     setModifierValidationError('')
     const productId = initialVariant?.product.id
@@ -1426,16 +1429,21 @@ export function PublicMenu() {
       // No deben sumarse al producto como si fueran opciones sin una línea propia.
       return resolved
     }
+    const applyModifierGroups = (remoteGroups: ProductModifierGroup[]) => {
+      const prepared = prepareModifierGroups(remoteGroups)
+      setDetailModifierGroups(prepared)
+      setSelectedExtras(initialModifiers ?? getDefaultModifierSelection(prepared))
+    }
 
     if (!productId) {
-      setDetailModifierGroups(prepareModifierGroups([]))
+      applyModifierGroups([])
       setLoadingModifiers(false)
       return
     }
 
     const cachedGroups = PUBLIC_MODIFIER_CACHE.get(productId)
     if (cachedGroups) {
-      setDetailModifierGroups(prepareModifierGroups(cachedGroups))
+      applyModifierGroups(cachedGroups)
       setLoadingModifiers(false)
       return
     }
@@ -1448,7 +1456,7 @@ export function PublicMenu() {
       .then(remoteGroups => {
         PUBLIC_MODIFIER_CACHE.set(productId, remoteGroups)
         if (modifierRequestRef.current !== requestId) return
-        setDetailModifierGroups(prepareModifierGroups(remoteGroups))
+        applyModifierGroups(remoteGroups)
       })
       .catch(() => {
         if (modifierRequestRef.current === requestId) {
@@ -1485,6 +1493,11 @@ export function PublicMenu() {
   const detailExtrasTotal = calculateModifierTotal(detailModifierGroups, selectedExtras)
   const invalidModifierSelection = hasInvalidModifierSelection(detailModifierGroups, selectedExtras)
   const modifierSelectionError = getModifierSelectionError(detailModifierGroups, selectedExtras)
+  const completeProteinSwap = (currentOptionId: string, replacementOptionId: string) => {
+    setSelectedExtras(current => replaceIncludedProteinPortion(current, currentOptionId, replacementOptionId))
+    setProteinSwapSourceId(null)
+    setModifierValidationError('')
+  }
 
   const addSelectedProduct = () => {
     if (selectedProduct) {
@@ -1528,14 +1541,16 @@ export function PublicMenu() {
     setReturnToConfirmAfterEdit(true)
     setCartOpen(true)
     setStep('cart')
-    openGroup(group, undefined, item.productId)
+    const savedModifiers = item.modifiers?.length
+      ? Object.fromEntries(item.modifiers.map(modifier => [modifier.optionId, modifier.quantity]))
+      : undefined
+    openGroup(group, undefined, item.productId, savedModifiers)
     setDetailQuantity(item.quantity)
     const savedNotes = item.notes || ''
     const userNotes = item.modifiers?.length
       ? savedNotes.replace(/^Extras: .*?(?: · |$)/, '')
       : savedNotes
     setDetailNotes(userNotes)
-    setSelectedExtras(Object.fromEntries((item.modifiers ?? []).map(modifier => [modifier.optionId, modifier.quantity])))
   }
 
   const useMyLocation = () => {
@@ -3226,6 +3241,7 @@ export function PublicMenu() {
                         onClick={() => {
                           if (product.id === selectedVariantId) return
                           setSelectedVariantId(product.id)
+                          setProteinSwapSourceId(null)
                           setSelectedExtras({})
                           setModifierValidationError('')
                           setModifierLoadError(false)
@@ -3236,12 +3252,18 @@ export function PublicMenu() {
                           const cached = PUBLIC_MODIFIER_CACHE.get(product.id)
                           const applyGroups = (groups: ProductModifierGroup[]) => groups.filter(item => item.options.length > 0).map(item => ({ ...item, options: [...item.options] }))
                           if (cached) {
-                            setDetailModifierGroups(applyGroups(cached))
+                            const preparedGroups = applyGroups(cached)
+                            setDetailModifierGroups(preparedGroups)
+                            setSelectedExtras(getDefaultModifierSelection(preparedGroups))
                             setLoadingModifiers(false)
                           } else {
                             getPublicProductModifiers(product.id).then(groups => {
                               PUBLIC_MODIFIER_CACHE.set(product.id, groups)
-                              if (modifierRequestRef.current === requestId) setDetailModifierGroups(applyGroups(groups))
+                              if (modifierRequestRef.current === requestId) {
+                                const preparedGroups = applyGroups(groups)
+                                setDetailModifierGroups(preparedGroups)
+                                setSelectedExtras(getDefaultModifierSelection(preparedGroups))
+                              }
                             }).catch(() => {
                               if (modifierRequestRef.current === requestId) setModifierLoadError(true)
                             }).finally(() => {
@@ -3275,37 +3297,72 @@ export function PublicMenu() {
                 <div className="ppdm-section ppdm-extras-section">
                   {detailModifierGroups.map(group => {
                     const count = countModifierSelections(group, selectedExtras)
-                    return <div className="ppdm-modifier-group" key={group.modifierId}>
-                      <div className="ppdm-section-header"><h3>{group.name} <small>{group.minSelections > 0 ? `· Elige al menos ${group.minSelections}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
-                      <div className="ppdm-chip-row">{group.options.map(option => {
-                        const selectedCount = selectedExtras[option.id] ?? 0
-                        const active = selectedCount > 0
-                        const countReached = group.maxSelections !== null && count >= group.maxSelections
-                        return <button type="button" className={`ppdm-chip ${active ? 'active' : ''}`} key={option.id} aria-pressed={active}
-                          disabled={!active && (countReached || (group.allowRepeat && selectedCount >= 30))}
-                          onClick={() => {
-                            setModifierValidationError('')
-                            setSelectedExtras(current => {
-                              const next = { ...current }
-                              if (active && !group.allowRepeat) delete next[option.id]
-                              else if (active && group.allowRepeat) {
-                                if (selectedCount <= 1) delete next[option.id]
-                                else next[option.id] = selectedCount - 1
-                              } else if (!countReached) next[option.id] = 1
-                              return next
-                            })
-                          }}>
-                          <span className="ppdm-chip-name">{option.name}</span>
-                          {group.allowRepeat && active && <span className="ppdm-chip-count">×{selectedCount}</span>}
-                          {option.price > 0 && <span className="ppdm-chip-price">+{money(option.price)}</span>}
-                          <span className="ppdm-chip-check"><Check size={12} /></span>
-                        </button>
-                      })}</div>
+                    const proteinGroup = isIncludedProteinGroup(group)
+                    const includedPortions = group.maxSelections ?? group.minSelections
+                    return <div className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}`} key={group.modifierId}>
+                      {proteinGroup ? <>
+                        <div className="ppdm-section-header">
+                          <h3>Proteínas incluidas</h3>
+                          <span>{count} de {includedPortions} porciones</span>
+                        </div>
+                        <p className="ppdm-protein-hint">Las proteínas ya vienen seleccionadas; puedes tocar “Cambiar” para sustituir alguna sin alterar las {includedPortions} porciones.</p>
+                        <div className="ppdm-protein-options">{group.options.map(option => {
+                          const quantity = selectedExtras[option.id] ?? 0
+                          return <div className="ppdm-protein-option" key={option.id}>
+                            <span className="ppdm-protein-option-name">{option.name}</span>
+                            <span className={`ppdm-protein-option-quantity${quantity === 0 ? ' is-unselected' : ''}`}>
+                              {quantity === 0 ? 'No incluida' : `${quantity} ${quantity === 1 ? 'porción' : 'porciones'}`}
+                              {option.price > 0 && quantity > 0 && <small>+{money(option.price)} por porción</small>}
+                            </span>
+                            {quantity > 0 && <button type="button" className="ppdm-protein-change" onClick={() => setProteinSwapSourceId(current => current === option.id ? null : option.id)} aria-label={`Cambiar una porción de ${option.name}`}>
+                              Cambiar{quantity > 1 && <small>una porción</small>}
+                            </button>}
+                          </div>
+                        })}</div>
+                        {proteinSwapSourceId && group.options.some(option => option.id === proteinSwapSourceId && (selectedExtras[option.id] ?? 0) > 0) && (() => {
+                          const sourceOption = group.options.find(option => option.id === proteinSwapSourceId)!
+                          return <div className="ppdm-protein-swap" role="group" aria-label={`Cambiar una porción de ${sourceOption.name}`}>
+                            <p>¿Qué prefieres en lugar de {sourceOption.name}?</p>
+                            <div>{group.options.filter(option => option.id !== sourceOption.id).map(option => (
+                              <button type="button" key={option.id} onClick={() => completeProteinSwap(sourceOption.id, option.id)}>
+                                {option.name}{option.price > 0 && <small>+{money(option.price)} por porción</small>}
+                              </button>
+                            ))}</div>
+                            <button type="button" className="ppdm-protein-swap-cancel" onClick={() => setProteinSwapSourceId(null)}>Cancelar</button>
+                          </div>
+                        })()}
+                      </> : <>
+                        <div className="ppdm-section-header"><h3>{group.name} <small>{group.minSelections > 0 ? `· Elige al menos ${group.minSelections}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
+                        <div className="ppdm-chip-row">{group.options.map(option => {
+                          const selectedCount = selectedExtras[option.id] ?? 0
+                          const active = selectedCount > 0
+                          const countReached = group.maxSelections !== null && count >= group.maxSelections
+                          return <button type="button" className={`ppdm-chip ${active ? 'active' : ''}`} key={option.id} aria-pressed={active}
+                            disabled={!active && (countReached || (group.allowRepeat && selectedCount >= 30))}
+                            onClick={() => {
+                              setModifierValidationError('')
+                              setSelectedExtras(current => {
+                                const next = { ...current }
+                                if (active && !group.allowRepeat) delete next[option.id]
+                                else if (active && group.allowRepeat) {
+                                  if (selectedCount <= 1) delete next[option.id]
+                                  else next[option.id] = selectedCount - 1
+                                } else if (!countReached) next[option.id] = 1
+                                return next
+                              })
+                            }}>
+                            <span className="ppdm-chip-name">{option.name}</span>
+                            {group.allowRepeat && active && <span className="ppdm-chip-count">×{selectedCount}</span>}
+                            {option.price > 0 && <span className="ppdm-chip-price">+{money(option.price)}</span>}
+                            <span className="ppdm-chip-check"><Check size={12} /></span>
+                          </button>
+                        })}</div>
+                      </>}
                     </div>
                   })}
                 </div>
               )}
-              {modifierSelectionError && <p className="ppdm-modifier-error" role="status">{modifierSelectionError.options.length === 0 ? `“${modifierSelectionError.name}” no tiene opciones disponibles. Elige otro producto o contacta al local.` : `Debes completar las selecciones del grupo “${modifierSelectionError.name}”.`}</p>}
+              {modifierSelectionError && <p className="ppdm-modifier-error" role="status">{modifierSelectionError.options.length === 0 ? `“${modifierSelectionError.name}” no tiene opciones disponibles. Elige otro producto o contacta al local.` : isIncludedProteinGroup(modifierSelectionError) ? `Completa las ${modifierSelectionError.minSelections} porciones de proteína para agregar el plato.` : `Debes completar las selecciones del grupo “${modifierSelectionError.name}”.`}</p>}
               {invalidModifierSelection && <p className="ppdm-modifier-error" role="alert">Algunas opciones guardadas ya no están disponibles. <button type="button" onClick={() => { setSelectedExtras({}); setModifierValidationError('') }}>Limpiar opciones anteriores</button></p>}
               {modifierLoadError && <p className="ppdm-modifier-error" role="alert">No pudimos cargar las opciones de este producto. Inténtalo de nuevo.</p>}
               {modifierValidationError && <p className="ppdm-modifier-error" role="alert">{modifierValidationError}</p>}

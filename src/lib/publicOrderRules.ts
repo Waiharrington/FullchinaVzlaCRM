@@ -1,6 +1,42 @@
 import type { ProductModifierGroup } from './dataService'
+import { normalizeForSearch } from './textFormat'
 
 export type PublicModifierSelection = Record<string, number>
+
+/** Fixed included-protein recipes start with one serving of each protein. */
+export function isIncludedProteinGroup(group: ProductModifierGroup): boolean {
+  const totalIncluded = group.maxSelections
+  return normalizeForSearch(group.name).includes('proteina')
+    && totalIncluded !== null
+    && totalIncluded > 0
+    && group.minSelections === totalIncluded
+    && group.allowRepeat
+    && group.options.length === totalIncluded
+}
+
+export function getDefaultModifierSelection(groups: ProductModifierGroup[]): PublicModifierSelection {
+  const selection: PublicModifierSelection = {}
+  for (const group of groups) {
+    if (!isIncludedProteinGroup(group)) continue
+    group.options.forEach(option => { selection[option.id] = 1 })
+  }
+  return selection
+}
+
+export function replaceIncludedProteinPortion(
+  selection: PublicModifierSelection,
+  currentOptionId: string,
+  replacementOptionId: string,
+): PublicModifierSelection {
+  const currentQuantity = selection[currentOptionId] ?? 0
+  if (currentQuantity < 1 || currentOptionId === replacementOptionId) return selection
+
+  const next = { ...selection }
+  if (currentQuantity === 1) delete next[currentOptionId]
+  else next[currentOptionId] = currentQuantity - 1
+  next[replacementOptionId] = (next[replacementOptionId] ?? 0) + 1
+  return next
+}
 
 export function countModifierSelections(group: ProductModifierGroup, selection: PublicModifierSelection): number {
   return group.options.reduce((total, option) => total + (selection[option.id] ?? 0), 0)
