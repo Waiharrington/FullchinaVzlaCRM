@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
+import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
@@ -318,6 +318,7 @@ export function PublicMenu() {
   const [quickVariantGroup, setQuickVariantGroup] = useState<MenuProductGroup | null>(null)
   const [quickVariantId, setQuickVariantId] = useState<string | null>(null)
   const [quickVariantHasModifiers, setQuickVariantHasModifiers] = useState(false)
+  const [quickVariantOptionsLabel, setQuickVariantOptionsLabel] = useState('Ver opciones')
   const [quickVariantQuantity, setQuickVariantQuantity] = useState(1)
   const [closingQuickVariant, setClosingQuickVariant] = useState(false)
   const [detailQuantity, setDetailQuantity] = useState(1)
@@ -1475,18 +1476,26 @@ export function PublicMenu() {
   useEffect(() => {
     let cancelled = false
     setQuickVariantHasModifiers(false)
+    setQuickVariantOptionsLabel('Ver opciones')
     if (!quickSelectedVariant) return () => { cancelled = true }
     const productId = quickSelectedVariant.product.id
+    const applyModifierSummary = (groups: ProductModifierGroup[]) => {
+      setQuickVariantHasModifiers(groups.some(group => group.options.length > 0))
+      setQuickVariantOptionsLabel(groups.some(group => normalizeForSearch(group.name).includes('proteina')) ? 'Cambiar proteínas' : 'Ver opciones')
+    }
     const cached = PUBLIC_MODIFIER_CACHE.get(productId)
     if (cached) {
-      setQuickVariantHasModifiers(cached.some(group => group.options.length > 0))
+      applyModifierSummary(cached)
       return () => { cancelled = true }
     }
     getPublicProductModifiers(productId).then(groups => {
       PUBLIC_MODIFIER_CACHE.set(productId, groups)
-      if (!cancelled) setQuickVariantHasModifiers(groups.some(group => group.options.length > 0))
+      if (!cancelled) applyModifierSummary(groups)
     }).catch(() => {
-      if (!cancelled) setQuickVariantHasModifiers(false)
+      if (!cancelled) {
+        setQuickVariantHasModifiers(false)
+        setQuickVariantOptionsLabel('Ver opciones')
+      }
     })
     return () => { cancelled = true }
   }, [quickSelectedVariant])
@@ -3196,7 +3205,7 @@ export function PublicMenu() {
                   <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
                 </div>
                 <div className="public-variant-actions">
-                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>Personalizar</button>}
+                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>{quickVariantOptionsLabel === 'Cambiar proteínas' ? <Drumstick size={16} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}{quickVariantOptionsLabel}</button>}
                   <button type="button" className="public-variant-add" onClick={confirmQuickVariant}>
                     <ShoppingCart size={16} />
                     <span>Agregar · {money(quickSelectedVariant.product.price * quickVariantQuantity)}</span>
