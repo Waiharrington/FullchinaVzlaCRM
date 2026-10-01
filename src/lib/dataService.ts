@@ -406,6 +406,7 @@ export interface PortionRecipe {
 export interface Employee {
   id: string
   fullName: string
+  photoUrl?: string | null
   position: string | null
   hourlyRate: number
   weeklySalary: number
@@ -2920,6 +2921,7 @@ export async function getEmployees(): Promise<Employee[]> {
     return data.map((r) => ({
       id: r.id as string,
       fullName: r.full_name as string,
+      photoUrl: null,
       position: (r.position as string) ?? null,
       hourlyRate: Number(r.hourly_rate),
       weeklySalary: Number(r.weekly_salary ?? 0),
@@ -2940,6 +2942,7 @@ export async function getEmployees(): Promise<Employee[]> {
     return (fallbackData ?? []).map((r) => ({
       id: r.id as string,
       fullName: r.full_name as string,
+      photoUrl: null,
       position: (r.position as string) ?? null,
       hourlyRate: Number(r.hourly_rate),
       weeklySalary: Number(r.hourly_rate ?? 0),
@@ -2962,6 +2965,7 @@ export async function getAllEmployees(): Promise<Employee[]> {
   return (data ?? []).map((r) => ({
     id: r.id as string,
     fullName: r.full_name as string,
+    photoUrl: (r.photo_url as string) ?? null,
     position: (r.position as string) ?? null,
     hourlyRate: Number(r.hourly_rate ?? 0),
     weeklySalary: Number(r.weekly_salary ?? r.hourly_rate ?? 0),
@@ -3054,6 +3058,7 @@ export async function getReportStockMovements(dateStart: string, dateEnd: string
 
 export async function createEmployee(params: {
   fullName: string
+  photoUrl?: string | null
   position?: string | null
   hourlyRate?: number
   weeklySalary?: number
@@ -3064,19 +3069,21 @@ export async function createEmployee(params: {
     .from('employees')
     .insert({
       full_name: params.fullName,
+      photo_url: params.photoUrl ?? null,
       position: params.position ?? null,
       hourly_rate: params.hourlyRate ?? 0,
       weekly_salary: params.weeklySalary ?? 0,
       overtime_rate: params.overtimeRate ?? 0,
       is_active: true,
     })
-    .select('id,full_name,position,hourly_rate,weekly_salary,overtime_rate,is_active')
+    .select('id,full_name,photo_url,position,hourly_rate,weekly_salary,overtime_rate,is_active')
     .single()
 
   if (!error && data) {
     return {
       id: data.id as string,
       fullName: data.full_name as string,
+      photoUrl: (data.photo_url as string) ?? null,
       position: (data.position as string) ?? null,
       hourlyRate: Number(data.hourly_rate),
       weeklySalary: Number(data.weekly_salary ?? 0),
@@ -3092,17 +3099,19 @@ export async function createEmployee(params: {
       .from('employees')
       .insert({
         full_name: params.fullName,
+        photo_url: params.photoUrl ?? null,
         position: params.position ?? null,
         hourly_rate: salaryToStore,
         is_active: true,
       })
-      .select('id,full_name,position,hourly_rate,is_active')
+      .select('id,full_name,photo_url,position,hourly_rate,is_active')
       .single()
 
     if (fallbackError) throw fallbackError
     return {
       id: fallbackData.id as string,
       fullName: fallbackData.full_name as string,
+      photoUrl: (fallbackData.photo_url as string) ?? null,
       position: (fallbackData.position as string) ?? null,
       hourlyRate: Number(fallbackData.hourly_rate),
       weeklySalary: Number(fallbackData.hourly_rate),
@@ -3117,6 +3126,7 @@ export async function createEmployee(params: {
 
 export async function updateEmployee(id: string, updates: {
   fullName?: string
+  photoUrl?: string | null
   position?: string | null
   hourlyRate?: number
   weeklySalary?: number
@@ -3125,6 +3135,7 @@ export async function updateEmployee(id: string, updates: {
 }): Promise<void> {
   const patch: Record<string, unknown> = {}
   if (updates.fullName !== undefined) patch.full_name = updates.fullName
+  if (updates.photoUrl !== undefined) patch.photo_url = updates.photoUrl
   if (updates.position !== undefined) patch.position = updates.position
   if (updates.hourlyRate !== undefined) patch.hourly_rate = updates.hourlyRate
   if (updates.weeklySalary !== undefined) patch.weekly_salary = updates.weeklySalary

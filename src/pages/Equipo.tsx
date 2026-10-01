@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import {
   Users, UserPlus, Shield, CheckCircle2, MinusCircle, XCircle, Loader2, Edit3,
-  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2, MoreVertical,
+  KeyRound, Mail, UserCog, Ban, Clock, Hash, Trash2, MoreVertical, ImagePlus, X,
 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
@@ -23,6 +23,30 @@ import { EmptyState } from '../components/EmptyState'
 import './Equipo.css'
 
 const ROLE_LABEL: Record<Role, string> = { owner: 'Dueño', manager: 'Gerente', cashier: 'Cajero' }
+
+function employeePhotoFromFile(file: File): Promise<string> {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    return Promise.reject(new Error('Usa una imagen JPG, PNG o WebP.'))
+  }
+  if (file.size > 8 * 1024 * 1024) return Promise.reject(new Error('La foto no puede superar 8 MB.'))
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    image.onload = () => {
+      const canvas = document.createElement('canvas')
+      const scale = Math.min(1, 420 / Math.max(image.width, image.height))
+      canvas.width = Math.max(1, Math.round(image.width * scale))
+      canvas.height = Math.max(1, Math.round(image.height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) { URL.revokeObjectURL(objectUrl); reject(new Error('No se pudo procesar la foto.')); return }
+      context.drawImage(image, 0, 0, canvas.width, canvas.height)
+      URL.revokeObjectURL(objectUrl)
+      resolve(canvas.toDataURL('image/jpeg', 0.76))
+    }
+    image.onerror = () => { URL.revokeObjectURL(objectUrl); reject(new Error('No se pudo leer la imagen.')) }
+    image.src = objectUrl
+  })
+}
 
 const MODULE_GROUPS = allNavItems.reduce<Array<{
   group: string
@@ -133,6 +157,8 @@ export function Equipo() {
   const [hourlyRate, setHourlyRate] = useState(0)
   const [weeklySalary, setWeeklySalary] = useState(0)
   const [overtimeRate, setOvertimeRate] = useState(0)
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
 
   // --- Usuarios de acceso ---
   const [authUsers, setAuthUsers] = useState<AuthUser[]>([])
@@ -176,8 +202,9 @@ export function Equipo() {
       setHourlyRate(emp.hourlyRate)
       setWeeklySalary(emp.weeklySalary)
       setOvertimeRate(emp.overtimeRate)
+      setPhotoUrl(emp.photoUrl ?? null)
     } else {
-      setEditingId(null); setName(''); setHourlyRate(0); setWeeklySalary(0); setOvertimeRate(0)
+      setEditingId(null); setName(''); setHourlyRate(0); setWeeklySalary(0); setOvertimeRate(0); setPhotoUrl(null)
     }
     setShowModal(true)
   }
@@ -187,7 +214,7 @@ export function Equipo() {
     if (!name.trim()) return
     try {
       if (editingId) {
-        await updateEmployee(editingId, { fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
+        await updateEmployee(editingId, { fullName: name.trim(), photoUrl, hourlyRate, weeklySalary, overtimeRate })
         const refreshedTeam = await getAllEmployees()
         const savedEmployee = refreshedTeam.find(employee => employee.id === editingId)
         if (!savedEmployee || Math.abs(savedEmployee.weeklySalary - weeklySalary) > 0.005) {
@@ -196,7 +223,7 @@ export function Equipo() {
         setTeam(refreshedTeam)
         flash(`"${name.trim()}" actualizado con éxito`)
       } else {
-        await createEmployee({ fullName: name.trim(), hourlyRate, weeklySalary, overtimeRate })
+        await createEmployee({ fullName: name.trim(), photoUrl, hourlyRate, weeklySalary, overtimeRate })
         setTeam(await getAllEmployees())
         flash(`"${name.trim()}" registrado correctamente`)
       }
@@ -205,6 +232,14 @@ export function Equipo() {
     } catch (e) {
       setError(getErrorMessage(e, 'Error guardando miembro del equipo'))
     }
+  }
+
+  const handleEmployeePhoto = async (file?: File) => {
+    if (!file) return
+    setPhotoBusy(true)
+    try { setPhotoUrl(await employeePhotoFromFile(file)) }
+    catch (e) { setError(getErrorMessage(e, 'No se pudo cargar la foto')) }
+    finally { setPhotoBusy(false) }
   }
 
   const toggleActive = async (emp: Employee) => {
@@ -505,7 +540,7 @@ export function Equipo() {
                   <tr key={emp.id} className={!emp.isActive ? 'inactive' : ''}>
                     <td>
                       <div className="team-row-id">
-                        <div className="team-avatar">{emp.fullName.charAt(0).toUpperCase()}</div>
+                        <div className="team-avatar">{emp.photoUrl ? <img src={emp.photoUrl} alt={`Foto de ${emp.fullName}`} /> : emp.fullName.charAt(0).toUpperCase()}</div>
                         <strong>{emp.fullName}</strong>
                       </div>
                     </td>
@@ -592,6 +627,19 @@ export function Equipo() {
                 <label>Nombre completo</label>
                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Ej. Pedro Pérez" required autoFocus />
               </div>
+              <div className="employee-photo-field">
+                <div className="employee-photo-preview">
+                  {photoUrl ? <img src={photoUrl} alt="Vista previa del empleado" /> : <span>{name.trim().charAt(0).toUpperCase() || '?'}</span>}
+                </div>
+                <div className="employee-photo-controls">
+                  <strong>Foto de perfil</strong>
+                  <small>JPG, PNG o WebP; se optimiza al cargarla.</small>
+                  <label className="employee-photo-upload"><ImagePlus size={15} /> {photoBusy ? 'Procesando…' : 'Elegir foto'}
+                    <input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy} onChange={event => { void handleEmployeePhoto(event.target.files?.[0]); event.currentTarget.value = '' }} />
+                  </label>
+                  {photoUrl && <button type="button" className="employee-photo-remove" onClick={() => setPhotoUrl(null)}><X size={14} /> Quitar foto</button>}
+                </div>
+              </div>
               <div className="form-row-2">
                 <div className="form-group">
                   <label>Sueldo semanal (USD)</label>
@@ -604,7 +652,7 @@ export function Equipo() {
               </div>
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => closeModal()}>Cancelar</button>
-                <button type="submit" className="btn-save">{editingId ? 'Guardar Cambios' : 'Crear Miembro'}</button>
+                <button type="submit" className="btn-save" disabled={photoBusy}>{photoBusy ? 'Procesando foto…' : editingId ? 'Guardar Cambios' : 'Crear Miembro'}</button>
               </div>
             </form>
           </div>
