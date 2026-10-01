@@ -270,6 +270,20 @@ export interface FinancialAccount {
 
 export type WarehouseIngredient = Ingredient
 
+export interface InventorySnapshotItem extends Ingredient {
+  sourceSystem: string | null
+  sourceKey: string | null
+  sourceCode: string | null
+  operationalStock: number
+  warehouseStock: number
+}
+
+export interface InventorySnapshotUpdate {
+  ingredientId: string
+  operationalStock: number
+  warehouseStock: number
+}
+
 export interface StockMovement {
   id: string
   ingredientId: string
@@ -2610,6 +2624,44 @@ export async function getWarehouseIngredients(): Promise<WarehouseIngredient[]> 
       stockValue: i.stock_value === null ? null : Number(i.stock_value),
       inventoryClass: classes.get(i.ingredient_id as string) ?? 'raw_material',
     }))
+}
+
+/** Saldo por ubicación y claves de origen para importar/exportar inventario. */
+export async function getInventorySnapshot(): Promise<InventorySnapshotItem[]> {
+  const [{ data: metadata, error: metadataError }, operational, warehouse] = await Promise.all([
+    client().from('ingredients').select('id,source_system,source_key,source_code').eq('is_active', true),
+    getIngredients(),
+    getWarehouseIngredients(),
+  ])
+  if (metadataError) throw metadataError
+  const metadataById = new Map((metadata ?? []).map(row => [String(row.id), row]))
+  const warehouseById = new Map(warehouse.map(item => [item.id, item]))
+  return operational.map(item => {
+    const source = metadataById.get(item.id)
+    return {
+      ...item,
+      sourceSystem: source?.source_system == null ? null : String(source.source_system),
+      sourceKey: source?.source_key == null ? null : String(source.source_key),
+      sourceCode: source?.source_code == null ? null : String(source.source_code),
+      operationalStock: item.currentStock,
+      warehouseStock: warehouseById.get(item.id)?.currentStock ?? 0,
+    }
+  })
+}
+
+/** Aplica una fotografía de saldos mediante una única operación atómica en la BD. */
+export async function applyInventorySnapshot(items: InventorySnapshotUpdate[], sourceFile: string): Promise<number> {
+  if (items.length === 0) throw new Error('No hay productos válidos para importar.')
+  const { data, error } = await client().rpc('fn_apply_inventory_snapshot', {
+    p_items: items.map(item => ({
+      ingredient_id: item.ingredientId,
+      operational_stock: item.operationalStock,
+      warehouse_stock: item.warehouseStock,
+    })),
+    p_source_file: sourceFile,
+  })
+  if (error) throw error
+  return Number(data ?? 0)
 }
 
 export async function updateFinancialAccountOpeningBalance(id: string, openingBalance: number): Promise<void> {

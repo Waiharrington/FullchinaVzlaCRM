@@ -194,6 +194,39 @@
   flex-wrap: wrap;
 }
 
+.inv-import-export-actions { display:flex;align-items:center;gap:8px;margin-left:auto; }
+.inv-file-input { display:none; }
+.inv-file-action { display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border:1px solid rgba(255,255,255,.14);border-radius:10px;background:rgba(255,255,255,.045);color:#e4e4e7;font:inherit;font-size:.82rem;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .16s,border-color .16s,transform .16s; }
+.inv-file-action:hover:not(:disabled) { background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.28);transform:translateY(-1px); }
+.inv-file-action--import { background:rgba(225,29,42,.14);border-color:rgba(225,29,42,.38);color:#fecaca; }
+.inv-file-action--import:hover:not(:disabled) { background:rgba(225,29,42,.22);border-color:rgba(225,29,42,.58); }
+.inv-file-action:disabled { opacity:.6;cursor:wait; }
+.inv-file-spinner { animation:inv-file-spin 1s linear infinite; }
+@keyframes inv-file-spin { to { transform:rotate(360deg); } }
+.inv-import-alert { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:11px 14px;border:1px solid rgba(248,113,113,.32);border-radius:10px;background:rgba(127,29,29,.18);color:#fecaca;font-size:.84rem;white-space:pre-line; }
+.inv-import-alert button { border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer; }
+.inv-import-modal { width:min(640px,100%); }
+.inv-modal-overlay .inv-import-modal { flex:0 1 640px;margin:auto; }
+.inv-import-filename { margin:-8px 0 14px;color:var(--text-secondary);font-size:.82rem;overflow-wrap:anywhere; }
+.inv-import-stats { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0; }
+.inv-import-stats>div { display:flex;flex-direction:column;gap:3px;padding:12px;border:1px solid var(--border-color);border-radius:10px;background:rgba(255,255,255,.025); }
+.inv-import-stats strong { color:#f8fafc;font-size:1.2rem; }
+.inv-import-stats span,.inv-import-changes small { color:var(--text-secondary);font-size:.72rem;line-height:1.4; }
+.inv-import-note { margin:10px 0;color:var(--text-secondary);font-size:.8rem;line-height:1.5; }
+.inv-import-missing,.inv-import-warnings { display:flex;flex-direction:column;gap:4px;margin:12px 0;padding:11px 12px;border:1px solid rgba(245,158,11,.3);border-radius:9px;background:rgba(245,158,11,.07);color:#fde68a;font-size:.77rem;line-height:1.45; }
+.inv-import-missing span { color:#d4d4d8; }
+.inv-import-warnings p { margin:0; }
+.inv-import-changes { display:flex;flex-direction:column;gap:8px;margin:14px 0;padding-top:12px;border-top:1px solid var(--border-color); }
+.inv-import-changes>strong { margin-bottom:2px;color:#e4e4e7;font-size:.82rem; }
+.inv-import-changes>div { display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.035); }
+.inv-import-changes>div>span { color:#f4f4f5;font-size:.79rem;font-weight:700; }
+.inv-import-error { margin:10px 0;color:#fca5a5;font-size:.82rem;white-space:pre-line; }
+.inv-import-footer { display:flex;justify-content:flex-end;gap:9px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border-color); }
+.inv-import-footer button { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 14px;border-radius:9px;font:inherit;font-size:.82rem;font-weight:700;cursor:pointer; }
+.inv-import-cancel { border:1px solid var(--border-color);background:transparent;color:#d4d4d8; }
+.inv-import-submit { border:1px solid #e11d2a;background:#e11d2a;color:white; }
+.inv-import-footer button:disabled { opacity:.55;cursor:wait; }
+
 /* Categorías compactas tipo píldora, también en tablet y móvil. */
 @media (max-width: 1100px) {
   .inv-filter-pills { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
@@ -1481,6 +1514,9 @@
     align-items: stretch;
   }
 
+  .inv-import-export-actions { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%;margin-left:0; }
+  .inv-file-action { padding:0 9px;font-size:.78rem; }
+
   .inv-filter-pills {
     overflow-x: auto;
     padding-bottom: 0.5rem;
@@ -1506,6 +1542,13 @@
   .inv-product-img {
     display: none;
   }
+}
+
+@media (max-width: 420px) {
+  .inv-import-stats { grid-template-columns:1fr 1fr; }
+  .inv-import-stats>div:last-child { grid-column:1 / -1; }
+  .inv-import-footer { flex-direction:column-reverse; }
+  .inv-import-footer button { width:100%; }
 }
 
 @media (max-width: 480px) {

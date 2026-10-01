@@ -6,6 +6,8 @@ import {
   getIngredients,
   getStockMovements,
   getUnits,
+  getInventorySnapshot,
+  applyInventorySnapshot,
   adjustStock,
   updateIngredient,
   updateIngredientCost,
@@ -13,6 +15,7 @@ import {
   type Ingredient,
   type StockMovement,
 } from '../lib/dataService'
+import { exportInventoryWorkbook, previewInventoryWorkbook, type InventoryImportPreview } from '../lib/inventoryWorkbook'
 import { normalizeForSearch } from '../lib/textFormat'
 import { StyledSelect } from '../components/StyledSelect'
 import {
@@ -35,6 +38,9 @@ import {
   Save,
   Loader2,
   Trash2,
+  Upload,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -166,6 +172,11 @@ export function Inventario() {
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [inventoryActionError, setInventoryActionError] = useState('')
+  const [inventoryImportPreview, setInventoryImportPreview] = useState<InventoryImportPreview | null>(null)
+  const [inventoryImportBusy, setInventoryImportBusy] = useState(false)
+  const [inventoryExportBusy, setInventoryExportBusy] = useState(false)
+  const inventoryImportInputRef = useRef<HTMLInputElement | null>(null)
   const [closingIngredient, setClosingIngredient] = useState(false)
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
@@ -341,6 +352,54 @@ export function Inventario() {
       setLoading(false)
     }
   }, [])
+
+  const handleInventoryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    setInventoryActionError('')
+    setInventoryImportBusy(true)
+    try {
+      const currentInventory = await getInventorySnapshot()
+      setInventoryImportPreview(await previewInventoryWorkbook(file, currentInventory))
+    } catch (error) {
+      setInventoryActionError(error instanceof Error ? error.message : 'No se pudo leer el Excel.')
+    } finally {
+      setInventoryImportBusy(false)
+    }
+  }
+
+  const handleInventoryExport = async () => {
+    setInventoryActionError('')
+    setInventoryExportBusy(true)
+    try {
+      await exportInventoryWorkbook(await getInventorySnapshot())
+      setSuccessMessage('Inventario exportado a Excel.')
+      window.setTimeout(() => setSuccessMessage(''), 3500)
+    } catch (error) {
+      setInventoryActionError(error instanceof Error ? error.message : 'No se pudo exportar el inventario.')
+    } finally {
+      setInventoryExportBusy(false)
+    }
+  }
+
+  const handleApplyInventoryImport = async () => {
+    if (!inventoryImportPreview) return
+    setInventoryActionError('')
+    setInventoryImportBusy(true)
+    try {
+      const movementCount = await applyInventorySnapshot(inventoryImportPreview.updates, inventoryImportPreview.sourceFileName)
+      await fetchAll()
+      const skipped = inventoryImportPreview.skippedDeliveryCount + inventoryImportPreview.skippedNonInventoryCount
+      setInventoryImportPreview(null)
+      setSuccessMessage(`Inventario actualizado: ${inventoryImportPreview.matchedCount} productos conciliados, ${movementCount} movimientos registrados${skipped ? ` y ${skipped} filas omitidas` : ''}.`)
+      window.setTimeout(() => setSuccessMessage(''), 5500)
+    } catch (error) {
+      setInventoryActionError(error instanceof Error ? error.message : 'No se pudo aplicar la importación.')
+    } finally {
+      setInventoryImportBusy(false)
+    }
+  }
 
   useEffect(() => {
     fetchAll()
@@ -630,6 +689,19 @@ export function Inventario() {
             <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
           ))}
         </div>
+        <div className="inv-import-export-actions">
+          {showCosts && <>
+            <input ref={inventoryImportInputRef} className="inv-file-input" type="file" accept=".xlsx,.xls" onChange={event => void handleInventoryFile(event)} />
+            <button type="button" className="inv-file-action inv-file-action--import" disabled={inventoryImportBusy || inventoryExportBusy} onClick={() => inventoryImportInputRef.current?.click()}>
+              {inventoryImportBusy ? <Loader2 size={16} className="inv-file-spinner" /> : <Upload size={16} />}
+              {inventoryImportBusy ? 'Leyendo…' : 'Importar Excel'}
+            </button>
+          </>}
+          <button type="button" className="inv-file-action" disabled={inventoryImportBusy || inventoryExportBusy} onClick={() => void handleInventoryExport()}>
+            {inventoryExportBusy ? <Loader2 size={16} className="inv-file-spinner" /> : <Download size={16} />}
+            {inventoryExportBusy ? 'Exportando…' : 'Exportar Excel'}
+          </button>
+        </div>
       </div>
 
       {/* Main Content Grid */}
@@ -830,6 +902,37 @@ export function Inventario() {
         </div>
       </div>
       {successMessage && <div className="inv-success" role="status">{successMessage}<button onClick={() => setSuccessMessage('')} aria-label="Cerrar mensaje">×</button></div>}
+      {inventoryActionError && <div className="inv-import-alert" role="alert">{inventoryActionError}<button type="button" onClick={() => setInventoryActionError('')} aria-label="Cerrar mensaje">×</button></div>}
+      {inventoryImportPreview && createPortal(
+        <div className="inv-modal-overlay" role="presentation" onClick={() => !inventoryImportBusy && setInventoryImportPreview(null)}>
+          <section className="inv-sidebar-card inv-detail-modal inv-detail-modal--view inv-import-modal" role="dialog" aria-modal="true" aria-labelledby="inv-import-title" onClick={event => event.stopPropagation()}>
+            <button type="button" className="inv-modal-close" disabled={inventoryImportBusy} onClick={() => setInventoryImportPreview(null)} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
+            <div className="inv-modal-heading"><span className="positive"><FileSpreadsheet size={18} /></span><div><small>Revisa antes de actualizar</small><h3 id="inv-import-title">Importar inventario</h3></div></div>
+            <p className="inv-import-filename">{inventoryImportPreview.sourceFileName}</p>
+            <div className="inv-import-stats">
+              <div><strong>{inventoryImportPreview.matchedCount}</strong><span>productos reconocidos</span></div>
+              <div><strong>{inventoryImportPreview.movementCount}</strong><span>ajustes por registrar</span></div>
+              <div><strong>{inventoryImportPreview.negativeCount}</strong><span>con saldo negativo</span></div>
+            </div>
+            <p className="inv-import-note">Se guardarán diferencias como movimientos de ajuste, sin borrar el historial. Los productos que no aparecen en el archivo quedarán intactos.</p>
+            {(inventoryImportPreview.skippedDeliveryCount > 0 || inventoryImportPreview.skippedNonInventoryCount > 0) && <p className="inv-import-note">Filas omitidas: {inventoryImportPreview.skippedDeliveryCount} de DELIVERY y {inventoryImportPreview.skippedNonInventoryCount} que no manejan existencias.</p>}
+            {inventoryImportPreview.missingItems.length > 0 && <div className="inv-import-missing"><strong>{inventoryImportPreview.missingItems.length} productos activos no incluidos; conservarán su saldo actual</strong><span>{inventoryImportPreview.missingItems.map(item => item.name).join(', ')}</span></div>}
+            {inventoryImportPreview.warnings.length > 0 && <div className="inv-import-warnings">{inventoryImportPreview.warnings.slice(0, 3).map((warning, index) => <p key={index}>{warning}</p>)}</div>}
+            <div className="inv-import-changes">
+              <strong>Vista previa de los cambios</strong>
+              {inventoryImportPreview.changes.length === 0 ? <p>Los saldos del archivo ya coinciden con el inventario actual.</p> : inventoryImportPreview.changes.slice(0, 8).map(({ item, targetOperational, targetWarehouse }) => (
+                <div key={item.id}><span>{item.name}</span><small>Producción {item.operationalStock} → {targetOperational} {item.unitSymbol} · Depósito {item.warehouseStock} → {targetWarehouse} {item.unitSymbol}</small></div>
+              ))}
+              {inventoryImportPreview.changes.length > 8 && <small>y {inventoryImportPreview.changes.length - 8} productos más…</small>}
+            </div>
+            {inventoryActionError && <p className="inv-import-error" role="alert">{inventoryActionError}</p>}
+            <div className="inv-import-footer">
+              <button type="button" className="inv-import-cancel" disabled={inventoryImportBusy} onClick={() => { setInventoryImportPreview(null); setInventoryActionError('') }}>Cancelar</button>
+              <button type="button" className="inv-import-submit" disabled={inventoryImportBusy || inventoryImportPreview.matchedCount === 0} onClick={() => void handleApplyInventoryImport()}>{inventoryImportBusy ? <><Loader2 size={16} className="inv-file-spinner" /> Aplicando…</> : 'Aplicar actualización'}</button>
+            </div>
+          </section>
+        </div>, document.body,
+      )}
       {selectedIngredient && modalMode && createPortal(
         <div className={`inv-modal-overlay ${closingIngredient ? 'closing' : ''}`} onClick={closeModal}>
           <div className={`inv-sidebar-card inv-detail-modal ${modalMode === 'view' ? 'inv-detail-modal--view' : ''}`} onClick={event => event.stopPropagation()}>
