@@ -14,6 +14,7 @@ import {
   getCredits,
   getCreditPayments,
   addCreditPayment,
+  getCustomerPaymentAccounts,
   createCustomer,
   updateCustomer,
   setCustomerActive,
@@ -30,6 +31,7 @@ import {
   type Product,
   type CartItem,
   type PaymentMethod,
+  type FinancialAccount,
 } from '../lib/dataService'
 import {
   Search,
@@ -309,7 +311,46 @@ export function Clientes() {
 
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentNotes, setPaymentNotes] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
+  const [paymentAccountId, setPaymentAccountId] = useState('')
+  const [paymentReference, setPaymentReference] = useState('')
+  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
   const [showCobrarModal, setShowCobrarModal] = useState(false)
+
+  useEffect(() => {
+    getCustomerPaymentAccounts().then(setFinancialAccounts).catch((error) => {
+      console.error('Error cargando cuentas para cobros:', error)
+      setFinancialAccounts([])
+    })
+  }, [])
+
+  const receivableAccountsForMethod = (method: PaymentMethod) => {
+    const accounts = financialAccounts.filter((account) => account.isActive && account.acceptsCustomerPayments)
+    if (method === 'cash') return accounts.filter((account) => account.accountType === 'cash')
+    if (method === 'mobile') return accounts.filter((account) => account.currency === 'VES' && account.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(account.name))
+    if (method === 'card') return accounts.filter((account) => account.currency === 'VES' && account.name === 'Banesco')
+    if (method === 'transfer') return accounts.filter((account) => account.currency === 'VES' && account.accountType === 'bank')
+    if (method === 'zelle' || method === 'binance') return accounts.filter((account) => account.currency === 'USD' && ['bank', 'digital'].includes(account.accountType))
+    return accounts
+  }
+
+  const paymentRequiresReference = ['mobile', 'card', 'transfer', 'binance', 'zelle'].includes(paymentMethod)
+  const paymentUsesBolivares = ['mobile', 'card', 'transfer'].includes(paymentMethod)
+  const paymentAmountValue = Number(paymentAmount.replace(',', '.')) || 0
+  const paymentAmountUsd = paymentUsesBolivares
+    ? (bcvRate && bcvRate > 0 ? paymentAmountValue / bcvRate : 0)
+    : paymentAmountValue
+  const paymentAmountMax = paymentUsesBolivares
+    ? paymentModal ? paymentModal.balancePending * (bcvRate || 0) : 0
+    : paymentModal?.balancePending ?? 0
+  const availableReceivableAccounts = receivableAccountsForMethod(paymentMethod)
+
+  useEffect(() => {
+    if (paymentModal && !paymentAccountId && availableReceivableAccounts.length > 0) {
+      setPaymentAccountId(availableReceivableAccounts[0].id)
+    }
+  }, [paymentModal, paymentAccountId, availableReceivableAccounts])
 
   // Modal "Nuevo pedido" embebido en la ficha del cliente (no navega a Caja).
   const [showQuickOrderModal, setShowQuickOrderModal] = useState(false)
@@ -387,6 +428,16 @@ export function Clientes() {
   const [profileError, setProfileError] = useState('')
   const [receivableOrders, setReceivableOrders] = useState<Record<string, CustomerOrderSummary>>({})
   const [receivablesLoading, setReceivablesLoading] = useState(false)
+
+  const openReceivablePayment = (credit: CreditType) => {
+    const orderNumber = receivableOrders[credit.id]?.orderNumber
+    setPaymentAmount(credit.balancePending.toFixed(2))
+    setPaymentNotes(orderNumber ? `Pago de comanda #${orderNumber}` : 'Abono a cuenta por cobrar')
+    setPaymentMethod('cash')
+    setPaymentAccountId(receivableAccountsForMethod('cash')[0]?.id ?? '')
+    setPaymentReference('')
+    closeCobrarModal(() => setPaymentModal(credit))
+  }
 
   useEffect(() => {
     if (!showCobrarModal) return
@@ -597,19 +648,26 @@ export function Clientes() {
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (paymentModal && paymentAmount && parseFloat(paymentAmount) > 0 && user) {
+    if (paymentModal && paymentAmount && paymentAmountUsd > 0 && user) {
       try {
         await addCreditPayment({
           creditId: paymentModal.id,
-          amount: parseFloat(paymentAmount),
-          userId: user.id,
+          amount: paymentAmountUsd,
+          method: paymentMethod,
+          accountId: paymentAccountId,
+          exchangeRate: bcvRate,
+          referenceNumber: paymentReference.trim() || undefined,
+          notes: paymentNotes.trim() || undefined,
         })
-        closePaymentModal()
         setPaymentAmount('')
-        fetchCredits()
+        setPaymentNotes('')
+        setPaymentReference('')
+        await fetchCredits()
+        closePaymentModal(() => setShowCobrarModal(true))
       } catch (e) {
         console.error('Error registrando abono:', e)
-        void alertDialog({ message: 'Error al registrar abono', danger: true })
+        const detail = e instanceof Error ? e.message : 'Intenta de nuevo.'
+        void alertDialog({ message: `No se pudo registrar el pago: ${detail}`, danger: true })
       }
     }
   }
@@ -933,6 +991,7 @@ export function Clientes() {
               </div>
               <span className="clientes-modal-customer-name">{paymentModal.customerName}</span>
             </div>
+            {receivableOrders[paymentModal.id] && <p className="modal-sub-desc">Pago de comanda #{receivableOrders[paymentModal.id].orderNumber}</p>}
             <div className="clientes-debt-highlight mt-2">
               <span className="clientes-debt-label">Deuda restante</span>
               <MoneyWithBcv usd={paymentModal.balancePending} className="clientes-debt-amount" usdClassName="font-bold" compact />
@@ -940,15 +999,76 @@ export function Clientes() {
 
             <form onSubmit={handlePayment} className="crm-form mt-3">
               <div className="field">
-                <label className="field-label-white">Monto a abonar ($)</label>
+                <label className="field-label-white">Monto a abonar ({paymentUsesBolivares ? 'Bs' : '$'})</label>
                 <NumberStepper
                   step={0.01}
-                  max={paymentModal.balancePending}
-                  placeholder={`Máximo $${paymentModal.balancePending.toFixed(2)}`}
+                  max={paymentAmountMax}
+                  placeholder={`Máximo ${paymentUsesBolivares ? 'Bs ' : '$'}${paymentAmountMax.toFixed(2)}`}
                   value={paymentAmount}
                   onChange={(v) => setPaymentAmount(v)}
                   className="modal-input-dark"
                   required
+                />
+              </div>
+              <div className="field">
+                <label className="field-label-white">Método de pago</label>
+                <select
+                  className="modal-input-dark"
+                  value={paymentMethod}
+                  onChange={(event) => {
+                    const method = event.target.value as PaymentMethod
+                    const amountInUsd = paymentAmountUsd
+                    setPaymentMethod(method)
+                    setPaymentAccountId(receivableAccountsForMethod(method)[0]?.id ?? '')
+                    setPaymentReference('')
+                    setPaymentAmount(['mobile', 'card', 'transfer'].includes(method) && bcvRate
+                      ? (amountInUsd * bcvRate).toFixed(2)
+                      : amountInUsd.toFixed(2))
+                  }}
+                >
+                  <option value="cash">Efectivo</option>
+                  <option value="mobile">Pago móvil</option>
+                  <option value="card">Punto de venta</option>
+                  <option value="transfer">Transferencia</option>
+                  <option value="binance">Binance Pay</option>
+                  <option value="zelle">Zelle</option>
+                  <option value="other">Otro método</option>
+                </select>
+              </div>
+              <div className="field">
+                <label className="field-label-white">Cuenta donde ingresa el dinero</label>
+                <select
+                  className="modal-input-dark"
+                  value={paymentAccountId}
+                  onChange={(event) => setPaymentAccountId(event.target.value)}
+                  required
+                >
+                  <option value="">Selecciona una cuenta</option>
+                  {availableReceivableAccounts.map((account) => (
+                    <option key={account.id} value={account.id}>{account.name} · {account.currency}</option>
+                  ))}
+                </select>
+                {availableReceivableAccounts.length === 0 && <small className="field-hint">No hay cuentas activas para este método.</small>}
+              </div>
+              {paymentRequiresReference && <div className="field">
+                <label className="field-label-white">Referencia del pago *</label>
+                <input
+                  type="text"
+                  value={paymentReference}
+                  onChange={(event) => setPaymentReference(event.target.value)}
+                  className="modal-input-dark"
+                  maxLength={120}
+                  required
+                />
+              </div>}
+              <div className="field">
+                <label className="field-label-white">Nota o referencia (opcional)</label>
+                <input
+                  type="text"
+                  value={paymentNotes}
+                  onChange={(event) => setPaymentNotes(event.target.value)}
+                  className="modal-input-dark"
+                  maxLength={160}
                 />
               </div>
 
@@ -956,7 +1076,7 @@ export function Clientes() {
                 <button type="button" className="btn-modal-cancel" onClick={() => closePaymentModal()}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-modal-submit-red">
+                <button type="submit" className="btn-modal-submit-red" disabled={!paymentAccountId || paymentAmountUsd <= 0 || (paymentUsesBolivares && !bcvRate) || (paymentRequiresReference && !paymentReference.trim())}>
                   Confirmar Pago
                 </button>
               </div>
@@ -999,7 +1119,12 @@ export function Clientes() {
                     <span>{order ? `Comanda #${order.orderNumber} · ${order.itemsText || 'Sin detalle'}` : 'Crédito manual'}</span>
                     <small>Desde hace {days} día{days === 1 ? '' : 's'} · {formatDate(credit.createdAt)}</small>
                   </div>
-                  <MoneyWithBcv usd={credit.balancePending} className="legend-val font-bold" compact />
+                  <div className="receivable-row-actions">
+                    <MoneyWithBcv usd={credit.balancePending} className="legend-val font-bold" compact />
+                    <button type="button" className="receivable-payment-button" onClick={() => openReceivablePayment(credit)}>
+                      Registrar pago
+                    </button>
+                  </div>
                 </div>
               })}
               {!receivablesLoading && credits.filter((credit) => credit.balancePending > 0).length === 0 && <p className="modal-sub-desc">No hay cuentas pendientes.</p>}

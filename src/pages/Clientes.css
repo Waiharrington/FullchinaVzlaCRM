@@ -796,9 +796,9 @@
 
 .receivables-list { display: grid; gap: 8px; max-height: 340px; overflow-y: auto; }
 .receivable-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 12px;
   border: 1px solid #34343a;
@@ -806,6 +806,10 @@
   background: #202024;
 }
 .receivable-row > div { min-width: 0; display: grid; gap: 3px; }
+.receivable-row-actions { display: grid; justify-items: end; gap: 6px; min-width: max-content; }
+.receivable-row-actions > .money-with-bcv { min-width: max-content; }
+.receivable-payment-button { min-height: 30px; padding: 5px 9px; border: 1px solid rgba(239,68,68,.32); border-radius: 8px; background: rgba(225,29,42,.14); color: #fca5a5; font-size: 10px; font-weight: 800; white-space: nowrap; cursor: pointer; transition: background .15s ease,border-color .15s ease,color .15s ease; }
+.receivable-payment-button:hover { border-color: rgba(239,68,68,.6); background: #dc1727; color: #fff; }
 .receivable-row strong { color: #f2f2f4; font-size: 14px; }
 .receivable-row span, .receivable-row small { color: #a6a6ae; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

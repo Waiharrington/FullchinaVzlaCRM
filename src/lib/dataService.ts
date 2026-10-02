@@ -1653,17 +1653,31 @@ export async function createCredit(params: {
 export async function addCreditPayment(params: {
   creditId: string
   amount: number
+  method?: PaymentMethod
+  accountId?: string
+  exchangeRate?: number | null
+  referenceNumber?: string
   notes?: string
-  userId: string
+  userId?: string
 }): Promise<void> {
-  const { error } = await client()
-    .from('credit_payments')
-    .insert({
-      credit_id: params.creditId,
-      amount: params.amount,
-      notes: params.notes ?? null,
-      created_by: params.userId,
+  if (!params.method || !params.accountId) {
+    if (!params.userId) throw new Error('Usuario requerido para registrar este abono')
+    const { error } = await client().from('credit_payments').insert({
+      credit_id: params.creditId, amount: params.amount,
+      notes: params.notes ?? null, created_by: params.userId,
     })
+    if (error) throw error
+    return
+  }
+  const { error } = await client().rpc('fn_record_receivable_payment', {
+    p_credit_id: params.creditId,
+    p_amount: params.amount,
+    p_method: params.method,
+    p_account_id: params.accountId,
+    p_exchange_rate: params.exchangeRate ?? null,
+    p_reference_number: params.referenceNumber ?? null,
+    p_notes: params.notes ?? null,
+  })
   if (error) throw error
 }
 
@@ -2604,6 +2618,20 @@ export async function getFinancialAccounts(): Promise<FinancialAccount[]> {
     currency: a.currency as 'USD' | 'VES', isActive: true,
     acceptsCustomerPayments: a.accepts_customer_payments !== false,
     openingBalance: Number(a.opening_balance ?? 0), currentBalance: Number(a.opening_balance ?? 0),
+  }))
+}
+
+export async function getCustomerPaymentAccounts(): Promise<FinancialAccount[]> {
+  const { data, error } = await client().from('financial_accounts')
+    .select('id,name,account_type,currency,opening_balance,accepts_customer_payments')
+    .eq('is_active', true)
+    .order('name', { ascending: true })
+  if (error) throw error
+  return (data ?? []).map((account) => ({
+    id: String(account.id), name: String(account.name), accountType: String(account.account_type),
+    currency: account.currency as 'USD' | 'VES', isActive: true,
+    acceptsCustomerPayments: account.accepts_customer_payments !== false,
+    openingBalance: Number(account.opening_balance ?? 0), currentBalance: Number(account.opening_balance ?? 0),
   }))
 }
 
