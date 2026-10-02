@@ -20,6 +20,7 @@ import {
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { CalendarPicker } from '../components/CalendarPicker'
+import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { supabase } from '../lib/supabase'
@@ -27,6 +28,7 @@ import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
+import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
 import {
   Search,
   Calendar,
@@ -110,6 +112,7 @@ export interface ComandaItem {
   unitPrice?: number
   subtotal?: number
   observations?: string
+  modifiers?: Array<{ optionName: string; modifierName: string; quantity: number; price: number }>
 }
 
 export interface ComandaOrder {
@@ -117,6 +120,7 @@ export interface ComandaOrder {
   orderNumber: string
   time: string
   date?: string
+  createdAt?: string
   isRetraso?: boolean
   customerName: string
   customerPhone?: string
@@ -129,7 +133,7 @@ export interface ComandaOrder {
   items: ComandaItem[]
   notes?: string
   paymentMethod: string
-  payments?: Array<{ method: PaymentMethod; amount: number }>
+  payments?: Array<{ method: PaymentMethod; amount: number; referenceNumber?: string | null }>
   paymentType: 'card' | 'cash' | 'app' | 'pending'
   isPaid: boolean
   totalAmount?: number
@@ -142,6 +146,40 @@ export interface ComandaOrder {
   attendedBy?: string
   source?: 'pos' | 'web'
   webRequestId?: string
+}
+
+function thermalReceiptForComanda(order: ComandaOrder): ThermalReceiptData {
+  const table = order.orderType.match(/^Mesa\s+(\d+)/i)?.[1]
+  const fallbackDate = order.date?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  const createdAt = order.createdAt ?? (fallbackDate
+    ? new Date(Number(fallbackDate[3]), Number(fallbackDate[2]) - 1, Number(fallbackDate[1])).toISOString()
+    : new Date().toISOString())
+  return {
+    kind: order.isPaid ? 'venta' : 'precuenta',
+    orderNumber: order.orderNumber,
+    createdAt,
+    orderType: order.orderType,
+    tableNumber: table ? Number(table) : null,
+    employeeName: order.attendedBy || 'Usuario del sistema',
+    customerName: order.customerName || 'Cliente general',
+    items: order.items.map(item => ({
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice ?? 0,
+      modifiers: item.modifiers?.map(modifier => ({
+        name: modifier.optionName,
+        quantity: modifier.quantity,
+        unitPrice: modifier.price,
+      })),
+    })),
+    totalUsd: order.totalAmount ?? 0,
+    bcvRate: order.bcvRate,
+    payments: order.payments?.map(payment => ({
+      method: payment.method,
+      amount: payment.amount,
+      referenceNumber: payment.referenceNumber,
+    })) ?? (order.paymentReference ? [{ method: 'other', amount: order.totalAmount ?? 0, referenceNumber: order.paymentReference }] : []),
+  }
 }
 
 const MOCK_COMANDAS: ComandaOrder[] = []
@@ -200,6 +238,7 @@ function createDemoComandas(): ComandaOrder[] {
         orderNumber: `#FC-D${String(index + 1).padStart(3, '0')}`,
         time: createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
         date: createdAt.toLocaleDateString('es-VE'),
+        createdAt: createdAt.toISOString(),
         isRetraso: status !== 'ready' && status !== 'delivered' && elapsedMins >= 20,
         customerName: DEMO_CUSTOMERS[index % DEMO_CUSTOMERS.length],
         customerPhone: `0414-${String(1200000 + index * 731).slice(0, 7)}`,
@@ -327,6 +366,7 @@ interface ComandaCardProps {
   onOpen: (order: ComandaOrder) => void
   onAdvance: (orderId: string, status: ComandaStatus) => void
   onConfirmWeb: (order: ComandaOrder) => void
+  onPrint: (order: ComandaOrder) => void
   confirmingWebId: string | null
   isUpdating: boolean
 }
@@ -337,7 +377,7 @@ interface ComandaCardProps {
 // tanto en la tarjeta real (dentro de la columna) como en el DragOverlay
 // (la copia flotante que se ve mientras arrastrás, sin que el scroll de la
 // columna de origen la corte).
-function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingWebId, isUpdating }: Omit<ComandaCardProps, 'onOpen'>) {
+function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, onPrint, confirmingWebId, isUpdating }: Omit<ComandaCardProps, 'onOpen'>) {
   return (
     <>
       {/* Top Header line */}
@@ -402,6 +442,18 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
         )}
       </div>
 
+      <button
+        className="quick-print-btn"
+        type="button"
+        onMouseDown={e => e.stopPropagation()}
+        onTouchStart={e => e.stopPropagation()}
+        onKeyDown={e => e.stopPropagation()}
+        onClick={e => { e.stopPropagation(); onPrint(order) }}
+        aria-label={`Imprimir ${order.isPaid ? 'recibo' : 'precuenta'} de ${order.orderNumber}`}
+      >
+        <Printer size={14} /> {order.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}
+      </button>
+
       {/* Quick Advance Status Action */}
       {order.source === 'web' ? (
         <button
@@ -440,7 +492,7 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, confirmingW
 // Tarjeta arrastrable real, dentro de la columna. Se oculta (opacity 0)
 // mientras se arrastra en vez de moverse con transform, porque el
 // DragOverlay es el que muestra la copia flotante en su lugar.
-function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, confirmingWebId, isUpdating }: ComandaCardProps) {
+function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, onPrint, confirmingWebId, isUpdating }: ComandaCardProps) {
   const isWeb = order.source === 'web'
   const isDraggable = !isWeb && !isUpdating && order.status !== 'delivered'
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -460,7 +512,7 @@ function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, confirming
       {...attributes}
       {...listeners}
     >
-      <ComandaCardContent order={order} color={color} onAdvance={onAdvance} onConfirmWeb={onConfirmWeb} confirmingWebId={confirmingWebId} isUpdating={isUpdating} />
+      <ComandaCardContent order={order} color={color} onAdvance={onAdvance} onConfirmWeb={onConfirmWeb} onPrint={onPrint} confirmingWebId={confirmingWebId} isUpdating={isUpdating} />
     </div>
   )
 }
@@ -475,13 +527,14 @@ interface KanbanColumnProps {
   onOpen: (order: ComandaOrder) => void
   onAdvance: (orderId: string, status: ComandaStatus) => void
   onConfirmWeb: (order: ComandaOrder) => void
+  onPrint: (order: ComandaOrder) => void
   confirmingWebId: string | null
   updatingOrderIds: Set<string>
 }
 
 // Columna del tablero, receptora de la tarjeta; la máquina de estados valida
 // que el destino sea exactamente la siguiente etapa antes de persistirlo.
-function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, confirmingWebId, updatingOrderIds }: KanbanColumnProps) {
+function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, onPrint, confirmingWebId, updatingOrderIds }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key })
 
   return (
@@ -511,6 +564,7 @@ function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, 
               onOpen={onOpen}
               onAdvance={onAdvance}
               onConfirmWeb={onConfirmWeb}
+              onPrint={onPrint}
               confirmingWebId={confirmingWebId}
               isUpdating={updatingOrderIds.has(order.id)}
             />
@@ -540,6 +594,7 @@ export function Comandas() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
   const [closingSelectedOrder, setClosingSelectedOrder] = useState(false)
+  const [printReceiptPrompt, setPrintReceiptPrompt] = useState<ThermalReceiptData | null>(null)
 
   // Modal de cobro directo desde Comandas
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -964,6 +1019,18 @@ export function Comandas() {
       const paymentReference = selectedPaymentTab === 'split'
         ? [splitPrimaryReference.trim() && `Método 1: ${splitPrimaryReference.trim()}`, splitSecondaryReference.trim() && `Método 2: ${splitSecondaryReference.trim()}`].filter(Boolean).join(' · ')
         : refNumber.trim()
+      const orderForReceipt: ComandaOrder = {
+        ...paymentOrder,
+        isPaid: true,
+        paymentMethod: methodLabel,
+        paymentType: payType,
+        paymentReference: paymentReference || undefined,
+        payments: payments.map(payment => ({
+          method: payment.method,
+          amount: payment.amount,
+          referenceNumber: payment.referenceNumber ?? null,
+        })),
+      }
 
       setComandas(prev =>
         prev.map(c =>
@@ -988,6 +1055,8 @@ export function Comandas() {
           paymentReference: paymentReference || undefined,
         } : null)
       }
+
+      setPrintReceiptPrompt(thermalReceiptForComanda(orderForReceipt))
 
       closePaymentModal()
     } catch (e) {
@@ -1066,6 +1135,7 @@ export function Comandas() {
               orderNumber: `#FC-${String(o.orderNumber).padStart(6, '0')}`,
               time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+              createdAt: o.createdAt,
               isRetraso: elapsed > 15 && status !== 'delivered',
               customerName: o.customerName || 'Cliente general',
               customerPhone: o.customerPhone || undefined,
@@ -1081,10 +1151,11 @@ export function Comandas() {
                 unitPrice: item.unitPrice || 0,
                 subtotal: (item.quantity || 0) * (item.unitPrice || 0),
                 observations: '',
+                modifiers: item.modifiers ?? [],
               })),
               notes: o.notes || '',
               paymentMethod: hasPaid ? persistedPaymentLabel : '⚠️ Sin pagar',
-              payments: o.payments.map(payment => ({ method: payment.method, amount: payment.amount })),
+              payments: o.payments.map(payment => ({ method: payment.method, amount: payment.amount, referenceNumber: payment.referenceNumber })),
               paymentType: hasPaid
                 ? paymentMethods.includes('cash')
                   ? 'cash'
@@ -1114,6 +1185,7 @@ export function Comandas() {
               orderNumber: order.code,
               time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
               date: date.toLocaleDateString('es-VE'),
+              createdAt: order.createdAt,
               isRetraso: elapsed > 10,
               customerName: order.customerName,
               customerPhone: order.customerPhone,
@@ -1843,6 +1915,7 @@ export function Comandas() {
                 onOpen={order => { setShowAddItems(false); setSelectedOrder(order) }}
                 onAdvance={handleAdvanceStatus}
                 onConfirmWeb={handleConfirmWebOrder}
+                onPrint={order => printThermalReceipt(thermalReceiptForComanda(order))}
                 confirmingWebId={confirmingWebId}
                 updatingOrderIds={updatingOrderIds}
               />
@@ -1860,6 +1933,7 @@ export function Comandas() {
                 color={draggingOrderColor}
                 onAdvance={handleAdvanceStatus}
                 onConfirmWeb={handleConfirmWebOrder}
+                onPrint={order => printThermalReceipt(thermalReceiptForComanda(order))}
                 confirmingWebId={confirmingWebId}
                 isUpdating={updatingOrderIds.has(draggingOrder.id)}
               />
@@ -1901,8 +1975,8 @@ export function Comandas() {
                 <div className={`cmd-badge ${selectedOrder.orderType === 'Delivery' ? 'type-delivery' : selectedOrder.orderType.startsWith('Mesa') ? 'type-mesa' : 'type-takeaway'}`}>{selectedOrder.orderType}</div>
               </div>
               <div className="cmd-header-actions">
-                <button className="cmd-btn-outline cmd-header-print-btn" onClick={() => window.print()}>
-                  <Printer size={16} /> Imprimir
+                <button className="cmd-btn-outline cmd-header-print-btn" onClick={() => printThermalReceipt(thermalReceiptForComanda(selectedOrder))}>
+                  <Printer size={16} /> {selectedOrder.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}
                 </button>
                 <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
                   <Trash2 size={18} />
@@ -2536,8 +2610,8 @@ export function Comandas() {
               <button className="btn-confirm-payment-red" onClick={handleConfirmOrderPayment} disabled={paying || paymentError.includes('abrir la caja')}>
                 <CheckCircle size={18} /> Confirmar pago
               </button>
-              <button className="btn-modal-action-dark" onClick={() => window.print()}>
-                <Printer size={18} /> Imprimir recibo
+              <button className="btn-modal-action-dark" onClick={() => paymentOrder && printThermalReceipt(thermalReceiptForComanda(paymentOrder))}>
+                <Printer size={18} /> Imprimir precuenta
               </button>
               <button className="btn-modal-action-ghost" onClick={() => closePaymentModal()}>
                 <X size={18} /> Cancelar
@@ -2736,6 +2810,13 @@ export function Comandas() {
           </div>
         </div>,
         document.body
+      )}
+      {printReceiptPrompt && (
+        <PrintChoiceDialog
+          documentName="el recibo de venta"
+          onPrint={() => { printThermalReceipt(printReceiptPrompt); setPrintReceiptPrompt(null) }}
+          onSkip={() => setPrintReceiptPrompt(null)}
+        />
       )}
     </div>
   )

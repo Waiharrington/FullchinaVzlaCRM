@@ -5,18 +5,19 @@ import type { User } from './auth-context'
 import { supabase } from '../lib/supabase'
 
 type Role = 'owner' | 'manager' | 'cashier'
-interface Profile { role: Role; allowedModules: string[] | null }
+interface Profile { role: Role; fullName: string; allowedModules: string[] | null }
 
 async function fetchUserProfile(userId: string): Promise<Profile | null> {
   if (!supabase) return null
   const { data, error } = await supabase
     .from('profiles')
-    .select('role,is_active,allowed_modules')
+    .select('role,full_name,is_active,allowed_modules')
     .eq('id', userId)
     .maybeSingle()
   if (error || !data?.is_active || !['owner', 'manager', 'cashier'].includes(data.role)) return null
   return {
     role: data.role as Role,
+    fullName: String(data.full_name ?? ''),
     allowedModules: (data.allowed_modules as string[] | null) ?? null,
   }
 }
@@ -41,7 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (currentSession?.user) {
         const profile = await fetchUserProfile(currentSession.user.id)
         if (profile) {
-          setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role: profile.role, allowedModules: profile.allowedModules })
+          setUser({ id: currentSession.user.id, email: currentSession.user.email || '', fullName: profile.fullName, role: profile.role, allowedModules: profile.allowedModules })
         } else {
           setSession(null)
           setUser(null)
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentSession?.user) {
           const profile = await fetchUserProfile(currentSession.user.id)
           if (profile) {
-            setUser({ id: currentSession.user.id, email: currentSession.user.email || '', role: profile.role, allowedModules: profile.allowedModules })
+            setUser({ id: currentSession.user.id, email: currentSession.user.email || '', fullName: profile.fullName, role: profile.role, allowedModules: profile.allowedModules })
           } else {
             setSession(null)
             setUser(null)
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut({ scope: 'local' })
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
-    setUser({ id: data.user.id, email: data.user.email || email, role: profile.role, allowedModules: profile.allowedModules })
+    setUser({ id: data.user.id, email: data.user.email || email, fullName: profile.fullName, role: profile.role, allowedModules: profile.allowedModules })
     return {}
   }
 
@@ -120,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: 'Este usuario no está autorizado para FullChinaVzla.' }
     }
 
-    setUser({ id: data.user.id, email: data.user.email || pinData.email, role: profile.role, allowedModules: profile.allowedModules })
+    setUser({ id: data.user.id, email: data.user.email || pinData.email, fullName: profile.fullName, role: profile.role, allowedModules: profile.allowedModules })
     return {}
   }
 

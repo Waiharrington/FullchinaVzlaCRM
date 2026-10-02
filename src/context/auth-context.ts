@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 export interface User {
   id: string
   email: string
+  fullName?: string
   role: 'owner' | 'manager' | 'cashier'
   allowedModules: string[] | null
 }

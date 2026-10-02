@@ -1,12 +1,12 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Nomina } from './Nomina'
 
 const mocks = vi.hoisted(() => ({
   getAllEmployees: vi.fn(), getPayrollPeriods: vi.fn(), getPayrollEntries: vi.fn(),
   getAdvances: vi.fn(), getProductionBonusRecords: vi.fn(), getPayrollPayments: vi.fn(),
-  getFinancialAccounts: vi.fn(), getDeliveryAssignments: vi.fn(), liquidatePayrollPeriod: vi.fn(),
-  deletePayrollPeriod: vi.fn(), confirmDialog: vi.fn(),
+  getPayrollAdjustments: vi.fn(), createPayrollAdjustment: vi.fn(), createPayrollPayment: vi.fn(),
+  createAdvance: vi.fn(), getFinancialAccounts: vi.fn(), getDeliveryAssignments: vi.fn(), confirmDialog: vi.fn(),
 }))
 
 vi.mock('../lib/dataService', () => ({ ...mocks }))
@@ -33,37 +33,42 @@ describe('Historial de nómina', () => {
     mocks.getAdvances.mockResolvedValue([])
     mocks.getProductionBonusRecords.mockResolvedValue([])
     mocks.getPayrollPayments.mockResolvedValue([])
+    mocks.getPayrollAdjustments.mockResolvedValue([])
+    mocks.createPayrollAdjustment.mockResolvedValue(undefined)
+    mocks.createPayrollPayment.mockResolvedValue(undefined)
+    mocks.createAdvance.mockResolvedValue(undefined)
     mocks.getFinancialAccounts.mockResolvedValue([])
     mocks.getDeliveryAssignments.mockResolvedValue([])
     mocks.confirmDialog.mockResolvedValue(true)
-    mocks.deletePayrollPeriod.mockResolvedValue(undefined)
   })
 
-  it('muestra el bono guardado y el neto histórico del período seleccionado', async () => {
+  it('muestra las acciones en la tarjeta y abre el detalle en el mes del movimiento más reciente', async () => {
     render(<Nomina />)
-    const input = await screen.findByRole('spinbutton', { name: 'Bono de Barbara' })
-    await waitFor(() => expect(input).toHaveValue(21))
-    expect(screen.getByText('Total Bonos').parentElement).toHaveTextContent('$21,00')
-    expect(screen.getByText('Liquidación guardada').parentElement).toHaveTextContent('$21,00')
-    expect(screen.getByText('TOTAL NETO A PAGAR').parentElement).toHaveTextContent('$61,00')
+    expect(await screen.findByText('Barbara')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Salario' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '+ Bono' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '− Descuento' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Detalle/ }))
+    expect(await screen.findByLabelText('Mes del detalle')).toHaveValue('2026-09')
+    expect(screen.getAllByText('Nómina de período')).toHaveLength(2)
   })
 
-  it('conserva el total antiguo cuando no existe desglose y permite eliminar el período abierto', async () => {
+  it('prellena el salario semanal al añadir salario desde la tarjeta', async () => {
     render(<Nomina />)
-    const cards = await screen.findAllByRole('button', { name: /Liquidación:/ })
-    fireEvent.click(cards[1])
-    expect(await screen.findByText(/las liquidaciones antiguas no registraron los bonos/)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Guardar liquidación' })).not.toBeInTheDocument()
-    expect(screen.getAllByText('TOTAL GUARDADO')[0].parentElement).toHaveTextContent('$61,00')
-    fireEvent.click(within(cards[1]).getByRole('button', { name: /Eliminar período/ }))
-    await waitFor(() => expect(mocks.deletePayrollPeriod).toHaveBeenCalledWith('older'))
+    await screen.findByText('Barbara')
+    fireEvent.click(screen.getByRole('button', { name: '+ Salario' }))
+    expect(await screen.findByText('Añadir salario')).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton')).toHaveValue(40)
   })
 
-  it('bloquea un guardado nuevo cuando el servidor aún no tiene las columnas semanales', async () => {
-    mocks.getAllEmployees.mockResolvedValue([{ ...employee, hasWeeklyPayrollColumns: false }])
-    mocks.getPayrollEntries.mockResolvedValue([])
+  it('abre el registro de un pago parcial desde la tarjeta', async () => {
+    mocks.getPayrollEntries.mockResolvedValue([entry('recent', true)])
+    mocks.getFinancialAccounts.mockResolvedValue([{ id: 'cash-usd', name: 'Caja USD', currency: 'USD', currentBalance: 500, isActive: true }])
     render(<Nomina />)
-    expect(await screen.findByText(/El servidor aún no tiene la migración semanal de nómina/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Guardar liquidación' })).toBeDisabled()
+    await screen.findByText('Barbara')
+    fireEvent.click(screen.getByRole('button', { name: /Liquidar saldo/ }))
+    expect(await screen.findByText('Registrar pago directo')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Seleccionar cuenta...' }))
+    expect(await screen.findByRole('option', { name: 'Caja USD · USD' })).toBeInTheDocument()
   })
 })

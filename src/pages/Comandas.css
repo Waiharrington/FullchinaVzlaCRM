@@ -837,6 +837,25 @@
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
 }
 
+.quick-print-btn {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(239, 35, 52, .3);
+  border-radius: 9px;
+  background: rgba(239, 35, 52, .08);
+  color: #ff737e;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.quick-print-btn:hover { background: rgba(239, 35, 52, .16); }
+
 /* Tarjeta siendo arrastrada: se destaca y flota por encima de todo. */
 .comanda-card-item.is-dragging {
   opacity: 0.9;

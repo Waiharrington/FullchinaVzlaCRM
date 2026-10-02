@@ -6,8 +6,9 @@ import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { StyledSelect } from '../components/StyledSelect'
+import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import Toast from '../components/Toast'
-import { downloadReceipt } from '../lib/receipt'
+import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
 import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
@@ -427,6 +428,52 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
   const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
   const [showConfirmation, setShowConfirmation] = useState(false)
+  const [printPrompt, setPrintPrompt] = useState<ThermalReceiptData | null>(null)
+  const [printPromptDestination, setPrintPromptDestination] = useState<'comandas' | 'close' | null>(null)
+
+  const thermalReceiptForOrder = (order: OrderResult, kind: ThermalReceiptData['kind']): ThermalReceiptData => ({
+    kind,
+    orderNumber: `#FC-${String(order.orderNumber).padStart(6, '0')}`,
+    createdAt: order.createdAt,
+    orderType: order.orderType === 'dine-in' && order.tableNumber ? `Mesa ${order.tableNumber}`
+      : order.orderType === 'delivery' ? 'Delivery'
+        : order.orderType === 'dine-in' ? 'Mesa' : 'Para llevar',
+    tableNumber: order.orderType === 'dine-in' ? order.tableNumber : null,
+    employeeName: order.employeeName || user?.fullName || 'Usuario del sistema',
+    customerName: order.customerName || 'Cliente general',
+    items: order.items.map(item => {
+      const modifiers = (item.selectedModifiers ?? []).map(modifier => ({
+        name: modifier.optionName,
+        quantity: modifier.quantity,
+        unitPrice: modifier.price,
+      }))
+      const modifierUnitTotal = modifiers.reduce((sum, modifier) => sum + modifier.unitPrice * modifier.quantity, 0)
+      return {
+        name: item.productName,
+        quantity: item.quantity,
+        unitPrice: item.price - modifierUnitTotal,
+        modifiers,
+      }
+    }),
+    totalUsd: order.total,
+    deliveryFeeUsd: order.deliveryFeeUsd,
+    bcvRate: order.bcvRate || bcvRate,
+    payments: order.payments?.map(payment => ({
+      method: payment.method,
+      amount: payment.amount,
+      referenceNumber: payment.referenceNumber,
+    })) ?? [],
+  })
+
+  const resolvePrintPrompt = async (shouldPrint: boolean) => {
+    const printJob = shouldPrint && printPrompt ? printThermalReceipt(printPrompt) : Promise.resolve()
+    setPrintPrompt(null)
+    const destination = printPromptDestination
+    setPrintPromptDestination(null)
+    if (shouldPrint) await printJob
+    if (destination === 'close') onClose?.()
+    else if (destination === 'comandas') navigate('/comandas')
+  }
 
   const refreshTodayOrders = useCallback(async () => {
     try {
@@ -775,6 +822,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         tableNumber,
         customerName: customerName || 'Cliente general',
         deliveryFee: deliveryFeeUsd,
+        employeeName: user?.fullName,
       })
       setCurrentOrder(order)
       // La comanda ya salió de Ventas: no debe reaparecer como borrador al volver.
@@ -789,8 +837,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       refreshSalesRank()
       refreshOccupiedTables()
       onOrderCreated?.()
-      if (embedded) onClose?.()
-      else navigate('/comandas')
+      setPrintPrompt(thermalReceiptForOrder(order, 'precuenta'))
+      setPrintPromptDestination(embedded ? 'close' : 'comandas')
     } catch (e) {
       setPayError(e instanceof Error ? e.message : 'Error al enviar a cocina')
     } finally {
@@ -990,8 +1038,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           : (combinedRefs || null),
         receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : null,
         payments: paymentComponents,
+        employeeName: user?.fullName,
       })
       setCurrentOrder(order)
+      setPrintPrompt(thermalReceiptForOrder(order, 'venta'))
+      setPrintPromptDestination(null)
       // Una venta cobrada tampoco debe volver como borrador al regresar a Ventas.
       clearCajaDraft()
       closePaymentModal(() => setShowConfirmation(true))
@@ -1015,16 +1066,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   }
 
   const handlePrintReceipt = () => {
-    if (currentOrder) {
-      downloadReceipt({
-        orderId: `FC-${String(currentOrder.orderNumber).padStart(6, '0')}`,
-        items: currentOrder.items,
-        total: currentOrder.total,
-        paymentMethod: currentOrder.paymentMethod || 'other',
-        createdAt: currentOrder.createdAt,
-        bcvRate: currentOrder.bcvRate || bcvRate,
-      })
-    }
+    if (currentOrder) printThermalReceipt(thermalReceiptForOrder(currentOrder, 'venta'))
   }
 
   // Image 2 Target: Confirmation Screen "¡Pedido cobrado con éxito!"
@@ -1050,6 +1092,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
     return (
       <div className={`page animate-fade-in ${embedded ? 'caja-embedded' : ''}`}>
+        {printPrompt && <PrintChoiceDialog documentName="el recibo de venta" onPrint={() => resolvePrintPrompt(true)} onSkip={() => resolvePrintPrompt(false)} />}
         <div className="caja-success-layout">
           {/* LEFT COLUMN: Success Hero Card + Timeline */}
           <div className="success-left-col">
@@ -1230,6 +1273,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   return (
     <div className={`page animate-fade-in ${embedded ? 'caja-embedded' : ''}`}>
+      {printPrompt && <PrintChoiceDialog documentName="la precuenta de comanda" onPrint={() => resolvePrintPrompt(true)} onSkip={() => resolvePrintPrompt(false)} />}
       {bcvSuccessToast && (
         <Toast
           type="success"

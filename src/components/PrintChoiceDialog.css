@@ -1,0 +1,70 @@
+.print-choice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(5px);
+}
+
+.print-choice-dialog {
+  position: relative;
+  width: min(100%, 410px);
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 20px;
+  background: #171719;
+  color: #f4f4f5;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+  text-align: center;
+}
+
+.print-choice-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 10px;
+  background: #222225;
+  color: #aaa;
+}
+
+.print-choice-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 16px;
+  place-items: center;
+  border-radius: 15px;
+  background: rgba(239, 35, 52, .14);
+  color: #ff394c;
+}
+
+.print-choice-dialog h2 { margin: 0; font-size: 20px; }
+.print-choice-dialog p { margin: 10px 0 22px; color: #a1a1aa; font-size: 14px; line-height: 1.5; }
+.print-choice-actions { display: flex; gap: 10px; }
+.print-choice-actions button {
+  display: flex;
+  min-height: 46px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 700;
+}
+.print-choice-skip { background: #252528; color: #ddd; }
+.print-choice-confirm { background: #ed1830; color: #fff; }
+
+@media (max-width: 420px) {
+  .print-choice-dialog { padding: 25px 20px 20px; }
+  .print-choice-actions { flex-direction: column-reverse; }
+}

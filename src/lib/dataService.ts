@@ -81,6 +81,12 @@ export interface OrderResult {
   createdAt: string
   paymentMethod: PaymentMethod
   items: CartItem[]
+  customerName?: string
+  orderType?: string
+  tableNumber?: number | null
+  employeeName?: string
+  deliveryFeeUsd?: number
+  payments?: OrderPaymentComponent[]
 }
 
 export interface TodayOrder {
@@ -518,6 +524,17 @@ export interface PayrollPayment {
   notes: string | null
 }
 
+export interface PayrollAdjustment {
+  id: string
+  employeeId: string
+  employeeName: string
+  adjustmentType: string
+  amount: number
+  direction: 'add' | 'deduct'
+  adjustmentDate: string
+  description: string | null
+}
+
 export interface Advance {
   id: string
   employeeId: string
@@ -944,6 +961,7 @@ export async function checkout(params: {
   receivedAmount?: number | null
   payments?: OrderPaymentComponent[]
   deliveryFee?: number
+  employeeName?: string
 }): Promise<OrderResult> {
   const deliveryFee = params.orderType === 'delivery' ? (params.deliveryFee ?? 0) : 0
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0) + deliveryFee
@@ -996,6 +1014,12 @@ export async function checkout(params: {
     createdAt: checkoutResult.createdAt,
     paymentMethod: params.method,
     items: params.items,
+    customerName: params.customerName ?? 'Cliente general',
+    orderType: params.orderType ?? 'takeaway',
+    tableNumber: params.tableNumber ?? null,
+    employeeName: params.employeeName ?? '',
+    deliveryFeeUsd: deliveryFee,
+    payments: paymentComponents,
   }
 }
 
@@ -1022,6 +1046,7 @@ export async function sendToKitchen(params: {
   tableNumber?: number | null
   customerName?: string
   deliveryFee?: number
+  employeeName?: string
 }): Promise<OrderResult> {
   const deliveryFee = params.orderType === 'delivery' ? (params.deliveryFee ?? 0) : 0
   const total = params.items.reduce((sum, i) => sum + i.price * i.quantity, 0) + deliveryFee
@@ -1087,6 +1112,12 @@ export async function sendToKitchen(params: {
     createdAt: order.created_at as string,
     paymentMethod: 'cash',
     items: params.items,
+    customerName: params.customerName ?? 'Cliente general',
+    orderType: params.orderType ?? 'takeaway',
+    tableNumber: params.tableNumber ?? null,
+    employeeName: params.employeeName ?? '',
+    deliveryFeeUsd: deliveryFee,
+    payments: [],
   }
 }
 
@@ -1516,7 +1547,8 @@ export interface WhatsAppMessage {
   phone: string
   message: string
   sentAt: string
-  status: 'queued' | 'sent' | 'failed' | 'cancelled'
+  status: 'queued' | 'sending' | 'sent' | 'failed' | 'cancelled'
+  errorMessage?: string | null
 }
 
 export interface WhatsAppSegment {
@@ -2534,7 +2566,7 @@ export async function syncWeeklyDishToCatalog(weeklyDishId: string): Promise<str
 
 export async function getWhatsAppMessages(): Promise<WhatsAppMessage[]> {
   const { data, error } = await client().from('whatsapp_messages')
-    .select('id,template_type,phone,message,status,sent_at,created_at,customers(full_name)')
+    .select('id,template_type,phone,message,status,sent_at,created_at,error_message,customers(full_name)')
     .order('created_at', { ascending: false }).limit(200)
   if (error) throw error
   return (data ?? []).map((row) => ({
@@ -2542,6 +2574,7 @@ export async function getWhatsAppMessages(): Promise<WhatsAppMessage[]> {
     customerName: ((row.customers as Array<{ full_name?: string }> | null)?.[0]?.full_name) ?? 'Cliente',
     phone: row.phone as string, message: row.message as string,
     sentAt: ((row.sent_at ?? row.created_at) as string), status: row.status as WhatsAppMessage['status'],
+    errorMessage: (row.error_message as string | null) ?? null,
   }))
 }
 
@@ -3675,13 +3708,45 @@ export async function deleteCredit(creditId: string): Promise<void> {
   if (error) throw error
 }
 
-export async function queueWhatsAppMessages(params: { customerIds: string[]; customers: Customer[]; message: string; userId: string }): Promise<void> {
+export async function queueWhatsAppMessages(params: { customerIds: string[]; customers: Customer[]; message: string; userId: string }): Promise<{ count: number; batchId: string }> {
+  const batchId = crypto.randomUUID()
   const rows = params.customers
     .filter(customer => params.customerIds.includes(customer.id) && customer.phone.trim())
-    .map(customer => ({ customer_id: customer.id, phone: customer.phone, message: params.message, template_type: 'custom', status: 'queued', created_by: params.userId }))
+    .map(customer => ({
+      customer_id: customer.id, phone: customer.phone,
+      message: params.message.replace(/\[Nombre\]/g, customer.name.trim().split(/\s+/)[0] || 'cliente'),
+      template_type: 'custom', status: 'queued', created_by: params.userId, batch_id: batchId,
+    }))
   if (rows.length === 0) throw new Error('No hay destinatarios con teléfono en esta selección')
   const { error } = await client().from('whatsapp_messages').insert(rows)
   if (error) throw error
+  return { count: rows.length, batchId }
+}
+
+// Cancela los mensajes pendientes de UNA campaña (batch). Si no se indica
+// batch, se cancela el lote activo más reciente (fila en 'sending' incluida,
+// que el bot re-verifica justo antes de enviar).
+export async function cancelQueuedWhatsAppMessages(batchId?: string | null): Promise<number> {
+  let target = batchId
+  if (target === undefined) {
+    const { data: latest, error: latestError } = await client().from('whatsapp_messages')
+      .select('batch_id')
+      .in('status', ['queued', 'sending'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (latestError) throw latestError
+    if (!latest) return 0
+    target = (latest.batch_id as string | null) ?? null
+  }
+  const cancelBatch = () => client().from('whatsapp_messages')
+    .update({ status: 'cancelled' })
+    .in('status', ['queued', 'sending'])
+  const { data, error } = target === null
+    ? await cancelBatch().is('batch_id', null).select('id')
+    : await cancelBatch().eq('batch_id', target).select('id')
+  if (error) throw error
+  return data?.length ?? 0
 }
 
 export async function getWhatsAppTemplates(): Promise<WhatsAppTemplate[]> {
@@ -3793,13 +3858,58 @@ export async function getPayrollPayments(allPages = false): Promise<PayrollPayme
 
 export async function createPayrollPayment(params: {
   employeeId: string; amount: number; currency?: 'USD' | 'Bs'; exchangeRate?: number | null
-  paymentAccount?: string | null; paymentDate?: string; reference?: string | null; notes?: string | null
+  paymentAccount?: string | null; accountId?: string | null; paymentDate?: string; reference?: string | null; notes?: string | null
 }): Promise<void> {
+  if (params.accountId) {
+    const { error } = await client().rpc('fn_record_payroll_card_payment', {
+      p_employee_id: params.employeeId,
+      p_amount: params.amount,
+      p_account_id: params.accountId,
+      p_exchange_rate: params.exchangeRate ?? null,
+      p_payment_date: params.paymentDate ?? dateKeyInTimeZone(),
+      p_reference: params.reference ?? null,
+      p_notes: params.notes ?? null,
+    })
+    if (error) throw error
+    return
+  }
   const { error } = await client().from('payroll_payments').insert({
     employee_id: params.employeeId, amount: params.amount, currency: params.currency ?? 'USD',
     exchange_rate: params.exchangeRate ?? null, payment_account: params.paymentAccount ?? null,
     payment_date: params.paymentDate ?? dateKeyInTimeZone(), reference: params.reference ?? null,
     notes: params.notes ?? null,
+  })
+  if (error) throw error
+}
+
+export async function getPayrollAdjustments(): Promise<PayrollAdjustment[]> {
+  const { data, error } = await client().from('payroll_adjustments')
+    .select('id,employee_id,adjustment_type,amount,direction,adjustment_date,description,employees(full_name)')
+    .order('adjustment_date', { ascending: false }).order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    employeeId: row.employee_id as string,
+    employeeName: Array.isArray(row.employees) ? String((row.employees[0] as Record<string, unknown>)?.full_name ?? '') : '',
+    adjustmentType: row.adjustment_type as string,
+    amount: Number(row.amount),
+    direction: row.direction as 'add' | 'deduct',
+    adjustmentDate: row.adjustment_date as string,
+    description: (row.description as string) ?? null,
+  }))
+}
+
+export async function createPayrollAdjustment(params: {
+  employeeId: string; type: 'salary' | 'bonus' | 'discount'; amount: number; date?: string; description?: string | null
+}): Promise<void> {
+  const { error } = await client().from('payroll_adjustments').insert({
+    employee_id: params.employeeId,
+    adjustment_type: params.type === 'bonus' ? 'bonus' : 'other',
+    amount: params.amount,
+    direction: params.type === 'discount' ? 'deduct' : 'add',
+    adjustment_date: params.date ?? dateKeyInTimeZone(),
+    description: params.description?.trim() || (params.type === 'salary' ? 'Salario añadido' : params.type === 'bonus' ? 'Bono' : 'Descuento'),
+    source_system: 'payroll_card',
   })
   if (error) throw error
 }

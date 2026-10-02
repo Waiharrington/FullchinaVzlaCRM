@@ -2593,3 +2593,13 @@
   padding: 5px 10px;
   border-radius: 999px;
 }
+
+.receivable-payment-form .modal-input-dark {
+  height: 46px;
+  box-sizing: border-box;
+}
+
+.receivable-payment-form .modal-select-dark .fc-select-trigger {
+  height: 46px;
+  box-sizing: border-box;
+}

@@ -400,6 +400,61 @@
 .nom-periods{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px;overflow:visible;padding-bottom:0}
 .nom-period{width:auto;min-width:0;box-sizing:border-box}
 
+/* Tarjetas de saldo inspiradas en el panel de nómina de PandaBarber. */
+.nom-employee-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:stretch}
+.nom-employee-card{display:flex;min-width:0;flex-direction:column;gap:14px;padding:20px;border:1px solid rgba(212,175,55,.2);border-radius:22px;background:linear-gradient(160deg,rgba(26,26,30,.97) 0%,rgba(17,17,20,.99) 100%);box-shadow:0 14px 30px -12px rgba(0,0,0,.58);transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+.nom-employee-card:hover{transform:translateY(-2px);border-color:rgba(212,175,55,.38);box-shadow:0 18px 34px -12px rgba(0,0,0,.68),0 0 20px -8px rgba(212,175,55,.12)}
+.nom-employee-card--delivery{border-color:rgba(74,163,255,.24)}
+.nom-employee-card--delivery:hover{border-color:rgba(74,163,255,.42);box-shadow:0 18px 34px -12px rgba(0,0,0,.68),0 0 20px -8px rgba(74,163,255,.14)}
+.nom-employee-card-head,.nom-employee-identity,.nom-employee-balance-head{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.nom-employee-identity{justify-content:flex-start;flex:1}
+.nom-employee-avatar{display:grid;width:46px;height:46px;flex:0 0 46px;place-items:center;border:1.5px solid rgba(212,175,55,.38);border-radius:14px;background:rgba(212,175,55,.1);box-shadow:0 0 14px rgba(212,175,55,.1);color:#f1c75b;font-size:15px;font-weight:900}
+.nom-employee-card--delivery .nom-employee-avatar{border-color:rgba(74,163,255,.4);background:rgba(74,163,255,.1);box-shadow:0 0 14px rgba(74,163,255,.1);color:#78bdff}
+.nom-employee-avatar img{width:100%;height:100%;border-radius:inherit;object-fit:cover}
+.nom-employee-name-wrap{display:flex;min-width:0;flex-direction:column;gap:2px}
+.nom-employee-name-wrap strong{overflow:hidden;color:#fff;font-size:15px;font-weight:850;letter-spacing:-.25px;text-overflow:ellipsis;white-space:nowrap}
+.nom-employee-name-wrap>span{overflow:hidden;color:#c8a951;font-size:10px;font-weight:800;letter-spacing:.45px;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
+.nom-employee-card--delivery .nom-employee-name-wrap>span{color:#78bdff}
+.nom-employee-role{flex:0 0 auto;padding:4px 9px;border:1px solid rgba(34,197,94,.16);border-radius:999px;background:rgba(34,197,94,.12);color:#22c55e;font-size:10px;font-weight:850;white-space:nowrap}
+.nom-employee-role--delivery{border-color:rgba(74,163,255,.2);background:rgba(74,163,255,.12);color:#78bdff}
+.nom-employee-due{flex:0 0 auto;padding:6px 10px;border:1px solid rgba(212,175,55,.3);border-radius:999px;background:rgba(212,175,55,.1);color:#e3c56c;font-size:10px;font-weight:850;white-space:nowrap}
+.nom-employee-due--paid{border-color:rgba(34,197,94,.22);background:rgba(34,197,94,.1);color:#22c55e}
+.nom-employee-balance{display:flex;flex-direction:column;gap:10px;padding:15px;border:1px solid rgba(212,175,55,.23);border-radius:18px;background:linear-gradient(135deg,rgba(212,175,55,.085),rgba(212,175,55,.018))}
+.nom-employee-balance--negative{border-color:rgba(255,69,58,.24);background:linear-gradient(135deg,rgba(255,69,58,.085),rgba(255,69,58,.018))}
+.nom-employee-balance-head{align-items:flex-end;flex-wrap:wrap}
+.nom-employee-balance-head>div{display:flex;min-width:0;flex-direction:column;gap:3px}
+.nom-employee-eyebrow{color:#a5a5ad;font-size:9px;font-weight:900;letter-spacing:.65px;text-transform:uppercase}
+.nom-employee-balance-head>div>strong{color:#32d74b;font-size:22px;font-weight:950;letter-spacing:-.55px;line-height:1.2;overflow-wrap:anywhere}
+.nom-employee-balance--negative .nom-employee-balance-head>div>strong{color:#ff6961}
+.nom-employee-usd{flex:0 0 auto;padding:5px 9px;border:1px solid rgba(212,175,55,.25);border-radius:9px;background:rgba(212,175,55,.1);color:#e3c56c;font-size:11px;font-weight:850;white-space:nowrap}
+.nom-employee-balance--negative .nom-employee-usd{border-color:rgba(255,69,58,.22);background:rgba(255,69,58,.08);color:#ff827c}
+.nom-employee-totals{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}
+.nom-employee-totals>div{display:flex;min-width:0;flex-direction:column;gap:4px;padding:9px 10px;border:1px solid rgba(255,255,255,.045);border-radius:11px;background:rgba(255,255,255,.025)}
+.nom-employee-total-label{display:flex;align-items:center;gap:4px;color:#a1a1aa;font-size:9px;font-weight:750;white-space:nowrap}
+.nom-trend{font-size:12px;font-weight:900;line-height:1}
+.nom-trend--up{color:#32d74b}.nom-trend--down{color:#ff6961}
+.nom-employee-totals>div>strong{overflow:hidden;color:#fff;font-size:12px;font-weight:900;text-overflow:ellipsis;white-space:nowrap}
+.nom-employee-totals>div>strong.nom-employee-deduction{color:#ff6961}
+.nom-employee-meta{color:#a1a1aa;font-size:10.5px;font-weight:650}
+.nom-employee-meta span{padding:0 3px;color:#606068}
+.nom-employee-payment-methods{display:flex;flex-direction:column;gap:7px}
+.nom-employee-payment-methods>div{display:flex;flex-wrap:wrap;gap:6px}
+.nom-employee-payment-chip{display:inline-flex;max-width:100%;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.035);font-size:10px}
+.nom-employee-payment-chip>span{overflow:hidden;color:#a1a1aa;text-overflow:ellipsis;white-space:nowrap}
+.nom-employee-payment-chip>strong{color:#22c55e;font-size:10px;font-weight:850;white-space:nowrap}
+.nom-employee-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:auto;padding-top:2px}
+.nom-employee-action,.nom-employee-pay{display:inline-flex;min-width:0;min-height:42px;align-items:center;justify-content:center;gap:6px;padding:9px 10px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.045);color:#e4e4e7;font-size:12px;font-weight:750;cursor:pointer;transition:background .15s ease,border-color .15s ease,transform .15s ease}
+.nom-employee-action:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.09)}
+.nom-employee-action--discount{border-color:rgba(255,105,97,.17);color:#ff827c}
+.nom-employee-action--discount:hover{border-color:rgba(255,105,97,.35);background:rgba(255,69,58,.1)}
+.nom-employee-action--detail{justify-content:center;padding-inline:10px}
+.nom-employee-action--detail span{color:#c8a951;font-size:16px}
+.nom-employee-pay{grid-column:1/-1;min-height:48px;border-color:transparent;background:#e11d2a;box-shadow:0 5px 16px rgba(225,29,42,.2);color:#fff;font-size:13px;font-weight:900}
+.nom-employee-pay:not(:disabled):hover{transform:translateY(-1px);background:#f01f2e;box-shadow:0 7px 20px rgba(225,29,42,.28)}
+.nom-employee-pay:disabled{border-color:rgba(255,255,255,.07);background:rgba(255,255,255,.035);box-shadow:none;color:#777780;cursor:default}
+@media(max-width:1150px){.nom-employee-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.nom-employee-grid{grid-template-columns:minmax(0,1fr);gap:11px}.nom-employee-card{padding:16px;border-radius:18px}.nom-employee-balance-head>div>strong{font-size:21px}}
+
 /* Ajustes de liquidación: entrada simple y referencia BCV separada. */
 .nom-adjust-cell{display:inline-flex;flex-direction:column;align-items:center;gap:7px;width:92px;max-width:92px;margin:0 auto;box-sizing:border-box}
 .nom-adjust-input{width:92px;height:34px;box-sizing:border-box;padding:0 8px;color:#fff;background:#18181f;border:1px solid rgba(255,255,255,.12);border-radius:8px;font:inherit;font-size:13px;font-weight:700;text-align:center}
@@ -429,6 +484,7 @@
 .nom-detail-section{margin-top:16px}
 .nom-detail-section h4{display:flex;align-items:center;gap:8px;margin:0 0 8px;color:#e4e4e7;font-size:12px;font-weight:750}
 .nom-detail-section h4>span{padding:2px 8px;color:#a1a1aa;background:rgba(255,255,255,.06);border-radius:999px;font-size:10px;font-weight:700}
+.nom-detail-section h4 input[type=month]{margin-left:auto;max-width:150px;padding:6px 8px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#17171d;color:#e4e4e7;font:inherit;font-size:11px}
 .nom-detail-empty{margin:0;padding:12px;color:#71717a;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.09);border-radius:9px;font-size:11.5px}
 .nom-detail-hint{margin:8px 0 0;color:#71717a;font-size:10.5px;line-height:1.45}
 .nom-mini-table tfoot td{padding:9px 6px;color:#d4d4d8;font-weight:750;border-top:1px solid rgba(255,255,255,.12)}

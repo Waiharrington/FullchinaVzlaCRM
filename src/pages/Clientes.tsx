@@ -5,7 +5,6 @@ import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { StyledSelect } from '../components/StyledSelect'
-import NumberStepper from '../components/NumberStepper'
 import { formatProductTitle, normalizeForSearch } from '../lib/textFormat'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
@@ -266,6 +265,19 @@ function classifyIdentification(value: string): CustomerRow['identificationStatu
   return acceptedFormat && !repeatedPlaceholder ? 'verified_format' : 'legacy_review'
 }
 
+function parseMoneyDraft(draft: string): number {
+  const value = draft.trim().replace(/\s/g, '')
+  if (!value) return 0
+  const comma = value.lastIndexOf(',')
+  const dot = value.lastIndexOf('.')
+  const decimalSeparator = comma > dot ? ',' : '.'
+  const normalized = value.replace(/[,.]/g, (separator, index) => (
+    separator === decimalSeparator && index === Math.max(comma, dot) ? '.' : ''
+  ))
+  const amount = Number(normalized)
+  return Number.isFinite(amount) ? amount : 0
+}
+
 export function Clientes() {
   const { user } = useAuth()
   const { bcvRate } = useRates()
@@ -337,7 +349,7 @@ export function Clientes() {
 
   const paymentRequiresReference = ['mobile', 'card', 'transfer', 'binance', 'zelle'].includes(paymentMethod)
   const paymentUsesBolivares = ['mobile', 'card', 'transfer'].includes(paymentMethod)
-  const paymentAmountValue = Number(paymentAmount.replace(',', '.')) || 0
+  const paymentAmountValue = parseMoneyDraft(paymentAmount)
   const paymentAmountUsd = paymentUsesBolivares
     ? (bcvRate && bcvRate > 0 ? paymentAmountValue / bcvRate : 0)
     : paymentAmountValue
@@ -648,7 +660,7 @@ export function Clientes() {
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (paymentModal && paymentAmount && paymentAmountUsd > 0 && user) {
+    if (paymentModal && paymentAmount && paymentAmountUsd > 0 && paymentAmountUsd <= paymentModal.balancePending && user) {
       try {
         await addCreditPayment({
           creditId: paymentModal.id,
@@ -997,23 +1009,24 @@ export function Clientes() {
               <MoneyWithBcv usd={paymentModal.balancePending} className="clientes-debt-amount" usdClassName="font-bold" compact />
             </div>
 
-            <form onSubmit={handlePayment} className="crm-form mt-3">
+            <form onSubmit={handlePayment} className="crm-form receivable-payment-form mt-3">
               <div className="field">
                 <label className="field-label-white">Monto a abonar ({paymentUsesBolivares ? 'Bs' : '$'})</label>
-                <NumberStepper
-                  step={0.01}
-                  max={paymentAmountMax}
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   placeholder={`Máximo ${paymentUsesBolivares ? 'Bs ' : '$'}${paymentAmountMax.toFixed(2)}`}
                   value={paymentAmount}
-                  onChange={(v) => setPaymentAmount(v)}
+                  onChange={(event) => setPaymentAmount(event.target.value.replace(/[^\d.,]/g, ''))}
                   className="modal-input-dark"
                   required
                 />
               </div>
               <div className="field">
                 <label className="field-label-white">Método de pago</label>
-                <select
-                  className="modal-input-dark"
+                <StyledSelect
+                  className="modal-select-dark"
                   value={paymentMethod}
                   onChange={(event) => {
                     const method = event.target.value as PaymentMethod
@@ -1033,21 +1046,20 @@ export function Clientes() {
                   <option value="binance">Binance Pay</option>
                   <option value="zelle">Zelle</option>
                   <option value="other">Otro método</option>
-                </select>
+                </StyledSelect>
               </div>
               <div className="field">
                 <label className="field-label-white">Cuenta donde ingresa el dinero</label>
-                <select
-                  className="modal-input-dark"
+                <StyledSelect
+                  className="modal-select-dark"
                   value={paymentAccountId}
                   onChange={(event) => setPaymentAccountId(event.target.value)}
-                  required
                 >
                   <option value="">Selecciona una cuenta</option>
                   {availableReceivableAccounts.map((account) => (
                     <option key={account.id} value={account.id}>{account.name} · {account.currency}</option>
                   ))}
-                </select>
+                </StyledSelect>
                 {availableReceivableAccounts.length === 0 && <small className="field-hint">No hay cuentas activas para este método.</small>}
               </div>
               {paymentRequiresReference && <div className="field">
@@ -1076,7 +1088,7 @@ export function Clientes() {
                 <button type="button" className="btn-modal-cancel" onClick={() => closePaymentModal()}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-modal-submit-red" disabled={!paymentAccountId || paymentAmountUsd <= 0 || (paymentUsesBolivares && !bcvRate) || (paymentRequiresReference && !paymentReference.trim())}>
+                <button type="submit" className="btn-modal-submit-red" disabled={!paymentAccountId || paymentAmountUsd <= 0 || (paymentModal !== null && paymentAmountUsd > paymentModal.balancePending) || (paymentUsesBolivares && !bcvRate) || (paymentRequiresReference && !paymentReference.trim())}>
                   Confirmar Pago
                 </button>
               </div>

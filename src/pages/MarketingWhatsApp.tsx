@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAppMessages, getWhatsAppSegments, getWhatsAppTemplates, queueWhatsAppMessages, saveWhatsAppSegment, saveWhatsAppTemplate, type Customer, type WhatsAppMessage, type WhatsAppSegment, type WhatsAppTemplate } from '../lib/dataService'
+import { cancelQueuedWhatsAppMessages, deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAppMessages, getWhatsAppSegments, getWhatsAppTemplates, queueWhatsAppMessages, saveWhatsAppSegment, saveWhatsAppTemplate, type Customer, type WhatsAppMessage, type WhatsAppSegment, type WhatsAppTemplate } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { DateField } from '../components/DateField'
 import { dateKeyInTimeZone } from '../lib/money'
-import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer } from 'lucide-react'
+import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer, Square, TriangleAlert } from 'lucide-react'
 import './MarketingWhatsApp.css'
 
 const formatMessageDate = (value: string) => {
@@ -18,6 +18,20 @@ const formatMessageDate = (value: string) => {
     timeZone: 'America/Caracas', hour: 'numeric', minute: '2-digit', hour12: true,
   }).format(date).toLowerCase()
   return `${datePart} ${timePart}`
+}
+
+const statusLabel = (status: WhatsAppMessage['status']) =>
+  status === 'sent' ? 'Enviado'
+    : status === 'queued' ? 'En cola'
+      : status === 'sending' ? 'Enviando'
+        : status === 'cancelled' ? 'Cancelado'
+          : 'Fallido'
+
+const waLink = (phone: string) => {
+  let digits = phone.replace(/\D/g, '')
+  if (digits.startsWith('0')) digits = digits.slice(1)
+  if (digits.length === 10) digits = `58${digits}`
+  return `https://wa.me/${digits}`
 }
 
 export function MarketingWhatsApp() {
@@ -51,12 +65,18 @@ export function MarketingWhatsApp() {
   const [scheduleAmount, setScheduleAmount] = useState('10')
   const [scheduleUnit, setScheduleUnit] = useState<'minutos' | 'horas' | 'días'>('minutos')
   const [scheduleDate, setScheduleDate] = useState('')
+  const [confirmCount, setConfirmCount] = useState(0)
+  const [sendingNow, setSendingNow] = useState(false)
+  const [stopping, setStopping] = useState(false)
+  const [messageDetail, setMessageDetail] = useState<WhatsAppMessage | null>(null)
+  const [activeBatchId, setActiveBatchId] = useState<string | undefined>(undefined)
 
   const todayStr = dateKeyInTimeZone()
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
   const inactiveThreshold = dateKeyInTimeZone(new Date(Date.now() - 21 * 86400000))
   const inactiveCustomers = customers.filter(c => c.lastVisit && c.lastVisit < inactiveThreshold)
   const loyalCustomers = customers.filter(c => c.totalVisits >= 10)
+  const queuedCount = messages.filter(message => message.status === 'queued' || message.status === 'sending').length
 
   useEffect(() => {
     Promise.all([getCustomers(), getWhatsAppMessages(), getWhatsAppSegments(), getWhatsAppTemplates()]).then(([customerData, messageData, segmentData, templateData]) => {
@@ -67,6 +87,16 @@ export function MarketingWhatsApp() {
       setTargetCustomer(customerData[0]?.id || '')
     }).catch(error => setSentNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos'))
   }, [])
+
+  const hasQueued = queuedCount > 0
+
+  useEffect(() => {
+    if (!hasQueued) return
+    const timer = setInterval(() => {
+      getWhatsAppMessages().then(setMessages).catch(() => {})
+    }, 6000)
+    return () => clearInterval(timer)
+  }, [hasQueued])
 
   const openNewTemplate = () => {
     setScheduleMode('none'); setScheduleTime('08:00'); setScheduleAmount('10'); setScheduleUnit('minutos'); setScheduleDate('')
@@ -201,13 +231,49 @@ export function MarketingWhatsApp() {
       setSentNotice('No hay clientes con teléfono en la selección.')
       return
     }
+    setConfirmCount(recipients.length)
+  }
 
-    await queueWhatsAppMessages({ customerIds: recipients.map(customer => customer.id), customers, message: customMsg, userId: user.id })
-    const sentAt = `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-    const newMessages: WhatsAppMessage[] = recipients.map((target, index) => ({ id: `wm-${Date.now()}-${index}`, templateType: audienceMode === 'segment' ? (customSegment?.name ?? selectedSegment) : 'custom', customerName: target.name, phone: target.phone, message: customMsg, sentAt, status: 'queued' }))
-    setMessages(prev => [...newMessages, ...prev])
-    setSentNotice(`${recipients.length} mensaje${recipients.length === 1 ? '' : 's'} guardado${recipients.length === 1 ? '' : 's'} en la cola.`)
-    setTimeout(() => setSentNotice(''), 4000)
+  const estimatedMinutes = (count: number) => Math.max(1, Math.ceil((count * 11) / 60))
+
+  const confirmSend = async () => {
+    if (!user || sendingNow) return
+    const audience = audienceMode === 'segment' ? currentSegmentCustomers : customers.filter(customer => customer.id === targetCustomer)
+    const recipients = audience.filter(customer => customer.phone.trim())
+    if (recipients.length === 0) {
+      setConfirmCount(0)
+      setSentNotice('No hay clientes con teléfono en la selección.')
+      return
+    }
+    setSendingNow(true)
+    try {
+      const { count, batchId } = await queueWhatsAppMessages({ customerIds: recipients.map(customer => customer.id), customers, message: customMsg, userId: user.id })
+      setActiveBatchId(batchId)
+      const sentAt = `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      const newMessages: WhatsAppMessage[] = recipients.map((target, index) => ({ id: `wm-${Date.now()}-${index}`, templateType: audienceMode === 'segment' ? (customSegment?.name ?? selectedSegment) : 'custom', customerName: target.name, phone: target.phone, message: customMsg, sentAt, status: 'queued' }))
+      setMessages(prev => [...newMessages, ...prev])
+      setConfirmCount(0)
+      setSentNotice(`Envío iniciado: ${count} mensaje${count === 1 ? '' : 's'} saldrá${count === 1 ? '' : 'n'} uno a uno cada ~10 s (unos ${estimatedMinutes(count)} min).`)
+      setTimeout(() => setSentNotice(''), 8000)
+      getWhatsAppMessages().then(setMessages).catch(() => {})
+    } catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo encolar la campaña') }
+    finally { setSendingNow(false) }
+  }
+
+  const handleStopSending = async () => {
+    if (stopping) return
+    if (!window.confirm('¿Detener el envío? Se cancelarán solo los mensajes pendientes de esta campaña (incluido el que esté saliendo). Los de otras campañas no se tocan.')) return
+    setStopping(true)
+    try {
+      const cancelled = await cancelQueuedWhatsAppMessages(activeBatchId)
+      // La cancelación se hace por batch en la base. No actualizamos todas las
+      // filas locales porque el historial puede contener otras campañas activas.
+      // El refresco desde la base deja cada mensaje con su estado real.
+      try { setMessages(await getWhatsAppMessages()) } catch { /* conservar el historial anterior */ }
+      setSentNotice(`Envío detenido. ${cancelled} mensaje${cancelled === 1 ? '' : 's'} de esta campaña cancelado${cancelled === 1 ? '' : 's'}.`)
+      setTimeout(() => setSentNotice(''), 6000)
+    } catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo detener el envío') }
+    finally { setStopping(false) }
   }
 
   return (
@@ -218,7 +284,7 @@ export function MarketingWhatsApp() {
           <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
         </div>
         <div className="wa-header-actions">
-          <span className="wa-provider-state"><span /> Proveedor por conectar</span>
+          <span className="wa-provider-state"><span /> {hasQueued ? `Enviando: ${queuedCount} en cola` : 'Envío por el WhatsApp de Full China'}</span>
         </div>
       </header>
 
@@ -257,7 +323,7 @@ export function MarketingWhatsApp() {
           <section className="wa-panel wa-history">
             <header className="wa-panel-header">
               <span className="wa-panel-icon wa-panel-icon--history"><MessageSquare size={19} /></span>
-              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Mensajes manuales y automatizados recientes.</p></div>
+              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Haz clic en un mensaje para ver el contenido completo y el error si falló.</p></div>
               <span className="wa-count">{messages.length} recientes</span>
             </header>
 
@@ -265,7 +331,7 @@ export function MarketingWhatsApp() {
               <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
             ) : (
               <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
-                {visibleMessages.map(msg => <tr key={msg.id}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{formatMessageDate(msg.sentAt)}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{msg.status === 'sent' ? 'Enviado' : msg.status === 'queued' ? 'En cola' : 'Fallido'}</span></td></tr>)}
+                {visibleMessages.map(msg => <tr key={msg.id} className="wa-history-row" tabIndex={0} title="Ver detalle del mensaje" onClick={() => setMessageDetail(msg)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMessageDetail(msg) } }}><td><strong>{msg.customerName}</strong></td><td>{msg.phone}</td><td><span className="wa-type">{msg.templateType}</span></td><td>{formatMessageDate(msg.sentAt)}</td><td><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{statusLabel(msg.status)}</span></td></tr>)}
               </tbody></table><div className="wa-modal-pagination wa-history-pagination"><span>Mostrando {(historyPage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(historyPage * MODAL_PAGE_SIZE, messages.length)} de {messages.length}</span><div><button type="button" aria-label="Página anterior" disabled={historyPage === 1} onClick={() => setHistoryPage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {historyPage} de {historyPageCount}</strong><button type="button" aria-label="Página siguiente" disabled={historyPage === historyPageCount} onClick={() => setHistoryPage(page => page + 1)}><ChevronRight size={15} /></button></div></div></div>
             )}
           </section>
@@ -296,8 +362,12 @@ export function MarketingWhatsApp() {
 
             <label className="wa-message-field"><span>Mensaje <small>{customMsg.length} caracteres</small></span><textarea rows={5} value={customMsg} onChange={e => setCustomMsg(e.target.value)} /></label>
 
-            <button type="submit" className="wa-send-button"><Send size={16} /><span>Guardar en cola</span></button>
-            <p className="wa-compose-hint">El envío se habilitará al conectar el proveedor de WhatsApp.</p>
+            {hasQueued ? (
+              <button type="button" className="wa-stop-button" onClick={handleStopSending} disabled={stopping}><Square size={15} /><span>{stopping ? 'Deteniendo…' : `Detener envío (${queuedCount} en cola)`}</span></button>
+            ) : (
+              <button type="submit" className="wa-send-button"><Send size={16} /><span>Enviar ahora</span></button>
+            )}
+            <p className="wa-compose-hint">Los mensajes salen uno a uno desde el WhatsApp de Full China con ~10 s de separación, solo a clientes con teléfono registrado.</p>
           </form>
         </aside>
       </main>
@@ -326,6 +396,45 @@ export function MarketingWhatsApp() {
             <div className="wa-member-picker"><div className="wa-member-picker-head"><span>Clientes de la lista <strong>{segmentCustomerIds.length}</strong></span><input value={segmentSearch} onChange={event => setSegmentSearch(event.target.value)} placeholder="Buscar cliente..." aria-label="Buscar cliente" /></div><div className="wa-member-list">{visibleSegmentCustomers.map(customer => <label key={customer.id} className="wa-member-row"><input type="checkbox" checked={segmentCustomerIds.includes(customer.id)} onChange={event => setSegmentCustomerIds(prev => event.target.checked ? [...prev, customer.id] : prev.filter(id => id !== customer.id))} /><span className="wa-member-avatar">{customer.name.slice(0, 1).toUpperCase()}</span><span className="wa-member-copy"><strong>{customer.name}</strong><small>{customer.phone || 'Sin teléfono'}</small></span></label>)}{visibleSegmentCustomers.length === 0 && <div className="wa-audience-empty">No se encontraron clientes.</div>}</div><div className="wa-modal-pagination"><span>{filteredSegmentCustomers.length === 0 ? 'Sin resultados' : `Mostrando ${(segmentPage - 1) * MODAL_PAGE_SIZE + 1}–${Math.min(segmentPage * MODAL_PAGE_SIZE, filteredSegmentCustomers.length)} de ${filteredSegmentCustomers.length}`}</span><div><button type="button" aria-label="Página anterior" disabled={segmentPage === 1} onClick={() => setSegmentPage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {segmentPage} de {segmentPageCount}</strong><button type="button" aria-label="Página siguiente" disabled={segmentPage === segmentPageCount} onClick={() => setSegmentPage(page => page + 1)}><ChevronRight size={15} /></button></div></div></div>
             <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setShowSegmentModal(false)}>Cancelar</button><button type="submit" className="wa-send-button" disabled={segmentSaving || !segmentName.trim() || segmentCustomerIds.length === 0}>{segmentSaving ? 'Guardando…' : editingSegmentId ? 'Guardar cambios' : 'Crear segmento'}</button></div>
           </form>
+        </section>
+      </div>, document.body)}
+
+      {confirmCount > 0 && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => { if (!sendingNow) setConfirmCount(0) }}>
+        <section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-confirm-title" onClick={event => event.stopPropagation()}>
+          <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Campaña manual</span><h2 id="wa-confirm-title">¿Enviar ahora?</h2><p>Los mensajes salen uno a uno, como si los escribiera la dueña.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" disabled={sendingNow} onClick={() => setConfirmCount(0)}><X size={18} /></button></header>
+          <div className="wa-segment-form">
+            <div className="wa-confirm-body">
+              <p>Se enviarán <strong>{confirmCount} mensaje{confirmCount === 1 ? '' : 's'}</strong> con ~10 s de separación entre cada uno (unos {estimatedMinutes(confirmCount)} min en total) desde el WhatsApp de Full China.</p>
+              <p>Solo llegará a clientes con teléfono registrado. Si el mensaje incluye <code>[Nombre]</code>, se reemplaza por el nombre de cada cliente.</p>
+            </div>
+            <div className="wa-segment-form-actions">
+              <button type="button" className="wa-cancel-button" onClick={() => setConfirmCount(0)} disabled={sendingNow}>Cancelar</button>
+              <button type="button" className="wa-send-button" onClick={confirmSend} disabled={sendingNow}>{sendingNow ? 'Encolando…' : 'Sí, enviar ahora'}</button>
+            </div>
+          </div>
+        </section>
+      </div>, document.body)}
+
+      {messageDetail && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setMessageDetail(null)}>
+        <section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-detail-title" onClick={event => event.stopPropagation()}>
+          <header className="wa-segment-modal-header">
+            <div><span className="wa-eyebrow">Detalle del envío</span><h2 id="wa-detail-title">{messageDetail.customerName}</h2><p>{messageDetail.phone || 'Sin teléfono'} · {formatMessageDate(messageDetail.sentAt)}</p></div>
+            <button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setMessageDetail(null)}><X size={18} /></button>
+          </header>
+          <div className="wa-segment-form">
+            <div className="wa-detail-status">
+              <span className={`wa-status wa-status--${messageDetail.status}`}><CheckCircle2 size={13} />{statusLabel(messageDetail.status)}</span>
+              <span className="wa-type">{messageDetail.templateType}</span>
+            </div>
+            <div className="wa-detail-message">{messageDetail.message}</div>
+            {messageDetail.status === 'failed' && (
+              <div className="wa-detail-error"><TriangleAlert size={16} /><div><strong>El envío falló</strong><p>{messageDetail.errorMessage || 'WhatsApp rechazó el envío: el número no existe o no está activo en WhatsApp.'}</p></div></div>
+            )}
+            {messageDetail.status === 'queued' && <p className="wa-detail-note">Pendiente: el bot lo enviará cuando le toque en la cola (un mensaje cada ~10 s).</p>}
+            {messageDetail.status === 'sent' && <p className="wa-detail-note">Enviado desde el WhatsApp de Full China el {formatMessageDate(messageDetail.sentAt)}.</p>}
+            {messageDetail.status === 'cancelled' && <p className="wa-detail-note">Cancelado antes de enviarse porque se detuvo el envío.</p>}
+            {messageDetail.phone.trim() && <a className="wa-detail-link" href={waLink(messageDetail.phone)} target="_blank" rel="noreferrer">Abrir chat en WhatsApp</a>}
+          </div>
         </section>
       </div>, document.body)}
     </div>
