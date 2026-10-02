@@ -77,6 +77,7 @@ import {
   User,
 } from 'lucide-react'
 import './Caja.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 
 const BIRTH_MONTHS = [
@@ -242,6 +243,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const draft = useMemo(readCajaDraft, [])
   const [cart, setCart] = useState<CartItem[]>(() => draft?.cart ?? [])
+  const [mobileCartOpen, setMobileCartOpen] = useState(false)
   const [productsWithModifiers, setProductsWithModifiers] = useState<Set<string>>(new Set())
   // Selector de modificadores
   const [modifierProduct, setModifierProduct] = useState<Product | null>(null)
@@ -548,6 +550,22 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     getFinancialAccounts().then(setFinancialAccounts).catch(() => setFinancialAccounts([]))
   }, [])
 
+  useLiveDataRefresh('caja', async () => {
+    const [productsData, ordersData, modifiers, categoriesData, occupied, ranking, session, accounts] = await Promise.all([
+      getProducts(), getTodayOrders(), getAllProductModifiers(), getMenuCategories(),
+      getOccupiedTables(), getTopSellingProducts(), getActiveCashSession(), getFinancialAccounts(),
+    ])
+    setProducts(productsData)
+    cacheProducts(productsData)
+    setTodayOrders(ordersData)
+    setProductsWithModifiers(new Set(modifiers.keys()))
+    if (categoriesData.length) hydrateMenuCategories(categoriesData)
+    setOccupiedTables(new Set(occupied))
+    setSalesRank(ranking)
+    setCashSession(session)
+    setFinancialAccounts(accounts)
+  })
+
   const accountsForMethod = (method: SplitPaymentMethod) => {
     const paymentAccounts = financialAccounts.filter((account) => account.acceptsCustomerPayments)
     if (method === 'cash') return paymentAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrency)
@@ -784,6 +802,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   }
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
+  const mobileCartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
   const total = subtotal + deliveryFeeUsd
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate)
@@ -1529,8 +1548,29 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           document.body
         )}
 
+        {/* El resumen fijo permite abrir el pedido sin recorrer todo el catálogo. */}
+        {createPortal(
+          <>
+            <button
+              type="button"
+              className="mobile-cart-trigger"
+              aria-expanded={mobileCartOpen}
+              onClick={() => setMobileCartOpen(true)}
+            >
+              <span className="mobile-cart-trigger-summary">
+                <ShoppingCart size={18} aria-hidden="true" />
+                <span>{mobileCartItemCount === 1 ? '1 artículo' : `${mobileCartItemCount} artículos`}</span>
+                <strong>{formatUsd(total)}</strong>
+              </span>
+              <span className="mobile-cart-trigger-action">Ver pedido</span>
+            </button>
+            {mobileCartOpen && <button type="button" className="mobile-cart-overlay" onClick={() => setMobileCartOpen(false)} aria-label="Cerrar pedido" />}
+          </>,
+          document.body,
+        )}
+
         {/* RIGHT: Cart Sidebar */}
-        <div className="cart-sidebar">
+        <div className={`cart-sidebar${mobileCartOpen ? ' mobile-cart-open' : ''}`}>
           <div className="cart-sidebar-header">
             <div className="cart-order-title-group">
               <span className="cart-eyebrow">Comanda activa</span>
@@ -1542,6 +1582,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
+            <button type="button" className="mobile-cart-close" onClick={() => setMobileCartOpen(false)} aria-label="Cerrar pedido">
+              <X size={20} />
+            </button>
           </div>
 
           <div className="cart-sidebar-body">

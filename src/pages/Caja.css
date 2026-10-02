@@ -2645,3 +2645,77 @@
 .products-load-error { display: flex; flex-direction: column; align-items: center; gap: 12px; grid-column: 1 / -1; }
 .products-load-error button { border: 0; border-radius: 8px; padding: 9px 14px; background: #e11d2a; color: #fff; cursor: pointer; }
 @keyframes caja-skeleton { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.mobile-cart-trigger,
+.mobile-cart-overlay,
+.mobile-cart-close { display: none; }
+
+@media (max-width: 767px) {
+  .mobile-cart-trigger {
+    position: fixed;
+    z-index: 99;
+    left: 12px;
+    right: 12px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 100, 84, .35);
+    border-radius: 16px;
+    background: linear-gradient(135deg, #e31b2b, #b71522);
+    box-shadow: 0 10px 28px rgba(0,0,0,.42);
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .mobile-cart-trigger-summary { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .mobile-cart-trigger-summary > span { overflow-wrap: anywhere; }
+  .mobile-cart-trigger-summary strong { white-space: nowrap; }
+  .mobile-cart-trigger-action { white-space: nowrap; }
+
+  .mobile-cart-overlay {
+    display: block;
+    position: fixed;
+    z-index: 110;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: rgba(0, 0, 0, .68);
+    backdrop-filter: blur(4px);
+  }
+
+  .cart-sidebar { display: none; }
+  .cart-sidebar.mobile-cart-open {
+    position: fixed;
+    z-index: 111;
+    inset: max(12px, env(safe-area-inset-top, 0px)) 8px max(8px, env(safe-area-inset-bottom, 0px));
+    display: flex;
+    width: auto;
+    max-height: none;
+    overflow: hidden;
+    padding: 14px;
+    border-radius: 20px;
+    background: #151518;
+    box-shadow: 0 24px 80px rgba(0,0,0,.7);
+  }
+  .cart-sidebar.mobile-cart-open .cart-sidebar-header { flex: 0 0 auto; align-items: flex-start; }
+  .cart-sidebar.mobile-cart-open .cart-sidebar-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  .cart-sidebar.mobile-cart-open .cart-sidebar-footer { flex: 0 0 auto; max-height: 46%; overflow-y: auto; overscroll-behavior: contain; }
+  .mobile-cart-close {
+    display: grid;
+    place-items: center;
+    flex: 0 0 44px;
+    width: 44px;
+    height: 44px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 12px;
+    background: rgba(255,255,255,.06);
+    color: #fff;
+  }
+}

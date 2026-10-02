@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAuditLogs, type AuditLog } from '../lib/dataService'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { Shield, AlertTriangle, RefreshCw } from 'lucide-react'
 import './Auditoria.css'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -11,9 +12,9 @@ export function Auditoria() {
   const [error, setError] = useState('')
   const [migrationNeeded, setMigrationNeeded] = useState(false)
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError('')
       setMigrationNeeded(false)
       const data = await getAuditLogs()
@@ -27,11 +28,12 @@ export function Auditoria() {
         setError(msg)
       }
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('auditoria', () => load(true))
 
   const getSeverityBadge = (severity: AuditLog['severity']) => {
     switch (severity) {

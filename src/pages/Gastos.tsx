@@ -14,6 +14,7 @@ import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import { confirmDialog } from '../components/ConfirmDialog'
 import './Gastos.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type ExpenseType = 'fixed' | 'variable' | 'other'
 type ExpenseSourceView = { accountId: string; amount: number; currency: 'USD' | 'VES'; reference: string | null }
@@ -54,6 +55,16 @@ export function Gastos() {
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [closingExpense, setClosingExpense] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
+  const refreshExpenses = useCallback(async () => {
+    const [accountsData, expensesData] = await Promise.all([getFinancialAccounts(), getExpenses()])
+    setAccounts(accountsData)
+    setExpenses(expensesData.map((item) => {
+      let meta: Record<string, string> = {}
+      try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
+      const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference })) }
+    }))
+  }, [])
 
   const openExpenseForm = () => {
     setEditingExpenseId(null)
@@ -113,6 +124,7 @@ export function Gastos() {
       return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference })) }
     }))).catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar los gastos'))
   }, [])
+  useLiveDataRefresh('gastos', refreshExpenses)
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3500) }
 

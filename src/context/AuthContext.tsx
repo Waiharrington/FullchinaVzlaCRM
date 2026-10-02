@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from './auth-context'
 import type { User } from './auth-context'
-import { supabase } from '../lib/supabase'
+import { startDataChangeFeed, stopDataChangeFeed, supabase } from '../lib/supabase'
 
 type Role = 'owner' | 'manager' | 'cashier'
 interface Profile { role: Role; fullName: string; allowedModules: string[] | null }
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await fetchUserProfile(currentSession.user.id)
         if (profile) {
           setUser({ id: currentSession.user.id, email: currentSession.user.email || '', fullName: profile.fullName, role: profile.role, allowedModules: profile.allowedModules })
+          startDataChangeFeed(currentSession.user.id)
         } else {
           setSession(null)
           setUser(null)
@@ -59,18 +60,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const profile = await fetchUserProfile(currentSession.user.id)
           if (profile) {
             setUser({ id: currentSession.user.id, email: currentSession.user.email || '', fullName: profile.fullName, role: profile.role, allowedModules: profile.allowedModules })
+            startDataChangeFeed(currentSession.user.id)
           } else {
             setSession(null)
             setUser(null)
+            stopDataChangeFeed()
             void sb.auth.signOut({ scope: 'local' })
           }
         } else {
           setUser(null)
+          stopDataChangeFeed()
         }
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      stopDataChangeFeed()
+    }
   }, [])
 
   const signIn = async (email: string, password: string) => {

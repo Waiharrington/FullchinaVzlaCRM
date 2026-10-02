@@ -338,4 +338,12 @@
   }
   .gs-input-row { padding: 12px; }
   .gs-input { font-size: 16px; }
+  .gs-close-btn { min-height: 44px; padding-inline: 12px; }
+  .gs-clear { width: 44px; height: 44px; }
+  .gs-item { min-height: 48px; }
+  .gs-item-title,
+  .gs-item-sub {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
 }

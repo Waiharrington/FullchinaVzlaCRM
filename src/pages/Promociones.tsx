@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import NumberStepper from '../components/NumberStepper'
 import { Plus, Trash2, Eye, EyeOff, Check, Tag, Lock, ChevronUp, ChevronDown, Gift, Bike, Package, PartyPopper, UtensilsCrossed, Flame, Star, Clock, DollarSign, CupSoda, Disc, Soup, CookingPot, Beef, Gem, Trophy } from 'lucide-react'
 import './Promociones.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { PageSkeleton } from '../components/PageSkeleton'
 
@@ -112,6 +113,7 @@ export function Promociones() {
   }, [])
 
   useEffect(() => { fetchPromos() }, [fetchPromos])
+  useLiveDataRefresh('promociones', fetchPromos)
 
   const openNew = () => { setEditing(null); setForm(EMPTY_FORM); setShowForm(true) }
 

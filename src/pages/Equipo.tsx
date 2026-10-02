@@ -18,6 +18,7 @@ import {
 } from '../lib/dataService'
 import { adminSetUserModules } from '../lib/dataService'
 import type { Employee, AuthUser } from '../lib/dataService'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { allNavItems, type Role } from '../components/navItems'
 import { EmptyState } from '../components/EmptyState'
 import './Equipo.css'
@@ -167,32 +168,33 @@ export function Equipo() {
 
   const flash = (msg: string) => { setNotice(msg); setTimeout(() => setNotice(''), 4000) }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError('')
       setTeam(await getAllEmployees())
     } catch (e) {
       setError(getErrorMessage(e, 'Error cargando empleados'))
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
-  const loadUsers = useCallback(async () => {
+  const loadUsers = useCallback(async (silent = false) => {
     if (!isOwner) { setUsersLoading(false); return }
     try {
-      setUsersLoading(true)
+      if (!silent) setUsersLoading(true)
       setUsersError('')
       setAuthUsers(await listAuthUsers())
     } catch (e) {
       setUsersError(getErrorMessage(e, 'Error cargando usuarios de acceso'))
     } finally {
-      setUsersLoading(false)
+      if (!silent) setUsersLoading(false)
     }
   }, [isOwner])
 
   useEffect(() => { void load(); void loadUsers() }, [load, loadUsers])
+  useLiveDataRefresh('equipo', () => { void load(true); void loadUsers(true) })
 
   // --- Handlers empleados ---
   const handleOpenModal = (emp?: Employee) => {

@@ -532,6 +532,49 @@
 
 @media (max-width: 767px) {
   .prv-table-card { padding: 14px 12px; }
+  .prv-table-card { min-width: 0; }
+  .prv-toolbar-right { gap: 10px; }
+  .prv-search { min-height: 48px; }
+  .prv-filter-dropdown-wrap { min-width: 0; }
+  .prv-filter-select { min-width: 0; width: 100%; }
+  .prv-table-card .table-responsive-wrapper { overflow: visible; }
+  .prv-custom-table,
+  .prv-custom-table tbody { display: block; width: 100%; }
+  .prv-custom-table thead { display: none; }
+  .prv-custom-table tbody tr.prv-table-row {
+    display: block;
+    margin-bottom: 10px;
+    padding: 4px 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: #141416;
+  }
+  .prv-custom-table tbody tr.prv-table-row > td {
+    display: grid;
+    grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    overflow-wrap: anywhere;
+    text-align: left !important;
+  }
+  .prv-custom-table tbody tr.prv-table-row > td:last-child { border-bottom: 0; }
+  .prv-custom-table tbody tr.prv-table-row > td::before {
+    content: attr(data-label);
+    color: #858994;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .prv-supplier-cell,
+  .prv-contact-cell,
+  .prv-phone-row,
+  .prv-email-text { min-width: 0; overflow-wrap: anywhere; }
+  .prv-supplier-name { overflow-wrap: anywhere; }
+  .prv-actions-flex { justify-content: flex-end; gap: 8px; }
+  .prv-icon-action-btn,
+  .prv-wsap-pill { min-width: 44px; min-height: 44px; }
   .prv-overlay { align-items: flex-end; padding: 6px; }
   .prv-modal {
     width: 100%;

@@ -5,6 +5,7 @@ import { getAdvances, getAuditLogs, getCredits, getCustomers, getDailyCloses, ge
 import { dateKeyInTimeZone, formatUsd, formatVes } from '../lib/money'
 import { buildReport, REPORTS, SOURCE_REPORT_IDS, type ReportData, type ReportId } from '../lib/reporting'
 import './ReportExplorer.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Loaded = ReportData & { family?: string; start?: string; end?: string }
 const favoritesKey = 'fullchina-report-favorites'
@@ -45,10 +46,11 @@ export function ReportExplorer() {
   const definition = REPORTS.find(report => report.id === active)
   const family = definition?.group
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!family || !active) return
     if (start > end) { setError('La fecha inicial no puede ser posterior a la fecha final.'); return }
-    setLoading(true); setError('')
+    if (!silent) setLoading(true)
+    setError('')
     let next: Loaded = { family, start, end }
     try {
         if (definition?.ready === false && !SOURCE_REPORT_IDS.has(active)) { setLoaded(next); setPage(1); return }
@@ -97,10 +99,11 @@ export function ReportExplorer() {
       const sourceMissing = SOURCE_REPORT_IDS.has(active) && typeof cause === 'object' && cause !== null && ('code' in cause && (cause as { code?: string }).code === '42P01' || 'status' in cause && (cause as { status?: number }).status === 404)
       if (sourceMissing) { setLoaded({ ...next, sourceUnavailable: true }); setPage(1); return }
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar el reporte.')
-    } finally { setLoading(false) }
+    } finally { if (!silent) setLoading(false) }
   }, [active, definition?.ready, family, start, end])
 
   useEffect(() => { if (active) void load() }, [active, load])
+  useLiveDataRefresh('reportes', () => { if (active) void load(true) })
 
   const table = useMemo(() => active && loaded.family === family && loaded.start === start && loaded.end === end ? buildReport(active, start, end, loaded, startHour, endHour) : null, [active, end, endHour, family, loaded, start, startHour])
   const filteredRows = useMemo(() => {

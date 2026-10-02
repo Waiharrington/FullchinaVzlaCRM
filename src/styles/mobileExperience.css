@@ -1,0 +1,32 @@
+/* Shared admin mobile foundations. Desktop and tablet keep their existing rules. */
+@media (max-width: 767px) {
+  .app-main {
+    min-width: 0;
+    padding-top: calc(0.875rem + env(safe-area-inset-top, 0px));
+    padding-right: max(0.875rem, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.875rem, env(safe-area-inset-left, 0px));
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .app-main > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .app-main :where(input, select, textarea) {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .app-main :where(button, a, [role='button']) {
+    touch-action: manipulation;
+  }
+}
+
+@media (max-width: 359px) {
+  .app-main {
+    padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+    padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  }
+}

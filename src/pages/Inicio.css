@@ -1560,6 +1560,8 @@
 
 @media (max-width: 767px) {
   .db-header {
+    position: relative !important;
+    z-index: 80 !important;
     grid-template-columns: minmax(0, 1fr);
     align-items: stretch;
     gap: 1rem;
@@ -2103,11 +2105,15 @@
   }
 
   .db-notifications {
-    position: fixed !important;
-    top: 7rem !important;
-    left: 1rem !important;
-    right: 1rem !important;
-    width: auto !important;
+    position: absolute !important;
+    top: 4.25rem !important;
+    left: auto !important;
+    right: 0 !important;
+    width: min(330px, calc(100vw - 2rem)) !important;
+  }
+
+  .db-page.notifications-open .db-greeting-rates {
+    visibility: hidden !important;
   }
   .db-greeting-rates {
     min-height: 27px !important;
@@ -2255,6 +2261,7 @@
 @media (max-width: 600px) {
   .db-header {
     position: relative !important;
+    z-index: 80 !important;
     isolation: isolate !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
     grid-template-rows: 36px 28px !important;

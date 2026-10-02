@@ -2336,6 +2336,73 @@
   overflow-y: auto;
 }
 
+/* Teléfono: la tabla de clientes pasa a registros apilados con todos los
+   datos etiquetados; filtros y resumen también se reorganizan para el ancho real. */
+@media (max-width: 767px) {
+  .clientes-page-header { align-items: flex-start; gap: 12px; }
+  .clientes-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .clientes-kpi-grid > :nth-child(4) { grid-column: 1 / -1; }
+  .kpi-card-dark { min-width: 0; gap: 8px; padding: 12px; }
+  .kpi-content-box { min-width: 0; }
+  .kpi-value-lg { overflow-wrap: anywhere; }
+
+  .clientes-table-card { min-width: 0; padding: 12px; }
+  .table-filter-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .management-workspace--customers .filter-search-box {
+    width: 100%;
+    min-width: 0;
+    flex-basis: auto;
+    min-height: 48px;
+  }
+  .filter-dropdown-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; min-width: 0; }
+  .filter-select { width: 100%; min-width: 0; }
+  .btn-export-dark { width: 100%; min-height: 48px; justify-content: center; margin-left: 0; }
+
+  .table-responsive-wrapper { overflow: visible; }
+  .clientes-custom-table,
+  .clientes-custom-table tbody { display: block; width: 100%; }
+  .clientes-custom-table thead { display: none; }
+  .clientes-custom-table tbody tr.clickable-row {
+    display: block;
+    margin: 0 0 10px;
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: #141416;
+    cursor: pointer;
+  }
+  .clientes-custom-table tbody tr.clickable-row > td {
+    display: grid;
+    grid-template-columns: minmax(92px, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: left !important;
+    overflow-wrap: anywhere;
+  }
+  .clientes-custom-table tbody tr.clickable-row > td:last-child { border-bottom: 0; }
+  .clientes-custom-table tbody tr.clickable-row > td::before {
+    content: attr(data-label);
+    color: #858994;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .clientes-custom-table .client-cell-wrap { min-width: 0; align-items: flex-start; }
+  .clientes-custom-table .client-name-text { min-width: 0; overflow-wrap: anywhere; }
+  .clientes-custom-table .identity-cell { min-width: 0; }
+  .clientes-custom-table .actions-flex-cell { justify-content: flex-end; gap: 8px; }
+  .clientes-custom-table .icon-action-btn { width: 44px; height: 44px; }
+  .clientes-custom-table tbody tr:not(.clickable-row) > td { display: block; }
+  .table-pagination-footer { flex-wrap: wrap; gap: 10px; }
+  .pagination-info { overflow-wrap: anywhere; }
+  .pag-btn { min-width: 44px; min-height: 44px; }
+}
+
 .quick-order-search-row {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, useMemo, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2, Search } from 'lucide-react'
@@ -11,6 +11,7 @@ import { PageSkeleton } from '../components/PageSkeleton'
 import { normalizeForSearch } from '../lib/textFormat'
 import { formatUsdPrecise } from '../lib/money'
 import './Almacen.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type WarehouseItem = {
   id: string
@@ -98,8 +99,9 @@ export function Almacen() {
   const paginatedItems = displayedItems.slice((currentPage - 1) * pageSize, currentPage * pageSize)
   useEffect(() => { setCurrentPage(1) }, [filterMode, searchTerm])
 
-  useEffect(() => {
-    Promise.all([getWarehouseIngredients(), getIngredients()]).then(([ingredients, operational]) => {
+  const refreshAll = useCallback(async (silent = false) => {
+    try {
+      const [ingredients, operational] = await Promise.all([getWarehouseIngredients(), getIngredients()])
       const mapItem = (item: Ingredient): WarehouseItem => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass })
       setItems(ingredients.map(item => ({
         id: item.id,
@@ -116,9 +118,14 @@ export function Almacen() {
       setOperationalItems(operationalMapped)
       setSelectedOperationalItemId(current => current || operationalMapped[0]?.id || '')
       setSelectedItemId(current => current || ingredients[0]?.id || '')
-    }).catch(error => setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén'))
-      .finally(() => setLoading(false))
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén')
+    } finally {
+      if (!silent) setLoading(false)
+    }
   }, [])
+  useEffect(() => { void refreshAll() }, [refreshAll])
+  useLiveDataRefresh('almacen', () => refreshAll(true))
 
   const handleReceiveToWarehouse = async (event: FormEvent) => {
     event.preventDefault()
@@ -357,19 +364,19 @@ export function Almacen() {
                   const operationalQty = operationalStockMap.get(item.id) ?? 0
                   return (
                     <tr key={item.id}>
-                      <td className="almacen-item-name">{item.name}</td>
-                      <td><span className="almacen-category">{item.category}</span></td>
-                      <td className="almacen-stock-value">{item.quantity} <small>{item.unit}</small></td>
-                      <td className="almacen-stock-operational">{operationalQty} <small>{item.unit}</small></td>
-                      <td>{formatUsdPrecise(item.costPerUnit)}</td>
-                      <td className="almacen-total-value">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
-                      <td>
+                      <td className="almacen-item-name" data-label="Insumo">{item.name}</td>
+                      <td data-label="Categoría"><span className="almacen-category">{item.category}</span></td>
+                      <td className="almacen-stock-value" data-label="Stock en almacén">{item.quantity} <small>{item.unit}</small></td>
+                      <td className="almacen-stock-operational" data-label="Stock en Food Truck">{operationalQty} <small>{item.unit}</small></td>
+                      <td data-label="Costo por unidad">{formatUsdPrecise(item.costPerUnit)}</td>
+                      <td className="almacen-total-value" data-label="Valor en almacén">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
+                      <td data-label="Estado">
                         <span className={`badge-stock ${isLow ? 'low' : 'normal'}`}>
                           <span className="status-dot" />
                           {isLow ? 'Crítico' : 'Suficiente'}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Acciones">
                         <div className="almacen-actions">
                           {item.quantity > 0 && (
                             <button

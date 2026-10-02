@@ -20,6 +20,7 @@ import {
   Search, Building2, Truck, Scale, Sparkles, User, X, Info,
 } from 'lucide-react'
 import './ProduccionReal.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type ProteinType = 'pollo' | 'cerdo' | 'camaron' | 'jamon' | 'otro'
 type PeriodFilter = 'today' | '7d' | '30d' | 'all'
@@ -78,9 +79,9 @@ export function ProduccionReal() {
     }, 200)
   }
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError('')
       const [s, b, whIng, opIng, portions, un, emps] = await Promise.all([
         getProductionStats(),
@@ -108,11 +109,12 @@ export function ProduccionReal() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos de producción')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { void loadData() }, [loadData])
+  useLiveDataRefresh('produccion', () => loadData(true))
 
   // Map of raw ingredients by ID
   const rawIngredientsList = useMemo(() => {

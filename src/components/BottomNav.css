@@ -45,6 +45,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   min-width: 52px;
+  min-height: 44px;
   background: transparent;
   border: none;
   font-family: inherit;
@@ -160,8 +161,8 @@
   background: rgba(255, 255, 255, 0.1);
   border: none;
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -205,6 +206,7 @@
   text-decoration: none;
   font-weight: 500;
   transition: all 0.2s ease;
+  min-height: 48px;
 }
 
 .bottom-nav-drawer-item.active {
@@ -276,6 +278,7 @@
     padding: 6px 2px !important;
     border-radius: 12px !important;
     color: #858994 !important;
+    min-height: 48px;
   }
 
   .bottom-nav-item.active {
@@ -286,4 +289,5 @@
   .bottom-nav-item.active .bottom-nav-icon-wrap { color: #ff6a5f !important; filter: none !important; }
   .bottom-nav-active-dot { display: none !important; }
   .bottom-nav-label { font-size: .61rem !important; line-height: 1.1 !important; }
+  .bottom-nav-drawer { max-height: min(88dvh, 760px); padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
 }

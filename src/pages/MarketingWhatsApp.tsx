@@ -7,6 +7,7 @@ import { DateField } from '../components/DateField'
 import { dateKeyInTimeZone } from '../lib/money'
 import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer, Square, TriangleAlert } from 'lucide-react'
 import './MarketingWhatsApp.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const formatMessageDate = (value: string) => {
   const date = new Date(value)
@@ -72,6 +73,12 @@ export function MarketingWhatsApp() {
   const [activeBatchId, setActiveBatchId] = useState<string | undefined>(undefined)
 
   const todayStr = dateKeyInTimeZone()
+  const refreshMarketingData = async () => {
+    const [customerData, messageData, segmentData, templateData] = await Promise.all([
+      getCustomers(), getWhatsAppMessages(), getWhatsAppSegments(), getWhatsAppTemplates(),
+    ])
+    setCustomers(customerData); setMessages(messageData); setSegments(segmentData); setTemplates(templateData)
+  }
   const birthdayCustomers = customers.filter(c => c.birthday === todayStr)
   const inactiveThreshold = dateKeyInTimeZone(new Date(Date.now() - 21 * 86400000))
   const inactiveCustomers = customers.filter(c => c.lastVisit && c.lastVisit < inactiveThreshold)
@@ -87,6 +94,7 @@ export function MarketingWhatsApp() {
       setTargetCustomer(customerData[0]?.id || '')
     }).catch(error => setSentNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos'))
   }, [])
+  useLiveDataRefresh('marketing', refreshMarketingData)
 
   const hasQueued = queuedCount > 0
 

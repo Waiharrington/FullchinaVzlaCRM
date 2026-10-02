@@ -19,6 +19,7 @@ import {
   type CashTransaction,
 } from '../lib/dataService'
 import './CajaOperativa.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const MOVEMENT_LABELS: Record<string, string> = {
   cash_in: 'Ingreso', cash_out: 'Salida', withdrawal: 'Retiro', expense: 'Gasto', adjustment: 'Ajuste',
@@ -74,8 +75,8 @@ export function CajaOperativa() {
     }
   }
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
+  const refresh = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError('')
     try {
       const [active, recent] = await Promise.all([getActiveCashSession(), getCashSessionHistory(10)])
@@ -89,12 +90,15 @@ export function CajaOperativa() {
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No se pudo cargar la caja')
     } finally {
-      setLoading(false)
-      setInitialLoading(false)
+      if (!silent) {
+        setLoading(false)
+        setInitialLoading(false)
+      }
     }
   }, [])
 
   useEffect(() => { void refresh() }, [refresh])
+  useLiveDataRefresh('caja-operativa', () => refresh(true))
 
   const closeDifference = useMemo(() => ({
     usd: (Number(countedUsd) || 0) - (session?.expectedCashUsd ?? 0),

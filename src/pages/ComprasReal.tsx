@@ -21,6 +21,7 @@ import {
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import { confirmDialog } from '../components/ConfirmDialog'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import './ComprasReal.css'
 
 interface ItemForm { ingredientId: string; quantity: string; unitId: string; unitCost: string; stockLocation: 'warehouse' | 'operational' }
@@ -87,17 +88,19 @@ export function ComprasReal() {
     }, 200)
   }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true); setError('')
+      if (!silent) setLoading(true)
+      setError('')
       const [sup, purch, ingr, un, accts] = await Promise.all([
         getSuppliers(), getPurchases().catch(() => []), getIngredients(), getUnits(), getFinancialAccounts().catch(() => []),
       ])
       setSuppliers(sup); setPurchases(purch); setIngredients(ingr); setUnits(un); setAccounts(accts)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando datos') }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('compras', () => load(true))
 
   const closePurchaseForm = useCallback(() => {
     if (saving || closingForm) return

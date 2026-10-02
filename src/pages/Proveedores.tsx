@@ -37,6 +37,7 @@ import {
 import { formatUsd } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import './Proveedores.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type SupplierDraft = { name: string; contact: string; phone: string; email: string; notes: string }
 const EMPTY_DRAFT: SupplierDraft = { name: '', contact: '', phone: '', email: '', notes: '' }
@@ -185,8 +186,8 @@ export function Proveedores() {
     }, 200)
   }
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError('')
     try {
       const [supplierRows, purchaseRows] = await Promise.all([getSuppliers(), getPurchases()])
@@ -195,11 +196,12 @@ export function Proveedores() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'No se pudieron cargar los proveedores')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('proveedores', () => load(true))
 
   const activity = useMemo(() => new Map(suppliers.map((supplier) => {
     const history = purchases.filter((purchase) => !purchase.isVoided && purchase.supplierId === supplier.id)
@@ -573,7 +575,7 @@ export function Proveedores() {
                       onClick={() => setSelectedId(supplier.id)}
                     >
                       {/* Proveedor / Avatar */}
-                      <td>
+                      <td data-label="Proveedor">
                         <div className="prv-supplier-cell">
                           <span
                             className="prv-cell-avatar"
@@ -586,7 +588,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Contacto */}
-                      <td>
+                      <td data-label="Contacto">
                         {supplier.contact ? (
                           <div className="prv-contact-person">
                             <UserRound size={13} className="prv-icon-muted" />
@@ -598,7 +600,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Teléfono / Correo */}
-                      <td>
+                      <td data-label="Teléfono y correo">
                         <div className="prv-contact-cell">
                           {supplier.phone ? (
                             <div className="prv-phone-row">
@@ -637,14 +639,14 @@ export function Proveedores() {
                       </td>
 
                       {/* Compras */}
-                      <td style={{ textAlign: 'center' }}>
+                      <td data-label="Compras" style={{ textAlign: 'center' }}>
                         <span className={`prv-purchases-badge ${purchaseCount > 0 ? 'active' : 'zero'}`}>
                           {purchaseCount} {purchaseCount === 1 ? 'compra' : 'compras'}
                         </span>
                       </td>
 
                       {/* Total Acumulado */}
-                      <td className="amount-td">
+                      <td className="amount-td" data-label="Total acumulado">
                         <MoneyWithBcv
                           usd={totalAmount}
                           className={totalAmount === 0 ? 'text-muted-amount' : 'text-green'}
@@ -654,7 +656,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Última Compra */}
-                      <td>
+                      <td data-label="Última compra">
                         {lastPurchaseDate ? (
                           <div className="prv-date-cell">
                             <span className="prv-date-main">{formatDate(lastPurchaseDate)}</span>
@@ -666,7 +668,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Acciones */}
-                      <td>
+                      <td data-label="Acciones">
                         <div className="prv-actions-flex" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"

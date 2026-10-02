@@ -69,6 +69,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import './Clientes.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 // Cache a nivel de módulo: al volver a esta pestaña se muestran los datos de
 // la última visita al instante, sin el parpadeo de "Cargando...", mientras
@@ -521,7 +522,7 @@ export function Clientes() {
     setLoading(false)
   }, [isDemoMode])
 
-  const fetchCredits = useCallback(async () => {
+  const fetchCredits = useCallback(async (silent = false) => {
     if (isDemoMode) return
     try {
       const [creditData, customerData, metricData] = await Promise.all([
@@ -536,13 +537,14 @@ export function Clientes() {
     } catch (e) {
       console.error('Error cargando créditos:', e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [isDemoMode])
 
   useEffect(() => {
     fetchCredits()
   }, [fetchCredits])
+  useLiveDataRefresh('clientes', () => fetchCredits(true))
 
   useEffect(() => {
     if (isDemoMode) return
@@ -1845,7 +1847,7 @@ export function Clientes() {
                 ) : (
                   pagedRows.map((row) => (
                     <tr key={row.id} className="clickable-row" onClick={() => setSelectedClient(row)}>
-                      <td>
+                      <td data-label="Cliente">
                         <div className="client-cell-wrap">
                           <span className="client-avatar-badge" style={{ backgroundColor: row.avatarBg }}>
                             {row.initials}
@@ -1853,8 +1855,8 @@ export function Clientes() {
                           <span className="client-name-text">{row.name}</span>
                         </div>
                       </td>
-                      <td className="phone-td">{row.phone}</td>
-                      <td>
+                      <td className="phone-td" data-label="Teléfono">{row.phone || 'Sin teléfono'}</td>
+                      <td data-label="Identificación">
                         <div className="identity-cell">
                           {row.identificationStatus === 'legacy_review' ? (
                             <small className="identity-badge legacy_review">Revisar</small>
@@ -1868,15 +1870,15 @@ export function Clientes() {
                           )}
                         </div>
                       </td>
-                      <td className="date-td">{row.lastPurchase}</td>
-                      <td className="amount-td"><MoneyWithBcv usd={row.totalPurchased} className={row.totalPurchased === 0 ? "text-muted-amount" : "text-green"} usdClassName="font-bold" compact /></td>
-                      <td className="amount-td"><MoneyWithBcv usd={row.pendingBalance} className={row.pendingBalance > 0 ? "text-red" : "text-muted-amount"} usdClassName="font-bold" compact /></td>
-                      <td>
+                      <td className="date-td" data-label="Última compra">{row.lastPurchase}</td>
+                      <td className="amount-td" data-label="Total comprado"><MoneyWithBcv usd={row.totalPurchased} className={row.totalPurchased === 0 ? "text-muted-amount" : "text-green"} usdClassName="font-bold" compact /></td>
+                      <td className="amount-td" data-label="Saldo pendiente"><MoneyWithBcv usd={row.pendingBalance} className={row.pendingBalance > 0 ? "text-red" : "text-muted-amount"} usdClassName="font-bold" compact /></td>
+                      <td data-label="Estado">
                         <span className={`status-badge-pill ${row.status.toLowerCase()}`}>
                           {row.status}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Acciones">
                         <div className="actions-flex-cell" onClick={(e) => e.stopPropagation()}>
                           <button className="icon-action-btn" title="Ver perfil del cliente" onClick={() => setSelectedClient(row)}>
                             <Eye size={15} />

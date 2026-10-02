@@ -32,6 +32,7 @@ import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
 import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings } from 'lucide-react'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Tab = 'credits' | 'close' | 'delivery'
 
@@ -88,7 +89,7 @@ export function Mas() {
     }, 200)
   }
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (silent = false) => {
     try {
       const [creditsData, stats, ordersData, closesData] = await Promise.all([
         getCredits(),
@@ -105,13 +106,17 @@ export function Mas() {
     } catch (e) {
       console.error('Error cargando datos:', e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     fetchAll()
   }, [fetchAll])
+  useLiveDataRefresh(isCreditsModule ? 'creditos' : 'mas', () => {
+    void fetchAll(true)
+    if (isCreditsModule) void getCustomers().then(setCustomers).catch(() => undefined)
+  })
 
   useEffect(() => { if (isCreditsModule) getCustomers().then(setCustomers).catch(() => undefined) }, [isCreditsModule])
 

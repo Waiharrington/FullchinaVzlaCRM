@@ -804,8 +804,22 @@
 @media (max-width: 640px) {
   .almacen-page { gap: 18px; }
   .almacen-page-header { align-items: flex-start; flex-direction: column; gap: 12px; }
-  .almacen-header-note { margin-left: 66px; }
-  .almacen-metrics-grid { grid-template-columns: 1fr; gap: 10px; }
+  .almacen-page-header > div,
+  .almacen-page-title-wrap,
+  .almacen-metric-card,
+  .metric-info-group { min-width: 0; }
+  .almacen-page-header p { overflow-wrap: anywhere; }
+  .almacen-header-note { margin-left: 0; }
+  .management-workspace--warehouse .almacen-metrics-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .management-workspace--warehouse .almacen-metric-card { min-width: 0; }
+  .management-workspace--warehouse .metric-info-group { min-width: 0; }
+  .management-workspace--warehouse .metric-label,
+  .management-workspace--warehouse .metric-sub-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    overflow-wrap: anywhere;
+  }
   .almacen-metric-card { min-height: 92px; padding: 15px; }
   .almacen-main-grid { gap: 14px; }
   .almacen-side-column { display: flex; }
@@ -814,4 +828,36 @@
   .transfer-fields-grid { grid-template-columns: 1fr; }
   .transfer-history-item { align-items: flex-start; flex-direction: column; }
   .history-status { align-self: flex-start; }
+  .management-workspace--warehouse .table-responsive-wrapper { overflow: visible; }
+  .management-workspace--warehouse .almacen-table,
+  .management-workspace--warehouse .almacen-table tbody { display: block; width: 100%; min-width: 0; }
+  .management-workspace--warehouse .almacen-table thead { display: none; }
+  .management-workspace--warehouse .almacen-table tbody tr:not(:has(.almacen-empty-cell)) {
+    display: block;
+    margin: 0 0 10px;
+    padding: 4px 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: #141416;
+  }
+  .management-workspace--warehouse .almacen-table tbody td {
+    display: grid;
+    grid-template-columns: minmax(108px, .85fr) minmax(0, 1.15fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .management-workspace--warehouse .almacen-table tbody td[data-label]::before {
+    content: attr(data-label);
+    color: #858994;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .management-workspace--warehouse .almacen-table tbody td:last-child { border-bottom: 0; }
+  .management-workspace--warehouse .almacen-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .management-workspace--warehouse .almacen-action-btn { width: 44px; height: 44px; }
 }

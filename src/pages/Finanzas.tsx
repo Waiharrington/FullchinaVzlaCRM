@@ -22,6 +22,7 @@ import {
   Clock, Gift, Users, Landmark, ArrowRight,
 } from 'lucide-react'
 import './Finanzas.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
 interface PL {
@@ -124,9 +125,9 @@ export function Finanzas() {
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeAccount, closeLedger, closeTransfer, selectedAccount, selectedLedgerCurrency, showTransfer, transferSaving])
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const now = new Date()
       const comparisonStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const selectedStart = new Date(`${summaryMonth}-01T00:00:00`)
@@ -141,9 +142,10 @@ export function Finanzas() {
         getFinancialAccounts().catch(() => []),
       ])
       setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts)
-    } catch (e) { console.error(e) } finally { setLoading(false) }
+    } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
   }, [summaryMonth])
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('finanzas', () => load(true))
 
   const computePL = useCallback((start: Date, end: Date): PL => {
     const s = start.getTime(), e = end.getTime()

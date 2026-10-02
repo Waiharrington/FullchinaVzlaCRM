@@ -9,6 +9,7 @@ import {
 import { estimateDelivery } from '../lib/delivery'
 import { PageSkeleton } from './PageSkeleton'
 import { confirmDialog } from './ConfirmDialog'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 /** Configuración administrable del delivery por distancia (origen + zonas). */
 export function DeliverySettings() {
@@ -27,9 +28,9 @@ export function DeliverySettings() {
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const { config: cfg, zones: zs } = await getDeliverySettings()
       setConfig(cfg)
       setLat(cfg.originLat == null ? '' : String(cfg.originLat))
@@ -37,9 +38,10 @@ export function DeliverySettings() {
       setFactor(String(cfg.roadFactor))
       setZones(zs)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando la configuración de delivery') }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('delivery-settings', () => load(true))
 
   const saveConfig = async () => {
     setSaving(true); setError('')

@@ -1762,7 +1762,7 @@ export async function getDailySales(days: number = 30): Promise<DailySales[]> {
 
 // --- Ranking de productos (RPC) ----------------------------------------------
 
-export async function getProductRanking(): Promise<ProductRanking[]> {
+export async function getProductRanking(includeImages = true): Promise<ProductRanking[]> {
   const { data, error } = await client().rpc('fn_get_product_ranking')
   if (error) throw error
 
@@ -1774,7 +1774,7 @@ export async function getProductRanking(): Promise<ProductRanking[]> {
     revenue: Number(r.total_revenue ?? 0),
   }))
 
-  if (ranking.length === 0) return ranking
+  if (!includeImages || ranking.length === 0) return ranking
 
   try {
     const { data: products, error: imagesError } = await client()

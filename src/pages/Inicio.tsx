@@ -11,6 +11,7 @@ import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
 import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient } from '../lib/dataService'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
@@ -38,7 +39,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 // Cache a nivel de módulo: al volver al Dashboard se muestran los datos de
 // la última visita al instante, sin el parpadeo de "Cargando...", mientras
 // se refrescan en segundo plano.
-let inicioCache: {
+type DashboardCache = {
   stats: TodayStats | null
   todayOrders: FullOrder[]
   dailySales: DailySales[]
@@ -46,7 +47,28 @@ let inicioCache: {
   credits: Credit[]
   paymentMethods: PaymentMethodSales[]
   productionStats: ProductionStats | null
-} | null = null
+}
+let inicioCache: DashboardCache | null = null
+let inicioCacheOwner: string | null = null
+const DASHBOARD_CACHE_KEY = 'fullchina-dashboard-cache-v1'
+const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000
+
+function readDashboardCache(ownerId: string | undefined) {
+  const owner = ownerId ?? 'anonymous'
+  if (inicioCacheOwner && inicioCacheOwner !== owner) inicioCache = null
+  inicioCacheOwner = owner
+  if (inicioCache) return inicioCache
+  try {
+    const stored = localStorage.getItem(DASHBOARD_CACHE_KEY)
+    if (!stored) return null
+    const parsed = JSON.parse(stored) as { owner?: string; savedAt?: number; data?: DashboardCache }
+    if (parsed.owner !== owner || !parsed.data || !parsed.savedAt || Date.now() - parsed.savedAt > DASHBOARD_CACHE_MAX_AGE_MS) return null
+    inicioCache = parsed.data
+    return inicioCache
+  } catch {
+    return null
+  }
+}
 
 const PAYMENT_METHOD_LABELS: Record<string, string> = {
   cash: 'Efectivo', card: 'Tarjeta / Punto', mobile: 'Pago móvil',
@@ -61,19 +83,20 @@ function optimizedDashboardProductImage(imageUrl: string | null) {
 }
 
 export function Inicio() {
-  const navigate = useNavigate()
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const initialCache = readDashboardCache(user?.id)
   const { open: openSearch } = useSearch()
   const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
-  const [stats, setStats] = useState<TodayStats | null>(inicioCache?.stats ?? null)
-  const [todayOrders, setTodayOrders] = useState<FullOrder[]>(inicioCache?.todayOrders ?? [])
-  const [dailySales, setDailySales] = useState<DailySales[]>(inicioCache?.dailySales ?? [])
-  const [productRanking, setProductRanking] = useState<ProductRanking[]>(inicioCache?.productRanking ?? [])
-  const [credits, setCredits] = useState<Credit[]>(inicioCache?.credits ?? [])
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(inicioCache?.paymentMethods ?? [])
-  const [productionStats, setProductionStats] = useState<ProductionStats | null>(inicioCache?.productionStats ?? null)
+  const [stats, setStats] = useState<TodayStats | null>(initialCache?.stats ?? null)
+  const [todayOrders, setTodayOrders] = useState<FullOrder[]>(initialCache?.todayOrders ?? [])
+  const [dailySales, setDailySales] = useState<DailySales[]>(initialCache?.dailySales ?? [])
+  const [productRanking, setProductRanking] = useState<ProductRanking[]>(initialCache?.productRanking ?? [])
+  const [credits, setCredits] = useState<Credit[]>(initialCache?.credits ?? [])
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(initialCache?.paymentMethods ?? [])
+  const [productionStats, setProductionStats] = useState<ProductionStats | null>(initialCache?.productionStats ?? null)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
-  const [loading, setLoading] = useState(!inicioCache)
+  const [loading, setLoading] = useState(!initialCache)
   const [chartLoading, setChartLoading] = useState(false)
   const [salesRange, setSalesRange] = useState(7)
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
@@ -85,41 +108,40 @@ export function Inicio() {
   const [todayOrdersOpen, setTodayOrdersOpen] = useState(false)
   const [expandedPaymentOrderId, setExpandedPaymentOrderId] = useState<string | null>(null)
 
-  const fetchData = useCallback(async (days: number = 7) => {
-    setLoading(true)
+  const fetchData = useCallback(async (days: number = 7, silent = false) => {
+    if (!silent) setLoading(true)
     setDashboardError('')
     try {
-      const [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult] = await Promise.allSettled([
+      const [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult] = await Promise.allSettled([
         getTodayStats(),
         getOrdersWithItems(),
         getDailySales(days),
-        getProductRanking(),
         getCredits(),
         getPaymentMethodSales(),
-        getProductionStats(),
         getIngredients(),
       ])
 
       if (statsResult.status === 'fulfilled') setStats(statsResult.value)
       if (ordersResult.status === 'fulfilled') setTodayOrders(ordersResult.value)
       if (salesResult.status === 'fulfilled') setDailySales(salesResult.value)
-      if (rankingResult.status === 'fulfilled') setProductRanking(rankingResult.value)
       if (creditsResult.status === 'fulfilled') setCredits(creditsResult.value)
       if (paymentResult.status === 'fulfilled') setPaymentMethods(paymentResult.value)
-      if (productionResult.status === 'fulfilled') setProductionStats(productionResult.value)
       if (ingredientsResult.status === 'fulfilled') setIngredients(ingredientsResult.value)
 
       inicioCache = {
         stats: statsResult.status === 'fulfilled' ? statsResult.value : inicioCache?.stats ?? null,
         todayOrders: ordersResult.status === 'fulfilled' ? ordersResult.value : inicioCache?.todayOrders ?? [],
         dailySales: salesResult.status === 'fulfilled' ? salesResult.value : inicioCache?.dailySales ?? [],
-        productRanking: rankingResult.status === 'fulfilled' ? rankingResult.value : inicioCache?.productRanking ?? [],
+        productRanking: inicioCache?.productRanking ?? [],
         credits: creditsResult.status === 'fulfilled' ? creditsResult.value : inicioCache?.credits ?? [],
         paymentMethods: paymentResult.status === 'fulfilled' ? paymentResult.value : inicioCache?.paymentMethods ?? [],
-        productionStats: productionResult.status === 'fulfilled' ? productionResult.value : inicioCache?.productionStats ?? null,
+        productionStats: inicioCache?.productionStats ?? null,
       }
+      try {
+        localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache }))
+      } catch { /* El dashboard sigue funcionando si el almacenamiento está lleno o deshabilitado. */ }
 
-      const failedResults = [statsResult, ordersResult, salesResult, rankingResult, creditsResult, paymentResult, productionResult, ingredientsResult]
+      const failedResults = [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult]
         .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
       if (failedResults.length > 0) {
         console.error('Errores parciales del dashboard:', failedResults.map(result => result.reason))
@@ -129,9 +151,9 @@ export function Inicio() {
       console.error('Error:', e)
       setDashboardError('No pudimos actualizar todos los datos del dashboard. Puedes reintentar sin perder la información visible.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
-  }, [])
+  }, [user?.id])
 
   const handleSalesRangeChange = useCallback(async (days: number) => {
     setSalesRange(days)
@@ -140,18 +162,41 @@ export function Inicio() {
     try {
       const salesData = await getDailySales(days)
       setDailySales(salesData)
-      if (days === 7 && inicioCache) inicioCache = { ...inicioCache, dailySales: salesData }
+      if (days === 7 && inicioCache) {
+        inicioCache = { ...inicioCache, dailySales: salesData }
+        try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache })) } catch { /* opcional */ }
+      }
     } catch (e) {
       console.error('Error actualizando el rango de ventas:', e)
       setDashboardError('No pudimos actualizar el período de ventas. Intenta nuevamente.')
     } finally {
       setChartLoading(false)
     }
-  }, [])
+  }, [user?.id])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
+  useLiveDataRefresh('dashboard', () => fetchData(salesRange, true))
+
+  // Secciones que aparecen más abajo no bloquean el primer render del tablero.
+  useEffect(() => {
+    let cancelled = false
+    void Promise.allSettled([getProductRanking(), getProductionStats()]).then(([ranking, production]) => {
+      if (cancelled) return
+      if (ranking.status === 'fulfilled') setProductRanking(ranking.value)
+      if (production.status === 'fulfilled') setProductionStats(production.value)
+      if (inicioCache) {
+        inicioCache = {
+          ...inicioCache,
+          productRanking: ranking.status === 'fulfilled' ? ranking.value : inicioCache.productRanking,
+          productionStats: production.status === 'fulfilled' ? production.value : inicioCache.productionStats,
+        }
+        try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache })) } catch { /* caché opcional */ }
+      }
+    })
+    return () => { cancelled = true }
+  }, [user?.id])
 
   const totalSales = stats?.totalSales ?? 0
   const ordersCount = stats?.ordersCount ?? 0
@@ -321,10 +366,10 @@ export function Inicio() {
   const doughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '72%' }
   const paymentDoughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: '72%' }
 
-  if (loading && !inicioCache) return <PageSkeleton cards={4} rows={4} hasTable={false} />
+  if (loading && !initialCache) return <PageSkeleton cards={4} rows={4} hasTable={false} />
 
   return (
-    <div className="db-page animate-fade-in">
+    <div className={`db-page animate-fade-in${notificationsOpen ? ' notifications-open' : ''}`}>
       <header className="db-header">
         <div className="db-header-copy">
           <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { LayoutGrid, Plus, Pencil, Trash2, X, Users, Clock, UtensilsCrossed } from 'lucide-react'
@@ -16,6 +16,7 @@ import {
 import { formatUsd } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
 import './Mesas.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const CANVAS_WIDTH = 100
 const CANVAS_HEIGHT = 100
@@ -76,7 +77,7 @@ export function Mesas() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const dragging = useRef<{ id: string; pointerId: number } | null>(null)
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       setTables(await getFloorTables())
     } catch (e) {
@@ -84,13 +85,12 @@ export function Mesas() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    refresh()
-    const interval = setInterval(refresh, 20000)
-    return () => clearInterval(interval)
-  }, [])
+    void refresh()
+  }, [refresh])
+  useLiveDataRefresh('mesas', refresh)
 
   const zones = useMemo(() => {
     const set = new Set(tables.map(t => t.zone))

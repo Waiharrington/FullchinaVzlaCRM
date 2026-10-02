@@ -5,6 +5,7 @@ import './Cocina.css'
 import { formatProductTitle } from '../lib/textFormat'
 import { ChefHat, CookingPot, Utensils, Package, Bell, BellOff, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type StationFilter = 'all' | 'wok' | 'fryer' | 'prep'
 
@@ -27,7 +28,7 @@ export function Cocina() {
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (silent = false) => {
     try {
       const { start, end } = dayRangeInTimeZone()
       const data = await getOrdersWithItems(start, end)
@@ -37,15 +38,14 @@ export function Cocina() {
     } catch (e) {
       console.error('Error cargando órdenes:', e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
   useEffect(() => {
-    fetchOrders()
-    const interval = setInterval(fetchOrders, 15000)
-    return () => clearInterval(interval)
+    void fetchOrders()
   }, [fetchOrders])
+  useLiveDataRefresh('cocina', () => fetchOrders(true))
 
   const activeOrders = useMemo(() => {
     return orders.filter(o => o.fulfillmentStatus === 'new' || o.fulfillmentStatus === 'preparing')

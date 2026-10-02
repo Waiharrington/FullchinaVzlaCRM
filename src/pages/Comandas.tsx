@@ -23,7 +23,7 @@ import { CalendarPicker } from '../components/CalendarPicker'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
-import { supabase } from '../lib/supabase'
+import { subscribeToDataChanges, supabase } from '../lib/supabase'
 import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
@@ -1233,8 +1233,18 @@ export function Comandas() {
     }
 
     loadRealOrders()
-    const interval = setInterval(loadRealOrders, 10000)
-    return () => { active = false; clearInterval(interval) }
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
+    const unsubscribe = subscribeToDataChanges((table) => {
+      if (!['orders', 'order_items', 'payments', 'web_order_requests', 'order_event_logs', 'profiles', '*'].includes(table)) return
+      if (document.visibilityState === 'hidden') return
+      if (refreshTimer) clearTimeout(refreshTimer)
+      refreshTimer = setTimeout(() => { void loadRealOrders() }, 180)
+    })
+    return () => {
+      active = false
+      unsubscribe()
+      if (refreshTimer) clearTimeout(refreshTimer)
+    }
   }, [reloadToken, dateFilter, isDemoMode])
 
   const handleConfirmWebOrder = async (order: ComandaOrder) => {
@@ -1372,7 +1382,7 @@ export function Comandas() {
       (historyMonthCursor.getFullYear() === now.getFullYear() && historyMonthCursor.getMonth() < now.getMonth())
   }, [historyMonthCursor])
 
-  const loadHistoryOrders = async (monthCursor: Date) => {
+  const loadHistoryOrders = useCallback(async (monthCursor: Date) => {
     setHistoryLoading(true)
     try {
       const monthStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1)
@@ -1449,13 +1459,12 @@ export function Comandas() {
     } finally {
       setHistoryLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (!showHistoryModal) return
     loadHistoryOrders(historyMonthCursor)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showHistoryModal, historyMonthCursor])
+  }, [showHistoryModal, historyMonthCursor, loadHistoryOrders])
 
   const filteredHistoryOrders = useMemo(() => {
     if (!historySearch) return historyOrders

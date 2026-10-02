@@ -47,6 +47,7 @@ import { PageSkeleton } from '../components/PageSkeleton'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { DateField } from '../components/DateField'
 import './Inventario.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const ITEMS_PER_PAGE = 8
 type InventoryModal = 'view' | 'edit' | 'adjust' | null
@@ -335,7 +336,7 @@ export function Inventario() {
     }
   }
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (silent = false) => {
     try {
       const [ingData, movData, unitData] = await Promise.all([
         getIngredients(),
@@ -349,7 +350,7 @@ export function Inventario() {
     } catch (e) {
       console.error('Error:', e)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
@@ -404,6 +405,7 @@ export function Inventario() {
   useEffect(() => {
     fetchAll()
   }, [fetchAll])
+  useLiveDataRefresh('inventario', () => fetchAll(true))
 
   const filteredIngredients = useMemo(() => {
     return ingredients.filter(ing => {
@@ -736,28 +738,28 @@ export function Inventario() {
                     const status = getStockStatus(ing)
                     return (
                       <tr key={ing.id}>
-                        <td>
+                        <td data-label="Producto">
                           <div className="inv-product-cell">
                             <div className="inv-product-img"><Package size={16} /></div>
                             {ing.name}
                           </div>
                         </td>
-                        <td>
+                        <td data-label="Stock actual">
                           <span className="inv-stock-value">{ing.currentStock}</span>
                         </td>
-                        <td style={{ color: 'var(--text-secondary)' }}>{ing.unitSymbol}</td>
+                        <td data-label="Unidad" style={{ color: 'var(--text-secondary)' }}>{ing.unitSymbol}</td>
                         {showCosts && (
-                          <td style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                          <td data-label="Costo promedio" style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                             {ing.pricePerUnit !== null ? `$${ing.pricePerUnit.toFixed(2)}` : '-'}
                           </td>
                         )}
-                        <td>
+                        <td data-label="Estado">
                           <span className={`inv-status-badge ${status}`}>
                             <span className="status-dot" />
                             {getStockStatusLabel(status)}
                           </span>
                         </td>
-                        <td>
+                        <td data-label="Acciones">
                           <div className="inv-actions">
                             <button className="inv-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${ing.name}`} onClick={() => openView(ing)}>
                               <Eye size={13} />

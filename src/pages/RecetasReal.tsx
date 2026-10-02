@@ -21,6 +21,7 @@ import Toast from '../components/Toast'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const PAGE_SIZE = 8
 type Tab = 'todas' | 'completas' | 'faltan'
@@ -149,9 +150,9 @@ export function RecetasReal() {
     }, 200)
   }
 
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const [prods, ingr, un, sums, portionRows] = await Promise.all([
         getSellableProducts(),
         getIngredients(),
@@ -199,7 +200,7 @@ export function RecetasReal() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando recetas')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
@@ -214,6 +215,7 @@ export function RecetasReal() {
 
   useEffect(() => { void loadProducts() }, [loadProducts])
   useEffect(() => { void loadComponents() }, [loadComponents])
+  useLiveDataRefresh('recetas', () => { void loadProducts(true); void loadComponents() })
 
   useEffect(() => {
     if (ingredients.length > 0 && !addIngredientId) {

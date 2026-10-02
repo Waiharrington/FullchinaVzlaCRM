@@ -8,6 +8,7 @@ import {
   ChevronUp, ChevronDown, Check, Flame, Zap, Star, CupSoda, Ban,
 } from 'lucide-react'
 import './Menu.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { PageSkeleton } from '../components/PageSkeleton'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
@@ -116,6 +117,7 @@ export function Menu() {
     finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('menu', () => load(true))
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 

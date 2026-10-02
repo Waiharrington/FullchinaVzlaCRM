@@ -17,6 +17,7 @@ import {
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import './MenuSemanal.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
@@ -124,12 +125,19 @@ export function MenuSemanal() {
     }, 200)
   }
 
-  const load = useCallback(async () => {
-    try { setLoading(true); setDishes(await getWeeklyDishes()) }
+  const load = useCallback(async (silent = false) => {
+    try { if (!silent) setLoading(true); setDishes(await getWeeklyDishes()) }
     catch (e) { setError(e instanceof Error ? e.message : 'No se pudo cargar el menú semanal') }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('menu-semanal', async () => {
+    await load(true)
+    try { setWeekSummary(await getWeeklyActivationSummary()) } catch { setWeekSummary([]) }
+    if (!isCurrentWeek) {
+      try { setWeekActiveIds(new Set(await getWeekActivations(viewStart))) } catch { setWeekActiveIds(new Set()) }
+    }
+  })
 
   // Al navegar a una semana pasada, cargar qué platos estuvieron activos.
   useEffect(() => {

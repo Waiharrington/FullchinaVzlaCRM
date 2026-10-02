@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import './Nomina.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 
@@ -60,18 +61,20 @@ export function Nomina() {
     window.setTimeout(() => { setShowPayment(false); setClosingPayment(false); then?.() }, 200)
   }
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true); setError('')
+      if (!silent) setLoading(true)
+      setError('')
       const [emp, per, adv, bon, pays, adj, financialAccounts, deliveries] = await Promise.all([getAllEmployees(), getPayrollPeriods(), getAdvances(), getProductionBonusRecords(), getPayrollPayments(true), getPayrollAdjustments(), typeof getFinancialAccounts === 'function' ? getFinancialAccounts() : Promise.resolve([]), typeof getDeliveryAssignments === 'function' ? getDeliveryAssignments() : Promise.resolve([])])
       setEmployees(emp); setPeriods(per); setAdvances(adv); setBonuses(bon); setPayments(pays); setAdjustments(adj); setAccounts(financialAccounts); setDeliveryAssignments(deliveries)
       const byPeriod: Record<string, PayrollEntry[]> = {}
       await Promise.all(per.map(async (p) => { byPeriod[p.id] = await getPayrollEntries(p.id) }))
       setEntriesByPeriod(byPeriod)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando nómina') }
-    finally { setLoading(false) }
+    finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('nomina', () => load(true))
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
 

@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { getCustomers, registerCustomerVisit, type Customer } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
 import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame, Plus, Medal, Search, X, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
 import './Fidelizacion.css'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const CYCLE = 10 // visitas por premio
 const PAGE_SIZE = 8
@@ -33,15 +34,20 @@ export function Fidelizacion() {
   const topVisitsCustomers = [...customers].sort((a, b) => b.totalVisits - a.totalVisits)
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || customers[0]
 
-  useEffect(() => {
-    getCustomers().then(data => {
+  const refreshCustomers = useCallback(async () => {
+    try {
+      const data = await getCustomers()
       setCustomers(data)
       setSelectedCustomerId(current => current || data[0]?.id || '')
-    }).catch(error => {
+    } catch (error) {
       setNoticeError(true)
       setVisitNotice(error instanceof Error ? error.message : 'No se pudieron cargar los clientes')
-    }).finally(() => setLoading(false))
+    } finally {
+      setLoading(false)
+    }
   }, [])
+  useEffect(() => { void refreshCustomers() }, [refreshCustomers])
+  useLiveDataRefresh('fidelizacion', refreshCustomers)
 
   useEffect(() => {
     setPage(1)
