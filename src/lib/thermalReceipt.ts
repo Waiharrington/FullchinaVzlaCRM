@@ -62,7 +62,7 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     : new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
   const timeLabel = Number.isNaN(date.getTime())
     ? ''
-    : new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }).format(date)
+    : new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: true }).format(date)
   const subtotalUsd = data.items.reduce((sum, item) => sum + itemTotal(item), 0) + (data.deliveryFeeUsd ?? 0)
   const vesSubtotal = data.bcvRate && data.bcvRate > 0 ? formatVes(subtotalUsd * data.bcvRate) : null
   const vesTotal = data.bcvRate && data.bcvRate > 0 ? formatVes(data.totalUsd * data.bcvRate) : null
@@ -95,8 +95,6 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     html, body { width: 72mm; margin: 0; padding: 0; color: #000; background: #fff; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.28; }
     .ticket { width: 100%; padding: 1mm 0 3mm; overflow-wrap: anywhere; }
-    h1 { margin: 0 0 1mm; text-align: center; font-size: 15pt; letter-spacing: .2mm; }
-    .subtitle { text-align: center; margin-bottom: 2mm; font-size: 10pt; }
     .meta { margin: .8mm 0; }
     .separator { border-top: 1px dashed #000; margin: 2.5mm 0; }
     .item, .modifier, .payment, .summary { display: flex; justify-content: space-between; gap: 2mm; align-items: flex-start; }
@@ -111,8 +109,6 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     .footer { margin-top: 3mm; text-align: center; font-size: 9pt; }
     @media screen { body { padding: 3mm; } }
   </style></head><body><main class="ticket">
-    <h1>FULL CHINA VZLA</h1>
-    <div class="subtitle">${data.kind === 'precuenta' ? 'Precuenta de comanda' : 'Recibo de venta'}</div>
     <div class="meta">${escapeHtml(dateLabel)} ${escapeHtml(timeLabel)}</div>
     <div class="meta">Orden: ${escapeHtml(data.orderNumber)}</div>
     <div class="meta">Orden ${escapeHtml(orderType)}</div>
