@@ -32,9 +32,9 @@ const PAYMENT_METHODS = [
   { value: 'pago_movil', label: 'Pago móvil' }, { value: 'transferencia', label: 'Transferencia' },
   { value: 'punto', label: 'Punto de venta' }, { value: 'efectivo_bs', label: 'Efectivo Bs' },
   { value: 'efectivo_usd', label: 'Efectivo USD' }, { value: 'binance', label: 'Binance' },
-  { value: 'zelle', label: 'Zelle' }, { value: 'other', label: 'Otro' },
+  { value: 'other', label: 'Otro' },
 ]
-const paymentMethodLabel = (value: string | null) => PAYMENT_METHODS.find(method => method.value === value)?.label ?? 'Sin registrar'
+const paymentMethodLabel = (value: string | null) => value === 'zelle' ? 'Zelle (histórico)' : PAYMENT_METHODS.find(method => method.value === value)?.label ?? 'Sin registrar'
 
 export function ComprasReal() {
   const { user } = useAuth()

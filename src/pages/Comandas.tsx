@@ -86,7 +86,7 @@ const PAYMENT_METHODS = [
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ] as const
 
-type SplitPaymentMethod = Exclude<PaymentMethod, 'other'>
+type SplitPaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle'>
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split',
 )
@@ -315,7 +315,7 @@ function cleanNotes(notes?: string): string {
 // "Pago preferido: <codigos>" (p. ej. "cash" o "cash+mobile"). Se extrae para
 // pre-seleccionarlo al cobrar y mostrarlo en la comanda.
 const PAY_METHOD_LABELS: Record<string, string> = {
-  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle',
+  cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance',
 }
 
 function extractPreferredPayment(notes?: string | null): { methods: SplitPaymentMethod[]; label: string } | null {
@@ -1830,7 +1830,7 @@ export function Comandas() {
         <div className="filter-dropdown-wrap">
           <button
             type="button"
-            className={`filter-group-item ${statusFilter !== 'all' ? 'filter-active' : ''}`}
+            className={`filter-group-item filter-status-control ${statusFilter !== 'all' ? 'filter-active' : ''}`}
             onClick={() => setOpenFilterMenu(prev => (prev === 'status' ? null : 'status'))}
           >
             <Filter size={14} />
@@ -1881,7 +1881,7 @@ export function Comandas() {
 
         <button
           type="button"
-          className="filter-group-item filter-btn-dark"
+          className="filter-group-item filter-btn-dark filter-clear-control"
           onClick={clearFilters}
           disabled={!hasActiveFilters}
         >
@@ -2733,22 +2733,23 @@ export function Comandas() {
                     </div>
                   )}
                 </div>
+                {!historySelectedDate && (
+                  <div className="cmd-history-weeks" role="tablist" aria-label="Semana">
+                    {historyWeeksInMonth.map(w => (
+                      <button
+                        key={w.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={historyWeekStartKey === w.key}
+                        className={`cmd-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
+                        onClick={() => { setHistorySelectedDate(''); setHistoryWeekStartKey(w.key) }}
+                      >
+                        {w.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="cmd-history-weeks" role="tablist" aria-label="Semana">
-              {historyWeeksInMonth.map(w => (
-                <button
-                  key={w.key}
-                  type="button"
-                  role="tab"
-                  aria-selected={historyWeekStartKey === w.key}
-                  className={`cmd-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
-                  onClick={() => { setHistorySelectedDate(''); setHistoryWeekStartKey(w.key) }}
-                >
-                  {w.label}
-                </button>
-              ))}
             </div>
 
             <div className="cmd-history-body">

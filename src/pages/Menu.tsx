@@ -62,6 +62,14 @@ export function Menu() {
   const [catFilter, setCatFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [isPhone, setIsPhone] = useState(() => window.matchMedia('(max-width: 600px)').matches)
+
+  useEffect(() => {
+    const phoneQuery = window.matchMedia('(max-width: 600px)')
+    const updatePhoneLayout = () => setIsPhone(phoneQuery.matches)
+    phoneQuery.addEventListener('change', updatePhoneLayout)
+    return () => phoneQuery.removeEventListener('change', updatePhoneLayout)
+  }, [])
 
   const [editing, setEditing] = useState<SellableProduct | null | 'new'>(null)
   const [editingClosing, setEditingClosing] = useState(false)
@@ -324,12 +332,14 @@ export function Menu() {
         </div>
         <StyledSelect value={catFilter} onChange={(e) => setCatFilter(e.target.value)}><option value="all">Categoría: Todas</option>{categories.map((c) => <option key={c} value={c}>{catLabel(c)}</option>)}</StyledSelect>
         <StyledSelect value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}><option value="all">Estado: Todos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></StyledSelect>
-        {selectMode
-          ? <button className="mnu-select-btn active" onClick={exitSelectMode}><X size={15} /> Salir de selección</button>
-          : <button className="mnu-select-btn" onClick={() => setSelectMode(true)}><CheckSquare size={15} /> Seleccionar</button>}
-        <div className="mnu-view">
-          <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="Cuadrícula"><LayoutGrid size={16} /></button>
-          <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={16} /></button>
+        <div className="mnu-tools-actions">
+          {selectMode
+            ? <button className="mnu-select-btn active" onClick={exitSelectMode}><X size={15} /> Salir de selección</button>
+            : <button className="mnu-select-btn" onClick={() => setSelectMode(true)}><CheckSquare size={15} /> Seleccionar</button>}
+          <div className="mnu-view">
+            <button className={!isPhone && view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="Cuadrícula"><LayoutGrid size={16} /></button>
+            <button className={!isPhone && view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={16} /></button>
+          </div>
         </div>
       </div>
 
@@ -348,7 +358,7 @@ export function Menu() {
           actionLabel="Nuevo plato"
           onAction={openNew}
         />
-      ) : view === 'grid' ? (
+      ) : isPhone || view === 'grid' ? (
         <div className="mnu-grid">
           {filtered.map((p, i) => {
             const selected = selectedIds.has(p.id)

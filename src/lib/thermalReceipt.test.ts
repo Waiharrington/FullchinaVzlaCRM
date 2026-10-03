@@ -23,8 +23,10 @@ describe('ticket térmico Full China', () => {
   it('genera una precuenta con cliente, empleado y extras cobrados por separado', () => {
     const html = buildThermalReceiptHtml({ ...sample, kind: 'precuenta', payments: [] })
 
-    expect(html).toContain('FULL CHINA VZLA')
-    expect(html).toContain('Precuenta de comanda')
+    expect(html).not.toContain('FULL CHINA VZLA')
+    expect(html).not.toContain('Precuenta de comanda')
+    expect(html).toContain('05:15')
+    expect(html).toContain('p.')
     expect(html).toContain('Empleado: Edgar Buitrago')
     expect(html).toContain('Nombre y Apellido: Cliente general')
     expect(html).toContain('Extra camarón')

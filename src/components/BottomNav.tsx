@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { Menu, X, LogOut } from 'lucide-react'
@@ -9,6 +9,33 @@ export function BottomNav() {
   const location = useLocation()
   const { user, signOut } = useAuth()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isMenuClosing, setIsMenuClosing] = useState(false)
+  const closeTimerRef = useRef<number | null>(null)
+
+  const closeMenu = () => {
+    if (!isMenuOpen || isMenuClosing) return
+    setIsMenuClosing(true)
+    closeTimerRef.current = window.setTimeout(() => {
+      setIsMenuOpen(false)
+      setIsMenuClosing(false)
+      closeTimerRef.current = null
+    }, 250)
+  }
+
+  const toggleMenu = () => {
+    if (isMenuOpen) {
+      closeMenu()
+      return
+    }
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+    closeTimerRef.current = null
+    setIsMenuClosing(false)
+    setIsMenuOpen(true)
+  }
+
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current)
+  }, [])
 
   // Deshabilita el scroll del fondo cuando el menú está abierto
   useEffect(() => {
@@ -43,7 +70,7 @@ export function BottomNav() {
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={() => setIsMenuOpen(false)}
+                onClick={closeMenu}
                 className={`bottom-nav-item ${isActive ? 'active' : ''}`}
               >
                 <div className="bottom-nav-icon-wrap">
@@ -58,7 +85,7 @@ export function BottomNav() {
           {/* Botón de Menú (Más) */}
           <button 
             className={`bottom-nav-item ${isMenuOpen ? 'active' : ''}`}
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            onClick={toggleMenu}
           >
             <div className="bottom-nav-icon-wrap">
               {isMenuOpen ? <X size={20} strokeWidth={2.2} /> : <Menu size={20} strokeWidth={1.6} />}
@@ -71,11 +98,11 @@ export function BottomNav() {
 
       {/* OVERLAY DEL MENÚ */}
       {isMenuOpen && (
-        <div className="bottom-nav-overlay">
-          <div className="bottom-nav-drawer">
+        <div className={`bottom-nav-overlay${isMenuClosing ? ' closing' : ''}`}>
+          <div className={`bottom-nav-drawer${isMenuClosing ? ' closing' : ''}`}>
             <div className="bottom-nav-drawer-header">
               <h2>Menú Principal</h2>
-              <button className="bottom-nav-close" onClick={() => setIsMenuOpen(false)}>
+              <button className="bottom-nav-close" onClick={closeMenu}>
                 <X size={24} />
               </button>
             </div>
@@ -93,7 +120,7 @@ export function BottomNav() {
                     )}
                     <NavLink
                       to={item.path}
-                      onClick={() => setIsMenuOpen(false)}
+                      onClick={closeMenu}
                       className={`bottom-nav-drawer-item ${isActive ? 'active' : ''}`}
                     >
                       <Icon size={20} className="bottom-nav-drawer-icon" />
@@ -105,7 +132,7 @@ export function BottomNav() {
             </div>
 
             <div className="bottom-nav-drawer-footer">
-              <button className="bottom-nav-logout" onClick={() => { setIsMenuOpen(false); signOut(); }}>
+              <button className="bottom-nav-logout" onClick={() => { closeMenu(); signOut(); }}>
                 <LogOut size={20} />
                 <span>Cerrar Sesión</span>
               </button>

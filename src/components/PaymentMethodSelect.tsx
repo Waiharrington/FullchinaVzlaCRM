@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import './PaymentMethodSelect.css'
 
-export type SelectablePaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle'
+export type SelectablePaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance'
 
 interface PaymentMethodOption {
   method: SelectablePaymentMethod

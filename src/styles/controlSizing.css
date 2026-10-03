@@ -73,7 +73,7 @@
   position: relative;
 }
 
-.admin-app :is(button[role='switch'], .mnu-switch, .ws-switch)::after {
+.admin-app :is(button[role='switch'], .mnu-switch, .ws-switch)::before {
   content: '';
   position: absolute;
   z-index: 1;

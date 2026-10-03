@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { RatesProvider } from './context/RatesProvider'
 import { useAuth } from './context/auth-context'
@@ -57,7 +57,6 @@ function InitialRouteContent({ children, onReady }: { children: React.ReactNode;
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
-  const location = useLocation()
   const [initialRouteReady, setInitialRouteReady] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [setSplashDone])
   const handleInitialRouteReady = useCallback(() => setInitialRouteReady(true), [])
@@ -71,7 +70,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
           <InitialRouteContent onReady={handleInitialRouteReady}>{children}</InitialRouteContent>
         </Suspense>
       ) : null}
-      {!loading && !user && splashDone ? <Navigate to={location.pathname === '/' ? '/pedir' : '/login'} replace /> : null}
+      {!loading && !user && splashDone ? <Navigate to="/login" replace /> : null}
     </>
   )
 }

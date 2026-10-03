@@ -101,6 +101,11 @@ export function Mesas() {
     () => tables.filter(t => activeZone === 'all' || t.zone === activeZone),
     [tables, activeZone],
   )
+  const phoneSortedTables = useMemo(
+    () => [...visibleTables].sort((a, b) => a.posY - b.posY || a.posX - b.posX),
+    [visibleTables],
+  )
+  const phoneRows = Math.ceil(phoneSortedTables.length / 5)
 
   const occupiedCount = tables.filter(t => t.openOrderId).length
 
@@ -115,8 +120,11 @@ export function Mesas() {
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragging.current || !canvasRef.current) return
     const rect = canvasRef.current.getBoundingClientRect()
-    const x = Math.min(94, Math.max(0, ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH))
-    const y = Math.min(88, Math.max(0, ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT))
+    const isPhone = window.matchMedia('(max-width: 600px)').matches
+    const maxX = isPhone ? Math.max(0, CANVAS_WIDTH - (66 / rect.width) * CANVAS_WIDTH) : 94
+    const maxY = isPhone ? Math.max(0, CANVAS_HEIGHT - (88 / rect.height) * CANVAS_HEIGHT) : 88
+    const x = Math.min(maxX, Math.max(0, ((e.clientX - rect.left) / rect.width) * CANVAS_WIDTH))
+    const y = Math.min(maxY, Math.max(0, ((e.clientY - rect.top) / rect.height) * CANVAS_HEIGHT))
     setTables(prev => prev.map(t => (t.id === dragging.current?.id ? { ...t, posX: x, posY: y } : t)))
   }
 
@@ -286,15 +294,22 @@ export function Mesas() {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
         >
-          {visibleTables.map(table => {
+          {(editMode ? visibleTables : phoneSortedTables).map((table, index) => {
             const isOccupied = Boolean(table.openOrderId)
             const isActive = Boolean(table.isActive)
+            const phoneColumn = index % 5
+            const phoneRow = Math.floor(index / 5)
             return (
               <button
                 key={table.id}
                 type="button"
                 className={`mesas-tile ${table.shape} ${isOccupied ? 'occupied' : isActive ? 'free' : 'inactive'}`}
-                style={{ left: `${table.posX}%`, top: `${table.posY}%` }}
+                style={{
+                  '--mesa-pos-x': `${table.posX}%`,
+                  '--mesa-pos-y': `${table.posY}%`,
+                  '--mesa-phone-x': `calc(${((phoneColumn + 0.5) / 5) * 100}% - 27px)`,
+                  '--mesa-phone-y': `calc(${((phoneRow + 0.5) / phoneRows) * 100}% - 29px)`,
+                } as React.CSSProperties}
                 onPointerDown={(e) => handlePointerDown(table, e)}
                 onClick={() => handleTableClick(table)}
                 disabled={!isActive && !editMode}

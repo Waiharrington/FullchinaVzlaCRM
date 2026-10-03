@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type CSSProperties } from 'react'
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type CSSProperties, type PointerEvent, type WheelEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
@@ -42,7 +42,6 @@ import {
   Crown,
   CreditCard,
   DollarSign,
-  Download,
   Eye,
   Edit2,
   Trash2,
@@ -177,7 +176,7 @@ function buildDemoClientData() {
     { id: 'demo-o1', orderNumber: 1042, createdAt: daysAgo(3), orderType: 'delivery', status: 'paid', fulfillmentStatus: 'delivered', total: 28.5, itemsText: '2x Arroz Chino Especial, 1x Wantán Frito', items: [{ productName: 'Arroz Chino Especial', quantity: 2 }, { productName: 'Wantán Frito', quantity: 1 }], paymentMethods: ['mobile'] },
     { id: 'demo-o2', orderNumber: 1017, createdAt: daysAgo(11), orderType: 'dine-in', status: 'paid', fulfillmentStatus: 'delivered', total: 41.9, itemsText: '1x Pollo Agridulce, 2x Tallarines Salteados', items: [{ productName: 'Pollo Agridulce', quantity: 1 }, { productName: 'Tallarines Salteados', quantity: 2 }], paymentMethods: ['card'] },
     { id: 'demo-o3', orderNumber: 986, createdAt: daysAgo(24), orderType: 'takeaway', status: 'paid', fulfillmentStatus: 'delivered', total: 19.0, itemsText: '1x Arroz Chino Especial', items: [{ productName: 'Arroz Chino Especial', quantity: 1 }], paymentMethods: ['cash'] },
-    { id: 'demo-o4', orderNumber: 951, createdAt: daysAgo(45), orderType: 'delivery', status: 'paid', fulfillmentStatus: 'delivered', total: 33.2, itemsText: '3x Wantán Frito, 1x Arroz Chino Especial', items: [{ productName: 'Wantán Frito', quantity: 3 }, { productName: 'Arroz Chino Especial', quantity: 1 }], paymentMethods: ['zelle'] },
+    { id: 'demo-o4', orderNumber: 951, createdAt: daysAgo(45), orderType: 'delivery', status: 'paid', fulfillmentStatus: 'delivered', total: 33.2, itemsText: '3x Wantán Frito, 1x Arroz Chino Especial', items: [{ productName: 'Wantán Frito', quantity: 3 }, { productName: 'Arroz Chino Especial', quantity: 1 }], paymentMethods: ['cash'] },
     { id: 'demo-o5', orderNumber: 903, createdAt: daysAgo(80), orderType: 'dine-in', status: 'paid', fulfillmentStatus: 'delivered', total: 52.4, itemsText: '2x Pollo Agridulce, 2x Tallarines Salteados', items: [{ productName: 'Pollo Agridulce', quantity: 2 }, { productName: 'Tallarines Salteados', quantity: 2 }], paymentMethods: ['mobile', 'cash'] },
     { id: 'demo-o6', orderNumber: 844, createdAt: daysAgo(140), orderType: 'delivery', status: 'pending', fulfillmentStatus: 'preparing', total: 22.75, itemsText: '1x Arroz Chino Especial, 1x Wantán Frito', items: [{ productName: 'Arroz Chino Especial', quantity: 1 }, { productName: 'Wantán Frito', quantity: 1 }], paymentMethods: [] },
   ]
@@ -286,12 +285,86 @@ export function Clientes() {
   const isDemoMode = searchParams.get('demoClient') === '1'
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
   const [loading, setLoading] = useState(!creditsCache)
+  const [mobileMetricIndex, setMobileMetricIndex] = useState(0)
+  const [isPhoneViewport, setIsPhoneViewport] = useState(() => window.matchMedia('(max-width: 767px)').matches)
+  const metricPointerStart = useRef<{ x: number; y: number } | null>(null)
+  const metricWheelDeltaX = useRef(0)
+  const metricWheelLastChange = useRef(0)
+
+  const handleMetricPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    metricPointerStart.current = { x: event.clientX, y: event.clientY }
+  }
+
+  const handleMetricPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    const start = metricPointerStart.current
+    metricPointerStart.current = null
+    if (!start) return
+
+    const deltaX = event.clientX - start.x
+    const deltaY = event.clientY - start.y
+    if (Math.abs(deltaX) < 40 || Math.abs(deltaX) < Math.abs(deltaY) * 1.2) return
+    setMobileMetricIndex(index => (index + (deltaX < 0 ? 1 : -1) + 2) % 2)
+  }
+
+  const handleMetricWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (Math.abs(event.deltaX) < Math.abs(event.deltaY)) return
+    event.preventDefault()
+
+    const now = Date.now()
+    if (now - metricWheelLastChange.current < 450) return
+
+    metricWheelDeltaX.current += event.deltaX
+    if (Math.abs(metricWheelDeltaX.current) < 28) return
+
+    setMobileMetricIndex(index => (index + (metricWheelDeltaX.current > 0 ? 1 : -1) + 2) % 2)
+    metricWheelDeltaX.current = 0
+    metricWheelLastChange.current = now
+  }
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const updateViewport = () => setIsPhoneViewport(media.matches)
+    media.addEventListener('change', updateViewport)
+    return () => media.removeEventListener('change', updateViewport)
+  }, [])
 
   // Selected customer for Profile View matching target screenshot
   const [selectedClient, setSelectedClient] = useState<CustomerRow | null>(null)
+  const selectedClientId = selectedClient?.id
   const [customers, setCustomers] = useState<Customer[]>([])
   const [purchaseMetrics, setPurchaseMetrics] = useState<CustomerPurchaseMetric[]>([])
   const [products, setProducts] = useState<Product[]>([])
+
+  const resetPhoneScroll = useCallback(() => {
+    if (!isPhoneViewport) return
+
+    const appMain = document.querySelector<HTMLElement>('.app-main')
+    if (appMain) {
+      appMain.scrollTop = 0
+      appMain.scrollLeft = 0
+    }
+
+    const pageScroller = document.scrollingElement
+    if (pageScroller) {
+      pageScroller.scrollTop = 0
+      pageScroller.scrollLeft = 0
+    }
+
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    window.scrollTo(0, 0)
+  }, [isPhoneViewport])
+
+  const openClientProfile = useCallback((client: CustomerRow) => {
+    resetPhoneScroll()
+    setSelectedClient(client)
+  }, [resetPhoneScroll])
+
+  useLayoutEffect(() => {
+    if (!selectedClientId) return
+    resetPhoneScroll()
+  }, [selectedClientId, resetPhoneScroll])
 
   // Filters state
   const [searchTerm, setSearchTerm] = useState('')
@@ -299,7 +372,7 @@ export function Clientes() {
   const [identityFilter, setIdentityFilter] = useState('all')
 
   // Pagination state
-  const CLIENTS_PER_PAGE = 25
+  const CLIENTS_PER_PAGE = isPhoneViewport ? 10 : 25
   const [currentPage, setCurrentPage] = useState(1)
 
   // Modals
@@ -344,11 +417,11 @@ export function Clientes() {
     if (method === 'mobile') return accounts.filter((account) => account.currency === 'VES' && account.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(account.name))
     if (method === 'card') return accounts.filter((account) => account.currency === 'VES' && account.name === 'Banesco')
     if (method === 'transfer') return accounts.filter((account) => account.currency === 'VES' && account.accountType === 'bank')
-    if (method === 'zelle' || method === 'binance') return accounts.filter((account) => account.currency === 'USD' && ['bank', 'digital'].includes(account.accountType))
+    if (method === 'binance') return accounts.filter((account) => account.currency === 'USD' && ['bank', 'digital'].includes(account.accountType))
     return accounts
   }
 
-  const paymentRequiresReference = ['mobile', 'card', 'transfer', 'binance', 'zelle'].includes(paymentMethod)
+  const paymentRequiresReference = ['mobile', 'card', 'transfer', 'binance'].includes(paymentMethod)
   const paymentUsesBolivares = ['mobile', 'card', 'transfer'].includes(paymentMethod)
   const paymentAmountValue = parseMoneyDraft(paymentAmount)
   const paymentAmountUsd = paymentUsesBolivares
@@ -1046,7 +1119,6 @@ export function Clientes() {
                   <option value="card">Punto de venta</option>
                   <option value="transfer">Transferencia</option>
                   <option value="binance">Binance Pay</option>
-                  <option value="zelle">Zelle</option>
                   <option value="other">Otro método</option>
                 </StyledSelect>
               </div>
@@ -1226,7 +1298,6 @@ export function Clientes() {
                   <option value="card">Punto</option>
                   <option value="transfer">Transferencia</option>
                   <option value="binance">Binance</option>
-                  <option value="zelle">Zelle</option>
                   <option value="other">Otro</option>
                 </StyledSelect>
               </div>
@@ -1695,6 +1766,46 @@ export function Clientes() {
   // CLIENTS TABLE LIST VIEW
   // ═══════════════════════════════════════════════════════════════════════════
 
+  const customerMetricCards = [
+    <div key="total" className="kpi-card-dark red">
+      <div className="kpi-icon-circle-box red"><Users size={22} /></div>
+      <div className="kpi-content-box">
+        <span className="kpi-label-sm">Total clientes</span>
+        <span className="kpi-value-lg">{customers.length}</span>
+      </div>
+    </div>,
+    <div key="frequent" className="kpi-card-dark gold">
+      <div className="kpi-icon-circle-box gold"><Crown size={22} /></div>
+      <div className="kpi-content-box">
+        <span className="kpi-label-sm">Frecuentes</span>
+        <span className="kpi-value-lg">{frequentCustomers}</span>
+        <span className="kpi-sub-tag orange">5+ visitas</span>
+      </div>
+    </div>,
+    <div key="credits" className="kpi-card-dark orange">
+      <div className="kpi-icon-circle-box orange"><CreditCard size={22} /></div>
+      <div className="kpi-content-box">
+        <span className="kpi-label-sm">Créditos</span>
+        <span className="kpi-value-lg">{activeCreditsCount}</span>
+        <span className="kpi-sub-tag gold-text">Pendiente</span>
+      </div>
+    </div>,
+    <button
+      key="receivable"
+      type="button"
+      className="kpi-card-dark dark-red clickable-kpi"
+      title="Ver cuentas por cobrar"
+      onClick={() => setShowCobrarModal(true)}
+    >
+      <div className="kpi-icon-circle-box dark-red"><DollarSign size={22} /></div>
+      <div className="kpi-content-box">
+        <span className="kpi-label-sm">Por cobrar</span>
+        <span className="kpi-value-lg">{formatUsdText(totalOutstanding)}</span>
+        <span className="kpi-sub-tag red-text">{customersWithDebt} cliente{customersWithDebt === 1 ? '' : 's'}</span>
+      </div>
+    </button>,
+  ]
+
   if (loading) return <PageSkeleton cards={4} rows={8} hasTable />
 
   return (
@@ -1705,7 +1816,10 @@ export function Clientes() {
         <div className="header-title-wrap">
           <div>
             <h1 className="page-title"><User size={22} className="page-title-icon" /> Clientes</h1>
-            <p className="clientes-subtitle">Gestiona tu base de clientes, créditos y actividad de compra.</p>
+            <p className="clientes-subtitle">
+              <span className="clientes-subtitle-desktop">Gestiona tu base de clientes, créditos y actividad de compra.</span>
+              <span className="clientes-subtitle-mobile">Clientes, compras y créditos.</span>
+            </p>
           </div>
         </div>
         <button className="btn-nuevo-cliente-red" onClick={() => setShowNewModal(true)}>
@@ -1715,53 +1829,31 @@ export function Clientes() {
 
       {/* 4 Summary KPI Cards */}
       <div className="clientes-kpi-grid management-workspace-metrics">
-        <div className="kpi-card-dark red">
-          <div className="kpi-icon-circle-box red">
-            <Users size={22} />
-          </div>
-          <div className="kpi-content-box">
-            <span className="kpi-label-sm">Total clientes</span>
-            <span className="kpi-value-lg">{customers.length}</span>
-          </div>
-        </div>
-
-        <div className="kpi-card-dark gold">
-          <div className="kpi-icon-circle-box gold">
-            <Crown size={22} />
-          </div>
-          <div className="kpi-content-box">
-            <span className="kpi-label-sm">Frecuentes</span>
-            <span className="kpi-value-lg">{frequentCustomers}</span>
-            <span className="kpi-sub-tag orange">5+ visitas</span>
-          </div>
-        </div>
-
-        <div className="kpi-card-dark orange">
-          <div className="kpi-icon-circle-box orange">
-            <CreditCard size={22} />
-          </div>
-          <div className="kpi-content-box">
-            <span className="kpi-label-sm">Créditos</span>
-            <span className="kpi-value-lg">{activeCreditsCount}</span>
-            <span className="kpi-sub-tag gold-text">Pendiente</span>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="kpi-card-dark dark-red clickable-kpi"
-          title="Ver cuentas por cobrar"
-          onClick={() => setShowCobrarModal(true)}
-        >
-          <div className="kpi-icon-circle-box dark-red">
-            <DollarSign size={22} />
-          </div>
-          <div className="kpi-content-box">
-            <span className="kpi-label-sm">Por cobrar</span>
-            <span className="kpi-value-lg">{formatUsdText(totalOutstanding)}</span>
-            <span className="kpi-sub-tag red-text">{customersWithDebt} cliente{customersWithDebt === 1 ? '' : 's'}</span>
-          </div>
-        </button>
+        {isPhoneViewport ? (
+          <>
+            <div
+              className="clientes-kpi-phone-pair"
+              onPointerDown={handleMetricPointerDown}
+              onPointerUp={handleMetricPointerUp}
+              onPointerCancel={() => { metricPointerStart.current = null }}
+              onWheel={handleMetricWheel}
+            >
+              {customerMetricCards.slice(mobileMetricIndex * 2, mobileMetricIndex * 2 + 2)}
+            </div>
+            <div className="clientes-kpi-dots" role="group" aria-label="Seleccionar grupo de indicadores">
+              {['Clientes y frecuentes', 'Créditos y por cobrar'].map((label, index) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={`clientes-kpi-dot${mobileMetricIndex === index ? ' active' : ''}`}
+                  aria-label={label}
+                  aria-current={mobileMetricIndex === index ? 'true' : undefined}
+                  onClick={() => setMobileMetricIndex(index)}
+                />
+              ))}
+            </div>
+          </>
+        ) : customerMetricCards}
       </div>
 
       {/* Main Content Layout: Left Table + Right Sidebar Cards */}
@@ -1814,9 +1906,6 @@ export function Clientes() {
               </StyledSelect>
             </div>
 
-            <button className="btn-export-dark">
-              <Download size={15} /> Exportar
-            </button>
           </div>
 
           <div className="table-responsive-wrapper">
@@ -1846,7 +1935,7 @@ export function Clientes() {
                   </tr>
                 ) : (
                   pagedRows.map((row) => (
-                    <tr key={row.id} className="clickable-row" onClick={() => setSelectedClient(row)}>
+                    <tr key={row.id} className="clickable-row" onClick={() => openClientProfile(row)}>
                       <td data-label="Cliente">
                         <div className="client-cell-wrap">
                           <span className="client-avatar-badge" style={{ backgroundColor: row.avatarBg }}>
@@ -1880,7 +1969,7 @@ export function Clientes() {
                       </td>
                       <td data-label="Acciones">
                         <div className="actions-flex-cell" onClick={(e) => e.stopPropagation()}>
-                          <button className="icon-action-btn" title="Ver perfil del cliente" onClick={() => setSelectedClient(row)}>
+                          <button className="icon-action-btn" title="Ver perfil del cliente" onClick={() => openClientProfile(row)}>
                             <Eye size={15} />
                           </button>
                           <button className="icon-action-btn" title="Editar cliente" onClick={() => { const c = customers.find(x => x.id === row.id); if (c) openEditCustomer(c) }}>
@@ -1899,10 +1988,15 @@ export function Clientes() {
           </div>
 
           <div className="table-pagination-footer">
-            <span className="pagination-info">
+            <span className="pagination-info pagination-info-desktop">
               {displayRows.length === 0
                 ? 'Sin resultados'
                 : `Mostrando ${pageStart + 1}-${Math.min(pageStart + CLIENTS_PER_PAGE, displayRows.length)} de ${displayRows.length} clientes`}
+            </span>
+            <span className="pagination-info pagination-info-mobile">
+              {displayRows.length === 0
+                ? 'Sin resultados'
+                : `${pageStart + 1}–${Math.min(pageStart + CLIENTS_PER_PAGE, displayRows.length)} de ${displayRows.length}`}
             </span>
             {totalPages > 1 && (
               <div className="pagination-controls">
@@ -1915,7 +2009,8 @@ export function Clientes() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                <span className="pagination-info">Página {safePage} de {totalPages}</span>
+                <span className="pagination-info pagination-page-desktop">Página {safePage} de {totalPages}</span>
+                <span className="pagination-info pagination-page-mobile">{safePage} / {totalPages}</span>
                 <button
                   type="button"
                   className="pag-btn"

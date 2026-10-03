@@ -69,7 +69,6 @@ import {
   CreditCard,
   Landmark,
   Hexagon,
-  BadgeDollarSign,
   IdCard,
   MapPin,
   RefreshCw,
@@ -94,18 +93,20 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> =
   delivery: { label: 'Delivery', icon: <Bike size={18} strokeWidth={1.8} /> },
 }
 
-const PAYMENT_DETAILS: Record<PaymentMethod | 'split', { label: string; desc: string; icon: ReactNode }> = {
+type ActivePaymentMethod = Exclude<PaymentMethod, 'zelle'>
+type SplitPaymentMethod = Exclude<ActivePaymentMethod, 'other'>
+
+const PAYMENT_DETAILS: Record<ActivePaymentMethod | 'split', { label: string; desc: string; icon: ReactNode }> = {
   card: { label: 'Punto de venta', desc: 'Tarjeta de débito o crédito', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   mobile: { label: 'Pago móvil', desc: 'Transferencia móvil inmediata', icon: <Smartphone size={16} strokeWidth={1.8} /> },
   cash: { label: 'Efectivo', desc: 'Dólares o bolívares en efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
   transfer: { label: 'Transferencia', desc: 'Transferencia bancaria', icon: <Landmark size={16} strokeWidth={1.8} /> },
   binance: { label: 'Binance Pay', desc: 'Pago en cripto USDT', icon: <Hexagon size={16} strokeWidth={1.8} /> },
-  zelle: { label: 'Zelle', desc: 'Transferencia en dólares', icon: <BadgeDollarSign size={16} strokeWidth={1.8} /> },
   split: { label: 'Pago combinado', desc: 'Cobrar con dos métodos', icon: <Split size={16} strokeWidth={1.8} /> },
   other: { label: 'Otro método', desc: 'Método especial', icon: <CreditCard size={16} strokeWidth={1.8} /> },
 }
 
-const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; icon: ReactNode }> = [
+const PAYMENT_METHODS: Array<{ method: ActivePaymentMethod | 'split'; label: string; icon: ReactNode }> = [
   { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
   { method: 'mobile', label: 'Pago móvil', icon: <Smartphone size={16} strokeWidth={1.8} /> },
   { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
@@ -114,7 +115,6 @@ const PAYMENT_METHODS: Array<{ method: PaymentMethod | 'split'; label: string; i
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ]
 
-type SplitPaymentMethod = Exclude<PaymentMethod, 'other'>
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is { method: SplitPaymentMethod; label: string; icon: ReactNode } => item.method !== 'split' && item.method !== 'other',
 )
@@ -244,6 +244,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const draft = useMemo(readCajaDraft, [])
   const [cart, setCart] = useState<CartItem[]>(() => draft?.cart ?? [])
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
+  const [isPhoneViewport, setIsPhoneViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches)
   const [productsWithModifiers, setProductsWithModifiers] = useState<Set<string>>(new Set())
   // Selector de modificadores
   const [modifierProduct, setModifierProduct] = useState<Product | null>(null)
@@ -252,6 +253,17 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [modifierSelections, setModifierSelections] = useState<Record<string, Record<string, number>>>({})
   const [modifierLoading, setModifierLoading] = useState(false)
   const [modifierError, setModifierError] = useState('')
+
+  useEffect(() => {
+    const phoneQuery = window.matchMedia('(max-width: 767px)')
+    const syncPhoneViewport = () => {
+      setIsPhoneViewport(phoneQuery.matches)
+      if (!phoneQuery.matches && embedded) setMobileCartOpen(false)
+    }
+    syncPhoneViewport()
+    phoneQuery.addEventListener('change', syncPhoneViewport)
+    return () => phoneQuery.removeEventListener('change', syncPhoneViewport)
+  }, [embedded])
   const [searchTerm, setSearchTerm] = useState('')
   const [activeCategory, setActiveCategory] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'popular' | 'price' | 'name'>('name')
@@ -407,7 +419,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   // Payment Modal State (Matching Image 1)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<PaymentMethod | 'split'>(defaultPaymentForOrderType('dine-in'))
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<ActivePaymentMethod | 'split'>(defaultPaymentForOrderType('dine-in'))
   const [refNumber, setRefNumber] = useState('')
   const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('0.00')
@@ -574,7 +586,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       .sort((a, b) => Number(b.name === 'Banco Exterior') - Number(a.name === 'Banco Exterior'))
     if (method === 'transfer') return paymentAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
     if (method === 'card') return paymentAccounts.filter((a) => a.currency === 'VES' && a.name === 'Banesco')
-    if (method === 'zelle' || method === 'binance') return paymentAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
+    if (method === 'binance') return paymentAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
     return paymentAccounts
   }
 
@@ -866,7 +878,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   }
 
   // Open Payment Modal (Image 1)
-  const handleOpenPaymentModal = async (preferredMethod: PaymentMethod | 'split' = 'cash') => {
+  const handleOpenPaymentModal = async (preferredMethod: ActivePaymentMethod | 'split' = 'cash') => {
     if (cart.length === 0) return
     if (orderType === 'dine-in' && !tableNumber) {
       setPayError('Selecciona el número de mesa')
@@ -933,7 +945,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     closeProductGroupModal()
   }
 
-  const handleSelectPaymentTab = (method: PaymentMethod | 'split') => {
+  const handleSelectPaymentTab = (method: ActivePaymentMethod | 'split') => {
     setSelectedPaymentTab(method)
     setRefNumber('')
     setExtraRefs([])
@@ -941,7 +953,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setSplitSecondaryReference('')
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
-    const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method === 'other' ? 'cash' : method
+    const inputMethod: SplitPaymentMethod = method === 'split' || method === 'other' ? 'cash' : method
     if (method === 'split') {
       setSplitPrimaryAccountId(ensureAccountForMethod(splitPrimaryMethod))
       setSplitSecondaryAccountId(ensureAccountForMethod(splitSecondaryMethod))
@@ -1441,7 +1453,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         </div>
 
         {selectedProductGroup && createPortal(
-          <div className={`modal-overlay-dark ${closingProductGroup ? 'closing' : ''}`} onClick={() => closeProductGroupModal()}>
+          <div className={`modal-overlay-dark variant-selector-overlay ${closingProductGroup ? 'closing' : ''}`} onClick={() => closeProductGroupModal()}>
             <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="variant-selector-title" onClick={(event) => event.stopPropagation()}>
               <div className="variant-selector-header">
                 <div>
@@ -1474,7 +1486,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         )}
 
         {modifierProduct && createPortal(
-          <div className={`modal-overlay-dark ${closingModifier ? 'closing' : ''}`} onClick={() => closeModifierPicker()}>
+          <div className={`modal-overlay-dark variant-selector-overlay ${closingModifier ? 'closing' : ''}`} onClick={() => closeModifierPicker()}>
             <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="modifier-selector-title" onClick={(event) => event.stopPropagation()}>
               <div className="variant-selector-header">
                 <div>
@@ -1551,26 +1563,30 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         {/* El resumen fijo permite abrir el pedido sin recorrer todo el catálogo. */}
         {createPortal(
           <>
-            <button
-              type="button"
-              className="mobile-cart-trigger"
-              aria-expanded={mobileCartOpen}
-              onClick={() => setMobileCartOpen(true)}
-            >
-              <span className="mobile-cart-trigger-summary">
-                <ShoppingCart size={18} aria-hidden="true" />
-                <span>{mobileCartItemCount === 1 ? '1 artículo' : `${mobileCartItemCount} artículos`}</span>
-                <strong>{formatUsd(total)}</strong>
-              </span>
-              <span className="mobile-cart-trigger-action">Ver pedido</span>
-            </button>
-            {mobileCartOpen && <button type="button" className="mobile-cart-overlay" onClick={() => setMobileCartOpen(false)} aria-label="Cerrar pedido" />}
+            {!mobileCartOpen && mobileCartItemCount > 0 && (
+              <button
+                type="button"
+                className={`mobile-cart-trigger${embedded ? ' mobile-cart-trigger--modal' : ''}`}
+                aria-expanded={mobileCartOpen}
+                onClick={() => setMobileCartOpen(true)}
+              >
+                <span className="mobile-cart-trigger-summary">
+                  <ShoppingCart size={18} aria-hidden="true" />
+                  <span>{mobileCartItemCount === 1 ? '1 artículo' : `${mobileCartItemCount} artículos`}</span>
+                  <strong>{formatUsd(total)}</strong>
+                </span>
+                <span className="mobile-cart-trigger-action">Ver pedido</span>
+              </button>
+            )}
+            {mobileCartOpen && !embedded && <button type="button" className="mobile-cart-overlay" onClick={() => setMobileCartOpen(false)} aria-label="Cerrar pedido" />}
           </>,
           document.body,
         )}
 
         {/* RIGHT: Cart Sidebar */}
-        <div className={`cart-sidebar${mobileCartOpen ? ' mobile-cart-open' : ''}`}>
+        {(() => {
+          const cartSidebar = (
+        <div className={`cart-sidebar${mobileCartOpen && (!embedded || isPhoneViewport) ? ' mobile-cart-open' : ''}${embedded && isPhoneViewport ? ' cart-sidebar--modal' : ''}`} onClick={(event) => event.stopPropagation()}>
           <div className="cart-sidebar-header">
             <div className="cart-order-title-group">
               <span className="cart-eyebrow">Comanda activa</span>
@@ -1878,6 +1894,17 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
             </div>
           </div>
         </div>
+          )
+
+          return embedded && mobileCartOpen && isPhoneViewport
+            ? createPortal(
+                <div className="mobile-cart-modal-overlay" role="dialog" aria-modal="true" aria-label="Comanda activa" onClick={() => setMobileCartOpen(false)}>
+                  {cartSidebar}
+                </div>,
+                document.body,
+              )
+            : cartSidebar
+        })()}
       </div>
 
       {/* Image 1 Target: Payment Modal "Cobrar pedido" */}

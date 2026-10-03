@@ -115,6 +115,8 @@
 .mesas-tile {
   position: absolute;
   z-index: 10;
+  left: var(--mesa-pos-x);
+  top: var(--mesa-pos-y);
   width: 76px;
   height: 76px;
   display: flex;
@@ -382,6 +384,47 @@
   .mesas-form-actions { display: grid; grid-template-columns: 1fr 1.2fr; }
   .mesas-form-actions button,
   .mesas-modal-cta { width: 100%; min-height: 44px; }
+}
+
+/* El plano conserva sus coordenadas, pero las mesas se compactan en teléfono. */
+@media (max-width: 600px) {
+  .mesas-page { gap: 14px; }
+
+  .mesas-canvas {
+    min-height: 320px;
+    aspect-ratio: 1.08 / 1;
+    background-size: auto, auto, 22px 22px, 22px 22px, auto;
+  }
+
+  .mesas-tile {
+    left: var(--mesa-phone-x, min(var(--mesa-pos-x), calc(100% - 66px)));
+    top: min(var(--mesa-pos-y), calc(100% - 88px));
+    width: 54px;
+    height: 58px;
+    border-width: 3px;
+    gap: 2px;
+  }
+
+  .mesas-canvas:not(.edit-mode) .mesas-tile {
+    left: var(--mesa-phone-x, var(--mesa-pos-x));
+    top: var(--mesa-phone-y, var(--mesa-pos-y));
+  }
+
+  .mesas-tile.square { border-radius: 15px; }
+  .mesas-tile-number { font-size: 1.08rem; }
+  .mesas-tile-seats { gap: 2px; font-size: 0.52rem; }
+  .mesas-tile-seats svg { width: 9px; height: 9px; }
+
+  .mesas-tile-elapsed {
+    left: 50%;
+    bottom: -15px;
+    max-width: 60px;
+    padding: 2px 4px;
+    overflow: hidden;
+    font-size: 0.49rem;
+    text-overflow: ellipsis;
+    transform: translateX(-50%);
+  }
 }
 
 

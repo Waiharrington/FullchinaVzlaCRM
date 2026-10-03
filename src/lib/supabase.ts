@@ -3,44 +3,6 @@ import { createResponseCache } from './responseCache'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
-const allowLocalDatabaseWrites = import.meta.env.VITE_SUPABASE_ALLOW_LOCAL_WRITES === 'true'
-
-function isLoopbackHost(hostname: string) {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
-}
-
-function isLoopbackSupabaseUrl(value: string) {
-  try {
-    return isLoopbackHost(new URL(value).hostname)
-  } catch {
-    return false
-  }
-}
-
-export function isSupabaseWriteBlocked(input: RequestInfo | URL, init?: RequestInit) {
-  if (!import.meta.env.DEV) return false
-
-  const request = input instanceof Request ? input : null
-  const url = new URL(request?.url ?? input.toString())
-  const method = (init?.method ?? request?.method ?? 'GET').toUpperCase()
-  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) return false
-
-  const isRestRequest = url.pathname.includes('/rest/v1/')
-  const isFunctionRequest = url.pathname.includes('/functions/v1/')
-  const isStorageRequest = url.pathname.includes('/storage/v1/')
-  if (!isRestRequest && !isFunctionRequest && !isStorageRequest) return false
-
-  // Development may write only to a loopback Supabase instance, and only
-  // after an explicit opt-in. A remote .env can never enable local writes.
-  if (allowLocalDatabaseWrites && isLoopbackSupabaseUrl(supabaseUrl) && isLoopbackHost(url.hostname)) return false
-
-  // PostgREST exposes read-only RPCs as POST requests. Keep those available
-  // while blocking all other RPCs as well as direct table mutations.
-  const rpcName = isRestRequest && url.pathname.includes('/rest/v1/rpc/')
-    ? decodeURIComponent(url.pathname.split('/rest/v1/rpc/')[1] ?? '')
-    : null
-  return !rpcName?.startsWith('fn_get_')
-}
 
 const RESPONSE_CACHE_MS = 2 * 60 * 1000
 const CHANGE_CHECK_INTERVAL_MS = 30 * 1000
@@ -103,18 +65,6 @@ export function publishDataChange(table: string) {
 
 async function cachedSupabaseFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const details = requestDetails(input, init)
-  if (isSupabaseWriteBlocked(input, init)) {
-    return new Response(JSON.stringify({
-      code: 'LOCAL_DATABASE_READ_ONLY',
-      message: 'Escritura bloqueada en desarrollo: configura una instancia Supabase local aislada para probar cambios.',
-      details: null,
-      hint: null,
-    }), {
-      status: 403,
-      statusText: 'Forbidden',
-      headers: { 'content-type': 'application/json; charset=utf-8' },
-    })
-  }
   if (details.cacheable) {
     return responseCache.fetch(details.key, details.table, () => fetch(input, init))
   }

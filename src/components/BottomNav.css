@@ -290,4 +290,26 @@
   .bottom-nav-active-dot { display: none !important; }
   .bottom-nav-label { font-size: .61rem !important; line-height: 1.1 !important; }
   .bottom-nav-drawer { max-height: min(88dvh, 760px); padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
+
+  .bottom-nav-overlay.closing {
+    pointer-events: none;
+    animation: bottom-nav-overlay-exit 250ms ease-in both;
+  }
+
+  .bottom-nav-drawer.closing {
+    animation: bottom-nav-slide-down 250ms cubic-bezier(.4, 0, 1, 1) both;
+  }
+}
+
+@keyframes bottom-nav-overlay-exit {
+  to { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
+}
+
+@keyframes bottom-nav-slide-down {
+  to { transform: translate3d(0, 100%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 767px) {
+  .bottom-nav-overlay.closing,
+  .bottom-nav-drawer.closing { animation-duration: 1ms; }
 }

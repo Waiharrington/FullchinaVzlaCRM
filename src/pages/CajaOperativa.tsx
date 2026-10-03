@@ -257,7 +257,7 @@ export function CajaOperativa() {
               <div className="cash-payment-list">
                 <div><span>Dólares en efectivo</span><strong>{money(session.cashSalesUsd)}</strong></div>
                 <div><span>Bolívares en efectivo</span><strong>{money(session.cashSalesVes, 'VES')}</strong></div>
-                <p className="cash-payment-note">Pago móvil, punto, transferencias, Binance y Zelle se concilian en sus cuentas financieras.</p>
+                <p className="cash-payment-note">Pago móvil, punto, transferencias y Binance se concilian en sus cuentas financieras.</p>
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
             </article>

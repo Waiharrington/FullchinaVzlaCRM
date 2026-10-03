@@ -92,10 +92,19 @@
 .mnu-tools select {
   font-size: 13px; height: 38px; padding-right: 32px;
 }
-.mnu-view { margin-left: auto; display: flex; gap: 4px; }
+.mnu-tools-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; margin-left: auto; }
+.mnu-view {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.025);
+}
 .mnu-view button {
   background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1);
-  color: #71717a; border-radius: 10px; padding: 8px; cursor: pointer; display: inline-flex; transition: all 0.2s;
+  color: #71717a; border-radius: 10px; padding: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s;
 }
 .mnu-view button:hover { color: #d4d4d8; border-color: rgba(255,255,255,0.2); }
 .mnu-view button.active { background: linear-gradient(135deg, #e11d2a, #E31B2B); border-color: transparent; color: #fff; box-shadow: 0 2px 8px rgba(225,29,42,0.3); }
@@ -108,6 +117,24 @@
 }
 .mnu-select-btn:hover { border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); }
 .mnu-select-btn.active { background: rgba(225,29,42,0.12); border-color: rgba(225,29,42,0.4); color: #f87171; }
+
+/* En pantallas medias, acortar el buscador para conservar juntos los controles. */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .mnu-tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .mnu-tools > .mnu-search {
+    flex: 1 1 160px;
+    width: auto;
+    max-width: 190px;
+    min-width: 150px;
+  }
+  .mnu-tools > .fc-select { width: auto; min-width: 0; }
+  .mnu-tools-actions { margin-left: auto; }
+}
 .mnu-bulk-bar {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   background: rgba(225,29,42,0.06); border: 1px solid rgba(225,29,42,0.2);
@@ -557,6 +584,94 @@
 
 /* Narrow mobile */
 @media (max-width: 600px) {
+  .mnu-view { display: none; }
+
+  .mnu-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .mnu-tools > .mnu-search {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .mnu-tools > .fc-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mnu-tools > .fc-select .fc-select-trigger {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    gap: 4px;
+    padding-inline: 8px;
+    font-size: 0.7rem;
+  }
+
+  .mnu-tools > .fc-select .fc-select-trigger svg { width: 12px; height: 12px; }
+
+  .mnu-tools > .mnu-select-btn {
+    min-width: 0;
+    height: 42px;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 10px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+
+  .mnu-tools > .mnu-tools-actions {
+    grid-column: 3;
+    grid-row: 2;
+    width: 100%;
+    margin-left: 0;
+    gap: 0;
+  }
+  .mnu-tools-actions > .mnu-select-btn { width: 100%; min-width: 0; }
+
+  .mnu-cat-modal {
+    width: 100%;
+    min-width: 0;
+    max-width: 540px;
+  }
+
+  .mnu-cat-modal .mnu-modal-body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .mnu-cat-modal .mnu-modal-body > .page-subtitle {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  .mnu-cat-add,
+  .mnu-cat-row {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .mnu-cat-add { gap: 8px; }
+  .mnu-cat-add input { width: 0; min-width: 0; }
+  .mnu-cat-add .mnu-btn { flex: 0 0 auto; white-space: nowrap; }
+  .mnu-cat-edit { width: 0; min-width: 0; }
+
+  .mnu-view button {
+    width: 48px;
+    height: 48px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+
   .mnu-modal { padding: 22px; border-radius: 18px; max-height: 92vh; }
   .mnu-modal-header h3 { font-size: 18px; }
   .mnu-photo-card-filled { grid-template-columns: 96px minmax(0, 1fr) 36px; gap: 11px; }
@@ -570,6 +685,51 @@
   .mnu-sum-val { font-size: 20px; }
   .mnu-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
   .mnu-card-actions { flex-wrap: wrap; }
+}
+
+/* Product cards use two columns only on phones wide enough for their actions. */
+@media (min-width: 381px) and (max-width: 600px) {
+  .mnu-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .mnu-thumb { height: 96px; }
+  .mnu-card-body { padding: 10px 10px 8px; gap: 5px; }
+  .mnu-card-name { font-size: 13px; line-height: 1.25; }
+  .mnu-card-cat { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mnu-card-row { align-items: center; flex-direction: row; justify-content: space-between; gap: 6px; padding-top: 5px; }
+  .mnu-price { font-size: 15px; }
+  .mnu-badge { font-size: 9px; padding: 3px 7px; }
+  .mnu-card-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px;
+    gap: 4px;
+    padding: 0 8px 10px;
+  }
+  .mnu-card-actions .mnu-act {
+    min-width: 0;
+    min-height: 42px;
+    padding: 5px 2px;
+    gap: 3px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  .mnu-card-actions .mnu-act svg { width: 12px; height: 12px; flex: 0 0 12px; }
+  .mnu-card-actions .mnu-act-danger {
+    width: 40px;
+    min-height: 42px;
+    padding: 0;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 77, 61, 0.56) !important;
+    justify-self: center;
+    outline: 1px solid rgba(255, 77, 61, 0.22);
+    outline-offset: -2px;
+  }
+}
+
+@media (max-width: 380px) {
+  .mnu-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ============================================================
