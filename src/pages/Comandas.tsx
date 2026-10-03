@@ -96,8 +96,8 @@ const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split' && item.method !== 'personal_account',
 )
 const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
-const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
-const paymentReferenceLabel = (method: SplitPaymentMethod) => {
+const requiresPaymentReference = (method: ActivePaymentMethod) => method !== 'cash' && method !== 'personal_account'
+const paymentReferenceLabel = (method: ActivePaymentMethod) => {
   if (method === 'card') return 'Referencia del voucher del punto *'
   if (method === 'binance') return 'ID de transacción de Binance *'
   return 'Número de referencia *'
@@ -2416,7 +2416,16 @@ export function Comandas() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                {selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab) && (
+                {selectedPaymentTab === 'personal_account' ? (
+                  <div className="payment-field-group mt-2">
+                    <label className="payment-field-label">Cuenta personal *</label>
+                    <select className="payment-field-input" value={paymentPersonalAccountId} onChange={event => setPaymentPersonalAccountId(event.target.value)}>
+                      <option value="">Selecciona una cuenta personal</option>
+                      {personalAccounts.filter(account => account.isActive).map(account => <option key={account.id} value={account.id}>{account.name}</option>)}
+                    </select>
+                    <span className="payment-hint-sub">Consumo interno; descuenta inventario y queda fuera de caja y ventas.</span>
+                  </div>
+                ) : selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab) && (
                 <div className="payment-field-group mt-2">
                   <label className="payment-field-label">
                     {paymentReferenceLabel(selectedPaymentTab)}
