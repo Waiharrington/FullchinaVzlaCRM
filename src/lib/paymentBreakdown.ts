@@ -22,6 +22,7 @@ export function buildPaymentBreakdown(
   for (const order of orders) {
     const historicalRate = order.bcvRate && order.bcvRate > 0 ? order.bcvRate : fallbackBcvRate || 0
     for (const payment of order.payments) {
+      if (payment.method === 'personal_account') continue
       const currency = (payment.accountId ? accountCurrencies.get(payment.accountId) : null) ?? legacyCurrency(payment.method)
       const key = `${payment.method}:${currency}`
       const amountUsd = Number(payment.amount) || 0

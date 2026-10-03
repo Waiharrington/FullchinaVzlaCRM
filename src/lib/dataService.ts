@@ -56,12 +56,13 @@ export function isQuantityModifierGroup(group: ProductModifierGroup): boolean {
   return group.allowRepeat && group.maxSelections != null && group.maxSelections > 1 && group.options.length > 1
 }
 
-export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle' | 'other'
+export type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle' | 'other' | 'personal_account'
 
 export interface OrderPaymentComponent {
   method: PaymentMethod
   amount: number
   accountId?: string | null
+  personalAccountId?: string | null
   referenceNumber?: string | null
   receivedAmount?: number | null
   notes?: string | null
@@ -118,6 +119,9 @@ export interface FullOrder {
   payments: RecordedOrderPayment[]
   totalAmount: number
 }
+
+export const isPersonalAccountOrder = (order: Pick<FullOrder, 'payments'>): boolean =>
+  order.payments.some(payment => payment.method === 'personal_account')
 
 export interface OrderItem {
   id: string
@@ -272,6 +276,20 @@ export interface FinancialAccount {
   acceptsCustomerPayments: boolean
   openingBalance: number
   currentBalance: number
+}
+
+export interface PersonalAccount {
+  id: string
+  name: string
+  isActive: boolean
+  totalConsumption: number
+  movementCount: number
+}
+
+export interface PersonalAccountOption {
+  id: string
+  name: string
+  isActive: true
 }
 
 export type WarehouseIngredient = Ingredient
@@ -1447,6 +1465,7 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, a
       method: p.method as PaymentMethod,
       amount: Number(p.amount),
       accountId: (p.account_id as string) ?? null,
+      personalAccountId: (p.personal_account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
       notes: (p.notes as string) ?? null,
@@ -2666,6 +2685,35 @@ export async function getCustomerPaymentAccounts(): Promise<FinancialAccount[]> 
     acceptsCustomerPayments: account.accepts_customer_payments !== false,
     openingBalance: Number(account.opening_balance ?? 0), currentBalance: Number(account.opening_balance ?? 0),
   }))
+}
+
+export async function getPersonalAccounts(): Promise<PersonalAccount[]> {
+  const { data, error } = await client().rpc('fn_get_personal_accounts')
+  if (error) throw error
+  return ((data ?? []) as Array<Record<string, unknown>>).map(account => ({
+    id: String(account.id), name: String(account.name), isActive: account.is_active !== false,
+    totalConsumption: Number(account.total_consumption ?? 0), movementCount: Number(account.movement_count ?? 0),
+  }))
+}
+
+export async function getPersonalAccountOptions(): Promise<PersonalAccountOption[]> {
+  const { data, error } = await client().rpc('fn_get_personal_account_options')
+  if (error) throw error
+  return ((data ?? []) as Array<Record<string, unknown>>).map(account => ({
+    id: String(account.id), name: String(account.name), isActive: true as const,
+  }))
+}
+
+export async function createPersonalAccount(name: string): Promise<string> {
+  const { data, error } = await client().rpc('fn_create_personal_account', { p_name: name })
+  if (error) throw error
+  return String(data)
+}
+
+export async function deactivatePersonalAccount(id: string): Promise<{ deactivated: boolean }> {
+  const { data, error } = await client().rpc('fn_deactivate_personal_account', { p_account_id: id })
+  if (error) throw error
+  return data as { deactivated: boolean }
 }
 
 export async function getWarehouseIngredients(): Promise<WarehouseIngredient[]> {
@@ -4490,6 +4538,7 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
       method: p.method as PaymentMethod,
       amount: Number(p.amount),
       accountId: (p.account_id as string) ?? null,
+      personalAccountId: (p.personal_account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
       notes: (p.notes as string) ?? null,

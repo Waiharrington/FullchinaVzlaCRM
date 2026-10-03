@@ -15,8 +15,10 @@ import {
   validateMyPin,
   setOrderDeliveryFee,
   getAllSellableProducts,
+  getPersonalAccountOptions,
   type PaymentMethod,
   type CartItem,
+  type PersonalAccountOption,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { CalendarPicker } from '../components/CalendarPicker'
@@ -73,6 +75,7 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  WalletCards,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import './Comandas.css'
@@ -83,12 +86,14 @@ const PAYMENT_METHODS = [
   { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
   { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
+  { method: 'personal_account', label: 'Cuenta personal', icon: <WalletCards size={16} strokeWidth={1.8} /> },
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ] as const
 
-type SplitPaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle'>
+type ActivePaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle'>
+type SplitPaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle' | 'personal_account'>
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
-  (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split',
+  (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split' && item.method !== 'personal_account',
 )
 const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
 const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
@@ -600,7 +605,9 @@ export function Comandas() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
   const [paymentOrder, setPaymentOrder] = useState<ComandaOrder | null>(null)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<SplitPaymentMethod | 'split'>('cash')
+  const [selectedPaymentTab, setSelectedPaymentTab] = useState<ActivePaymentMethod | 'split'>('cash')
+  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccountOption[]>([])
+  const [paymentPersonalAccountId, setPaymentPersonalAccountId] = useState('')
   const [refNumber, setRefNumber] = useState('')
   const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('')
@@ -890,6 +897,10 @@ export function Comandas() {
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
     setPaymentNote('')
+    getPersonalAccountOptions().then(accounts => {
+      setPersonalAccounts(accounts)
+      setPaymentPersonalAccountId(accounts.find(account => account.isActive)?.id ?? '')
+    }).catch(() => setPersonalAccounts([]))
     setPaymentError('Verificando la caja activa…')
     setShowPaymentModal(true)
 
@@ -906,7 +917,7 @@ export function Comandas() {
     setPaymentError('')
   }
 
-  const handleSelectPaymentTab = (method: typeof selectedPaymentTab) => {
+  const handleSelectPaymentTab = (method: ActivePaymentMethod | 'split') => {
     setSelectedPaymentTab(method)
     setPaymentError('')
     setRefNumber('')
@@ -918,9 +929,10 @@ export function Comandas() {
       setAmountReceived(usdToPaymentInput(half, splitPrimaryMethod, paymentRate))
       setAmountReceivedSecondary(usdToPaymentInput(paymentOrder.totalAmount - half, splitSecondaryMethod, paymentRate))
     } else {
-      const inputMethod: SplitPaymentMethod = method === 'split' ? 'cash' : method
+      const inputMethod: SplitPaymentMethod = method === 'split' || method === 'personal_account' ? 'cash' : method
       setAmountReceived(usdToPaymentInput(paymentOrder?.totalAmount || 0, inputMethod, paymentRate))
     }
+    if (method === 'personal_account') setPaymentPersonalAccountId(personalAccounts.find(account => account.isActive)?.id ?? '')
   }
 
   const handleConfirmOrderPayment = async () => {
@@ -938,7 +950,7 @@ export function Comandas() {
         enteredAmount = paymentRate && paymentRate > 0 ? enteredAmount / paymentRate : 0
       }
 
-      const requiresReference = selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab)
+      const requiresReference = selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account' && requiresPaymentReference(selectedPaymentTab)
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
@@ -946,6 +958,7 @@ export function Comandas() {
       let payments: Array<{
         method: PaymentMethod
         amount: number
+        personalAccountId?: string
         referenceNumber?: string
         receivedAmount?: number
         notes?: string
@@ -990,10 +1003,15 @@ export function Comandas() {
         payments = [{
           method: selectedPaymentTab,
           amount: total,
+          personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : undefined,
           referenceNumber: allRefs || undefined,
           receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
           notes: paymentNote || undefined,
         }]
+      }
+
+      if (selectedPaymentTab === 'personal_account' && !personalAccounts.some(account => account.id === paymentPersonalAccountId && account.isActive)) {
+        throw new Error('Selecciona una cuenta personal activa')
       }
 
       await recordOrderPayments({
@@ -1008,6 +1026,7 @@ export function Comandas() {
         card: 'Pago: Punto',
         transfer: 'Pago: Transferencia',
         binance: 'Pago: Binance',
+        personal_account: `Consumo: ${personalAccounts.find(account => account.id === paymentPersonalAccountId)?.name ?? 'Cuenta personal'}`,
         split: 'Pago combinado',
       }
       const methodLabel = methodLabels[selectedPaymentTab] || 'Pago: Efectivo'
@@ -1120,6 +1139,7 @@ export function Comandas() {
               binance: 'Binance',
               zelle: 'Zelle',
               other: 'Otro',
+              personal_account: 'Cuenta personal',
             }
             const persistedPaymentLabel = paymentMethods.length > 1
               ? 'Pago combinado'
@@ -1412,6 +1432,7 @@ export function Comandas() {
         const paymentLabels: Record<PaymentMethod, string> = {
           cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia',
           binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+          personal_account: 'Cuenta personal',
         }
         const paymentLabel = paymentMethods.length > 1
           ? 'Pago combinado'
@@ -2264,6 +2285,7 @@ export function Comandas() {
                       selectedOrder.payments?.length ? selectedOrder.payments.map((payment, index) => {
                         const paymentLabels: Record<PaymentMethod, string> = {
                           cash: 'Efectivo', mobile: 'Pago móvil', card: 'Tarjeta / Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+                          personal_account: 'Cuenta personal',
                         }
                         return <div className="cmd-summary-row cmd-breakdown-item" key={`${payment.method}-${index}`}>
                           <span className="cmd-paid-green">{paymentLabels[payment.method] ?? payment.method}</span>
@@ -2520,14 +2542,14 @@ export function Comandas() {
                       value={amountReceived}
                       onChange={(e) => setAmountReceived(e.target.value)}
                     />
-                    <span className="currency-tag-right">{selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}</span>
+                    <span className="currency-tag-right">{selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}</span>
                   </div>
                   <span className="payment-hint-sub">
                     {selectedPaymentTab === 'cash'
                       ? (cashCurrency === 'USD'
                         ? (paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible')
                         : `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`)
-                      : usesBolivares(selectedPaymentTab)
+                      : selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab)
                         ? `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`
                         : (paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible')}
                   </span>

@@ -49,6 +49,7 @@ const paymentNames: Record<string, string> = {
   binance: 'Binance',
   zelle: 'Zelle',
   other: 'Otro',
+  personal_account: 'Cuenta personal',
 }
 
 const itemTotal = (item: ThermalReceiptItem) => item.quantity * (

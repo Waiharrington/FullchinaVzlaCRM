@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, deleteFinancialOperation,
-  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount,
+  getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder,
+  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type PersonalAccount,
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
@@ -17,7 +18,7 @@ import { confirmDialog } from '../components/ConfirmDialog'
 import { formatUsd, formatVes } from '../lib/money'
 import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
-  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X,
+  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X, Plus,
   ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2,
   Clock, Gift, Users, Landmark, ArrowRight,
 } from 'lucide-react'
@@ -71,6 +72,10 @@ export function Finanzas() {
   const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
   const [operations, setOperations] = useState<FinancialOperation[]>([])
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
+  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>([])
+  const [newPersonalAccountName, setNewPersonalAccountName] = useState('')
+  const [savingPersonalAccount, setSavingPersonalAccount] = useState(false)
+  const [personalAccountError, setPersonalAccountError] = useState('')
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState<Period>('semana')
   const [rangeStart, setRangeStart] = useState(isoDate(new Date()))
@@ -132,16 +137,16 @@ export function Finanzas() {
       const comparisonStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
       const selectedStart = new Date(`${summaryMonth}-01T00:00:00`)
       const dataStart = selectedStart < comparisonStart ? selectedStart : comparisonStart
-      const [ords, exps, purchaseData, recipes, pay, ops, accts] = await Promise.all([
+      const [ords, exps, purchaseData, recipes, pay, ops, accts, personalAccts] = await Promise.all([
         getOrdersWithItems(dataStart.toISOString()),
         getExpenses(isoDate(dataStart)),
         getPurchases().catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
         getFinancialOperations(isoDate(dataStart)).catch(() => []),
-        getFinancialAccounts().catch(() => []),
+        getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []),
       ])
-      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts)
+      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts); setPersonalAccounts(personalAccts)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
   }, [summaryMonth])
   useEffect(() => { void load() }, [load])
@@ -150,7 +155,7 @@ export function Finanzas() {
   const computePL = useCallback((start: Date, end: Date): PL => {
     const s = start.getTime(), e = end.getTime()
     const sIso = isoDate(start), eIso = isoDate(end)
-    const paid = orders.filter((o) => { const t = new Date(o.createdAt).getTime(); return o.status === 'paid' && t >= s && t <= e })
+    const paid = orders.filter((o) => { const t = new Date(o.createdAt).getTime(); return o.status === 'paid' && !isPersonalAccountOrder(o) && t >= s && t <= e })
     const grossSales = paid.reduce((sum, o) => sum + o.totalAmount, 0)
     let cogs = 0
     for (const o of paid) {
@@ -196,7 +201,7 @@ export function Finanzas() {
     semana: computePL(...ranges.semana), mes: computePL(...ranges.mes), rango: computePL(...ranges.rango),
   }), [loading, computePL, ranges])
 
-  const dailyRows = useMemo(() => buildDailyFinancialRows(summaryMonth, orders, purchases, expenses), [summaryMonth, orders, purchases, expenses])
+  const dailyRows = useMemo(() => buildDailyFinancialRows(summaryMonth, orders.filter(order => !isPersonalAccountOrder(order)), purchases, expenses), [summaryMonth, orders, purchases, expenses])
   const monthTotals = useMemo(() => sumFinancialRows(dailyRows), [dailyRows])
   const selectedWeek = useMemo(() => weekRangeFor(selectedSummaryDate), [selectedSummaryDate])
   const weekRows = useMemo(() => dailyRows.filter(row => row.date >= selectedWeek.start && row.date <= selectedWeek.end), [dailyRows, selectedWeek])
@@ -308,6 +313,34 @@ export function Finanzas() {
     await updateFinancialAccountOpeningBalance(account.id, value)
     setAccounts(await getFinancialAccounts())
     setEditingAccountId(null)
+  }
+  const addPersonalAccount = async () => {
+    const name = newPersonalAccountName.trim()
+    if (!name || savingPersonalAccount) return
+    setPersonalAccountError('')
+    setSavingPersonalAccount(true)
+    try {
+      await createPersonalAccount(name)
+      setNewPersonalAccountName('')
+      setPersonalAccounts(await getPersonalAccounts())
+    } catch (error) {
+      setPersonalAccountError(error instanceof Error ? error.message : 'No se pudo agregar la cuenta personal')
+    } finally { setSavingPersonalAccount(false) }
+  }
+  const removePersonalAccount = async (account: PersonalAccount) => {
+    const ok = await confirmDialog({
+      title: 'Quitar cuenta personal',
+      message: `¿Quitar “${account.name}” de las opciones? El acumulado es ${formatUsd(account.totalConsumption)}.${account.movementCount > 0 ? ' Su historial se conservará y la cuenta quedará inactiva.' : ''}`,
+      confirmText: 'Quitar', danger: true,
+    })
+    if (!ok) return
+    setPersonalAccountError('')
+    try {
+      await deactivatePersonalAccount(account.id)
+      setPersonalAccounts(await getPersonalAccounts())
+    } catch (error) {
+      setPersonalAccountError(error instanceof Error ? error.message : 'No se pudo quitar la cuenta personal')
+    }
   }
   const saveTransfer = async () => {
     setTransferError('')
@@ -530,7 +563,27 @@ export function Finanzas() {
             {usdAccounts.length > 0 && (
               <div className="fin-account-group">
                 <div className="fin-account-group-head usd"><DollarSign size={14} /> Cuentas en dólares</div>
-                <div className="fin-account-grid">{usdAccounts.map(renderAccountCard)}</div>
+                <div className="fin-account-grid">
+                  {usdAccounts.map(renderAccountCard)}
+                  <section className="fin-personal-account-card" aria-label="Cuentas personales">
+                    <div className="fin-personal-account-heading"><div><strong>Cuentas personales</strong><small>Consumo acumulado · no entra a caja</small></div></div>
+                    <div className="fin-personal-account-list">
+                      {personalAccounts.map(account => (
+                        <div className="fin-personal-account-row" key={account.id}>
+                          <span><strong>{account.name}</strong><small>{account.isActive ? `${account.movementCount} consumo${account.movementCount === 1 ? '' : 's'}` : 'Inactiva · historial conservado'}</small></span>
+                          <b>{formatUsd(account.totalConsumption)}</b>
+                          {account.isActive && <button type="button" aria-label={`Quitar ${account.name}`} title="Quitar cuenta" onClick={() => void removePersonalAccount(account)}><X size={14}/></button>}
+                        </div>
+                      ))}
+                      {personalAccounts.length === 0 && <p className="fin-account-empty">No hay cuentas activas.</p>}
+                    </div>
+                    <form className="fin-personal-account-add" onSubmit={event => { event.preventDefault(); void addPersonalAccount() }}>
+                      <input aria-label="Nombre de nueva cuenta personal" maxLength={80} value={newPersonalAccountName} onChange={event => setNewPersonalAccountName(event.target.value)} placeholder="Nueva cuenta personal" />
+                      <button type="submit" disabled={!newPersonalAccountName.trim() || savingPersonalAccount} aria-label="Agregar cuenta personal"><Plus size={16}/></button>
+                    </form>
+                    {personalAccountError && <small className="fin-personal-account-error" role="alert">{personalAccountError}</small>}
+                  </section>
+                </div>
               </div>
             )}
             {vesAccounts.length > 0 && (

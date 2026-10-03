@@ -10,7 +10,7 @@ import { DashboardQuickAccess, type DashboardShortcut } from '../components/Dash
 import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
-import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient } from '../lib/dataService'
+import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, isPersonalAccountOrder, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient } from '../lib/dataService'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
@@ -258,7 +258,7 @@ export function Inicio() {
     todayOrders.filter(o => dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
     [todayOrders]
   )
-  const paidOrdersToday = useMemo(() => ordersToday.filter(order => order.status === 'paid'), [ordersToday])
+  const paidOrdersToday = useMemo(() => ordersToday.filter(order => order.status === 'paid' && !isPersonalAccountOrder(order)), [ordersToday])
 
   const paymentMethodDetails = useMemo(() => {
     if (!selectedPaymentMethod) return []

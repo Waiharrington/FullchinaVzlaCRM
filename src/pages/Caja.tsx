@@ -27,6 +27,7 @@ import {
   getOccupiedTables,
   getMenuCategories,
   getFinancialAccounts,
+  getPersonalAccountOptions,
   isQuantityModifierGroup,
   type Product,
   type CartItem,
@@ -37,6 +38,7 @@ import {
   type ProductModifierGroup,
   type SelectedModifier,
   type FinancialAccount,
+  type PersonalAccountOption,
 } from '../lib/dataService'
 import {
   X,
@@ -94,7 +96,7 @@ const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> =
 }
 
 type ActivePaymentMethod = Exclude<PaymentMethod, 'zelle'>
-type SplitPaymentMethod = Exclude<ActivePaymentMethod, 'other'>
+type SplitPaymentMethod = Exclude<ActivePaymentMethod, 'other' | 'personal_account'>
 
 const PAYMENT_DETAILS: Record<ActivePaymentMethod | 'split', { label: string; desc: string; icon: ReactNode }> = {
   card: { label: 'Punto de venta', desc: 'Tarjeta de débito o crédito', icon: <CreditCard size={16} strokeWidth={1.8} /> },
@@ -104,6 +106,7 @@ const PAYMENT_DETAILS: Record<ActivePaymentMethod | 'split', { label: string; de
   binance: { label: 'Binance Pay', desc: 'Pago en cripto USDT', icon: <Hexagon size={16} strokeWidth={1.8} /> },
   split: { label: 'Pago combinado', desc: 'Cobrar con dos métodos', icon: <Split size={16} strokeWidth={1.8} /> },
   other: { label: 'Otro método', desc: 'Método especial', icon: <CreditCard size={16} strokeWidth={1.8} /> },
+  personal_account: { label: 'Cuenta personal', desc: 'Consumo interno · no ingresa a caja', icon: <WalletCards size={16} strokeWidth={1.8} /> },
 }
 
 const PAYMENT_METHODS: Array<{ method: ActivePaymentMethod | 'split'; label: string; icon: ReactNode }> = [
@@ -112,11 +115,12 @@ const PAYMENT_METHODS: Array<{ method: ActivePaymentMethod | 'split'; label: str
   { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
   { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
+  { method: 'personal_account', label: 'Cuenta personal', icon: <WalletCards size={16} strokeWidth={1.8} /> },
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ]
 
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
-  (item): item is { method: SplitPaymentMethod; label: string; icon: ReactNode } => item.method !== 'split' && item.method !== 'other',
+  (item): item is { method: SplitPaymentMethod; label: string; icon: ReactNode } => item.method !== 'split' && item.method !== 'other' && item.method !== 'personal_account',
 )
 
 const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
@@ -432,7 +436,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [splitSecondaryExtraRefs, setSplitSecondaryExtraRefs] = useState<string[]>([])
   const [paymentNote, setPaymentNote] = useState('')
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
+  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccountOption[]>([])
   const [paymentAccountId, setPaymentAccountId] = useState('')
+  const [paymentPersonalAccountId, setPaymentPersonalAccountId] = useState('')
   const [splitPrimaryAccountId, setSplitPrimaryAccountId] = useState('')
   const [splitSecondaryAccountId, setSplitSecondaryAccountId] = useState('')
 
@@ -560,12 +566,13 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   useEffect(() => {
     getFinancialAccounts().then(setFinancialAccounts).catch(() => setFinancialAccounts([]))
+    getPersonalAccountOptions().then(setPersonalAccounts).catch(() => setPersonalAccounts([]))
   }, [])
 
   useLiveDataRefresh('caja', async () => {
-    const [productsData, ordersData, modifiers, categoriesData, occupied, ranking, session, accounts] = await Promise.all([
+    const [productsData, ordersData, modifiers, categoriesData, occupied, ranking, session, accounts, personal] = await Promise.all([
       getProducts(), getTodayOrders(), getAllProductModifiers(), getMenuCategories(),
-      getOccupiedTables(), getTopSellingProducts(), getActiveCashSession(), getFinancialAccounts(),
+      getOccupiedTables(), getTopSellingProducts(), getActiveCashSession(), getFinancialAccounts(), getPersonalAccountOptions(),
     ])
     setProducts(productsData)
     cacheProducts(productsData)
@@ -576,6 +583,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setSalesRank(ranking)
     setCashSession(session)
     setFinancialAccounts(accounts)
+    setPersonalAccounts(personal)
   })
 
   const accountsForMethod = (method: SplitPaymentMethod) => {
@@ -898,7 +906,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setSelectedPaymentTab(preferredMethod)
     setRefNumber('')
     setExtraRefs([])
-    const initialMethod: SplitPaymentMethod = preferredMethod === 'split' || preferredMethod === 'other' ? 'cash' : preferredMethod
+    const initialMethod: SplitPaymentMethod = preferredMethod === 'split' || preferredMethod === 'other' || preferredMethod === 'personal_account' ? 'cash' : preferredMethod
     setAmountReceived(usdToPaymentInput(preferredMethod === 'split' ? total / 2 : total, initialMethod, bcvRate))
     if (preferredMethod === 'split') setAmountReceivedSecondary(usdToPaymentInput(total - total / 2, splitSecondaryMethod, bcvRate))
     setSplitPrimaryMethod('cash')
@@ -908,6 +916,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
     setPaymentAccountId(initialMethod === 'cash' ? ensureAccountForMethod(cashCurrency === 'USD' ? 'cash' : 'cash') : ensureAccountForMethod(initialMethod))
+    setPaymentPersonalAccountId(personalAccounts.find(account => account.isActive)?.id ?? '')
     setSplitPrimaryAccountId(ensureAccountForMethod('cash'))
     setSplitSecondaryAccountId(ensureAccountForMethod('mobile'))
     setPaymentNote('')
@@ -953,13 +962,14 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setSplitSecondaryReference('')
     setSplitPrimaryExtraRefs([])
     setSplitSecondaryExtraRefs([])
-    const inputMethod: SplitPaymentMethod = method === 'split' || method === 'other' ? 'cash' : method
+    const inputMethod: SplitPaymentMethod = method === 'split' || method === 'other' || method === 'personal_account' ? 'cash' : method
     if (method === 'split') {
       setSplitPrimaryAccountId(ensureAccountForMethod(splitPrimaryMethod))
       setSplitSecondaryAccountId(ensureAccountForMethod(splitSecondaryMethod))
-    } else {
+    } else if (method !== 'personal_account') {
       setPaymentAccountId(ensureAccountForMethod(inputMethod))
     }
+    if (method === 'personal_account') setPaymentPersonalAccountId(personalAccounts.find(account => account.isActive)?.id ?? '')
     setPayError('')
     setAmountReceived(usdToPaymentInput(method === 'split' ? total / 2 : total, inputMethod, bcvRate))
     if (method === 'split') setAmountReceivedSecondary(usdToPaymentInput(total - total / 2, splitSecondaryMethod, bcvRate))
@@ -985,14 +995,17 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         ? enteredAmountRaw / bcvRate
         : enteredAmountRaw
 
-      const requiresReference = selectedPaymentTab !== 'split'
+      const requiresReference = selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account'
         && selectedPaymentTab !== 'other'
         && requiresPaymentReference(selectedPaymentTab)
       if (requiresReference && !refNumber.trim()) {
         throw new Error('La referencia es obligatoria para este método')
       }
-      if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && !paymentAccountId) {
+      if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && !paymentAccountId) {
         throw new Error('Selecciona la cuenta donde ingresó el dinero')
+      }
+      if (selectedPaymentTab === 'personal_account' && !personalAccounts.some(account => account.id === paymentPersonalAccountId && account.isActive)) {
+        throw new Error('Selecciona una cuenta personal activa')
       }
       const combinedRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
 
@@ -1048,7 +1061,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           method: selectedPaymentTab,
           amount: total,
           referenceNumber: combinedRefs || undefined,
-          accountId: paymentAccountId || null,
+          accountId: selectedPaymentTab === 'personal_account' ? null : paymentAccountId || null,
+          personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : null,
           receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
           notes: paymentNote || undefined,
         }]
@@ -1105,7 +1119,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     const orderNo = `#FC-${String(currentOrder.orderNumber).padStart(6, '0')}`
     const formattedDate = new Date(currentOrder.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
     const formattedTime = new Date(currentOrder.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
-    const paymentLabel = currentOrder.paymentMethod === 'cash'
+    const paymentLabel = currentOrder.paymentMethod === 'personal_account'
+      ? `Cuenta personal · ${personalAccounts.find(account => account.id === currentOrder.payments?.[0]?.personalAccountId)?.name ?? 'Consumo interno'}`
+      : currentOrder.paymentMethod === 'cash'
       ? 'Efectivo'
       : currentOrder.paymentMethod === 'mobile'
         ? 'Pago móvil'
@@ -1133,8 +1149,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               <div className="big-check-circle">
                 <CheckCircle size={44} className="check-icon-glow" />
               </div>
-              <h1 className="success-hero-title">¡Pedido cobrado con éxito!</h1>
-              <p className="success-hero-sub">Gracias por tu venta. El pedido ha sido enviado a cocina.</p>
+              <h1 className="success-hero-title">{currentOrder.paymentMethod === 'personal_account' ? '¡Consumo registrado!' : '¡Pedido cobrado con éxito!'}</h1>
+              <p className="success-hero-sub">{currentOrder.paymentMethod === 'personal_account' ? 'El consumo quedó asignado a la cuenta personal y el pedido fue enviado a cocina.' : 'Gracias por tu venta. El pedido ha sido enviado a cocina.'}</p>
 
               {/* 3 Metrics Row */}
               <div className="success-metrics-row">
@@ -1940,7 +1956,16 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
-                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && (
+                {selectedPaymentTab === 'personal_account' ? (
+                  <div className="payment-field-group mt-2">
+                    <label className="payment-field-label">Cuenta personal *</label>
+                    <StyledSelect value={paymentPersonalAccountId} onChange={(event) => setPaymentPersonalAccountId(event.target.value)}>
+                      <option value="">Selecciona una cuenta personal</option>
+                      {personalAccounts.filter(account => account.isActive).map(account => <option key={account.id} value={account.id}>{account.name}</option>)}
+                    </StyledSelect>
+                    <span className="payment-hint-sub">Consumo interno; queda registrado para control y descuenta inventario, pero no entra en caja.</span>
+                  </div>
+                ) : selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
                     <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
@@ -1952,7 +1977,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                   </div>
                 )}
 
-                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && requiresPaymentReference(selectedPaymentTab) && (
+                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && requiresPaymentReference(selectedPaymentTab) && (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">{paymentReferenceLabel(selectedPaymentTab)}</label>
                     <div className="payment-ref-row">
@@ -2174,7 +2199,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                       onChange={(e) => setAmountReceived(e.target.value)}
                     />
                     <span className="currency-tag-right">
-                      {selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}
+                      {selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}
                     </span>
                   </div>
                   <span className="payment-hint-sub">
@@ -2182,7 +2207,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                       ? (cashCurrency === 'USD'
                         ? bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'
                         : `Ref. ${formatUsd(total)}`)
-                      : selectedPaymentTab !== 'other' && usesBolivares(selectedPaymentTab)
+                      : selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab)
                         ? `Ref. ${formatUsd(total)}`
                         : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
                   </span>

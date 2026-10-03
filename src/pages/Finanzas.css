@@ -257,6 +257,21 @@
 .fin-account-activity .positive { color: #4ade80; }
 .fin-account-activity .negative { color: #fb7185; }
 .fin-account-empty { grid-column: 1 / -1; margin: 0; color: #c4c4cc; font-size: 13px; }
+.fin-personal-account-card { min-width: 0; padding: 12px; border: 1px solid rgba(250,204,21,.24); border-radius: 10px; background: linear-gradient(145deg,rgba(250,204,21,.055),rgba(255,255,255,.025)); display:flex; flex-direction:column; gap:10px; }
+.fin-personal-account-heading strong { display:block; color:#f4f4f5; font-size:14px; }
+.fin-personal-account-heading small,.fin-personal-account-row small { display:block; margin-top:3px; color:#a1a1aa; font-size:11px; }
+.fin-personal-account-list { display:grid; gap:7px; }
+.fin-personal-account-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:8px; padding:8px; background:rgba(0,0,0,.16); border:1px solid rgba(255,255,255,.055); border-radius:8px; }
+.fin-personal-account-row span { min-width:0; }
+.fin-personal-account-row span strong { display:block; overflow:hidden; color:#e4e4e7; font-size:12px; text-overflow:ellipsis; white-space:nowrap; }
+.fin-personal-account-row b { color:#facc15; font-size:14px; white-space:nowrap; }
+.fin-personal-account-row button,.fin-personal-account-add button { width:28px; height:28px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.1); border-radius:7px; background:rgba(255,255,255,.055); color:#d4d4d8; cursor:pointer; }
+.fin-personal-account-row button:hover { color:#f87171; border-color:rgba(248,113,113,.35); }
+.fin-personal-account-add { display:flex; gap:6px; }
+.fin-personal-account-add input { width:100%; min-width:0; height:32px; padding:0 9px; border:1px solid rgba(255,255,255,.1); border-radius:7px; outline:0; background:#111; color:#f4f4f5; font:inherit; font-size:11px; }
+.fin-personal-account-add input:focus { border-color:rgba(250,204,21,.55); }
+.fin-personal-account-add button:disabled { opacity:.45; cursor:not-allowed; }
+.fin-personal-account-error { color:#f87171; font-size:11px; }
 .fin-opening-btn { margin-top: 5px; align-self: flex-start; display: inline-flex; gap: 5px; align-items: center; border: 0; background: transparent; color: #c4c4cc; cursor: pointer; padding: 0; font-size: 13px; font-weight: 600; }
 .fin-opening-edit { display: flex; gap: 5px; margin-top: 5px; }
 .fin-opening-edit input { width: 100%; min-width: 0; background: #111; border: 1px solid rgba(255,255,255,.12); color: #fff; border-radius: 6px; padding: 5px 7px; }
