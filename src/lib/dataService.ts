@@ -103,6 +103,8 @@ export interface FullOrder {
   id: string
   orderNumber: number
   status: string
+  creditAuthorized?: boolean
+  customerId?: string | null
   fulfillmentStatus: 'new' | 'preparing' | 'ready' | 'delivered'
   notes: string | null
   orderType: string
@@ -1411,11 +1413,12 @@ export async function getOccupiedTables(): Promise<number[]> {
 
 // --- Órdenes completas (para Comandas/Cocina) --------------------------------
 
-export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, allPages = false): Promise<FullOrder[]> {
+export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, allPages = false, statuses?: string[]): Promise<FullOrder[]> {
   const rows: Record<string, unknown>[] = []
   let offset = 0
   do {
-    let query = client().from('v_orders_with_items').select('*')
+    let query = client().from('v_orders_with_credit_status').select('*')
+    if (statuses?.length) query = query.in('status', statuses)
     if (dateStart) query = query.gte('created_at', dateStart)
     if (dateEnd) query = allPages ? query.lt('created_at', dateEnd) : query.lte('created_at', dateEnd)
     query = query.order('created_at', { ascending: false }).order('id', { ascending: false })
@@ -1432,6 +1435,8 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, a
     id: o.id as string,
     orderNumber: o.order_number as number,
     status: o.status as string,
+    creditAuthorized: Boolean(o.credit_authorized),
+    customerId: (o.customer_id as string) ?? null,
     fulfillmentStatus: (o.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
     notes: (o.notes as string) ?? null,
     orderType: (o.order_type as string) ?? 'takeaway',
@@ -1490,6 +1495,22 @@ export async function updateOrderStatus(
 
   if (error) throw error
   if (!data) throw new Error('No se encontró la comanda o no tienes permiso para cambiar su estado')
+}
+
+export async function updateOrderCustomer(orderId: string, customer: Customer): Promise<void> {
+  const { data, error } = await client()
+    .from('orders')
+    .update({
+      customer_id: customer.id,
+      customer_name: customer.name,
+    })
+    .eq('id', orderId)
+    .is('customer_id', null)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw error
+  if (!data) throw new Error('Esta comanda ya tiene un cliente asociado')
 }
 
 export async function recordOrderPayments(params: {
@@ -1699,6 +1720,14 @@ export async function createCredit(params: {
     .single()
   if (error) throw error
   return data.id as string
+}
+
+export async function authorizeOrderCredit(params: { orderId: string; pin: string }): Promise<void> {
+  const { error } = await client().rpc('fn_authorize_order_credit', {
+    p_order_id: params.orderId,
+    p_pin: params.pin,
+  })
+  if (error) throw error
 }
 
 export async function addCreditPayment(params: {
@@ -2347,7 +2376,7 @@ export async function setCustomerActive(id: string, isActive: boolean): Promise<
 export async function getCustomerOrders(customerId: string, customerName: string): Promise<CustomerOrderSummary[]> {
   if (!customerName.trim()) return []
   const primary = await client()
-    .from('v_orders_with_items')
+    .from('v_orders_with_credit_status')
     .select('id, order_number, created_at, order_type, status, fulfillment_status, total_amount, items, payments')
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false })
@@ -4512,6 +4541,8 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
     id: data.id as string,
     orderNumber: data.order_number as number,
     status: data.status as string,
+    creditAuthorized: Boolean(data.credit_authorized),
+    customerId: (data.customer_id as string) ?? null,
     fulfillmentStatus: (data.fulfillment_status as FullOrder['fulfillmentStatus']) ?? 'new',
     notes: (data.notes as string) ?? null,
     orderType: (data.order_type as string) ?? 'takeaway',

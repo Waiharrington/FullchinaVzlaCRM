@@ -130,6 +130,8 @@ daily_closes (operativo) ── daily_close_financials (owner/manager)
 #### Créditos
 - **credits** — Créditos (status DERIVADO en vista)
 - **credit_payments** — Abonos (trigger previene sobreabonos)
+- Las comandas impagas se muestran como pendientes aunque aún no tengan crédito autorizado.
+- `fn_authorize_order_credit` crea el crédito vinculado y no registra efectivo como pago. La etapa de preparación/entrega se mantiene separada del estado de cobro.
 
 #### Gastos
 - **expenses** — Gastos operativos (owner/manager)

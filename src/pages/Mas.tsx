@@ -15,6 +15,7 @@ import {
   getOrdersWithItems,
   createDailyClose,
   getDailyCloses,
+  isPersonalAccountOrder,
   type Credit as CreditType,
   type DailyCloseSummary,
   type TodayStats,
@@ -44,6 +45,7 @@ let masCache: {
   closes: DailyCloseSummary[]
   todayStats: TodayStats | null
   todayOrders: FullOrder[]
+  unpaidOrders: FullOrder[]
 } | null = null
 
 export function Mas() {
@@ -54,6 +56,7 @@ export function Mas() {
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
+  const [unpaidOrders, setUnpaidOrders] = useState<FullOrder[]>(masCache?.unpaidOrders ?? [])
   const [loading, setLoading] = useState(!masCache)
   const [tab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
@@ -91,24 +94,27 @@ export function Mas() {
 
   const fetchAll = useCallback(async (silent = false) => {
     try {
-      const [creditsData, stats, ordersData, closesData] = await Promise.all([
+      const [creditsData, stats, ordersData, unpaidData, closesData] = await Promise.all([
         getCredits(),
         getTodayStats(),
         getOrdersWithItems(),
+        isCreditsModule ? getOrdersWithItems(undefined, undefined, true, ['open', 'confirmed', 'preparing', 'ready', 'delivered', 'completed']) : Promise.resolve([]),
         getDailyCloses(),
       ])
       const paidOrders = ordersData.filter(o => o.status === 'paid')
+      const unpaidOrderRows = unpaidData.filter(o => !isPersonalAccountOrder(o))
       setCredits(creditsData)
       setTodayStats(stats)
       setTodayOrders(paidOrders)
+      setUnpaidOrders(unpaidOrderRows)
       setCloses(closesData)
-      masCache = { credits: creditsData, closes: closesData, todayStats: stats, todayOrders: paidOrders }
+      masCache = { credits: creditsData, closes: closesData, todayStats: stats, todayOrders: paidOrders, unpaidOrders: unpaidOrderRows }
     } catch (e) {
       console.error('Error cargando datos:', e)
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [])
+  }, [isCreditsModule])
 
   useEffect(() => {
     fetchAll()
@@ -321,7 +327,10 @@ export function Mas() {
 
   const activeCredits = credits.filter(c => c.status === 'pending' || c.status === 'partial')
   const settledCredits = credits.filter(c => c.status === 'paid')
-  const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
+  const creditedOrderIds = new Set(credits.map(credit => credit.orderId).filter(Boolean))
+  const orderBalance = (order: FullOrder) => Math.max(0, order.totalAmount - order.payments.reduce((sum, payment) => sum + payment.amount, 0))
+  const uncreditedOrders = unpaidOrders.filter(order => !creditedOrderIds.has(order.id) && orderBalance(order) > 0)
+  const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0) + uncreditedOrders.reduce((sum, order) => sum + orderBalance(order), 0)
 
   if (loading && isCreditsModule) return <PageSkeleton cards={3} rows={5} hasTable />
 
@@ -351,7 +360,7 @@ export function Mas() {
           <div className="card-header-row">
             <div>
               <h2 className="card-title">Cuentas corrientes</h2>
-              <p className="card-subtitle">${totalPending.toFixed(2)} pendiente de {credits.length} clientes</p>
+              <p className="card-subtitle">${totalPending.toFixed(2)} pendiente entre créditos y comandas sin cobrar</p>
             </div>
             <button className="btn-accent btn-sm" onClick={() => { setClosingNewCredit(false); setShowNewCredit(true) }}>
               + Nuevo crédito
@@ -401,13 +410,31 @@ export function Mas() {
           )}
 
           <div className="credits-list">
-            {activeCredits.length === 0 && settledCredits.length === 0 ? (
+            {activeCredits.length === 0 && settledCredits.length === 0 && uncreditedOrders.length === 0 ? (
               <EmptyState
                 title="No hay créditos registrados"
                 description="Los créditos de tus clientes aparecerán aquí."
               />
             ) : (
               <>
+                {uncreditedOrders.length > 0 && (
+                  <div className="credits-section">
+                    <span className="credits-section-title">Comandas por pagar · {uncreditedOrders.length}</span>
+                    {uncreditedOrders.map(order => (
+                      <div key={order.id} className="credit-item">
+                        <div className="credit-header">
+                          <div className="credit-avatar">{order.customerName.trim().charAt(0).toUpperCase() || '?'}</div>
+                          <div className="credit-info">
+                            <span className="credit-client">{order.customerName || 'Cliente sin asociar'} · Comanda #{order.orderNumber}</span>
+                            <span className="credit-date">{new Date(order.createdAt).toLocaleString('es-VE')} · {order.fulfillmentStatus === 'preparing' ? 'En preparación' : order.fulfillmentStatus === 'ready' ? 'Lista' : order.fulfillmentStatus === 'delivered' ? 'Entregada' : 'Nueva'}</span>
+                          </div>
+                          <span className="credit-amount-value text-danger">${orderBalance(order).toFixed(2)}</span>
+                        </div>
+                        <p className="card-subtitle">Pendiente de cobro; todavía no es un crédito autorizado.</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {activeCredits.length > 0 && (
                   <div className="credits-section">
                     <span className="credits-section-title">Activos</span>

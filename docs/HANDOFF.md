@@ -136,6 +136,8 @@ Pruebas SQL locales realizadas:
 - Conserva pagos y referencias registrados.
 - Cobra una orden abierta mediante `fn_record_order_payments`.
 - El backend evita sobrepago y solo marca `paid` con cobertura exacta.
+- Una orden impaga aparece en Cuentas por cobrar sin importar la etapa operativa.
+- Entregar una orden ya no crea un crédito automáticamente. El método Crédito pide autorización y crea la cuenta por cobrar; los abonos se registran desde Créditos.
 
 ### Referencia BCV
 

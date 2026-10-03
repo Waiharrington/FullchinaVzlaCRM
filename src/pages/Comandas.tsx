@@ -15,9 +15,13 @@ import {
   validateMyPin,
   setOrderDeliveryFee,
   getAllSellableProducts,
+  getCustomers,
   getPersonalAccountOptions,
+  updateOrderCustomer,
+  authorizeOrderCredit,
   type PaymentMethod,
   type CartItem,
+  type Customer,
   type PersonalAccountOption,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
@@ -75,6 +79,8 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  UserPlus,
+  UserCheck,
   WalletCards,
 } from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
@@ -87,17 +93,18 @@ const PAYMENT_METHODS = [
   { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
   { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
   { method: 'personal_account', label: 'Cuenta personal', icon: <WalletCards size={16} strokeWidth={1.8} /> },
+  { method: 'credit', label: 'Crédito', icon: <CreditCard size={16} strokeWidth={1.8} /> },
   { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
 ] as const
 
-type ActivePaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle'>
+type ActivePaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle'> | 'credit'
 type SplitPaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle' | 'personal_account'>
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split' && item.method !== 'personal_account',
 )
 const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
-const requiresPaymentReference = (method: ActivePaymentMethod) => method !== 'cash' && method !== 'personal_account'
-const paymentReferenceLabel = (method: ActivePaymentMethod) => {
+const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
+const paymentReferenceLabel = (method: SplitPaymentMethod) => {
   if (method === 'card') return 'Referencia del voucher del punto *'
   if (method === 'binance') return 'ID de transacción de Binance *'
   return 'Número de referencia *'
@@ -127,6 +134,7 @@ export interface ComandaOrder {
   date?: string
   createdAt?: string
   isRetraso?: boolean
+  customerId?: string | null
   customerName: string
   customerPhone?: string
   customerIdentification?: string
@@ -141,6 +149,7 @@ export interface ComandaOrder {
   payments?: Array<{ method: PaymentMethod; amount: number; referenceNumber?: string | null }>
   paymentType: 'card' | 'cash' | 'app' | 'pending'
   isPaid: boolean
+  creditAuthorized?: boolean
   totalAmount?: number
   serviceCharge?: number
   discount?: number
@@ -425,6 +434,8 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, onPrint, co
           <span className={`payment-type-badge pay-${order.paymentType}`} title={order.paymentMethod}>
             {compactPaymentLabel(order.paymentMethod)}
           </span>
+        ) : order.creditAuthorized ? (
+          <span className="badge-sin-pagar"><CreditCard size={12} /> Crédito autorizado</span>
         ) : (
           <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
         )}
@@ -598,6 +609,12 @@ export function Comandas() {
   const [comandas, setComandas] = useState<ComandaOrder[]>(() => isDemoMode ? createDemoComandas() : MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
+  const [showAssociateCustomerModal, setShowAssociateCustomerModal] = useState(false)
+  const [associateCustomerSearch, setAssociateCustomerSearch] = useState('')
+  const [associateCustomers, setAssociateCustomers] = useState<Customer[]>([])
+  const [loadingAssociateCustomers, setLoadingAssociateCustomers] = useState(false)
+  const [associateCustomerError, setAssociateCustomerError] = useState('')
+  const [associatingCustomer, setAssociatingCustomer] = useState(false)
   const [closingSelectedOrder, setClosingSelectedOrder] = useState(false)
   const [printReceiptPrompt, setPrintReceiptPrompt] = useState<ThermalReceiptData | null>(null)
 
@@ -618,6 +635,7 @@ export function Comandas() {
   const [splitSecondaryReference, setSplitSecondaryReference] = useState('')
   const [paymentNote, setPaymentNote] = useState('')
   const [paymentError, setPaymentError] = useState('')
+  const [creditAuthorizationPin, setCreditAuthorizationPin] = useState('')
   const [paying, setPaying] = useState(false)
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [statusError, setStatusError] = useState('')
@@ -681,6 +699,20 @@ export function Comandas() {
       window.removeEventListener('keydown', handleEscape)
     }
   }, [showNewOrderModal, closeNewOrderModal])
+
+  useEffect(() => {
+    if (!showAssociateCustomerModal) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !associatingCustomer) setShowAssociateCustomerModal(false)
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [showAssociateCustomerModal, associatingCustomer])
 
   const [historyMonthCursor, setHistoryMonthCursor] = useState(() => {
     const n = new Date()
@@ -748,6 +780,56 @@ export function Comandas() {
     { value: 'Para llevar', label: 'Para llevar' },
     { value: 'Mesa', label: 'Mesa' },
   ]
+
+  const filteredAssociateCustomers = useMemo(() => {
+    const query = normalizeForSearch(associateCustomerSearch)
+    if (!query) return associateCustomers
+    return associateCustomers.filter(customer => normalizeForSearch(
+      `${customer.name} ${customer.phone} ${customer.identification}`
+    ).includes(query))
+  }, [associateCustomerSearch, associateCustomers])
+
+  const openAssociateCustomerModal = async () => {
+    if (!selectedOrder || selectedOrder.customerId || selectedOrder.source === 'web' || isDemoMode) return
+    setAssociateCustomerSearch('')
+    setAssociateCustomerError('')
+    setShowAssociateCustomerModal(true)
+    setLoadingAssociateCustomers(true)
+    try {
+      const customers = await getCustomers(true)
+      setAssociateCustomers(customers.filter(customer => customer.isActive))
+    } catch (error) {
+      setAssociateCustomerError(error instanceof Error ? error.message : 'No se pudieron cargar los clientes')
+    } finally {
+      setLoadingAssociateCustomers(false)
+    }
+  }
+
+  const handleAssociateCustomer = async (customer: Customer) => {
+    if (!selectedOrder || selectedOrder.customerId || associatingCustomer) return
+    const orderId = selectedOrder.id
+    setAssociatingCustomer(true)
+    setAssociateCustomerError('')
+    try {
+      await updateOrderCustomer(orderId, customer)
+      const applyCustomer = (order: ComandaOrder): ComandaOrder => order.id === orderId ? {
+        ...order,
+        customerId: customer.id,
+        customerName: customer.name,
+        customerPhone: customer.phone || undefined,
+        customerIdentification: customer.identification || undefined,
+      } : order
+      setComandas(previous => previous.map(applyCustomer))
+      setHistoryOrders(previous => previous.map(applyCustomer))
+      setSelectedOrder(previous => previous ? applyCustomer(previous) : previous)
+      setShowAssociateCustomerModal(false)
+      setReloadToken(value => value + 1)
+    } catch (error) {
+      setAssociateCustomerError(error instanceof Error ? error.message : 'No se pudo asociar el cliente')
+    } finally {
+      setAssociatingCustomer(false)
+    }
+  }
 
   // Pre-cargar el costo de delivery actual (renglón "Delivery") al abrir la comanda.
   useEffect(() => {
@@ -870,6 +952,10 @@ export function Comandas() {
   }
 
   const handleOpenPaymentForOrder = async (order: ComandaOrder) => {
+    if (order.creditAuthorized) {
+      void alertDialog({ message: 'Esta comanda ya tiene un crédito autorizado. Registra los abonos desde Cuentas por cobrar.' })
+      return
+    }
     // Abrir primero el modal para que el clic siempre tenga respuesta visual,
     // incluso si la validación de caja tarda o el backend devuelve un error.
     setPaymentOrder(order)
@@ -890,6 +976,7 @@ export function Comandas() {
     }
     setRefNumber('')
     setExtraRefs([])
+    setCreditAuthorizationPin('')
     const initialTab: SplitPaymentMethod = pref && pref.methods.length === 1 ? pref.methods[0] : 'cash'
     const initialRate = order.bcvRate && order.bcvRate > 0 ? order.bcvRate : bcvRate
     setAmountReceived(usdToPaymentInput(order.totalAmount || 0, initialTab, initialRate))
@@ -929,9 +1016,10 @@ export function Comandas() {
       setAmountReceived(usdToPaymentInput(half, splitPrimaryMethod, paymentRate))
       setAmountReceivedSecondary(usdToPaymentInput(paymentOrder.totalAmount - half, splitSecondaryMethod, paymentRate))
     } else {
-      const inputMethod: SplitPaymentMethod = method === 'split' || method === 'personal_account' ? 'cash' : method
+      const inputMethod: SplitPaymentMethod = method === 'split' || method === 'personal_account' || method === 'credit' ? 'cash' : method
       setAmountReceived(usdToPaymentInput(paymentOrder?.totalAmount || 0, inputMethod, paymentRate))
     }
+    if (method === 'credit') setCreditAuthorizationPin('')
     if (method === 'personal_account') setPaymentPersonalAccountId(personalAccounts.find(account => account.isActive)?.id ?? '')
   }
 
@@ -940,6 +1028,15 @@ export function Comandas() {
     setPaying(true)
     setPaymentError('')
     try {
+      if (selectedPaymentTab === 'credit') {
+        if (!paymentOrder.customerId) throw new Error('Asocia un cliente a la comanda antes de autorizar el crédito')
+        if (!/^\d{4}$/.test(creditAuthorizationPin)) throw new Error('Ingresa el PIN de autorización de 4 dígitos')
+        await authorizeOrderCredit({ orderId: paymentOrder.id, pin: creditAuthorizationPin })
+        setReloadToken(value => value + 1)
+        closePaymentModal()
+        return
+      }
+
       const total = Number(paymentOrder.totalAmount ?? 0)
       let enteredAmount = Number(amountReceived)
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
@@ -1129,7 +1226,7 @@ export function Comandas() {
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
             const status: ComandaOrder['status'] = o.fulfillmentStatus
 
-            const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
+            const hasPaid = o.status === 'paid'
             const paymentMethods = [...new Set(o.payments.map((payment) => payment.method))]
             const paymentLabels: Record<PaymentMethod, string> = {
               cash: 'Efectivo',
@@ -1157,6 +1254,7 @@ export function Comandas() {
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
               createdAt: o.createdAt,
               isRetraso: elapsed > 15 && status !== 'delivered',
+              customerId: o.customerId,
               customerName: o.customerName || 'Cliente general',
               customerPhone: o.customerPhone || undefined,
               customerIdentification: o.customerIdentification || undefined,
@@ -1184,6 +1282,7 @@ export function Comandas() {
                     : 'card'
                 : 'pending' as const,
               isPaid: hasPaid,
+              creditAuthorized: o.creditAuthorized,
               totalAmount: o.totalAmount || 0,
               serviceCharge: 0,
               discount: 0,
@@ -1427,7 +1526,7 @@ export function Comandas() {
       const mapped: ComandaOrder[] = allOrders.map((o) => {
         const date = new Date(o.createdAt)
         const status: ComandaOrder['status'] = o.fulfillmentStatus
-        const hasPaid = o.status === 'paid' || o.status === 'delivered' || o.status === 'completed'
+        const hasPaid = o.status === 'paid'
         const paymentMethods = [...new Set(o.payments.map((p) => p.method))]
         const paymentLabels: Record<PaymentMethod, string> = {
           cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia',
@@ -1445,7 +1544,10 @@ export function Comandas() {
           orderNumber: `#FC-${String(o.orderNumber).padStart(6, '0')}`,
           time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
           date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+          customerId: o.customerId,
           customerName: o.customerName || 'Cliente general',
+          customerPhone: o.customerPhone || undefined,
+          customerIdentification: o.customerIdentification || undefined,
           orderType: o.orderType === 'takeaway' ? 'Para llevar' : o.orderType === 'delivery' ? 'Delivery' : o.orderType === 'dine-in' ? (o.tableNumber ? `Mesa ${o.tableNumber}` : 'Mesa') : 'Para llevar',
           items: o.items.map((item) => ({
             id: item.id, name: item.productName, quantity: item.quantity,
@@ -1460,6 +1562,7 @@ export function Comandas() {
                 : 'card'
             : 'pending',
           isPaid: hasPaid,
+          creditAuthorized: o.creditAuthorized,
           totalAmount: o.totalAmount || 0,
           elapsedMins: Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)),
           status,
@@ -1999,10 +2102,22 @@ export function Comandas() {
                 </div>
                 {selectedOrder.isPaid ? (
                   <div className="cmd-badge paid">Pagado</div>
+                ) : selectedOrder.creditAuthorized ? (
+                  <div className="cmd-badge sin-pagar"><CreditCard size={14} /> Crédito autorizado</div>
                 ) : (
                   <div className="cmd-badge sin-pagar"><AlertTriangle size={14} /> Sin cobrar</div>
                 )}
                 <div className={`cmd-badge ${selectedOrder.orderType === 'Delivery' ? 'type-delivery' : selectedOrder.orderType.startsWith('Mesa') ? 'type-mesa' : 'type-takeaway'}`}>{selectedOrder.orderType}</div>
+                <button
+                  type="button"
+                  className="cmd-btn-outline cmd-header-associate-customer"
+                  onClick={() => void openAssociateCustomerModal()}
+                  disabled={Boolean(selectedOrder.customerId) || selectedOrder.source === 'web' || isDemoMode || associatingCustomer}
+                  title={selectedOrder.customerId ? 'Esta comanda ya tiene un cliente asociado' : 'Asociar un cliente registrado a esta comanda'}
+                >
+                  {selectedOrder.customerId ? <UserCheck size={14} /> : <UserPlus size={14} />}
+                  {selectedOrder.customerId ? 'Cliente asociado' : 'Asociar cliente'}
+                </button>
               </div>
               <div className="cmd-header-actions">
                 <button className="cmd-btn-outline cmd-header-print-btn" onClick={() => printThermalReceipt(thermalReceiptForComanda(selectedOrder))}>
@@ -2270,7 +2385,7 @@ export function Comandas() {
 
                   <div className="cmd-payment-method-row">
                     <span className="cmd-method-label">Método de pago</span>
-                    <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : <><AlertTriangle size={14} /> Sin cobrar</>}</span>
+                    <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : selectedOrder.creditAuthorized ? 'Crédito autorizado' : <><AlertTriangle size={14} /> Sin cobrar</>}</span>
                   </div>
                   {!selectedOrder.isPaid && extractPreferredPayment(selectedOrder.notes) && (
                     <div className="cmd-payment-method-row cmd-pref-pay-row">
@@ -2327,7 +2442,7 @@ export function Comandas() {
                     <button className="cmd-btn-primary" disabled={confirmingWebId === selectedOrder.webRequestId} onClick={() => handleConfirmWebOrder(selectedOrder)}>
                       <CheckCircle size={16} /> {confirmingWebId === selectedOrder.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
                     </button>
-                  ) : !selectedOrder.isPaid && (
+                  ) : !selectedOrder.isPaid && !selectedOrder.creditAuthorized && (
                     <button
                       className="cmd-btn-cobrar"
                       onClick={() => handleOpenPaymentForOrder(selectedOrder)}
@@ -2348,6 +2463,56 @@ export function Comandas() {
               </footer>
             )}
           </div>
+        </div>,
+        document.body
+      )}
+      {selectedOrder && showAssociateCustomerModal && createPortal(
+        <div className="cmd-modal-overlay cmd-associate-customer-overlay" onClick={() => { if (!associatingCustomer) setShowAssociateCustomerModal(false) }}>
+          <section className="cmd-modal-container cmd-associate-customer-modal" role="dialog" aria-modal="true" aria-labelledby="associate-customer-title" onClick={event => event.stopPropagation()}>
+            <header className="cmd-modal-header">
+              <div className="cmd-associate-customer-heading">
+                <UserPlus size={19} />
+                <div>
+                  <h2 id="associate-customer-title">Asociar cliente</h2>
+                  <small>Comanda {selectedOrder.orderNumber}</small>
+                </div>
+              </div>
+              <button type="button" className="cmd-close-btn" aria-label="Cerrar asociar cliente" onClick={() => setShowAssociateCustomerModal(false)} disabled={associatingCustomer}><X size={18} /></button>
+            </header>
+            <div className="cmd-associate-customer-content">
+              <label className="cmd-associate-customer-search">
+                <Search size={16} />
+                <input
+                  type="search"
+                  autoFocus
+                  placeholder="Buscar por nombre, teléfono o cédula"
+                  value={associateCustomerSearch}
+                  onChange={event => setAssociateCustomerSearch(event.target.value)}
+                />
+              </label>
+              {associateCustomerError && <p className="cmd-associate-customer-error" role="alert">{associateCustomerError}</p>}
+              <div className="cmd-associate-customer-list">
+                {loadingAssociateCustomers ? <p className="cmd-associate-customer-empty">Cargando clientes…</p>
+                  : filteredAssociateCustomers.length === 0 ? <p className="cmd-associate-customer-empty">{associateCustomerSearch ? 'No hay coincidencias.' : 'No hay clientes activos para asociar.'}</p>
+                    : filteredAssociateCustomers.map(customer => (
+                      <button
+                        type="button"
+                        className="cmd-associate-customer-option"
+                        key={customer.id}
+                        onClick={() => void handleAssociateCustomer(customer)}
+                        disabled={associatingCustomer}
+                      >
+                        <span className="cmd-associate-customer-avatar">{getInitials(customer.name)}</span>
+                        <span className="cmd-associate-customer-option-info">
+                          <strong>{customer.name}</strong>
+                          <small>{[customer.phone, customer.identification].filter(Boolean).join(' · ') || 'Sin teléfono ni cédula'}</small>
+                        </span>
+                        <UserPlus size={15} />
+                      </button>
+                    ))}
+              </div>
+            </div>
+          </section>
         </div>,
         document.body
       )}
@@ -2416,6 +2581,24 @@ export function Comandas() {
                   Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
                 </h3>
 
+                {selectedPaymentTab === 'credit' && (
+                  <div className="payment-field-group mt-2">
+                    <p className="payment-hint-sub">La comanda quedará registrada en cuentas por cobrar. Este registro no representa dinero recibido.</p>
+                    <label className="payment-field-label">PIN de autorización *</label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="new-password"
+                      maxLength={4}
+                      className="payment-field-input"
+                      value={creditAuthorizationPin}
+                      onChange={event => setCreditAuthorizationPin(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                      placeholder="4 dígitos"
+                    />
+                    {!paymentOrder.customerId && <span className="payment-error-message">Asocia un cliente antes de autorizar el crédito.</span>}
+                  </div>
+                )}
+
                 {selectedPaymentTab === 'personal_account' ? (
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">Cuenta personal *</label>
@@ -2425,7 +2608,7 @@ export function Comandas() {
                     </select>
                     <span className="payment-hint-sub">Consumo interno; descuenta inventario y queda fuera de caja y ventas.</span>
                   </div>
-                ) : selectedPaymentTab !== 'split' && requiresPaymentReference(selectedPaymentTab) && (
+                ) : selectedPaymentTab !== 'split' && selectedPaymentTab !== 'credit' && requiresPaymentReference(selectedPaymentTab) && (
                 <div className="payment-field-group mt-2">
                   <label className="payment-field-label">
                     {paymentReferenceLabel(selectedPaymentTab)}
@@ -2524,7 +2707,7 @@ export function Comandas() {
                   </div>
                 )}
 
-                {selectedPaymentTab !== 'split' && <div className="payment-field-group mt-3">
+                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'credit' && <div className="payment-field-group mt-3">
                   <label className="payment-field-label">
                     {selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'}
                     <span className="text-red"> *</span>
@@ -2566,7 +2749,7 @@ export function Comandas() {
 
                 {paymentError && <div className="payment-error-message" role="alert">{paymentError}</div>}
 
-                <div className="payment-field-group mt-3">
+                {selectedPaymentTab !== 'credit' && <div className="payment-field-group mt-3">
                   <label className="payment-field-label">NOTA (OPCIONAL)</label>
                   <div className="payment-textarea-wrap">
                     <textarea
@@ -2578,10 +2761,10 @@ export function Comandas() {
                     />
                     <span className="payment-counter-bottom">{paymentNote.length}/120</span>
                   </div>
-                </div>
+                </div>}
 
                 {/* Desglose de Pago */}
-                <div className="payment-breakdown-card mt-3">
+                {selectedPaymentTab !== 'credit' && <div className="payment-breakdown-card mt-3">
                   <span className="breakdown-card-title">Desglose de pago</span>
                   <div className="breakdown-rows-list">
                     {selectedPaymentTab === 'split' ? (
@@ -2608,7 +2791,7 @@ export function Comandas() {
                       </div>
                     )}
                   </div>
-                </div>
+                </div>}
               </div>
 
               {/* Right Column: Order Summary */}
@@ -2639,7 +2822,7 @@ export function Comandas() {
                   {/* Info Notice */}
                   <div className="payment-security-notice mt-4">
                     <ShieldCheck size={16} className="text-green flex-shrink-0" />
-                    <span>El cobro se actualizará automáticamente en la comanda.</span>
+                    <span>{selectedPaymentTab === 'credit' ? 'Se creará una cuenta por cobrar vinculada a esta comanda.' : 'El cobro se actualizará automáticamente en la comanda.'}</span>
                   </div>
                 </div>
               </div>
@@ -2648,7 +2831,7 @@ export function Comandas() {
             {/* Modal Footer Actions */}
             <div className="payment-modal-footer">
               <button className="btn-confirm-payment-red" onClick={handleConfirmOrderPayment} disabled={paying || paymentError.includes('abrir la caja')}>
-                <CheckCircle size={18} /> Confirmar pago
+                <CheckCircle size={18} /> {selectedPaymentTab === 'credit' ? 'Autorizar crédito' : 'Confirmar pago'}
               </button>
               <button className="btn-modal-action-dark" onClick={() => paymentOrder && printThermalReceipt(thermalReceiptForComanda(paymentOrder))}>
                 <Printer size={18} /> Imprimir precuenta
@@ -2838,7 +3021,7 @@ export function Comandas() {
                           <div className="cmd-history-item-total">
                             <MoneyWithBcv usd={order.totalAmount || 0} compact />
                             <span className={`cmd-history-paid-badge ${order.isPaid ? 'paid' : 'unpaid'}`}>
-                              {order.isPaid ? order.paymentMethod : <><AlertTriangle size={11} /> Sin cobrar</>}
+                              {order.isPaid ? order.paymentMethod : order.creditAuthorized ? 'Crédito autorizado' : <><AlertTriangle size={11} /> Sin cobrar</>}
                             </span>
                           </div>
                         </div>
