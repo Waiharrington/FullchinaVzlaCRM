@@ -94,6 +94,19 @@ export function Proveedores() {
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<SortOption>('purchases')
   const [filterContact, setFilterContact] = useState<FilterOption>('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isPhoneViewport, setIsPhoneViewport] = useState(() => (
+    typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 767px)').matches
+      : window.innerWidth <= 767
+  ))
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return
+    const media = window.matchMedia('(max-width: 767px)')
+    const updateViewport = () => setIsPhoneViewport(media.matches)
+    media.addEventListener('change', updateViewport)
+    return () => media.removeEventListener('change', updateViewport)
+  }, [])
 
   // Create Modal state
   const [showForm, setShowForm] = useState(false)
@@ -253,9 +266,32 @@ export function Proveedores() {
     })
   }, [search, suppliers, filterContact, sortBy, activity])
 
+  useEffect(() => { setCurrentPage(1) }, [search, filterContact, sortBy])
+
+  const itemsPerPage = isPhoneViewport ? 5 : 25
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage))
+  const safePage = Math.min(currentPage, totalPages)
+  const pageStart = (safePage - 1) * itemsPerPage
+  const visibleSuppliers = filtered.slice(pageStart, pageStart + itemsPerPage)
+
   const selected = selectedId ? suppliers.find((supplier) => supplier.id === selectedId) ?? null : null
   const selectedActivity = selected ? activity.get(selected.id) : null
   const totalPurchased = purchases.reduce((sum, purchase) => sum + purchase.totalAmount, 0)
+
+  const supplierMetricCards = [
+    <article key="active" className="prv-kpi-card red">
+      <span><Building2 size={20} /></span>
+      <div><small>Proveedores activos</small><strong>{suppliers.length}</strong></div>
+    </article>,
+    <article key="purchases" className="prv-kpi-card purple">
+      <span><ShoppingBag size={20} /></span>
+      <div><small>Compras registradas</small><strong>{purchases.length}</strong></div>
+    </article>,
+    <article key="total" className="prv-kpi-card green">
+      <span><CalendarDays size={20} /></span>
+      <div><small>Total comprado</small><MoneyWithBcv usd={totalPurchased} compact align="start" className="prv-kpi-money" usdClassName="prv-kpi-strong" /></div>
+    </article>,
+  ]
 
   const mondayOf = (d: Date) => {
     const day = d.getDay()
@@ -451,9 +487,16 @@ export function Proveedores() {
       <header className="page-header prv-header management-workspace-header">
         <div>
           <h1 className="page-title"><Building2 size={22} className="page-title-icon" /> Proveedores</h1>
-          <p className="page-subtitle">Directorio, contactos e historial de compras con cada proveedor.</p>
+          <p className="page-subtitle prv-subtitle">
+            <span className="prv-subtitle-desktop">Directorio, contactos e historial de compras con cada proveedor.</span>
+            <span className="prv-subtitle-mobile">Contactos y compras de proveedores.</span>
+          </p>
         </div>
-        <button className="prv-primary" onClick={() => setShowForm(true)}><Plus size={17} /> Nuevo proveedor</button>
+        <button className="prv-primary" onClick={() => setShowForm(true)} aria-label="Nuevo proveedor">
+          <Plus size={17} />
+          <span className="prv-button-label-desktop">Nuevo proveedor</span>
+          <span className="prv-button-label-mobile">Nuevo</span>
+        </button>
       </header>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
@@ -461,27 +504,7 @@ export function Proveedores() {
 
       {/* KPI Cards */}
       <section className="prv-kpis management-workspace-metrics" aria-label="Resumen de proveedores">
-        <article className="prv-kpi-card red">
-          <span><Building2 size={20} /></span>
-          <div>
-            <small>Proveedores activos</small>
-            <strong>{suppliers.length}</strong>
-          </div>
-        </article>
-        <article className="prv-kpi-card purple">
-          <span><ShoppingBag size={20} /></span>
-          <div>
-            <small>Compras registradas</small>
-            <strong>{purchases.length}</strong>
-          </div>
-        </article>
-        <article className="prv-kpi-card green">
-          <span><CalendarDays size={20} /></span>
-          <div>
-            <small>Total comprado</small>
-            <MoneyWithBcv usd={totalPurchased} compact align="start" className="prv-kpi-money" usdClassName="prv-kpi-strong" />
-          </div>
-        </article>
+        {supplierMetricCards}
       </section>
 
       {/* Directory Table Card */}
@@ -561,7 +584,7 @@ export function Proveedores() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((supplier) => {
+                visibleSuppliers.map((supplier) => {
                   const stats = activity.get(supplier.id)
                   const purchaseCount = stats?.history.length ?? 0
                   const totalAmount = stats?.total ?? 0
@@ -694,6 +717,25 @@ export function Proveedores() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="prv-pagination" aria-label="Paginación de proveedores">
+          <span className="prv-pagination-info">
+            {filtered.length === 0
+              ? 'Sin resultados'
+              : `Mostrando ${pageStart + 1}–${Math.min(pageStart + itemsPerPage, filtered.length)} de ${filtered.length} proveedores`}
+          </span>
+          {totalPages > 1 && (
+            <div className="prv-pagination-controls">
+              <button type="button" disabled={safePage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} aria-label="Página anterior">
+                <ChevronLeft size={16} />
+              </button>
+              <span>Página {safePage} de {totalPages}</span>
+              <button type="button" disabled={safePage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))} aria-label="Página siguiente">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </section>
 
