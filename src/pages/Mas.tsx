@@ -36,6 +36,7 @@ import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, Cred
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Tab = 'credits' | 'close' | 'delivery'
+const CREDITS_PER_PAGE = 5
 
 // Cache a nivel de módulo: al volver a Más se muestran los datos de la
 // última visita al instante, sin el parpadeo de "Cargando...", mientras se
@@ -72,6 +73,8 @@ export function Mas() {
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [unpaidOrderPage, setUnpaidOrderPage] = useState(1)
+  const [activeCreditPage, setActiveCreditPage] = useState(1)
+  const [settledCreditPage, setSettledCreditPage] = useState(1)
   const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
   const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -170,6 +173,8 @@ export function Mas() {
       })
       closePaymentModal()
       setPaymentAmount('')
+      setActiveCreditPage(1)
+      setSettledCreditPage(1)
       fetchAll()
     } catch (e) {
       console.error('Error:', e)
@@ -333,6 +338,14 @@ export function Mas() {
 
   const activeCredits = credits.filter(c => c.status === 'pending' || c.status === 'partial')
   const settledCredits = credits.filter(c => c.status === 'paid')
+  const activeCreditPageCount = Math.max(1, Math.ceil(activeCredits.length / CREDITS_PER_PAGE))
+  const safeActiveCreditPage = Math.min(activeCreditPage, activeCreditPageCount)
+  const activeCreditStart = (safeActiveCreditPage - 1) * CREDITS_PER_PAGE
+  const pagedActiveCredits = activeCredits.slice(activeCreditStart, activeCreditStart + CREDITS_PER_PAGE)
+  const settledCreditPageCount = Math.max(1, Math.ceil(settledCredits.length / CREDITS_PER_PAGE))
+  const safeSettledCreditPage = Math.min(settledCreditPage, settledCreditPageCount)
+  const settledCreditStart = (safeSettledCreditPage - 1) * CREDITS_PER_PAGE
+  const pagedSettledCredits = settledCredits.slice(settledCreditStart, settledCreditStart + CREDITS_PER_PAGE)
   const creditedOrderIds = new Set(credits.map(credit => credit.orderId).filter(Boolean))
   const orderBalance = (order: FullOrder) => Math.max(0, order.totalAmount - order.payments.reduce((sum, payment) => sum + payment.amount, 0))
   const uncreditedOrders = unpaidOrders.filter(order => !creditedOrderIds.has(order.id) && orderBalance(order) > 0)
@@ -342,6 +355,20 @@ export function Mas() {
   const unpaidOrderStart = (safeUnpaidOrderPage - 1) * unpaidOrdersPerPage
   const pagedUncreditedOrders = uncreditedOrders.slice(unpaidOrderStart, unpaidOrderStart + unpaidOrdersPerPage)
   const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0) + uncreditedOrders.reduce((sum, order) => sum + orderBalance(order), 0)
+  const renderCreditPagination = (label: string, total: number, start: number, page: number, pageCount: number, onPageChange: (page: number) => void) => total > CREDITS_PER_PAGE ? (
+    <div className="credit-unpaid-pagination" aria-label={label}>
+      <span>Mostrando {start + 1}–{Math.min(start + CREDITS_PER_PAGE, total)} de {total}</span>
+      <div className="credit-unpaid-pagination-controls">
+        <button type="button" onClick={() => onPageChange(page - 1)} disabled={page <= 1} aria-label="Página anterior">
+          <ChevronLeft size={16} /> Anterior
+        </button>
+        <span>Página {page} de {pageCount}</span>
+        <button type="button" onClick={() => onPageChange(page + 1)} disabled={page >= pageCount} aria-label="Página siguiente">
+          Siguiente <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  ) : null
 
   if (loading && isCreditsModule) return <PageSkeleton cards={3} rows={5} hasTable />
 
@@ -469,15 +496,14 @@ export function Mas() {
                 )}
                 {activeCredits.length > 0 && (
                   <div className="credits-section">
-                    <span className="credits-section-title">Activos</span>
-                    {activeCredits.map(credit => {
-                      const percentPaid = credit.totalAmount > 0 ? Math.min(100, (credit.totalPaid / credit.totalAmount) * 100) : 100
+                    <span className="credits-section-title">Activos · {activeCredits.length}</span>
+                    {pagedActiveCredits.map(credit => {
                       const daysSince = Math.floor((Date.now() - new Date(credit.createdAt).getTime()) / 86400000)
                       const isOverdue = daysSince > 7 && credit.balancePending > 0
 
                       return (
-                        <div key={credit.id} className={`credit-item ${isOverdue ? 'overdue' : ''}`}>
-                          <div className="credit-header">
+                        <article key={credit.id} className={`credit-item credit-list-row ${isOverdue ? 'overdue' : ''}`}>
+                          <div className="credit-list-person">
                             <div className="credit-avatar">{credit.customerName.charAt(0).toUpperCase()}</div>
                             <div className="credit-info">
                               <span className="credit-client">{credit.customerName}</span>
@@ -488,38 +514,34 @@ export function Mas() {
                             </div>
                           </div>
 
-                          <div className="credit-amounts-row">
-                            <div className="credit-amount-col">
+                          <div className="credit-list-metrics">
+                            <div>
                               <span className="credit-amount-label">Total</span>
                               <span className="credit-amount-value">${credit.totalAmount.toFixed(2)}</span>
                             </div>
-                            <div className="credit-amount-col">
+                            <div>
                               <span className="credit-amount-label">Pagado</span>
                               <span className="credit-amount-value text-success">${credit.totalPaid.toFixed(2)}</span>
                             </div>
-                            <div className="credit-amount-col">
+                            <div>
                               <span className="credit-amount-label">Pendiente</span>
                               <span className="credit-amount-value text-danger">${credit.balancePending.toFixed(2)}</span>
                             </div>
                           </div>
 
-                          <div className="progress-container">
-                            <div className="progress-bar" style={{ width: `${percentPaid}%` }} />
-                          </div>
-
-                          <div className="credit-actions">
-                            <button className="btn-accent btn-sm" onClick={() => setPaymentModal(credit)}>
-                              Abonar
+                          <div className="credit-list-actions">
+                            <button type="button" className="btn-accent btn-sm" onClick={() => setPaymentModal(credit)}>
+                              <CreditCard size={14} /> Abonar
                             </button>
-                            <button className="btn-ghost btn-sm" onClick={() => handleToggleHistory(credit)}>
+                            <button type="button" className="btn-ghost btn-sm" onClick={() => handleToggleHistory(credit)}>
                               Historial
                             </button>
-                            <button className="btn-ghost btn-sm credit-delete-btn" title="Borrar crédito" onClick={() => handleDeleteCredit(credit)}>
+                            <button type="button" className="btn-ghost btn-sm credit-delete-btn" title="Borrar crédito" onClick={() => handleDeleteCredit(credit)}>
                               <Trash2 size={15} />
                             </button>
                           </div>
                           {selectedCredit?.id === credit.id && (
-                            <div className="credit-history">
+                            <div className="credit-history credit-row-history">
                               <strong>Historial de abonos</strong>
                               {loadingHistory ? <span>Cargando...</span> : creditPayments.length === 0 ? <span>Sin abonos registrados</span> : creditPayments.map(payment => (
                                 <div className="credit-history-row" key={payment.id}>
@@ -529,27 +551,34 @@ export function Mas() {
                               ))}
                             </div>
                           )}
-                        </div>
+                        </article>
                       )
                     })}
+                    {renderCreditPagination('Paginación de créditos activos', activeCredits.length, activeCreditStart, safeActiveCreditPage, activeCreditPageCount, setActiveCreditPage)}
                   </div>
                 )}
 
                 {settledCredits.length > 0 && (
                   <div className="credits-section">
-                    <span className="credits-section-title">Saldados</span>
-                    {settledCredits.map(credit => (
-                      <div key={credit.id} className="credit-item settled">
-                        <div className="credit-header">
+                    <span className="credits-section-title">Saldados · {settledCredits.length}</span>
+                    {pagedSettledCredits.map(credit => (
+                      <article key={credit.id} className="credit-item credit-list-row settled">
+                        <div className="credit-list-person">
                           <div className="credit-avatar settled-avatar">{credit.customerName.charAt(0).toUpperCase()}</div>
                           <div className="credit-info">
                             <span className="credit-client">{credit.customerName}</span>
                             <span className="credit-date">{new Date(credit.createdAt).toLocaleDateString('es')} · Saldado</span>
                           </div>
-                          <span className="settled-badge">Saldado</span>
                         </div>
-                      </div>
+                        <div className="credit-list-metrics">
+                          <div><span className="credit-amount-label">Total</span><span className="credit-amount-value">${credit.totalAmount.toFixed(2)}</span></div>
+                          <div><span className="credit-amount-label">Pagado</span><span className="credit-amount-value text-success">${credit.totalPaid.toFixed(2)}</span></div>
+                          <div><span className="credit-amount-label">Pendiente</span><span className="credit-amount-value text-success">$0.00</span></div>
+                        </div>
+                        <div className="credit-list-actions"><span className="settled-badge">Saldado</span></div>
+                      </article>
                     ))}
+                    {renderCreditPagination('Paginación de créditos saldados', settledCredits.length, settledCreditStart, safeSettledCreditPage, settledCreditPageCount, setSettledCreditPage)}
                   </div>
                 )}
               </>

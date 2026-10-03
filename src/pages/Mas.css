@@ -431,6 +431,75 @@
   opacity: 0.6;
 }
 
+.credit-list-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(280px, 1.15fr) auto;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.credit-list-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.credit-list-person .credit-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  font-size: 0.85rem;
+}
+
+.credit-list-person .credit-info { min-width: 0; }
+.credit-list-person .credit-client,
+.credit-list-person .credit-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.credit-list-person .credit-client { font-size: 0.9rem; }
+.credit-list-person .credit-date { font-size: 0.72rem; }
+
+.credit-list-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.credit-list-metrics > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.credit-list-metrics .credit-amount-value {
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.credit-list-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.credit-list-actions .btn-sm {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+
+.credit-row-history { grid-column: 1 / -1; }
+
 .credit-header {
   display: flex;
   align-items: center;
@@ -940,6 +1009,13 @@
   text-shadow: 0 0 20px rgba(227, 27, 43, 0.35);
 }
 
+@media (max-width: 1000px) and (min-width: 768px) {
+  .credit-list-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .credit-list-metrics,
+  .credit-row-history { grid-column: 1 / -1; }
+  .credit-list-actions { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
 @media (max-width: 767px) {
   .credit-unpaid-order {
     grid-template-columns: minmax(0, 1fr);
@@ -969,6 +1045,22 @@
     width: 100%;
     justify-content: space-between;
   }
+
+  .credit-list-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.65rem;
+    padding: 0.75rem;
+  }
+
+  .credit-list-metrics,
+  .credit-list-actions,
+  .credit-row-history {
+    grid-column: 1;
+  }
+
+  .credit-list-metrics { gap: 0.35rem; }
+  .credit-list-metrics .credit-amount-value { font-size: 0.82rem; }
+  .credit-list-actions { justify-content: flex-start; flex-wrap: wrap; }
 
   .mas-modal-header-glow {
     margin: -20px -16px 1rem;
