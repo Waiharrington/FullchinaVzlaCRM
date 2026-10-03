@@ -160,7 +160,7 @@ export function printThermalReceipt(data: ThermalReceiptData): Promise<void> {
         cleanup()
       }
     }
-    document.body.appendChild(frame)
     frame.srcdoc = buildThermalReceiptHtml(data)
+    document.body.appendChild(frame)
   })
 }
