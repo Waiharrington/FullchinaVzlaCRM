@@ -3450,7 +3450,7 @@ export async function adminDeleteUser(userId: string): Promise<void> {
 
 const PIN_ERROR_MESSAGES: Record<string, string> = {
   not_authorized: 'No autorizado para cambiar el PIN.',
-  pin_must_have_four_digits: 'El PIN debe tener exactamente 4 dígitos.',
+  pin_must_have_at_least_four_characters: 'El PIN debe tener al menos 4 caracteres.',
   active_profile_not_found: 'El usuario no está activo o no existe.',
   pin_already_in_use: 'Ese PIN ya lo usa otro usuario. Elige otro.',
 }

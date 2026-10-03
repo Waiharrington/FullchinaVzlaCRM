@@ -2622,13 +2622,13 @@ export function Comandas() {
               key={deletePin}
               type="password"
               inputMode="text"
-              pattern="[0-9*#]{4}"
+              pattern="[0-9*#]{4,}"
               className="cmd-pin-input"
               placeholder="PIN"
-              maxLength={4}
+              minLength={4}
               autoComplete="new-password"
               value={deletePin}
-              onChange={e => { setDeletePin(e.target.value.replace(/[^0-9*#]/g, '').slice(0, 4)); setDeleteError('') }}
+              onChange={e => { setDeletePin(e.target.value.replace(/[^0-9*#]/g, '')); setDeleteError('') }}
               onKeyDown={e => { if (e.key === 'Enter') handleDeleteOrder() }}
               autoFocus
             />

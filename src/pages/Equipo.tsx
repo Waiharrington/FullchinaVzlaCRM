@@ -839,19 +839,19 @@ export function Equipo() {
             </div>
             <form onSubmit={handleSavePin} className="modal-form">
               <p className="equipo-section-hint" style={{ margin: 0 }}>
-                Usuario: <strong style={{ color: '#fff' }}>{pinUser.email}</strong>. El PIN de 4 caracteres
+                Usuario: <strong style={{ color: '#fff' }}>{pinUser.email}</strong>. El PIN debe tener al menos 4 caracteres
                 sirve para iniciar sesión rápido desde la caja.
               </p>
               <div className="form-group">
-                <label>Nuevo PIN (4 caracteres: números, * o #)</label>
+                <label>Nuevo PIN (mínimo 4 caracteres: números, * o #)</label>
                 <input
                   type="text"
                   inputMode="text"
-                  pattern="[0-9*#]{4}"
-                  maxLength={4}
+                  pattern="[0-9*#]{4,}"
+                  minLength={4}
                   value={pinValue}
-                  onChange={e => setPinValue(e.target.value.replace(/[^0-9*#]/g, '').slice(0, 4))}
-                  placeholder="000*"
+                  onChange={e => setPinValue(e.target.value.replace(/[^0-9*#]/g, ''))}
+                  placeholder="000*..."
                   required
                   autoFocus
                   style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '22px' }}
@@ -859,7 +859,7 @@ export function Equipo() {
               </div>
               <div className="modal-actions-bar">
                 <button type="button" className="btn-cancel" onClick={() => closePinModal()}>Cancelar</button>
-                <button type="submit" className="btn-save" disabled={pinSaving || pinValue.length !== 4}>
+                <button type="submit" className="btn-save" disabled={pinSaving || pinValue.length < 4}>
                   {pinSaving ? 'Guardando…' : 'Guardar PIN'}
                 </button>
               </div>

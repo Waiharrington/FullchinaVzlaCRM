@@ -131,16 +131,13 @@ export function Login() {
     }
   }, [isTabletViewport])
 
-  // Autoenvía al completar los cuatro caracteres del PIN.
-  useEffect(() => {
-    if (isPinMode && pin.length === 4 && !loading) {
-      formRef.current?.requestSubmit()
-    }
-  }, [pin, isPinMode, loading])
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (isPinMode && pin.length < 4) {
+      setError('El PIN debe tener al menos 4 caracteres.')
+      return
+    }
     setLoading(true)
 
     if (isPinMode) {
@@ -256,18 +253,18 @@ export function Login() {
                 {/* PIN MODE SECTION */}
                 <div className={`form-section ${isPinMode ? 'active' : 'inactive-left'}`}>
                   <div className="field-group">
-                    <label htmlFor="pin">PIN de acceso</label>
+                    <label htmlFor="pin">PIN de acceso (mínimo 4 caracteres)</label>
                     <div className="input-wrapper">
                       <Grid3X3 className="input-icon" size={18} />
                       <input
                         id="pin"
                         type="password"
                         inputMode="text"
-                        pattern="[0-9*#]*"
+                        pattern="[0-9*#]{4,}"
                         placeholder="••••"
                         value={pin}
-                        onChange={(e) => setPin(e.target.value.replace(/[^0-9*#]/g, '').slice(0, 4))}
-                        maxLength={4}
+                        onChange={(e) => setPin(e.target.value.replace(/[^0-9*#]/g, ''))}
+                        minLength={4}
                         style={{ fontSize: '1.5rem', letterSpacing: '0.5rem', textAlign: 'center' }}
                         required={isPinMode}
                         disabled={!isPinMode}
@@ -282,20 +279,20 @@ export function Login() {
                         type="button"
                         key={digit}
                         className="keypad-btn"
-                        onClick={() => setPin((p) => (p.length < 4 ? p + digit : p))}
+                        onClick={() => setPin((p) => p + digit)}
                       >
                         {digit}
                       </button>
                     ))}
-                    <button type="button" className="keypad-btn" onClick={() => setPin((p) => (p.length < 4 ? p + '*' : p))}>*</button>
+                    <button type="button" className="keypad-btn" onClick={() => setPin((p) => p + '*')}>*</button>
                     <button
                       type="button"
                       className="keypad-btn"
-                      onClick={() => setPin((p) => (p.length < 4 ? p + '0' : p))}
+                      onClick={() => setPin((p) => p + '0')}
                     >
                       0
                     </button>
-                    <button type="button" className="keypad-btn" onClick={() => setPin((p) => (p.length < 4 ? p + '#' : p))}>#</button>
+                    <button type="button" className="keypad-btn" onClick={() => setPin((p) => p + '#')}>#</button>
                     <button
                       type="button"
                       className="keypad-btn keypad-clear"
@@ -360,7 +357,7 @@ export function Login() {
 
               {error && <Toast type="error" message={error} onClose={() => setError('')} />}
 
-              <button type="submit" className="btn-primary" disabled={loading}>
+              <button type="submit" className="btn-primary" disabled={loading || (isPinMode && pin.length < 4)}>
                 {loading ? 'Ingresando...' : 'Iniciar sesión'}
                 <ArrowRight size={18} />
               </button>
