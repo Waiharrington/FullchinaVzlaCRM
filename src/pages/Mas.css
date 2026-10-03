@@ -302,12 +302,124 @@
 }
 
 .credit-order-open .credit-header {
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
 }
 
 .credit-unpaid-actions {
   justify-content: flex-end;
-  margin-top: 0.9rem;
+  align-items: center;
+  margin: 0;
+  gap: 0.65rem;
+}
+
+.credit-unpaid-order {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  padding: 0.7rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.credit-unpaid-order .credit-order-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(220px, 1fr);
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  min-width: 0;
+}
+
+.credit-unpaid-order .credit-header {
+  min-width: 0;
+  gap: 0.65rem;
+}
+
+.credit-unpaid-order .credit-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  font-size: 0.85rem;
+}
+
+.credit-unpaid-order .credit-info {
+  min-width: 0;
+}
+
+.credit-unpaid-order .credit-client,
+.credit-unpaid-order .credit-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.credit-unpaid-order .credit-client {
+  font-size: 0.9rem;
+}
+
+.credit-unpaid-order .credit-date {
+  font-size: 0.72rem;
+}
+
+.credit-unpaid-note {
+  justify-self: center;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.credit-unpaid-actions .credit-amount-value {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.credit-unpaid-actions .btn-sm {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.credit-unpaid-pagination,
+.credit-unpaid-pagination-controls {
+  display: flex;
+  align-items: center;
+}
+
+.credit-unpaid-pagination {
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.credit-unpaid-pagination-controls {
+  gap: 0.55rem;
+}
+
+.credit-unpaid-pagination-controls button {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.credit-unpaid-pagination-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .credit-item.overdue {
@@ -829,6 +941,35 @@
 }
 
 @media (max-width: 767px) {
+  .credit-unpaid-order {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.55rem;
+    padding: 0.7rem 0.75rem;
+  }
+
+  .credit-unpaid-order .credit-order-open {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.4rem;
+  }
+
+  .credit-unpaid-note {
+    justify-self: stretch;
+  }
+
+  .credit-unpaid-actions {
+    justify-content: flex-end;
+  }
+
+  .credit-unpaid-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .credit-unpaid-pagination-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .mas-modal-header-glow {
     margin: -20px -16px 1rem;
     padding: 16px 16px 14px;

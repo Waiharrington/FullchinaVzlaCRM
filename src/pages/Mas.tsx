@@ -32,7 +32,7 @@ import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
-import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings } from 'lucide-react'
+import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Tab = 'credits' | 'close' | 'delivery'
@@ -71,6 +71,7 @@ export function Mas() {
   const [newIndefinite, setNewIndefinite] = useState(true)
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
+  const [unpaidOrderPage, setUnpaidOrderPage] = useState(1)
   const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
   const [creditPayments, setCreditPayments] = useState<CreditPayment[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false)
@@ -335,6 +336,11 @@ export function Mas() {
   const creditedOrderIds = new Set(credits.map(credit => credit.orderId).filter(Boolean))
   const orderBalance = (order: FullOrder) => Math.max(0, order.totalAmount - order.payments.reduce((sum, payment) => sum + payment.amount, 0))
   const uncreditedOrders = unpaidOrders.filter(order => !creditedOrderIds.has(order.id) && orderBalance(order) > 0)
+  const unpaidOrdersPerPage = 5
+  const unpaidOrderPageCount = Math.max(1, Math.ceil(uncreditedOrders.length / unpaidOrdersPerPage))
+  const safeUnpaidOrderPage = Math.min(unpaidOrderPage, unpaidOrderPageCount)
+  const unpaidOrderStart = (safeUnpaidOrderPage - 1) * unpaidOrdersPerPage
+  const pagedUncreditedOrders = uncreditedOrders.slice(unpaidOrderStart, unpaidOrderStart + unpaidOrdersPerPage)
   const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0) + uncreditedOrders.reduce((sum, order) => sum + orderBalance(order), 0)
 
   if (loading && isCreditsModule) return <PageSkeleton cards={3} rows={5} hasTable />
@@ -425,7 +431,7 @@ export function Mas() {
                 {uncreditedOrders.length > 0 && (
                   <div className="credits-section">
                     <span className="credits-section-title">Comandas por pagar · {uncreditedOrders.length}</span>
-                    {uncreditedOrders.map(order => (
+                    {pagedUncreditedOrders.map(order => (
                       <article key={order.id} className="credit-item credit-unpaid-order">
                         <button type="button" className="credit-order-open" onClick={() => openUnpaidOrder(order.id, 'details')}>
                           <span className="credit-header">
@@ -434,17 +440,31 @@ export function Mas() {
                               <span className="credit-client">{order.customerName || 'Cliente sin asociar'} · Comanda #{order.orderNumber}</span>
                               <span className="credit-date">{new Date(order.createdAt).toLocaleString('es-VE')} · {order.fulfillmentStatus === 'preparing' ? 'En preparación' : order.fulfillmentStatus === 'ready' ? 'Lista' : order.fulfillmentStatus === 'delivered' ? 'Entregada' : 'Nueva'}</span>
                             </span>
-                            <span className="credit-amount-value text-danger">${orderBalance(order).toFixed(2)}</span>
                           </span>
-                          <span className="card-subtitle">Pendiente de cobro; todavía no es un crédito autorizado.</span>
+                          <span className="card-subtitle credit-unpaid-note">Pendiente de cobro; todavía no es un crédito autorizado.</span>
                         </button>
                         <div className="credit-actions credit-unpaid-actions">
+                          <span className="credit-amount-value text-danger">${orderBalance(order).toFixed(2)}</span>
                           <button type="button" className="btn-accent btn-sm" onClick={() => openUnpaidOrder(order.id, 'payment')}>
                             <CreditCard size={14} /> Registrar pago
                           </button>
                         </div>
                       </article>
                     ))}
+                    {uncreditedOrders.length > unpaidOrdersPerPage && (
+                      <div className="credit-unpaid-pagination" aria-label="Paginación de comandas por pagar">
+                        <span>Mostrando {unpaidOrderStart + 1}–{Math.min(unpaidOrderStart + unpaidOrdersPerPage, uncreditedOrders.length)} de {uncreditedOrders.length}</span>
+                        <div className="credit-unpaid-pagination-controls">
+                          <button type="button" onClick={() => setUnpaidOrderPage(safeUnpaidOrderPage - 1)} disabled={safeUnpaidOrderPage <= 1} aria-label="Página anterior">
+                            <ChevronLeft size={16} /> Anterior
+                          </button>
+                          <span>Página {safeUnpaidOrderPage} de {unpaidOrderPageCount}</span>
+                          <button type="button" onClick={() => setUnpaidOrderPage(safeUnpaidOrderPage + 1)} disabled={safeUnpaidOrderPage >= unpaidOrderPageCount} aria-label="Página siguiente">
+                            Siguiente <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {activeCredits.length > 0 && (
