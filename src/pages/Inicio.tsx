@@ -112,9 +112,15 @@ export function Inicio() {
     if (!silent) setLoading(true)
     setDashboardError('')
     try {
+      // El KPI/modal de comandas representa todas las órdenes creadas en el
+      // día de Caracas, incluidas las que siguen pendientes de pago.
+      const todayKey = dateKeyInTimeZone()
+      const dayStart = new Date(`${todayKey}T00:00:00-04:00`)
+      const dayEnd = new Date(dayStart)
+      dayEnd.setDate(dayEnd.getDate() + 1)
       const [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult] = await Promise.allSettled([
         getTodayStats(),
-        getOrdersWithItems(),
+        getOrdersWithItems(dayStart.toISOString(), dayEnd.toISOString(), true),
         getDailySales(days),
         getCredits(),
         getPaymentMethodSales(),
@@ -199,7 +205,7 @@ export function Inicio() {
   }, [user?.id])
 
   const totalSales = stats?.totalSales ?? 0
-  const ordersCount = stats?.ordersCount ?? 0
+  const ordersCount = todayOrders.length
   const pendingCredits = useMemo(
     () => credits.filter(c => c.status !== 'paid').sort((a, b) => b.balancePending - a.balancePending),
     [credits]
