@@ -254,10 +254,11 @@ export function Inicio() {
     setDismissedNotificationIds(previous => new Set([...previous, ...visibleNotifications.map(notification => notification.id)]))
   }
 
-  const paidOrdersToday = useMemo(() =>
-    todayOrders.filter(o => o.status === 'paid' && dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
+  const ordersToday = useMemo(() =>
+    todayOrders.filter(o => dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
     [todayOrders]
   )
+  const paidOrdersToday = useMemo(() => ordersToday.filter(order => order.status === 'paid'), [ordersToday])
 
   const paymentMethodDetails = useMemo(() => {
     if (!selectedPaymentMethod) return []
@@ -751,14 +752,14 @@ export function Inicio() {
               <div>
                 <span className="db-modal-eyebrow">Resumen del día</span>
                 <h2 id="today-orders-title">Comandas de hoy</h2>
-                <p>{paidOrdersToday.length} comandas cobradas · desglose por orden.</p>
+                <p>{ordersToday.length} comandas registradas hoy · desglose por orden.</p>
               </div>
               <button type="button" className="db-modal-close" aria-label="Cerrar comandas de hoy" onClick={() => setTodayOrdersOpen(false)}><X size={18} /></button>
             </header>
             <div className="db-modal-list db-orders-detail-list">
-              {paidOrdersToday.length === 0 ? <div className="db-modal-empty"><ClipboardList size={24} /><span>No hay comandas cobradas hoy.</span></div> : paidOrdersToday.map(order => (
+              {ordersToday.length === 0 ? <div className="db-modal-empty"><ClipboardList size={24} /><span>No hay comandas registradas hoy.</span></div> : ordersToday.map(order => (
                 <div className="db-order-detail-row" key={order.id}>
-                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className="ord-badge paid">Pagada</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
+                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className={`ord-badge ${order.status === 'paid' ? 'paid' : 'pending'}`}>{order.status === 'paid' ? 'Pagada' : 'Pendiente'}</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
                   <MoneyWithBcv usd={order.totalAmount} className="db-payment-detail-amount" compact />
                 </div>
               ))}
