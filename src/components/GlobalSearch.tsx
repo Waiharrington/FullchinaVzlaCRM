@@ -22,6 +22,7 @@ import {
   MessageSquare,
   DollarSign,
   BarChart3,
+  Activity,
   Settings,
   Utensils,
   X,
@@ -82,7 +83,7 @@ const MODULE_ICONS: Record<string, typeof Home> = {
   '/reportes': BarChart3,
   '/mas': Settings,
   '/cocina': UtensilsCrossed,
-  '/auditoria': BarChart3,
+  '/auditoria': Activity,
 }
 
 const MAX_PER_GROUP = 5
@@ -99,7 +100,6 @@ interface SearchableModule {
 const SEARCH_ONLY_MODULES: SearchableModule[] = [
   { path: '/menu-semanal', label: 'Menú semanal', icon: Utensils, roles: ['owner', 'manager'], group: 'Operación', keywords: ['planificación', 'semana', 'platos de la semana'] },
   { path: '/cocina', label: 'Cocina', icon: UtensilsCrossed, roles: ['owner', 'manager'], group: 'Operación', keywords: ['preparación', 'pedidos en cocina'] },
-  { path: '/auditoria', label: 'Auditoría', icon: BarChart3, roles: ['owner'], group: 'Configuración', keywords: ['actividad', 'historial', 'seguridad'] },
 ]
 
 const SEARCHABLE_MODULES: SearchableModule[] = [...allNavItems, ...SEARCH_ONLY_MODULES]

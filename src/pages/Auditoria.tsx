@@ -1,132 +1,173 @@
-import { useState, useEffect, useCallback } from 'react'
-import { getAuditLogs, type AuditLog } from '../lib/dataService'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { Activity, AlertTriangle, ChevronDown, Clock3, RefreshCw, Search, Shield } from 'lucide-react'
+import { getSystemActivityLogs, type SystemActivityLog } from '../lib/dataService'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
-import { Shield, AlertTriangle, RefreshCw } from 'lucide-react'
-import './Auditoria.css'
 import { PageSkeleton } from '../components/PageSkeleton'
 import Toast from '../components/Toast'
+import './Auditoria.css'
+
+const PAGE_SIZE = 100
 
 export function Auditoria() {
-  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [logs, setLogs] = useState<SystemActivityLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
   const [error, setError] = useState('')
   const [migrationNeeded, setMigrationNeeded] = useState(false)
+  const [search, setSearch] = useState('')
+  const [moduleFilter, setModuleFilter] = useState('')
 
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
       setError('')
       setMigrationNeeded(false)
-      const data = await getAuditLogs()
-      setLogs(data)
+      const recent = await getSystemActivityLogs(0, PAGE_SIZE)
+      setHasMore(recent.length === PAGE_SIZE)
+      setLogs(previous => silent
+        ? [...recent, ...previous.filter(old => !recent.some(item => item.id === old.id))]
+        : recent)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Error cargando auditoría'
-      if (msg.includes('relation') && msg.includes('does not exist')) {
+      const message = e instanceof Error ? e.message : 'Error cargando el historial general'
+      if (message.includes('system_activity_logs') && message.includes('does not exist')) {
         setMigrationNeeded(true)
         setLogs([])
       } else {
-        setError(msg)
+        setError(message)
       }
     } finally {
       if (!silent) setLoading(false)
     }
   }, [])
 
-  useEffect(() => { void load() }, [load])
-  useLiveDataRefresh('auditoria', () => load(true))
-
-  const getSeverityBadge = (severity: AuditLog['severity']) => {
-    switch (severity) {
-      case 'danger':
-        return <span className="badge badge-danger">PELIGRO</span>
-      case 'warning':
-        return <span className="badge badge-warning">ALERTA</span>
-      case 'info':
-      default:
-        return <span className="badge badge-info">INFO</span>
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const nextPage = await getSystemActivityLogs(logs.length, PAGE_SIZE)
+      setLogs(previous => [...previous, ...nextPage.filter(item => !previous.some(old => old.id === item.id))])
+      setHasMore(nextPage.length === PAGE_SIZE)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cargar el historial anterior')
+    } finally {
+      setLoadingMore(false)
     }
   }
 
-  if (loading) {
-    return <PageSkeleton cards={2} rows={5} />
-  }
+  useEffect(() => { void load() }, [load])
+  useLiveDataRefresh('auditoria', () => load(true))
+
+  const modules = useMemo(() => [...new Set(logs.map(log => log.module))].sort((a, b) => a.localeCompare(b, 'es')), [logs])
+  const filteredLogs = useMemo(() => {
+    const normalizedSearch = search.trim().toLocaleLowerCase('es')
+    return logs.filter(log => {
+      if (moduleFilter && log.module !== moduleFilter) return false
+      if (!normalizedSearch) return true
+      const searchable = [log.actorName, log.module, log.action, log.entityTable, log.entityLabel, ...log.changedFields, ...Object.values(log.context), ...Object.entries(log.changes).flatMap(([key, values]) => [key, values.before, values.after])]
+        .join(' ').toLocaleLowerCase('es')
+      return searchable.includes(normalizedSearch)
+    })
+  }, [logs, moduleFilter, search])
+
+  if (loading) return <PageSkeleton cards={2} rows={5} />
 
   if (migrationNeeded) {
     return (
-      <div className="page animate-fade-in" key="auditoria-migration-needed">
+      <div className="page animate-fade-in">
         <header className="page-header">
-          <div>
-            <h1 className="page-title"><Shield size={22} className="page-title-icon" /> Registro de Actividad y Auditoría</h1>
-            <p className="page-subtitle">Bitácora de acciones sensibles del sistema</p>
-          </div>
+          <div><h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1><p className="page-subtitle">Cambios y movimientos realizados en el sistema</p></div>
         </header>
         <div className="card table-card" style={{ textAlign: 'center', padding: '48px 16px' }}>
-          <AlertTriangle size={48} style={{ color: '#eab308', marginBottom: '16px', opacity: 0.6 }} />
-          <h3 style={{ color: '#fff', fontSize: '16px', marginBottom: '8px' }}>Migración pendiente</h3>
-          <p style={{ color: '#a1a1aa', fontSize: '14px', maxWidth: '480px', margin: '0 auto' }}>
-            La tabla <code style={{ color: '#ef4444' }}>audit_logs</code> aún no existe en el esquema remoto.
-            Ejecuta la migración <code>20260811000000_audit_logs.sql</code> en el VPS con backup previo.
-          </p>
+          <AlertTriangle size={42} style={{ color: '#eab308', marginBottom: 14, opacity: .7 }} />
+          <h3 style={{ color: '#fff', margin: '0 0 8px' }}>Migración pendiente</h3>
+          <p style={{ color: '#a1a1aa', margin: 0 }}>Para empezar a registrar la actividad, aplica con backup previo la migración <code>20261003010000_general_activity_history.sql</code>.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="page animate-fade-in" key="auditoria-full">
+    <div className="page animate-fade-in">
       <header className="page-header">
         <div>
-          <h1 className="page-title"><Shield size={22} className="page-title-icon" /> Registro de Actividad y Auditoría</h1>
-          <p className="page-subtitle">
-            {logs.length} registros · Solo el rol Owner tiene acceso
-          </p>
+          <h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1>
+          <p className="page-subtitle">{logs.length} movimientos cargados · Quién hizo cada cambio y cuándo</p>
         </div>
-        <button className="btn-transfer-submit" style={{ margin: 0 }} onClick={() => load()}>
-          <RefreshCw size={16} /> Actualizar
-        </button>
+        <button className="btn-transfer-submit" style={{ margin: 0 }} onClick={() => void load()}><RefreshCw size={16} /> Actualizar</button>
       </header>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
 
-      <div className="card table-card mt-6">
-        <div className="card-header">
-          <h2 className="card-title">
-            <Shield size={18} style={{ verticalAlign: 'middle', marginRight: '8px', color: '#dc2626' }} />
-            Bitácora de Operaciones Sensibles
-          </h2>
+      <section className="card activity-history-card">
+        <div className="activity-history-toolbar">
+          <label className="activity-history-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar persona, acción o registro" /></label>
+          <label className="activity-history-module"><span>Módulo</span><select value={moduleFilter} onChange={event => setModuleFilter(event.target.value)}><option value="">Todos</option>{modules.map(module => <option key={module} value={module}>{module}</option>)}</select><ChevronDown size={14} /></label>
+          <span className="activity-history-count">{filteredLogs.length} de {logs.length}</span>
         </div>
-        <div className="table-responsive-wrapper">
-          <table className="almacen-table">
-            <thead>
-              <tr>
-                <th>Hora</th>
-                <th>Usuario</th>
-                <th>Módulo</th>
-                <th>Acción</th>
-                <th>Detalle</th>
-                <th>Nivel</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.map(log => (
-                <tr key={log.id}>
-                  <td>{new Date(log.occurredAt).toLocaleString('es-VE')}</td>
-                  <td>{log.actorName}</td>
-                  <td>
-                    <span className="badge badge-outline">{log.module}</span>
-                  </td>
-                  <td><strong>{log.action}</strong></td>
-                  <td style={{ color: '#a1a1aa', fontSize: '12px', maxWidth: '300px' }}>{log.details || '—'}</td>
-                  <td>{getSeverityBadge(log.severity)}</td>
-                </tr>
-              ))}
-              {logs.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: '#71717a' }}>No hay registros de auditoría.</td></tr>
-              )}
-            </tbody>
-          </table>
+
+        <div className="activity-history-list">
+          {filteredLogs.map(log => (
+            <article className={`activity-history-row activity-${log.action.toLowerCase()}`} key={log.id}>
+              <div className="activity-history-icon"><Activity size={16} /></div>
+              <div className="activity-history-main">
+                <div className="activity-history-title"><strong>{actionLabel(log.action)}</strong><span className="activity-history-module-badge">{log.module}</span></div>
+                <div className="activity-history-entity">{entityLabel(log)}{log.entityId && <small> · {log.entityId.slice(0, 8)}</small>}</div>
+                <div className="activity-history-meta"><span><Shield size={12} /> {log.actorName}</span><span><Clock3 size={12} /> {new Date(log.occurredAt).toLocaleString('es-VE')}</span></div>
+                {(log.changedFields.length > 0 || Object.keys(log.context).length > 0 || Object.keys(log.changes).length > 0) && (
+                  <details className="activity-history-details">
+                    <summary>Ver detalle</summary>
+                    <div>{log.changedFields.length > 0 && <p><b>Campos:</b> {log.changedFields.map(fieldLabel).join(', ')}</p>}
+                      {Object.entries(log.changes).map(([key, values]) => <p key={`change-${key}`}><b>{fieldLabel(key)}:</b> {displayValue(values.before)} → {displayValue(values.after)}</p>)}
+                      {Object.entries(log.context).map(([key, value]) => <p key={key}><b>{fieldLabel(key)}:</b> {String(value)}</p>)}</div>
+                  </details>
+                )}
+              </div>
+            </article>
+          ))}
+          {filteredLogs.length === 0 && <div className="activity-history-empty">No hay movimientos que coincidan con la búsqueda.</div>}
         </div>
-      </div>
+
+        {hasMore && <button className="activity-history-more" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? 'Cargando…' : 'Cargar movimientos anteriores'}</button>}
+        <p className="activity-history-footnote">El historial registra los cambios desde que se active la migración; no reconstruye acciones pasadas que no fueron auditadas.</p>
+      </section>
     </div>
   )
+}
+
+function actionLabel(action: SystemActivityLog['action']) {
+  if (action === 'INSERT') return 'Creó'
+  if (action === 'DELETE') return 'Eliminó'
+  return 'Editó'
+}
+
+function entityLabel(log: SystemActivityLog) {
+  const labels: Record<string, string> = {
+    orders: 'Comanda', order_items: 'Producto de comanda', payments: 'Cobro',
+    purchases: 'Compra', purchase_items: 'Producto de compra', purchase_payments: 'Pago de compra',
+    expenses: 'Gasto', expense_payments: 'Pago de gasto', customers: 'Cliente', suppliers: 'Proveedor',
+    stock_movements: 'Movimiento de inventario', sellable_products: 'Producto del menú',
+    profiles: 'Usuario', employees: 'Empleado', cash_sessions: 'Turno de caja', cash_movements: 'Movimiento de caja',
+  }
+  return `${labels[log.entityTable] ?? humanize(log.entityTable)}${log.entityLabel ? ` · ${log.entityLabel}` : ''}`
+}
+
+function fieldLabel(value: string) {
+  const labels: Record<string, string> = {
+    amount: 'Monto', total_amount: 'Total', price: 'Precio', unit_price: 'Precio unitario', quantity: 'Cantidad',
+    order_number: 'N.º de comanda', status: 'Estado', fulfillment_status: 'Estado de preparación',
+    concept: 'Concepto', method: 'Método', movement_type: 'Tipo de movimiento', order_type: 'Tipo de pedido',
+    table_number: 'Mesa', product_name: 'Producto', related_item: 'Producto o ingrediente', name: 'Nombre', code: 'Código',
+  }
+  return labels[value] ?? humanize(value)
+}
+
+function humanize(value: string) {
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toLocaleUpperCase('es'))
+}
+
+function displayValue(value: unknown) {
+  if (value == null || value === 'null') return '—'
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No'
+  return String(value)
 }

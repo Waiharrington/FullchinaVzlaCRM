@@ -14,6 +14,7 @@ import {
   Building2,
   Award,
   MessageSquare,
+  Activity,
   UtensilsCrossed,
   Receipt,
   CreditCard,
@@ -55,6 +56,7 @@ export const allNavItems: NavItem[] = [
   { path: '/promociones', label: 'Promociones', icon: Tag, roles: ['owner', 'manager'], group: 'Configuración' },
   { path: '/marketing', label: 'WhatsApp Bot', icon: MessageSquare, roles: ['owner', 'manager'], group: 'Configuración' },
   { path: '/equipo', label: 'Equipo / Usuarios', icon: Users, roles: ['owner', 'manager'], group: 'Configuración' },
+  { path: '/auditoria', label: 'Historial general', icon: Activity, roles: ['owner'], group: 'Configuración' },
   { path: '/mas', label: 'Configuración', icon: Settings, roles: ['owner', 'manager'], group: 'Configuración' }
 ]
 

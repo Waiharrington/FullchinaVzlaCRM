@@ -1,11 +1,13 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { DndContext, DragOverlay, useDraggable, useDroppable, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core'
 import { Caja } from './Caja'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import {
   getOrdersWithItems,
+  getOrderById,
   getActiveCashSession,
   recordOrderPayments,
   updateOrderStatus,
@@ -23,6 +25,7 @@ import {
   type CartItem,
   type Customer,
   type PersonalAccountOption,
+  type FullOrder,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { CalendarPicker } from '../components/CalendarPicker'
@@ -151,6 +154,7 @@ export interface ComandaOrder {
   isPaid: boolean
   creditAuthorized?: boolean
   totalAmount?: number
+  balanceDue?: number
   serviceCharge?: number
   discount?: number
   bcvRate?: number
@@ -160,6 +164,58 @@ export interface ComandaOrder {
   attendedBy?: string
   source?: 'pos' | 'web'
   webRequestId?: string
+}
+
+function mapFullOrderToComanda(order: FullOrder): ComandaOrder {
+  const date = new Date(order.createdAt)
+  const paymentMethods = [...new Set(order.payments.map(payment => payment.method))]
+  const paymentLabels: Partial<Record<PaymentMethod, string>> = {
+    cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia',
+    binance: 'Binance', zelle: 'Zelle', other: 'Otro', personal_account: 'Cuenta personal',
+  }
+  const paymentMethod = paymentMethods.length > 1
+    ? 'Pago combinado'
+    : paymentMethods.length === 1
+      ? `Pago: ${paymentLabels[paymentMethods[0]] ?? 'Pago registrado'}`
+      : 'Pago registrado'
+
+  return {
+    id: order.id,
+    orderNumber: `#FC-${String(order.orderNumber).padStart(6, '0')}`,
+    time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+    date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    createdAt: order.createdAt,
+    customerId: order.customerId,
+    customerName: order.customerName || 'Cliente general',
+    customerPhone: order.customerPhone || undefined,
+    customerIdentification: order.customerIdentification || undefined,
+    address: order.orderType === 'delivery' ? order.customerAddress || '' : '',
+    orderType: order.orderType === 'takeaway' ? 'Para llevar' : order.orderType === 'delivery' ? 'Delivery' : order.tableNumber ? `Mesa ${order.tableNumber}` : 'Mesa',
+    items: order.items.map(item => ({
+      id: item.id,
+      name: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      subtotal: item.quantity * item.unitPrice,
+      modifiers: item.modifiers ?? [],
+    })),
+    notes: order.notes || '',
+    paymentMethod: order.status === 'paid' ? paymentMethod : '⚠️ Sin pagar',
+    payments: order.payments.map(payment => ({ method: payment.method, amount: payment.amount, referenceNumber: payment.referenceNumber })),
+    paymentType: order.status !== 'paid' ? 'pending' : paymentMethods.includes('cash') ? 'cash' : paymentMethods.includes('mobile') || paymentMethods.includes('transfer') ? 'app' : 'card',
+    isPaid: order.status === 'paid',
+    creditAuthorized: order.creditAuthorized,
+    totalAmount: order.totalAmount,
+    balanceDue: Math.max(0, order.totalAmount - order.payments.reduce((sum, payment) => sum + payment.amount, 0)),
+    serviceCharge: 0,
+    discount: 0,
+    bcvRate: order.bcvRate || undefined,
+    elapsedMins: Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)),
+    status: order.fulfillmentStatus,
+    deliveredTime: order.fulfillmentStatus === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+    attendedBy: 'Usuario del sistema',
+    source: 'pos',
+  }
 }
 
 function thermalReceiptForComanda(order: ComandaOrder): ThermalReceiptData {
@@ -605,6 +661,9 @@ const COLUMN_PREVIEW_LIMIT = 6
 
 export function Comandas() {
   const { bcvRate } = useRates()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const handledOrderNavigationKey = useRef<string | null>(null)
   const isDemoMode = new URLSearchParams(window.location.search).get('demo') === '1'
   const [comandas, setComandas] = useState<ComandaOrder[]>(() => isDemoMode ? createDemoComandas() : MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
@@ -934,6 +993,7 @@ export function Comandas() {
     setReloadToken((value) => value + 1)
   }
   const paymentRate = paymentOrder?.bcvRate && paymentOrder.bcvRate > 0 ? paymentOrder.bcvRate : bcvRate
+  const paymentDue = paymentOrder?.balanceDue ?? paymentOrder?.totalAmount ?? 0
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
   const splitSecondaryAmountUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, paymentRate)
   // Los dos métodos del pago combinado están enlazados: editar uno recalcula el
@@ -941,17 +1001,17 @@ export function Comandas() {
   const syncSplitFromPrimary = (input: string) => {
     setAmountReceived(input)
     const primaryUsd = paymentInputToUsd(input, splitPrimaryMethod, paymentRate)
-    const secUsd = Math.max(0, Math.round(((paymentOrder?.totalAmount ?? 0) - primaryUsd) * 100) / 100)
+    const secUsd = Math.max(0, Math.round((paymentDue - primaryUsd) * 100) / 100)
     setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, paymentRate))
   }
   const syncSplitFromSecondary = (input: string) => {
     setAmountReceivedSecondary(input)
     const secUsd = paymentInputToUsd(input, splitSecondaryMethod, paymentRate)
-    const priUsd = Math.max(0, Math.round(((paymentOrder?.totalAmount ?? 0) - secUsd) * 100) / 100)
+    const priUsd = Math.max(0, Math.round((paymentDue - secUsd) * 100) / 100)
     setAmountReceived(usdToPaymentInput(priUsd, splitPrimaryMethod, paymentRate))
   }
 
-  const handleOpenPaymentForOrder = async (order: ComandaOrder) => {
+  const handleOpenPaymentForOrder = useCallback(async (order: ComandaOrder) => {
     if (order.creditAuthorized) {
       void alertDialog({ message: 'Esta comanda ya tiene un crédito autorizado. Registra los abonos desde Cuentas por cobrar.' })
       return
@@ -979,7 +1039,7 @@ export function Comandas() {
     setCreditAuthorizationPin('')
     const initialTab: SplitPaymentMethod = pref && pref.methods.length === 1 ? pref.methods[0] : 'cash'
     const initialRate = order.bcvRate && order.bcvRate > 0 ? order.bcvRate : bcvRate
-    setAmountReceived(usdToPaymentInput(order.totalAmount || 0, initialTab, initialRate))
+    setAmountReceived(usdToPaymentInput(order.balanceDue ?? order.totalAmount ?? 0, initialTab, initialRate))
     setCashCurrency('USD')
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
@@ -1002,7 +1062,37 @@ export function Comandas() {
       return
     }
     setPaymentError('')
-  }
+  }, [bcvRate])
+
+  useEffect(() => {
+    const navigation = location.state as { openOrderId?: unknown; openOrderAction?: unknown } | null
+    const orderId = typeof navigation?.openOrderId === 'string' ? navigation.openOrderId : null
+    if (!orderId || handledOrderNavigationKey.current === location.key) return
+
+    handledOrderNavigationKey.current = location.key
+    let active = true
+    const openRequestedOrder = async () => {
+      try {
+        const fullOrder = await getOrderById(orderId)
+        if (!active) return
+        if (!fullOrder) throw new Error('No se encontró la comanda seleccionada')
+
+        const order = mapFullOrderToComanda(fullOrder)
+        if (navigation?.openOrderAction === 'payment') {
+          await handleOpenPaymentForOrder(order)
+        } else {
+          setSelectedOrder(order)
+        }
+      } catch (error) {
+        if (active) void alertDialog({ message: error instanceof Error ? error.message : 'No se pudo abrir la comanda seleccionada' })
+      } finally {
+        if (active) navigate(location.pathname, { replace: true, state: null })
+      }
+    }
+
+    void openRequestedOrder()
+    return () => { active = false }
+  }, [handleOpenPaymentForOrder, location.key, location.pathname, location.state, navigate])
 
   const handleSelectPaymentTab = (method: ActivePaymentMethod | 'split') => {
     setSelectedPaymentTab(method)
@@ -1011,13 +1101,13 @@ export function Comandas() {
     setExtraRefs([])
     setSplitPrimaryReference('')
     setSplitSecondaryReference('')
-    if (method === 'split' && paymentOrder?.totalAmount) {
-      const half = paymentOrder.totalAmount / 2
+    if (method === 'split' && paymentDue) {
+      const half = paymentDue / 2
       setAmountReceived(usdToPaymentInput(half, splitPrimaryMethod, paymentRate))
-      setAmountReceivedSecondary(usdToPaymentInput(paymentOrder.totalAmount - half, splitSecondaryMethod, paymentRate))
+      setAmountReceivedSecondary(usdToPaymentInput(paymentDue - half, splitSecondaryMethod, paymentRate))
     } else {
       const inputMethod: SplitPaymentMethod = method === 'split' || method === 'personal_account' || method === 'credit' ? 'cash' : method
-      setAmountReceived(usdToPaymentInput(paymentOrder?.totalAmount || 0, inputMethod, paymentRate))
+      setAmountReceived(usdToPaymentInput(paymentDue, inputMethod, paymentRate))
     }
     if (method === 'credit') setCreditAuthorizationPin('')
     if (method === 'personal_account') setPaymentPersonalAccountId(personalAccounts.find(account => account.isActive)?.id ?? '')
@@ -1037,7 +1127,7 @@ export function Comandas() {
         return
       }
 
-      const total = Number(paymentOrder.totalAmount ?? 0)
+      const total = Number(paymentOrder.balanceDue ?? paymentOrder.totalAmount ?? 0)
       let enteredAmount = Number(amountReceived)
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
       if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
@@ -1284,6 +1374,7 @@ export function Comandas() {
               isPaid: hasPaid,
               creditAuthorized: o.creditAuthorized,
               totalAmount: o.totalAmount || 0,
+              balanceDue: Math.max(0, (o.totalAmount || 0) - o.payments.reduce((sum, payment) => sum + payment.amount, 0)),
               serviceCharge: 0,
               discount: 0,
               bcvRate: o.bcvRate || undefined,
@@ -1327,6 +1418,7 @@ export function Comandas() {
               paymentType: 'pending',
               isPaid: false,
               totalAmount: order.subtotal,
+              balanceDue: order.subtotal,
               serviceCharge: 0,
               discount: 0,
               bcvRate: order.bcvRate || undefined,
@@ -1564,6 +1656,7 @@ export function Comandas() {
           isPaid: hasPaid,
           creditAuthorized: o.creditAuthorized,
           totalAmount: o.totalAmount || 0,
+          balanceDue: Math.max(0, (o.totalAmount || 0) - o.payments.reduce((sum, payment) => sum + payment.amount, 0)),
           elapsedMins: Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)),
           status,
           deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
@@ -2528,12 +2621,14 @@ export function Comandas() {
             <input
               key={deletePin}
               type="password"
+              inputMode="text"
+              pattern="[0-9*#]{4}"
               className="cmd-pin-input"
               placeholder="PIN"
               maxLength={4}
               autoComplete="new-password"
               value={deletePin}
-              onChange={e => { setDeletePin(e.target.value); setDeleteError('') }}
+              onChange={e => { setDeletePin(e.target.value.replace(/[^0-9*#]/g, '').slice(0, 4)); setDeleteError('') }}
               onKeyDown={e => { if (e.key === 'Enter') handleDeleteOrder() }}
               autoFocus
             />
@@ -2655,7 +2750,7 @@ export function Comandas() {
                         const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
                         setSplitPrimaryMethod(nextMethod)
                         setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, paymentRate))
-                        const secUsd = Math.max(0, Math.round(((paymentOrder?.totalAmount ?? 0) - currentUsd) * 100) / 100)
+                        const secUsd = Math.max(0, Math.round((paymentDue - currentUsd) * 100) / 100)
                         setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, paymentRate))
                         setSplitPrimaryReference('')
                         setPaymentError('')
@@ -2717,12 +2812,12 @@ export function Comandas() {
                       <button
                         type="button"
                         className={`cash-currency-btn ${cashCurrency === 'USD' ? 'active' : ''}`}
-                        onClick={() => { setCashCurrency('USD'); setAmountReceived(paymentOrder?.totalAmount ? paymentOrder.totalAmount.toFixed(2) : '') }}
+                        onClick={() => { setCashCurrency('USD'); setAmountReceived(paymentDue ? paymentDue.toFixed(2) : '') }}
                       >USD</button>
                       <button
                         type="button"
                         className={`cash-currency-btn ${cashCurrency === 'VES' ? 'active' : ''}`}
-                        onClick={() => { setCashCurrency('VES'); setAmountReceived(paymentRate && paymentOrder?.totalAmount ? (paymentOrder.totalAmount * paymentRate).toFixed(2) : '') }}
+                        onClick={() => { setCashCurrency('VES'); setAmountReceived(paymentRate && paymentDue ? (paymentDue * paymentRate).toFixed(2) : '') }}
                       >Bs</button>
                     </div>
                   )}
@@ -2739,11 +2834,11 @@ export function Comandas() {
                   <span className="payment-hint-sub">
                     {selectedPaymentTab === 'cash'
                       ? (cashCurrency === 'USD'
-                        ? (paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible')
-                        : `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`)
+                        ? (paymentRate ? `Ref. ${formatVes(paymentDue * paymentRate)}` : 'Referencia BCV no disponible')
+                        : `Ref. ${formatUsd(paymentDue)}`)
                       : selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab)
-                        ? `Ref. ${formatUsd(paymentOrder.totalAmount || 0)}`
-                        : (paymentRate ? `Ref. ${formatVes((paymentOrder.totalAmount || 0) * paymentRate)}` : 'Referencia BCV no disponible')}
+                        ? `Ref. ${formatUsd(paymentDue)}`
+                        : (paymentRate ? `Ref. ${formatVes(paymentDue * paymentRate)}` : 'Referencia BCV no disponible')}
                   </span>
                 </div>}
 
@@ -2781,13 +2876,13 @@ export function Comandas() {
                             2. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.icon}{' '}
                             {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.label}
                           </span>
-                          <MoneyWithBcv usd={Math.max(0, (paymentOrder.totalAmount ?? 0) - splitPrimaryAmountUsd)} rate={paymentRate} primaryCurrency={usesBolivares(splitSecondaryMethod) ? 'VES' : 'USD'} className="row-item-val" compact />
+                          <MoneyWithBcv usd={Math.max(0, paymentDue - splitPrimaryAmountUsd)} rate={paymentRate} primaryCurrency={usesBolivares(splitSecondaryMethod) ? 'VES' : 'USD'} className="row-item-val" compact />
                         </div>
                       </>
                     ) : (
                       <div className="breakdown-row-item">
                         <span className="row-item-left">{PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.icon} {PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label}</span>
-                        <MoneyWithBcv usd={paymentOrder.totalAmount || 0} rate={paymentOrder.bcvRate} className="row-item-val" compact />
+                        <MoneyWithBcv usd={paymentDue} rate={paymentOrder.bcvRate} className="row-item-val" compact />
                       </div>
                     )}
                   </div>
@@ -2807,7 +2902,7 @@ export function Comandas() {
 
                     <div className="summary-box-total-line mt-3">
                       <span className="summary-total-label">Total</span>
-                      <MoneyWithBcv usd={paymentOrder.totalAmount || 0} rate={paymentOrder.bcvRate} className="summary-total-val" />
+                      <MoneyWithBcv usd={paymentDue} rate={paymentOrder.bcvRate} className="summary-total-val" />
                     </div>
                   </div>
 

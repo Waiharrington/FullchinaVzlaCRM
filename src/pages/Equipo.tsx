@@ -839,19 +839,19 @@ export function Equipo() {
             </div>
             <form onSubmit={handleSavePin} className="modal-form">
               <p className="equipo-section-hint" style={{ margin: 0 }}>
-                Usuario: <strong style={{ color: '#fff' }}>{pinUser.email}</strong>. El PIN de 4 dígitos
+                Usuario: <strong style={{ color: '#fff' }}>{pinUser.email}</strong>. El PIN de 4 caracteres
                 sirve para iniciar sesión rápido desde la caja.
               </p>
               <div className="form-group">
-                <label>Nuevo PIN (4 dígitos)</label>
+                <label>Nuevo PIN (4 caracteres: números, * o #)</label>
                 <input
                   type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{4}"
+                  inputMode="text"
+                  pattern="[0-9*#]{4}"
                   maxLength={4}
                   value={pinValue}
-                  onChange={e => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  placeholder="0000"
+                  onChange={e => setPinValue(e.target.value.replace(/[^0-9*#]/g, '').slice(0, 4))}
+                  placeholder="000*"
                   required
                   autoFocus
                   style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '22px' }}

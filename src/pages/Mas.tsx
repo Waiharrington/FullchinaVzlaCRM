@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import jsPDF from 'jspdf'
 import {
@@ -51,6 +51,7 @@ let masCache: {
 export function Mas() {
   const { user } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const isCreditsModule = location.pathname === '/creditos'
   const [credits, setCredits] = useState<CreditType[]>(masCache?.credits ?? [])
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
@@ -75,6 +76,10 @@ export function Mas() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [closing, setClosing] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
+
+  const openUnpaidOrder = (orderId: string, action: 'details' | 'payment') => {
+    navigate('/comandas', { state: { openOrderId: orderId, openOrderAction: action } })
+  }
 
   const closeNewCredit = () => {
     if (!showNewCredit || closingNewCredit) return
@@ -421,17 +426,24 @@ export function Mas() {
                   <div className="credits-section">
                     <span className="credits-section-title">Comandas por pagar · {uncreditedOrders.length}</span>
                     {uncreditedOrders.map(order => (
-                      <div key={order.id} className="credit-item">
-                        <div className="credit-header">
-                          <div className="credit-avatar">{order.customerName.trim().charAt(0).toUpperCase() || '?'}</div>
-                          <div className="credit-info">
-                            <span className="credit-client">{order.customerName || 'Cliente sin asociar'} · Comanda #{order.orderNumber}</span>
-                            <span className="credit-date">{new Date(order.createdAt).toLocaleString('es-VE')} · {order.fulfillmentStatus === 'preparing' ? 'En preparación' : order.fulfillmentStatus === 'ready' ? 'Lista' : order.fulfillmentStatus === 'delivered' ? 'Entregada' : 'Nueva'}</span>
-                          </div>
-                          <span className="credit-amount-value text-danger">${orderBalance(order).toFixed(2)}</span>
+                      <article key={order.id} className="credit-item credit-unpaid-order">
+                        <button type="button" className="credit-order-open" onClick={() => openUnpaidOrder(order.id, 'details')}>
+                          <span className="credit-header">
+                            <span className="credit-avatar">{order.customerName.trim().charAt(0).toUpperCase() || '?'}</span>
+                            <span className="credit-info">
+                              <span className="credit-client">{order.customerName || 'Cliente sin asociar'} · Comanda #{order.orderNumber}</span>
+                              <span className="credit-date">{new Date(order.createdAt).toLocaleString('es-VE')} · {order.fulfillmentStatus === 'preparing' ? 'En preparación' : order.fulfillmentStatus === 'ready' ? 'Lista' : order.fulfillmentStatus === 'delivered' ? 'Entregada' : 'Nueva'}</span>
+                            </span>
+                            <span className="credit-amount-value text-danger">${orderBalance(order).toFixed(2)}</span>
+                          </span>
+                          <span className="card-subtitle">Pendiente de cobro; todavía no es un crédito autorizado.</span>
+                        </button>
+                        <div className="credit-actions credit-unpaid-actions">
+                          <button type="button" className="btn-accent btn-sm" onClick={() => openUnpaidOrder(order.id, 'payment')}>
+                            <CreditCard size={14} /> Registrar pago
+                          </button>
                         </div>
-                        <p className="card-subtitle">Pendiente de cobro; todavía no es un crédito autorizado.</p>
-                      </div>
+                      </article>
                     ))}
                   </div>
                 )}

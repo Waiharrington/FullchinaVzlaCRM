@@ -131,7 +131,7 @@ export function Login() {
     }
   }, [isTabletViewport])
 
-  // Autoenvía al completar los cuatro dígitos del PIN.
+  // Autoenvía al completar los cuatro caracteres del PIN.
   useEffect(() => {
     if (isPinMode && pin.length === 4 && !loading) {
       formRef.current?.requestSubmit()
@@ -262,11 +262,11 @@ export function Login() {
                       <input
                         id="pin"
                         type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
+                        inputMode="text"
+                        pattern="[0-9*#]*"
                         placeholder="••••"
                         value={pin}
-                        onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                        onChange={(e) => setPin(e.target.value.replace(/[^0-9*#]/g, '').slice(0, 4))}
                         maxLength={4}
                         style={{ fontSize: '1.5rem', letterSpacing: '0.5rem', textAlign: 'center' }}
                         required={isPinMode}
@@ -287,19 +287,21 @@ export function Login() {
                         {digit}
                       </button>
                     ))}
-                    <button
-                      type="button"
-                      className="keypad-btn keypad-clear"
-                      onClick={() => setPin('')}
-                    >
-                      Borrar
-                    </button>
+                    <button type="button" className="keypad-btn" onClick={() => setPin((p) => (p.length < 4 ? p + '*' : p))}>*</button>
                     <button
                       type="button"
                       className="keypad-btn"
                       onClick={() => setPin((p) => (p.length < 4 ? p + '0' : p))}
                     >
                       0
+                    </button>
+                    <button type="button" className="keypad-btn" onClick={() => setPin((p) => (p.length < 4 ? p + '#' : p))}>#</button>
+                    <button
+                      type="button"
+                      className="keypad-btn keypad-clear"
+                      onClick={() => setPin('')}
+                    >
+                      Borrar
                     </button>
                     <button
                       type="button"

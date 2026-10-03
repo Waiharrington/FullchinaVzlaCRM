@@ -793,7 +793,9 @@
   border-radius: 10px;
   background: #202024;
 }
-.receivable-row > div { min-width: 0; display: grid; gap: 3px; }
+.receivable-row > div, .receivable-order-open { min-width: 0; display: grid; gap: 3px; }
+.receivable-order-open { width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.receivable-order-open:focus-visible { outline: 2px solid #ef4444; outline-offset: 3px; border-radius: 4px; }
 .receivable-row-actions { display: grid; justify-items: end; gap: 6px; min-width: max-content; }
 .receivable-row-actions > .money-with-bcv { min-width: max-content; }
 .receivable-payment-button { min-height: 30px; padding: 5px 9px; border: 1px solid rgba(239,68,68,.32); border-radius: 8px; background: rgba(225,29,42,.14); color: #fca5a5; font-size: 10px; font-weight: 800; white-space: nowrap; cursor: pointer; transition: background .15s ease,border-color .15s ease,color .15s ease; }

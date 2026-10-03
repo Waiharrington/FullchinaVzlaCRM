@@ -1,5 +1,5 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type CSSProperties, type PointerEvent, type WheelEvent } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
@@ -20,6 +20,8 @@ import {
   getCustomers,
   getCustomerOrders,
   getCustomerPurchaseMetrics,
+  getOrdersWithItems,
+  isPersonalAccountOrder,
   getProducts,
   checkout,
   type Credit as CreditType,
@@ -29,6 +31,7 @@ import {
   type CustomerPurchaseMetric,
   type Product,
   type CartItem,
+  type FullOrder,
   type PaymentMethod,
   type FinancialAccount,
 } from '../lib/dataService'
@@ -74,6 +77,7 @@ import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 // la última visita al instante, sin el parpadeo de "Cargando...", mientras
 // se refrescan en segundo plano.
 let creditsCache: CreditType[] | null = null
+let unpaidOrdersCache: FullOrder[] | null = null
 
 interface CustomerRow {
   id: string
@@ -278,12 +282,19 @@ function parseMoneyDraft(draft: string): number {
   return Number.isFinite(amount) ? amount : 0
 }
 
+function pendingOrderBalance(order: Pick<FullOrder, 'totalAmount' | 'payments'>): number {
+  return Math.max(0, order.totalAmount - order.payments.reduce((sum, payment) => sum + payment.amount, 0))
+}
+
 export function Clientes() {
   const { user } = useAuth()
   const { bcvRate } = useRates()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const isDemoMode = searchParams.get('demoClient') === '1'
   const [credits, setCredits] = useState<CreditType[]>(creditsCache ?? [])
+  const [unpaidOrders, setUnpaidOrders] = useState<FullOrder[]>(unpaidOrdersCache ?? [])
+  const [unpaidOrdersLoading, setUnpaidOrdersLoading] = useState(unpaidOrdersCache === null && !isDemoMode)
   const [loading, setLoading] = useState(!creditsCache)
   const [mobileMetricIndex, setMobileMetricIndex] = useState(0)
   const [isPhoneViewport, setIsPhoneViewport] = useState(() => window.matchMedia('(max-width: 767px)').matches)
@@ -597,19 +608,25 @@ export function Clientes() {
 
   const fetchCredits = useCallback(async (silent = false) => {
     if (isDemoMode) return
+    setUnpaidOrdersLoading(true)
     try {
-      const [creditData, customerData, metricData] = await Promise.all([
-        getCredits(),
+      const [creditData, customerData, metricData, orderData] = await Promise.all([
+        getCredits(true),
         getCustomers(),
         getCustomerPurchaseMetrics(),
+        getOrdersWithItems(undefined, undefined, true, ['open', 'confirmed', 'preparing', 'ready', 'delivered', 'completed']),
       ])
+      const pendingOrders = orderData.filter((order) => !isPersonalAccountOrder(order))
       setCredits(creditData)
+      setUnpaidOrders(pendingOrders)
       setCustomers(customerData)
       setPurchaseMetrics(metricData)
       creditsCache = creditData
+      unpaidOrdersCache = pendingOrders
     } catch (e) {
       console.error('Error cargando créditos:', e)
     } finally {
+      setUnpaidOrdersLoading(false)
       if (!silent) setLoading(false)
     }
   }, [isDemoMode])
@@ -857,9 +874,23 @@ export function Clientes() {
   const pageStart = (safePage - 1) * CLIENTS_PER_PAGE
   const pagedRows = displayRows.slice(pageStart, pageStart + CLIENTS_PER_PAGE)
 
+  const creditedOrderIds = useMemo(() => new Set(credits.map((credit) => credit.orderId).filter(Boolean)), [credits])
+  const uncreditedReceivableOrders = useMemo(() => unpaidOrders.filter((order) => {
+    return pendingOrderBalance(order) > 0 && !creditedOrderIds.has(order.id)
+  }), [creditedOrderIds, unpaidOrders])
+  const pendingReceivableOrderCount = useMemo(() => new Set([
+    ...credits.filter((credit) => credit.balancePending > 0 && credit.orderId).map((credit) => credit.orderId),
+    ...uncreditedReceivableOrders.map((order) => order.id),
+  ]).size, [credits, uncreditedReceivableOrders])
+
   const totalOutstanding = useMemo(() => {
-    return credits.reduce((acc, c) => acc + c.balancePending, 0)
-  }, [credits])
+    return credits.reduce((acc, credit) => acc + credit.balancePending, 0)
+      + uncreditedReceivableOrders.reduce((sum, order) => sum + pendingOrderBalance(order), 0)
+  }, [credits, uncreditedReceivableOrders])
+
+  const openUncreditedOrder = (orderId: string, action: 'details' | 'payment') => {
+    navigate('/comandas', { state: { openOrderId: orderId, openOrderAction: action } })
+  }
 
   const frequentCustomers = useMemo(() => customers.filter((customer) => customer.totalVisits >= 5).length, [customers])
   const activeCreditsCount = useMemo(() => credits.filter((credit) => credit.balancePending > 0).length, [credits])
@@ -1192,9 +1223,10 @@ export function Clientes() {
 
             <div className="receivables-summary-row">
               <span className="clientes-summary-chip">{credits.filter((credit) => credit.balancePending > 0).length} cuentas activas</span>
-              <span className="clientes-summary-chip">{credits.filter((credit) => credit.balancePending > 0 && credit.orderId).length} comandas pendientes</span>
+              <span className="clientes-summary-chip">{pendingReceivableOrderCount} comandas pendientes</span>
             </div>
             <div className="receivables-list">
+              {unpaidOrdersLoading && <p className="modal-sub-desc">Cargando todas las comandas pendientes…</p>}
               {receivablesLoading && <p className="modal-sub-desc">Cargando comandas pendientes…</p>}
               {credits.filter((credit) => credit.balancePending > 0).map((credit) => {
                 const order = receivableOrders[credit.id]
@@ -1213,7 +1245,27 @@ export function Clientes() {
                   </div>
                 </div>
               })}
-              {!receivablesLoading && credits.filter((credit) => credit.balancePending > 0).length === 0 && <p className="modal-sub-desc">No hay cuentas pendientes.</p>}
+              {uncreditedReceivableOrders.map((order) => {
+                const days = Math.max(0, Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 86400000))
+                const itemSummary = order.items.map((item) => `${item.quantity}× ${item.productName}`).join(', ')
+                const orderStatus = order.fulfillmentStatus === 'preparing' ? 'En preparación'
+                  : order.fulfillmentStatus === 'ready' ? 'Lista'
+                    : order.fulfillmentStatus === 'delivered' ? 'Entregada' : 'Nueva'
+                return <div className="receivable-row" key={`order-${order.id}`}>
+                  <button type="button" className="receivable-order-open" onClick={() => openUncreditedOrder(order.id, 'details')}>
+                    <strong>{order.customerName || 'Cliente general'}</strong>
+                    <span>Comanda #{order.orderNumber} · {itemSummary || 'Sin detalle'}</span>
+                    <small>Sin cobrar · {orderStatus} · Hace {days} día{days === 1 ? '' : 's'} · {formatDate(order.createdAt)}</small>
+                  </button>
+                  <div className="receivable-row-actions">
+                    <MoneyWithBcv usd={pendingOrderBalance(order)} className="legend-val font-bold" compact />
+                    <button type="button" className="receivable-payment-button" onClick={() => openUncreditedOrder(order.id, 'payment')}>
+                      Registrar pago
+                    </button>
+                  </div>
+                </div>
+              })}
+              {!unpaidOrdersLoading && !receivablesLoading && credits.filter((credit) => credit.balancePending > 0).length === 0 && uncreditedReceivableOrders.length === 0 && <p className="modal-sub-desc">No hay cuentas pendientes.</p>}
             </div>
           </div>
         </div>

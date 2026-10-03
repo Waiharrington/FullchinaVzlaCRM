@@ -581,6 +581,20 @@ export interface AuditLog {
   severity: 'info' | 'warning' | 'danger'
 }
 
+export interface SystemActivityLog {
+  id: string
+  occurredAt: string
+  actorName: string
+  module: string
+  action: 'INSERT' | 'UPDATE' | 'DELETE'
+  entityTable: string
+  entityId: string | null
+  entityLabel: string | null
+  changedFields: string[]
+  changes: Record<string, { before: unknown; after: unknown }>
+  context: Record<string, string | number | boolean | null>
+}
+
 export interface BatchItem {
   id: string
   ingredientId: string
@@ -4234,6 +4248,30 @@ export async function getAuditLogs(limit = 200, allPages = false): Promise<Audit
   }))
 }
 
+export async function getSystemActivityLogs(offset = 0, limit = 100): Promise<SystemActivityLog[]> {
+  const { data, error } = await client()
+    .from('system_activity_logs')
+    .select('id,occurred_at,actor_name,module,action,entity_table,entity_id,entity_label,changed_fields,changes,context')
+    .order('occurred_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw error
+  return ((data ?? []) as Record<string, unknown>[]).map(row => ({
+    id: String(row.id),
+    occurredAt: String(row.occurred_at),
+    actorName: String(row.actor_name ?? 'Sistema'),
+    module: String(row.module ?? 'Sistema'),
+    action: row.action as SystemActivityLog['action'],
+    entityTable: String(row.entity_table),
+    entityId: row.entity_id == null ? null : String(row.entity_id),
+    entityLabel: row.entity_label == null ? null : String(row.entity_label),
+    changedFields: Array.isArray(row.changed_fields) ? row.changed_fields.map(String) : [],
+    changes: row.changes && typeof row.changes === 'object' ? row.changes as SystemActivityLog['changes'] : {},
+    context: row.context && typeof row.context === 'object' ? row.context as SystemActivityLog['context'] : {},
+  }))
+}
+
 // --- Helpers -----------------------------------------------------------------
 
 // --- Proveedores -------------------------------------------------------------
@@ -4529,7 +4567,7 @@ export async function createPurchase(params: {
 
 export async function getOrderById(orderId: string): Promise<FullOrder | null> {
   const { data, error } = await client()
-    .from('v_orders_with_items')
+    .from('v_orders_with_credit_status')
     .select('*')
     .eq('id', orderId)
     .single()

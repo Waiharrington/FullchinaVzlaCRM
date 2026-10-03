@@ -13,3 +13,45 @@
   background: rgba(59, 130, 246, 0.2);
   color: #3b82f6;
 }
+
+.activity-history-card { overflow: hidden; }
+.activity-history-toolbar { display: flex; align-items: center; gap: 12px; padding: 16px; border-bottom: 1px solid #292929; }
+.activity-history-search, .activity-history-module { display: flex; align-items: center; gap: 9px; min-height: 40px; padding: 0 11px; color: #9ca3af; background: #101010; border: 1px solid #333; border-radius: 9px; }
+.activity-history-search { flex: 1; min-width: 180px; }
+.activity-history-search input { width: 100%; min-width: 0; padding: 9px 0; color: #f4f4f5; background: transparent; border: 0; outline: 0; font: inherit; font-size: 13px; }
+.activity-history-search input::placeholder { color: #71717a; }
+.activity-history-module { position: relative; }
+.activity-history-module span { font-size: 12px; white-space: nowrap; }
+.activity-history-module select { max-width: 210px; padding: 8px 20px 8px 0; color: #e4e4e7; appearance: none; background: transparent; border: 0; outline: 0; font: inherit; font-size: 12px; }
+.activity-history-module option { color: #fff; background: #181818; }
+.activity-history-module > svg { position: absolute; right: 8px; pointer-events: none; }
+.activity-history-count { margin-left: auto; color: #9ca3af; font-size: 12px; white-space: nowrap; }
+.activity-history-list { display: flex; flex-direction: column; }
+.activity-history-row { display: flex; gap: 13px; padding: 17px 18px; border-bottom: 1px solid #252525; }
+.activity-history-icon { display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; color: #93c5fd; background: rgba(59, 130, 246, .12); border-radius: 50%; }
+.activity-delete .activity-history-icon { color: #fca5a5; background: rgba(239, 68, 68, .13); }
+.activity-history-main { flex: 1; min-width: 0; }
+.activity-history-title { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; color: #f4f4f5; font-size: 13px; }
+.activity-history-module-badge { padding: 3px 7px; color: #c4b5fd; background: rgba(139, 92, 246, .12); border-radius: 99px; font-size: 10px; }
+.activity-history-entity { margin-top: 5px; color: #d4d4d8; font-size: 13px; overflow-wrap: anywhere; }
+.activity-history-entity small { color: #71717a; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 10px; }
+.activity-history-meta { display: flex; gap: 15px; flex-wrap: wrap; margin-top: 7px; color: #8b8b94; font-size: 11px; }
+.activity-history-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.activity-history-details { margin-top: 9px; color: #9ca3af; font-size: 11px; }
+.activity-history-details summary { width: fit-content; cursor: pointer; color: #d4d4d8; }
+.activity-history-details > div { display: flex; gap: 5px 14px; flex-wrap: wrap; margin-top: 7px; }
+.activity-history-details p { margin: 0; }
+.activity-history-details b { color: #a1a1aa; font-weight: 600; }
+.activity-history-empty { padding: 42px 16px; color: #9ca3af; text-align: center; font-size: 13px; }
+.activity-history-more { display: block; width: calc(100% - 32px); margin: 14px 16px 0; padding: 11px; color: #e4e4e7; background: #1b1b1b; border: 1px solid #333; border-radius: 9px; cursor: pointer; }
+.activity-history-more:hover:not(:disabled) { background: #252525; }
+.activity-history-more:disabled { cursor: wait; opacity: .6; }
+.activity-history-footnote { margin: 13px 16px 16px; color: #71717a; font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 640px) {
+  .activity-history-toolbar { align-items: stretch; flex-wrap: wrap; }
+  .activity-history-search { flex-basis: 100%; }
+  .activity-history-module { flex: 1; justify-content: space-between; }
+  .activity-history-count { align-self: center; }
+  .activity-history-row { padding: 14px 12px; gap: 10px; }
+}
