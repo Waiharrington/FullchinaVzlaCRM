@@ -1838,7 +1838,7 @@ export function Comandas() {
     if (nextStatus === 'delivered' && !order.isPaid) {
       const confirmed = await confirmDialog({
         title: 'Entregar comanda sin cobrar',
-        message: 'Esta comanda aún no está pagada. Al entregarla puede generarse una cuenta por cobrar para el cliente. ¿Deseas continuar?',
+        message: 'Esta comanda aún no está pagada. Entregarla no la registrará como cuenta por cobrar; solo aparecerá allí si autorizas el método Crédito. ¿Deseas continuar?',
         confirmText: 'Sí, entregar',
       })
       if (!confirmed) return

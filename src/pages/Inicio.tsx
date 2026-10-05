@@ -10,7 +10,7 @@ import { DashboardQuickAccess, type DashboardShortcut } from '../components/Dash
 import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
-import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, isPersonalAccountOrder, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient } from '../lib/dataService'
+import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getPersonalAccountOptions, isCreditAuthorizedOrder, isPersonalAccountOrder, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type PersonalAccountOption } from '../lib/dataService'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
@@ -46,6 +46,7 @@ type DashboardCache = {
   productRanking: ProductRanking[]
   credits: Credit[]
   paymentMethods: PaymentMethodSales[]
+  personalAccounts: PersonalAccountOption[]
   productionStats: ProductionStats | null
 }
 let inicioCache: DashboardCache | null = null
@@ -76,6 +77,19 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 }
 const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '#10b981', '#8b5cf6']
 
+function paymentMethodLabel(method: string | null | undefined): string {
+  const raw = method?.trim() ?? ''
+  const normalized = raw.toLocaleLowerCase('es-VE').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const aliases: Record<string, string> = {
+    efectivo: 'Efectivo', 'pago movil': 'Pago móvil', 'pago móvil': 'Pago móvil',
+    'tarjeta / punto': 'Tarjeta / Punto', tarjeta: 'Tarjeta / Punto', 'punto de venta': 'Tarjeta / Punto',
+    transferencia: 'Transferencia', binance: 'Binance', 'binance pay': 'Binance Pay',
+    zelle: 'Zelle', otro: 'Otro', other: 'Otro', cash: 'Efectivo', card: 'Tarjeta / Punto',
+    mobile: 'Pago móvil', transfer: 'Transferencia',
+  }
+  return PAYMENT_METHOD_LABELS[normalized] ?? aliases[normalized] ?? (raw || 'Otro método')
+}
+
 function optimizedDashboardProductImage(imageUrl: string | null) {
   if (!imageUrl) return null
   const match = imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
@@ -94,6 +108,7 @@ export function Inicio() {
   const [productRanking, setProductRanking] = useState<ProductRanking[]>(initialCache?.productRanking ?? [])
   const [credits, setCredits] = useState<Credit[]>(initialCache?.credits ?? [])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(initialCache?.paymentMethods ?? [])
+  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccountOption[]>(initialCache?.personalAccounts ?? [])
   const [productionStats, setProductionStats] = useState<ProductionStats | null>(initialCache?.productionStats ?? null)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(!initialCache)
@@ -118,13 +133,14 @@ export function Inicio() {
       const dayStart = new Date(`${todayKey}T00:00:00-04:00`)
       const dayEnd = new Date(dayStart)
       dayEnd.setDate(dayEnd.getDate() + 1)
-      const [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult] = await Promise.allSettled([
+      const [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult, personalAccountsResult] = await Promise.allSettled([
         getTodayStats(),
         getOrdersWithItems(dayStart.toISOString(), dayEnd.toISOString(), true),
         getDailySales(days),
         getCredits(),
         getPaymentMethodSales(),
         getIngredients(),
+        getPersonalAccountOptions(),
       ])
 
       if (statsResult.status === 'fulfilled') setStats(statsResult.value)
@@ -133,6 +149,7 @@ export function Inicio() {
       if (creditsResult.status === 'fulfilled') setCredits(creditsResult.value)
       if (paymentResult.status === 'fulfilled') setPaymentMethods(paymentResult.value)
       if (ingredientsResult.status === 'fulfilled') setIngredients(ingredientsResult.value)
+      if (personalAccountsResult.status === 'fulfilled') setPersonalAccounts(personalAccountsResult.value)
 
       inicioCache = {
         stats: statsResult.status === 'fulfilled' ? statsResult.value : inicioCache?.stats ?? null,
@@ -141,13 +158,14 @@ export function Inicio() {
         productRanking: inicioCache?.productRanking ?? [],
         credits: creditsResult.status === 'fulfilled' ? creditsResult.value : inicioCache?.credits ?? [],
         paymentMethods: paymentResult.status === 'fulfilled' ? paymentResult.value : inicioCache?.paymentMethods ?? [],
+        personalAccounts: personalAccountsResult.status === 'fulfilled' ? personalAccountsResult.value : inicioCache?.personalAccounts ?? [],
         productionStats: inicioCache?.productionStats ?? null,
       }
       try {
         localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache }))
       } catch { /* El dashboard sigue funcionando si el almacenamiento está lleno o deshabilitado. */ }
 
-      const failedResults = [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult]
+      const failedResults = [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult, personalAccountsResult]
         .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
       if (failedResults.length > 0) {
         console.error('Errores parciales del dashboard:', failedResults.map(result => result.reason))
@@ -206,11 +224,39 @@ export function Inicio() {
 
   const totalSales = stats?.totalSales ?? 0
   const ordersCount = todayOrders.length
+  const ordersToday = useMemo(() =>
+    todayOrders.filter(o => dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
+    [todayOrders]
+  )
+  const paidOrdersToday = useMemo(() => ordersToday.filter(order => order.status === 'paid' && !isPersonalAccountOrder(order)), [ordersToday])
+  const creditOrdersToday = useMemo(() => ordersToday.filter(order => isCreditAuthorizedOrder(order) && !isPersonalAccountOrder(order)), [ordersToday])
   const pendingCredits = useMemo(
     () => credits.filter(c => c.status !== 'paid').sort((a, b) => b.balancePending - a.balancePending),
     [credits]
   )
   const totalPendingCredits = pendingCredits.reduce((s, c) => s + c.balancePending, 0)
+  const todayReceivableCredits = useMemo(() => {
+    const todayCreditOrderIds = new Set(creditOrdersToday.map(order => order.id))
+    return pendingCredits.filter(credit => credit.balancePending > 0 && credit.orderId && todayCreditOrderIds.has(credit.orderId))
+  }, [creditOrdersToday, pendingCredits])
+  const todayReceivables = todayReceivableCredits.reduce((sum, credit) => sum + credit.balancePending, 0)
+  const todayReceivableOrderCount = new Set(todayReceivableCredits.map(credit => credit.orderId)).size
+  const personalAccountTotals = useMemo(() => {
+    const accountNames = new Map(personalAccounts.map(account => [account.id, account.name]))
+    const totals = new Map<string, { name: string; total: number }>()
+    for (const order of ordersToday) {
+      for (const payment of order.payments) {
+        if (payment.method !== 'personal_account') continue
+        const id = payment.personalAccountId ?? 'unassigned'
+        const current = totals.get(id)
+        totals.set(id, {
+          name: id === 'unassigned' ? 'Cuenta personal sin asignar' : accountNames.get(id) ?? 'Cuenta personal',
+          total: (current?.total ?? 0) + payment.amount,
+        })
+      }
+    }
+    return [...totals.entries()].map(([id, account]) => ({ id, ...account })).filter(account => account.total > 0)
+  }, [ordersToday, personalAccounts])
   const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
   const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
   const hasAccess = useCallback((path: string) => canAccessModule(path, user?.role, user?.allowedModules), [user?.role, user?.allowedModules])
@@ -259,12 +305,6 @@ export function Inicio() {
   const dismissAllNotifications = () => {
     setDismissedNotificationIds(previous => new Set([...previous, ...visibleNotifications.map(notification => notification.id)]))
   }
-
-  const ordersToday = useMemo(() =>
-    todayOrders.filter(o => dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
-    [todayOrders]
-  )
-  const paidOrdersToday = useMemo(() => ordersToday.filter(order => order.status === 'paid' && !isPersonalAccountOrder(order)), [ordersToday])
 
   const paymentMethodDetails = useMemo(() => {
     if (!selectedPaymentMethod) return []
@@ -358,7 +398,7 @@ export function Inicio() {
 
   const paymentData = useMemo(() => {
     return {
-      labels: paymentMethods.map(item => PAYMENT_METHOD_LABELS[item.method] ?? item.method),
+      labels: paymentMethods.map(item => paymentMethodLabel(item.method)),
       datasets: [{ data: paymentMethods.map(item => item.total), backgroundColor: PAYMENT_COLORS, borderWidth: 0 }]
     }
   }, [paymentMethods])
@@ -475,7 +515,7 @@ export function Inicio() {
                 <MoneyWithBcv usd={stats?.avgTicket ?? 0} className="kpi-value" align="start" />
               </div>
             </div>
-            <button className="kpi-card red kpi-card-button" type="button" onClick={() => hasAccess('/clientes') && navigate('/clientes')} aria-label="Abrir cuentas por cobrar" disabled={!hasAccess('/clientes')}>
+            <button className="kpi-card red kpi-card-button" type="button" onClick={() => hasAccess('/clientes') && navigate('/clientes')} aria-label={`Abrir cuentas por cobrar por ${totalPendingCredits.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}; saldo pendiente de créditos registrados`} title="Saldo pendiente de créditos autorizados y créditos manuales. Una comanda sin cobrar solo cuenta como deuda al autorizarla con el método Crédito." disabled={!hasAccess('/clientes')}>
               <div className="kpi-icon-circle red"><CreditCard size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label"><span className="kpi-lbl-full">CUENTAS POR COBRAR</span><span className="kpi-lbl-short">POR COBRAR</span></span>
@@ -516,7 +556,7 @@ export function Inicio() {
           <div className="db-card-head db-payment-head">
             <div>
               <h3>Método de pago</h3>
-              <span className="db-card-support">Distribución de los cobros de hoy</span>
+                <span className="db-card-support">Cobros recibidos hoy · consumos internos y pendientes aparte</span>
             </div>
             <span className="db-payment-count">{paymentMethods.length} medio{paymentMethods.length === 1 ? '' : 's'}</span>
           </div>
@@ -543,10 +583,10 @@ export function Inicio() {
                 const share = paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0
                 const color = PAYMENT_COLORS[i % PAYMENT_COLORS.length]
                 return (
-                  <button key={m.method} type="button" className="pago-legend-row pago-legend-button" onClick={() => setSelectedPaymentMethod(m.method)} aria-label={`Ver cobros de ${PAYMENT_METHOD_LABELS[m.method] ?? m.method}`}>
+                  <button key={m.method || `unknown-${i}`} type="button" className="pago-legend-row pago-legend-button" onClick={() => setSelectedPaymentMethod(m.method)} aria-label={`Ver cobros de ${paymentMethodLabel(m.method)}`}>
                     <div className="pago-method">
                       <span className="pago-dot" style={{ background: color }} />
-                      <span className="pago-name">{PAYMENT_METHOD_LABELS[m.method] ?? m.method}</span>
+                      <span className="pago-name">{paymentMethodLabel(m.method)}</span>
                     </div>
                     <span className="pago-pct">{share}%</span>
                     <MoneyWithBcv usd={m.total} className="pago-amount" compact />
@@ -556,6 +596,26 @@ export function Inicio() {
                   </button>
                 )
               })}
+              {personalAccountTotals.length > 0 && (
+                <div className="db-payment-special-group" aria-label="Consumos de cuentas personales de hoy">
+                  <span className="db-payment-special-title">Cuentas personales · consumo interno</span>
+                  {personalAccountTotals.map(account => (
+                    <div className="db-payment-special-row" key={account.id}>
+                      <span className="pago-method"><span className="pago-dot" style={{ background: '#a855f7' }} /><span className="pago-name">{account.name}</span></span>
+                      <span className="db-payment-special-note">Interno</span>
+                      <MoneyWithBcv usd={account.total} className="pago-amount" compact />
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="db-payment-special-group" aria-label="Comandas con crédito pendiente de hoy">
+                <span className="db-payment-special-title">Crédito · comandas autorizadas de hoy</span>
+                <button type="button" className="db-payment-special-row db-payment-receivables" onClick={() => hasAccess('/comandas') && navigate('/comandas')} disabled={!hasAccess('/comandas')} title="Saldo restante de comandas autorizadas hoy con el método Crédito">
+                  <span className="pago-method"><span className="pago-dot" style={{ background: '#ef4444' }} /><span className="pago-name">Saldo a crédito</span></span>
+                  <span className="db-payment-special-note">{todayReceivableOrderCount} comanda{todayReceivableOrderCount === 1 ? '' : 's'}</span>
+                  <MoneyWithBcv usd={todayReceivables} className="pago-amount" compact />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -730,7 +790,7 @@ export function Inicio() {
             <header className="db-modal-header">
               <div>
                 <span className="db-modal-eyebrow">Cobros de hoy</span>
-                <h2 id="payment-detail-title">{PAYMENT_METHOD_LABELS[selectedPaymentMethod] ?? selectedPaymentMethod}</h2>
+                <h2 id="payment-detail-title">{paymentMethodLabel(selectedPaymentMethod)}</h2>
                 <p>Comandas cobradas con este método de pago.</p>
               </div>
               <button type="button" className="db-modal-close" aria-label="Cerrar detalle de pago" onClick={() => setSelectedPaymentMethod(null)}><X size={18} /></button>

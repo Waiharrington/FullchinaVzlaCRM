@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import jsPDF from 'jspdf'
 import {
@@ -15,7 +15,6 @@ import {
   getOrdersWithItems,
   createDailyClose,
   getDailyCloses,
-  isPersonalAccountOrder,
   type Credit as CreditType,
   type DailyCloseSummary,
   type TodayStats,
@@ -46,19 +45,16 @@ let masCache: {
   closes: DailyCloseSummary[]
   todayStats: TodayStats | null
   todayOrders: FullOrder[]
-  unpaidOrders: FullOrder[]
 } | null = null
 
 export function Mas() {
   const { user } = useAuth()
   const location = useLocation()
-  const navigate = useNavigate()
   const isCreditsModule = location.pathname === '/creditos'
   const [credits, setCredits] = useState<CreditType[]>(masCache?.credits ?? [])
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(masCache?.todayOrders ?? [])
-  const [unpaidOrders, setUnpaidOrders] = useState<FullOrder[]>(masCache?.unpaidOrders ?? [])
   const [loading, setLoading] = useState(!masCache)
   const [tab] = useState<Tab>(() => location.pathname === '/creditos' ? 'credits' : 'delivery')
   const [showNewCredit, setShowNewCredit] = useState(false)
@@ -72,7 +68,6 @@ export function Mas() {
   const [newIndefinite, setNewIndefinite] = useState(true)
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
-  const [unpaidOrderPage, setUnpaidOrderPage] = useState(1)
   const [activeCreditPage, setActiveCreditPage] = useState(1)
   const [settledCreditPage, setSettledCreditPage] = useState(1)
   const [selectedCredit, setSelectedCredit] = useState<CreditType | null>(null)
@@ -80,10 +75,6 @@ export function Mas() {
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [closing, setClosing] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
-
-  const openUnpaidOrder = (orderId: string, action: 'details' | 'payment') => {
-    navigate('/comandas', { state: { openOrderId: orderId, openOrderAction: action } })
-  }
 
   const closeNewCredit = () => {
     if (!showNewCredit || closingNewCredit) return
@@ -103,27 +94,24 @@ export function Mas() {
 
   const fetchAll = useCallback(async (silent = false) => {
     try {
-      const [creditsData, stats, ordersData, unpaidData, closesData] = await Promise.all([
+      const [creditsData, stats, ordersData, closesData] = await Promise.all([
         getCredits(),
         getTodayStats(),
         getOrdersWithItems(),
-        isCreditsModule ? getOrdersWithItems(undefined, undefined, true, ['open', 'confirmed', 'preparing', 'ready', 'delivered', 'completed']) : Promise.resolve([]),
         getDailyCloses(),
       ])
       const paidOrders = ordersData.filter(o => o.status === 'paid')
-      const unpaidOrderRows = unpaidData.filter(o => !isPersonalAccountOrder(o))
       setCredits(creditsData)
       setTodayStats(stats)
       setTodayOrders(paidOrders)
-      setUnpaidOrders(unpaidOrderRows)
       setCloses(closesData)
-      masCache = { credits: creditsData, closes: closesData, todayStats: stats, todayOrders: paidOrders, unpaidOrders: unpaidOrderRows }
+      masCache = { credits: creditsData, closes: closesData, todayStats: stats, todayOrders: paidOrders }
     } catch (e) {
       console.error('Error cargando datos:', e)
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [isCreditsModule])
+  }, [])
 
   useEffect(() => {
     fetchAll()
@@ -346,15 +334,7 @@ export function Mas() {
   const safeSettledCreditPage = Math.min(settledCreditPage, settledCreditPageCount)
   const settledCreditStart = (safeSettledCreditPage - 1) * CREDITS_PER_PAGE
   const pagedSettledCredits = settledCredits.slice(settledCreditStart, settledCreditStart + CREDITS_PER_PAGE)
-  const creditedOrderIds = new Set(credits.map(credit => credit.orderId).filter(Boolean))
-  const orderBalance = (order: FullOrder) => Math.max(0, order.totalAmount - order.payments.reduce((sum, payment) => sum + payment.amount, 0))
-  const uncreditedOrders = unpaidOrders.filter(order => !creditedOrderIds.has(order.id) && orderBalance(order) > 0)
-  const unpaidOrdersPerPage = 5
-  const unpaidOrderPageCount = Math.max(1, Math.ceil(uncreditedOrders.length / unpaidOrdersPerPage))
-  const safeUnpaidOrderPage = Math.min(unpaidOrderPage, unpaidOrderPageCount)
-  const unpaidOrderStart = (safeUnpaidOrderPage - 1) * unpaidOrdersPerPage
-  const pagedUncreditedOrders = uncreditedOrders.slice(unpaidOrderStart, unpaidOrderStart + unpaidOrdersPerPage)
-  const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0) + uncreditedOrders.reduce((sum, order) => sum + orderBalance(order), 0)
+  const totalPending = activeCredits.reduce((s, c) => s + c.balancePending, 0)
   const renderCreditPagination = (label: string, total: number, start: number, page: number, pageCount: number, onPageChange: (page: number) => void) => total > CREDITS_PER_PAGE ? (
     <div className="credit-unpaid-pagination" aria-label={label}>
       <span>Mostrando {start + 1}–{Math.min(start + CREDITS_PER_PAGE, total)} de {total}</span>
@@ -397,8 +377,8 @@ export function Mas() {
         <div className="card">
           <div className="card-header-row">
             <div>
-              <h2 className="card-title">Cuentas corrientes</h2>
-              <p className="card-subtitle">${totalPending.toFixed(2)} pendiente entre créditos y comandas sin cobrar</p>
+              <h2 className="card-title">Cuentas por cobrar</h2>
+              <p className="card-subtitle">${totalPending.toFixed(2)} pendiente en créditos autorizados y cuentas manuales</p>
             </div>
             <button className="btn-accent btn-sm" onClick={() => { setClosingNewCredit(false); setShowNewCredit(true) }}>
               + Nuevo crédito
@@ -448,52 +428,13 @@ export function Mas() {
           )}
 
           <div className="credits-list">
-            {activeCredits.length === 0 && settledCredits.length === 0 && uncreditedOrders.length === 0 ? (
+            {activeCredits.length === 0 && settledCredits.length === 0 ? (
               <EmptyState
                 title="No hay créditos registrados"
                 description="Los créditos de tus clientes aparecerán aquí."
               />
             ) : (
               <>
-                {uncreditedOrders.length > 0 && (
-                  <div className="credits-section">
-                    <span className="credits-section-title">Comandas por pagar · {uncreditedOrders.length}</span>
-                    {pagedUncreditedOrders.map(order => (
-                      <article key={order.id} className="credit-item credit-unpaid-order">
-                        <button type="button" className="credit-order-open" onClick={() => openUnpaidOrder(order.id, 'details')}>
-                          <span className="credit-header">
-                            <span className="credit-avatar">{order.customerName.trim().charAt(0).toUpperCase() || '?'}</span>
-                            <span className="credit-info">
-                              <span className="credit-client">{order.customerName || 'Cliente sin asociar'} · Comanda #{order.orderNumber}</span>
-                              <span className="credit-date">{new Date(order.createdAt).toLocaleString('es-VE')} · {order.fulfillmentStatus === 'preparing' ? 'En preparación' : order.fulfillmentStatus === 'ready' ? 'Lista' : order.fulfillmentStatus === 'delivered' ? 'Entregada' : 'Nueva'}</span>
-                            </span>
-                          </span>
-                          <span className="card-subtitle credit-unpaid-note">Pendiente de cobro; todavía no es un crédito autorizado.</span>
-                        </button>
-                        <div className="credit-actions credit-unpaid-actions">
-                          <span className="credit-amount-value text-danger">${orderBalance(order).toFixed(2)}</span>
-                          <button type="button" className="btn-accent btn-sm" onClick={() => openUnpaidOrder(order.id, 'payment')}>
-                            <CreditCard size={14} /> Registrar pago
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                    {uncreditedOrders.length > unpaidOrdersPerPage && (
-                      <div className="credit-unpaid-pagination" aria-label="Paginación de comandas por pagar">
-                        <span>Mostrando {unpaidOrderStart + 1}–{Math.min(unpaidOrderStart + unpaidOrdersPerPage, uncreditedOrders.length)} de {uncreditedOrders.length}</span>
-                        <div className="credit-unpaid-pagination-controls">
-                          <button type="button" onClick={() => setUnpaidOrderPage(safeUnpaidOrderPage - 1)} disabled={safeUnpaidOrderPage <= 1} aria-label="Página anterior">
-                            <ChevronLeft size={16} /> Anterior
-                          </button>
-                          <span>Página {safeUnpaidOrderPage} de {unpaidOrderPageCount}</span>
-                          <button type="button" onClick={() => setUnpaidOrderPage(safeUnpaidOrderPage + 1)} disabled={safeUnpaidOrderPage >= unpaidOrderPageCount} aria-label="Página siguiente">
-                            Siguiente <ChevronRight size={16} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
                 {activeCredits.length > 0 && (
                   <div className="credits-section">
                     <span className="credits-section-title">Activos · {activeCredits.length}</span>

@@ -11,7 +11,7 @@ import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
 import { confirmDialog } from '../components/ConfirmDialog'
 import {
-  getAllEmployees, createEmployee, updateEmployee, deleteEmployee,
+  getAllEmployees, createEmployee, updateEmployee, archiveEmployee,
   listAuthUsers, adminCreateUser, adminSetUserPassword, adminSetUserEmail,
   adminSetUserRole, adminSetUserActive, adminSetUserPin, getErrorMessage,
   adminDeleteUser,
@@ -254,11 +254,16 @@ export function Equipo() {
   }
 
   const handleDelete = async (emp: Employee) => {
-    const ok = await confirmDialog({ title: 'Eliminar empleado', message: `¿Eliminar a "${emp.fullName}" de la nómina?`, confirmText: 'Eliminar', danger: true })
+    const ok = await confirmDialog({
+      title: 'Archivar empleado',
+      message: `¿Archivar a "${emp.fullName}"? Dejará de aparecer para nuevas operaciones y nóminas. Sus pagos e historial se conservarán; podrás reactivarlo desde Estado.`,
+      confirmText: 'Archivar',
+      danger: true,
+    })
     if (!ok) return
     try {
-      await deleteEmployee(emp.id)
-      flash(`"${emp.fullName}" eliminado`)
+      await archiveEmployee(emp.id)
+      flash(`"${emp.fullName}" archivado; su historial se conservó`)
       await load()
     } catch (e) {
       setError(getErrorMessage(e, 'Error eliminando empleado'))
@@ -558,7 +563,7 @@ export function Equipo() {
                         <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
                           <Edit3 size={16} />
                         </button>
-                        <button className="icon-action-btn danger" title="Eliminar" onClick={() => handleDelete(emp)}>
+                        <button className="icon-action-btn danger" title="Archivar de nómina" onClick={() => handleDelete(emp)}>
                           <Trash2 size={16} />
                         </button>
                       </div>

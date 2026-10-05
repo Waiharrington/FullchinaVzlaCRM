@@ -125,6 +125,10 @@ export interface FullOrder {
 export const isPersonalAccountOrder = (order: Pick<FullOrder, 'payments'>): boolean =>
   order.payments.some(payment => payment.method === 'personal_account')
 
+/** Una comanda pendiente solo es deuda cuando se autorizó explícitamente como crédito. */
+export const isCreditAuthorizedOrder = (order: Pick<FullOrder, 'creditAuthorized'>): boolean =>
+  order.creditAuthorized === true
+
 export interface OrderItem {
   id: string
   sellableProductId: string
@@ -3322,10 +3326,14 @@ export async function updateEmployee(id: string, updates: {
   }
 }
 
-export async function deleteEmployee(id: string): Promise<void> {
+/**
+ * Archiva al empleado en vez de borrarlo físicamente. Nómina, delivery y
+ * asistencia dependen de su ID; conservarlo mantiene íntegro el historial.
+ */
+export async function archiveEmployee(id: string): Promise<void> {
   const { error } = await client()
     .from('employees')
-    .delete()
+    .update({ is_active: false })
     .eq('id', id)
   if (error) throw error
 }

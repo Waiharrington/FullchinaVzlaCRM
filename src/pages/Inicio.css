@@ -1689,10 +1689,13 @@
 }
 
 .db-payment-card .pago-method {
-  display: flex;
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
   align-items: center;
   gap: 0.5rem;
+  width: 100%;
   min-width: 0;
+  overflow: hidden;
 }
 
 .db-payment-card .pago-dot {
@@ -1702,8 +1705,12 @@
 }
 
 .db-payment-card .pago-name {
+  display: block;
+  min-width: 0;
+  width: 100%;
+  flex: 1 1 auto;
   overflow: hidden;
-  color: #d1d1d6;
+  color: #f0f1f4;
   font-size: 0.7rem;
   font-weight: 680;
   text-overflow: ellipsis;
@@ -1725,6 +1732,53 @@
 }
 .db-payment-card .pago-amount .money-usd { color: #fff; font-weight: 800; }
 .db-payment-card .pago-amount .money-ves { color: #a1a1aa; }
+
+.db-payment-special-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.db-payment-special-title {
+  padding: 0 0.2rem;
+  color: #8f8f98;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.db-payment-special-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(74px, auto);
+  align-items: center;
+  gap: 0.4rem 0.65rem;
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.022);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.db-payment-special-row .pago-method { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.db-payment-special-note {
+  padding: 0.18rem 0.38rem;
+  border-radius: 999px;
+  background: rgba(168, 85, 247, 0.1);
+  color: #c084fc;
+  font-size: 0.58rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.db-payment-receivables { cursor: pointer; }
+.db-payment-receivables:hover:not(:disabled) { border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.055); }
+.db-payment-receivables:disabled { opacity: 0.78; cursor: default; }
+.db-payment-receivables .db-payment-special-note { background: rgba(239, 68, 68, 0.1); color: #ff756c; }
 
 .pago-progress {
   grid-column: 1 / -1;
