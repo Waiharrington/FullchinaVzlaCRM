@@ -328,6 +328,7 @@ export function PublicMenu() {
   const [modifierLoadError, setModifierLoadError] = useState(false)
   const [modifierValidationError, setModifierValidationError] = useState('')
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
+  const [selectedCatalogExtras, setSelectedCatalogExtras] = useState<Record<string, number>>({})
   const [proteinSwapSourceId, setProteinSwapSourceId] = useState<string | null>(null)
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [scrollCategory, setScrollCategory] = useState<string | null>(null)
@@ -1402,6 +1403,7 @@ export function PublicMenu() {
       setDetailNotes('')
       setDetailModifierGroups([])
       setSelectedExtras({})
+      setSelectedCatalogExtras({})
       setModifierLoadError(false)
       setModifierValidationError('')
     }, 220)
@@ -1419,6 +1421,7 @@ export function PublicMenu() {
     setDetailQuantity(1)
     setDetailNotes('')
     setSelectedExtras(initialModifiers ?? {})
+    setSelectedCatalogExtras({})
     setModifierLoadError(false)
     setModifierValidationError('')
     const productId = initialVariant?.product.id
@@ -1500,6 +1503,8 @@ export function PublicMenu() {
     return () => { cancelled = true }
   }, [quickSelectedVariant])
   const detailExtrasTotal = calculateModifierTotal(detailModifierGroups, selectedExtras)
+  const catalogExtraProducts = extrasProducts.filter(product => !product.categories.includes('bebidas'))
+  const selectedCatalogExtrasTotal = catalogExtraProducts.reduce((sum, product) => sum + product.price * (selectedCatalogExtras[product.id] ?? 0), 0)
   const invalidModifierSelection = hasInvalidModifierSelection(detailModifierGroups, selectedExtras)
   const modifierSelectionError = getModifierSelectionError(detailModifierGroups, selectedExtras)
   const completeProteinSwap = (currentOptionId: string, replacementOptionId: string) => {
@@ -1528,6 +1533,25 @@ export function PublicMenu() {
       const extras = chosen.map(({ option, quantity }) => `${option.name}${quantity > 1 ? ` ×${quantity}` : ''}${option.price > 0 ? ` (+${money(option.price * quantity)})` : ''}`)
       const lineNotes = [extras.length ? `Extras: ${extras.join(', ')}` : '', detailNotes.trim()].filter(Boolean).join(' · ')
       const modifiers = chosen.map(({ option, quantity }) => ({ optionId: option.id, quantity: quantity ?? 1 }))
+      if (!editingCartLineKey) {
+        const mainKey = cartLineKey({ productId: selectedProduct.id, notes: lineNotes, modifiers })
+        const mainExisting = cart.find(item => cartLineKey(item) === mainKey)
+        const picked = catalogExtraProducts.filter(product => (selectedCatalogExtras[product.id] ?? 0) > 0)
+        const extraRows = picked.map(product => {
+          const notes = `Acompañamiento de ${formatProductTitle(selectedProduct.name)}`
+          const key = cartLineKey({ productId: product.id, notes, modifiers: [] })
+          return { key, quantity: detailQuantity * (selectedCatalogExtras[product.id] ?? 0), existing: cart.find(item => cartLineKey(item) === key) }
+        })
+        if ((mainExisting?.quantity ?? 0) + detailQuantity > 30 || extraRows.some(row => (row.existing?.quantity ?? 0) + row.quantity > 30)) {
+          setModifierValidationError('La cantidad de algún producto superaría el máximo de 30 unidades por línea.')
+          return
+        }
+        const newRows = Number(!mainExisting) + extraRows.filter(row => !row.existing).length
+        if (cart.length + newRows > 40) {
+          setModifierValidationError('Tu pedido llegó al máximo de 40 productos distintos. Quita uno para agregar estos extras.')
+          return
+        }
+      }
       if (editingCartLineKey) {
         const imageUrl = optimizedProductImage(selectedProduct.imageUrl) || undefined
         const editedLine = { productId: selectedProduct.id, productName: formatProductTitle(selectedProduct.name), price: selectedProduct.price + extrasPrice, quantity: detailQuantity, imageUrl, notes: lineNotes || undefined, modifiers }
@@ -1539,6 +1563,21 @@ export function PublicMenu() {
         setStep('confirm')
       } else {
         addProduct(selectedProduct, detailQuantity, lineNotes, extrasPrice, modifiers)
+        const pickedCatalogExtras = catalogExtraProducts.filter(product => (selectedCatalogExtras[product.id] ?? 0) > 0)
+        if (pickedCatalogExtras.length) {
+          setCart(current => {
+            let next = [...current]
+            for (const product of pickedCatalogExtras) {
+              const notes = `Acompañamiento de ${formatProductTitle(selectedProduct.name)}`
+              const quantity = detailQuantity * (selectedCatalogExtras[product.id] ?? 0)
+              const key = cartLineKey({ productId: product.id, notes, modifiers: [] })
+              const existing = next.find(item => cartLineKey(item) === key)
+              if (existing) next = next.map(item => cartLineKey(item) === key ? { ...item, quantity: item.quantity + quantity } : item)
+              else next.push({ productId: product.id, productName: formatProductTitle(product.name), price: product.price, quantity, imageUrl: optimizedProductImage(product.imageUrl) || undefined, notes, modifiers: [] })
+            }
+            return next
+          })
+        }
       }
     }
   }
@@ -3293,6 +3332,23 @@ export function PublicMenu() {
                   </div>
                 </div>
               )}
+              {!editingCartLineKey && !selectedProduct.categories.includes('bebidas') && catalogExtraProducts.length > 0 && (
+                <div className="ppdm-section ppdm-catalog-extras">
+                  <div className="ppdm-section-header"><h3>Agrega extras <small>· Opcional</small></h3><span>Se agregan al pedido</span></div>
+                  <div className="ppdm-catalog-extra-list">
+                    {catalogExtraProducts.map(product => {
+                      const quantity = selectedCatalogExtras[product.id] ?? 0
+                      return <div className="ppdm-catalog-extra" key={product.id}>
+                        <div><strong>{formatProductTitle(product.name)}</strong><span>{money(product.price)} c/u</span></div>
+                        {quantity === 0
+                          ? <button type="button" className="ppdm-catalog-extra-add" onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}>Agregar <Plus size={14} /></button>
+                          : <div className="ppdm-catalog-extra-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= 30} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(30, quantity + 1) }))}><Plus size={14} /></button></div>}
+                      </div>
+                    })}
+                  </div>
+                  <p className="ppdm-catalog-extra-hint">Cada extra se añadirá como su propio producto y se cobrará a su precio vigente.</p>
+                </div>
+              )}
               {loadingModifiers && detailModifierGroups.length === 0 ? (
                 <div className="ppdm-section ppdm-extras-section">
                   <div className="ppdm-section-header"><h3>Extras <small>(cargando…)</small></h3></div>
@@ -3383,7 +3439,7 @@ export function PublicMenu() {
                 <span>{detailQuantity}</span>
                 <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
               </div>
-              <button type="button" className="ppdm-add-btn" disabled={loadingModifiers || Boolean(modifierLoadError) || Boolean(modifierSelectionError) || invalidModifierSelection} onClick={addSelectedProduct}>Agregar · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal) * detailQuantity)}</span></button>
+              <button type="button" className="ppdm-add-btn" disabled={loadingModifiers || Boolean(modifierLoadError) || Boolean(modifierSelectionError) || invalidModifierSelection} onClick={addSelectedProduct}>Agregar · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)}</span></button>
             </footer>
           </section>
         </div>,
