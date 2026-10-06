@@ -39,6 +39,21 @@ const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 1
 const DELIVERY_EMPLOYEE_RATE = 0.70
 const isDeliveryItem = (item: FullOrder['items'][number]) => item.productName.trim().toLowerCase() === 'delivery'
 
+type FinanceTab = 'overview' | 'daily' | 'closing' | 'history'
+type HistoryDirection = 'in' | 'out' | 'transfer'
+interface FinancialHistoryEntry {
+  id: string
+  date: string
+  direction: HistoryDirection
+  category: string
+  concept: string
+  detail: string
+  account: string
+  amountUsd: number
+  nativeAmount: number
+  currency: 'USD' | 'VES'
+}
+
 const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
   cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
   mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#facc15', sub: 'Verificado con referencia' },
@@ -60,6 +75,7 @@ const OP_META: Record<string, { label: string; icon: React.ReactNode; color: str
   loan_payment: { label: 'Pago de préstamo', icon: <Check size={15} />, color: '#4ade80' },
   bank_fee: { label: 'Comisión bancaria', icon: <Percent size={15} />, color: '#f87171' },
   adjustment: { label: 'Ajuste', icon: <Pencil size={15} />, color: '#a1a1aa' },
+  payroll: { label: 'Nómina', icon: <Users size={15} />, color: '#fb7185' },
 }
 
 export function Finanzas() {
@@ -77,6 +93,9 @@ export function Finanzas() {
   const [savingPersonalAccount, setSavingPersonalAccount] = useState(false)
   const [personalAccountError, setPersonalAccountError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<FinanceTab>('overview')
+  const [historyFilter, setHistoryFilter] = useState<'all' | HistoryDirection>('all')
+  const [historyPage, setHistoryPage] = useState(1)
   const [period, setPeriod] = useState<Period>('semana')
   const [rangeStart, setRangeStart] = useState(isoDate(new Date()))
   const [rangeEnd, setRangeEnd] = useState(isoDate(new Date()))
@@ -133,22 +152,18 @@ export function Finanzas() {
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
-      const now = new Date()
-      const comparisonStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      const selectedStart = new Date(`${summaryMonth}-01T00:00:00`)
-      const dataStart = selectedStart < comparisonStart ? selectedStart : comparisonStart
       const [ords, exps, purchaseData, recipes, pay, ops, accts, personalAccts] = await Promise.all([
-        getOrdersWithItems(dataStart.toISOString()),
-        getExpenses(isoDate(dataStart)),
-        getPurchases().catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
+        getOrdersWithItems(undefined, undefined, true),
+        getExpenses(undefined, undefined, true),
+        getPurchases(true).catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
-        getFinancialOperations(isoDate(dataStart)).catch(() => []),
+        getFinancialOperations(undefined, undefined, true).catch(() => []),
         getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []),
       ])
       setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts); setPersonalAccounts(personalAccts)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
-  }, [summaryMonth])
+  }, [])
   useEffect(() => { void load() }, [load])
   useLiveDataRefresh('finanzas', () => load(true))
 
@@ -249,6 +264,98 @@ export function Finanzas() {
     setSummaryMonth(value)
     setSelectedSummaryDate(`${value}-01`)
   }
+
+  const historyEntries = useMemo<FinancialHistoryEntry[]>(() => {
+    const entries: FinancialHistoryEntry[] = []
+    const isInSelectedMonth = (date: string) => date.slice(0, 7) === summaryMonth
+    const accountById = new Map(accounts.map(account => [account.id, account]))
+
+    for (const order of orders) {
+      if (order.status !== 'paid') continue
+      for (const payment of order.payments) {
+        if (payment.method === 'personal_account' || !isInSelectedMonth(payment.createdAt || order.createdAt)) continue
+        const account = payment.accountId ? accountById.get(payment.accountId) : undefined
+        const currency = account?.currency ?? (payment.method === 'mobile' || payment.method === 'card' ? 'VES' : 'USD')
+        const rate = order.bcvRate || bcvRate || 0
+        entries.push({
+          id: `order-payment-${payment.id}`,
+          date: (payment.createdAt || order.createdAt).slice(0, 10),
+          direction: 'in', category: 'Cobro de venta',
+          concept: `Comanda #${order.orderNumber}`,
+          detail: `${order.customerName || 'Cliente general'} · ${PAY_META[payment.method]?.label ?? 'Otro método'}${payment.referenceNumber ? ` · Ref. ${payment.referenceNumber}` : ''}`,
+          account: account?.name ?? 'Cuenta sin asignar',
+          amountUsd: payment.amount,
+          nativeAmount: currency === 'VES' ? payment.amount * rate : payment.amount,
+          currency,
+        })
+      }
+    }
+
+    for (const expense of expenses) {
+      if (!isInSelectedMonth(expense.expenseDate)) continue
+      const expenseAccount = expense.accountId ? accountById.get(expense.accountId) : undefined
+      const expenseCurrency = expenseAccount?.currency ?? (expense.exchangeRate ? 'VES' : 'USD')
+      const expenseRate = expense.exchangeRate || bcvRate || 0
+      const expensePayments = expense.payments.length > 0 ? expense.payments : [{
+        id: expense.id, accountId: expense.accountId ?? '', accountName: expenseAccount?.name ?? '',
+        amountUsd: expense.amount, amount: expenseCurrency === 'VES' ? expense.amount * expenseRate : expense.amount,
+        currency: expenseCurrency, method: null, reference: null,
+      }]
+      for (const payment of expensePayments) entries.push({
+        id: `expense-${payment.id}`, date: expense.expenseDate, direction: 'out', category: 'Gasto',
+        concept: expense.concept,
+        detail: `${expense.category === 'fixed' ? 'Fijo' : expense.category === 'variable' ? 'Variable' : 'Otro'}${payment.method ? ` · ${payment.method}` : ''}${payment.reference ? ` · Ref. ${payment.reference}` : ''}`,
+        account: payment.accountName || 'Cuenta sin asignar', amountUsd: payment.amountUsd,
+        nativeAmount: payment.amount, currency: payment.currency,
+      })
+    }
+
+    for (const purchase of purchases) {
+      if (purchase.isVoided || !isInSelectedMonth(purchase.purchaseDate)) continue
+      const purchaseAccount = purchase.accountId ? accountById.get(purchase.accountId) : undefined
+      const purchaseCurrency = purchase.paymentCurrency ?? purchaseAccount?.currency ?? 'USD'
+      const purchaseRate = purchase.exchangeRate || bcvRate || 0
+      const purchasePayments = purchase.payments.length > 0 ? purchase.payments : (purchase.isPaid ? [{
+        id: purchase.id, accountId: purchase.accountId ?? '', accountName: purchase.accountName ?? '',
+        amountUsd: purchase.totalAmount,
+        amount: purchaseCurrency === 'VES' ? purchase.totalAmount * purchaseRate : purchase.totalAmount,
+        currency: purchaseCurrency, method: purchase.paymentMethod, reference: purchase.paymentReference,
+      }] : [])
+      for (const payment of purchasePayments) entries.push({
+        id: `purchase-${payment.id}`, date: purchase.purchaseDate, direction: 'out', category: 'Compra',
+        concept: purchase.supplierName || 'Compra a proveedor',
+        detail: `${purchase.invoiceNumber ? `Factura ${purchase.invoiceNumber}` : 'Compra de inventario'}${payment.method ? ` · ${payment.method}` : ''}${payment.reference ? ` · Ref. ${payment.reference}` : ''}`,
+        account: payment.accountName || purchase.accountName || 'Cuenta sin asignar', amountUsd: payment.amountUsd,
+        nativeAmount: payment.amount, currency: payment.currency,
+      })
+    }
+
+    for (const operation of operations) {
+      if (!isInSelectedMonth(operation.operationDate) || operation.type === 'receivable') continue
+      let direction: HistoryDirection
+      if (operation.type === 'transfer') direction = 'transfer'
+      else if (['receivable_collection', 'loan', 'tip'].includes(operation.type)) direction = 'in'
+      else direction = 'out'
+      entries.push({
+        id: `operation-${operation.id}`, date: operation.operationDate, direction,
+        category: direction === 'transfer' ? 'Traspaso interno' : OP_META[operation.type]?.label ?? 'Movimiento administrativo',
+        concept: operation.concept,
+        detail: [operation.fromAccount, operation.toAccount].filter(Boolean).join(' → ') || operation.counterparty || (operation.affectsProfit ? 'Afecta el resultado' : 'Movimiento de cuenta'),
+        account: operation.fromAccount || operation.toAccount || 'Cuenta sin asignar',
+        amountUsd: operation.amountUsd, nativeAmount: operation.originalAmount,
+        currency: operation.originalCurrency,
+      })
+    }
+
+    return entries.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
+  }, [accounts, bcvRate, expenses, operations, orders, purchases, summaryMonth])
+  const visibleHistoryEntries = useMemo(() => historyEntries.filter(entry => historyFilter === 'all' || entry.direction === historyFilter), [historyEntries, historyFilter])
+  const historyIncome = historyEntries.filter(entry => entry.direction === 'in').reduce((sum, entry) => sum + entry.amountUsd, 0)
+  const historyOutflow = historyEntries.filter(entry => entry.direction === 'out').reduce((sum, entry) => sum + entry.amountUsd, 0)
+  const historyPageSize = 15
+  const historyPageCount = Math.max(1, Math.ceil(visibleHistoryEntries.length / historyPageSize))
+  const safeHistoryPage = Math.min(historyPage, historyPageCount)
+  const pagedHistoryEntries = visibleHistoryEntries.slice((safeHistoryPage - 1) * historyPageSize, safeHistoryPage * historyPageSize)
 
   if (loading || !pls) return <PageSkeleton cards={4} rows={6} />
 
@@ -456,7 +563,7 @@ export function Finanzas() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><TrendingUp size={22} className="page-title-icon" /> Finanzas & Cierre Financiero Automático</h1>
-          <p className="page-subtitle">Consolidado sin planillas de Excel. Punto de equilibrio y rentabilidad real del negocio.</p>
+          <p className="page-subtitle">Ingresos, egresos, saldos y rentabilidad del negocio en un solo lugar.</p>
         </div>
         <div className="fin-head-actions">
           <span className="fin-period"><CalendarDays size={15} />
@@ -469,6 +576,21 @@ export function Finanzas() {
         </div>
       </header>
 
+      <div className="fin-tabs" role="tablist" aria-label="Secciones de Finanzas">
+        {([
+          ['overview', 'Resumen', <Wallet size={16} />],
+          ['daily', 'Operación diaria', <CalendarDays size={16} />],
+          ['closing', 'Cierre y movimientos', <ArrowRightLeft size={16} />],
+          ['history', 'Historial financiero', <Clock size={16} />],
+        ] as const).map(([tab, label, icon]) => (
+          <button key={tab} id={`fin-tab-${tab}`} type="button" role="tab" aria-selected={activeTab === tab} aria-controls="fin-active-panel" tabIndex={activeTab === tab ? 0 : -1} className={`fin-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => { setActiveTab(tab); setHistoryPage(1) }}>
+            {icon}<span>{label}</span>
+          </button>
+        ))}
+      </div>
+
+      <section id="fin-active-panel" role="tabpanel" aria-labelledby={`fin-tab-${activeTab}`} className="fin-tab-panel">
+      {activeTab === 'closing' && <>
       <div className="fin-status-row">
         <section className={`fin-data-status ${allChecksOk ? 'ready' : 'warning'}`}>
           <div className="fin-check-head">
@@ -523,8 +645,10 @@ export function Finanzas() {
           </div>
         </div>
       </div>
+      </>}
 
       {/* KPIs */}
+      {activeTab === 'overview' && <>
       <div className="fin-kpis management-workspace-metrics">
         <div className="fin-kpi green fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('sales')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('sales') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><ShoppingCart size={18} /></span>
@@ -600,7 +724,9 @@ export function Finanzas() {
         <button className="fin-card" onClick={() => setSelectedLedgerCurrency('VES')}><span className="sub">Cobros recibidos en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia contable · Ver control diario</small></button>
         <button className="fin-card" onClick={() => setSelectedLedgerCurrency('USD')}><span className="sub">Cobros recibidos en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios denominados en USD · Ver control diario</small></button>
       </div>
+      </>}
 
+      {activeTab === 'daily' && <>
       <section className="fin-card fin-daily-summary">
         <div className="fin-daily-head">
           <div><h2>Resumen diario de operación</h2><p className="sub">Ventas y egresos reales organizados como el control diario del negocio.</p></div>
@@ -624,7 +750,9 @@ export function Finanzas() {
           </aside>
         </div>
       </section>
+      </>}
 
+      {activeTab === 'closing' && <>
       <div className="fin-pay-ops-row">
       <div className="fin-card fin-pay-card">
             <div className="fin-pay-head">
@@ -692,6 +820,45 @@ export function Finanzas() {
         </div>
       </div>
       </div>
+      </>}
+
+      {activeTab === 'history' && <section className="fin-history">
+        <div className="fin-card fin-history-card">
+          <div className="fin-history-head">
+            <div><h2>Historial financiero</h2><p className="sub">Movimientos reales de dinero. Los traspasos entre cuentas aparecen aparte y no cuentan como ingreso ni egreso.</p></div>
+            <div className="fin-month-nav"><button type="button" onClick={() => { changeSummaryMonth(-1); setHistoryPage(1) }} aria-label="Mes anterior"><ChevronLeft size={16}/></button><StyledSelect className="fin-month-select" value={summaryMonth} onChange={event => { setSummaryMonth(event.target.value); setSelectedSummaryDate(`${event.target.value}-01`); setHistoryPage(1) }} aria-label="Mes del historial">{monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</StyledSelect><button type="button" onClick={() => { changeSummaryMonth(1); setHistoryPage(1) }} disabled={summaryMonth >= currentMonth} aria-label="Mes siguiente"><ChevronRight size={16}/></button></div>
+          </div>
+          <div className="fin-history-summary">
+            <div className="fin-history-total income"><span>Ingresos del mes</span><strong>{formatUsd(historyIncome)}</strong></div>
+            <div className="fin-history-total expense"><span>Egresos del mes</span><strong>{formatUsd(historyOutflow)}</strong></div>
+            <div className="fin-history-total"><span>Balance del mes</span><strong>{formatUsd(historyIncome - historyOutflow)}</strong></div>
+          </div>
+          <div className="fin-history-toolbar">
+            <span>{visibleHistoryEntries.length} movimiento{visibleHistoryEntries.length === 1 ? '' : 's'} · {monthOptions.find(option => option.value === summaryMonth)?.label ?? summaryMonth}</span>
+            <StyledSelect className="fin-history-filter" value={historyFilter} onChange={event => { setHistoryFilter(event.target.value as typeof historyFilter); setHistoryPage(1) }} aria-label="Filtrar movimientos">
+              <option value="all">Todos los movimientos</option><option value="in">Solo ingresos</option><option value="out">Solo egresos</option><option value="transfer">Traspasos internos</option>
+            </StyledSelect>
+          </div>
+          <div className="fin-history-table-wrap">
+            <table className="fin-history-table">
+              <thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto y detalle</th><th>Cuenta</th><th>Monto</th></tr></thead>
+              <tbody>{pagedHistoryEntries.map(entry => <tr key={entry.id}>
+                <td>{new Date(`${entry.date}T12:00:00`).toLocaleDateString('es-VE')}</td>
+                <td><span className={`fin-history-kind ${entry.direction}`}>{entry.direction === 'in' ? 'Ingreso' : entry.direction === 'out' ? 'Egreso' : 'Traspaso'}</span></td>
+                <td><strong>{entry.concept}</strong><small>{entry.category} · {entry.detail}</small></td>
+                <td>{entry.account}</td>
+                <td className={`fin-history-amount ${entry.direction}`}>{entry.direction === 'in' ? '+' : entry.direction === 'out' ? '−' : ''}{entry.currency === 'VES' ? formatVes(entry.nativeAmount) : formatUsd(entry.nativeAmount)}<small>{entry.currency === 'VES' ? `${formatUsd(entry.amountUsd)} equivalente` : 'USD'}</small></td>
+              </tr>)}</tbody>
+            </table>
+            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos este mes" description="Cuando se registren cobros, gastos, compras o movimientos, aparecerán aquí." />}
+          </div>
+          {visibleHistoryEntries.length > historyPageSize && <div className="fin-history-pagination">
+            <span>Mostrando {(safeHistoryPage - 1) * historyPageSize + 1}–{Math.min(safeHistoryPage * historyPageSize, visibleHistoryEntries.length)} de {visibleHistoryEntries.length}</span>
+            <div><button type="button" onClick={() => setHistoryPage(Math.max(1, safeHistoryPage - 1))} disabled={safeHistoryPage <= 1}><ChevronLeft size={15}/> Anterior</button><strong>Página {safeHistoryPage} de {historyPageCount}</strong><button type="button" onClick={() => setHistoryPage(Math.min(historyPageCount, safeHistoryPage + 1))} disabled={safeHistoryPage >= historyPageCount}>Siguiente <ChevronRight size={15}/></button></div>
+          </div>}
+        </div>
+      </section>}
+      </section>
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
         const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)

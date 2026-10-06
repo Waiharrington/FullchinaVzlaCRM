@@ -213,7 +213,7 @@ export interface ExpensePayment {
 
 export interface FinancialOperation {
   id: string
-  type: 'transfer' | 'receivable' | 'receivable_collection' | 'tip' | 'tip_distribution' | 'employee_advance' | 'loan' | 'loan_payment' | 'bank_fee' | 'adjustment'
+  type: 'transfer' | 'receivable' | 'receivable_collection' | 'tip' | 'tip_distribution' | 'employee_advance' | 'loan' | 'loan_payment' | 'bank_fee' | 'adjustment' | 'payroll'
   concept: string
   operationDate: string
   amountUsd: number
