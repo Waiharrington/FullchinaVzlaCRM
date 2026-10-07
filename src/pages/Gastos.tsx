@@ -6,6 +6,7 @@ import { StyledSelect } from '../components/StyledSelect'
 import { getExchangeRates } from '../lib/rates'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
+import { calculateMobilePaymentFee } from '../lib/paymentFees'
 import {
   Receipt, Store, Plus, TrendingDown, Wallet, Activity,
   Search, Filter, Download, HelpCircle, X, Trash2, Pencil,
@@ -17,7 +18,7 @@ import './Gastos.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type ExpenseType = 'fixed' | 'variable' | 'other'
-type ExpenseSourceView = { accountId: string; amount: number; currency: 'USD' | 'VES'; reference: string | null }
+type ExpenseSourceView = { accountId: string; amount: number; currency: 'USD' | 'VES'; reference: string | null; bankFeeAmount: number; method: string | null }
 type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string; accountId: string | null; exchangeRate: number | null; extra: string; payments: ExpenseSourceView[] }
 const CATEGORIES = [
   { v: 'supermarket', l: 'Supermercado' }, { v: 'delivery', l: 'Delivery' }, { v: 'pos_commission', l: 'Comisión' },
@@ -47,7 +48,7 @@ export function Gastos() {
   const [page, setPage] = useState(1)
 
   const [form, setForm] = useState(emptyForm)
-  const [expenseSources, setExpenseSources] = useState<Array<{ accountId: string; amount: string; reference: string }>>([{ accountId: '', amount: '', reference: '' }])
+  const [expenseSources, setExpenseSources] = useState<Array<{ accountId: string; amount: string; reference: string; mobileFee: boolean; feeAmount: string; feeEdited: boolean }>>([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])
   const [keepOpen, setKeepOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)
@@ -62,14 +63,14 @@ export function Gastos() {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
       const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
-      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference })) }
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount, method: pp.method })) }
     }))
   }, [])
 
   const openExpenseForm = () => {
     setEditingExpenseId(null)
     setForm(emptyForm)
-    setExpenseSources([{ accountId: '', amount: '', reference: '' }])
+    setExpenseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])
     setClosingExpense(false)
     setExpenseModalOpen(true)
   }
@@ -82,8 +83,8 @@ export function Gastos() {
       accountId: e.accountId ?? '', reference: e.reference ?? '', notes: e.extra ?? '',
     })
     setExpenseSources(e.payments.length > 0
-      ? e.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '' }))
-      : [{ accountId: e.accountId ?? '', amount: e.amountUsd ? String(Math.round(e.amountUsd * 100) / 100) : '', reference: e.reference ?? '' }])
+      ? e.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '', mobileFee: pp.method === 'pago_movil', feeAmount: String(pp.bankFeeAmount || (pp.method === 'pago_movil' ? calculateMobilePaymentFee(pp.amount) : 0)), feeEdited: pp.bankFeeAmount > 0 }))
+      : [{ accountId: e.accountId ?? '', amount: e.amountUsd ? String(Math.round(e.amountUsd * 100) / 100) : '', reference: e.reference ?? '', mobileFee: false, feeAmount: '0', feeEdited: false }])
     setClosingExpense(false)
     setExpenseModalOpen(true)
   }
@@ -121,7 +122,7 @@ export function Gastos() {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
       const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
-      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference })) }
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount, method: pp.method })) }
     }))).catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar los gastos'))
   }, [])
   useLiveDataRefresh('gastos', refreshExpenses)
@@ -174,8 +175,16 @@ export function Gastos() {
     const acc = accounts.find((a) => a.id === r.accountId)
     return !!acc && (parseFloat(r.amount) || 0) > 0
   })
-  const updateExpenseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string }>) =>
-    setExpenseSources((prev) => prev.map((row, idx) => idx === i ? { ...row, ...patch } : row))
+  const updateExpenseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string; mobileFee: boolean; feeAmount: string; feeEdited: boolean }>) =>
+    setExpenseSources((prev) => prev.map((row, idx) => {
+      if (idx !== i) return row
+      const next = { ...row, ...patch }
+      const acc = accounts.find((a) => a.id === next.accountId)
+      if (patch.accountId !== undefined) { next.mobileFee = methodForExpenseAccount(acc) === 'pago_movil'; next.feeEdited = false }
+      if (patch.mobileFee !== undefined) { next.feeEdited = false; next.feeAmount = patch.mobileFee ? String(calculateMobilePaymentFee(Number(next.amount.replace(',', '.')) || 0)) : '0' }
+      else if (patch.amount !== undefined && next.mobileFee && !next.feeEdited) next.feeAmount = String(calculateMobilePaymentFee(Number(next.amount.replace(',', '.')) || 0))
+      return next
+    }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -188,9 +197,9 @@ export function Gastos() {
     const notesJson = JSON.stringify({ category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', paymentMethod: firstSourceMethod, reference: firstRef, extra: form.notes.trim() })
     const payments = expenseSources.map((r) => {
       const acc = accounts.find((a) => a.id === r.accountId)!
-      return { accountId: r.accountId, amount: parseFloat(r.amount) || 0, currency: acc.currency, exchangeRate: acc.currency === 'VES' ? rate : null, method: methodForExpenseAccount(acc), reference: r.reference.trim() || null }
+      return { accountId: r.accountId, amount: parseFloat(r.amount) || 0, currency: acc.currency, exchangeRate: acc.currency === 'VES' ? rate : null, method: r.mobileFee ? 'pago_movil' : (methodForExpenseAccount(acc) === 'pago_movil' ? 'transferencia' : methodForExpenseAccount(acc)), reference: r.reference.trim() || null, bankFeeAmount: r.mobileFee ? (parseFloat(r.feeAmount.replace(',', '.')) || 0) : 0 }
     })
-    const viewPayments = payments.map((p) => ({ accountId: p.accountId, amount: p.amount, currency: p.currency, reference: p.reference }))
+    const viewPayments = payments.map((p) => ({ accountId: p.accountId, amount: p.amount, currency: p.currency, reference: p.reference, bankFeeAmount: p.bankFeeAmount, method: p.method }))
     const totalUsd = Math.round(expenseTotalUsd * 100) / 100
     try {
       if (editingExpenseId) {
@@ -213,7 +222,7 @@ export function Gastos() {
         })
         setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, date: saved.expenseDate, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments }, ...prev])
         flash(`Gasto de ${formatUsd(totalUsd)} registrado`)
-        if (keepOpen) { setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor }); setExpenseSources([{ accountId: '', amount: '', reference: '' }]) }
+        if (keepOpen) { setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor }); setExpenseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }]) }
         else {
           setForm(emptyForm)
           setClosingExpense(true)
@@ -384,7 +393,8 @@ export function Gastos() {
                 const acc = accounts.find((a) => a.id === row.accountId)
                 const isVes = acc?.currency === 'VES'
                 const amt = parseFloat(row.amount) || 0
-                const insufficient = acc ? amt > (acc.currentBalance ?? 0) : false
+                const fee = row.mobileFee ? (parseFloat(row.feeAmount.replace(',', '.')) || 0) : 0
+                const insufficient = acc ? amt + fee > (acc.currentBalance ?? 0) : false
                 return <div className="gst-src-row" key={i}>
                   <div className="gst-src-grid">
                     <div className="gst-field"><label>Cuenta {expenseSources.length > 1 ? `#${i + 1}` : ''}</label><StyledSelect value={row.accountId} onChange={(e) => updateExpenseSource(i, { accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
@@ -392,13 +402,14 @@ export function Gastos() {
                     <div className="gst-field"><label>Referencia</label><input value={row.reference} onChange={(e) => updateExpenseSource(i, { reference: e.target.value })} placeholder="N° operación" /></div>
                   </div>
                   <div className="gst-src-meta">
-                    {acc && <span className={insufficient ? 'gst-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsd(acc.currentBalance)}{amt > 0 ? ` · ${formatUsd(expenseSourceUsd(row))}` : ''}</span>}
+                    {acc && <span className={insufficient ? 'gst-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsd(acc.currentBalance)}{amt > 0 ? ` · ${formatUsd(expenseSourceUsd(row))}` : ''}{fee > 0 ? ` · débito con comisión ${formatVes(amt + fee)}` : ''}</span>}
                     <span className="gst-src-actions"><button type="button" className="gst-src-remove" onClick={() => setExpenseSources((prev) => prev.length > 1 ? prev.filter((_, idx) => idx !== i) : prev)} style={{ visibility: expenseSources.length > 1 ? 'visible' : 'hidden' }}>Quitar</button></span>
                   </div>
+                  {isVes && acc?.accountType !== 'cash' && <div className="gst-src-meta"><label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={row.mobileFee} onChange={(e) => updateExpenseSource(i, { mobileFee: e.target.checked })} /> Pago móvil · comisión bancaria</label>{row.mobileFee && <><label>Comisión (Bs) <input aria-label="Comisión Pago móvil en bolívares" type="number" min="0" step="any" value={row.feeAmount} onChange={(e) => updateExpenseSource(i, { feeAmount: e.target.value, feeEdited: true })} /></label><span>0,3% del pago, mínimo Bs. 14. Editable.</span></>}</div>}
                 </div>
               })}
               <div className="gst-src-foot">
-                <button type="button" className="gst-src-add" onClick={() => setExpenseSources((prev) => [...prev, { accountId: '', amount: '', reference: '' }])}><Plus size={14} /> Agregar cuenta</button>
+                <button type="button" className="gst-src-add" onClick={() => setExpenseSources((prev) => [...prev, { accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])}><Plus size={14} /> Agregar cuenta</button>
                 <span className="gst-src-total">Total: <strong>{formatUsd(Math.round(expenseTotalUsd * 100) / 100)}</strong></span>
               </div>
             </div>

@@ -14,6 +14,7 @@ import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, formatUsdPrecise, dateKeyInTimeZone } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
+import { calculateMobilePaymentFee } from '../lib/paymentFees'
 import {
   ShoppingBag, Plus, Trash2, CheckCircle2, AlertTriangle, Loader2, ShoppingCart, Ban,
   ClipboardList, Package, CalendarClock, Search, Download, Eye, X, Pencil,
@@ -59,7 +60,7 @@ export function ComprasReal() {
   const [items, setItems] = useState<ItemForm[]>([])
   const [costCurrency, setCostCurrency] = useState<PurchaseCostCurrency>('VES')
   const [unitCostDrafts, setUnitCostDrafts] = useState<Record<number, string>>({})
-  const [purchaseSources, setPurchaseSources] = useState<Array<{ accountId: string; amount: string; reference: string }>>([])
+  const [purchaseSources, setPurchaseSources] = useState<Array<{ accountId: string; amount: string; reference: string; mobileFee: boolean; feeAmount: string; feeEdited: boolean }>>([])
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null)
   const [editingOriginal, setEditingOriginal] = useState<Purchase | null>(null)
   const [saving, setSaving] = useState(false)
@@ -177,8 +178,16 @@ export function ComprasReal() {
     const acc = accounts.find((a) => a.id === r.accountId)
     return !!acc && (parseFloat(r.amount) || 0) > 0
   })
-  const updatePurchaseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string }>) =>
-    setPurchaseSources((prev) => prev.map((row, idx) => idx === i ? { ...row, ...patch } : row))
+  const updatePurchaseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string; mobileFee: boolean; feeAmount: string; feeEdited: boolean }>) =>
+    setPurchaseSources((prev) => prev.map((row, idx) => {
+      if (idx !== i) return row
+      const next = { ...row, ...patch }
+      const acc = accounts.find((a) => a.id === next.accountId)
+      if (patch.accountId !== undefined) { next.mobileFee = methodForAccount(acc) === 'pago_movil'; next.feeEdited = false }
+      if (patch.mobileFee !== undefined) { next.feeEdited = false; next.feeAmount = patch.mobileFee ? String(calculateMobilePaymentFee(Number(next.amount.replace(',', '.')) || 0)) : '0' }
+      else if (patch.amount !== undefined && next.mobileFee && !next.feeEdited) next.feeAmount = String(calculateMobilePaymentFee(Number(next.amount.replace(',', '.')) || 0))
+      return next
+    }))
   const fillPurchaseRemaining = (i: number) => {
     const acc = accounts.find((a) => a.id === purchaseSources[i]?.accountId)
     if (!acc) return
@@ -219,7 +228,7 @@ export function ComprasReal() {
     resetForm()
     setClosingForm(false)
     setItems([{ ingredientId: ingredients[0]?.id ?? '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0', stockLocation: 'operational' }])
-    setPurchaseSources([{ accountId: '', amount: '', reference: '' }])
+    setPurchaseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])
     setShowForm(true)
   }
 
@@ -235,8 +244,8 @@ export function ComprasReal() {
     setMarkPaid(p.isPaid)
     setItems(p.items.map((it) => ({ ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost), stockLocation: it.stockLocation })))
     setPurchaseSources(p.payments.length > 0
-      ? p.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '' }))
-      : [{ accountId: p.accountId ?? '', amount: '', reference: p.paymentReference ?? '' }])
+      ? p.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '', mobileFee: pp.method === 'pago_movil', feeAmount: String(pp.bankFeeAmount || (pp.method === 'pago_movil' ? calculateMobilePaymentFee(pp.amount) : 0)), feeEdited: pp.bankFeeAmount > 0 }))
+      : [{ accountId: p.accountId ?? '', amount: '', reference: p.paymentReference ?? '', mobileFee: false, feeAmount: '0', feeEdited: false }])
     setClosingForm(false)
     setShowForm(true)
   }
@@ -253,7 +262,7 @@ export function ComprasReal() {
     setSaving(true); setError('')
     const payments = markPaid ? purchaseSources.map((r) => {
       const acc = accounts.find((a) => a.id === r.accountId)!
-      return { accountId: r.accountId, amount: parseFloat(r.amount) || 0, currency: acc.currency, exchangeRate: acc.currency === 'VES' ? effectiveBcvRate : null, method: methodForAccount(acc), reference: r.reference.trim() || null }
+      return { accountId: r.accountId, amount: parseFloat(r.amount) || 0, currency: acc.currency, exchangeRate: acc.currency === 'VES' ? effectiveBcvRate : null, method: r.mobileFee ? 'pago_movil' : (methodForAccount(acc) === 'pago_movil' ? 'transferencia' : methodForAccount(acc)), reference: r.reference.trim() || null, bankFeeAmount: r.mobileFee ? (parseFloat(r.feeAmount.replace(',', '.')) || 0) : 0 }
     }) : undefined
     const payload = {
       supplierId, purchaseDate, invoiceNumber: invoiceNumber.trim() || undefined,
@@ -276,7 +285,7 @@ export function ComprasReal() {
             supplierId: original.supplierId, purchaseDate: original.purchaseDate,
             invoiceNumber: original.invoiceNumber ?? undefined, notes: original.notes ?? undefined,
             userId: user?.id ?? '', isPaid: original.isPaid, exchangeRate: original.exchangeRate,
-            payments: original.payments.length > 0 ? original.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, exchangeRate: pp.exchangeRate, method: pp.method, reference: pp.reference })) : undefined,
+            payments: original.payments.length > 0 ? original.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, exchangeRate: pp.exchangeRate, method: pp.method, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount })) : undefined,
             accountId: original.accountId, paymentCurrency: original.paymentCurrency, paymentMethod: original.paymentMethod, paymentReference: original.paymentReference,
             items: original.items.map((it) => ({ ingredientId: it.ingredientId, quantity: it.quantity, unitId: it.unitId, unitCost: it.unitCost, stockLocation: it.stockLocation })),
           }).catch(() => {})
@@ -516,7 +525,8 @@ export function ComprasReal() {
                 const acc = accounts.find((a) => a.id === row.accountId)
                 const isVes = acc?.currency === 'VES'
                 const amt = parseFloat(row.amount) || 0
-                const insufficient = acc ? amt > (acc.currentBalance ?? 0) : false
+                const fee = row.mobileFee ? (parseFloat(row.feeAmount.replace(',', '.')) || 0) : 0
+                const insufficient = acc ? amt + fee > (acc.currentBalance ?? 0) : false
                 return <div className="cmp-src-row" key={i}>
                   <div className="cmp-src-grid">
                     <div className="cmp-field"><label>Cuenta {purchaseSources.length > 1 ? `#${i + 1}` : ''} *</label><StyledSelect value={row.accountId} onChange={(e) => updatePurchaseSource(i, { accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
@@ -524,12 +534,13 @@ export function ComprasReal() {
                     <div className="cmp-field"><label>Referencia</label><input value={row.reference} onChange={(e) => updatePurchaseSource(i, { reference: e.target.value })} placeholder="N° operación" /></div>
                   </div>
                   <div className="cmp-src-meta">
-                    {acc && <span className={insufficient ? 'cmp-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsdPrecise(acc.currentBalance)}</span>}
+                    {acc && <span className={insufficient ? 'cmp-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsdPrecise(acc.currentBalance)}{fee > 0 ? ` · débito con comisión ${formatVes(amt + fee)}` : ''}</span>}
                     <span className="cmp-src-actions"><button type="button" className="cmp-src-link" onClick={() => fillPurchaseRemaining(i)}>Poner resto</button>{purchaseSources.length > 1 && <button type="button" className="cmp-src-remove" onClick={() => setPurchaseSources((prev) => prev.filter((_, idx) => idx !== i))}>Quitar</button>}</span>
                   </div>
+                  {isVes && acc?.accountType !== 'cash' && <div className="cmp-src-meta"><label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={row.mobileFee} onChange={(e) => updatePurchaseSource(i, { mobileFee: e.target.checked })} /> Pago móvil · comisión bancaria</label>{row.mobileFee && <><label>Comisión (Bs) <input aria-label="Comisión Pago móvil en bolívares" type="number" min="0" step="any" value={row.feeAmount} onChange={(e) => updatePurchaseSource(i, { feeAmount: e.target.value, feeEdited: true })} /></label><span>0,3% del pago, mínimo Bs. 14. Editable.</span></>}</div>}
                 </div>
               })}
-              <button type="button" className="cmp-src-add" onClick={() => setPurchaseSources((prev) => [...prev, { accountId: '', amount: '', reference: '' }])}><Plus size={14} /> Agregar cuenta</button>
+              <button type="button" className="cmp-src-add" onClick={() => setPurchaseSources((prev) => [...prev, { accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])}><Plus size={14} /> Agregar cuenta</button>
               <div className={`cmp-src-summary ${purchaseBalanced ? 'ok' : ''}`}><span>Asignado <strong>{formatUsdPrecise(purchaseAssignedUsd)}</strong> de {formatUsdPrecise(totalForm)}</span><span>{purchaseBalanced ? '✓ Cuadra' : purchaseRemainingUsd > 0 ? `Faltan ${formatUsdPrecise(purchaseRemainingUsd)}` : `Sobran ${formatUsdPrecise(-purchaseRemainingUsd)}`}</span></div>
             </div>}
 

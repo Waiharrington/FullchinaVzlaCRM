@@ -33,6 +33,10 @@ interface PL {
 }
 const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
 const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+function parseFinancialAmount(value: string): number {
+  const normalized = value.trim().replace(/\s/g, '').replace(/\.(?=.*[,])/g, '').replace(',', '.')
+  return normalized ? Number(normalized) : Number.NaN
+}
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
@@ -101,6 +105,7 @@ export function Finanzas() {
   const [rangeEnd, setRangeEnd] = useState(isoDate(new Date()))
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
   const [openingBalanceDraft, setOpeningBalanceDraft] = useState('')
+  const [openingBalanceError, setOpeningBalanceError] = useState('')
   const currentMonth = isoDate(new Date()).slice(0, 7)
   const [summaryMonth, setSummaryMonth] = useState(currentMonth)
   const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
@@ -415,11 +420,19 @@ export function Finanzas() {
     return { opening: closing - dayNet, sales, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing }
   }
   const saveOpeningBalance = async (account: FinancialAccount) => {
-    const value = Number(openingBalanceDraft)
-    if (!Number.isFinite(value)) return
-    await updateFinancialAccountOpeningBalance(account.id, value)
-    setAccounts(await getFinancialAccounts())
-    setEditingAccountId(null)
+    const value = parseFinancialAmount(openingBalanceDraft)
+    if (!Number.isFinite(value)) {
+      setOpeningBalanceError('Escribe un saldo válido, por ejemplo 77249,85.')
+      return
+    }
+    setOpeningBalanceError('')
+    try {
+      await updateFinancialAccountOpeningBalance(account.id, value)
+      setAccounts(await getFinancialAccounts())
+      setEditingAccountId(null)
+    } catch (error) {
+      setOpeningBalanceError(error instanceof Error ? error.message : 'No se pudo guardar el saldo inicial.')
+    }
   }
   const addPersonalAccount = async () => {
     const name = newPersonalAccountName.trim()
@@ -513,7 +526,7 @@ export function Finanzas() {
         <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
         <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
         <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
-        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} onChange={(e) => setOpeningBalanceDraft(e.target.value)} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => setEditingAccountId(null)} title="Cancelar"><X size={14}/></button></div> : <button className="fin-opening-btn" onClick={(event) => { event.stopPropagation(); setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)) }}><Pencil size={12}/> Saldo inicial</button>}
+        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} aria-label="Saldo inicial" aria-invalid={Boolean(openingBalanceError)} onChange={(e) => { setOpeningBalanceDraft(e.target.value); setOpeningBalanceError('') }} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => { setEditingAccountId(null); setOpeningBalanceError('') }} title="Cancelar"><X size={14}/></button>{openingBalanceError && <small className="fin-opening-error" role="alert">{openingBalanceError}</small>}</div> : <button className="fin-opening-btn" onClick={(event) => { event.stopPropagation(); setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)); setOpeningBalanceError('') }}><Pencil size={12}/> Saldo inicial</button>}
       </div>
     )
   }

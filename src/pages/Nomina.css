@@ -290,6 +290,25 @@
   font-size: 11px;
   line-height: 1.35;
 }
+.nom-payment-fill {
+  display: block;
+  margin-top: 5px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f4c77d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nom-payment-fill:disabled { opacity: .45; cursor: not-allowed; }
+.nom-payment-reference {
+  display: block;
+  margin-top: 5px;
+  color: #a1a1aa;
+  font-size: 11px;
+}
 
 .nom-field > input,
 .nom-field > select {

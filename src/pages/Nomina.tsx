@@ -7,6 +7,7 @@ import {
   type Employee, type PayrollPeriod, type PayrollEntry, type Advance, type ProductionBonusRecord, type PayrollPayment, type PayrollAdjustment, type FinancialAccount, type DeliveryAssignment,
 } from '../lib/dataService'
 import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
+import { calculateMobilePaymentFee } from '../lib/paymentFees'
 import { useRates } from '../context/rates-context'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
@@ -46,6 +47,9 @@ export function Nomina() {
   const [closingPayment, setClosingPayment] = useState(false)
   const [payEmp, setPayEmp] = useState(''); const [payAmt, setPayAmt] = useState(''); const [payAccount, setPayAccount] = useState(''); const [payRef, setPayRef] = useState(''); const [payNotes, setPayNotes] = useState('')
   const [payRate, setPayRate] = useState('')
+  const [payMobile, setPayMobile] = useState(false)
+  const [payFeeEdited, setPayFeeEdited] = useState(false)
+  const [payFeeAmount, setPayFeeAmount] = useState('')
   const [detailEmp, setDetailEmp] = useState<Employee | null>(null)
   const [detailMonth, setDetailMonth] = useState(dateKeyInTimeZone().slice(0, 7))
   const [adjustmentModal, setAdjustmentModal] = useState<{ employee: Employee; type: 'salary' | 'bonus' | 'discount'; amount: string; description: string; date: string } | null>(null)
@@ -104,6 +108,20 @@ export function Nomina() {
     return dates[0]?.slice(0, 7) ?? dateKeyInTimeZone().slice(0, 7)
   }
   const selectedAdvanceAccount = activeAccounts.find((account) => account.id === advAccount)
+  const selectedPayAccount = accounts.find((account) => account.id === payAccount)
+  const pendingPayUsd = Math.max(0, payrollBalanceByEmployee.get(payEmp) ?? 0)
+  const effectivePayRate = parseFloat(payRate.replace(',', '.')) || bcvRate || 0
+  const payAmountNumber = parseFloat(payAmt.replace(',', '.')) || 0
+  const suggestedPayFee = calculateMobilePaymentFee(payAmountNumber)
+  const payAmountReference = selectedPayAccount?.currency === 'VES'
+    ? effectivePayRate > 0 ? formatUsd(payAmountNumber / effectivePayRate) : null
+    : bcvRate && bcvRate > 0 ? formatVes(payAmountNumber * bcvRate) : null
+  const fillPayrollRemainder = () => {
+    if (!selectedPayAccount) return
+    const rate = selectedPayAccount.currency === 'VES' ? effectivePayRate : 1
+    if (selectedPayAccount.currency === 'VES' && rate <= 0) return
+    setPayAmt((selectedPayAccount.currency === 'VES' ? pendingPayUsd * rate : pendingPayUsd).toFixed(2))
+  }
 
   const submitAdvance = async (e: React.FormEvent) => {
     e.preventDefault(); if (!advEmp || !advAmt) return
@@ -118,14 +136,15 @@ export function Nomina() {
     e.preventDefault(); if (!payEmp || !payAmt) return
     const account = accounts.find((item) => item.id === payAccount)
     if (!account) { setError('Selecciona la cuenta desde la que saldrá el pago'); return }
-    const rate = account.currency === 'VES' ? (parseFloat(payRate) || bcvRate || 0) : 1
-    const amount = parseFloat(payAmt) || 0
+    const rate = account.currency === 'VES' ? (parseFloat(payRate.replace(',', '.')) || bcvRate || 0) : 1
+    const amount = parseFloat(payAmt.replace(',', '.')) || 0
     if (account.currency === 'VES' && rate <= 0) { setError('Indica la tasa BCV para registrar el pago en bolívares'); return }
-    if (amount > account.currentBalance + 0.01) { setError(`La cuenta seleccionada solo tiene ${account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)} disponible`); return }
+    const feeAmount = payMobile && account.currency === 'VES' && account.accountType !== 'cash' ? (payFeeEdited ? parseFloat(payFeeAmount.replace(',', '.')) || 0 : suggestedPayFee) : 0
+    if (amount + feeAmount > account.currentBalance + 0.01) { setError(`La cuenta seleccionada solo tiene ${account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)} disponible (incluyendo comisión)`); return }
     const usdAmount = account.currency === 'VES' ? amount / rate : amount
     const balance = payrollBalanceByEmployee.get(payEmp) ?? 0
     if (usdAmount <= 0 || usdAmount > balance + 0.01) { setError(`El pago no puede superar el saldo pendiente de ${formatUsd(Math.max(0, balance))}`); return }
-    try { await createPayrollPayment({ employeeId: payEmp, amount, currency: account.currency === 'VES' ? 'Bs' : 'USD', exchangeRate: rate, paymentAccount: account.name, accountId: account.id, reference: payRef.trim() || null, notes: payNotes.trim() || null }); closePayment(() => { setPayEmp(''); setPayAmt(''); setPayAccount(''); setPayRate(''); setPayRef(''); setPayNotes('') }); await load(); flash('Abono registrado') }
+    try { await createPayrollPayment({ employeeId: payEmp, amount, currency: account.currency === 'VES' ? 'Bs' : 'USD', exchangeRate: rate, paymentAccount: account.name, accountId: account.id, reference: payRef.trim() || null, notes: payNotes.trim() || null, paymentMethod: payMobile ? 'pago_movil' : 'transferencia', bankFeeAmount: feeAmount }); closePayment(() => { setPayEmp(''); setPayAmt(''); setPayAccount(''); setPayRate(''); setPayRef(''); setPayNotes(''); setPayMobile(false); setPayFeeEdited(false); setPayFeeAmount('') }); await load(); flash('Abono registrado') }
     catch (e) { setError(e instanceof Error ? e.message : 'Error registrando pago') }
   }
 
@@ -214,7 +233,7 @@ export function Nomina() {
                 <button type="button" className="nom-employee-action nom-employee-action--discount" onClick={() => cardAdjust('discount')}>− Descuento</button>
                 <button type="button" className="nom-employee-action" onClick={() => { setAdvEmp(emp.id); setAdvAmt(''); setAdvAccount(''); setAdvRate(''); setAdvDate(dateKeyInTimeZone()); setShowAdvance(true) }}>Adelanto</button>
                 <button type="button" className="nom-employee-action nom-employee-action--detail" onClick={() => { setDetailMonth(latestMovementMonth(emp.id)); setDetailEmp(emp) }}>Detalle <span aria-hidden="true">→</span></button>
-                <button type="button" className="nom-employee-pay" disabled={balance <= 0.005} onClick={() => { setPayEmp(emp.id); setPayAmt(''); setPayAccount(''); setPayRate(String(bcvRate || '')); setPayRef(''); setPayNotes(''); setShowPayment(true) }}>{balance > 0.005 ? `▣  Liquidar saldo (${formatUsd(balance)} USD)` : '✓  Al día · sin saldo pendiente'}</button>
+                <button type="button" className="nom-employee-pay" disabled={balance <= 0.005} onClick={() => { setPayEmp(emp.id); setPayAmt(''); setPayAccount(''); setPayRate(String(bcvRate || '')); setPayRef(''); setPayNotes(''); setPayMobile(false); setPayFeeEdited(false); setPayFeeAmount(''); setShowPayment(true) }}>{balance > 0.005 ? `▣  Liquidar saldo (${formatUsd(balance)} USD)` : '✓  Al día · sin saldo pendiente'}</button>
               </div>
             </article>
           })}
@@ -264,10 +283,11 @@ export function Nomina() {
             <div className="nom-field"><label>Empleado *</label><StyledSelect value={payEmp} onChange={(e) => setPayEmp(e.target.value)} required><option value="">Seleccionar...</option>{activeEmployees.map((e) => <option key={e.id} value={e.id}>{e.fullName} — {e.position || 'Empleado'}</option>)}</StyledSelect></div>
             <p className="nom-history-note">Saldo pendiente: {formatUsd(Math.max(0, payrollBalanceByEmployee.get(payEmp) ?? 0))}. Puedes registrar un abono y el resto seguirá pendiente.</p>
             <div className="nom-row2">
-              <div className="nom-field"><label>Monto {accounts.find((item) => item.id === payAccount)?.currency === 'VES' ? '(Bs)' : '($)'} *</label><NumberStepper step={0.01} min={0.01} value={payAmt} onChange={(v) => setPayAmt(v)} required /></div>
-              <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={payAccount} onChange={(e) => { const account = accounts.find((item) => item.id === e.target.value); setPayAccount(e.target.value); setPayRate(account?.currency === 'VES' ? String(bcvRate || '') : '') }} required><option value="">Seleccionar cuenta...</option>{accounts.filter((item) => item.isActive && ['USD', 'VES'].includes(item.currency)).map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'}</option>)}</StyledSelect></div>
+              <div className="nom-field"><label>Monto {selectedPayAccount?.currency === 'VES' ? '(Bs)' : '($)'} *</label><NumberStepper step={0.01} min={0.01} value={payAmt} onChange={(v) => setPayAmt(v)} required /><button type="button" className="nom-payment-fill" onClick={fillPayrollRemainder} disabled={!payEmp || !selectedPayAccount || (selectedPayAccount.currency === 'VES' && effectivePayRate <= 0)}>Poner resto</button>{payAmountReference && <small className="nom-payment-reference">Equivale a {payAmountReference} {selectedPayAccount?.currency === 'VES' ? 'al BCV indicado' : 'al BCV de hoy'}</small>}</div>
+              <div className="nom-field"><label>Cuenta de salida *</label><StyledSelect value={payAccount} onChange={(e) => { const account = accounts.find((item) => item.id === e.target.value); setPayAccount(e.target.value); setPayRate(account?.currency === 'VES' ? String(bcvRate || '') : ''); setPayMobile(account?.currency === 'VES' && account.accountType !== 'cash'); setPayFeeEdited(false); setPayFeeAmount('') }} required><option value="">Seleccionar cuenta...</option>{accounts.filter((item) => item.isActive && ['USD', 'VES'].includes(item.currency)).map((account) => <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : 'USD'}</option>)}</StyledSelect></div>
             </div>
-            {accounts.find((item) => item.id === payAccount)?.currency === 'VES' && <div className="nom-field"><label>Tasa BCV *</label><input type="number" inputMode="decimal" min="0" step="0.01" value={payRate} onChange={(event) => setPayRate(event.target.value)} required /></div>}
+            {selectedPayAccount?.currency === 'VES' && selectedPayAccount.accountType !== 'cash' && <div className="nom-field"><label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={payMobile} onChange={(e) => { setPayMobile(e.target.checked); setPayFeeEdited(false); setPayFeeAmount('') }} /> Pago móvil · comisión bancaria</label>{payMobile && <><label>Comisión (Bs)</label><input type="number" min="0" step="any" value={payFeeEdited ? payFeeAmount : String(suggestedPayFee)} onChange={(e) => { setPayFeeAmount(e.target.value); setPayFeeEdited(true) }} /><small className="nom-field-help">Calculada al 0,3%, mínimo Bs. 14. Puedes modificarla.</small></>}</div>}
+            {selectedPayAccount?.currency === 'VES' && <div className="nom-field"><label>Tasa BCV *</label><input type="number" inputMode="decimal" min="0" step="any" value={payRate} onChange={(event) => setPayRate(event.target.value)} required /><small className="nom-field-help">Tasa del día: {bcvRate ? formatVes(bcvRate) : 'no disponible'}</small></div>}
             <div className="nom-row2">
               <div className="nom-field"><label>Referencia</label><input value={payRef} onChange={(e) => setPayRef(e.target.value)} /></div>
               <div className="nom-field"><label>Notas</label><input value={payNotes} onChange={(e) => setPayNotes(e.target.value)} /></div>

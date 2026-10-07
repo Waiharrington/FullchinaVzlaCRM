@@ -209,6 +209,7 @@ export interface ExpensePayment {
   exchangeRate: number | null
   method: string | null
   reference: string | null
+  bankFeeAmount: number
 }
 
 export interface FinancialOperation {
@@ -372,6 +373,7 @@ export interface PurchasePayment {
   exchangeRate: number | null
   method: string | null
   reference: string | null
+  bankFeeAmount: number
 }
 
 export interface PurchaseItem {
@@ -546,6 +548,7 @@ export interface PayrollPayment {
   paymentDate: string
   reference: string | null
   notes: string | null
+  bankFeeAmount: number
 }
 
 export interface PayrollAdjustment {
@@ -2071,7 +2074,7 @@ export async function getExpenses(dateStart?: string, dateEnd?: string, allPages
   const rows: Record<string, unknown>[] = []
   let offset = 0
   for (;;) {
-    let query = client().from('expenses').select('*, expense_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, financial_accounts(name))')
+    let query = client().from('expenses').select('*, expense_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))')
     if (dateStart) query = query.gte('expense_date', dateStart)
     if (dateEnd) query = query.lte('expense_date', dateEnd)
     query = query.order('expense_date', { ascending: false }).order('id', { ascending: false })
@@ -2105,12 +2108,13 @@ export async function getExpenses(dateStart?: string, dateEnd?: string, allPages
       exchangeRate: pp.exchange_rate == null ? null : Number(pp.exchange_rate),
       method: (pp.method as string) ?? null,
       reference: (pp.reference as string) ?? null,
+      bankFeeAmount: Number(pp.bank_fee_amount ?? 0),
     })),
   }))
 }
 
 /** Reemplaza las filas de pago de un gasto (borra e inserta). */
-async function writeExpensePayments(expenseId: string, payments: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>): Promise<void> {
+async function writeExpensePayments(expenseId: string, payments: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null; bankFeeAmount?: number }>): Promise<void> {
   const sb = client()
   await sb.from('expense_payments').delete().eq('expense_id', expenseId)
   if (payments.length === 0) return
@@ -2118,7 +2122,7 @@ async function writeExpensePayments(expenseId: string, payments: Array<{ account
     expense_id: expenseId, account_id: s.accountId,
     amount: Math.round(s.amount * 100) / 100,
     amount_usd: Math.round((s.currency === 'VES' ? s.amount / (Number(s.exchangeRate) || 1) : s.amount) * 100) / 100,
-    currency: s.currency, exchange_rate: s.exchangeRate ?? null, method: s.method ?? null, reference: s.reference ?? null,
+    currency: s.currency, exchange_rate: s.exchangeRate ?? null, method: s.method ?? null, reference: s.reference ?? null, bank_fee_amount: Math.round((s.bankFeeAmount ?? 0) * 100) / 100,
   })))
   if (error) throw error
 }
@@ -2133,7 +2137,7 @@ export async function createExpense(params: {
   exchangeRate?: number | null
   userId: string
   /** Pago dividido: una fila por cuenta. Si se omite, se deriva del pago único. */
-  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null; bankFeeAmount?: number }>
 }): Promise<Expense> {
   const sb = client()
   const primary = params.payments && params.payments.length > 0 ? params.payments[0] : null
@@ -2160,7 +2164,7 @@ export async function createExpense(params: {
     createdAt: data.created_at as string,
     accountId: (data.account_id as string) ?? null,
     exchangeRate: data.exchange_rate == null ? null : Number(data.exchange_rate),
-    payments: (params.payments ?? []).map((p, i) => ({ id: String(i), accountId: p.accountId, accountName: '', amount: p.amount, amountUsd: p.currency === 'VES' ? p.amount / (Number(p.exchangeRate) || 1) : p.amount, currency: p.currency, exchangeRate: p.exchangeRate ?? null, method: p.method ?? null, reference: p.reference ?? null })),
+    payments: (params.payments ?? []).map((p, i) => ({ id: String(i), accountId: p.accountId, accountName: '', amount: p.amount, amountUsd: p.currency === 'VES' ? p.amount / (Number(p.exchangeRate) || 1) : p.amount, currency: p.currency, exchangeRate: p.exchangeRate ?? null, method: p.method ?? null, reference: p.reference ?? null, bankFeeAmount: p.bankFeeAmount ?? 0 })),
   }
 }
 
@@ -3934,7 +3938,7 @@ export async function getPayrollPayments(allPages = false): Promise<PayrollPayme
   let offset = 0
   for (;;) {
     let query = client().from('payroll_payments')
-    .select('id,employee_id,payroll_period_id,amount,currency,exchange_rate,payment_account,account_id,payment_date,reference,notes,employees(full_name)')
+    .select('id,employee_id,payroll_period_id,amount,currency,exchange_rate,payment_account,account_id,payment_date,reference,notes,bank_fee_amount,employees(full_name)')
     .order('payment_date', { ascending: false }).order('created_at', { ascending: false })
     if (allPages) query = query.range(offset, offset + 499)
     const { data, error } = await query
@@ -3951,16 +3955,16 @@ export async function getPayrollPayments(allPages = false): Promise<PayrollPayme
     exchangeRate: r.exchange_rate == null ? null : Number(r.exchange_rate),
     paymentAccount: (r.payment_account as string) ?? null, accountId: (r.account_id as string) ?? null,
     payrollPeriodId: (r.payroll_period_id as string) ?? null, paymentDate: r.payment_date as string,
-    reference: (r.reference as string) ?? null, notes: (r.notes as string) ?? null,
+    reference: (r.reference as string) ?? null, notes: (r.notes as string) ?? null, bankFeeAmount: Number(r.bank_fee_amount ?? 0),
   }))
 }
 
 export async function createPayrollPayment(params: {
   employeeId: string; amount: number; currency?: 'USD' | 'Bs'; exchangeRate?: number | null
-  paymentAccount?: string | null; accountId?: string | null; paymentDate?: string; reference?: string | null; notes?: string | null
+  paymentAccount?: string | null; accountId?: string | null; paymentDate?: string; reference?: string | null; notes?: string | null; paymentMethod?: string | null; bankFeeAmount?: number
 }): Promise<void> {
   if (params.accountId) {
-    const { error } = await client().rpc('fn_record_payroll_card_payment', {
+    const { error } = await client().rpc('fn_record_payroll_card_payment_with_fee', {
       p_employee_id: params.employeeId,
       p_amount: params.amount,
       p_account_id: params.accountId,
@@ -3968,6 +3972,8 @@ export async function createPayrollPayment(params: {
       p_payment_date: params.paymentDate ?? dateKeyInTimeZone(),
       p_reference: params.reference ?? null,
       p_notes: params.notes ?? null,
+      p_payment_method: params.paymentMethod ?? null,
+      p_bank_fee_amount: params.bankFeeAmount ?? 0,
     })
     if (error) throw error
     return
@@ -3976,7 +3982,7 @@ export async function createPayrollPayment(params: {
     employee_id: params.employeeId, amount: params.amount, currency: params.currency ?? 'USD',
     exchange_rate: params.exchangeRate ?? null, payment_account: params.paymentAccount ?? null,
     payment_date: params.paymentDate ?? dateKeyInTimeZone(), reference: params.reference ?? null,
-    notes: params.notes ?? null,
+    notes: params.notes ?? null, payment_method: params.paymentMethod ?? null, bank_fee_amount: params.bankFeeAmount ?? 0,
   })
   if (error) throw error
 }
@@ -4362,7 +4368,7 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       suppliers(name),
       financial_accounts(name,currency),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, stock_location, ingredients(name), units(symbol)),
-      purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, financial_accounts(name))
+      purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))
     `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
     if (allPages) query = query.range(offset, offset + 499)
     const { data, error } = await query
@@ -4415,6 +4421,7 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
         exchangeRate: pp.exchange_rate == null ? null : Number(pp.exchange_rate),
         method: (pp.method as string) ?? null,
         reference: (pp.reference as string) ?? null,
+        bankFeeAmount: Number(pp.bank_fee_amount ?? 0),
       })),
     }
   })
@@ -4505,7 +4512,7 @@ export async function createPurchase(params: {
   paymentReference?: string | null
   exchangeRate?: number | null
   /** Pago dividido: una fila por cuenta. Si se omite, se deriva del pago único. */
-  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null }>
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null; bankFeeAmount?: number }>
   items: Array<{
     ingredientId: string
     quantity: number
@@ -4550,7 +4557,7 @@ export async function createPurchase(params: {
         purchase_id: purchase.id, account_id: s.accountId,
         amount: Math.round(s.amount * 100) / 100,
         amount_usd: Math.round((s.currency === 'VES' ? s.amount / (Number(s.exchangeRate) || 1) : s.amount) * 100) / 100,
-        currency: s.currency, exchange_rate: s.exchangeRate ?? null, method: s.method ?? null, reference: s.reference ?? null,
+        currency: s.currency, exchange_rate: s.exchangeRate ?? null, method: s.method ?? null, reference: s.reference ?? null, bank_fee_amount: Math.round((s.bankFeeAmount ?? 0) * 100) / 100,
       })),
     )
     if (payErr) throw payErr
