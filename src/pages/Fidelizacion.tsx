@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { getCustomers, registerCustomerVisit, type Customer } from '../lib/dataService'
+import { getLoyaltyCustomers, type Customer } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
-import { Trophy, Award, Gift, Star, CheckCircle2, UserPlus, Flame, Plus, Medal, Search, X, ChevronLeft, ChevronRight, Phone } from 'lucide-react'
+import { Trophy, Award, Gift, Star, Flame, Medal, Search, X, ChevronLeft, ChevronRight, Phone, KeyRound, CheckCircle2, Settings2 } from 'lucide-react'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { supabase } from '../lib/supabase'
 import './Fidelizacion.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
-const CYCLE = 10 // visitas por premio
 const PAGE_SIZE = 8
+type Account = { customer_id: string; customer_name: string; identification: string | null; phone: string | null; email: string | null; status: 'active' | 'disabled' }
 
 const AVATAR_COLORS = ['#E31B2B', '#FF6259', '#FF9E1B', '#FFD23F', '#b91c1c', '#c2410c']
 
@@ -25,23 +26,36 @@ function initialsFor(name: string): string {
 export function Fidelizacion() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
-  const [visitNotice, setVisitNotice] = useState('')
-  const [noticeError, setNoticeError] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [visitsPerReward, setVisitsPerReward] = useState(10)
+  const [rewardDescription, setRewardDescription] = useState('Plato o ración gratis')
+  const [adminNotice, setAdminNotice] = useState('')
 
   const topVisitsCustomers = [...customers].sort((a, b) => b.totalVisits - a.totalVisits)
-  const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || customers[0]
+  const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || customers[0] || {
+    id: '', name: '', identification: '', phone: '', address: '', email: '', totalVisits: 0,
+    rewardsUnlocked: 0, lastVisit: '', favoriteProduct: '', birthday: '', createdAt: '', isActive: true,
+  }
 
   const refreshCustomers = useCallback(async () => {
     try {
-      const data = await getCustomers()
+      const [data, accountResult, settingsResult] = await Promise.all([
+        getLoyaltyCustomers(),
+        supabase?.rpc('fn_admin_customer_accounts'),
+        supabase?.rpc('fn_admin_get_loyalty_settings'),
+      ])
       setCustomers(data)
       setSelectedCustomerId(current => current || data[0]?.id || '')
+      if (accountResult?.data) setAccounts(accountResult.data as Account[])
+      if (settingsResult?.data?.[0]) {
+        setVisitsPerReward(Number(settingsResult.data[0].visits_per_reward))
+        setRewardDescription(String(settingsResult.data[0].reward_description))
+      }
     } catch (error) {
-      setNoticeError(true)
-      setVisitNotice(error instanceof Error ? error.message : 'No se pudieron cargar los clientes')
+      setAdminNotice(error instanceof Error ? error.message : 'No se pudieron cargar los datos de fidelización.')
     } finally {
       setLoading(false)
     }
@@ -53,18 +67,18 @@ export function Fidelizacion() {
     setPage(1)
   }, [searchTerm])
 
-  const handleAddVisit = async (customerId: string) => {
-    try {
-      const updated = await registerCustomerVisit(customerId)
-      setCustomers(prev => prev.map(c => c.id === customerId ? updated : c))
-      setNoticeError(false)
-      setVisitNotice(`¡Nueva visita registrada para ${updated.name}! (${updated.totalVisits} visitas en total)`)
-      setTimeout(() => setVisitNotice(''), 4000)
-    } catch (error) {
-      setNoticeError(true)
-      setVisitNotice(error instanceof Error ? error.message : 'No se pudo registrar la visita')
-      setTimeout(() => setVisitNotice(''), 5000)
-    }
+  const saveLoyaltySettings = async () => {
+    const { error } = await supabase!.rpc('fn_admin_set_loyalty_settings', { p_visits: visitsPerReward, p_reward_description: rewardDescription })
+    setAdminNotice(error ? error.message : 'Configuración de fidelización guardada.')
+    if (!error) window.setTimeout(() => setAdminNotice(''), 4000)
+  }
+
+  const resetCustomerPassword = async (account: Account) => {
+    const nextPassword = window.prompt(`Nueva contraseña para ${account.customer_name} (mínimo 8 caracteres):`)
+    if (!nextPassword) return
+    const { data, error } = await supabase!.functions.invoke('customer-auth', { body: { action: 'admin-reset-password', customer_id: account.customer_id, new_password: nextPassword } })
+    setAdminNotice(error ? (data?.message || error.message) : `Contraseña actualizada para ${account.customer_name}.`)
+    window.setTimeout(() => setAdminNotice(''), 5000)
   }
 
   const rankedCustomers = useMemo(
@@ -87,27 +101,18 @@ export function Fidelizacion() {
 
   if (loading) return <PageSkeleton cards={4} rows={5} hasTable={false} />
 
-  if (!selectedCustomer) {
-    return (
-      <div className="fidel-page" key="fidel-empty">
-        <div className="fidel-empty">
-          {visitNotice || 'No hay clientes disponibles todavía.'}
-        </div>
-      </div>
-    )
-  }
-
-  const stampsInCycle = selectedCustomer.totalVisits % CYCLE
-  const progressPct = (stampsInCycle / CYCLE) * 100
+  const loyaltyCycle = visitsPerReward
+  const stampsInCycle = selectedCustomer.totalVisits % loyaltyCycle
+  const progressPct = (stampsInCycle / loyaltyCycle) * 100
   const totalVisitsAll = customers.reduce((s, c) => s + c.totalVisits, 0)
   const totalRewards = customers.reduce((s, c) => s + c.rewardsUnlocked, 0)
-  const vipCount = customers.filter(c => c.totalVisits >= 10).length
+  const vipCount = customers.filter(c => c.totalVisits >= loyaltyCycle).length
 
   const METRICS = [
     { icon: <Trophy size={22} />, cls: 'gold', label: 'Mejor Cliente del Mes', value: topVisitsCustomers[0]?.name.split(' ')[0] ?? '—', sub: `${topVisitsCustomers[0]?.totalVisits ?? 0} visitas recurrentes` },
     { icon: <Flame size={22} />, cls: 'fire', label: 'Visitas Totales', value: totalVisitsAll.toLocaleString('es-VE'), sub: 'Acumuladas por clientes' },
     { icon: <Gift size={22} />, cls: 'violet', label: 'Recompensas Entregadas', value: totalRewards.toLocaleString('es-VE'), sub: 'Platos o raciones gratis' },
-    { icon: <Star size={22} />, cls: 'red', label: 'Clientes VIP (≥ 10)', value: vipCount.toLocaleString('es-VE'), sub: 'Criterio de fidelización' },
+    { icon: <Star size={22} />, cls: 'red', label: `Clientes VIP (≥ ${loyaltyCycle})`, value: vipCount.toLocaleString('es-VE'), sub: 'Criterio de fidelización' },
   ]
 
   const medal = (idx: number) => (idx === 0 ? <Trophy size={14} /> : idx === 1 ? <Medal size={14} /> : idx === 2 ? <Award size={14} /> : null)
@@ -170,8 +175,8 @@ export function Fidelizacion() {
               </div>
             )}
             {pagedCustomers.map(({ cust, rank }) => {
-              const stamps = cust.totalVisits % CYCLE
-              const pct = (stamps / CYCLE) * 100
+              const stamps = cust.totalVisits % loyaltyCycle
+              const pct = (stamps / loyaltyCycle) * 100
               return (
                 <button
                   type="button"
@@ -194,16 +199,6 @@ export function Fidelizacion() {
                     <small>visitas</small>
                   </span>
                   <span className="fidel-row-reward"><Gift size={13} /> {cust.rewardsUnlocked}</span>
-                  <span
-                    className="fidel-row-add"
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); setSelectedCustomerId(cust.id); handleAddVisit(cust.id) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setSelectedCustomerId(cust.id); handleAddVisit(cust.id) } }}
-                    title="Registrar una visita"
-                  >
-                    <Plus size={15} />
-                  </span>
                 </button>
               )
             })}
@@ -239,18 +234,12 @@ export function Fidelizacion() {
               <div className="loyalty-award"><img src="/icons/wok-mark.png" alt="" /></div>
             </div>
 
-            {visitNotice && (
-              <div className={`loyalty-notice ${noticeError ? 'error' : ''}`}>
-                <CheckCircle2 size={15} /> <span>{visitNotice}</span>
-              </div>
-            )}
-
             <div className="loyalty-perforation" aria-hidden />
 
             <div className="loyalty-progress-block">
               <div className="loyalty-progress-top">
                 <span>Sellos de visita</span>
-                <strong>{stampsInCycle} / {CYCLE}</strong>
+                <strong>{stampsInCycle} / {loyaltyCycle}</strong>
               </div>
               <div className="loyalty-progress-bar">
                 <div className="loyalty-progress-fill" style={{ width: `${progressPct}%` }} />
@@ -258,7 +247,7 @@ export function Fidelizacion() {
             </div>
 
             <div className="loyalty-stamps">
-              {Array.from({ length: CYCLE }).map((_, i) => {
+              {Array.from({ length: loyaltyCycle }).map((_, i) => {
                 const isStamped = i < stampsInCycle
                 return (
                   <div key={i} className={`loyalty-stamp ${isStamped ? 'on' : ''}`}>
@@ -274,16 +263,23 @@ export function Fidelizacion() {
                 <span className="loyalty-reward-value">
                   {selectedCustomer.rewardsUnlocked > 0
                     ? <><Gift size={14} /> {selectedCustomer.rewardsUnlocked} ración(es) gratis</>
-                    : `Faltan ${CYCLE - stampsInCycle} visita(s) para el próximo premio`}
+                    : `Faltan ${loyaltyCycle - stampsInCycle} visita(s) para el próximo premio`}
                 </span>
               </div>
-              <button className="loyalty-mark-btn" onClick={() => handleAddVisit(selectedCustomer.id)}>
-                <UserPlus size={15} /> Marcar visita
-              </button>
+              <span className="loyalty-automatic-note"><CheckCircle2 size={14} /> Visitas automáticas al pagar una comanda con comida</span>
             </div>
           </div>
         </div>
       </div>
+
+      <section className="fidel-accounts-panel">
+        <header><div><h2><Settings2 size={19} /> Programa de fidelización</h2><p>Configura el premio y administra las cuentas de clientes registrados en la página de pedidos.</p></div></header>
+        <div className="fidel-loyalty-settings"><label>Visitas para ganar un premio<input type="number" min={1} max={50} value={visitsPerReward} onChange={e => setVisitsPerReward(Number(e.target.value))} /></label><label>Premio<input maxLength={120} value={rewardDescription} onChange={e => setRewardDescription(e.target.value)} /></label><button type="button" onClick={() => void saveLoyaltySettings()}>Guardar programa</button></div>
+        {adminNotice && <p className="fidel-admin-notice">{adminNotice}</p>}
+        <div className="fidel-accounts-heading"><h3>Cuentas Mi perfil</h3><span>{accounts.length} registradas</span></div>
+        <div className="fidel-accounts-list">{accounts.length === 0 ? <p>Aún no hay cuentas registradas.</p> : accounts.map(account => <article key={account.customer_id}><div><strong>{account.customer_name}</strong><small>{account.identification || 'Sin cédula'} · {account.phone || 'Sin teléfono'}{account.email ? ` · ${account.email}` : ''}</small></div><span className={`fidel-account-status ${account.status}`}>{account.status === 'active' ? 'Activa' : 'Desactivada'}</span><div className="fidel-account-actions"><button type="button" onClick={() => void resetCustomerPassword(account)}><KeyRound size={14} /> Cambiar clave</button></div></article>)}</div>
+        <small className="fidel-password-note">El negocio puede establecer una clave nueva. Por seguridad, nunca se muestra la contraseña actual.</small>
+      </section>
     </div>
   )
 }

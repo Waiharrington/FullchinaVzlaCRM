@@ -2567,18 +2567,14 @@ button.mobile-only {
   .public-cart-all-extras-grid article > button { width: 40px; height: 40px; right: 4px; bottom: 4px; }
   .public-cart-all-extras-grid article > button svg { width: 17px; height: 17px; }
 
-  /* Barra "Menú/Contacto": en teléfono se ve bien estirada a todo el
-     ancho, pero en tablet deja un vacío enorme entre los dos botones
-     (cada uno pegado a su extremo). Se mantiene el ancho completo (esa
-     presencia/anclaje abajo de la pantalla es lo que se veía bien), pero
-     los botones se centran juntos en vez de estirarse cada uno a su lado. */
+  /* Mantiene las tres pestañas centradas en tablet y evita huecos amplios. */
   .public-mobile-tab-bar {
     justify-content: center !important;
-    gap: 64px !important;
+    gap: 8px !important;
   }
   .public-mobile-tab {
-    flex: 0 0 auto !important;
-    min-width: 96px !important;
+    flex: 1 1 0 !important;
+    min-width: 72px !important;
   }
 }
 

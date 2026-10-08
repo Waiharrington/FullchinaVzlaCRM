@@ -2391,6 +2391,19 @@ export async function getCustomers(forceRefresh = false): Promise<Customer[]> {
   return mapped
 }
 
+/** Resumen de fidelización: solo cuenta las visitas iniciadas tras el registro web. */
+export async function getLoyaltyCustomers(): Promise<Customer[]> {
+  const { data, error } = await client().rpc('fn_get_loyalty_customers')
+  if (error) throw error
+  return ((data ?? []) as Record<string, unknown>[]).map(row => ({
+    id: String(row.id), name: String(row.full_name ?? ''), identification: String(row.identification ?? ''),
+    phone: String(row.phone ?? ''), address: String(row.address ?? ''), email: String(row.email ?? ''),
+    totalVisits: Number(row.total_visits ?? 0), rewardsUnlocked: Number(row.rewards_unlocked ?? 0),
+    lastVisit: String(row.last_visit ?? ''), favoriteProduct: String(row.favorite_product ?? ''),
+    birthday: String(row.birth_date ?? ''), createdAt: String(row.created_at ?? ''), isActive: Boolean(row.is_active),
+  }))
+}
+
 export async function setCustomerActive(id: string, isActive: boolean): Promise<void> {
   invalidateCustomersCache()
   const { error } = await client().from('customers').update({ is_active: isActive }).eq('id', id)

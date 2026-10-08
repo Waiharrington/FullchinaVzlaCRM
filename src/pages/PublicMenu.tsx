@@ -12,6 +12,7 @@ import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
 import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
+import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
 import Toast from '../components/Toast'
@@ -125,13 +126,13 @@ const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
 const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orientation: landscape)'
 
-type DesktopTab = 'inicio' | 'menu' | 'contacto'
+type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 
 const readDesktopTab = (): DesktopTab => {
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return 'inicio'
   try {
     const savedTab = localStorage.getItem(DESKTOP_TAB_KEY)
-    return savedTab === 'menu' || savedTab === 'contacto' ? savedTab : 'inicio'
+    return savedTab === 'menu' || savedTab === 'contacto' || savedTab === 'perfil' ? savedTab : 'inicio'
   } catch {
     return 'inicio'
   }
@@ -2085,6 +2086,9 @@ export function PublicMenu() {
                 onClick={() => { setCurrentTab('contacto'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                 Contacto
               </button>
+              <button type="button" className={`public-nav-tab-btn ${currentTab === 'perfil' ? 'active' : ''}`} onClick={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+                Mi perfil
+              </button>
             </nav>
 
             {/* Desktop Right Status Badges */}
@@ -2112,7 +2116,7 @@ export function PublicMenu() {
       <div className="public-mobile-view mobile-only">
 
         {/* MENU VIEW */}
-        {currentTab !== 'contacto' && (
+        {currentTab !== 'contacto' && currentTab !== 'perfil' && (
           <div className="public-mobile-tab-content" key="menu">
         {/* 2. Hero Status */}
         <div className="public-hero-header">
@@ -2435,9 +2439,11 @@ export function PublicMenu() {
           </div>
         )}
 
+        {currentTab === 'perfil' && <div className="public-mobile-tab-content" key="perfil"><CustomerLoyaltyProfile /></div>}
+
         {/* Bottom Tab Bar */}
         <nav className="public-mobile-tab-bar">
-          <button className={`public-mobile-tab ${currentTab !== 'contacto' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>
+          <button className={`public-mobile-tab ${currentTab === 'inicio' || currentTab === 'menu' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>
             <Utensils size={18} />
             <span>Menú</span>
           </button>
@@ -2445,13 +2451,17 @@ export function PublicMenu() {
             <Store size={18} />
             <span>Contacto</span>
           </button>
+          <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onClick={() => setCurrentTab('perfil')}>
+            <UserRound size={18} />
+            <span>Mi perfil</span>
+          </button>
         </nav>
       </div>
 
       {/* =========================================================================
           DESKTOP VIEWPORT (>= 1280px) — 2-COLUMN PRO LAYOUT
           ========================================================================= */}
-      <div className={`public-desktop-layout desktop-only ${currentTab === 'contacto' ? 'is-contact-view' : ''}`}>
+      <div className={`public-desktop-layout desktop-only ${currentTab === 'contacto' || currentTab === 'perfil' ? 'is-contact-view' : ''}`}>
         {/* LEFT COLUMN: Tab-based views */}
         <div className="public-desktop-main">
           
@@ -2952,6 +2962,8 @@ export function PublicMenu() {
             </section>
           )}
 
+          {currentTab === 'perfil' && <CustomerLoyaltyProfile />}
+
         </div>
 
         {/* Desktop Sticky Sidebar (Live Cart & Checkout) */}
@@ -3163,7 +3175,7 @@ export function PublicMenu() {
       </div>
 
       {/* Floating Cart FAB for Mobile */}
-      {itemCount > 0 && !cartOpen && currentTab !== 'contacto' && (
+      {itemCount > 0 && !cartOpen && currentTab !== 'contacto' && currentTab !== 'perfil' && (
         <div className="public-cart-fab-wrap">
           <span className="public-cart-fab-tooltip">
             Toca aquí para ver tu pedido <ChevronRight size={14} />

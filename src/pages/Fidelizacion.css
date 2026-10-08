@@ -363,6 +363,31 @@
 .loyalty-stamp.on:nth-child(3n)   { transform: rotate(-8deg); }
 .loyalty-stamp.on:nth-child(3n+1) { transform: rotate(6deg); }
 .loyalty-stamp.on:nth-child(3n+2) { transform: rotate(-3deg); }
+.loyalty-automatic-note { display:flex;align-items:center;justify-content:center;gap:7px;color:#a6d9b4;font-size:11px;line-height:1.4;text-align:center; }
+.fidel-accounts-panel { margin-top:20px;padding:20px;border:1px solid rgba(255,255,255,.09);border-radius:18px;background:rgba(20,20,23,.88); }
+.fidel-accounts-panel>header h2 { display:flex;align-items:center;gap:9px;margin:0;color:#fff;font-size:18px; }
+.fidel-accounts-panel>header h2 svg { color:#ffd23f; }
+.fidel-accounts-panel>header p { margin:6px 0 0;color:#96969e;font-size:12px; }
+.fidel-loyalty-settings { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;align-items:end;gap:12px;margin-top:18px;padding-bottom:17px;border-bottom:1px solid rgba(255,255,255,.08); }
+.fidel-loyalty-settings label { display:grid;gap:7px;color:#bbb;font-size:12px;font-weight:700; }
+.fidel-loyalty-settings input { width:100%;box-sizing:border-box;height:39px;padding:0 10px;border:1px solid #37373e;border-radius:9px;color:#fff;background:#111114; }
+.fidel-loyalty-settings button,.fidel-account-actions button { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid rgba(227,27,43,.42);border-radius:9px;color:#fff;background:rgba(227,27,43,.15);font-size:12px;font-weight:700;cursor:pointer; }
+.fidel-admin-notice { margin:12px 0 0;padding:10px 12px;border-radius:9px;color:#bde8ca;background:rgba(38,132,76,.14);font-size:12px; }
+.fidel-accounts-heading { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px; }
+.fidel-accounts-heading h3 { margin:0;color:#eee;font-size:15px; }
+.fidel-accounts-heading>span,.fidel-account-status { padding:4px 8px;border-radius:20px;color:#ffd96a;background:rgba(255,200,61,.1);font-size:10px;font-weight:800; }
+.fidel-accounts-list { display:grid;gap:8px;margin-top:10px; }
+.fidel-accounts-list>p { color:#888;font-size:12px; }
+.fidel-accounts-list article { display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.025); }
+.fidel-accounts-list article>div:first-child { display:grid;gap:5px;min-width:0; }
+.fidel-accounts-list article strong { color:#fff;font-size:13px; }
+.fidel-accounts-list article small { overflow-wrap:anywhere;color:#9a989f;font-size:11px; }
+.fidel-account-status.active { color:#a6e7b5;background:rgba(46,153,78,.13); }
+.fidel-account-status.disabled { color:#ff9ba1;background:rgba(227,27,43,.12); }
+.fidel-account-actions { display:flex;gap:7px; }
+.fidel-account-actions button { min-height:34px;padding:0 9px;font-size:11px; }
+.fidel-password-note { display:block;margin-top:12px;color:#89878e;font-size:11px; }
+@media(max-width:700px) { .fidel-loyalty-settings { grid-template-columns:1fr; }.fidel-accounts-list article { grid-template-columns:minmax(0,1fr) auto;gap:9px; }.fidel-account-actions { grid-column:1/-1;justify-content:flex-end; }.fidel-account-actions button { flex:1; }.fidel-accounts-panel { padding:15px; } }
 
 .loyalty-reward-box {
   position: relative; z-index: 1;
