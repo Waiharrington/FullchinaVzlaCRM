@@ -1511,11 +1511,14 @@ export async function updateOrderStatus(
     .from('orders')
     .update({ fulfillment_status: newStatus })
     .eq('id', orderId)
-    .select('id')
+    .select('id, fulfillment_status')
     .maybeSingle()
 
   if (error) throw error
   if (!data) throw new Error('No se encontró la comanda o no tienes permiso para cambiar su estado')
+  if (data.fulfillment_status !== newStatus) {
+    throw new Error(`El servidor mantuvo la comanda en “${String(data.fulfillment_status)}”`)
+  }
 }
 
 export async function updateOrderCustomer(orderId: string, customer: Customer): Promise<void> {

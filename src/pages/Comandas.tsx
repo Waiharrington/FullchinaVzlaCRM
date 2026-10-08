@@ -1385,6 +1385,13 @@ export function Comandas() {
               source: 'pos',
             }
           })
+          // La recarga puede haber comenzado mientras se confirmaba el cambio.
+          // Conserva el estado local hasta que una lectura lo confirme.
+          for (const order of mapped) {
+            if (pendingStatusRef.current.get(order.id) === order.status) {
+              pendingStatusRef.current.delete(order.id)
+            }
+          }
           const pendingWeb: ComandaOrder[] = webOrders.map((order) => {
             const date = new Date(order.createdAt)
             const elapsed = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000))
@@ -1802,19 +1809,22 @@ export function Comandas() {
       return true
     }
 
+    let persisted = false
     try {
       await updateOrderStatus(orderId, nextStatus)
+      persisted = true
       setReloadToken(value => value + 1)
       return true
     } catch (e) {
       console.error('Error actualizando estado en servidor:', e)
+      pendingStatusRef.current.delete(orderId)
       setComandas(prev => prev.map(comanda => (
         comanda.id === orderId ? previousOrder : comanda
       )))
-      setStatusError('No se pudo guardar el cambio de estado. Intenta nuevamente.')
+      setStatusError(e instanceof Error ? `No se pudo guardar el cambio de estado: ${e.message}` : 'No se pudo guardar el cambio de estado. Intenta nuevamente.')
       return false
     } finally {
-      pendingStatusRef.current.delete(orderId)
+      if (!persisted) pendingStatusRef.current.delete(orderId)
       setUpdatingOrderIds(previous => {
         const next = new Set(previous)
         next.delete(orderId)
