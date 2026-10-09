@@ -1,28 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { LayoutGrid, Plus, Pencil, Trash2, X, Users, Clock, UtensilsCrossed } from 'lucide-react'
+import { LayoutGrid, Plus, Pencil, Trash2, X, Users, Clock } from 'lucide-react'
 import Toast from '../components/Toast'
 import NumberStepper from '../components/NumberStepper'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { useAuth } from '../context/auth-context'
+import { Comandas } from './Comandas'
 import {
   getFloorTables,
-  getOrderById,
   createFloorTable,
   updateFloorTable,
   deleteFloorTable,
   type FloorTable,
-  type FullOrder,
 } from '../lib/dataService'
-import { formatUsd } from '../lib/money'
 import { PageSkeleton } from '../components/PageSkeleton'
 import './Mesas.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const CANVAS_WIDTH = 100
 const CANVAS_HEIGHT = 100
-
 function elapsedLabel(createdAt: string): string {
   const mins = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000))
   if (mins < 60) return `${mins} min`
@@ -50,24 +47,12 @@ export function Mesas() {
   const [editMode, setEditMode] = useState(false)
   const [activeZone, setActiveZone] = useState<string>('all')
   const [selectedTable, setSelectedTable] = useState<FloorTable | null>(null)
-  const [selectedOrder, setSelectedOrder] = useState<FullOrder | null>(null)
-  const [orderLoading, setOrderLoading] = useState(false)
-  const [orderError, setOrderError] = useState('')
-  const [closingSelectedTable, setClosingSelectedTable] = useState(false)
   const [formState, setFormState] = useState<TableFormState | null>(null)
   const [closingFormState, setClosingFormState] = useState(false)
   const [formError, setFormError] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const closeSelectedTable = (then?: () => void) => {
-    if (closingSelectedTable) return
-    setClosingSelectedTable(true)
-    window.setTimeout(() => {
-      setSelectedTable(null)
-      setClosingSelectedTable(false)
-      then?.()
-    }, 200)
-  }
+  const closeEmbeddedOrder = useCallback(() => setSelectedTable(null), [])
 
   const closeFormState = (then?: () => void) => {
     if (closingFormState) return
@@ -96,31 +81,6 @@ export function Mesas() {
     void refresh()
   }, [refresh])
   useLiveDataRefresh('mesas', refresh)
-
-  useEffect(() => {
-    const orderId = selectedTable?.openOrderId
-    if (!orderId) {
-      setSelectedOrder(null)
-      setOrderError('')
-      return
-    }
-    let cancelled = false
-    setOrderLoading(true)
-    setOrderError('')
-    void getOrderById(orderId)
-      .then(order => {
-        if (cancelled) return
-        setSelectedOrder(order)
-        if (!order) setOrderError('No se pudo cargar el detalle de esta comanda.')
-      })
-      .catch(() => {
-        if (!cancelled) setOrderError('No se pudo cargar el detalle de esta comanda.')
-      })
-      .finally(() => {
-        if (!cancelled) setOrderLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [selectedTable?.openOrderId])
 
   const zones = useMemo(() => {
     const set = new Set(tables.map(t => t.zone))
@@ -362,48 +322,11 @@ export function Mesas() {
         {editMode && <span className="mesas-legend-hint">Arrastra una mesa para reubicarla · toca una mesa para editarla</span>}
       </div>
 
-      {selectedTable && createPortal(
-        <div className={`mesas-modal-overlay ${closingSelectedTable ? 'closing' : ''}`} onClick={() => closeSelectedTable()}>
-          <div className="mesas-modal mesas-order-modal" onClick={e => e.stopPropagation()}>
-            <button className="mesas-modal-close" onClick={() => closeSelectedTable()}><X size={18} /></button>
-            <div className="mesas-modal-header">
-              <div className="mesas-modal-icon"><UtensilsCrossed size={20} /></div>
-              <h3>Mesa {selectedTable.number}</h3>
-              <p className="mesas-modal-order">Pedido #FC-{String(selectedTable.openOrderNumber).padStart(6, '0')}</p>
-            </div>
-            <div className="mesas-modal-rows">
-              <div><span>Cliente</span><span>{selectedOrder?.customerName || selectedTable.openOrderCustomer || 'Cliente general'}</span></div>
-              <div><span>Tiempo abierto</span><span>{selectedTable.openOrderCreatedAt ? elapsedLabel(selectedTable.openOrderCreatedAt) : '—'}</span></div>
-              {selectedOrder && <div><span>Estado</span><span>{selectedOrder.status === 'new' ? 'Nueva' : selectedOrder.status === 'preparing' ? 'En preparación' : selectedOrder.status === 'ready' ? 'Lista' : selectedOrder.status === 'paid' ? 'Pagada' : selectedOrder.status}</span></div>}
-            </div>
-            <section className="mesas-order-detail" aria-label="Detalle de la comanda">
-              <h4>Detalle de la comanda</h4>
-              {orderLoading ? <p className="mesas-order-message">Cargando productos…</p> : orderError ? <p className="mesas-order-message error">{orderError}</p> : selectedOrder ? (
-                <>
-                  <div className="mesas-order-items">
-                    {selectedOrder.items.map(item => (
-                      <div className="mesas-order-item" key={item.id}>
-                        <span className="mesas-order-item-emoji">{item.emoji}</span>
-                        <div className="mesas-order-item-info">
-                          <strong>{item.productName}</strong>
-                          <small>{item.quantity} × {formatUsd(item.unitPrice)}</small>
-                        </div>
-                        <b>{formatUsd(item.quantity * item.unitPrice)}</b>
-                      </div>
-                    ))}
-                    {selectedOrder.items.length === 0 && <p className="mesas-order-message">Esta comanda todavía no tiene productos.</p>}
-                  </div>
-                  {selectedOrder.notes && <p className="mesas-order-notes"><strong>Nota:</strong> {selectedOrder.notes}</p>}
-                  <div className="mesas-modal-total-row"><span>Total</span><span className="mesas-modal-total-value">{formatUsd(selectedOrder.totalAmount)}</span></div>
-                </>
-              ) : (
-                <div className="mesas-modal-total-row"><span>Total</span><span className="mesas-modal-total-value">{formatUsd(selectedTable.openOrderTotal)}</span></div>
-              )}
-            </section>
-          </div>
-        </div>,
-        document.body
-      )}
+      {selectedTable?.openOrderId && <Comandas
+        key={selectedTable.openOrderId}
+        embeddedOrderId={selectedTable.openOrderId}
+        onEmbeddedClose={closeEmbeddedOrder}
+      />}
 
       {formState && createPortal(
         <div className={`mesas-modal-overlay ${closingFormState ? 'closing' : ''}`} onClick={() => closeFormState()}>

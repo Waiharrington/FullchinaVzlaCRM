@@ -4632,6 +4632,13 @@ export async function getOrderById(orderId: string): Promise<FullOrder | null> {
       category: (i.category as string) ?? 'plato',
       quantity: Number(i.quantity),
       unitPrice: Number(i.unit_price),
+      modifiers: Array.isArray(i.modifiers) ? i.modifiers.map((modifier: Record<string, unknown>) => ({
+        optionId: modifier.option_id as string,
+        optionName: modifier.option_name as string,
+        modifierName: (modifier.modifier_name as string) ?? 'Modificador',
+        price: Number(modifier.price ?? 0),
+        quantity: Number(modifier.quantity ?? 1),
+      })) : [],
     })) : [],
     payments: Array.isArray(data.payments) ? data.payments.map((p: Record<string, unknown>) => ({
       id: p.id as string,

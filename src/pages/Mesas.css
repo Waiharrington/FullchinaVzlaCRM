@@ -314,42 +314,6 @@
 .mesas-modal h3 { margin: 0; color: var(--text-primary); font-size: 1.15rem; }
 .mesas-modal-order { margin: -8px 0 0; color: var(--text-muted); font-size: 0.82rem; }
 
-.mesas-order-modal { max-width: 460px; max-height: min(760px, calc(100dvh - 32px)); overflow-y: auto; }
-.mesas-order-detail { display: flex; flex-direction: column; gap: 10px; }
-.mesas-order-detail h4 { margin: 2px 0 0; color: var(--text-primary); font-size: 0.88rem; }
-.mesas-order-items { display: flex; flex-direction: column; gap: 8px; max-height: 280px; overflow-y: auto; padding-right: 2px; }
-.mesas-order-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; background: rgba(255,255,255,0.025); }
-.mesas-order-item-emoji { width: 30px; flex: 0 0 30px; text-align: center; font-size: 1.2rem; }
-.mesas-order-item-info { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
-.mesas-order-item-info strong { overflow: hidden; color: var(--text-primary); font-size: 0.82rem; text-overflow: ellipsis; white-space: nowrap; }
-.mesas-order-item-info small { color: var(--text-muted); font-size: 0.75rem; }
-.mesas-order-item > b { color: var(--text-primary); font-size: 0.8rem; white-space: nowrap; }
-.mesas-order-message { margin: 0; padding: 10px; color: var(--text-muted); font-size: 0.82rem; }
-.mesas-order-message.error { color: #fca5a5; }
-.mesas-order-notes { margin: 0; padding: 9px 10px; border-radius: 8px; background: rgba(255,255,255,0.04); color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; }
-
-.mesas-modal-rows { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
-.mesas-modal-rows div { display: flex; justify-content: space-between; font-size: 0.86rem; }
-.mesas-modal-rows div span:first-child { color: var(--text-secondary); }
-.mesas-modal-rows div span:last-child { color: var(--text-primary); font-weight: 650; }
-
-.mesas-modal-total-row {
-  margin-top: 4px;
-  padding: 12px 14px !important;
-  background: linear-gradient(135deg, rgba(227, 27, 43, 0.14), rgba(227, 27, 43, 0.03));
-  border: 1px solid rgba(227, 27, 43, 0.25);
-  border-radius: 10px;
-}
-.mesas-modal-total-row span:first-child { color: var(--text-secondary); font-weight: 700; }
-.mesas-modal-total-value {
-  color: #fca5a5 !important;
-  font-size: 1.05rem;
-  font-weight: 800 !important;
-  text-shadow: 0 0 20px rgba(227, 27, 43, 0.35);
-}
-
-.mesas-modal-cta { margin-top: 4px; }
-
 .mesas-form-field { display: flex; flex-direction: column; gap: 6px; font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; }
 .mesas-form-field input {
   background: #0f0f12;
@@ -396,8 +360,7 @@
     border-radius: 18px 18px 0 0;
   }
   .mesas-form-actions { display: grid; grid-template-columns: 1fr 1.2fr; }
-  .mesas-form-actions button,
-  .mesas-modal-cta { width: 100%; min-height: 44px; }
+  .mesas-form-actions button { width: 100%; min-height: 44px; }
 }
 
 /* El plano conserva sus coordenadas, pero las mesas se compactan en teléfono. */
@@ -440,5 +403,3 @@
     transform: translateX(-50%);
   }
 }
-
-

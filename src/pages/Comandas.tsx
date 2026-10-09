@@ -659,7 +659,12 @@ function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, 
 // Cuántas comandas se muestran por columna antes de "Ver todas".
 const COLUMN_PREVIEW_LIMIT = 6
 
-export function Comandas() {
+interface ComandasProps {
+  embeddedOrderId?: string
+  onEmbeddedClose?: () => void
+}
+
+export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {}) {
   const { bcvRate } = useRates()
   const location = useLocation()
   const navigate = useNavigate()
@@ -1065,6 +1070,7 @@ export function Comandas() {
   }, [bcvRate])
 
   useEffect(() => {
+    if (embeddedOrderId) return
     const navigation = location.state as { openOrderId?: unknown; openOrderAction?: unknown } | null
     const orderId = typeof navigation?.openOrderId === 'string' ? navigation.openOrderId : null
     if (!orderId || handledOrderNavigationKey.current === location.key) return
@@ -1092,7 +1098,7 @@ export function Comandas() {
 
     void openRequestedOrder()
     return () => { active = false }
-  }, [handleOpenPaymentForOrder, location.key, location.pathname, location.state, navigate])
+  }, [embeddedOrderId, handleOpenPaymentForOrder, location.key, location.pathname, location.state, navigate])
 
   const handleSelectPaymentTab = (method: ActivePaymentMethod | 'split') => {
     setSelectedPaymentTab(method)
@@ -1279,6 +1285,7 @@ export function Comandas() {
       setComandas(createDemoComandas())
       return
     }
+    if (embeddedOrderId) return
 
     let active = true
     const loadRealOrders = async () => {
@@ -1463,7 +1470,38 @@ export function Comandas() {
       unsubscribe()
       if (refreshTimer) clearTimeout(refreshTimer)
     }
-  }, [reloadToken, dateFilter, isDemoMode])
+  }, [reloadToken, dateFilter, isDemoMode, embeddedOrderId])
+
+  useEffect(() => {
+    if (!embeddedOrderId || isDemoMode) return
+    let active = true
+    setSelectedOrder(null)
+    setClosingSelectedOrder(false)
+    const loadEmbeddedOrder = async () => {
+      try {
+        const fullOrder = await getOrderById(embeddedOrderId)
+        if (!active) return
+        if (!fullOrder) throw new Error('No se encontró la comanda de esta mesa')
+        let attendedBy = 'Usuario del sistema'
+        if (supabase && fullOrder.createdBy) {
+          const { data } = await supabase.from('profiles').select('full_name').eq('id', fullOrder.createdBy).maybeSingle()
+          attendedBy = String(data?.full_name || attendedBy)
+        }
+        if (!active) return
+        const order = { ...mapFullOrderToComanda(fullOrder), attendedBy }
+        setComandas(previous => [order, ...previous.filter(item => item.id !== order.id)])
+        setSelectedOrder(order)
+      } catch (error) {
+        if (active) {
+          console.error('No se pudo abrir la comanda desde el mapa de mesas:', error)
+          void alertDialog({ message: error instanceof Error ? error.message : 'No se pudo abrir la comanda de esta mesa', danger: true })
+          onEmbeddedClose?.()
+        }
+      }
+    }
+    void loadEmbeddedOrder()
+    return () => { active = false }
+  }, [embeddedOrderId, isDemoMode, onEmbeddedClose, reloadToken])
 
   const handleConfirmWebOrder = async (order: ComandaOrder) => {
     if (!order.webRequestId) return
@@ -1487,6 +1525,7 @@ export function Comandas() {
       setSelectedOrder(null)
       setClosingSelectedOrder(false)
       then?.()
+      onEmbeddedClose?.()
     }, 200)
   }
 
@@ -1904,7 +1943,7 @@ export function Comandas() {
         : { tone: 'steady', label: 'Flujo estable', message: 'Avanzando a buen ritmo.' }
 
   return (
-    <div className={`comandas-page animate-fade-in ${boardExpanded ? 'is-board-expanded' : ''}`}>
+    <div className={`comandas-page animate-fade-in ${boardExpanded ? 'is-board-expanded' : ''} ${embeddedOrderId ? 'comandas-page-embedded' : ''}`}>
       <section className={`comandas-pulse comandas-pulse--${kitchenPulse.tone}`} aria-labelledby="comandas-title">
         <div className="comandas-pulse-top">
           <div className="comandas-pulse-heading">

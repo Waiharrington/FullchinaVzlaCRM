@@ -1894,6 +1894,8 @@
   margin: auto;
 }
 
+.comandas-page-embedded { display: none !important; }
+
 .cmd-modal-container::-webkit-scrollbar {
   width: 6px;
 }
