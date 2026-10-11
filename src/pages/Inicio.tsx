@@ -107,8 +107,10 @@ export function Inicio() {
   const nextBcvRateDate = nextBcvUpdatedAt ? dateKeyInTimeZone(new Date(nextBcvUpdatedAt)) : null
   const hasFutureBcvRate = Boolean(nextBcvRateDate && nextBcvRateDate > dateKeyInTimeZone())
   const nextBcvRateLabel = nextBcvRate && nextBcvUpdatedAt
-    ? `Próxima disponible: Bs. ${formatVes(nextBcvRate)} desde ${formatRateDate(nextBcvUpdatedAt)}`
+    ? `Próxima disponible: $1 = Bs. ${formatVes(nextBcvRate)} desde ${formatRateDate(nextBcvUpdatedAt)}`
     : null
+  const bcvRateHelp = nextBcvRateLabel
+    ?? `No hay una tasa futura publicada todavía. Última tasa disponible: ${formatRateDate(bcvUpdatedAt)}.`
   const [stats, setStats] = useState<TodayStats | null>(initialCache?.stats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(initialCache?.todayOrders ?? [])
   const [dailySales, setDailySales] = useState<DailySales[]>(initialCache?.dailySales ?? [])
@@ -442,11 +444,11 @@ export function Inicio() {
           </div>
 
           <div className="db-header-meta-row">
-              <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title={`${nextBcvRateLabel ? `${nextBcvRateLabel}. ` : ''}Pulsa para actualizar.`}>
+              <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title={`${bcvRateHelp} Pulsa para actualizar.`}>
                 <DollarSign size={12} />
                 <span>BCV</span>
                 <strong>{bcvRate ? `$1 = ${formatVes(bcvRate)}` : bcvLoading ? 'Consultando…' : 'No disponible'}</strong>
-                {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : isNextBcvRate ? `Próxima · ${formatRateDate(bcvUpdatedAt)}` : hasFutureBcvRate && nextBcvRateLabel ? nextBcvRateLabel : formatRateDate(bcvUpdatedAt)}</span>}
+                {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : hasFutureBcvRate && nextBcvRateLabel ? nextBcvRateLabel : isNextBcvRate ? `Próxima · $1 = Bs. ${formatVes(bcvRate)} · ${formatRateDate(bcvUpdatedAt)}` : 'Próxima tasa pendiente de publicación'}</span>}
               </button>
           </div>
 
