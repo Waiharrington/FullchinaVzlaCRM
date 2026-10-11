@@ -2,6 +2,8 @@ import { createContext, useContext } from 'react'
 
 export interface RatesContextValue {
   bcvRate: number | null
+  nextBcvRate?: number | null
+  nextBcvUpdatedAt?: string | null
   updatedAt: string | null
   loading: boolean
   stale: boolean

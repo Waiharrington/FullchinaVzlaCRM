@@ -4,6 +4,8 @@
 
 export interface Rates {
   bcv: number
+  nextBcvRate?: number | null
+  nextBcvUpdatedAt?: string | null
   paralelo: number
   updatedAt: string | null
   fetchedAt: string
@@ -20,10 +22,9 @@ interface DolarApiEntry {
 const OFFICIAL_URL = 'https://ve.dolarapi.com/v1/dolares/oficial'
 const ALL_RATES_URL = 'https://ve.dolarapi.com/v1/dolares'
 const BCV_EFFECTIVE_RATE_URL = 'https://bcv.today/api/v1/history'
-const CACHE_KEY = 'fullchina_bcv_rates_v2'
+const CACHE_KEY = 'fullchina_bcv_rates_v3'
 const FRESH_CACHE_MS = 30 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 8_000
-const CARACAS_TIME_ZONE = 'America/Caracas'
 
 let memoryCache: Rates | null = null
 let pendingRequest: Promise<Rates> | null = null
@@ -37,34 +38,40 @@ interface BcvEffectiveRateEntry {
   effective_date: string
 }
 
-function getUpcomingMondayRateDate(now = new Date()): string | null {
-  const weekday = new Intl.DateTimeFormat('en-US', {
-    timeZone: CARACAS_TIME_ZONE,
-    weekday: 'short',
-  }).format(now)
-  const daysUntilMonday = weekday === 'Sat' ? 2 : weekday === 'Sun' ? 1 : 0
-  if (daysUntilMonday === 0) return null
-
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: CARACAS_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(now)
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
-  const nextDate = new Date(Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day) + daysUntilMonday))
-  return nextDate.toISOString().slice(0, 10)
+function addCalendarDays(date: string, days: number): string {
+  const next = new Date(`${date}T00:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + days)
+  return next.toISOString().slice(0, 10)
 }
 
-async function getUpcomingMondayRate(effectiveDate: string): Promise<BcvEffectiveRateEntry | null> {
-  try {
-    const entry = await fetchJson<BcvEffectiveRateEntry>(`${BCV_EFFECTIVE_RATE_URL}/${effectiveDate}.json`)
-    if (!isValidRate(entry.USD) || entry.effective_date !== effectiveDate) return null
-    return entry
-  } catch {
-    // La tasa futura es opcional: si el BCV todavía no la publicó, usamos la última tasa diaria disponible.
-    return null
-  }
+function isCaracasWeekend(now = new Date()): boolean {
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Caracas', weekday: 'short' }).format(now)
+  return weekday === 'Sat' || weekday === 'Sun'
+}
+
+function caracasDateKey(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Caracas', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(now)
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+async function getNextAvailableRate(lastPublishedDate: string): Promise<BcvEffectiveRateEntry | null> {
+  // El BCV no siempre publica una tasa con fecha efectiva de lunes. Consultamos
+  // los próximos días y elegimos la primera tasa realmente publicada después
+  // de la última, sin confundir los registros del fin de semana con una tasa nueva.
+  const candidates = await Promise.all(Array.from({ length: 7 }, async (_, index) => {
+    const requestedDate = addCalendarDays(lastPublishedDate, index + 1)
+    try {
+      const entry = await fetchJson<BcvEffectiveRateEntry>(`${BCV_EFFECTIVE_RATE_URL}/${requestedDate}.json`)
+      if (!isValidRate(entry.USD) || entry.effective_date <= lastPublishedDate) return null
+      return entry
+    } catch {
+      return null
+    }
+  }))
+  return candidates.find((entry): entry is BcvEffectiveRateEntry => entry !== null) ?? null
 }
 
 function readCache(): Rates | null {
@@ -106,7 +113,6 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 async function requestRates(): Promise<Rates> {
-  const weekendEffectiveDate = getUpcomingMondayRateDate()
   let official: DolarApiEntry | undefined
   let paralelo: DolarApiEntry | undefined
 
@@ -118,17 +124,24 @@ async function requestRates(): Promise<Rates> {
     paralelo = entries.find(entry => entry.fuente === 'paralelo')
   }
 
-  const weekendRate = weekendEffectiveDate ? await getUpcomingMondayRate(weekendEffectiveDate) : null
-
   if (!official || official.fuente !== 'oficial' || !isValidRate(official.promedio)) {
     throw new Error('Invalid BCV rate response')
   }
 
+  const latestPublishedDate = official.fechaActualizacion?.slice(0, 10)
+  const nextAvailableRate = latestPublishedDate && /^\d{4}-\d{2}-\d{2}$/.test(latestPublishedDate)
+    ? await getNextAvailableRate(latestPublishedDate)
+    : null
+
+  const nextRateIsCurrent = Boolean(nextAvailableRate && nextAvailableRate.effective_date <= caracasDateKey())
+  const rateForCurrentUse = nextAvailableRate && (isCaracasWeekend() || nextRateIsCurrent) ? nextAvailableRate : null
   const rates: Rates = {
-    bcv: weekendRate?.USD ?? official.promedio,
+    bcv: rateForCurrentUse?.USD ?? official.promedio,
+    nextBcvRate: nextAvailableRate?.USD ?? null,
+    nextBcvUpdatedAt: nextAvailableRate ? `${nextAvailableRate.effective_date}T00:00:00-04:00` : null,
     paralelo: isValidRate(paralelo?.promedio) ? paralelo.promedio : 0,
-    updatedAt: weekendRate
-      ? `${weekendRate.effective_date}T00:00:00-04:00`
+    updatedAt: rateForCurrentUse
+      ? `${rateForCurrentUse.effective_date}T00:00:00-04:00`
       : official.fechaActualizacion || null,
     fetchedAt: new Date().toISOString(),
     stale: false,
@@ -140,9 +153,7 @@ async function requestRates(): Promise<Rates> {
 export async function getExchangeRates(options: { force?: boolean } = {}): Promise<Rates> {
   const cached = readCache()
   const cacheAge = cached ? Date.now() - new Date(cached.fetchedAt).getTime() : Number.POSITIVE_INFINITY
-  const weekendEffectiveDate = getUpcomingMondayRateDate()
-  const cacheMatchesWeekendRate = !weekendEffectiveDate || cached?.updatedAt?.slice(0, 10) === weekendEffectiveDate
-  if (!options.force && cached && cacheAge < FRESH_CACHE_MS && cacheMatchesWeekendRate) return { ...cached, stale: false, error: false }
+  if (!options.force && cached && cacheAge < FRESH_CACHE_MS) return { ...cached, stale: false, error: false }
   if (!options.force && pendingRequest) return pendingRequest
 
   pendingRequest = requestRates().catch((error) => {

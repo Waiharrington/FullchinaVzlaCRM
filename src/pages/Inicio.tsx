@@ -101,7 +101,14 @@ export function Inicio() {
   const navigate = useNavigate()
   const initialCache = readDashboardCache(user?.id)
   const { open: openSearch } = useSearch()
-  const { bcvRate, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
+  const { bcvRate, nextBcvRate, nextBcvUpdatedAt, updatedAt: bcvUpdatedAt, stale: bcvStale, loading: bcvLoading, refresh: refreshBcv } = useRates()
+  const bcvRateDate = bcvUpdatedAt ? dateKeyInTimeZone(new Date(bcvUpdatedAt)) : null
+  const isNextBcvRate = Boolean(bcvRateDate && bcvRateDate > dateKeyInTimeZone())
+  const nextBcvRateDate = nextBcvUpdatedAt ? dateKeyInTimeZone(new Date(nextBcvUpdatedAt)) : null
+  const hasFutureBcvRate = Boolean(nextBcvRateDate && nextBcvRateDate > dateKeyInTimeZone())
+  const nextBcvRateLabel = nextBcvRate && nextBcvUpdatedAt
+    ? `Próxima disponible: Bs. ${formatVes(nextBcvRate)} desde ${formatRateDate(nextBcvUpdatedAt)}`
+    : null
   const [stats, setStats] = useState<TodayStats | null>(initialCache?.stats ?? null)
   const [todayOrders, setTodayOrders] = useState<FullOrder[]>(initialCache?.todayOrders ?? [])
   const [dailySales, setDailySales] = useState<DailySales[]>(initialCache?.dailySales ?? [])
@@ -435,11 +442,11 @@ export function Inicio() {
           </div>
 
           <div className="db-header-meta-row">
-              <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title="Actualizar tasa BCV">
+              <button className={`db-greeting-rates ${bcvStale ? 'stale' : ''}`} type="button" onClick={() => void refreshBcv()} disabled={bcvLoading} title={`${nextBcvRateLabel ? `${nextBcvRateLabel}. ` : ''}Pulsa para actualizar.`}>
                 <DollarSign size={12} />
                 <span>BCV</span>
                 <strong>{bcvRate ? `$1 = ${formatVes(bcvRate)}` : bcvLoading ? 'Consultando…' : 'No disponible'}</strong>
-                {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : formatRateDate(bcvUpdatedAt)}</span>}
+                {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : isNextBcvRate ? `Próxima · ${formatRateDate(bcvUpdatedAt)}` : hasFutureBcvRate && nextBcvRateLabel ? nextBcvRateLabel : formatRateDate(bcvUpdatedAt)}</span>}
               </button>
           </div>
 

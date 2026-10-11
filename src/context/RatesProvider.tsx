@@ -6,6 +6,8 @@ import { RatesContext } from './rates-context'
 export function RatesProvider({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [bcvRate, setBcvRate] = useState<number | null>(null)
+  const [nextBcvRate, setNextBcvRate] = useState<number | null>(null)
+  const [nextBcvUpdatedAt, setNextBcvUpdatedAt] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [stale, setStale] = useState(false)
@@ -15,6 +17,8 @@ export function RatesProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     const rates = await getExchangeRates({ force })
     setBcvRate(rates.bcv > 0 ? rates.bcv : null)
+    setNextBcvRate(rates.nextBcvRate && rates.nextBcvRate > 0 ? rates.nextBcvRate : null)
+    setNextBcvUpdatedAt(rates.nextBcvUpdatedAt ?? null)
     setUpdatedAt(rates.updatedAt)
     setStale(rates.stale)
     setError(Boolean(rates.error))
@@ -35,7 +39,7 @@ export function RatesProvider({ children }: { children: ReactNode }) {
     await loadRates(true)
   }, [loadRates])
 
-  const value = useMemo(() => ({ bcvRate, updatedAt, loading, stale, error, refresh }), [bcvRate, updatedAt, loading, stale, error, refresh])
+  const value = useMemo(() => ({ bcvRate, nextBcvRate, nextBcvUpdatedAt, updatedAt, loading, stale, error, refresh }), [bcvRate, nextBcvRate, nextBcvUpdatedAt, updatedAt, loading, stale, error, refresh])
 
   return <RatesContext.Provider value={value}>{children}</RatesContext.Provider>
 }
