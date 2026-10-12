@@ -38,7 +38,8 @@ async function queueAutomations() {
   else if (data?.total) console.log(`Automatizaciones preparadas: ${data.total}`)
 }
 if (process.env.WHATSAPP_QUEUE_AUTOMATIONS === 'true') {
-  setInterval(queueAutomations, 5 * 60 * 1000)
+  // Detecta cobros y entregas pronto para encolar el agradecimiento cerca del evento.
+  setInterval(queueAutomations, 30 * 1000)
   queueAutomations()
 } else {
   console.log('Generación automática de mensajes en pausa hasta habilitar el envío de campañas.')

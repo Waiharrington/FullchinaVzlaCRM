@@ -91,11 +91,11 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
   const orderType = data.tableNumber ? `Mesa ${data.tableNumber}` : data.orderType
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${data.kind === 'precuenta' ? 'Precuenta' : 'Recibo de venta'} ${escapeHtml(data.orderNumber)}</title><style>
-    @page { size: 80mm auto; margin: 4mm; }
+    @page { size: 80mm auto; margin: 2mm 4mm 0; }
     * { box-sizing: border-box; }
     html, body { width: 72mm; margin: 0; padding: 0; color: #000; background: #fff; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.28; }
-    .ticket { width: 100%; padding: 1mm 0 3mm; overflow-wrap: anywhere; }
+    .ticket { width: 100%; padding: 1mm 0 1mm; overflow-wrap: anywhere; }
     .meta { margin: .8mm 0; }
     .separator { border-top: 1px dashed #000; margin: 2.5mm 0; }
     .item, .modifier, .payment, .summary { display: flex; justify-content: space-between; gap: 2mm; align-items: flex-start; }
@@ -109,6 +109,7 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     .reference { margin: .6mm 0 1.2mm; overflow-wrap: anywhere; }
     .footer { margin-top: 3mm; text-align: center; font-size: 9pt; }
     @media screen { body { padding: 3mm; } }
+    @media print { html, body { margin: 0; padding: 0; } }
   </style></head><body><main class="ticket">
     <div class="meta">${escapeHtml(dateLabel)} ${escapeHtml(timeLabel)}</div>
     <div class="meta">Orden: ${escapeHtml(data.orderNumber)}</div>
@@ -152,7 +153,19 @@ export function printThermalReceipt(data: ThermalReceiptData): Promise<void> {
       printWindow.addEventListener('afterprint', cleanup, { once: true })
       printWindow.focus()
       try {
-        printWindow.print()
+        printWindow.requestAnimationFrame(() => {
+          const ticket = printWindow.document.querySelector<HTMLElement>('.ticket')
+          const pageSizeRule = printWindow.document.querySelector<HTMLStyleElement>('style')
+          if (ticket && pageSizeRule) {
+            const contentHeightMm = ticket.getBoundingClientRect().height * 25.4 / 96
+            const pageHeightMm = Math.max(30, Math.ceil(contentHeightMm + 2))
+            pageSizeRule.textContent = pageSizeRule.textContent?.replace(
+              '@page { size: 80mm auto; margin: 2mm 4mm 0; }',
+              `@page { size: 80mm ${pageHeightMm}mm; margin: 2mm 4mm 0; }`,
+            ) ?? ''
+          }
+          printWindow.print()
+        })
       } catch {
         cleanup()
       }
