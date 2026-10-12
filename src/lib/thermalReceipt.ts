@@ -158,7 +158,7 @@ export function printThermalReceipt(data: ThermalReceiptData): Promise<void> {
           const pageSizeRule = printWindow.document.querySelector<HTMLStyleElement>('style')
           if (ticket && pageSizeRule) {
             const contentHeightMm = ticket.getBoundingClientRect().height * 25.4 / 96
-            const pageHeightMm = Math.max(30, Math.ceil(contentHeightMm + 2))
+            const pageHeightMm = Math.max(80, Math.ceil(contentHeightMm + 2))
             pageSizeRule.textContent = pageSizeRule.textContent?.replace(
               '@page { size: 80mm auto; margin: 0 4mm; }',
               `@page { size: 80mm ${pageHeightMm}mm; margin: 0 4mm; }`,
