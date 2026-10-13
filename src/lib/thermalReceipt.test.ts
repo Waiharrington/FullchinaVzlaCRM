@@ -30,7 +30,7 @@ describe('ticket térmico Full China', () => {
     expect(html).toContain('Empleado: Edgar Buitrago')
     expect(html).toContain('Nombre y Apellido: Cliente general')
     expect(html).toContain('Extra camarón')
-    expect(html).toContain('size: 80mm auto')
+    expect(html).toContain('size: 72mm auto')
     expect(html).not.toContain('REF-123')
   })
 
