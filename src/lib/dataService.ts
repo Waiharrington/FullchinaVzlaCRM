@@ -4515,6 +4515,46 @@ export async function deletePurchase(id: string): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudo eliminar la compra')
 }
 
+/** Actualiza costos y pago conservando las filas originales y su historial de inventario. */
+export async function updatePurchase(id: string, params: {
+  supplierId: string
+  purchaseDate: string
+  invoiceNumber?: string
+  notes?: string
+  isPaid: boolean
+  exchangeRate?: number | null
+  items: Array<{ id?: string; ingredientId: string; quantity: number; unitId: string; unitCost: number; stockLocation: 'warehouse' | 'operational' }>
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null; bankFeeAmount?: number }>
+}): Promise<void> {
+  const { error } = await client().rpc('fn_update_purchase', {
+    p_purchase_id: id,
+    p_supplier_id: params.supplierId,
+    p_purchase_date: params.purchaseDate,
+    p_invoice_number: params.invoiceNumber ?? null,
+    p_notes: params.notes ?? null,
+    p_is_paid: params.isPaid,
+    p_exchange_rate: params.exchangeRate ?? null,
+    p_items: params.items.map((item) => ({
+      id: item.id ?? null,
+      ingredient_id: item.ingredientId,
+      quantity: item.quantity,
+      unit_id: item.unitId,
+      unit_cost: item.unitCost,
+      stock_location: item.stockLocation,
+    })),
+    p_payments: (params.payments ?? []).map((payment) => ({
+      account_id: payment.accountId,
+      amount: payment.amount,
+      currency: payment.currency,
+      exchange_rate: payment.exchangeRate ?? null,
+      method: payment.method ?? null,
+      reference: payment.reference ?? null,
+      bank_fee_amount: payment.bankFeeAmount ?? 0,
+    })),
+  })
+  if (error) throw new Error(error.message || 'No se pudo actualizar la compra')
+}
+
 export async function createPurchase(params: {
   supplierId: string
   purchaseDate: string

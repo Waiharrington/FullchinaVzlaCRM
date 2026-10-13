@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getSuppliers, createSupplier, getPurchases, createPurchase, setPurchasePaid, deletePurchase, voidPurchase, deleteVoidedPurchase,
+  getSuppliers, createSupplier, getPurchases, createPurchase, updatePurchase, setPurchasePaid, deletePurchase, voidPurchase, deleteVoidedPurchase,
   getIngredients, getUnits, createIngredient, getFinancialAccounts,
   type Supplier, type Purchase, type Ingredient, type FinancialAccount,
 } from '../lib/dataService'
@@ -10,6 +10,7 @@ import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
 import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
+import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, formatUsdPrecise, dateKeyInTimeZone } from '../lib/money'
@@ -25,7 +26,7 @@ import { confirmDialog } from '../components/ConfirmDialog'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import './ComprasReal.css'
 
-interface ItemForm { ingredientId: string; quantity: string; unitId: string; unitCost: string; stockLocation: 'warehouse' | 'operational' }
+interface ItemForm { id?: string; ingredientId: string; quantity: string; unitId: string; unitCost: string; stockLocation: 'warehouse' | 'operational' }
 type PurchaseCostCurrency = 'VES' | 'USD'
 const PAGE_SIZE = 8
 type PaidFilter = 'todos' | 'pagados' | 'pendientes'
@@ -242,7 +243,7 @@ export function ComprasReal() {
     setInvoiceNumber(p.invoiceNumber ?? '')
     setNotes(p.notes ?? '')
     setMarkPaid(p.isPaid)
-    setItems(p.items.map((it) => ({ ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost), stockLocation: it.stockLocation })))
+    setItems(p.items.map((it) => ({ id: it.id, ingredientId: it.ingredientId, quantity: String(it.quantity), unitId: it.unitId, unitCost: String(it.unitCost), stockLocation: it.stockLocation })))
     setPurchaseSources(p.payments.length > 0
       ? p.payments.map((pp) => ({ accountId: pp.accountId, amount: String(pp.amount), reference: pp.reference ?? '', mobileFee: pp.method === 'pago_movil', feeAmount: String(pp.bankFeeAmount || (pp.method === 'pago_movil' ? calculateMobilePaymentFee(pp.amount) : 0)), feeEdited: pp.bankFeeAmount > 0 }))
       : [{ accountId: p.accountId ?? '', amount: '', reference: p.paymentReference ?? '', mobileFee: false, feeAmount: '0', feeEdited: false }])
@@ -272,26 +273,11 @@ export function ComprasReal() {
     }
     try {
       if (editingPurchaseId && editingOriginal) {
-        // Editar = reemplazar: revierte la compra anterior (devuelve stock y saldo)
-        // y crea la corregida. Si la vieja no se puede revertir (insumo ya usado),
-        // deletePurchase lanza y no se toca nada.
-        const original = editingOriginal
-        await deletePurchase(editingPurchaseId)
-        try {
-          await createPurchase(payload)
-        } catch (createErr) {
-          // Rollback: recrea la compra original para no perder datos.
-          await createPurchase({
-            supplierId: original.supplierId, purchaseDate: original.purchaseDate,
-            invoiceNumber: original.invoiceNumber ?? undefined, notes: original.notes ?? undefined,
-            userId: user?.id ?? '', isPaid: original.isPaid, exchangeRate: original.exchangeRate,
-            payments: original.payments.length > 0 ? original.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, exchangeRate: pp.exchangeRate, method: pp.method, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount })) : undefined,
-            accountId: original.accountId, paymentCurrency: original.paymentCurrency, paymentMethod: original.paymentMethod, paymentReference: original.paymentReference,
-            items: original.items.map((it) => ({ ingredientId: it.ingredientId, quantity: it.quantity, unitId: it.unitId, unitCost: it.unitCost, stockLocation: it.stockLocation })),
-          }).catch(() => {})
-          throw createErr
-        }
-        flash('Compra actualizada · inventario ajustado')
+        await updatePurchase(editingPurchaseId, {
+          ...payload,
+          items: items.map((it) => ({ id: it.id, ingredientId: it.ingredientId, quantity: Number(it.quantity) || 0, unitId: it.unitId, unitCost: Number(it.unitCost) || 0, stockLocation: it.stockLocation })),
+        })
+      flash('Compra actualizada')
       } else {
         await createPurchase(payload)
         flash('Compra registrada · inventario actualizado')
@@ -416,14 +402,14 @@ export function ComprasReal() {
         </button>
       </header>
 
-      {error && <Toast type="error" message={error} onClose={() => setError('')} />}
+      {error && !showForm && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       {/* Resumen */}
       <div className="cmp-summary management-workspace-metrics">
         <div className="cmp-sum red">
           <span className="cmp-sum-ic"><ShoppingBag size={20} /></span>
-          <div><div className="cmp-sum-lbl">Total compras (este mes)</div><div className="cmp-sum-val">{formatUsd(summary.totalThis)}</div>
+          <div><div className="cmp-sum-lbl">Total compras (este mes)</div><div className="cmp-sum-val"><MoneyWithBcv usd={summary.totalThis} primaryCurrency="VES" align="start" compact usdPrecise /></div>
             {summary.pct != null && <div className={`cmp-sum-sub ${summary.pct >= 0 ? 'up' : 'down'}`}>{summary.pct >= 0 ? '▲' : '▼'} {Math.abs(summary.pct).toFixed(0)}% vs. mes anterior</div>}
           </div>
         </div>
@@ -449,6 +435,7 @@ export function ComprasReal() {
         <div className={`cmp-modal-overlay cmp-purchase-overlay ${closingForm ? 'closing' : ''}`} onMouseDown={(event) => { if (event.target === event.currentTarget) closePurchaseForm() }}>
         <div className="cmp-card cmp-purchase-modal" role="dialog" aria-modal="true" aria-labelledby="new-purchase-title">
           <div className="cmp-purchase-header"><h3 id="new-purchase-title" className="cmp-card-title"><ShoppingBag size={18} style={{ color: '#e11d2a' }} /> {editingPurchaseId ? 'Editar Compra' : 'Nueva Compra'}</h3><button type="button" className="cmp-icon-btn" aria-label="Cerrar" onClick={closePurchaseForm}><X size={20} /></button></div>
+          {error && <div className="cmp-form-error" role="alert">{error}</div>}
           <form onSubmit={handleSubmit}>
             <div className="cmp-form-grid">
               <div className="cmp-field"><label>Proveedor *</label>
@@ -492,7 +479,7 @@ export function ComprasReal() {
                     <option value="operational">Inventario operativo</option>
                     <option value="warehouse">Almacén</option>
                   </StyledSelect>
-                  <span className="cmp-subtotal" style={{ textAlign: 'right' }}>{formatUsdPrecise(sub)}</span>
+                  <MoneyWithBcv usd={sub} rate={effectiveBcvRate} primaryCurrency="VES" align="end" compact className="cmp-subtotal" usdPrecise />
                   <button type="button" className="cmp-del" onClick={() => removeItem(i)}><Trash2 size={16} /></button>
                 </div>
               )
@@ -541,13 +528,16 @@ export function ComprasReal() {
                 </div>
               })}
               <button type="button" className="cmp-src-add" onClick={() => setPurchaseSources((prev) => [...prev, { accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])}><Plus size={14} /> Agregar cuenta</button>
-              <div className={`cmp-src-summary ${purchaseBalanced ? 'ok' : ''}`}><span>Asignado <strong>{formatUsdPrecise(purchaseAssignedUsd)}</strong> de {formatUsdPrecise(totalForm)}</span><span>{purchaseBalanced ? '✓ Cuadra' : purchaseRemainingUsd > 0 ? `Faltan ${formatUsdPrecise(purchaseRemainingUsd)}` : `Sobran ${formatUsdPrecise(-purchaseRemainingUsd)}`}</span></div>
+              <div className={`cmp-src-summary ${purchaseBalanced ? 'ok' : ''}`}>
+                <span className="cmp-src-money-group">Asignado <MoneyWithBcv usd={purchaseAssignedUsd} rate={effectiveBcvRate} primaryCurrency="VES" align="start" compact usdPrecise /> de <MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="start" compact usdPrecise /></span>
+                <span className="cmp-src-money-group">{purchaseBalanced ? '✓ Cuadra' : purchaseRemainingUsd > 0 ? 'Faltan' : 'Sobran'} {!purchaseBalanced && <MoneyWithBcv usd={Math.abs(purchaseRemainingUsd)} rate={effectiveBcvRate} primaryCurrency="VES" align="end" compact usdPrecise />}</span>
+              </div>
             </div>}
 
             <div className="cmp-form-foot">
               <span style={{ color: '#a1a1aa', fontSize: 13 }}>Total de ítems: <strong style={{ color: '#fff' }}>{items.length}</strong></span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                <div className="cmp-total"><div className="lbl">Total a pagar</div><div className="val">{formatUsdPrecise(totalForm)}</div>{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Ref. {formatVes(totalForm * effectiveBcvRate)} · BCV {formatVes(effectiveBcvRate)}</div>}</div>
+                <div className="cmp-total"><div className="lbl">Total a pagar</div><MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="end" className="cmp-total-money" usdClassName="val" usdPrecise />{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Tasa BCV {formatVes(effectiveBcvRate)}</div>}</div>
                 <div className="cmp-actions">
                   <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
                   <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0 || (markPaid && (!purchaseSourcesValid || !purchaseBalanced))}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
@@ -571,7 +561,7 @@ export function ComprasReal() {
 
         <div className="cmp-table-wrap">
           <table className="cmp-table">
-            <thead><tr><th>Fecha</th><th>Proveedor</th><th>N° Factura</th><th># Ítems</th><th>Monto pagado</th><th>Método / Cuenta</th><th>Estado</th><th>Acción</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Proveedor</th><th>N° Factura</th><th># Ítems</th><th>Monto de compra</th><th>Método / Cuenta</th><th>Estado</th><th>Acción</th></tr></thead>
             <tbody>
               {pageItems.map((p) => (
                 <tr key={p.id}>
@@ -580,7 +570,7 @@ export function ComprasReal() {
                   <td style={{ color: '#a1a1aa' }}>{p.invoiceNumber || '—'}</td>
                   <td>{p.items.length}</td>
                   <td>
-                    {p.isPaid ? <div className="cmp-paid-amount"><strong>{p.paymentCurrency === 'VES' && p.exchangeRate ? formatVes(p.totalAmount * p.exchangeRate) : formatUsdPrecise(p.totalAmount)}</strong>{p.paymentCurrency === 'VES' && p.exchangeRate && <small>Ref. {formatUsdPrecise(p.totalAmount)} · BCV {formatVes(p.exchangeRate)}</small>}</div> : <span>—</span>}
+                    <MoneyWithBcv usd={p.totalAmount} rate={p.exchangeRate} primaryCurrency="VES" align="start" compact className="cmp-paid-amount" usdPrecise />
                   </td>
                   <td><div className="cmp-payment-info">{p.payments.length > 1 ? <><strong>Varias cuentas</strong><small>{p.payments.map((pp) => pp.accountName).join(' · ')}</small></> : <><strong>{p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong><small>{p.accountName ?? (p.isPaid ? 'Cuenta sin registrar' : 'Sin pago')}</small>{p.paymentReference && <small>Ref. {p.paymentReference}</small>}</>}</div></td>
                   <td><span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Clic para cambiar'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>{p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}</span></td>
@@ -632,13 +622,13 @@ export function ComprasReal() {
             <div style={{ margin: '12px 0 4px', fontSize: 12, color: '#71717a', textTransform: 'uppercase' }}>Ítems</div>
             {detail.items.map((it) => (
               <div className="cmp-detail-row" key={it.id}>
-                <span>{it.ingredientName} · {it.quantity} {it.unitSymbol} × {formatUsdPrecise(it.unitCost)}<small className="cmp-item-destination">{it.stockLocation === 'warehouse' ? 'Almacén' : 'Inventario operativo'}</small></span>
-                <span className="cmp-subtotal">{formatUsdPrecise(it.total)}</span>
+                <span>{it.ingredientName} · {it.quantity} {it.unitSymbol} × <MoneyWithBcv usd={it.unitCost} rate={detail.exchangeRate} primaryCurrency="VES" align="start" compact usdPrecise /><small className="cmp-item-destination">{it.stockLocation === 'warehouse' ? 'Almacén' : 'Inventario operativo'}</small></span>
+                <MoneyWithBcv usd={it.total} rate={detail.exchangeRate} primaryCurrency="VES" align="end" compact className="cmp-subtotal" usdPrecise />
               </div>
             ))}
             <div className="cmp-modal-total-row">
               <span className="k">Total</span>
-              <span className="cmp-total"><span className="val">{detail.paymentCurrency === 'VES' && detail.exchangeRate ? formatVes(detail.totalAmount * detail.exchangeRate) : formatUsdPrecise(detail.totalAmount)}</span>{detail.paymentCurrency === 'VES' && detail.exchangeRate && <small className="cmp-payment-ref">Ref. {formatUsdPrecise(detail.totalAmount)} · BCV {formatVes(detail.exchangeRate)}</small>}</span>
+              <MoneyWithBcv usd={detail.totalAmount} rate={detail.exchangeRate} primaryCurrency="VES" align="end" className="cmp-total" usdClassName="val" usdPrecise />
             </div>
           </div>
         </div>,
