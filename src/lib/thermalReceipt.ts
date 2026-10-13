@@ -1,5 +1,15 @@
 import { formatUsd, formatVes } from './money'
 
+declare global {
+  interface Window {
+    FullChinaPrinter?: {
+      isAvailable: () => boolean
+      printReceipt: (payload: string) => void
+      openSettings: () => void
+    }
+  }
+}
+
 export interface ThermalReceiptModifier {
   name: string
   quantity: number
@@ -133,6 +143,11 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
 }
 
 export function printThermalReceipt(data: ThermalReceiptData): Promise<void> {
+  const nativePrinter = window.FullChinaPrinter
+  if (nativePrinter?.isAvailable()) {
+    nativePrinter.printReceipt(JSON.stringify(data))
+    return Promise.resolve()
+  }
   return new Promise((resolve) => {
     const frame = document.createElement('iframe')
     frame.setAttribute('aria-hidden', 'true')
