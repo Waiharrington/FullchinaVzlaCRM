@@ -174,7 +174,8 @@ export function ComprasReal() {
   }
   const purchaseAssignedUsd = purchaseSources.reduce((s, r) => s + purchaseSourceUsd(r), 0)
   const purchaseRemainingUsd = Math.round((totalForm - purchaseAssignedUsd) * 100) / 100
-  const purchaseBalanced = Math.abs(purchaseRemainingUsd) <= 0.02
+  const purchaseCovered = purchaseRemainingUsd <= 0.02
+  const purchaseOverpaid = purchaseRemainingUsd < -0.02
   const purchaseSourcesValid = purchaseSources.length > 0 && purchaseSources.every((r) => {
     const acc = accounts.find((a) => a.id === r.accountId)
     return !!acc && (parseFloat(r.amount) || 0) > 0
@@ -258,7 +259,7 @@ export function ComprasReal() {
     if (markPaid) {
       if (!purchaseSourcesValid) { setError('Completa las cuentas de pago (cuenta y monto).'); return }
       if (purchaseSources.some((r) => accounts.find((a) => a.id === r.accountId)?.currency === 'VES') && effectiveBcvRate <= 0) { setError('No hay una tasa BCV válida para registrar pagos en bolívares'); return }
-      if (!purchaseBalanced) { setError(`El pago no cuadra: asignado ${formatUsdPrecise(purchaseAssignedUsd)} de ${formatUsdPrecise(totalForm)}`); return }
+      if (!purchaseCovered) { setError(`El pago no cubre el total: asignado ${formatUsdPrecise(purchaseAssignedUsd)} de ${formatUsdPrecise(totalForm)}`); return }
     }
     setSaving(true); setError('')
     const payments = markPaid ? purchaseSources.map((r) => {
@@ -528,10 +529,11 @@ export function ComprasReal() {
                 </div>
               })}
               <button type="button" className="cmp-src-add" onClick={() => setPurchaseSources((prev) => [...prev, { accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])}><Plus size={14} /> Agregar cuenta</button>
-              <div className={`cmp-src-summary ${purchaseBalanced ? 'ok' : ''}`}>
+              <div className={`cmp-src-summary ${purchaseCovered ? 'ok' : ''}`}>
                 <span className="cmp-src-money-group">Asignado <MoneyWithBcv usd={purchaseAssignedUsd} rate={effectiveBcvRate} primaryCurrency="VES" align="start" compact usdPrecise /> de <MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="start" compact usdPrecise /></span>
-                <span className="cmp-src-money-group">{purchaseBalanced ? '✓ Cuadra' : purchaseRemainingUsd > 0 ? 'Faltan' : 'Sobran'} {!purchaseBalanced && <MoneyWithBcv usd={Math.abs(purchaseRemainingUsd)} rate={effectiveBcvRate} primaryCurrency="VES" align="end" compact usdPrecise />}</span>
+                <span className="cmp-src-money-group">{purchaseCovered ? (purchaseOverpaid ? '✓ Excedente pagado' : '✓ Cuadra') : 'Faltan'} {(!purchaseCovered || purchaseOverpaid) && <MoneyWithBcv usd={Math.abs(purchaseRemainingUsd)} rate={effectiveBcvRate} primaryCurrency="VES" align="end" compact usdPrecise />}</span>
               </div>
+              {purchaseOverpaid && <p className="cmp-src-overpay-note">Se descontará de la cuenta el monto registrado. El excedente no cambia el costo de los artículos.</p>}
             </div>}
 
             <div className="cmp-form-foot">
@@ -540,7 +542,7 @@ export function ComprasReal() {
                 <div className="cmp-total"><div className="lbl">Total a pagar</div><MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="end" className="cmp-total-money" usdClassName="val" usdPrecise />{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Tasa BCV {formatVes(effectiveBcvRate)}</div>}</div>
                 <div className="cmp-actions">
                   <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
-                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0 || (markPaid && (!purchaseSourcesValid || !purchaseBalanced))}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
+                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0 || (markPaid && (!purchaseSourcesValid || !purchaseCovered))}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
                 </div>
               </div>
             </div>
