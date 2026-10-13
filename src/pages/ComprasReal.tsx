@@ -469,7 +469,7 @@ export function ComprasReal() {
             </div>
             {items.map((it, i) => {
               const sub = (parseFloat(it.quantity) || 0) * (parseFloat(it.unitCost) || 0)
-              const shownUnitCost = unitCostDrafts[i] ?? (costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 100) / 100) : '') : it.unitCost)
+              const shownUnitCost = unitCostDrafts[i] ?? (costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 10000) / 10000) : '') : it.unitCost)
               return (
                 <div className="cmp-item-row" key={i}>
                   <SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />
