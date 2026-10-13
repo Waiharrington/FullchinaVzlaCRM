@@ -130,7 +130,7 @@ final class ReceiptPrinter {
             }
         }
         page.space(14);
-        page.center("¡Gracias por su preferencia!");
+        page.space(42); // Conserva el espacio del pie sin imprimir texto.
         return page;
     }
 

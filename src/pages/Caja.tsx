@@ -1307,7 +1307,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
               </div>
 
               <div className="ticket-footer-text">
-                ¡Gracias por su preferencia!
+                &nbsp;
               </div>
             </div>
           </div>

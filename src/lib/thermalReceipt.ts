@@ -138,7 +138,7 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     <div class="summary grand-total"><span>Total:</span><span>${escapeHtml(formatUsd(data.totalUsd))}</span></div>
     ${vesTotal ? `<div class="summary grand-total"><span>Total:</span><span>${escapeHtml(vesTotal)}</span></div>` : ''}
     ${payments ? `<div class="separator"></div>${payments}` : ''}
-    <div class="footer">¡Gracias por su preferencia!</div>
+    <div class="footer" aria-hidden="true">&nbsp;</div>
   </main></body></html>`
 }
 
