@@ -110,7 +110,10 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     .reference { margin: .6mm 0 1.2mm; overflow-wrap: anywhere; }
     .footer { margin-top: 3mm; text-align: center; font-size: 9pt; }
     @media screen { body { padding: 3mm 0; } }
-    @media print { html, body { margin: 0; padding: 0; } }
+    @media print {
+      html, body { margin: 0; padding: 0; }
+      .ticket { transform: translateY(-7mm); }
+    }
   </style></head><body><main class="ticket">
     <div class="meta">${escapeHtml(dateLabel)} ${escapeHtml(timeLabel)}</div>
     <div class="meta">Orden: ${escapeHtml(data.orderNumber)}</div>
