@@ -114,7 +114,7 @@ Deno.serve(async (request) => {
       method: 'POST',
       headers: { Authorization: `Bearer ${groqKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: image ? 'qwen/qwen3.6-27b' : (Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b'),
+        model: image ? (Deno.env.get('GROQ_VISION_MODEL') || 'qwen/qwen3.8-27b') : (Deno.env.get('GROQ_MODEL') || 'openai/gpt-oss-120b'),
         temperature: 0, max_completion_tokens: 2400,
         messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
       }),
