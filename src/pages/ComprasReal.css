@@ -211,8 +211,8 @@
 .cmp-purchase-modal .cmp-field label { margin-bottom: 4px; font-size: 11px; }
 .cmp-purchase-modal .cmp-items-head,
 .cmp-purchase-modal .cmp-item-row {
-  grid-template-columns: minmax(200px, 26%) 68px 58px 64px 105px minmax(120px, 20%) minmax(110px, 1fr) 28px;
-  gap: 7px;
+  grid-template-columns: minmax(200px, 26%) 90px 58px 64px 105px minmax(120px, 20%) minmax(110px, 1fr) 28px;
+  gap: 10px;
   min-width: 850px;
 }
 .cmp-purchase-modal .cmp-items-head { padding-bottom: 6px; font-size: 10px; }
