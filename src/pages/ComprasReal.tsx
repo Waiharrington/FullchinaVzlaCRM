@@ -39,6 +39,40 @@ const PAYMENT_METHODS = [
 ]
 const paymentMethodLabel = (value: string | null) => value === 'zelle' ? 'Zelle (histórico)' : PAYMENT_METHODS.find(method => method.value === value)?.label ?? 'Sin registrar'
 
+function canonicalIngredientName(value: string) {
+  return normalizeForSearch(value)
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:kg|kilo(?:s)?|gr?|gramo(?:s)?|ml|mililitro(?:s)?|lt|litro(?:s)?|und|unidad(?:es)?|unid|paq(?:uete)?s?)\b/gi, ' ')
+    .replace(/\b\d+(?:[.,]\d+)?\b/g, ' ')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function ingredientNameMatch(description: string, ingredients: Ingredient[]) {
+  const target = canonicalIngredientName(description)
+  if (!target) return undefined
+  const candidates = ingredients.map((ingredient) => ({ ingredient, name: canonicalIngredientName(ingredient.name) }))
+  const exact = candidates.filter((candidate) => candidate.name === target)
+  if (exact.length === 1) return exact[0].ingredient
+  if (target.length < 6 || target.includes(' ')) return undefined
+  const near = candidates.filter(({ name }) => {
+    if (name.length < 6 || name.includes(' ') || Math.abs(name.length - target.length) > 1) return false
+    let distance = 0
+    let left = 0
+    let right = 0
+    while (left < target.length && right < name.length) {
+      if (target[left] === name[right]) { left++; right++; continue }
+      if (++distance > 1) return false
+      if (target.length > name.length) left++
+      else if (name.length > target.length) right++
+      else { left++; right++ }
+    }
+    return distance + (left < target.length || right < name.length ? 1 : 0) <= 1
+  })
+  return near.length === 1 ? near[0].ingredient : undefined
+}
+
 export function ComprasReal() {
   const { user } = useAuth()
   const { bcvRate } = useRates()
@@ -253,7 +287,9 @@ export function ComprasReal() {
     setPurchaseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])
     const unresolved: string[] = []
     const mapped = draft.items.map((item) => {
-      const ingredient = item.kind === 'purchase' ? ingredients.find((value) => normalizeForSearch(value.name) === normalizeForSearch(item.description)) : undefined
+      const ingredient = item.kind === 'purchase'
+        ? ingredients.find((value) => value.id === item.ingredientId) ?? ingredientNameMatch(item.description, ingredients)
+        : undefined
       if (item.kind === 'purchase' && !ingredient) unresolved.push(item.description)
       const unit = units.find((value) => normalizeForSearch(value.symbol) === normalizeForSearch(item.unit ?? '') || normalizeForSearch(value.name) === normalizeForSearch(item.unit ?? ''))
       const unitId = unit?.id ?? ingredient?.unitId ?? units.find((value) => value.symbol.toLowerCase() === 'und')?.id ?? units[0]?.id ?? ''

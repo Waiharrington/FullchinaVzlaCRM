@@ -15,6 +15,7 @@ export interface ExtractedPurchaseDraft {
     unit: string | null
     unitCost: number | null
     kind: 'purchase' | 'expense'
+    ingredientId: string | null
   }>
   missingFields: string[]
 }
