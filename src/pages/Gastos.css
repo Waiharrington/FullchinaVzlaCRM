@@ -3,9 +3,12 @@
    ============================================================ */
 .gst-page { color: #fff; }
 .gst-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gst-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .gst-btn { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; background: #e11d2a; color: #fff; border: 0; border-radius: 12px; padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter .15s; }
 .gst-btn:hover { filter: brightness(1.08); }
 .gst-btn:disabled { opacity: .5; cursor: default; }
+.gst-ai-launch { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; background: rgba(225,29,42,.12); border: 1px solid rgba(225,29,42,.35); color: #fecaca; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 650; cursor: pointer; }
+.gst-ai-launch:hover { background: rgba(225,29,42,.2); border-color: rgba(225,29,42,.6); color: #fff; }
 .gst-help { display: inline-flex; align-items: center; gap: 7px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.08); color: #d4d4d8; border-radius: 12px; padding: 9px 14px; font-size: 13px; cursor: pointer; }
 
 /* Resumen */
@@ -148,6 +151,7 @@
 /* Modal de registro */
 .gst-form-title { font-size: 16px; font-weight: 700; margin: 0; }
 .gst-form-sub { font-size: 12px; color: #a1a1aa; margin: 2px 0 14px; }
+.gst-ai-prefill-note { margin: 0 0 12px; padding: 10px 12px; color: #fde68a; background: rgba(161,98,7,.14); border: 1px solid rgba(234,179,8,.28); border-radius: 10px; font-size: 12px; line-height: 1.5; }
 .gst-field { margin-bottom: 12px; }
 .gst-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
 .gst-req { color: #e11d2a; }
@@ -172,6 +176,8 @@
   .gst-form-col { align-items: flex-end; padding: 8px; }
   .gst-expense-modal { max-height: calc(100dvh - 16px); border-radius: 18px 18px 12px 12px; }
   .gst-row2 { grid-template-columns: 1fr; }
+  .gst-header-actions { width: 100%; }
+  .gst-header-actions > button { flex: 1; justify-content: center; }
   .gst-form-actions { flex-wrap: wrap; }
   .gst-form-actions .gst-btn { width: 100%; justify-content: center; min-height: 44px; }
 }

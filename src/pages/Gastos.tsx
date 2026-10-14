@@ -14,6 +14,8 @@ import {
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
 import { confirmDialog } from '../components/ConfirmDialog'
+import { ExpenseAiCapture, type ExtractedExpenseDraft } from '../components/ExpenseAiCapture'
+import { Sparkles } from 'lucide-react'
 import './Gastos.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
@@ -54,6 +56,9 @@ export function Gastos() {
   const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(null)
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
+  const [showAiCapture, setShowAiCapture] = useState(false)
+  const [aiPrefill, setAiPrefill] = useState<{ amount: number; currency: 'USD' | 'VES' | null } | null>(null)
+  const [aiAmountEdited, setAiAmountEdited] = useState(false)
   const [closingExpense, setClosingExpense] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
   const refreshExpenses = useCallback(async () => {
@@ -71,11 +76,26 @@ export function Gastos() {
     setEditingExpenseId(null)
     setForm(emptyForm)
     setExpenseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])
+    setAiPrefill(null)
+    setAiAmountEdited(false)
+    setClosingExpense(false)
+    setExpenseModalOpen(true)
+  }
+
+  const openExpenseAiDraft = (draft: ExtractedExpenseDraft) => {
+    setShowAiCapture(false)
+    setEditingExpenseId(null)
+    setForm({ ...emptyForm, description: draft.description ?? '' })
+    setExpenseSources([{ accountId: '', amount: draft.amount == null ? '' : String(draft.amount), reference: draft.reference ?? '', mobileFee: false, feeAmount: '0', feeEdited: false }])
+    setAiPrefill(draft.amount == null ? null : { amount: draft.amount, currency: draft.currency })
+    setAiAmountEdited(false)
     setClosingExpense(false)
     setExpenseModalOpen(true)
   }
 
   const openEditExpense = (e: ExpenseView) => {
+    setAiPrefill(null)
+    setAiAmountEdited(false)
     setEditingExpenseId(e.id)
     setForm({
       description: e.description, type: e.type, category: e.category, vendor: e.vendor === 'Sin proveedor' ? '' : e.vendor,
@@ -175,16 +195,24 @@ export function Gastos() {
     const acc = accounts.find((a) => a.id === r.accountId)
     return !!acc && (parseFloat(r.amount) || 0) > 0
   })
-  const updateExpenseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string; mobileFee: boolean; feeAmount: string; feeEdited: boolean }>) =>
+  const updateExpenseSource = (i: number, patch: Partial<{ accountId: string; amount: string; reference: string; mobileFee: boolean; feeAmount: string; feeEdited: boolean }>) => {
+    if (patch.amount !== undefined && i === 0) setAiAmountEdited(true)
     setExpenseSources((prev) => prev.map((row, idx) => {
       if (idx !== i) return row
       const next = { ...row, ...patch }
       const acc = accounts.find((a) => a.id === next.accountId)
+      if (i === 0 && patch.accountId !== undefined && aiPrefill && !aiAmountEdited && acc && aiPrefill.currency && rate > 0) {
+        const converted = acc.currency === aiPrefill.currency
+          ? aiPrefill.amount
+          : acc.currency === 'VES' ? aiPrefill.amount * rate : aiPrefill.amount / rate
+        next.amount = String(Math.round(converted * 100) / 100)
+      }
       if (patch.accountId !== undefined) { next.mobileFee = methodForExpenseAccount(acc) === 'pago_movil'; next.feeEdited = false }
       if (patch.mobileFee !== undefined) { next.feeEdited = false; next.feeAmount = patch.mobileFee ? String(calculateMobilePaymentFee(Number(next.amount.replace(',', '.')) || 0)) : '0' }
       else if (patch.amount !== undefined && next.mobileFee && !next.feeEdited) next.feeAmount = String(calculateMobilePaymentFee(Number(next.amount.replace(',', '.')) || 0))
       return next
     }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -210,6 +238,7 @@ export function Gastos() {
         })
         setExpenses((prev) => prev.map((item) => item.id === editingExpenseId ? { ...item, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments } : item))
         flash('Gasto actualizado')
+        setAiPrefill(null); setAiAmountEdited(false)
         setEditingExpenseId(null); setForm(emptyForm)
         setClosingExpense(true)
         window.setTimeout(() => { setExpenseModalOpen(false); setClosingExpense(false) }, 200)
@@ -222,6 +251,7 @@ export function Gastos() {
         })
         setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, date: saved.expenseDate, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments, purchaseExpenseItemId: null }, ...prev])
         flash(`Gasto de ${formatUsd(totalUsd)} registrado`)
+        setAiPrefill(null); setAiAmountEdited(false)
         if (keepOpen) { setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor }); setExpenseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }]) }
         else {
           setForm(emptyForm)
@@ -267,14 +297,16 @@ export function Gastos() {
           <h1 className="page-title"><Wallet size={22} className="page-title-icon" /> Gastos</h1>
           <p className="page-subtitle">Registra y controla todos los egresos operativos del negocio que no son compras de inventario.</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className="gst-header-actions">
           <button className="gst-help" onClick={() => flash('Registra egresos que no son inventario (nómina, delivery, comisiones, servicios…). Compras de insumos van en el módulo Compras.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
+          <button type="button" className="gst-ai-launch" onClick={() => setShowAiCapture(true)}><Sparkles size={16} /> Gasto con IA</button>
           <button type="button" className="gst-btn" aria-controls="expense-form" onClick={openExpenseForm}><Plus size={16} /> Registrar Gasto</button>
         </div>
       </header>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
+      {showAiCapture && <ExpenseAiCapture onClose={() => setShowAiCapture(false)} onDraft={openExpenseAiDraft} />}
 
       {/* Resumen */}
       <div className="gst-summary management-workspace-metrics">
@@ -375,6 +407,8 @@ export function Gastos() {
             <div className="gst-field"><label>Descripción del Gasto <span className="gst-req">*</span></label>
               <input ref={descriptionInputRef} aria-label="Descripción del gasto" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Ej: Compras de verduras y pollo" required /></div>
 
+            {aiPrefill && <div className="gst-ai-prefill-note" role="status">Datos leídos del recibo. El concepto se cargó en la descripción y el proveedor quedó vacío. {aiPrefill.currency ? `Monto detectado: ${aiPrefill.currency === 'VES' ? 'Bs' : 'USD'} ${aiPrefill.amount.toLocaleString('es-VE')}.` : 'No se pudo identificar la moneda; confirma el monto al elegir la cuenta.'} Selecciona la cuenta desde la que se pagó y revisa el monto antes de registrar.</div>}
+
             <div className="gst-row2">
               <div className="gst-field"><label>Tipo de Gasto <span className="gst-req">*</span></label>
                 <StyledSelect value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as ExpenseType })}><option value="variable">Gasto Variable</option><option value="fixed">Gasto Fijo</option><option value="other">Otro</option></StyledSelect></div>
@@ -398,7 +432,7 @@ export function Gastos() {
                 return <div className="gst-src-row" key={i}>
                   <div className="gst-src-grid">
                     <div className="gst-field"><label>Cuenta {expenseSources.length > 1 ? `#${i + 1}` : ''}</label><StyledSelect value={row.accountId} onChange={(e) => updateExpenseSource(i, { accountId: e.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}</StyledSelect></div>
-                    <div className="gst-field"><label>Monto {acc ? (isVes ? '(Bs)' : '(USD)') : ''}</label><input type="number" inputMode="decimal" min="0" step="any" value={row.amount} onChange={(e) => updateExpenseSource(i, { amount: e.target.value })} placeholder="0,00" /></div>
+                    <div className="gst-field"><label>Monto {acc ? (isVes ? '(Bs)' : '(USD)') : aiPrefill?.currency ? (aiPrefill.currency === 'VES' ? '(Bs detectados)' : '(USD detectados)') : ''}</label><input type="number" inputMode="decimal" min="0" step="any" value={row.amount} onChange={(e) => updateExpenseSource(i, { amount: e.target.value })} placeholder="0,00" /></div>
                     <div className="gst-field"><label>Referencia</label><input value={row.reference} onChange={(e) => updateExpenseSource(i, { reference: e.target.value })} placeholder="N° operación" /></div>
                   </div>
                   <div className="gst-src-meta">
