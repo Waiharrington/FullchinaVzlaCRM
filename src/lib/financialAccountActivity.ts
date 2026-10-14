@@ -5,8 +5,8 @@ export interface AccountActivityInput {
 
 interface PaymentInput { amount: number; accountId?: string | null }
 interface OrderInput { status: string; createdAt: string; bcvRate: number | null; payments: PaymentInput[] }
-interface ExpenseInput { expenseDate: string; amount: number; accountId: string | null; exchangeRate: number | null }
-interface PurchaseInput { purchaseDate: string; totalAmount: number; accountId: string | null; exchangeRate: number | null; isPaid: boolean; isVoided?: boolean }
+interface ExpenseInput { expenseDate: string; amount: number; accountId: string | null; exchangeRate: number | null; payments?: PaymentInput[] }
+interface PurchaseInput { purchaseDate: string; totalAmount: number; accountId: string | null; exchangeRate: number | null; isPaid: boolean; isVoided?: boolean; payments?: PaymentInput[] }
 
 export interface AccountActivity {
   inflows: number
@@ -38,12 +38,24 @@ export function buildFinancialAccountActivity(
     }
   }
   for (const expense of expenses) {
-    if (!expense.accountId || !result.has(expense.accountId) || !inRange(expense.expenseDate, start, end)) continue
-    result.get(expense.accountId)!.outflows += accountAmount(expense.amount, currencies.get(expense.accountId)!, expense.exchangeRate)
+    if (!inRange(expense.expenseDate, start, end)) continue
+    if (expense.payments?.length) {
+      for (const payment of expense.payments) {
+        if (payment.accountId && result.has(payment.accountId)) result.get(payment.accountId)!.outflows += payment.amount
+      }
+    } else if (expense.accountId && result.has(expense.accountId)) {
+      result.get(expense.accountId)!.outflows += accountAmount(expense.amount, currencies.get(expense.accountId)!, expense.exchangeRate)
+    }
   }
   for (const purchase of purchases) {
-    if (purchase.isVoided || !purchase.isPaid || !purchase.accountId || !result.has(purchase.accountId) || !inRange(purchase.purchaseDate, start, end)) continue
-    result.get(purchase.accountId)!.outflows += accountAmount(purchase.totalAmount, currencies.get(purchase.accountId)!, purchase.exchangeRate)
+    if (purchase.isVoided || !purchase.isPaid || !inRange(purchase.purchaseDate, start, end)) continue
+    if (purchase.payments?.length) {
+      for (const payment of purchase.payments) {
+        if (payment.accountId && result.has(payment.accountId)) result.get(payment.accountId)!.outflows += payment.amount
+      }
+    } else if (purchase.accountId && result.has(purchase.accountId)) {
+      result.get(purchase.accountId)!.outflows += accountAmount(purchase.totalAmount, currencies.get(purchase.accountId)!, purchase.exchangeRate)
+    }
   }
   for (const row of result.values()) row.net = row.inflows - row.outflows
   return result

@@ -400,6 +400,12 @@ export function Proveedores() {
             <span>{formatUsd(item.total)}</span>
           </div>
         ))}
+        {purchase.expenseItems.map((item) => (
+          <div className="prv-purchase-detail-item" key={item.id}>
+            <span>{item.quantity} {item.unitSymbol} {item.description} · Gasto</span>
+            <span>{formatUsd(item.total)}</span>
+          </div>
+        ))}
       </div>
       <div className="prv-purchase-detail-rows">
         <div className="prv-purchase-detail-row">
@@ -929,7 +935,10 @@ export function Proveedores() {
                                   <b>{purchase.invoiceNumber ? `Factura ${purchase.invoiceNumber}` : 'Sin número de factura'}</b>
                                   <strong>{formatUsd(purchase.totalAmount)}</strong>
                                 </div>
-                                <div className="prv-items">{purchase.items.map((item) => `${item.quantity} ${item.unitSymbol} ${item.ingredientName}`).join(' · ') || 'Sin artículos'}</div>
+                                <div className="prv-items">{[
+                                  ...purchase.items.map((item) => `${item.quantity} ${item.unitSymbol} ${item.ingredientName}`),
+                                  ...purchase.expenseItems.map((item) => `${item.quantity} ${item.unitSymbol} ${item.description} (gasto)`),
+                                ].join(' · ') || 'Sin artículos'}</div>
                               </div>
                               <ChevronDown size={15} className="prv-purchase-chevron" />
                             </button>

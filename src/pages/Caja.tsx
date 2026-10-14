@@ -596,7 +596,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       .filter((a) => a.currency === 'VES' && a.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(a.name))
       .sort((a, b) => Number(b.name === 'Banco Exterior') - Number(a.name === 'Banco Exterior'))
     if (method === 'transfer') return paymentAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
-    if (method === 'card') return paymentAccounts.filter((a) => a.currency === 'VES' && a.name === 'Banesco')
+    if (method === 'card') return paymentAccounts.filter((a) => a.currency === 'VES' && a.name === 'Punto de venta')
     if (method === 'binance') return paymentAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
     return paymentAccounts
   }
@@ -1972,11 +1972,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                   <div className="payment-field-group mt-2">
                     <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
                     <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
-                      <option value="">{selectedPaymentTab === 'card' ? 'Banesco' : 'Selecciona una cuenta'}</option>
+                      <option value="">{selectedPaymentTab === 'card' ? 'Punto de venta' : 'Selecciona una cuenta'}</option>
                       {accountsForMethod(selectedPaymentTab).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
                     </StyledSelect>
                     {selectedPaymentTab === 'mobile' && <span className="payment-hint-sub">Por defecto: Banco Exterior. Puedes cambiar a Banesco.</span>}
-                    {selectedPaymentTab === 'card' && <span className="payment-hint-sub">Los cobros del punto ingresan en Banesco.</span>}
+                    {selectedPaymentTab === 'card' && <span className="payment-hint-sub">El dinero queda en Punto de venta. Registra la transferencia a Banesco cuando se deposite.</span>}
                   </div>
                 )}
 

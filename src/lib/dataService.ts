@@ -197,6 +197,7 @@ export interface Expense {
   accountId: string | null
   exchangeRate: number | null
   payments: ExpensePayment[]
+  purchaseExpenseItemId: string | null
 }
 
 export interface ExpensePayment {
@@ -351,6 +352,8 @@ export interface Purchase {
   createdBy: string
   createdAt: string
   items: PurchaseItem[]
+  expenseItems: PurchaseExpenseItem[]
+  inventoryTotalAmount: number
   totalAmount: number
   isPaid: boolean
   accountId: string | null
@@ -387,6 +390,16 @@ export interface PurchaseItem {
   unitCost: number
   total: number
   stockLocation: 'warehouse' | 'operational'
+}
+
+export interface PurchaseExpenseItem {
+  id: string
+  description: string
+  quantity: number
+  unitId: string
+  unitSymbol: string
+  unitCost: number
+  total: number
 }
 
 export interface SellableProduct {
@@ -2113,6 +2126,7 @@ export async function getExpenses(dateStart?: string, dateEnd?: string, allPages
       reference: (pp.reference as string) ?? null,
       bankFeeAmount: Number(pp.bank_fee_amount ?? 0),
     })),
+    purchaseExpenseItemId: (e.purchase_expense_item_id as string) ?? null,
   }))
 }
 
@@ -2168,6 +2182,7 @@ export async function createExpense(params: {
     accountId: (data.account_id as string) ?? null,
     exchangeRate: data.exchange_rate == null ? null : Number(data.exchange_rate),
     payments: (params.payments ?? []).map((p, i) => ({ id: String(i), accountId: p.accountId, accountName: '', amount: p.amount, amountUsd: p.currency === 'VES' ? p.amount / (Number(p.exchangeRate) || 1) : p.amount, currency: p.currency, exchangeRate: p.exchangeRate ?? null, method: p.method ?? null, reference: p.reference ?? null, bankFeeAmount: p.bankFeeAmount ?? 0 })),
+    purchaseExpenseItemId: null,
   }
 }
 
@@ -4384,6 +4399,7 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       suppliers(name),
       financial_accounts(name,currency),
       purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, stock_location, ingredients(name), units(symbol)),
+      purchase_expense_items(id, description, quantity, unit_id, unit_cost, units(symbol)),
       purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))
     `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
     if (allPages) query = query.range(offset, offset + 499)
@@ -4408,6 +4424,16 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       total: Number(pi.quantity) * Number(pi.unit_cost),
       stockLocation: (pi.stock_location as 'warehouse' | 'operational') ?? 'warehouse',
     }))
+    const expenseItems = ((p.purchase_expense_items as Array<Record<string, unknown>>) ?? []).map((item) => ({
+      id: item.id as string,
+      description: item.description as string,
+      quantity: Number(item.quantity),
+      unitId: item.unit_id as string,
+      unitSymbol: ((item.units as unknown as Record<string, unknown>)?.symbol as string) ?? '',
+      unitCost: Number(item.unit_cost),
+      total: Number(item.quantity) * Number(item.unit_cost),
+    }))
+    const inventoryTotalAmount = items.reduce((sum, item) => sum + item.total, 0)
     return {
       id: p.id as string,
       supplierId: p.supplier_id as string,
@@ -4418,7 +4444,9 @@ export async function getPurchases(allPages = false): Promise<Purchase[]> {
       createdBy: p.created_by as string,
       createdAt: p.created_at as string,
       items,
-      totalAmount: items.reduce((sum, i) => sum + i.total, 0),
+      expenseItems,
+      inventoryTotalAmount,
+      totalAmount: inventoryTotalAmount + expenseItems.reduce((sum, item) => sum + item.total, 0),
       isPaid: p.is_paid !== false,
       isVoided: p.is_voided === true,
       accountId: (p.account_id as string) ?? null,
@@ -4513,6 +4541,44 @@ export async function deleteVoidedPurchase(id: string): Promise<void> {
 export async function deletePurchase(id: string): Promise<void> {
   const { error } = await client().rpc('fn_delete_purchase', { p_purchase_id: id })
   if (error) throw new Error(error.message || 'No se pudo eliminar la compra')
+}
+
+/** Actualiza costos y pago conservando las filas originales y su historial de inventario. */
+export async function saveMixedPurchase(params: {
+  purchaseId?: string | null
+  supplierId: string
+  purchaseDate: string
+  invoiceNumber?: string
+  notes?: string
+  isPaid: boolean
+  exchangeRate?: number | null
+  inventoryItems: Array<{ id?: string; ingredientId: string; quantity: number; unitId: string; unitCost: number; stockLocation: 'warehouse' | 'operational' }>
+  expenseItems: Array<{ description: string; quantity: number; unitId: string; unitCost: number }>
+  payments?: Array<{ accountId: string; amount: number; currency: 'USD' | 'VES'; exchangeRate?: number | null; method?: string | null; reference?: string | null; bankFeeAmount?: number }>
+}): Promise<string> {
+  const { data, error } = await client().rpc('fn_save_mixed_purchase', {
+    p_purchase_id: params.purchaseId ?? null,
+    p_supplier_id: params.supplierId,
+    p_purchase_date: params.purchaseDate,
+    p_invoice_number: params.invoiceNumber ?? null,
+    p_notes: params.notes ?? null,
+    p_is_paid: params.isPaid,
+    p_exchange_rate: params.exchangeRate ?? null,
+    p_inventory_items: params.inventoryItems.map((item) => ({
+      id: item.id ?? null, ingredient_id: item.ingredientId, quantity: item.quantity,
+      unit_id: item.unitId, unit_cost: item.unitCost, stock_location: item.stockLocation,
+    })),
+    p_expense_items: params.expenseItems.map((item) => ({
+      description: item.description, quantity: item.quantity, unit_id: item.unitId, unit_cost: item.unitCost,
+    })),
+    p_payments: (params.payments ?? []).map((payment) => ({
+      account_id: payment.accountId, amount: payment.amount, currency: payment.currency,
+      exchange_rate: payment.exchangeRate ?? null, method: payment.method ?? null,
+      reference: payment.reference ?? null, bank_fee_amount: payment.bankFeeAmount ?? 0,
+    })),
+  })
+  if (error) throw new Error(error.message || 'No se pudo guardar la factura mixta')
+  return data as string
 }
 
 /** Actualiza costos y pago conservando las filas originales y su historial de inventario. */

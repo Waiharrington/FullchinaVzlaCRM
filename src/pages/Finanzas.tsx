@@ -131,6 +131,14 @@ export function Finanzas() {
     setTransfer({ mode, concept: '', from: '', to: '', amount: '', rate: '', reference: '', notes: '' })
     setShowTransfer(true)
   }, [])
+  const openPosSettlementTransfer = (account: FinancialAccount) => {
+    const banesco = accounts.find(a => a.name === 'Banesco' && a.currency === 'VES')
+    const amount = Math.floor((account.currentBalance + 1e-8) * 100) / 100
+    if (!banesco || amount <= 0) return
+    setTransferError('')
+    setTransfer({ mode: 'transfer', concept: 'Depósito del punto de venta a Banesco', from: account.id, to: banesco.id, amount: amount.toFixed(2), rate: '', reference: '', notes: '' })
+    setShowTransfer(true)
+  }
   const closeAccount = useCallback((then?: () => void) => {
     if (!selectedAccount || closingAccount) return
     setClosingAccount(true)
@@ -298,6 +306,7 @@ export function Finanzas() {
 
     for (const expense of expenses) {
       if (!isInSelectedMonth(expense.expenseDate)) continue
+      if (expense.purchaseExpenseItemId) continue // Ya está incluido en el pago único de la factura.
       const expenseAccount = expense.accountId ? accountById.get(expense.accountId) : undefined
       const expenseCurrency = expenseAccount?.currency ?? (expense.exchangeRate ? 'VES' : 'USD')
       const expenseRate = expense.exchangeRate || bcvRate || 0
@@ -396,10 +405,14 @@ export function Finanzas() {
       .flatMap(order => order.payments.map(payment => ({ payment, rate: order.bcvRate })))
       .filter(row => row.payment.accountId === account.id)
       .reduce((sum, row) => sum + amountFor(row.payment.amount, row.rate), 0)
-    const expensesDay = expenses.filter(row => row.accountId === account.id && row.expenseDate === day)
-      .reduce((sum, row) => sum + amountFor(row.amount, row.exchangeRate), 0)
-    const purchasesDay = purchases.filter(row => !row.isVoided && row.isPaid && row.accountId === account.id && row.purchaseDate === day)
-      .reduce((sum, row) => sum + amountFor(row.totalAmount, row.exchangeRate), 0)
+    const expensesDay = expenses.filter(row => row.expenseDate === day)
+      .reduce((sum, row) => sum + (row.payments.length
+        ? row.payments.filter(payment => payment.accountId === account.id).reduce((total, payment) => total + payment.amount, 0)
+        : row.accountId === account.id ? amountFor(row.amount, row.exchangeRate) : 0), 0)
+    const purchasesDay = purchases.filter(row => !row.isVoided && row.isPaid && row.purchaseDate === day)
+      .reduce((sum, row) => sum + (row.payments.length
+        ? row.payments.filter(payment => payment.accountId === account.id).reduce((total, payment) => total + payment.amount, 0)
+        : row.accountId === account.id ? amountFor(row.totalAmount, row.exchangeRate) : 0), 0)
     let collections = 0; let transfers = 0; let others = 0
     for (const op of operations.filter(row => row.operationDate === day)) {
       const signed = op.toAccount === account.name ? operationAmount(op) : op.fromAccount === account.name ? -operationAmount(op) : 0
@@ -526,7 +539,10 @@ export function Finanzas() {
         <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
         <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
         <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
-        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} aria-label="Saldo inicial" aria-invalid={Boolean(openingBalanceError)} onChange={(e) => { setOpeningBalanceDraft(e.target.value); setOpeningBalanceError('') }} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => { setEditingAccountId(null); setOpeningBalanceError('') }} title="Cancelar"><X size={14}/></button>{openingBalanceError && <small className="fin-opening-error" role="alert">{openingBalanceError}</small>}</div> : <button className="fin-opening-btn" onClick={(event) => { event.stopPropagation(); setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)); setOpeningBalanceError('') }}><Pencil size={12}/> Saldo inicial</button>}
+        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} aria-label="Saldo inicial" aria-invalid={Boolean(openingBalanceError)} onChange={(e) => { setOpeningBalanceDraft(e.target.value); setOpeningBalanceError('') }} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => { setEditingAccountId(null); setOpeningBalanceError('') }} title="Cancelar"><X size={14}/></button>{openingBalanceError && <small className="fin-opening-error" role="alert">{openingBalanceError}</small>}</div> : <div className="fin-account-card-actions" onClick={event => event.stopPropagation()}>
+          {account.name === 'Punto de venta' && account.currency === 'VES' && <button className="fin-pos-transfer-btn" type="button" disabled={account.currentBalance < 0.01 || !accounts.some(a => a.name === 'Banesco' && a.currency === 'VES')} onClick={() => openPosSettlementTransfer(account)}><ArrowRightLeft size={13}/> Transferir todo a Banesco</button>}
+          <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)); setOpeningBalanceError('') }}><Pencil size={12}/> Saldo inicial</button>
+        </div>}
       </div>
     )
   }

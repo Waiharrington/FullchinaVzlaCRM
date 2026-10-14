@@ -19,7 +19,7 @@ import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type ExpenseType = 'fixed' | 'variable' | 'other'
 type ExpenseSourceView = { accountId: string; amount: number; currency: 'USD' | 'VES'; reference: string | null; bankFeeAmount: number; method: string | null }
-type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string; accountId: string | null; exchangeRate: number | null; extra: string; payments: ExpenseSourceView[] }
+type ExpenseView = { id: string; description: string; type: ExpenseType; category: string; vendor: string; amountUsd: number; date: string; paymentMethod: string; reference?: string; accountId: string | null; exchangeRate: number | null; extra: string; payments: ExpenseSourceView[]; purchaseExpenseItemId: string | null }
 const CATEGORIES = [
   { v: 'supermarket', l: 'Supermercado' }, { v: 'delivery', l: 'Delivery' }, { v: 'pos_commission', l: 'Comisión' },
   { v: 'payroll', l: 'Nómina' }, { v: 'cleaning', l: 'Limpieza' }, { v: 'services', l: 'Servicios' },
@@ -63,7 +63,7 @@ export function Gastos() {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
       const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
-      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount, method: pp.method })) }
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount, method: pp.method })), purchaseExpenseItemId: item.purchaseExpenseItemId }
     }))
   }, [])
 
@@ -122,7 +122,7 @@ export function Gastos() {
       let meta: Record<string, string> = {}
       try { meta = item.notes ? JSON.parse(item.notes) as Record<string, string> : {} } catch { meta = {} }
       const type: ExpenseType = item.category === 'fixed' || item.category === 'variable' ? item.category : 'other'
-      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount, method: pp.method })) }
+      return { id: item.id, description: item.concept, type, category: meta.category || 'other', vendor: meta.vendor || 'Sin proveedor', amountUsd: item.amount, date: item.expenseDate, paymentMethod: meta.paymentMethod || 'other', reference: meta.reference || undefined, accountId: item.accountId, exchangeRate: item.exchangeRate, extra: meta.extra || '', payments: item.payments.map((pp) => ({ accountId: pp.accountId, amount: pp.amount, currency: pp.currency, reference: pp.reference, bankFeeAmount: pp.bankFeeAmount, method: pp.method })), purchaseExpenseItemId: item.purchaseExpenseItemId }
     }))).catch((e) => setError(e instanceof Error ? e.message : 'No se pudieron cargar los gastos'))
   }, [])
   useLiveDataRefresh('gastos', refreshExpenses)
@@ -220,7 +220,7 @@ export function Gastos() {
           accountId: payments[0].accountId, exchangeRate: rate, notes: notesJson,
           payments,
         })
-        setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, date: saved.expenseDate, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments }, ...prev])
+        setExpenses((prev) => [{ id: saved.id, description: form.description.trim(), type: form.type, category: form.category, vendor: form.vendor.trim() || 'Sin proveedor', amountUsd: totalUsd, date: saved.expenseDate, paymentMethod: firstSourceMethod, reference: firstRef || undefined, accountId: payments[0].accountId, exchangeRate: rate, extra: form.notes.trim(), payments: viewPayments, purchaseExpenseItemId: null }, ...prev])
         flash(`Gasto de ${formatUsd(totalUsd)} registrado`)
         if (keepOpen) { setForm({ ...emptyForm, type: form.type, category: form.category, vendor: form.vendor }); setExpenseSources([{ accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }]) }
         else {
@@ -330,13 +330,13 @@ export function Gastos() {
                 {pageItems.map((e) => (
                   <tr key={e.id}>
                     <td style={{ color: '#a1a1aa', fontSize: 12 }}>{new Date(e.date).toLocaleDateString('es-VE')}</td>
-                    <td style={{ fontWeight: 600 }}>{e.description}</td>
+                    <td style={{ fontWeight: 600 }}>{e.description}{e.purchaseExpenseItemId && <small style={{ display: 'block', color: '#a1a1aa', fontWeight: 400 }}>Registrado en Compras</small>}</td>
                     <td><span className={`gst-badge ${e.type === 'fixed' ? 'fijo' : e.type === 'variable' ? 'variable' : 'otro'}`}>{e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro'}</span></td>
                     <td><span className="gst-cat">{catLabel(e.category)}</span></td>
                     <td>{e.vendor}</td>
                     <td className="gst-usd">{formatUsd(e.amountUsd)}</td>
                     <td className="gst-bs">{formatVes(e.amountUsd * rate)}</td>
-                    <td><div className="gst-row-actions"><button type="button" className="gst-icon-btn" title="Editar gasto" aria-label={`Editar gasto ${e.description}`} onClick={() => openEditExpense(e)}><Pencil size={15} /></button><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={15} />}</button></div></td>
+                    <td>{e.purchaseExpenseItemId ? <span style={{ color: '#a1a1aa', fontSize: 11 }}>Editar en Compras</span> : <div className="gst-row-actions"><button type="button" className="gst-icon-btn" title="Editar gasto" aria-label={`Editar gasto ${e.description}`} onClick={() => openEditExpense(e)}><Pencil size={15} /></button><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={15} />}</button></div>}</td>
                   </tr>
                 ))}
                 {pageItems.length === 0 && (

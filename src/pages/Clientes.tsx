@@ -415,7 +415,7 @@ export function Clientes() {
     const accounts = financialAccounts.filter((account) => account.isActive && account.acceptsCustomerPayments)
     if (method === 'cash') return accounts.filter((account) => account.accountType === 'cash')
     if (method === 'mobile') return accounts.filter((account) => account.currency === 'VES' && account.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(account.name))
-    if (method === 'card') return accounts.filter((account) => account.currency === 'VES' && account.name === 'Banesco')
+    if (method === 'card') return accounts.filter((account) => account.currency === 'VES' && account.name === 'Punto de venta')
     if (method === 'transfer') return accounts.filter((account) => account.currency === 'VES' && account.accountType === 'bank')
     if (method === 'binance') return accounts.filter((account) => account.currency === 'USD' && ['bank', 'digital'].includes(account.accountType))
     return accounts
