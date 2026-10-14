@@ -4,12 +4,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
-import android.view.Gravity;
-import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -19,7 +16,6 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.webkit.ValueCallback;
@@ -44,9 +40,6 @@ public final class MainActivity extends Activity {
     private final ExecutorService discovery = Executors.newSingleThreadExecutor();
     private final AtomicInteger queuedJobs = new AtomicInteger();
     private WebView webView;
-    private TextView printerLabel;
-    private ProgressBar progress;
-    private boolean openedInitialSettings;
     private ValueCallback<Uri[]> pendingFileSelection;
 
     @Override
@@ -55,52 +48,11 @@ public final class MainActivity extends Activity {
         buildScreen();
         configureWebView();
         webView.loadUrl(SITE_URL);
-        if (getPrinterHost().isEmpty() && !openedInitialSettings) {
-            openedInitialSettings = true;
-            webView.postDelayed(this::showPrinterSettings, 700);
-        }
     }
 
     private void buildScreen() {
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(10, 9, 11));
-
-        LinearLayout bar = new LinearLayout(this);
-        bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(dp(12), dp(4), dp(8), dp(4));
-        bar.setBackgroundColor(Color.rgb(28, 10, 13));
-
-        TextView title = new TextView(this);
-        title.setText("FULL CHINA");
-        title.setTextColor(Color.WHITE);
-        title.setTextSize(15);
-        title.setTypeface(null, 1);
-        bar.addView(title, new LinearLayout.LayoutParams(0, dp(40), 1));
-
-        printerLabel = new TextView(this);
-        printerLabel.setTextColor(Color.WHITE);
-        printerLabel.setTextSize(12);
-        printerLabel.setGravity(Gravity.CENTER_VERTICAL);
-        printerLabel.setOnClickListener(view -> showPrinterSettings());
-        bar.addView(printerLabel);
-
-        Button settings = new Button(this);
-        settings.setText("Impresora");
-        settings.setAllCaps(false);
-        settings.setOnClickListener(view -> showPrinterSettings());
-        bar.addView(settings, new LinearLayout.LayoutParams(dp(110), dp(40)));
-        root.addView(bar);
-
-        progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        progress.setMax(100);
-        progress.setVisibility(View.GONE);
-        root.addView(progress, new LinearLayout.LayoutParams(-1, dp(3)));
-
         webView = new WebView(this);
-        root.addView(webView, new LinearLayout.LayoutParams(-1, 0, 1));
-        setContentView(root);
-        refreshPrinterLabel();
+        setContentView(webView);
     }
 
     private void configureWebView() {
@@ -115,12 +67,6 @@ public final class MainActivity extends Activity {
         WebView.setWebContentsDebuggingEnabled(false);
         webView.addJavascriptInterface(new PrinterBridge(), "FullChinaPrinter");
         webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                progress.setProgress(newProgress);
-                progress.setVisibility(newProgress >= 100 ? View.GONE : View.VISIBLE);
-            }
-
             @Override
             public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback,
                                              FileChooserParams params) {
@@ -155,6 +101,10 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -163,10 +113,6 @@ public final class MainActivity extends Activity {
                 WebChromeClient.FileChooserParams.parseResult(resultCode, data));
             pendingFileSelection = null;
         }
-    }
-
-    private int dp(int value) {
-        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private SharedPreferences printerPrefs() {
@@ -179,11 +125,6 @@ public final class MainActivity extends Activity {
 
     private int getPrinterPort() {
         return printerPrefs().getInt(PREF_PORT, 9100);
-    }
-
-    private void refreshPrinterLabel() {
-        String host = getPrinterHost();
-        printerLabel.setText(host.isEmpty() ? "Sin configurar" : host);
     }
 
     private void showMessage(String message) {
@@ -296,7 +237,6 @@ public final class MainActivity extends Activity {
                     return;
                 }
                 printerPrefs().edit().putString(PREF_HOST, host).putInt(PREF_PORT, port).apply();
-                refreshPrinterLabel();
                 dialog.dismiss();
                 showMessage("Impresora guardada.");
             });
@@ -346,6 +286,12 @@ public final class MainActivity extends Activity {
         }
 
         @JavascriptInterface
+        public String getStatus() {
+            String host = getPrinterHost();
+            return host.isEmpty() ? "Sin configurar" : "Configurada: " + host + ":" + getPrinterPort();
+        }
+
+        @JavascriptInterface
         public void printReceipt(String json) {
             if (json == null || json.length() > 250_000) {
                 runOnUiThread(() -> showMessage("El ticket es demasiado largo para enviarlo."));
@@ -372,7 +318,7 @@ public final class MainActivity extends Activity {
                     } catch (Exception error) {
                         runOnUiThread(() -> new AlertDialog.Builder(MainActivity.this)
                             .setTitle("No se pudo imprimir")
-                            .setMessage(error.getMessage() + "\n\nRevisa el Wi-Fi y la IP en Impresora.")
+                            .setMessage(error.getMessage() + "\n\nRevisa el Wi-Fi y la configuración de impresión.")
                             .setPositiveButton("Entendido", null)
                             .show());
                     } finally {

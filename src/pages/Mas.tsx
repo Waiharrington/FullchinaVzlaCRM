@@ -31,7 +31,7 @@ import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
-import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings, ChevronLeft, ChevronRight, Printer } from 'lucide-react'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Tab = 'credits' | 'close' | 'delivery'
@@ -51,6 +51,9 @@ export function Mas() {
   const { user } = useAuth()
   const location = useLocation()
   const isCreditsModule = location.pathname === '/creditos'
+  const printerStatus = window.FullChinaPrinter?.isAvailable()
+    ? window.FullChinaPrinter.getStatus?.() ?? 'Configurada en esta tablet'
+    : null
   const [credits, setCredits] = useState<CreditType[]>(masCache?.credits ?? [])
   const [closes, setCloses] = useState<DailyCloseSummary[]>(masCache?.closes ?? [])
   const [todayStats, setTodayStats] = useState<TodayStats | null>(masCache?.todayStats ?? null)
@@ -370,6 +373,18 @@ export function Mas() {
         <a href="/marketing" className="card shortcut-card"><span className="shortcut-icon"><MessageSquare size={28} /></span><div className="shortcut-info"><span className="shortcut-title">WhatsApp Bot</span><span className="shortcut-desc">Mensajes y automatizaciones</span></div></a>
         <a href="/promociones" className="card shortcut-card"><span className="shortcut-icon"><Tag size={28} /></span><div className="shortcut-info"><span className="shortcut-title">Promociones</span><span className="shortcut-desc">Cupones para WhatsApp</span></div></a>
       </div>}
+
+      {!isCreditsModule && printerStatus !== null && <section className="card settings-printer-card">
+        <span className="settings-printer-icon"><Printer size={22} /></span>
+        <div className="settings-printer-copy">
+          <h2>Impresión de tickets</h2>
+          <p>Imprime comandas y recibos desde esta tablet con la XP-80C por red.</p>
+          <small>{printerStatus}</small>
+        </div>
+        <button type="button" className="btn-accent btn-sm" onClick={() => window.FullChinaPrinter?.openSettings()}>
+          Configurar impresora
+        </button>
+      </section>}
 
       {!isCreditsModule && <DeliverySettings />}
 

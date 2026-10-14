@@ -6,6 +6,7 @@ declare global {
       isAvailable: () => boolean
       printReceipt: (payload: string) => void
       openSettings: () => void
+      getStatus?: () => string
     }
   }
 }

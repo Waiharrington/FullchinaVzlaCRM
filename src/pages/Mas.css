@@ -1091,6 +1091,14 @@
 }
 
 /* Configuración de delivery */
+.settings-printer-card { display:flex;align-items:center;gap:14px;margin:0 0 24px;padding:16px; }
+.settings-printer-icon { display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:12px;color:#fff;background:linear-gradient(135deg,#b91c1c,#ff4d3d);box-shadow:0 4px 16px rgba(239,35,52,.18); }
+.settings-printer-copy { flex:1;min-width:0; }
+.settings-printer-copy h2 { margin:0 0 4px;color:#fff;font-size:15px;font-weight:800; }
+.settings-printer-copy p { margin:0 0 5px;color:#a1a1aa;font-size:12px; }
+.settings-printer-copy small { color:#ffc83d;font-size:11px; }
+@media(max-width:640px) { .settings-printer-card { align-items:flex-start;flex-wrap:wrap; }.settings-printer-copy { flex-basis:calc(100% - 58px); }.settings-printer-card .btn-accent { width:100%; } }
+
 .ds-section { padding: 16px 0; border-top: 1px solid rgba(255,255,255,0.07); }
 .ds-section:first-of-type { border-top: 0; }
 .ds-h3 { font-size: 14px; font-weight: 700; margin: 0 0 4px; color: #fff; }

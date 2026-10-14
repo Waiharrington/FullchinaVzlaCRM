@@ -11,8 +11,7 @@ diálogo de impresión de Android.
 1. Instala `app/build/outputs/apk/release/app-release.apk` en la tablet Android 8
    o superior. La tablet y la impresora deben estar en el mismo Wi-Fi.
 2. Abre la APK e inicia sesión con tu usuario habitual de Full China. La
-   configuración de impresora aparece al primer inicio y también desde el botón
-   **Impresora** de la barra superior.
+   configuración de impresora está dentro de **Configuración → Impresión de tickets**.
 3. Pulsa **Buscar impresoras en la red**. La búsqueda encuentra dispositivos
    que aceptan conexiones TCP en el puerto indicado; confirma el resultado con
    **Probar**. Si no aparece, escribe la IP de la impresora y su puerto RAW
