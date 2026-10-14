@@ -211,7 +211,7 @@
 .cmp-purchase-modal .cmp-field label { margin-bottom: 4px; font-size: 11px; }
 .cmp-purchase-modal .cmp-items-head,
 .cmp-purchase-modal .cmp-item-row {
-  grid-template-columns: minmax(220px, 30%) 78px 68px 74px 112px minmax(105px, 1fr) 90px 28px;
+  grid-template-columns: minmax(200px, 26%) 68px 58px 64px 105px minmax(120px, 20%) minmax(110px, 1fr) 28px;
   gap: 7px;
   min-width: 850px;
 }
@@ -223,7 +223,7 @@
 .cmp-purchase-modal .cmp-item-row .fc-select-trigger { height: 38px; padding-right: 8px; padding-left: 9px; font-size: 12px; }
 .cmp-purchase-modal .cmp-item-row .num-stepper-input { padding-top: 8px !important; padding-bottom: 8px !important; font-size: 13px; }
 .cmp-purchase-modal .cmp-item-row .num-stepper-prefix { padding-left: 8px; font-size: 12px; }
-.cmp-purchase-modal .cmp-subtotal { font-size: 13px; }
+.cmp-purchase-modal .cmp-subtotal { font-size: 13px; text-align: right; }
 .cmp-purchase-modal .cmp-add-item { padding: 7px 11px; font-size: 12px; }
 
 @media (max-width: 767px) {
