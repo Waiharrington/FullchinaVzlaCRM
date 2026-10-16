@@ -10,10 +10,13 @@ const mocks = vi.hoisted(() => ({
   getPayrollSummary: vi.fn(),
   getFinancialOperations: vi.fn(),
   getFinancialAccounts: vi.fn(),
+  getPersonalAccounts: vi.fn(),
+  isPersonalAccountOrder: vi.fn(),
 }))
 
 vi.mock('../lib/dataService', () => ({
   ...mocks,
+  isPersonalAccountOrder: mocks.isPersonalAccountOrder,
   updateFinancialAccountOpeningBalance: vi.fn(),
   createFinancialTransfer: vi.fn(),
 }))
@@ -29,6 +32,8 @@ describe('Finanzas', () => {
     mocks.getRecipeSummaries.mockResolvedValue(new Map())
     mocks.getPayrollSummary.mockResolvedValue({ periods: [], bonuses: [] })
     mocks.getFinancialOperations.mockResolvedValue([])
+    mocks.getPersonalAccounts.mockResolvedValue([])
+    mocks.isPersonalAccountOrder.mockReturnValue(false)
     mocks.getFinancialAccounts.mockResolvedValue([{
       id: 'cash-usd', name: 'Caja Full China', accountType: 'cash', currency: 'USD',
       isActive: true, acceptsCustomerPayments: true, openingBalance: 10, currentBalance: 10,
@@ -64,6 +69,7 @@ describe('Finanzas', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Caja Full China' })).not.toBeInTheDocument())
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Cierre y movimientos' }))
     fireEvent.click(screen.getByRole('button', { name: /Registrar transferencia/i }))
     const transferDialog = await screen.findByRole('dialog', { name: 'Registrar transferencia' })
     expect(transferDialog).toHaveClass('fin-dialog', 'fin-transfer-modal')
@@ -89,6 +95,7 @@ describe('Finanzas', () => {
 
     render(<Finanzas />)
 
+    fireEvent.click(await screen.findByRole('tab', { name: 'Cierre y movimientos' }))
     const heading = await screen.findByRole('heading', { name: 'Cierre por Método de Pago' })
     const card = heading.closest('.fin-card')
     expect(card).not.toBeNull()

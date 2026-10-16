@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState, useCallback } from 'react'
+import { useMemo, useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
@@ -10,11 +10,12 @@ import { DashboardQuickAccess, type DashboardShortcut } from '../components/Dash
 import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
-import { getTodayStats, getOrdersWithItems, getDailySales, getProductRanking, getCredits, getPaymentMethodSales, getProductionStats, getIngredients, getPersonalAccountOptions, isCreditAuthorizedOrder, isPersonalAccountOrder, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type ProductionStats, type Ingredient, type PersonalAccountOption } from '../lib/dataService'
+import { getTodayStats, getOrdersWithItems, getDailySales, getDailySalesFromOrders, getProductRanking, getCredits, getPaymentMethodSales, getRecentProductionBatches, getIngredients, getPersonalAccountOptions, getActiveCashSession, getRecentCashSessionDiscrepancy, getTodayProductionYieldAlerts, syncDashboardAlertEvents, isCreditAuthorizedOrder, isPersonalAccountOrder, type TodayStats, type FullOrder, type DailySales, type ProductRanking, type Credit, type PaymentMethodSales, type RecentProductionBatch, type Ingredient, type PersonalAccountOption, type DashboardAlertEvent, type DashboardAlertInput } from '../lib/dataService'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler } from 'chart.js'
 import { Line, Doughnut } from 'react-chartjs-2'
 import {
+  ArrowLeft,
   Flame,
   Bell,
   Search,
@@ -47,12 +48,13 @@ type DashboardCache = {
   credits: Credit[]
   paymentMethods: PaymentMethodSales[]
   personalAccounts: PersonalAccountOption[]
-  productionStats: ProductionStats | null
+  recentProductionBatches: RecentProductionBatch[]
 }
 let inicioCache: DashboardCache | null = null
 let inicioCacheOwner: string | null = null
 const DASHBOARD_CACHE_KEY = 'fullchina-dashboard-cache-v1'
 const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000
+const ALERTS_EXIT_ANIMATION_MS = 180
 
 function readDashboardCache(ownerId: string | undefined) {
   const owner = ownerId ?? 'anonymous'
@@ -77,6 +79,39 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 }
 const PAYMENT_COLORS = ['#ef4444', '#f59e0b', '#fbbf24', '#3b82f6', '#a855f7', '#10b981', '#8b5cf6']
 
+function formatAlertDateTime(value: string) {
+  return new Intl.DateTimeFormat('es-VE', {
+    timeZone: 'America/Caracas',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function formatCompactAlertDateTime(value: string) {
+  return new Intl.DateTimeFormat('es-VE', {
+    timeZone: 'America/Caracas',
+    day: '2-digit',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(value))
+}
+
+function compactAlertDetail(notification: DashboardAlertEvent) {
+  const count = Number(notification.detail.match(/^\s*(\d+)/)?.[1] ?? 0)
+  switch (notification.key) {
+    case 'inventory': return `${count} producto${count === 1 ? '' : 's'} por reponer`
+    case 'credits': return `${count} crédito${count === 1 ? '' : 's'} vencido${count === 1 ? '' : 's'}`
+    case 'orders_delayed': return `${count} comanda${count === 1 ? '' : 's'} demorada${count === 1 ? '' : 's'}`
+    case 'cash_open': return 'Caja abierta desde ayer'
+    case 'production_yield': return `${count} lote${count === 1 ? '' : 's'} con merma alta`
+    default: return notification.detail
+  }
+}
+
 function paymentMethodLabel(method: string | null | undefined): string {
   const raw = method?.trim() ?? ''
   const normalized = raw.toLocaleLowerCase('es-VE').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -88,6 +123,23 @@ function paymentMethodLabel(method: string | null | undefined): string {
     mobile: 'Pago móvil', transfer: 'Transferencia',
   }
   return PAYMENT_METHOD_LABELS[normalized] ?? aliases[normalized] ?? (raw || 'Otro método')
+}
+
+function paymentMethodsFromOrders(orders: FullOrder[]): PaymentMethodSales[] {
+  const totals = new Map<string, { total: number; orderIds: Set<string> }>()
+  for (const order of orders) {
+    if (order.status !== 'paid') continue
+    for (const payment of order.payments) {
+      if (payment.method === 'personal_account') continue
+      const method = String(payment.method || 'other')
+      const entry = totals.get(method) ?? { total: 0, orderIds: new Set<string>() }
+      entry.total += payment.amount
+      entry.orderIds.add(order.id)
+      totals.set(method, entry)
+    }
+  }
+  return [...totals].map(([method, entry]) => ({ method, total: entry.total, count: entry.orderIds.size }))
+    .sort((a, b) => b.total - a.total)
 }
 
 function optimizedDashboardProductImage(imageUrl: string | null) {
@@ -118,7 +170,8 @@ export function Inicio() {
   const [credits, setCredits] = useState<Credit[]>(initialCache?.credits ?? [])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSales[]>(initialCache?.paymentMethods ?? [])
   const [personalAccounts, setPersonalAccounts] = useState<PersonalAccountOption[]>(initialCache?.personalAccounts ?? [])
-  const [productionStats, setProductionStats] = useState<ProductionStats | null>(initialCache?.productionStats ?? null)
+  const [recentProductionBatches, setRecentProductionBatches] = useState<RecentProductionBatch[]>(initialCache?.recentProductionBatches ?? [])
+  const [recentProductionLoadState, setRecentProductionLoadState] = useState<'loading' | 'ready' | 'error'>(initialCache?.recentProductionBatches ? 'ready' : 'loading')
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(!initialCache)
   const [chartLoading, setChartLoading] = useState(false)
@@ -126,11 +179,39 @@ export function Inicio() {
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
   const [dashboardError, setDashboardError] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notificationsClosing, setNotificationsClosing] = useState(false)
+  const notificationsCloseTimer = useRef<number | null>(null)
+  const [notificationEvents, setNotificationEvents] = useState<DashboardAlertEvent[] | null>(null)
+  const [localNotificationDetectedAt, setLocalNotificationDetectedAt] = useState<Record<string, string>>({})
+  const [notificationFallbackTimestamp] = useState(() => new Date().toISOString())
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(() => new Set())
   const [dismissedNotificationIds, setDismissedNotificationIds] = useState<Set<string>>(() => new Set())
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null)
   const [todayOrdersOpen, setTodayOrdersOpen] = useState(false)
   const [expandedPaymentOrderId, setExpandedPaymentOrderId] = useState<string | null>(null)
+
+  const openNotifications = useCallback(() => {
+    if (notificationsCloseTimer.current !== null) {
+      window.clearTimeout(notificationsCloseTimer.current)
+      notificationsCloseTimer.current = null
+    }
+    setNotificationsClosing(false)
+    setNotificationsOpen(true)
+  }, [])
+
+  const closeNotifications = useCallback(() => {
+    if (!notificationsOpen || notificationsClosing) return
+    setNotificationsClosing(true)
+    notificationsCloseTimer.current = window.setTimeout(() => {
+      setNotificationsOpen(false)
+      setNotificationsClosing(false)
+      notificationsCloseTimer.current = null
+    }, ALERTS_EXIT_ANIMATION_MS)
+  }, [notificationsClosing, notificationsOpen])
+
+  useEffect(() => () => {
+    if (notificationsCloseTimer.current !== null) window.clearTimeout(notificationsCloseTimer.current)
+  }, [])
 
   const fetchData = useCallback(async (days: number = 7, silent = false) => {
     if (!silent) setLoading(true)
@@ -142,37 +223,137 @@ export function Inicio() {
       const dayStart = new Date(`${todayKey}T00:00:00-04:00`)
       const dayEnd = new Date(dayStart)
       dayEnd.setDate(dayEnd.getDate() + 1)
-      const [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult, personalAccountsResult] = await Promise.allSettled([
-        getTodayStats(),
-        getOrdersWithItems(dayStart.toISOString(), dayEnd.toISOString(), true),
+      // Only the two values used by the first dashboard summary gate the
+      // initial screen. Start the rest at the same time, but let them hydrate
+      // their own sections once the headline figures are ready.
+      const secondaryDataPromise = Promise.allSettled([
         getDailySales(days),
         getCredits(),
         getPaymentMethodSales(),
         getIngredients(),
         getPersonalAccountOptions(),
+        getActiveCashSession(),
+        getRecentCashSessionDiscrepancy(),
+        getTodayProductionYieldAlerts(),
+      ])
+      const [statsResult, ordersResult] = await Promise.allSettled([
+        getTodayStats(),
+        getOrdersWithItems(dayStart.toISOString(), dayEnd.toISOString(), true),
       ])
 
       if (statsResult.status === 'fulfilled') setStats(statsResult.value)
       if (ordersResult.status === 'fulfilled') setTodayOrders(ordersResult.value)
-      if (salesResult.status === 'fulfilled') setDailySales(salesResult.value)
-      if (creditsResult.status === 'fulfilled') setCredits(creditsResult.value)
-      if (paymentResult.status === 'fulfilled') setPaymentMethods(paymentResult.value)
-      if (ingredientsResult.status === 'fulfilled') setIngredients(ingredientsResult.value)
-      if (personalAccountsResult.status === 'fulfilled') setPersonalAccounts(personalAccountsResult.value)
 
       inicioCache = {
         stats: statsResult.status === 'fulfilled' ? statsResult.value : inicioCache?.stats ?? null,
         todayOrders: ordersResult.status === 'fulfilled' ? ordersResult.value : inicioCache?.todayOrders ?? [],
-        dailySales: salesResult.status === 'fulfilled' ? salesResult.value : inicioCache?.dailySales ?? [],
+        dailySales: inicioCache?.dailySales ?? [],
         productRanking: inicioCache?.productRanking ?? [],
-        credits: creditsResult.status === 'fulfilled' ? creditsResult.value : inicioCache?.credits ?? [],
-        paymentMethods: paymentResult.status === 'fulfilled' ? paymentResult.value : inicioCache?.paymentMethods ?? [],
-        personalAccounts: personalAccountsResult.status === 'fulfilled' ? personalAccountsResult.value : inicioCache?.personalAccounts ?? [],
-        productionStats: inicioCache?.productionStats ?? null,
+        credits: inicioCache?.credits ?? [],
+        paymentMethods: inicioCache?.paymentMethods ?? [],
+        personalAccounts: inicioCache?.personalAccounts ?? [],
+        recentProductionBatches: inicioCache?.recentProductionBatches ?? [],
       }
-      try {
-        localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache }))
-      } catch { /* El dashboard sigue funcionando si el almacenamiento está lleno o deshabilitado. */ }
+      const persistDashboardCache = () => {
+        try {
+          localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache }))
+        } catch { /* El dashboard sigue funcionando si el almacenamiento está lleno o deshabilitado. */ }
+      }
+      persistDashboardCache()
+
+      // Remove the full-page skeleton as soon as the essential summary data
+      // has arrived; charts and secondary panels continue loading in parallel.
+      if (!silent) setLoading(false)
+
+      const [salesResult, creditsResult, paymentResult, ingredientsResult, personalAccountsResult, activeCashResult, cashDiscrepancyResult, productionAlertsResult] = await secondaryDataPromise
+      let resolvedDailySales = salesResult.status === 'fulfilled' ? salesResult.value : inicioCache!.dailySales
+      const todaySalesInChart = resolvedDailySales.find(day => day.date === todayKey)?.total ?? 0
+      // Si el resumen (RPC) sí encontró ventas de hoy pero el gráfico las
+      // presenta en cero, recompón la serie desde pagos de órdenes; así no
+      // dependemos de una función SQL remota posiblemente desactualizada.
+      if (statsResult.status === 'fulfilled' && statsResult.value.totalSales > 0 && Math.abs(todaySalesInChart - statsResult.value.totalSales) > 0.01) {
+        try {
+          resolvedDailySales = await getDailySalesFromOrders(days)
+        } catch (fallbackError) {
+          console.error('No se pudo recomponer la serie diaria desde las órdenes:', fallbackError)
+        }
+      }
+      if (salesResult.status === 'fulfilled' || resolvedDailySales !== inicioCache!.dailySales) setDailySales(resolvedDailySales)
+      if (creditsResult.status === 'fulfilled') setCredits(creditsResult.value)
+      const orderPaymentMethods = ordersResult.status === 'fulfilled' ? paymentMethodsFromOrders(ordersResult.value) : []
+      const rpcPayments = paymentResult.status === 'fulfilled' ? paymentResult.value : []
+      const rpcPaymentTotal = rpcPayments.reduce((sum, payment) => sum + payment.total, 0)
+      const orderPaymentTotal = orderPaymentMethods.reduce((sum, payment) => sum + payment.total, 0)
+      const rpcPaymentsDisagree = statsResult.status === 'fulfilled'
+        && Math.abs(rpcPaymentTotal - statsResult.value.totalSales) > 0.01
+      const useOrderPaymentFallback = orderPaymentMethods.length > 0
+        && (rpcPayments.length === 0 || (rpcPaymentsDisagree && Math.abs(orderPaymentTotal - statsResult.value.totalSales) <= 0.01))
+      const resolvedPaymentMethods = useOrderPaymentFallback ? orderPaymentMethods : rpcPayments
+      setPaymentMethods(resolvedPaymentMethods)
+      if (ingredientsResult.status === 'fulfilled') setIngredients(ingredientsResult.value)
+      if (personalAccountsResult.status === 'fulfilled') setPersonalAccounts(personalAccountsResult.value)
+
+      {
+        const observedKeys: DashboardAlertInput['key'][] = []
+        const alertInputs: DashboardAlertInput[] = []
+        const todayDate = dateKeyInTimeZone()
+        if (ingredientsResult.status === 'fulfilled') {
+          observedKeys.push('inventory')
+          const unavailableIngredients = ingredientsResult.value.filter(item => item.isActive && item.currentStock <= 0)
+          if (unavailableIngredients.length) alertInputs.push({ key: 'inventory', title: 'Inventario requiere atención', detail: `${unavailableIngredients.length} producto${unavailableIngredients.length === 1 ? '' : 's'} agotado${unavailableIngredients.length === 1 ? '' : 's'} o con saldo negativo`, path: '/inventario', tone: 'critical' })
+        }
+        if (creditsResult.status === 'fulfilled') {
+          observedKeys.push('credits')
+          const overdueCredits = creditsResult.value.filter(credit => credit.balancePending > 0 && credit.dueDate && credit.dueDate < todayDate)
+          if (overdueCredits.length) alertInputs.push({ key: 'credits', title: 'Créditos vencidos', detail: `${overdueCredits.length} crédito${overdueCredits.length === 1 ? '' : 's'} con saldo pendiente y fecha vencida`, path: '/clientes', tone: 'warning' })
+        }
+        if (ordersResult.status === 'fulfilled') {
+          observedKeys.push('orders_delayed')
+          const delayedOrders = ordersResult.value.filter(order => order.status !== 'cancelled' && order.fulfillmentStatus !== 'ready' && order.fulfillmentStatus !== 'delivered' && Date.now() - new Date(order.createdAt).getTime() >= 20 * 60 * 1000)
+          if (delayedOrders.length) alertInputs.push({ key: 'orders_delayed', title: 'Comandas demoradas', detail: `${delayedOrders.length} comanda${delayedOrders.length === 1 ? '' : 's'} activa${delayedOrders.length === 1 ? '' : 's'} sin avanzar por 20 minutos o más`, path: '/comandas', tone: 'warning' })
+        }
+        if (activeCashResult.status === 'fulfilled') {
+          observedKeys.push('cash_open')
+          const activeCashSession = activeCashResult.value
+          const cashSessionFromPriorDay = activeCashSession && dateKeyInTimeZone(new Date(activeCashSession.openedAt)) < todayDate
+          if (cashSessionFromPriorDay) alertInputs.push({ key: 'cash_open', title: 'Caja sin cerrar desde ayer', detail: `La caja permanece abierta desde ${formatAlertDateTime(activeCashSession.openedAt)}`, path: '/caja-operativa', tone: 'warning' })
+        }
+        if (cashDiscrepancyResult.status === 'fulfilled') {
+          observedKeys.push('cash_discrepancy')
+          const cashDiscrepancy = cashDiscrepancyResult.value
+          if (cashDiscrepancy) alertInputs.push({ key: 'cash_discrepancy', title: 'Diferencia en el último cierre', detail: `Sesión #${cashDiscrepancy.sessionNumber}: $${Math.abs(cashDiscrepancy.differenceUsd ?? 0).toFixed(2)} USD · Bs. ${formatVes(Math.abs(cashDiscrepancy.differenceVes ?? 0))}`, path: '/caja-operativa', tone: 'critical' })
+        }
+        if (productionAlertsResult.status === 'fulfilled') {
+          observedKeys.push('production_yield')
+          const highWasteBatches = productionAlertsResult.value
+          if (highWasteBatches.length) alertInputs.push({ key: 'production_yield', title: 'Merma de producción elevada', detail: `${highWasteBatches.length} lote${highWasteBatches.length === 1 ? '' : 's'} de hoy ${highWasteBatches.length === 1 ? 'superó' : 'superaron'} el 10% de merma`, path: '/produccion', tone: 'warning' })
+        }
+        setLocalNotificationDetectedAt(previous => {
+          const next = { ...previous }
+          const activeKeys = new Set(alertInputs.map(alert => alert.key))
+          for (const key of observedKeys) {
+            if (activeKeys.has(key)) next[key] ??= new Date().toISOString()
+            else delete next[key]
+          }
+          return next
+        })
+        try {
+          if (observedKeys.length) setNotificationEvents(await syncDashboardAlertEvents(alertInputs, observedKeys))
+        } catch (alertError) {
+          // The local dashboard remains useful while the database migration is pending.
+          setNotificationEvents(null)
+          console.error('No se pudo guardar el historial de alertas:', alertError)
+        }
+      }
+
+      inicioCache = {
+        ...inicioCache!,
+        dailySales: resolvedDailySales,
+        credits: creditsResult.status === 'fulfilled' ? creditsResult.value : inicioCache!.credits,
+        paymentMethods: resolvedPaymentMethods.length > 0 || paymentResult.status === 'fulfilled' ? resolvedPaymentMethods : inicioCache!.paymentMethods,
+        personalAccounts: personalAccountsResult.status === 'fulfilled' ? personalAccountsResult.value : inicioCache!.personalAccounts,
+      }
+      persistDashboardCache()
 
       const failedResults = [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult, personalAccountsResult]
         .filter((result): result is PromiseRejectedResult => result.status === 'rejected')
@@ -215,15 +396,21 @@ export function Inicio() {
   // Secciones que aparecen más abajo no bloquean el primer render del tablero.
   useEffect(() => {
     let cancelled = false
-    void Promise.allSettled([getProductRanking(), getProductionStats()]).then(([ranking, production]) => {
+    void Promise.allSettled([getProductRanking(), getRecentProductionBatches(3)]).then(([ranking, recentProduction]) => {
       if (cancelled) return
       if (ranking.status === 'fulfilled') setProductRanking(ranking.value)
-      if (production.status === 'fulfilled') setProductionStats(production.value)
+      if (recentProduction.status === 'fulfilled') {
+        setRecentProductionBatches(recentProduction.value)
+        setRecentProductionLoadState('ready')
+      } else {
+        setRecentProductionLoadState('error')
+        console.error('No se pudieron cargar las últimas producciones:', recentProduction.reason)
+      }
       if (inicioCache) {
         inicioCache = {
           ...inicioCache,
           productRanking: ranking.status === 'fulfilled' ? ranking.value : inicioCache.productRanking,
-          productionStats: production.status === 'fulfilled' ? production.value : inicioCache.productionStats,
+          recentProductionBatches: recentProduction.status === 'fulfilled' ? recentProduction.value : inicioCache.recentProductionBatches,
         }
         try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache })) } catch { /* caché opcional */ }
       }
@@ -270,9 +457,9 @@ export function Inicio() {
   const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
   const hasAccess = useCallback((path: string) => canAccessModule(path, user?.role, user?.allowedModules), [user?.role, user?.allowedModules])
   const closeQuickAccess = useCallback(() => setActiveQuickAccess(null), [])
-  const notifications = useMemo(() => {
+  const currentNotifications = useMemo(() => {
     const items: Array<{ id: string; title: string; detail: string; path: string; tone: 'critical' | 'warning' }> = []
-    const unavailableItems = lowStockItems.filter(item => item.currentStock <= 0)
+    const unavailableItems = ingredients.filter(item => item.currentStock <= 0)
     if (unavailableItems.length > 0 && hasAccess('/inventario')) {
       items.push({
         id: 'inventory',
@@ -282,22 +469,44 @@ export function Inicio() {
         tone: 'critical',
       })
     }
-    if (pendingCredits.length > 0 && hasAccess('/clientes')) {
+    const todayDate = dateKeyInTimeZone()
+    const overdueCredits = pendingCredits.filter(credit => credit.balancePending > 0 && credit.dueDate && credit.dueDate < todayDate)
+    if (overdueCredits.length > 0 && hasAccess('/clientes')) {
       items.push({
         id: 'credits',
-        title: 'Cobros pendientes',
-        detail: `${pendingCredits.length} crédito${pendingCredits.length === 1 ? '' : 's'} por revisar`,
+        title: 'Créditos vencidos',
+        detail: `${overdueCredits.length} crédito${overdueCredits.length === 1 ? '' : 's'} con saldo pendiente y fecha vencida`,
         path: '/clientes',
         tone: 'warning',
       })
     }
     return items
-  }, [hasAccess, lowStockItems, pendingCredits.length])
+  }, [hasAccess, ingredients, pendingCredits])
+  const notifications = useMemo(() => {
+    const addLocalDetectionTime = (notification: DashboardAlertEvent) => {
+      const localTimestamp = localNotificationDetectedAt[notification.key] ?? notificationFallbackTimestamp
+      return {
+        ...notification,
+        detectedAt: notification.detectedAt || localTimestamp,
+        lastDetectedAt: notification.lastDetectedAt || localTimestamp,
+      }
+    }
+    return notificationEvents
+      ? notificationEvents.map(addLocalDetectionTime)
+      : currentNotifications.map(notification => addLocalDetectionTime({
+          ...notification,
+          key: notification.id as DashboardAlertEvent['key'],
+          detectedAt: '',
+          lastDetectedAt: '',
+          resolvedAt: null,
+        }))
+  }, [currentNotifications, localNotificationDetectedAt, notificationEvents, notificationFallbackTimestamp])
   const visibleNotifications = useMemo(
-    () => notifications.filter(notification => !dismissedNotificationIds.has(notification.id)),
-    [notifications, dismissedNotificationIds]
+    () => notifications.filter(notification => hasAccess(notification.path) && !dismissedNotificationIds.has(notification.id)),
+    [hasAccess, notifications, dismissedNotificationIds]
   )
-  const unreadNotificationCount = visibleNotifications.filter(notification => !readNotificationIds.has(notification.id)).length
+  const activeNotificationCount = visibleNotifications.filter(notification => !notification.resolvedAt).length
+  const unreadNotificationCount = visibleNotifications.filter(notification => !notification.resolvedAt && !readNotificationIds.has(notification.id)).length
 
   const markNotificationsAsRead = () => {
     setReadNotificationIds(previous => new Set([...previous, ...visibleNotifications.map(notification => notification.id)]))
@@ -412,14 +621,6 @@ export function Inicio() {
     }
   }, [paymentMethods])
 
-  const productionData = useMemo(() => {
-    return {
-      labels: ['Completado', 'Pendiente'],
-      datasets: [{ data: [productionStats?.batchesToday ?? 0, 0], backgroundColor: ['#10b981', '#27272a'], borderWidth: 0 }]
-    }
-  }, [productionStats])
-
-  const doughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '72%' }
   const paymentDoughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: '72%' }
 
   if (loading && !initialCache) return <PageSkeleton cards={4} rows={4} hasTable={false} />
@@ -437,7 +638,7 @@ export function Inicio() {
             <button className="db-header-icon-btn db-header-search-btn" type="button" onClick={openSearch} aria-label="Buscar">
               <Search size={18} />
             </button>
-            <button className="db-header-icon-btn" type="button" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${visibleNotifications.length} pendiente${visibleNotifications.length === 1 ? '' : 's'}, ${unreadNotificationCount} sin leer`}>
+            <button className="db-header-icon-btn" type="button" onClick={() => notificationsOpen && !notificationsClosing ? closeNotifications() : openNotifications()} aria-expanded={notificationsOpen && !notificationsClosing} aria-controls="dashboard-notifications" aria-label={`Notificaciones: ${activeNotificationCount} pendiente${activeNotificationCount === 1 ? '' : 's'}, ${unreadNotificationCount} sin leer`}>
               <Bell size={18} />
               {unreadNotificationCount > 0 ? <span className="db-bell-dot">{unreadNotificationCount}</span> : null}
             </button>
@@ -453,12 +654,13 @@ export function Inicio() {
           </div>
 
           {notificationsOpen ? (
-            <div className="db-notifications" id="dashboard-notifications" role="region" aria-label="Alertas operativas">
+            <div className={`db-notifications${notificationsClosing ? ' closing' : ''}`} id="dashboard-notifications" role="region" aria-label="Alertas operativas" aria-hidden={notificationsClosing}>
               <div className="db-notifications-head">
+                <button className="db-notifications-back" type="button" onClick={closeNotifications} aria-label="Volver al inicio"><ArrowLeft size={20} /></button>
                 <strong>Alertas operativas</strong>
                 <div className="db-notifications-tools">
                   <span aria-label={`${unreadNotificationCount} sin leer`}>{unreadNotificationCount}</span>
-                  {visibleNotifications.some(notification => !readNotificationIds.has(notification.id)) ? (
+                  {visibleNotifications.some(notification => !notification.resolvedAt && !readNotificationIds.has(notification.id)) ? (
                     <button type="button" onClick={markNotificationsAsRead} aria-label="Marcar todas como leídas" title="Marcar todas como leídas"><CheckCheck size={14} /></button>
                   ) : null}
                   {visibleNotifications.length > 0 ? (
@@ -469,12 +671,22 @@ export function Inicio() {
               {visibleNotifications.length === 0 ? (
                 <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas para mostrar</span></div>
               ) : visibleNotifications.map(notification => {
-                const isRead = readNotificationIds.has(notification.id)
+                const isRead = Boolean(notification.resolvedAt) || readNotificationIds.has(notification.id)
                 return (
                   <div key={notification.id} className="db-notification-row">
-                    <button type="button" className={`db-notification-item ${notification.tone}${isRead ? ' is-read' : ''}`} aria-label={`Abrir alerta: ${notification.title}`} onClick={() => { markNotificationAsRead(notification.id); setNotificationsOpen(false); navigate(notification.path) }}>
+                    <button type="button" className={`db-notification-item ${notification.tone}${isRead ? ' is-read' : ''}`} aria-label={`Abrir alerta: ${notification.title}`} onClick={() => { if (!notification.resolvedAt) markNotificationAsRead(notification.id); setNotificationsOpen(false); navigate(notification.path) }}>
                       <span className="db-notification-dot" />
-                      <span><strong>{notification.title}</strong><small>{notification.detail}</small></span>
+                      <span className="db-notification-copy">
+                        <span className="db-notification-heading">
+                        <strong>{notification.title}</strong>
+                        {notification.resolvedAt && <em className="db-notification-status resolved">Resuelta</em>}
+                        </span>
+                        <span className="db-notification-meta">
+                          <small>{compactAlertDetail(notification)}</small>
+                          {notification.detectedAt && <time dateTime={notification.detectedAt}>{formatCompactAlertDateTime(notification.detectedAt)}</time>}
+                        </span>
+                        {notification.resolvedAt && <time className="db-notification-resolved-time" dateTime={notification.resolvedAt}>Cerrada {formatCompactAlertDateTime(notification.resolvedAt)}</time>}
+                      </span>
                     </button>
                     <button type="button" className="db-notification-dismiss" onClick={() => dismissNotification(notification.id)} aria-label={`Borrar alerta: ${notification.title}`} title="Borrar alerta"><X size={14} /></button>
                   </div>
@@ -728,37 +940,29 @@ export function Inicio() {
           {hasAccess('/inventario') ? <button className="db-link-btn full-w mt" onClick={() => navigate('/inventario')}>Ir a inventario</button> : null}
         </div>
 
-        <div className={`db-card db-production-card${(productionStats?.batchesToday ?? 0) === 0 ? ' is-empty' : ''}`}>
-          <div className="db-card-head"><h3>Producción de hoy</h3></div>
-          <div className={`db-prod-layout${(productionStats?.batchesToday ?? 0) === 0 ? ' is-empty' : ''}`}>
-            {(productionStats?.batchesToday ?? 0) === 0 ? (
-              <div className="db-prod-empty" role="status">
-                <span className="db-prod-empty-icon"><ClipboardList size={19} /></span>
-                <span className="db-prod-empty-copy">
-                  <strong>Aún no hay producción</strong>
-                  <small>Registra un lote para ver aquí el rendimiento y las mermas.</small>
+        <section className="db-card db-production-history" aria-label="Últimas producciones">
+          <div className="db-card-head db-production-history-head">
+            <h3>Últimas producciones</h3>
+            {hasAccess('/produccion') && <button className="db-link-btn" type="button" onClick={() => navigate('/produccion')}>Ver historial</button>}
+          </div>
+          <div className="db-prod-recent">
+            {recentProductionLoadState === 'loading' ? (
+              <span className="db-prod-recent-note" role="status">Cargando producciones…</span>
+            ) : recentProductionLoadState === 'error' ? (
+              <span className="db-prod-recent-note" role="status">No se pudieron cargar las producciones recientes.</span>
+            ) : recentProductionBatches.length === 0 ? (
+              <span className="db-prod-recent-note">Todavía no hay producciones registradas.</span>
+            ) : recentProductionBatches.map(batch => (
+              <div className="db-prod-recent-row" key={batch.id}>
+                <span className="db-prod-recent-name" title={batch.name}>{batch.name}</span>
+                <span className="db-prod-recent-meta">
+                  {new Date(`${batch.productionDate}T12:00:00`).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' })}
+                  {' · '}{batch.quantityProduced.toLocaleString('es-VE', { maximumFractionDigits: 2 })} producidas
                 </span>
               </div>
-            ) : (
-              <>
-                <div className="db-prod-donut-wrap">
-                  <Doughnut data={productionData} options={doughnutOptions} />
-                  <div className="db-prod-center">
-                    <span className="prod-center-pct">{Math.round(productionStats?.avgYield ?? 0)}%</span>
-                    <span className="prod-center-lbl">Rendimiento</span>
-                  </div>
-                </div>
-                <div className="db-prod-items">
-                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Lotes de hoy</span><span className="prod-item-qty">{productionStats?.batchesToday ?? 0}</span></div>
-                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Rendimiento promedio</span><span className="prod-item-qty">{(productionStats?.avgYield ?? 0).toFixed(1)}%</span></div>
-                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Merma total</span><span className="prod-item-qty">{(productionStats?.totalWaste ?? 0).toFixed(2)}</span></div>
-                  <div className="prod-item-row"><span className="prod-item-dot"></span><span className="prod-item-name">Costo/porción</span><span className="prod-item-qty">${(productionStats?.avgCostPerPortion ?? 0).toFixed(2)}</span></div>
-                </div>
-              </>
-            )}
+            ))}
           </div>
-          {hasAccess('/produccion') ? <button className={`db-link-btn full-w mt${(productionStats?.batchesToday ?? 0) === 0 ? ' db-prod-plan-btn' : ''}`} onClick={() => navigate('/produccion')}>Ver plan de producción</button> : null}
-        </div>
+        </section>
 
         <div className="db-card db-credit-card">
           <div className="db-card-head db-credit-head">

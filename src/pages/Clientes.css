@@ -923,6 +923,11 @@
   margin-top: 6px;
 }
 
+/* La clase compartida con Caja añade su propia "i"; en Clientes ya se usa el icono Info de Lucide. */
+.birthday-hint::before {
+  content: none;
+}
+
 .modal-actions-row-right {
   display: flex;
   justify-content: flex-end;
@@ -2410,16 +2415,50 @@
 }
 
 @media (max-width: 767px) {
-  .clientes-page-header { align-items: flex-start; }
+  .clientes-page-header {
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  .clientes-page-header .header-title-wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 8px;
+  }
+  .clientes-page-header .header-icon-circle {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+  }
+  .management-workspace.management-workspace--customers .clientes-page-header .page-title-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    padding: 8px;
+  }
+  .clientes-page-header .page-title {
+    font-size: clamp(1.05rem, 5vw, 1.3rem);
+    white-space: nowrap;
+  }
+  .clientes-page-header .header-title-wrap > div { min-width: 0; }
   .clientes-subtitle-desktop { display: none; }
   .clientes-subtitle-mobile { display: inline; }
   .management-workspace.management-workspace--customers .clientes-page-header > .btn-nuevo-cliente-red {
-    width: fit-content !important;
-    max-width: max-content;
+    width: auto !important;
+    max-width: none;
     min-width: 0 !important;
-    align-self: flex-start;
+    min-height: 40px;
+    align-self: center;
     flex: 0 0 auto;
-    padding: 10px 16px;
+    gap: 6px;
+    padding: 8px 11px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .management-workspace.management-workspace--customers .clientes-page-header > .btn-nuevo-cliente-red svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
   }
 
   .management-workspace.management-workspace--customers .clientes-kpi-grid.management-workspace-metrics {
@@ -2466,6 +2505,16 @@
   .management-workspace.management-workspace--customers .clientes-kpi-phone-pair > button.kpi-card-dark .kpi-value-lg {
     font-size: 19px;
     letter-spacing: normal;
+  }
+  .management-workspace.management-workspace--customers .clientes-kpi-phone-pair > button.kpi-card-receivable .kpi-content-box {
+    min-width: 0;
+    padding-right: 0;
+  }
+  .management-workspace.management-workspace--customers .clientes-kpi-phone-pair > button.kpi-card-receivable .kpi-value-lg {
+    max-width: 100%;
+    font-size: clamp(14px, 4.2vw, 17px);
+    letter-spacing: -0.03em;
+    white-space: nowrap;
   }
   .management-workspace.management-workspace--customers .clientes-kpi-phone-pair > .kpi-card-dark:is(:hover, :active, :focus-visible) {
     transform: none !important;
@@ -3098,5 +3147,29 @@
   .management-workspace--customers:not(.management-workspace--customer-profile) .clientes-custom-table .actions-flex-cell {
     justify-content: flex-end;
     gap: 6px;
+  }
+}
+
+@media (max-width: 360px) {
+  .management-workspace.management-workspace--customers .kpi-card-receivable {
+    gap: 7px;
+    padding-inline: 10px;
+  }
+  .management-workspace.management-workspace--customers .kpi-card-receivable .kpi-icon-circle-box {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+  .management-workspace.management-workspace--customers .kpi-card-receivable .kpi-content-box {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .management-workspace.management-workspace--customers .kpi-card-receivable .kpi-value-lg {
+    max-width: 100%;
+    font-size: clamp(14px, 5.8vw, 17px);
+    letter-spacing: -0.025em;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 }

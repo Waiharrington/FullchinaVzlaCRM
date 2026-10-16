@@ -122,6 +122,7 @@ const PAYMENT_METHODS: Array<{ method: ActivePaymentMethod | 'split'; label: str
 const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is { method: SplitPaymentMethod; label: string; icon: ReactNode } => item.method !== 'split' && item.method !== 'other' && item.method !== 'personal_account',
 )
+const MOBILE_CART_TRIGGER_EXIT_MS = 180
 
 const usesBolivares = (method: SplitPaymentMethod, cashCurrency: 'USD' | 'VES' = 'USD') =>
   method === 'mobile' || method === 'card' || method === 'transfer' || (method === 'cash' && cashCurrency === 'VES')
@@ -249,6 +250,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const draft = useMemo(readCajaDraft, [])
   const [cart, setCart] = useState<CartItem[]>(() => draft?.cart ?? [])
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
+  const [mobileCartClosing, setMobileCartClosing] = useState(false)
+  const mobileCartCloseTimer = useRef<number | null>(null)
+  const [mobileCartTriggerVisible, setMobileCartTriggerVisible] = useState(false)
+  const [mobileCartTriggerClosing, setMobileCartTriggerClosing] = useState(false)
+  const mobileCartTriggerTimer = useRef<number | null>(null)
   const [isPhoneViewport, setIsPhoneViewport] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches)
   const [productsWithModifiers, setProductsWithModifiers] = useState<Set<string>>(new Set())
   // Selector de modificadores
@@ -259,11 +265,40 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [modifierLoading, setModifierLoading] = useState(false)
   const [modifierError, setModifierError] = useState('')
 
+  const openMobileCart = () => {
+    if (mobileCartCloseTimer.current !== null) {
+      window.clearTimeout(mobileCartCloseTimer.current)
+      mobileCartCloseTimer.current = null
+    }
+    setMobileCartClosing(false)
+    setMobileCartOpen(true)
+  }
+
+  const closeMobileCart = () => {
+    if (!mobileCartOpen || mobileCartClosing) return
+    setMobileCartClosing(true)
+    mobileCartCloseTimer.current = window.setTimeout(() => {
+      setMobileCartOpen(false)
+      setMobileCartClosing(false)
+      mobileCartCloseTimer.current = null
+    }, 200)
+  }
+
+  useEffect(() => () => {
+    if (mobileCartCloseTimer.current !== null) window.clearTimeout(mobileCartCloseTimer.current)
+    if (mobileCartTriggerTimer.current !== null) window.clearTimeout(mobileCartTriggerTimer.current)
+  }, [])
+
   useEffect(() => {
     const phoneQuery = window.matchMedia('(max-width: 767px)')
     const syncPhoneViewport = () => {
       setIsPhoneViewport(phoneQuery.matches)
-      if (!phoneQuery.matches && embedded) setMobileCartOpen(false)
+      if (!phoneQuery.matches && embedded) {
+        if (mobileCartCloseTimer.current !== null) window.clearTimeout(mobileCartCloseTimer.current)
+        mobileCartCloseTimer.current = null
+        setMobileCartClosing(false)
+        setMobileCartOpen(false)
+      }
     }
     syncPhoneViewport()
     phoneQuery.addEventListener('change', syncPhoneViewport)
@@ -826,6 +861,28 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const subtotal = cart.reduce((s, i) => s + i.price * i.quantity, 0)
   const mobileCartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+
+  useEffect(() => {
+    const shouldShowTrigger = mobileCartItemCount > 0 && !mobileCartOpen
+    if (shouldShowTrigger) {
+      if (mobileCartTriggerTimer.current !== null) {
+        window.clearTimeout(mobileCartTriggerTimer.current)
+        mobileCartTriggerTimer.current = null
+      }
+      setMobileCartTriggerClosing(false)
+      setMobileCartTriggerVisible(true)
+      return
+    }
+
+    if (!mobileCartTriggerVisible || mobileCartTriggerClosing) return
+    setMobileCartTriggerClosing(true)
+    mobileCartTriggerTimer.current = window.setTimeout(() => {
+      setMobileCartTriggerVisible(false)
+      setMobileCartTriggerClosing(false)
+      mobileCartTriggerTimer.current = null
+    }, MOBILE_CART_TRIGGER_EXIT_MS)
+  }, [mobileCartItemCount, mobileCartOpen, mobileCartTriggerClosing, mobileCartTriggerVisible])
+
   const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
   const total = subtotal + deliveryFeeUsd
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency)
@@ -1582,12 +1639,13 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         {/* El resumen fijo permite abrir el pedido sin recorrer todo el catálogo. */}
         {createPortal(
           <>
-            {!mobileCartOpen && mobileCartItemCount > 0 && (
+            {mobileCartTriggerVisible && (
               <button
                 type="button"
-                className={`mobile-cart-trigger${embedded ? ' mobile-cart-trigger--modal' : ''}`}
+                className={`mobile-cart-trigger${embedded ? ' mobile-cart-trigger--modal' : ''}${mobileCartTriggerClosing ? ' closing' : ''}`}
                 aria-expanded={mobileCartOpen}
-                onClick={() => setMobileCartOpen(true)}
+                disabled={mobileCartTriggerClosing}
+                onClick={openMobileCart}
               >
                 <span className="mobile-cart-trigger-summary">
                   <ShoppingCart size={18} aria-hidden="true" />
@@ -1597,7 +1655,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 <span className="mobile-cart-trigger-action">Ver pedido</span>
               </button>
             )}
-            {mobileCartOpen && !embedded && <button type="button" className="mobile-cart-overlay" onClick={() => setMobileCartOpen(false)} aria-label="Cerrar pedido" />}
+            {mobileCartOpen && !embedded && <button type="button" className={`mobile-cart-overlay${mobileCartClosing ? ' closing' : ''}`} onClick={closeMobileCart} aria-label="Cerrar pedido" />}
           </>,
           document.body,
         )}
@@ -1605,7 +1663,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         {/* RIGHT: Cart Sidebar */}
         {(() => {
           const cartSidebar = (
-        <div className={`cart-sidebar${mobileCartOpen && (!embedded || isPhoneViewport) ? ' mobile-cart-open' : ''}${embedded && isPhoneViewport ? ' cart-sidebar--modal' : ''}`} onClick={(event) => event.stopPropagation()}>
+        <div className={`cart-sidebar${mobileCartOpen && (!embedded || isPhoneViewport) ? ' mobile-cart-open' : ''}${embedded && isPhoneViewport ? ' cart-sidebar--modal' : ''}${mobileCartClosing ? ' cart-sidebar--closing' : ''}`} onClick={(event) => event.stopPropagation()}>
           <div className="cart-sidebar-header">
             <div className="cart-order-title-group">
               <span className="cart-eyebrow">Comanda activa</span>
@@ -1617,7 +1675,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
               </div>
             </div>
-            <button type="button" className="mobile-cart-close" onClick={() => setMobileCartOpen(false)} aria-label="Cerrar pedido">
+            <button type="button" className="mobile-cart-close" onClick={closeMobileCart} aria-label="Cerrar pedido">
               <X size={20} />
             </button>
           </div>
@@ -1917,7 +1975,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
           return embedded && mobileCartOpen && isPhoneViewport
             ? createPortal(
-                <div className="mobile-cart-modal-overlay" role="dialog" aria-modal="true" aria-label="Comanda activa" onClick={() => setMobileCartOpen(false)}>
+                <div className={`mobile-cart-modal-overlay${mobileCartClosing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Comanda activa" aria-hidden={mobileCartClosing} onClick={closeMobileCart}>
                   {cartSidebar}
                 </div>,
                 document.body,

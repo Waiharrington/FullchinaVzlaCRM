@@ -548,6 +548,21 @@ export interface ReportAttendanceRow { id: string; employeeId: string; workDate:
 export interface ReportRequisitionRow { id: string; ingredientId: string; quantity: number; unitId: string; fromLocation: string; toLocation: string; status: string; requestedAt: string; fulfilledAt: string | null }
 export interface ReportGiftCardRow { id: string; code: string; initialAmountUsd: number; isActive: boolean; expiresAt: string | null; createdAt: string; transactionType?: string; transactionAmountUsd?: number; transactionAt?: string; orderId?: string | null }
 
+export interface DashboardAlertInput {
+  key: 'inventory' | 'credits' | 'orders_delayed' | 'cash_open' | 'cash_discrepancy' | 'production_yield'
+  title: string
+  detail: string
+  path: string
+  tone: 'critical' | 'warning'
+}
+
+export interface DashboardAlertEvent extends DashboardAlertInput {
+  id: string
+  detectedAt: string
+  lastDetectedAt: string
+  resolvedAt: string | null
+}
+
 export interface PayrollPayment {
   id: string
   employeeId: string
@@ -654,6 +669,15 @@ export interface ProductionStats {
   yieldChange: number
   wasteChange: number
   costChange: number
+}
+
+export interface RecentProductionBatch {
+  id: string
+  name: string
+  productionDate: string
+  quantityProduced: number
+  wasteQuantity: number
+  wastePercentage?: number
 }
 
 export interface ProductionBonus {
@@ -1819,6 +1843,23 @@ export async function getCreditPayments(creditId: string): Promise<CreditPayment
 
 // --- Estadísticas de hoy (RPC) -----------------------------------------------
 
+/** Synchronizes dashboard alert transitions and returns the latest active/recent history. */
+export async function syncDashboardAlertEvents(alerts: DashboardAlertInput[], observedKeys: DashboardAlertInput['key'][]): Promise<DashboardAlertEvent[]> {
+  const { data, error } = await client().rpc('fn_sync_dashboard_alerts', { p_alerts: alerts, p_observed_keys: observedKeys })
+  if (error) throw error
+  return ((data ?? []) as Array<Record<string, unknown>>).map(row => ({
+    id: String(row.id),
+    key: String(row.alert_key) as DashboardAlertInput['key'],
+    title: String(row.title),
+    detail: String(row.detail),
+    path: String(row.target_path),
+    tone: String(row.tone) as DashboardAlertInput['tone'],
+    detectedAt: String(row.detected_at),
+    lastDetectedAt: String(row.last_detected_at),
+    resolvedAt: row.resolved_at == null ? null : String(row.resolved_at),
+  }))
+}
+
 export async function getTodayStats(): Promise<TodayStats> {
   const { data, error } = await client().rpc('fn_get_today_stats')
   if (error) throw error
@@ -1843,6 +1884,58 @@ export async function getDailySales(days: number = 30): Promise<DailySales[]> {
     total: Number(d.total ?? 0),
     count: Number(d.order_count ?? 0),
   }))
+}
+
+/**
+ * Consulta compacta de respaldo para el gráfico: algunas instalaciones pueden
+ * tener una versión atrasada de fn_get_daily_sales que devuelve ceros aunque
+ * el resumen de hoy ya tenga pagos. Solo se invoca desde el dashboard si se
+ * detecta esa contradicción.
+ */
+export async function getDailySalesFromOrders(days: number = 30): Promise<DailySales[]> {
+  const count = Math.max(1, Math.floor(days))
+  const today = dateKeyInTimeZone()
+  const [year, month, day] = today.split('-').map(Number)
+  const firstDay = new Date(Date.UTC(year, month - 1, day - count + 1)).toISOString().slice(0, 10)
+  const { end } = dayRangeInTimeZone()
+  const start = `${firstDay}T00:00:00-04:00`
+  const byDate = new Map<string, { total: number; orderIds: Set<string> }>()
+  let offset = 0
+
+  while (true) {
+    const { data, error } = await client()
+      .from('orders')
+      .select('id,created_at,payments(method,amount)')
+      .eq('status', 'paid')
+      .gte('created_at', start)
+      .lt('created_at', end)
+      .order('created_at', { ascending: true })
+      .range(offset, offset + 499)
+
+    if (error) throw error
+    const rows = (data ?? []) as Array<{ id: string; created_at: string; payments?: Array<{ method: string; amount: number }> }>
+    for (const order of rows) {
+      const date = dateKeyInTimeZone(new Date(order.created_at))
+      const daySales = byDate.get(date) ?? { total: 0, orderIds: new Set<string>() }
+      let orderHasSale = false
+      for (const payment of order.payments ?? []) {
+        if (payment.method === 'personal_account') continue
+        daySales.total += Number(payment.amount) || 0
+        orderHasSale = true
+      }
+      if (orderHasSale) daySales.orderIds.add(order.id)
+      byDate.set(date, daySales)
+    }
+
+    if (rows.length < 500) break
+    offset += rows.length
+  }
+
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date(Date.UTC(year, month - 1, day - count + 1 + index)).toISOString().slice(0, 10)
+    const daySales = byDate.get(date)
+    return { date, total: daySales?.total ?? 0, count: daySales?.orderIds.size ?? 0 }
+  })
 }
 
 // --- Ranking de productos (RPC) ----------------------------------------------
@@ -2021,6 +2114,14 @@ export async function getCashSessionHistory(limit = 20): Promise<CashSessionSnap
   const { data, error } = await client().rpc('fn_get_cash_session_history', { p_limit: limit })
   if (error) throw error
   return (data ?? []).map((item: Record<string, unknown>) => mapCashSession(item))
+}
+
+export async function getRecentCashSessionDiscrepancy(): Promise<CashSessionSnapshot | null> {
+  const sessions = await getCashSessionHistory(1)
+  const latest = sessions[0]
+  return latest?.status === 'closed' && (Math.abs(latest.differenceUsd ?? 0) >= 0.01 || Math.abs(latest.differenceVes ?? 0) >= 0.01)
+    ? latest
+    : null
 }
 
 export interface CashTransaction {
@@ -3583,15 +3684,20 @@ export async function getProductionBatches(dateStart?: string, dateEnd?: string)
   })
 }
 
-export async function getProductionStats(): Promise<ProductionStats> {
+export async function getProductionStats(availableBatches?: ProductionBatch[]): Promise<ProductionStats> {
   // Fechas en horario de Venezuela (UTC-4), no en UTC.
   const today = dateKeyInTimeZone()
   const yesterday = dateKeyInTimeZone(new Date(Date.now() - 86400000))
 
-  const [todayBatches, yesterdayBatches] = await Promise.all([
-    getProductionBatches(today, today),
-    getProductionBatches(yesterday, yesterday),
-  ])
+  const [todayBatches, yesterdayBatches] = availableBatches
+    ? [
+        availableBatches.filter(batch => batch.productionDate.slice(0, 10) === today),
+        availableBatches.filter(batch => batch.productionDate.slice(0, 10) === yesterday),
+      ]
+    : await Promise.all([
+        getProductionBatches(today, today),
+        getProductionBatches(yesterday, yesterday),
+      ])
 
   const batchesToday = todayBatches.length
   const batchesYesterday = yesterdayBatches.length
@@ -3623,6 +3729,40 @@ export async function getProductionStats(): Promise<ProductionStats> {
     wasteChange: Math.round((totalWaste - totalWasteYesterday) * 100) / 100,
     costChange: Math.round((avgCostPerPortion - avgCostPerPortionYesterday) * 100) / 100,
   }
+}
+
+/** Carga liviana para el resumen del dashboard: solo los últimos lotes. */
+export async function getRecentProductionBatches(limit = 3): Promise<RecentProductionBatch[]> {
+  const safeLimit = Math.max(1, Math.min(10, Math.floor(limit)))
+  const { data, error } = await client()
+    .from('preparation_batches')
+    .select('id,name,production_date,quantity_produced,waste_quantity,waste_percentage,created_at')
+    .order('production_date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(safeLimit)
+
+  if (error) throw error
+  return (data ?? []).map(row => ({
+    id: row.id as string,
+    name: row.name as string,
+    productionDate: row.production_date as string,
+    quantityProduced: Number(row.quantity_produced ?? 0),
+    wasteQuantity: Number(row.waste_quantity ?? 0),
+    wastePercentage: Number(row.waste_percentage ?? 0),
+  }))
+}
+
+/** Devuelve lotes del día que superan el umbral de merma ya usado por Producción (10%). */
+export async function getTodayProductionYieldAlerts(): Promise<Array<Pick<RecentProductionBatch, 'id' | 'name' | 'wastePercentage'>>> {
+  const today = dateKeyInTimeZone()
+  const { data, error } = await client()
+    .from('preparation_batches')
+    .select('id,name,waste_percentage')
+    .eq('production_date', today)
+    .gt('waste_percentage', 10)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map(row => ({ id: String(row.id), name: String(row.name), wastePercentage: Number(row.waste_percentage ?? 0) }))
 }
 
 export async function getProductionBonuses(dateStart?: string, dateEnd?: string): Promise<ProductionBonus[]> {

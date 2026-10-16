@@ -419,6 +419,10 @@ export function Inventario() {
   }, [ingredients, searchTerm, categoryFilter])
 
   const totalPages = Math.ceil(filteredIngredients.length / ITEMS_PER_PAGE)
+  const visibleInventoryPages = (() => {
+    const firstPage = Math.max(1, Math.min(currentPage - 1, totalPages - 2))
+    return Array.from({ length: Math.min(3, totalPages) }, (_, index) => firstPage + index)
+  })()
   const paginatedIngredients = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE
     return filteredIngredients.slice(start, start + ITEMS_PER_PAGE)
@@ -476,6 +480,10 @@ export function Inventario() {
 
   const MOVEMENTS_PER_PAGE = 20
   const totalMovementPages = Math.ceil(filteredAllMovements.length / MOVEMENTS_PER_PAGE)
+  const getVisiblePages = (currentPage: number, totalPages: number) => {
+    const firstPage = Math.max(1, Math.min(currentPage - 1, totalPages - 2))
+    return Array.from({ length: Math.min(3, totalPages) }, (_, index) => firstPage + index)
+  }
   const paginatedAllMovements = useMemo(() => {
     const start = (movementCurrentPage - 1) * MOVEMENTS_PER_PAGE
     return filteredAllMovements.slice(start, start + MOVEMENTS_PER_PAGE)
@@ -517,6 +525,8 @@ export function Inventario() {
 
   const ITEM_MOVEMENTS_PER_PAGE = 20
   const totalItemMovementPages = Math.ceil(filteredIngredientMovements.length / ITEM_MOVEMENTS_PER_PAGE)
+  const visibleItemMovementPages = getVisiblePages(itemViewCurrentPage, totalItemMovementPages)
+  const visibleMovementPages = getVisiblePages(movementCurrentPage, totalMovementPages)
   const paginatedIngredientMovements = useMemo(() => {
     const start = (itemViewCurrentPage - 1) * ITEM_MOVEMENTS_PER_PAGE
     return filteredIngredientMovements.slice(start, start + ITEM_MOVEMENTS_PER_PAGE)
@@ -608,7 +618,10 @@ export function Inventario() {
       <header className="inv-header management-workspace-header">
         <div className="inv-header-text">
           <h1 className="page-title"><Package size={22} className="page-title-icon" /> Inventario</h1>
-          <p>Gestiona tu inventario en tiempo real y controla tus existencias.</p>
+          <p>
+            <span className="inv-subtitle-desktop">Gestiona tu inventario en tiempo real y controla tus existencias.</span>
+            <span className="inv-subtitle-mobile">Controla inventario y existencias.</span>
+          </p>
         </div>
       </header>
 
@@ -762,14 +775,14 @@ export function Inventario() {
                         <td data-label="Acciones">
                           <div className="inv-actions">
                             <button className="inv-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${ing.name}`} onClick={() => openView(ing)}>
-                              <Eye size={13} />
+                              <Eye size={13} /><span className="inv-action-label">Ver</span>
                             </button>
                             {showCosts && (
                               <>
-                                <button className="inv-action-btn" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={13} /></button>
-                                <button className="inv-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${ing.name}`} onClick={() => openAdjustment(ing, 1)}><Plus size={13} /></button>
-                                <button className="inv-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${ing.name}`} onClick={() => openAdjustment(ing, -1)}><Minus size={13} /></button>
-                                <button className="inv-action-btn danger" title="Eliminar artículo" aria-label={`Eliminar ${ing.name}`} onClick={() => handleDelete(ing)}><Trash2 size={13} /></button>
+                                <button className="inv-action-btn" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={13} /><span className="inv-action-label">Editar</span></button>
+                                <button className="inv-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${ing.name}`} onClick={() => openAdjustment(ing, 1)}><Plus size={13} /><span className="inv-action-label">Agregar</span></button>
+                                <button className="inv-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${ing.name}`} onClick={() => openAdjustment(ing, -1)}><Minus size={13} /><span className="inv-action-label">Descontar</span></button>
+                                <button className="inv-action-btn danger" title="Eliminar artículo" aria-label={`Eliminar ${ing.name}`} onClick={() => handleDelete(ing)}><Trash2 size={13} /><span className="inv-action-label">Eliminar</span></button>
                               </>
                             )}
                           </div>
@@ -796,7 +809,7 @@ export function Inventario() {
                 >
                   <ChevronLeft size={16} />
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                {visibleInventoryPages.map(page => (
                   <button
                     key={page}
                     className={`inv-page-btn ${currentPage === page ? 'active' : ''}`}
@@ -979,7 +992,6 @@ export function Inventario() {
                       }}
                     />
                   </div>
-                  <span className="inv-modal-date-sep">a</span>
                   <div className="inv-modal-date-box">
                     <span>Hasta</span>
                     <DateField
@@ -1033,12 +1045,14 @@ export function Inventario() {
                         >
                           <ChevronLeft size={16} />
                         </button>
-                        {Array.from({ length: totalItemMovementPages }, (_, i) => i + 1).map(page => (
+                        {visibleItemMovementPages.map(page => (
                           <button
                             key={page}
                             type="button"
                             className={`inv-page-btn ${itemViewCurrentPage === page ? 'active' : ''}`}
                             onClick={() => setItemViewCurrentPage(page)}
+                            aria-label={`Página ${page}`}
+                            aria-current={itemViewCurrentPage === page ? 'page' : undefined}
                           >
                             {page}
                           </button>
@@ -1255,12 +1269,14 @@ export function Inventario() {
                   >
                     <ChevronLeft size={16} />
                   </button>
-                  {Array.from({ length: totalMovementPages }, (_, i) => i + 1).map(page => (
+                  {visibleMovementPages.map(page => (
                     <button
                       key={page}
                       type="button"
                       className={`inv-page-btn ${movementCurrentPage === page ? 'active' : ''}`}
                       onClick={() => setMovementCurrentPage(page)}
+                      aria-label={`Página ${page}`}
+                      aria-current={movementCurrentPage === page ? 'page' : undefined}
                     >
                       {page}
                     </button>
@@ -1290,8 +1306,8 @@ export function Inventario() {
             <div className="inv-modal-heading">
               <span className="negative"><AlertTriangle size={18} /></span>
               <div>
-                <small>Existencias por debajo del mínimo</small>
-                <h3>Alertas de inventario ({allAlerts.length})</h3>
+                <small>Inventario · stock bajo</small>
+                <h3>Alertas ({allAlerts.length})</h3>
               </div>
             </div>
 

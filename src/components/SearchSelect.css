@@ -22,7 +22,10 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  animation: fc-popover-enter 140ms var(--motion-enter, cubic-bezier(.16, 1, .3, 1)) both;
 }
+.search-select-list.closing { pointer-events: none; animation: search-select-out 120ms ease-in both; }
+@keyframes search-select-out { to { opacity: 0; transform: translateY(-3px) scale(.985); } }
 
 .search-select-option {
   padding: 8px 10px;

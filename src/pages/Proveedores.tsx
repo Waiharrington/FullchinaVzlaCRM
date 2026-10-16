@@ -650,6 +650,7 @@ export function Proveedores() {
                                 }}
                               >
                                 <WhatsAppIcon size={14} />
+                                <span className="prv-wsap-label">WhatsApp</span>
                               </button>
                             </div>
                           ) : null}

@@ -106,8 +106,6 @@ export function Finanzas() {
   const [editingAccountId, setEditingAccountId] = useState<string | null>(null)
   const [openingBalanceDraft, setOpeningBalanceDraft] = useState('')
   const [openingBalanceError, setOpeningBalanceError] = useState('')
-  const currentMonth = isoDate(new Date()).slice(0, 7)
-  const [summaryMonth, setSummaryMonth] = useState(currentMonth)
   const [selectedSummaryDate, setSelectedSummaryDate] = useState(isoDate(new Date()))
   const [kpiDetail, setKpiDetail] = useState<null | 'sales' | 'cogs' | 'expenses' | 'net' | 'margin'>(null)
   const [showTransfer, setShowTransfer] = useState(false)
@@ -229,12 +227,29 @@ export function Finanzas() {
     semana: computePL(...ranges.semana), mes: computePL(...ranges.mes), rango: computePL(...ranges.rango),
   }), [loading, computePL, ranges])
 
-  const dailyRows = useMemo(() => buildDailyFinancialRows(summaryMonth, orders.filter(order => !isPersonalAccountOrder(order)), purchases, expenses), [summaryMonth, orders, purchases, expenses])
-  const monthTotals = useMemo(() => sumFinancialRows(dailyRows), [dailyRows])
-  const selectedWeek = useMemo(() => weekRangeFor(selectedSummaryDate), [selectedSummaryDate])
+  const dailyRows = useMemo(() => {
+    const start = ranges[period][0]
+    const end = ranges[period][1]
+    const months: string[] = []
+    const cursor = new Date(start.getFullYear(), start.getMonth(), 1)
+    const lastMonth = new Date(end.getFullYear(), end.getMonth(), 1)
+    while (cursor <= lastMonth) {
+      months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`)
+      cursor.setMonth(cursor.getMonth() + 1)
+    }
+    const startIso = isoDate(start)
+    const endIso = isoDate(end)
+    return months.flatMap(month => buildDailyFinancialRows(month, orders.filter(order => !isPersonalAccountOrder(order)), purchases, expenses))
+      .filter(row => row.date >= startIso && row.date <= endIso)
+  }, [period, ranges, orders, purchases, expenses])
+  const periodTotals = useMemo(() => sumFinancialRows(dailyRows), [dailyRows])
+  const selectedDailyDate = dailyRows.some(row => row.date === selectedSummaryDate) ? selectedSummaryDate : dailyRows[dailyRows.length - 1]?.date ?? isoDate(ranges[period][1])
+  const selectedWeek = useMemo(() => weekRangeFor(selectedDailyDate), [selectedDailyDate])
   const weekRows = useMemo(() => dailyRows.filter(row => row.date >= selectedWeek.start && row.date <= selectedWeek.end), [dailyRows, selectedWeek])
+  const previousMobileWeekDay = dailyRows.filter(row => row.date < (weekRows[0]?.date ?? '')).slice(-1)[0]
+  const nextMobileWeekDay = dailyRows.find(row => row.date > (weekRows[weekRows.length - 1]?.date ?? ''))
   const weekTotals = useMemo(() => sumFinancialRows(weekRows), [weekRows])
-  const selectedDay = dailyRows.find(row => row.date === selectedSummaryDate) ?? dailyRows[0]
+  const selectedDay = dailyRows.find(row => row.date === selectedDailyDate) ?? dailyRows[0]
   const accountActivity = useMemo(() => buildFinancialAccountActivity(
     accounts,
     orders,
@@ -253,46 +268,20 @@ export function Finanzas() {
     }
     return bestId
   }, [accounts, accountActivity])
-  const monthOptions = useMemo(() => {
-    const [cy, cm] = currentMonth.split('-').map(Number)
-    const opts: Array<{ value: string; label: string }> = []
-    for (let i = 0; i < 24; i++) {
-      const d = new Date(cy, cm - 1 - i, 1)
-      const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      const label = d.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
-      opts.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
-    }
-    if (!opts.some(opt => opt.value === summaryMonth)) {
-      const [sy, sm] = summaryMonth.split('-').map(Number)
-      const label = new Date(sy, sm - 1, 1).toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
-      opts.push({ value: summaryMonth, label: label.charAt(0).toUpperCase() + label.slice(1) })
-    }
-    return opts
-  }, [currentMonth, summaryMonth])
-
-  const changeSummaryMonth = (offset: number) => {
-    const [year, month] = summaryMonth.split('-').map(Number)
-    const next = new Date(year, month - 1 + offset, 1)
-    const value = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
-    setSummaryMonth(value)
-    setSelectedSummaryDate(`${value}-01`)
-  }
-
   const historyEntries = useMemo<FinancialHistoryEntry[]>(() => {
     const entries: FinancialHistoryEntry[] = []
-    const isInSelectedMonth = (date: string) => date.slice(0, 7) === summaryMonth
     const accountById = new Map(accounts.map(account => [account.id, account]))
 
     for (const order of orders) {
       if (order.status !== 'paid') continue
       for (const payment of order.payments) {
-        if (payment.method === 'personal_account' || !isInSelectedMonth(payment.createdAt || order.createdAt)) continue
+        if (payment.method === 'personal_account') continue
         const account = payment.accountId ? accountById.get(payment.accountId) : undefined
         const currency = account?.currency ?? (payment.method === 'mobile' || payment.method === 'card' ? 'VES' : 'USD')
         const rate = order.bcvRate || bcvRate || 0
         entries.push({
           id: `order-payment-${payment.id}`,
-          date: (payment.createdAt || order.createdAt).slice(0, 10),
+          date: isoDate(new Date(payment.createdAt || order.createdAt)),
           direction: 'in', category: 'Cobro de venta',
           concept: `Comanda #${order.orderNumber}`,
           detail: `${order.customerName || 'Cliente general'} · ${PAY_META[payment.method]?.label ?? 'Otro método'}${payment.referenceNumber ? ` · Ref. ${payment.referenceNumber}` : ''}`,
@@ -305,7 +294,6 @@ export function Finanzas() {
     }
 
     for (const expense of expenses) {
-      if (!isInSelectedMonth(expense.expenseDate)) continue
       if (expense.purchaseExpenseItemId) continue // Ya está incluido en el pago único de la factura.
       const expenseAccount = expense.accountId ? accountById.get(expense.accountId) : undefined
       const expenseCurrency = expenseAccount?.currency ?? (expense.exchangeRate ? 'VES' : 'USD')
@@ -325,7 +313,7 @@ export function Finanzas() {
     }
 
     for (const purchase of purchases) {
-      if (purchase.isVoided || !isInSelectedMonth(purchase.purchaseDate)) continue
+      if (purchase.isVoided) continue
       const purchaseAccount = purchase.accountId ? accountById.get(purchase.accountId) : undefined
       const purchaseCurrency = purchase.paymentCurrency ?? purchaseAccount?.currency ?? 'USD'
       const purchaseRate = purchase.exchangeRate || bcvRate || 0
@@ -345,7 +333,7 @@ export function Finanzas() {
     }
 
     for (const operation of operations) {
-      if (!isInSelectedMonth(operation.operationDate) || operation.type === 'receivable') continue
+      if (operation.type === 'receivable') continue
       let direction: HistoryDirection
       if (operation.type === 'transfer') direction = 'transfer'
       else if (['receivable_collection', 'loan', 'tip'].includes(operation.type)) direction = 'in'
@@ -362,14 +350,21 @@ export function Finanzas() {
     }
 
     return entries.sort((a, b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id))
-  }, [accounts, bcvRate, expenses, operations, orders, purchases, summaryMonth])
-  const visibleHistoryEntries = useMemo(() => historyEntries.filter(entry => historyFilter === 'all' || entry.direction === historyFilter), [historyEntries, historyFilter])
-  const historyIncome = historyEntries.filter(entry => entry.direction === 'in').reduce((sum, entry) => sum + entry.amountUsd, 0)
-  const historyOutflow = historyEntries.filter(entry => entry.direction === 'out').reduce((sum, entry) => sum + entry.amountUsd, 0)
+  }, [accounts, bcvRate, expenses, operations, orders, purchases])
+  const periodHistoryEntries = useMemo(() => historyEntries.filter(entry => entry.date >= isoDate(ranges[period][0]) && entry.date <= isoDate(ranges[period][1])), [historyEntries, period, ranges])
+  const visibleHistoryEntries = useMemo(() => periodHistoryEntries.filter(entry => historyFilter === 'all' || entry.direction === historyFilter), [periodHistoryEntries, historyFilter])
+  const historyIncome = periodHistoryEntries.filter(entry => entry.direction === 'in').reduce((sum, entry) => sum + entry.amountUsd, 0)
+  const historyOutflow = periodHistoryEntries.filter(entry => entry.direction === 'out').reduce((sum, entry) => sum + entry.amountUsd, 0)
   const historyPageSize = 15
   const historyPageCount = Math.max(1, Math.ceil(visibleHistoryEntries.length / historyPageSize))
   const safeHistoryPage = Math.min(historyPage, historyPageCount)
   const pagedHistoryEntries = visibleHistoryEntries.slice((safeHistoryPage - 1) * historyPageSize, safeHistoryPage * historyPageSize)
+  const historyPageGroups = pagedHistoryEntries.reduce<Array<{ date: string; entries: FinancialHistoryEntry[] }>>((groups, entry) => {
+    const lastGroup = groups[groups.length - 1]
+    if (lastGroup?.date === entry.date) lastGroup.entries.push(entry)
+    else groups.push({ date: entry.date, entries: [entry] })
+    return groups
+  }, [])
 
   if (loading || !pls) return <PageSkeleton cards={4} rows={6} />
 
@@ -591,29 +586,34 @@ export function Finanzas() {
     <div className="page fin-page animate-fade-in management-workspace management-workspace--finance">
       <header className="page-header management-workspace-header">
         <div>
-          <h1 className="page-title"><TrendingUp size={22} className="page-title-icon" /> Finanzas & Cierre Financiero Automático</h1>
-          <p className="page-subtitle">Ingresos, egresos, saldos y rentabilidad del negocio en un solo lugar.</p>
+          <h1 className="page-title"><TrendingUp size={22} className="page-title-icon" /> <span className="fin-title-desktop">Finanzas & Cierre Financiero Automático</span><span className="fin-title-mobile">Finanzas y reportes</span></h1>
+          <p className="page-subtitle"><span className="fin-subtitle-desktop">Ingresos, egresos, saldos y rentabilidad del negocio en un solo lugar.</span><span className="fin-subtitle-mobile">Ingresos, gastos y saldos del negocio.</span></p>
         </div>
         <div className="fin-head-actions">
           <span className="fin-period"><CalendarDays size={15} />
-            <StyledSelect value={period} onChange={(e) => setPeriod(e.target.value as Period)}>
+            <StyledSelect value={period} onChange={(e) => {
+              const nextPeriod = e.target.value as Period
+              setPeriod(nextPeriod)
+              setSelectedSummaryDate(isoDate(ranges[nextPeriod][1]))
+              setHistoryPage(1)
+            }}>
               <option value="hoy">Hoy</option><option value="ayer">Ayer</option><option value="semana">Esta semana</option><option value="mes">Este mes</option><option value="rango">Rango personalizado</option>
             </StyledSelect>
           </span>
-          {period === 'rango' && <span className="fin-date-range"><DateField value={rangeStart} onChange={setRangeStart} /><span>a</span><DateField value={rangeEnd} onChange={setRangeEnd} /></span>}
+          {period === 'rango' && <span className="fin-date-range"><DateField value={rangeStart} onChange={value => { setRangeStart(value); setSelectedSummaryDate(value); setHistoryPage(1) }} /><span>a</span><DateField value={rangeEnd} onChange={value => { setRangeEnd(value); setSelectedSummaryDate(value); setHistoryPage(1) }} /></span>}
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
 
       <div className="fin-tabs" role="tablist" aria-label="Secciones de Finanzas">
         {([
-          ['overview', 'Resumen', <Wallet size={16} />],
-          ['daily', 'Operación diaria', <CalendarDays size={16} />],
-          ['closing', 'Cierre y movimientos', <ArrowRightLeft size={16} />],
-          ['history', 'Historial financiero', <Clock size={16} />],
-        ] as const).map(([tab, label, icon]) => (
-          <button key={tab} id={`fin-tab-${tab}`} type="button" role="tab" aria-selected={activeTab === tab} aria-controls="fin-active-panel" tabIndex={activeTab === tab ? 0 : -1} className={`fin-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => { setActiveTab(tab); setHistoryPage(1) }}>
-            {icon}<span>{label}</span>
+          ['overview', 'Resumen', 'Resumen', <Wallet size={16} />],
+          ['daily', 'Operación diaria', 'Operación', <CalendarDays size={16} />],
+          ['closing', 'Cierre y movimientos', 'Cierre', <ArrowRightLeft size={16} />],
+          ['history', 'Historial financiero', 'Historial', <Clock size={16} />],
+        ] as const).map(([tab, label, mobileLabel, icon]) => (
+          <button key={tab} id={`fin-tab-${tab}`} type="button" role="tab" aria-label={label} aria-selected={activeTab === tab} aria-controls="fin-active-panel" tabIndex={activeTab === tab ? 0 : -1} className={`fin-tab ${activeTab === tab ? 'active' : ''}`} onClick={() => { setActiveTab(tab); setHistoryPage(1) }}>
+            {icon}<span className="fin-tab-label-desktop">{label}</span><span className="fin-tab-label-mobile">{mobileLabel}</span>
           </button>
         ))}
       </div>
@@ -707,8 +707,8 @@ export function Finanzas() {
       </div>
 
       <div className="fin-card fin-accounts-card management-workspace-panel">
-        <h2>Saldos actuales por cuenta</h2>
-        <p className="sub">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</p>
+        <h2><span className="fin-accounts-title-desktop">Saldos actuales por cuenta</span><span className="fin-accounts-title-mobile">Saldos por cuenta</span></h2>
+        <p className="sub"><span className="fin-accounts-sub-desktop">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</span><span className="fin-accounts-sub-mobile">Saldo disponible y movimientos por cuenta.</span></p>
         {accounts.length === 0 ? (
           <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>
         ) : (
@@ -731,8 +731,8 @@ export function Finanzas() {
                       {personalAccounts.length === 0 && <p className="fin-account-empty">No hay cuentas activas.</p>}
                     </div>
                     <form className="fin-personal-account-add" onSubmit={event => { event.preventDefault(); void addPersonalAccount() }}>
-                      <input aria-label="Nombre de nueva cuenta personal" maxLength={80} value={newPersonalAccountName} onChange={event => setNewPersonalAccountName(event.target.value)} placeholder="Nueva cuenta personal" />
-                      <button type="submit" disabled={!newPersonalAccountName.trim() || savingPersonalAccount} aria-label="Agregar cuenta personal"><Plus size={16}/></button>
+                      <input aria-label="Nombre de nueva cuenta personal" maxLength={80} value={newPersonalAccountName} onChange={event => setNewPersonalAccountName(event.target.value)} placeholder="Nombre" />
+                      <button type="submit" disabled={!newPersonalAccountName.trim() || savingPersonalAccount} aria-label="Agregar cuenta personal"><Plus size={16}/><span className="fin-personal-account-add-label">Agregar</span></button>
                     </form>
                     {personalAccountError && <small className="fin-personal-account-error" role="alert">{personalAccountError}</small>}
                   </section>
@@ -759,18 +759,45 @@ export function Finanzas() {
       <section className="fin-card fin-daily-summary">
         <div className="fin-daily-head">
           <div><h2>Resumen diario de operación</h2><p className="sub">Ventas y egresos reales organizados como el control diario del negocio.</p></div>
-          <div className="fin-month-nav"><button onClick={() => changeSummaryMonth(-1)} aria-label="Mes anterior"><ChevronLeft size={16}/></button><StyledSelect className="fin-month-select" value={summaryMonth} onChange={event => { setSummaryMonth(event.target.value); setSelectedSummaryDate(`${event.target.value}-01`) }} aria-label="Mes del resumen">{monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</StyledSelect><button onClick={() => changeSummaryMonth(1)} disabled={summaryMonth >= currentMonth} aria-label="Mes siguiente"><ChevronRight size={16}/></button></div>
+          <span className="fin-period-context">{periodLabel}</span>
         </div>
         <div className="fin-daily-layout">
           <div className="fin-daily-table-wrap">
             <table className="fin-daily-table">
               <thead><tr><th>Día</th><th>Ventas</th><th>Total egresos</th><th>Compras</th><th>Gastos fijos</th><th>Gastos variables</th><th>Otros</th><th>Diferencia</th></tr></thead>
-              <tbody>{dailyRows.map(row => <tr key={row.date} className={selectedSummaryDate === row.date ? 'selected' : ''} onClick={() => setSelectedSummaryDate(row.date)}><td><button>{row.day}</button></td><td className="sales">{formatUsd(row.sales)}</td><td className="outflow">{formatUsd(row.totalOutflows)}</td><td>{formatUsd(row.purchases)}</td><td>{formatUsd(row.fixedExpenses)}</td><td>{formatUsd(row.variableExpenses)}</td><td>{formatUsd(row.otherExpenses)}</td><td className={row.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(row.difference)}</td></tr>)}</tbody>
-              <tfoot><tr><td>Mes</td><td>{formatUsd(monthTotals.sales)}</td><td>{formatUsd(monthTotals.totalOutflows)}</td><td>{formatUsd(monthTotals.purchases)}</td><td>{formatUsd(monthTotals.fixedExpenses)}</td><td>{formatUsd(monthTotals.variableExpenses)}</td><td>{formatUsd(monthTotals.otherExpenses)}</td><td className={monthTotals.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(monthTotals.difference)}</td></tr></tfoot>
+              <tbody>{dailyRows.map(row => <tr key={row.date} className={selectedDailyDate === row.date ? 'selected' : ''} onClick={() => setSelectedSummaryDate(row.date)}><td><button>{row.day}</button></td><td className="sales">{formatUsd(row.sales)}</td><td className="outflow">{formatUsd(row.totalOutflows)}</td><td>{formatUsd(row.purchases)}</td><td>{formatUsd(row.fixedExpenses)}</td><td>{formatUsd(row.variableExpenses)}</td><td>{formatUsd(row.otherExpenses)}</td><td className={row.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(row.difference)}</td></tr>)}</tbody>
+              <tfoot><tr><td>Período</td><td>{formatUsd(periodTotals.sales)}</td><td>{formatUsd(periodTotals.totalOutflows)}</td><td>{formatUsd(periodTotals.purchases)}</td><td>{formatUsd(periodTotals.fixedExpenses)}</td><td>{formatUsd(periodTotals.variableExpenses)}</td><td>{formatUsd(periodTotals.otherExpenses)}</td><td className={periodTotals.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(periodTotals.difference)}</td></tr></tfoot>
             </table>
           </div>
+          <div className="fin-daily-mobile-list">
+            <section className="fin-daily-mobile-month">
+              <strong>Total del período</strong>
+              <div><span>Ventas</span><b className="sales">{formatUsd(periodTotals.sales)}</b></div>
+              <div><span>Egresos</span><b className="outflow">{formatUsd(periodTotals.totalOutflows)}</b></div>
+              <div><span>Diferencia</span><b className={periodTotals.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(periodTotals.difference)}</b></div>
+            </section>
+            <nav className="fin-daily-mobile-pagination" aria-label="Paginación semanal del resumen diario">
+              <button type="button" aria-label="Semana anterior" disabled={!previousMobileWeekDay} onClick={() => previousMobileWeekDay && setSelectedSummaryDate(previousMobileWeekDay.date)}><ChevronLeft size={16}/><span>Anterior</span></button>
+              <strong>Días {weekRows[0]?.day}–{weekRows[weekRows.length - 1]?.day}</strong>
+              <button type="button" aria-label="Semana siguiente" disabled={!nextMobileWeekDay} onClick={() => nextMobileWeekDay && setSelectedSummaryDate(nextMobileWeekDay.date)}><span>Siguiente</span><ChevronRight size={16}/></button>
+            </nav>
+            {weekRows.map(row => <article className={`fin-daily-mobile-card ${selectedDailyDate === row.date ? 'selected' : ''}`} key={row.date}>
+              <button type="button" className="fin-daily-mobile-select" aria-pressed={selectedDailyDate === row.date} onClick={() => setSelectedSummaryDate(row.date)}>
+                <strong>Día {row.day}</strong><span>{selectedDailyDate === row.date ? 'Día seleccionado' : 'Seleccionar día'}</span>
+              </button>
+              <div className="fin-daily-mobile-stats">
+                <div><span>Ventas</span><b className="sales">{formatUsd(row.sales)}</b></div>
+                <div><span>Total egresos</span><b className="outflow">{formatUsd(row.totalOutflows)}</b></div>
+                <div className="difference"><span>Diferencia</span><b className={row.difference >= 0 ? 'positive' : 'negative'}>{formatUsd(row.difference)}</b></div>
+              </div>
+              <details className="fin-daily-mobile-breakdown">
+                <summary>Desglose de egresos</summary>
+                <dl><div><dt>Compras</dt><dd>{formatUsd(row.purchases)}</dd></div><div><dt>Gastos fijos</dt><dd>{formatUsd(row.fixedExpenses)}</dd></div><div><dt>Gastos variables</dt><dd>{formatUsd(row.variableExpenses)}</dd></div><div><dt>Otros</dt><dd>{formatUsd(row.otherExpenses)}</dd></div></dl>
+              </details>
+            </article>)}
+          </div>
           <aside className="fin-week-summary">
-            <div className="fin-week-title"><span>Semana seleccionada</span><strong>{selectedWeek.start.slice(8)} al {selectedWeek.end.slice(8)}</strong></div>
+            <div className="fin-week-title"><span>Semana seleccionada</span><strong>{weekRows[0]?.date.slice(8) ?? '—'} al {weekRows[weekRows.length - 1]?.date.slice(8) ?? '—'}</strong></div>
             <div className="fin-week-primary"><span>Ventas</span><strong>{formatUsd(weekTotals.sales)}</strong></div>
             <div className={`fin-week-primary difference ${weekTotals.difference >= 0 ? 'positive' : 'negative'}`}><span>Diferencia</span><strong>{formatUsd(weekTotals.difference)}</strong></div>
             <div className="fin-week-primary"><span>Egresos</span><strong>{formatUsd(weekTotals.totalOutflows)}</strong></div>
@@ -785,7 +812,7 @@ export function Finanzas() {
       <div className="fin-pay-ops-row">
       <div className="fin-card fin-pay-card">
             <div className="fin-pay-head">
-              <div><h2>Cierre por Método de Pago</h2><p className="sub">Total cobrado en {periodLabel.toLowerCase()} según los métodos usados en Caja.</p></div>
+              <div><h2>Cierre por Método de Pago</h2><p className="sub">Cobros de {periodLabel.toLowerCase()} agrupados por método.</p></div>
               <div className="fin-pay-hero"><span className="fin-pay-hero-lbl">Total Cobrado</span><strong className="fin-pay-hero-val">{formatUsd(totalPayments)}</strong></div>
             </div>
             {totalPayments > 0 && (
@@ -855,15 +882,15 @@ export function Finanzas() {
         <div className="fin-card fin-history-card">
           <div className="fin-history-head">
             <div><h2>Historial financiero</h2><p className="sub">Movimientos reales de dinero. Los traspasos entre cuentas aparecen aparte y no cuentan como ingreso ni egreso.</p></div>
-            <div className="fin-month-nav"><button type="button" onClick={() => { changeSummaryMonth(-1); setHistoryPage(1) }} aria-label="Mes anterior"><ChevronLeft size={16}/></button><StyledSelect className="fin-month-select" value={summaryMonth} onChange={event => { setSummaryMonth(event.target.value); setSelectedSummaryDate(`${event.target.value}-01`); setHistoryPage(1) }} aria-label="Mes del historial">{monthOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}</StyledSelect><button type="button" onClick={() => { changeSummaryMonth(1); setHistoryPage(1) }} disabled={summaryMonth >= currentMonth} aria-label="Mes siguiente"><ChevronRight size={16}/></button></div>
+            <span className="fin-period-context">{periodLabel}</span>
           </div>
           <div className="fin-history-summary">
-            <div className="fin-history-total income"><span>Ingresos del mes</span><strong>{formatUsd(historyIncome)}</strong></div>
-            <div className="fin-history-total expense"><span>Egresos del mes</span><strong>{formatUsd(historyOutflow)}</strong></div>
-            <div className="fin-history-total"><span>Balance del mes</span><strong>{formatUsd(historyIncome - historyOutflow)}</strong></div>
+            <div className="fin-history-total income"><span>Ingresos del período</span><strong>{formatUsd(historyIncome)}</strong></div>
+            <div className="fin-history-total expense"><span>Egresos del período</span><strong>{formatUsd(historyOutflow)}</strong></div>
+            <div className="fin-history-total"><span>Balance del período</span><strong>{formatUsd(historyIncome - historyOutflow)}</strong></div>
           </div>
           <div className="fin-history-toolbar">
-            <span>{visibleHistoryEntries.length} movimiento{visibleHistoryEntries.length === 1 ? '' : 's'} · {monthOptions.find(option => option.value === summaryMonth)?.label ?? summaryMonth}</span>
+            <span>{visibleHistoryEntries.length} movimiento{visibleHistoryEntries.length === 1 ? '' : 's'} · {periodLabel}</span>
             <StyledSelect className="fin-history-filter" value={historyFilter} onChange={event => { setHistoryFilter(event.target.value as typeof historyFilter); setHistoryPage(1) }} aria-label="Filtrar movimientos">
               <option value="all">Todos los movimientos</option><option value="in">Solo ingresos</option><option value="out">Solo egresos</option><option value="transfer">Traspasos internos</option>
             </StyledSelect>
@@ -874,12 +901,30 @@ export function Finanzas() {
               <tbody>{pagedHistoryEntries.map(entry => <tr key={entry.id}>
                 <td>{new Date(`${entry.date}T12:00:00`).toLocaleDateString('es-VE')}</td>
                 <td><span className={`fin-history-kind ${entry.direction}`}>{entry.direction === 'in' ? 'Ingreso' : entry.direction === 'out' ? 'Egreso' : 'Traspaso'}</span></td>
-                <td><strong>{entry.concept}</strong><small>{entry.category} · {entry.detail}</small></td>
+                <td><strong>{entry.concept}</strong><small>{entry.category} · {entry.detail}</small><small className="fin-history-account-compact">{entry.account}</small></td>
                 <td>{entry.account}</td>
                 <td className={`fin-history-amount ${entry.direction}`}>{entry.direction === 'in' ? '+' : entry.direction === 'out' ? '−' : ''}{entry.currency === 'VES' ? formatVes(entry.nativeAmount) : formatUsd(entry.nativeAmount)}<small>{entry.currency === 'VES' ? `${formatUsd(entry.amountUsd)} equivalente` : 'USD'}</small></td>
               </tr>)}</tbody>
             </table>
-            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos este mes" description="Cuando se registren cobros, gastos, compras o movimientos, aparecerán aquí." />}
+            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos en este período" description="Cuando se registren cobros, gastos, compras o movimientos, aparecerán aquí." />}
+          </div>
+          <div className="fin-history-mobile-list">
+            {historyPageGroups.map(group => <section className="fin-history-mobile-day" key={group.date}>
+              <header><time dateTime={group.date}>{new Date(`${group.date}T12:00:00`).toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}</time><span>{group.entries.length} mov.</span></header>
+              {group.entries.map(entry => <article className={`fin-history-mobile-entry ${entry.direction}`} key={entry.id}>
+                <span className="fin-history-mobile-mark" aria-hidden="true" />
+                <div className="fin-history-mobile-copy">
+                  <strong>{entry.concept}</strong>
+                  <small>{entry.category} · {entry.detail}</small>
+                  <span>{entry.account}</span>
+                </div>
+                <div className="fin-history-mobile-value">
+                  <strong className={`fin-history-amount ${entry.direction}`}>{entry.direction === 'in' ? '+' : entry.direction === 'out' ? '−' : ''}{entry.currency === 'VES' ? formatVes(entry.nativeAmount) : formatUsd(entry.nativeAmount)}</strong>
+                  <small>{entry.currency === 'VES' ? `${formatUsd(entry.amountUsd)} equivalente` : 'USD'} · {entry.direction === 'in' ? 'Ingreso' : entry.direction === 'out' ? 'Egreso' : 'Traspaso'}</small>
+                </div>
+              </article>)}
+            </section>)}
+            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos en este período" description="Cuando se registren cobros, gastos, compras o movimientos, aparecerán aquí." />}
           </div>
           {visibleHistoryEntries.length > historyPageSize && <div className="fin-history-pagination">
             <span>Mostrando {(safeHistoryPage - 1) * historyPageSize + 1}–{Math.min(safeHistoryPage * historyPageSize, visibleHistoryEntries.length)} de {visibleHistoryEntries.length}</span>
@@ -922,13 +967,25 @@ export function Finanzas() {
           const prefix = sign === 'income' && value ? '+' : sign === 'expense' && value ? '-' : ''
           return <td key={account.id}>{prefix} {money(Math.abs(value))}</td>
         })
+        const mobileLines = (ledger: ReturnType<typeof buildAccountDay>) => [
+          { label: 'Saldo anterior', value: money(ledger.opening), tone: '' },
+          { label: 'Ventas del día', value: `${ledger.sales ? '+ ' : ''}${money(Math.abs(ledger.sales))}`, tone: 'income' },
+          { label: 'Gastos del día', value: `${ledger.expenses ? '- ' : ''}${money(Math.abs(ledger.expenses))}`, tone: 'expense' },
+          { label: 'Compras pagadas', value: `${ledger.purchases ? '- ' : ''}${money(Math.abs(ledger.purchases))}`, tone: 'expense' },
+          { label: 'Cuentas cobradas', value: money(Math.abs(ledger.collections)), tone: '' },
+          { label: 'Punto / Transferencias', value: money(Math.abs(ledger.transfers)), tone: '' },
+          { label: 'Otros movimientos', value: money(Math.abs(ledger.others)), tone: '' },
+        ]
         return createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingLedger ? 'closing' : ''}`} role="presentation" onClick={() => closeLedger()}><section className="modal-card fin-dialog fin-account-modal fin-ledger-modal" role="dialog" aria-modal="true" aria-labelledby="fin-ledger-dialog-title" onClick={event => event.stopPropagation()}>
           <header className="fin-dialog-header">
             <span className="fin-dialog-icon"><Wallet size={20}/></span>
-            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario de saldos</span><h2 id="fin-ledger-dialog-title">{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</p></div>
+            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario de saldos</span><h2 id="fin-ledger-dialog-title">{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p><span className="fin-ledger-subtitle-desktop">{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</span><span className="fin-ledger-subtitle-mobile">{selectedSummaryDate} · {bcvRate ? `BCV ${formatVes(bcvRate)} Bs/$` : 'Sin tasa BCV'}</span></p></div>
             <button type="button" className="fin-dialog-close" onClick={() => closeLedger()} aria-label="Cerrar ventana"><X size={18}/></button>
           </header>
-          <div className="fin-dialog-body fin-ledger-body">{rows.length ? <div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
+          <div className="fin-dialog-body fin-ledger-body">{rows.length ? <><div className="fin-ledger-mobile-list">{rows.map(({ account, ledger }) => <article className="fin-ledger-mobile-account" key={account.id}>
+              <header><strong>{account.name}</strong><div><small>Saldo actual</small><b>{money(ledger.closing)}</b></div></header>
+              <dl>{mobileLines(ledger).map(line => <div className={line.tone} key={line.label}><dt>{line.label}</dt><dd>{line.value}</dd></div>)}</dl>
+            </article>)}</div><div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
               <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
               <tr className="income"><th>Ventas del día</th>{cells(ledger => ledger.sales, 'income')}</tr>
               <tr className="expense"><th>Gastos del día</th>{cells(ledger => ledger.expenses, 'expense')}</tr>
@@ -937,7 +994,7 @@ export function Finanzas() {
               <tr><th>Punto / Transferencias</th>{cells(ledger => ledger.transfers)}</tr>
               <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
               <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
-            </tbody></table></div> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}</div>
+            </tbody></table></div></> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}</div>
           <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeLedger()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}

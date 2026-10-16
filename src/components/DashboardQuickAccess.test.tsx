@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DashboardQuickAccess, type DashboardShortcut } from './DashboardQuickAccess'
 
@@ -32,6 +32,6 @@ describe('DashboardQuickAccess', () => {
     expect(document.body.style.overflow).toBe('hidden')
 
     fireEvent.keyDown(window, { key: 'Escape' })
-    expect(onClose).toHaveBeenCalledOnce()
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce())
   })
 })

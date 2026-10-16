@@ -1,10 +1,93 @@
 import { defineConfig, configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import type { Plugin } from 'vite'
+
+type PerformanceSample = {
+  route: string
+  resource: string
+  method: string
+  status: number
+  durationMs: number
+  finishedAt: number
+}
+
+function localPerformanceProbe(): Plugin {
+  const samples: PerformanceSample[] = []
+  return {
+    name: 'fullchina-local-performance-probe',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__dev/performance', (req, res, next) => {
+        res.setHeader('Cache-Control', 'no-store')
+        const request = req as unknown as {
+          method?: string
+          on: (event: 'data' | 'end', listener: (chunk?: Uint8Array) => void) => void
+        }
+        if (request.method === 'GET') {
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify(samples))
+          return
+        }
+        if (request.method !== 'POST') {
+          next()
+          return
+        }
+
+        const chunks: Uint8Array[] = []
+        let bytes = 0
+        request.on('data', (chunk) => {
+          if (!chunk) return
+          bytes += chunk.length
+          if (bytes <= 2048) chunks.push(chunk)
+        })
+        request.on('end', () => {
+          if (bytes > 2048) {
+            res.statusCode = 413
+            res.end()
+            return
+          }
+          try {
+            const body = new Uint8Array(bytes)
+            let offset = 0
+            for (const chunk of chunks) {
+              body.set(chunk, offset)
+              offset += chunk.length
+            }
+            const value = JSON.parse(Array.from(body, byte => String.fromCharCode(byte)).join('')) as Partial<PerformanceSample>
+            const durationMs = Number(value.durationMs)
+            if (typeof value.route !== 'string' || !/^\/[\w/-]{1,120}$/.test(value.route) ||
+                typeof value.resource !== 'string' || !/^[\w/:-]{1,100}$/.test(value.resource) ||
+                !Number.isFinite(durationMs) || durationMs < 0) {
+              res.statusCode = 400
+              res.end()
+              return
+            }
+            samples.push({
+              route: value.route,
+              resource: value.resource,
+              method: typeof value.method === 'string' && /^[A-Z]{1,8}$/.test(value.method) ? value.method : 'OTHER',
+              status: Number.isInteger(value.status) ? Number(value.status) : 0,
+              durationMs: Math.round(durationMs * 10) / 10,
+              finishedAt: Date.now(),
+            })
+            if (samples.length > 500) samples.splice(0, samples.length - 500)
+            res.statusCode = 204
+            res.end()
+          } catch {
+            res.statusCode = 400
+            res.end()
+          }
+        })
+      })
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
     react(),
+    localPerformanceProbe(),
     VitePWA({
       registerType: 'autoUpdate',
       // Usamos dos manifests propios (cliente/admin) enlazados dinámicamente en

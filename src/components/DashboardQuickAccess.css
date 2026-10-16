@@ -8,7 +8,15 @@
   background: rgba(3, 4, 7, 0.82);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  animation: dbQuickAccessOverlayIn 180ms ease-out both;
 }
+
+.db-quick-access-overlay.closing { pointer-events: none; animation: dbQuickAccessOverlayOut 170ms ease-in both; }
+.db-quick-access-dialog.closing { animation: dbQuickAccessOut 170ms ease-in both; }
+
+@keyframes dbQuickAccessOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dbQuickAccessOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes dbQuickAccessOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(8px) scale(.985); } }
 
 .db-quick-access-dialog {
   display: grid;

@@ -56,6 +56,8 @@ export function StyledSelect({
   const menuRef = useRef<HTMLDivElement>(null)
   const nativeRef = useRef<HTMLSelectElement>(null)
   const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | null>(null)
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const [internalValue, setInternalValue] = useState(() => String(defaultValue ?? ''))
@@ -78,6 +80,15 @@ export function StyledSelect({
     return term ? options.filter(option => normalizeForSearch(option.label).includes(term)) : options
   }, [options, query])
 
+  const requestClose = useCallback(() => {
+    if (!open || closing) return
+    setClosing(true)
+    closeTimer.current = window.setTimeout(() => {
+      setOpen(false)
+      setClosing(false)
+    }, 130)
+  }, [open, closing])
+
   const positionMenu = useCallback(() => {
     const rect = buttonRef.current?.getBoundingClientRect()
     if (!rect) return
@@ -92,7 +103,7 @@ export function StyledSelect({
   }, [])
 
   useLayoutEffect(() => {
-    if (!open) return
+    if (!open || closing) return
     positionMenu()
     window.addEventListener('resize', positionMenu)
     window.addEventListener('scroll', positionMenu, true)
@@ -100,17 +111,21 @@ export function StyledSelect({
       window.removeEventListener('resize', positionMenu)
       window.removeEventListener('scroll', positionMenu, true)
     }
-  }, [open, positionMenu])
+  }, [open, closing, positionMenu])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || closing) return
     const closeOnOutsidePress = (event: PointerEvent) => {
       const target = event.target as Node
-      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false)
+      if (!rootRef.current?.contains(target) && !menuRef.current?.contains(target)) requestClose()
     }
     document.addEventListener('pointerdown', closeOnOutsidePress)
     return () => document.removeEventListener('pointerdown', closeOnOutsidePress)
-  }, [open])
+  }, [open, closing, requestClose])
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+  }, [])
 
   useEffect(() => {
     if (!open) return
@@ -127,7 +142,7 @@ export function StyledSelect({
       valueSetter?.call(nativeSelect, option.value)
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }))
     }
-    setOpen(false)
+    requestClose()
     setQuery('')
     buttonRef.current?.focus()
   }
@@ -142,7 +157,7 @@ export function StyledSelect({
 
   const handleKeyboard = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape') {
-      setOpen(false)
+      requestClose()
       setQuery('')
       buttonRef.current?.focus()
       return
@@ -192,7 +207,15 @@ export function StyledSelect({
         aria-expanded={open}
         aria-controls={open ? listboxId : undefined}
         aria-activedescendant={open && filteredOptions[activeIndex] ? `${listboxId}-${activeIndex}` : undefined}
-        onClick={() => { setOpen(current => !current); setQuery('') }}
+        onClick={() => {
+          if (open && !closing) requestClose()
+          else {
+            if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+            setClosing(false)
+            setOpen(true)
+          }
+          setQuery('')
+        }}
         onKeyDown={handleKeyboard}
       >
         <span className={!selectedValue ? 'is-placeholder' : ''}>{selectedOption?.label || 'Seleccionar…'}</span>
@@ -200,7 +223,7 @@ export function StyledSelect({
       </button>
 
       {open ? createPortal(
-        <div ref={menuRef} className="fc-select-menu" style={menuStyle}>
+        <div ref={menuRef} className={`fc-select-menu${closing ? ' closing' : ''}`} style={menuStyle}>
           {searchable ? (
             <label className="fc-select-search">
               <Search size={15} aria-hidden="true" />

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownLeft, ArrowUpRight, Banknote, Clock3, LockKeyhole, RefreshCw, WalletCards } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Banknote, Clock3, LockKeyhole, Plus, RefreshCw, WalletCards } from 'lucide-react'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
@@ -179,12 +179,11 @@ export function CajaOperativa() {
     <div className="page cash-ops-page animate-fade-in management-workspace management-workspace--cash-ops">
       <header className="cash-ops-header management-workspace-header">
         <div>
-          <span className="cash-ops-eyebrow">Control operativo</span>
           <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /> Apertura y cierre de caja</h1>
-          <p>Fondos iniciales, movimientos, arqueo y diferencias del turno.</p>
+          <p><span className="cash-subtitle-desktop">Fondos iniciales, movimientos, arqueo y diferencias del turno.</span><span className="cash-subtitle-mobile">Fondos y arqueo del turno.</span></p>
         </div>
-        <button className="cash-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar caja">
-          <RefreshCw size={18} className={loading ? 'is-spinning' : ''} /> Actualizar
+        <button className="cash-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar caja" title="Actualizar caja">
+          <RefreshCw size={18} className={loading ? 'is-spinning' : ''} /><span className="cash-refresh-label">Actualizar</span>
         </button>
       </header>
 
@@ -229,7 +228,7 @@ export function CajaOperativa() {
 
           <section className="cash-content-grid">
             <article className="cash-card">
-              <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary" onClick={toggleMovement}>+ Movimiento</button></div>
+              <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary cash-add-movement" aria-label="Añadir movimiento manual" onClick={toggleMovement}><Plus size={16} aria-hidden="true" />Movimiento</button></div>
               {(showMovement || closingMovement) && (
                 <form className={`cash-inline-form ${closingMovement ? 'closing' : ''}`} onSubmit={handleMovement}>
                   <label>Dirección<StyledSelect value={direction} onChange={event => setDirection(event.target.value as 'in' | 'out')}><option value="in">Entrada</option><option value="out">Salida</option></StyledSelect></label>

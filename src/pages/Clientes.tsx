@@ -1797,7 +1797,7 @@ export function Clientes() {
     <button
       key="receivable"
       type="button"
-      className="kpi-card-dark dark-red clickable-kpi"
+      className="kpi-card-dark dark-red clickable-kpi kpi-card-receivable"
       title="Ver cuentas por cobrar"
       onClick={() => setShowCobrarModal(true)}
     >

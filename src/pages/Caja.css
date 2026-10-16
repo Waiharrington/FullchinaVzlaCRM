@@ -1330,7 +1330,7 @@
 @media (max-width: 680px) {
   .cart-item-row {
     display: grid;
-    grid-template-columns: 42px minmax(0, 1fr) auto 32px;
+    grid-template-columns: 42px minmax(0, 1fr) minmax(64px, auto) 32px;
     grid-template-rows: auto auto;
     align-items: center;
     column-gap: 8px;
@@ -1344,8 +1344,8 @@
   .qty-btn-sm { width: 30px; height: 30px; }
   .qty-btn-sm svg { width: 16px; height: 16px; }
   .qty-display { min-width: 16px; font-size: 14px; }
-  .cart-item-price { grid-column: 3; grid-row: 2; justify-self: end; white-space: nowrap; }
-  .cart-item-remove { grid-column: 4; grid-row: 2; width: 32px; height: 32px; }
+  .cart-item-price { grid-column: 3; grid-row: 2; justify-self: end; min-width: 64px; box-sizing: border-box; white-space: nowrap; text-align: right; }
+  .cart-item-remove { grid-column: 4; grid-row: 2; width: 32px; min-width: 32px; height: 32px; padding: 0; box-sizing: border-box; justify-self: center; }
   .cart-item-remove svg { width: 16px; height: 16px; }
 }
 
@@ -2568,6 +2568,7 @@
 .order-type-card { min-height: 54px; padding: 7px 4px; border-color: var(--cart-border); border-radius: 11px; background: var(--cart-surface-raised); font-weight: 650; transition: 160ms ease; }
 .order-type-card:hover { color: #fff; border-color: rgba(255,255,255,.18); transform: translateY(-1px); }
 .order-type-card.active { border-color: #f04446; background: linear-gradient(145deg,#ef2b2d,#c3181b); box-shadow: 0 8px 22px rgba(227, 27, 43,.25), inset 0 1px 0 rgba(255,255,255,.18); }
+.cart-sidebar .order-type-card.active .order-type-icon { color: #fff; background: rgba(255,255,255,.14); }
 
 .cart-totals-card { padding: 14px; gap: 8px; border-color: var(--cart-border-strong); border-radius: 14px; background: linear-gradient(145deg,rgba(255,255,255,.045),rgba(255,255,255,.018)); }
 .cart-divide-row { padding: 4px 0 2px; }
@@ -2684,6 +2685,11 @@
     font-size: 13px;
     font-weight: 750;
     cursor: pointer;
+    animation: fc-surface-enter var(--motion-base, 260ms) var(--motion-enter, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  }
+  .mobile-cart-trigger.closing {
+    pointer-events: none;
+    animation: fc-dialog-exit var(--motion-fast, 180ms) var(--motion-exit, cubic-bezier(0.7, 0, 0.84, 0)) both;
   }
   .mobile-cart-trigger-summary { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .mobile-cart-trigger-summary > span { overflow-wrap: anywhere; }
@@ -2718,6 +2724,11 @@
     border-radius: 20px;
     background: #151518;
     box-shadow: 0 24px 80px rgba(0,0,0,.7);
+    animation: fc-dialog-enter var(--motion-base, 260ms) var(--motion-enter, cubic-bezier(0.16, 1, 0.3, 1)) both !important;
+  }
+  .cart-sidebar.mobile-cart-open.cart-sidebar--closing {
+    pointer-events: none;
+    animation: fc-dialog-exit var(--motion-fast, 180ms) var(--motion-exit, cubic-bezier(0.7, 0, 0.84, 0)) both !important;
   }
   .cart-sidebar.mobile-cart-open .cart-sidebar-header { flex: 0 0 auto; align-items: flex-start; }
   .cart-sidebar.mobile-cart-open .cart-sidebar-body {
@@ -2852,8 +2863,8 @@
   .cart-sidebar.mobile-cart-open .cart-item-row {
     min-width: 0;
     box-sizing: border-box;
-    grid-template-columns: 42px minmax(0, 1fr) auto 32px;
-    column-gap: 6px;
+    grid-template-columns: 42px minmax(0, 1fr) minmax(64px, auto) 32px;
+    column-gap: 8px;
     padding-right: 10px;
   }
 
@@ -2864,5 +2875,29 @@
     padding: 0;
     box-sizing: border-box;
     justify-self: center;
+  }
+}
+
+/* Safari/iOS can composite backdrop-filter together with the shared overlay
+   animation as a blur over the whole modal layer. On phones keep cart and
+   product dialogs crisp and dim the background with color only. */
+@keyframes fc-caja-mobile-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 767px) {
+  .modal-overlay-dark.variant-selector-overlay,
+  .mobile-cart-modal-overlay,
+  .mobile-cart-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    animation: fc-caja-mobile-overlay-in var(--motion-base, 260ms) ease-out both !important;
+  }
+
+  .mobile-cart-modal-overlay.closing,
+  .mobile-cart-overlay.closing {
+    pointer-events: none !important;
+    animation: fc-overlay-exit var(--motion-fast, 180ms) var(--motion-exit, cubic-bezier(0.7, 0, 0.84, 0)) both !important;
   }
 }

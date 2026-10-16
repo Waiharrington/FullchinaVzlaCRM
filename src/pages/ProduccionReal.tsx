@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getProductionBatches, getProductionStats,
@@ -16,8 +16,9 @@ import { EmptyState } from '../components/EmptyState'
 import { formatUsd } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import {
-  Flame, Plus, CheckCircle2, AlertTriangle, Loader2, Package, DollarSign,
-  Search, Building2, Truck, Scale, Sparkles, User, X, Info,
+  Flame, Plus, CheckCircle2, AlertTriangle, Loader2, Package, DollarSign, X,
+  Search, Building2, Truck, Scale, User, Info, CircleHelp,
+  Drumstick, Beef, Shrimp, Ham,
 } from 'lucide-react'
 import './ProduccionReal.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
@@ -34,6 +35,9 @@ export function ProduccionReal() {
   const [portionRecipes, setPortionRecipes] = useState<PortionRecipe[]>([])
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [batchOptionsLoading, setBatchOptionsLoading] = useState(false)
+  const [batchOptionsLoaded, setBatchOptionsLoaded] = useState(false)
+  const batchOptionsRequestStarted = useRef(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -83,29 +87,10 @@ export function ProduccionReal() {
     try {
       if (!silent) setLoading(true)
       setError('')
-      const [s, b, whIng, opIng, portions, un, emps] = await Promise.all([
-        getProductionStats(),
-        getProductionBatches(),
-        getWarehouseIngredients().catch(() => []),
-        getIngredients().catch(() => []),
-        getPortionRecipes().catch(() => []),
-        getUnits(),
-        getAllEmployees().catch(() => []),
-      ])
+      const b = await getProductionBatches()
+      const s = await getProductionStats(b)
       setStats(s)
       setBatches(b)
-      setWarehouseIngredients(whIng)
-      setOperationalIngredients(opIng)
-      setPortionRecipes(portions)
-      setUnits(un)
-      setEmployees(emps)
-
-      // Set initial defaults if available
-      if (whIng.length > 0) {
-        const defaultRaw = whIng.find(i => normalizeForSearch(i.name).includes('pollo')) || whIng[0]
-        setRawIngredientId(prev => prev || defaultRaw.id)
-        setRawUnitId(prev => prev || defaultRaw.unitId)
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando datos de producción')
     } finally {
@@ -115,6 +100,48 @@ export function ProduccionReal() {
 
   useEffect(() => { void loadData() }, [loadData])
   useLiveDataRefresh('produccion', () => loadData(true))
+
+  useEffect(() => {
+    if (!showModal || batchOptionsLoaded || batchOptionsRequestStarted.current) return
+    batchOptionsRequestStarted.current = true
+    setBatchOptionsLoading(true)
+    void Promise.all([
+      getWarehouseIngredients().catch(() => []),
+      getIngredients().catch(() => []),
+      getPortionRecipes().catch(() => []),
+      getUnits(),
+      getAllEmployees().catch(() => []),
+    ]).then(([whIng, opIng, portions, un, emps]) => {
+      setWarehouseIngredients(whIng)
+      setOperationalIngredients(opIng)
+      setPortionRecipes(portions)
+      setUnits(un)
+      setEmployees(emps)
+
+      const defaultRaw = whIng.find(i => normalizeForSearch(i.name).includes('pollo')) || whIng[0]
+      if (defaultRaw) {
+        setRawIngredientId(prev => prev || defaultRaw.id)
+        setRawUnitId(prev => prev || defaultRaw.unitId)
+      }
+      const portionMatch = portions.find(p => normalizeForSearch(p.name).includes('pollo'))
+      if (portionMatch) {
+        setSelectedPortionRecipeId(portionMatch.id)
+        setPortionGrams(String(portionMatch.unitSymbol.toLowerCase() === 'kg' ? portionMatch.quantity * 1000 : portionMatch.quantity))
+        setBatchName(`Porcionamiento: ${portionMatch.name}`)
+        const linkedIngredient = whIng.find(i => i.id === portionMatch.ingredientId)
+        if (linkedIngredient) {
+          setRawIngredientId(linkedIngredient.id)
+          setRawUnitId(linkedIngredient.unitId)
+        }
+      }
+      setBatchOptionsLoaded(true)
+    }).catch((e: unknown) => {
+      batchOptionsRequestStarted.current = false
+      setError(e instanceof Error ? e.message : 'No se pudieron cargar las opciones de producción')
+    }).finally(() => {
+      setBatchOptionsLoading(false)
+    })
+  }, [showModal, batchOptionsLoaded])
 
   // Map of raw ingredients by ID
   const rawIngredientsList = useMemo(() => {
@@ -344,8 +371,8 @@ export function ProduccionReal() {
       <header className="prod-header management-workspace-header">
         <div className="prod-header-title-wrap">
           <div>
-            <h1 className="page-title"><Flame size={22} className="page-title-icon" /> Producción y Porcionamiento</h1>
-            <p>Transformación de proteínas crudas, porcionamiento, merma y rendimiento de cocina</p>
+            <h1 className="page-title"><Flame size={22} className="page-title-icon" /><span className="prod-title-desktop">Producción y Porcionamiento</span><span className="prod-title-mobile">Producción</span></h1>
+            <p><span className="prod-subtitle-desktop">Transformación de proteínas crudas, porcionamiento, merma y rendimiento de cocina</span><span className="prod-subtitle-mobile">Controla tus lotes y mermas.</span></p>
           </div>
         </div>
         <button
@@ -353,7 +380,7 @@ export function ProduccionReal() {
           className="prod-new-batch-btn"
           onClick={handleOpenNewBatch}
         >
-          <Plus size={17} /> Registrar Nuevo Lote
+          <Plus size={17} /><span className="prod-action-desktop">Registrar Nuevo Lote</span><span className="prod-action-mobile">Nuevo lote</span>
         </button>
       </header>
 
@@ -366,7 +393,7 @@ export function ProduccionReal() {
           <div className="prod-stat-icon"><Package size={18} /></div>
           <div className="prod-stat-info">
             <span className="prod-stat-val">{stats?.batchesToday ?? 0}</span>
-            <span className="prod-stat-lbl">Lotes producidos hoy</span>
+            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Lotes producidos hoy</span><span className="prod-stat-label-mobile">Lotes de hoy</span></span>
           </div>
         </div>
 
@@ -374,7 +401,7 @@ export function ProduccionReal() {
           <div className="prod-stat-icon"><CheckCircle2 size={18} /></div>
           <div className="prod-stat-info">
             <span className="prod-stat-val">{(stats?.avgYield ?? 0).toFixed(1)}%</span>
-            <span className="prod-stat-lbl">Rendimiento promedio</span>
+            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Rendimiento promedio</span><span className="prod-stat-label-mobile">Rendimiento</span></span>
           </div>
         </div>
 
@@ -382,7 +409,7 @@ export function ProduccionReal() {
           <div className="prod-stat-icon"><AlertTriangle size={18} /></div>
           <div className="prod-stat-info">
             <span className="prod-stat-val">{(stats?.totalWaste ?? 0).toFixed(2)} kg</span>
-            <span className="prod-stat-lbl">Merma acumulada hoy</span>
+            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Merma acumulada hoy</span><span className="prod-stat-label-mobile">Merma de hoy</span></span>
           </div>
         </div>
 
@@ -390,7 +417,7 @@ export function ProduccionReal() {
           <div className="prod-stat-icon"><DollarSign size={18} /></div>
           <div className="prod-stat-info">
             <span className="prod-stat-val">{formatUsd(stats?.avgCostPerPortion ?? 0)}</span>
-            <span className="prod-stat-lbl">Costo prom. por porción</span>
+            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Costo prom. por porción</span><span className="prod-stat-label-mobile">Costo por ración</span></span>
           </div>
         </div>
       </div>
@@ -448,6 +475,48 @@ export function ProduccionReal() {
             onAction={handleOpenNewBatch}
           />
         ) : (
+          <>
+          <div className="prod-batch-cards">
+            {displayedBatches.map((b) => {
+              const yieldVal = Math.max(0, 100 - b.wastePercentage)
+              const isWarehouse = b.notes?.toLowerCase().includes('almacén') || b.notes?.toLowerCase().includes('almacen')
+              const operatorLabel = b.operator?.trim() && b.operator.trim() !== '-' ? b.operator.trim() : null
+              return (
+                <article className="prod-batch-card" key={b.id}>
+                  <div className="prod-batch-card-top">
+                    <time dateTime={b.productionDate}>{b.productionDate}</time>
+                    <button type="button" className="prod-view-detail-btn" onClick={() => setSelectedBatch(b)}>Ver detalle</button>
+                  </div>
+                  <h3>{b.name}</h3>
+                  {operatorLabel && <p className="prod-batch-card-operator">{operatorLabel}</p>}
+                  <div className="prod-batch-card-metrics">
+                    <div className="wide">
+                      <span>Materia prima</span>
+                      <strong>{b.items.length > 0 ? `${b.items[0].quantityUsed} ${b.items[0].unitSymbol} de ${b.items[0].ingredientName}` : 'Sin detalle'}</strong>
+                      {b.items.length > 0 && <small className={`prod-badge ${isWarehouse ? 'origin-warehouse' : 'origin-truck'}`}>{isWarehouse ? 'Almacén' : 'Food Truck'}</small>}
+                    </div>
+                    <div>
+                      <span>Porciones</span>
+                      <strong>{b.quantityProduced} {b.unitProduced || 'porciones'}</strong>
+                    </div>
+                    <div>
+                      <span>Merma</span>
+                      <strong>{b.wasteQuantity.toFixed(2)} kg ({b.wastePercentage.toFixed(1)}%)</strong>
+                    </div>
+                    <div>
+                      <span>Rendimiento</span>
+                      <strong className={`prod-batch-yield ${yieldVal >= 80 ? 'yield-high' : yieldVal >= 65 ? 'yield-med' : 'yield-low'}`}>{yieldVal.toFixed(1)}%</strong>
+                    </div>
+                    <div>
+                      <span>Costo estimado</span>
+                      <strong className="prod-batch-cost">{formatUsd(b.totalCost)}</strong>
+                      {b.quantityProduced > 0 && <small>{formatUsd(b.costPerPortion)} por porción</small>}
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
           <div className="prod-table-wrap">
             <table className="prod-table">
               <thead>
@@ -533,6 +602,7 @@ export function ProduccionReal() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -547,10 +617,28 @@ export function ProduccionReal() {
                 <Flame size={22} />
               </div>
               <div className="prod-modal-header-text">
-                <h3>Nuevo Lote de Producción</h3>
-                <p>Calcula porciones teóricas, merma y registra el porcionamiento real de proteínas.</p>
+                <h3>
+                  <span className="prod-modal-title-desktop">Nuevo Lote de Producción</span>
+                  <span className="prod-modal-title-mobile">Nuevo lote</span>
+                </h3>
+                <p>Porciones, merma y rendimiento.</p>
               </div>
+              <button
+                type="button"
+                className="prod-modal-close"
+                aria-label="Cerrar nuevo lote de producción"
+                disabled={saving}
+                onClick={closeBatchForm}
+              >
+                <X size={18} />
+              </button>
             </div>
+
+            {batchOptionsLoading && (
+              <div className="prod-options-loading" role="status">
+                <Loader2 size={15} className="animate-spin" /> Cargando insumos y opciones…
+              </div>
+            )}
 
             {/* Paso 1: Atajos de Proteína */}
             <div className="prod-protein-chips-wrap">
@@ -561,7 +649,7 @@ export function ProduccionReal() {
                   className={`prod-protein-chip ${proteinType === 'pollo' ? 'active' : ''}`}
                   onClick={() => handleSelectProtein('pollo')}
                 >
-                  <span className="prod-protein-chip-emoji">🍗</span>
+                  <Drumstick className="prod-protein-chip-icon" aria-hidden="true" />
                   <span>Pollo</span>
                 </button>
                 <button
@@ -569,7 +657,7 @@ export function ProduccionReal() {
                   className={`prod-protein-chip ${proteinType === 'cerdo' ? 'active' : ''}`}
                   onClick={() => handleSelectProtein('cerdo')}
                 >
-                  <span className="prod-protein-chip-emoji">🥩</span>
+                  <Beef className="prod-protein-chip-icon" aria-hidden="true" />
                   <span>Cerdo</span>
                 </button>
                 <button
@@ -577,7 +665,7 @@ export function ProduccionReal() {
                   className={`prod-protein-chip ${proteinType === 'camaron' ? 'active' : ''}`}
                   onClick={() => handleSelectProtein('camaron')}
                 >
-                  <span className="prod-protein-chip-emoji">🍤</span>
+                  <Shrimp className="prod-protein-chip-icon" aria-hidden="true" />
                   <span>Camarón</span>
                 </button>
                 <button
@@ -585,7 +673,7 @@ export function ProduccionReal() {
                   className={`prod-protein-chip ${proteinType === 'jamon' ? 'active' : ''}`}
                   onClick={() => handleSelectProtein('jamon')}
                 >
-                  <span className="prod-protein-chip-emoji">🍖</span>
+                  <Ham className="prod-protein-chip-icon" aria-hidden="true" />
                   <span>Jamón</span>
                 </button>
                 <button
@@ -593,7 +681,7 @@ export function ProduccionReal() {
                   className={`prod-protein-chip ${proteinType === 'otro' ? 'active' : ''}`}
                   onClick={() => handleSelectProtein('otro')}
                 >
-                  <span className="prod-protein-chip-emoji">✨</span>
+                  <CircleHelp className="prod-protein-chip-icon" aria-hidden="true" />
                   <span>Otro</span>
                 </button>
               </div>
@@ -658,9 +746,9 @@ export function ProduccionReal() {
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '10px', marginTop: '6px' }}>
-                <div>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+              <div className="prod-raw-inputs">
+                <div className="prod-form-field">
+                  <label>
                     Insumo crudo
                   </label>
                   <SearchSelect
@@ -679,8 +767,8 @@ export function ProduccionReal() {
                   />
                 </div>
 
-                <div>
-                  <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                <div className="prod-form-field">
+                  <label>
                     Kilos / Cantidad bruta usada
                   </label>
                   <input
@@ -843,12 +931,12 @@ export function ProduccionReal() {
               <button
                 type="submit"
                 className="prod-modal-submit"
-                disabled={saving || !rawIngredientId || (parseFloat(quantityProduced) || 0) <= 0}
+                disabled={saving || batchOptionsLoading || !batchOptionsLoaded || !rawIngredientId || (parseFloat(quantityProduced) || 0) <= 0}
               >
                 {saving ? (
                   <><Loader2 size={16} className="animate-spin" /> Guardando lote...</>
                 ) : (
-                  <><Sparkles size={16} /> Confirmar ({quantityProduced || '0'} porciones)</>
+                  <><CheckCircle2 size={16} /> Confirmar ({quantityProduced || '0'} porciones)</>
                 )}
               </button>
             </div>
@@ -871,14 +959,6 @@ export function ProduccionReal() {
                 <h3>{selectedBatch.name}</h3>
                 <p>Registrado el {selectedBatch.productionDate} por {selectedBatch.operator}</p>
               </div>
-              <button
-                type="button"
-                className="prod-modal-cancel"
-                style={{ padding: '6px 10px', minHeight: 'unset' }}
-                onClick={closeBatchDetail}
-              >
-                <X size={16} />
-              </button>
             </div>
 
             <div className="prod-detail-grid">

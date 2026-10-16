@@ -2,14 +2,25 @@
    Gastos — rediseño (tabla + panel de registro)
    ============================================================ */
 .gst-page { color: #fff; }
-.gst-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.gst-subtitle-mobile,.gst-copy-mobile { display: none; }
+.gst-page .page-header { position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .gst-header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .gst-btn { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; background: #e11d2a; color: #fff; border: 0; border-radius: 12px; padding: 11px 18px; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter .15s; }
 .gst-btn:hover { filter: brightness(1.08); }
 .gst-btn:disabled { opacity: .5; cursor: default; }
 .gst-ai-launch { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; background: rgba(225,29,42,.12); border: 1px solid rgba(225,29,42,.35); color: #fecaca; border-radius: 12px; padding: 10px 14px; font-size: 13px; font-weight: 650; cursor: pointer; }
 .gst-ai-launch:hover { background: rgba(225,29,42,.2); border-color: rgba(225,29,42,.6); color: #fff; }
-.gst-help { display: inline-flex; align-items: center; gap: 7px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.08); color: #d4d4d8; border-radius: 12px; padding: 9px 14px; font-size: 13px; cursor: pointer; }
+.gst-help { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 42px; width: 42px; height: 42px; box-sizing: border-box; background: #1c1c22; border: 1px solid rgba(255,255,255,0.12); color: #f4f4f5; border-radius: 50%; padding: 0; font-size: 20px; line-height: 1; font-weight: 700; cursor: pointer; }
+.gst-help-popover { position:absolute; z-index:20; top:calc(100% + 8px); right:0; width:min(340px, calc(100vw - 40px)); box-sizing:border-box; padding:18px; border:1px solid rgba(255,255,255,.1); border-radius:14px; background:#19191e; box-shadow:0 14px 36px rgba(0,0,0,.4); color:#e4e4e7; }
+.gst-help-popover-heading { display:grid; gap:5px; padding-right:34px; }
+.gst-help-popover-heading span { color:#fb7185; font-size:10px; font-weight:750; letter-spacing:.1em; }
+.gst-help-popover-heading strong { color:#fff; font-size:17px; line-height:1.25; }
+.gst-help-popover-close { position:absolute; top:14px; right:14px; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; padding:0; border:0; border-radius:50%; background:transparent; color:#85858f; cursor:pointer; }
+.gst-help-popover-close:hover { background:rgba(255,255,255,.07); color:#fff; }
+.gst-help-popover p { margin:11px 0 0; color:#b4b4be; font-size:13px; line-height:1.45; }
+.gst-help-purchase { display:grid; gap:3px; margin-top:12px; padding:10px 12px; border:1px solid rgba(225,29,42,.18); border-radius:9px; background:rgba(225,29,42,.06); }
+.gst-help-purchase span { color:#a1a1aa; font-size:11px; }
+.gst-help-purchase strong { color:#f4f4f5; font-size:12px; }
 
 /* Resumen */
 .gst-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
@@ -29,6 +40,7 @@
 }
 .gst-sum-ic { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #fff; box-shadow: 0 4px 16px var(--kpi-glow, rgba(0,0,0,0.3)), inset 0 1px 0 rgba(255,255,255,0.3); }
 .gst-sum-lbl { font-size: 12px; color: var(--kpi-label, #a1a1aa); }
+.gst-sum-label-mobile { display: none; }
 .gst-sum-val { font-size: 22px; font-weight: 800; line-height: 1.1; margin: 3px 0; }
 .gst-sum-sub { font-size: 11px; color: #71717a; }
 .gst-sum-sub.up { color: #FF4D3D; }
@@ -108,6 +120,7 @@
 
 /* Tabla */
 .gst-table-wrap { overflow-x: auto; }
+.gst-mobile-expense-list { display: none; }
 .gst-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .gst-table th { text-align: left; color: #71717a; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .gst-table td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
@@ -128,6 +141,7 @@
 .gst-src-remove { background: none; border: 0; padding: 0; font: inherit; font-size: 11px; font-weight: 700; color: #f87171; cursor: pointer; }
 .gst-src-warn { color: #fca5a5; font-weight: 650; }
 .gst-src-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.gst-src-add { min-height: 40px; padding: 8px 14px; }
 .gst-src-add { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; color: #86efac; background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.28); border-radius: 9px; font: inherit; font-size: 12px; font-weight: 750; cursor: pointer; }
 .gst-src-add:hover { background: rgba(34,197,94,.18); }
 .gst-src-total { font-size: 13px; color: #cbd5e1; }
@@ -153,6 +167,10 @@
 .gst-form-sub { font-size: 12px; color: #a1a1aa; margin: 2px 0 14px; }
 .gst-ai-prefill-note { margin: 0 0 12px; padding: 10px 12px; color: #fde68a; background: rgba(161,98,7,.14); border: 1px solid rgba(234,179,8,.28); border-radius: 10px; font-size: 12px; line-height: 1.5; }
 .gst-field { margin-bottom: 12px; }
+.gst-notes-field { margin-top: 16px; }
+.gst-notes-field > label { margin-bottom: 8px; }
+.gst-notes-field textarea { display: block; min-height: 84px; padding: 12px 14px; line-height: 1.5; text-align: left; resize: vertical; }
+.gst-notes-field textarea::placeholder { color: #85858f; opacity: 1; }
 .gst-field label { display: block; font-size: 12px; color: #a1a1aa; margin-bottom: 5px; }
 .gst-req { color: #e11d2a; }
 .gst-field input, .gst-field select, .gst-field textarea { width: 100%; font-size: 14px; }
@@ -180,4 +198,69 @@
   .gst-header-actions > button { flex: 1; justify-content: center; }
   .gst-form-actions { flex-wrap: wrap; }
   .gst-form-actions .gst-btn { width: 100%; justify-content: center; min-height: 44px; }
+}
+
+@media (max-width: 767px) {
+  .gst-page { min-width: 0; overflow-x: clip; }
+  .gst-page .page-header { display: block; margin-bottom: 14px; }
+  .gst-page .page-header > div:first-child { min-width: 0; }
+  .gst-page .page-subtitle { margin-top: 4px; font-size: 13px; line-height: 1.35; }
+  .gst-subtitle-desktop,.gst-copy-desktop { display: none; }
+  .gst-subtitle-mobile,.gst-copy-mobile { display: inline; }
+  .gst-header-actions { display: grid; grid-template-columns: 42px repeat(2,minmax(0,1fr)); column-gap: 12px; row-gap: 8px; margin-top: 12px; }
+  .gst-header-actions > button { box-sizing: border-box; min-width: 0; min-height: 42px; padding: 7px 8px; font-size: 12px; white-space: nowrap; }
+  .gst-header-actions > .gst-help { flex: 0 0 42px; width: 42px; height: 42px; padding: 0; font-size: 20px; }
+  .gst-header-actions > .gst-ai-launch,.gst-header-actions > .gst-btn { width:100%; justify-content:center; gap:6px; }
+  .gst-header-actions > .gst-ai-launch svg,.gst-header-actions > .gst-btn svg { flex:0 0 auto; }
+
+  .gst-summary { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin: 12px 0; }
+  .management-workspace--expenses .gst-sum { display:flex; min-width:0; min-height:104px; gap:8px; padding:11px 9px; align-items:center; }
+  .management-workspace--expenses .gst-sum-ic { flex:0 0 34px; width:34px; height:34px; border-radius:10px; }
+  .management-workspace--expenses .gst-sum > div { flex:1 1 auto; min-width:0; }
+  .management-workspace--expenses .gst-sum-lbl { font-size:10px; line-height:1.25; white-space:normal; overflow-wrap:normal; }
+  .management-workspace--expenses .gst-sum-label-desktop { display:none; }
+  .management-workspace--expenses .gst-sum-label-mobile { display:inline; }
+  .management-workspace--expenses .gst-sum-val { margin:4px 0 2px; font-size:clamp(17px,4.5vw,21px); line-height:1.1; white-space:nowrap; }
+  .management-workspace--expenses .gst-sum-sub { font-size:9px; line-height:1.25; white-space:normal; overflow-wrap:anywhere; }
+
+  .management-workspace--expenses .gst-card { min-width:0; padding:14px 12px; overflow:hidden; }
+  .management-workspace--expenses .gst-card-head { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; margin-bottom:12px; }
+  .management-workspace--expenses .gst-card-title { min-width:0; align-items:flex-start; gap:9px; }
+  .management-workspace--expenses .gst-card-title > div { min-width:0; }
+  .management-workspace--expenses .gst-card-title h2 { font-size:16px; line-height:1.25; }
+  .management-workspace--expenses .gst-card-title p { font-size:11px; line-height:1.35; }
+  .management-workspace--expenses .gst-tools { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; width:100%; min-width:0; }
+  .management-workspace--expenses .gst-search { grid-column:1/-1; width:100%; min-width:0; }
+  .management-workspace--expenses .gst-search input { width:100%; height:46px; box-sizing:border-box; font-size:14px; }
+  .management-workspace--expenses .gst-tool { min-width:0; min-height:42px; height:auto; padding:8px 10px; font-size:12px; }
+  .management-workspace--expenses .gst-table-wrap { display:none !important; }
+  .management-workspace--expenses .gst-mobile-expense-list { display:grid; gap:9px; width:100%; min-width:0; }
+  .gst-mobile-expense { min-width:0; padding:12px; border:1px solid rgba(255,255,255,.08); border-radius:12px; background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(20,20,25,.96) 70%); }
+  .gst-mobile-expense > header { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .gst-mobile-expense > header time { flex:0 0 auto; color:#92929d; font-size:11px; }
+  .gst-mobile-expense-title { display:block; min-width:0; margin-top:9px; color:#f4f4f5; font-size:14px; line-height:1.3; overflow-wrap:anywhere; }
+  .gst-mobile-purchase-note { display:block; margin-top:3px; color:#a1a1aa; font-size:10px; }
+  .gst-mobile-expense > dl { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; margin:11px 0 0; padding:10px 0; border-top:1px solid rgba(255,255,255,.06); border-bottom:1px solid rgba(255,255,255,.06); }
+  .gst-mobile-expense > dl > div { display:grid; gap:4px; min-width:0; }
+  .gst-mobile-expense dt { color:#85858f; font-size:10px; }
+  .gst-mobile-expense dd { min-width:0; margin:0; color:#d4d4d8; font-size:12px; font-weight:650; line-height:1.25; overflow-wrap:anywhere; }
+  .gst-mobile-expense dd .gst-cat { max-width:100%; box-sizing:border-box; white-space:normal; overflow-wrap:anywhere; }
+  .gst-mobile-expense > footer { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; margin-top:10px; }
+  .gst-mobile-expense-amount { display:grid; gap:3px; min-width:0; }
+  .gst-mobile-expense-amount > strong { color:#ff6b70; font-size:17px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .gst-mobile-expense-amount > small { color:#92929d; font-size:11px; white-space:nowrap; }
+  .gst-mobile-expense .gst-row-actions { flex:0 0 auto; gap:6px; }
+  .gst-mobile-expense .gst-icon-btn { width:40px; height:40px; border:1px solid rgba(255,255,255,.08); border-radius:9px; background:rgba(255,255,255,.04); }
+  .gst-mobile-expense .gst-icon-btn.gst-icon-danger { color:#ff7075; }
+  .gst-mobile-edit-note { color:#a1a1aa; font-size:10px; text-align:right; }
+  .management-workspace--expenses .gst-pagination { flex-wrap:wrap; }
+  .management-workspace--expenses .gst-pagination .cnt { flex:1 0 100%; margin:0 0 3px; }
+}
+
+@media (max-width: 380px) {
+  .gst-summary { grid-template-columns:minmax(0,1fr); }
+  .management-workspace--expenses .gst-sum { min-height:88px; padding:12px; }
+  .gst-header-actions { grid-template-columns:38px repeat(2,minmax(0,1fr)); column-gap:10px; row-gap:8px; }
+  .gst-header-actions > button { padding-inline:5px; font-size:10px; }
+  .gst-header-actions > .gst-help { flex-basis:38px; width:38px; height:38px; }
 }

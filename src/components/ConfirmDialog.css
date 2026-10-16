@@ -11,6 +11,7 @@
   padding: 20px;
   animation: confirm-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+.confirm-overlay.closing { pointer-events: none; animation: fc-overlay-exit 160ms ease-in both; }
 
 @keyframes confirm-fade-in {
   from { opacity: 0; }
@@ -28,6 +29,7 @@
   animation: confirm-pop-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
   text-align: center;
 }
+.confirm-card.closing { animation: fc-dialog-exit 160ms ease-in both; }
 
 @keyframes confirm-pop-in {
   from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.96); }

@@ -500,12 +500,15 @@ export function ComprasReal() {
     <div className="page cmp-page animate-fade-in management-workspace management-workspace--purchases">
       <header className="page-header management-workspace-header">
         <div>
-          <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> Compras e Insumos</h1>
-          <p className="page-subtitle">Registra tus compras a proveedores. El inventario se actualiza automáticamente.</p>
+          <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> <span className="cmp-title-desktop">Compras e Insumos</span><span className="cmp-title-mobile">Compras</span></h1>
+          <p className="page-subtitle">
+            <span className="cmp-subtitle-desktop">Registra tus compras a proveedores. El inventario se actualiza automáticamente.</span>
+            <span className="cmp-subtitle-mobile">Compras a proveedores.</span>
+          </p>
         </div>
         <div className="cmp-header-actions">
-          <button className="cmp-ghost-btn cmp-ai-launch" onClick={() => setShowAiCapture(true)}><Sparkles size={16} /> Nueva compra con IA</button>
-          <button className="cmp-new-btn" onClick={openPurchaseForm}><Plus size={16} /> Nueva Compra</button>
+          <button className="cmp-ghost-btn cmp-ai-launch" onClick={() => setShowAiCapture(true)}><Sparkles size={16} /><span className="cmp-action-label-desktop">Nueva compra con IA</span><span className="cmp-action-label-mobile">Compra con IA</span></button>
+          <button className="cmp-new-btn" onClick={openPurchaseForm}><Plus size={16} /><span className="cmp-action-label-desktop">Nueva Compra</span><span className="cmp-action-label-mobile">Nueva compra</span></button>
         </div>
       </header>
 
@@ -670,6 +673,43 @@ export function ComprasReal() {
             <option value="todos">Todas</option><option value="pagados">Pagadas</option><option value="pendientes">Por pagar</option>
           </StyledSelect>
           <button className="cmp-tool" onClick={exportCsv}><Download size={15} /> Exportar</button>
+        </div>
+
+        <div className="cmp-mobile-purchases">
+          {pageItems.map((p) => (
+            <article className="cmp-mobile-purchase" key={`mobile-${p.id}`}>
+              <div className="cmp-mobile-purchase-head">
+                <div className="cmp-mobile-purchase-who">
+                  <strong>{p.supplierName || 'Proveedor sin nombre'}</strong>
+                  <time>{new Date(p.purchaseDate).toLocaleDateString('es-VE')}</time>
+                </div>
+                <MoneyWithBcv usd={p.totalAmount} rate={p.exchangeRate} primaryCurrency="VES" align="end" compact className="cmp-mobile-purchase-money" usdPrecise />
+              </div>
+              <div className="cmp-mobile-purchase-meta">
+                <span><small>Factura</small><strong>{p.invoiceNumber || '—'}</strong></span>
+                <span><small>Ítems</small><strong>{p.items.length}</strong></span>
+                <span className="cmp-mobile-purchase-payment"><small>Pago</small><strong>{p.payments.length > 1 ? 'Varias cuentas' : p.isPaid ? paymentMethodLabel(p.paymentMethod) : 'Pendiente'}</strong></span>
+              </div>
+              <div className="cmp-mobile-purchase-footer">
+                <span className={`cmp-badge ${p.isVoided ? 'voided fixed' : p.isPaid ? 'ok' : 'warn'}`} title={p.isVoided ? 'Compra anulada' : 'Toca para cambiar el estado'} onClick={() => { if (!p.isVoided) void togglePaid(p) }}>
+                  {p.isVoided ? <><Ban size={12} /> Anulada</> : p.isPaid ? <><CheckCircle2 size={12} /> Pagado</> : <><AlertTriangle size={12} /> Por pagar</>}
+                </span>
+                <div className="cmp-row-actions">
+                  <button className="cmp-icon-btn" onClick={() => setDetail(p)} title="Ver detalle" aria-label={`Ver compra de ${p.supplierName}`}><Eye size={16} /></button>
+                  {!p.isVoided && <button className="cmp-icon-btn" onClick={() => openEditPurchase(p)} title="Editar compra" aria-label={`Editar compra de ${p.supplierName}`}><Pencil size={16} /></button>}
+                  {p.isVoided ? (
+                    <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeleteVoidedPurchase(p)} title="Borrar compra demo permanentemente" aria-label={`Borrar compra demo de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>
+                  ) : <>
+                    <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleVoidPurchase(p)} title="Anular compra" aria-label={`Anular compra de ${p.supplierName}`} disabled={voidingPurchaseId === p.id}>{voidingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Ban size={16} />}</button>
+                    <button className="cmp-icon-btn cmp-icon-danger" onClick={() => void handleDeletePurchase(p)} title="Eliminar si no tiene movimientos" aria-label={`Eliminar compra de ${p.supplierName}`} disabled={deletingPurchaseId === p.id}>{deletingPurchaseId === p.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}</button>
+                  </>}
+                </div>
+              </div>
+            </article>
+          ))}
+          {pageItems.length === 0 && (
+            <EmptyState compact title="No hay compras registradas" description="Registra tu primera compra para llevar el control de insumos." actionLabel="Nueva compra" onAction={openPurchaseForm} />
+          )}
         </div>
 
         <div className="cmp-table-wrap">

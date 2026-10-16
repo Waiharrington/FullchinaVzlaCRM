@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { normalizeForSearch } from '../lib/textFormat'
 import './SearchSelect.css'
 
@@ -29,9 +29,20 @@ export function SearchSelect({
   disabled = false,
 }: Props) {
   const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
   const [query, setQuery] = useState('')
   const [highlight, setHighlight] = useState(0)
   const rootRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<number | null>(null)
+
+  const closeList = useCallback(() => {
+    if (!open || closing) return
+    setClosing(true)
+    closeTimer.current = window.setTimeout(() => {
+      setOpen(false)
+      setClosing(false)
+    }, 140)
+  }, [open, closing])
 
   const selectedLabel = useMemo(
     () => options.find((o) => o.value === value)?.label ?? '',
@@ -45,16 +56,22 @@ export function SearchSelect({
   }, [options, query])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || closing) return
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false)
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) closeList()
     }
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
-  }, [open])
+  }, [open, closing, closeList])
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+  }, [])
 
   const openList = () => {
     if (disabled) return
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    setClosing(false)
     setOpen(true)
     setQuery('')
     setHighlight(0)
@@ -62,7 +79,7 @@ export function SearchSelect({
 
   const choose = (opt: SearchSelectOption) => {
     onChange(opt.value)
-    setOpen(false)
+    closeList()
     setQuery('')
   }
 
@@ -81,7 +98,7 @@ export function SearchSelect({
       e.preventDefault()
       if (filtered[highlight]) choose(filtered[highlight])
     } else if (e.key === 'Escape') {
-      setOpen(false)
+      closeList()
     }
   }
 
@@ -101,7 +118,7 @@ export function SearchSelect({
         autoComplete="off"
       />
       {open && (
-        <ul className="search-select-list" role="listbox">
+        <ul className={`search-select-list${closing ? ' closing' : ''}`} role="listbox">
           {filtered.length === 0 && <li className="search-select-empty">{emptyText}</li>}
           {filtered.map((opt, i) => (
             <li

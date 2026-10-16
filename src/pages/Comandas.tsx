@@ -483,7 +483,7 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, onPrint, co
       </div>
 
       {/* Footer Row */}
-      <div className="card-footer-line">
+      <div className={`card-footer-line ${order.isPaid ? 'is-paid' : 'is-unpaid'}`}>
         {order.source === 'web' ? (
           <span className="badge-sin-pagar"><Globe size={12} /> Web · Por confirmar</span>
         ) : order.isPaid ? (
@@ -673,6 +673,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [comandas, setComandas] = useState<ComandaOrder[]>(() => isDemoMode ? createDemoComandas() : MOCK_COMANDAS)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
+  const orderItemsSectionRef = useRef<HTMLDivElement | null>(null)
   const [showAssociateCustomerModal, setShowAssociateCustomerModal] = useState(false)
   const [associateCustomerSearch, setAssociateCustomerSearch] = useState('')
   const [associateCustomers, setAssociateCustomers] = useState<Customer[]>([])
@@ -722,15 +723,25 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [deleting, setDeleting] = useState(false)
   const [productImageByName, setProductImageByName] = useState<Map<string, string>>(new Map())
   useEffect(() => {
-    getAllSellableProducts()
-      .then(products => {
-        const map = new Map<string, string>()
-        for (const p of products) {
-          if (p.imageUrl) map.set(normalizeForSearch(p.name), p.imageUrl)
-        }
-        setProductImageByName(map)
-      })
-      .catch(() => {})
+    let cancelled = false
+    // The order board is more important than optional product thumbnails.
+    // Delay this catalog request so it cannot compete with the first order load.
+    const timer = window.setTimeout(() => {
+      getAllSellableProducts()
+        .then(products => {
+          if (cancelled) return
+          const map = new Map<string, string>()
+          for (const p of products) {
+            if (p.imageUrl) map.set(normalizeForSearch(p.name), p.imageUrl)
+          }
+          setProductImageByName(map)
+        })
+        .catch(() => {})
+    }, 1200)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+    }
   }, [])
 
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -1300,23 +1311,6 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           dateFilter === 'today' ? getPendingWebOrders() : Promise.resolve([]),
         ])
 
-        const creatorNames = new Map<string, string>()
-        const creatorIds = [...new Set(realOrders.map(order => order.createdBy).filter(Boolean))]
-        if (supabase && creatorIds.length > 0) {
-          const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id,full_name')
-            .in('id', creatorIds)
-
-          if (profilesError) {
-            console.warn('No se pudieron cargar los nombres de quienes atendieron:', profilesError)
-          } else {
-            for (const profile of profiles ?? []) {
-              creatorNames.set(String(profile.id), String(profile.full_name || 'Usuario del sistema'))
-            }
-          }
-        }
-
         if (active) {
           const mapped: ComandaOrder[] = realOrders.map((o) => {
             const date = new Date(o.createdAt)
@@ -1388,7 +1382,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               elapsedMins: elapsed < 0 ? 1 : elapsed,
               status,
               deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
-              attendedBy: creatorNames.get(o.createdBy) || 'Usuario del sistema',
+              attendedBy: 'Usuario del sistema',
               source: 'pos',
             }
           })
@@ -1451,6 +1445,32 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                 : order
             })
           })
+
+          // Show the actual orders as soon as they arrive. Staff names are
+          // supplementary, so resolve them after the board has been rendered.
+          const creatorIds = [...new Set(realOrders.map(order => order.createdBy).filter(Boolean))]
+          if (supabase && creatorIds.length > 0) {
+            void supabase
+              .from('profiles')
+              .select('id,full_name')
+              .in('id', creatorIds)
+              .then(({ data: profiles, error: profilesError }) => {
+                if (!active) return
+                if (profilesError) {
+                  console.warn('No se pudieron cargar los nombres de quienes atendieron:', profilesError)
+                  return
+                }
+                const names = new Map((profiles ?? []).map(profile => [
+                  String(profile.id), String(profile.full_name || 'Usuario del sistema'),
+                ]))
+                if (!names.size) return
+                const namesByOrder = new Map(realOrders.map(order => [order.id, names.get(order.createdBy)]))
+                setComandas(previous => previous.map(order => {
+                  const name = namesByOrder.get(order.id)
+                  return name ? { ...order, attendedBy: name } : order
+                }))
+              })
+          }
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
@@ -2388,7 +2408,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                   </div>
                 )}
 
-                <div className="cmd-section cmd-production-section">
+                <div className="cmd-section cmd-production-section" ref={orderItemsSectionRef}>
                   <div className="cmd-section-title cmd-section-title-row">
                     <span className="cmd-section-title-text"><ShoppingBag size={16} className="cmd-icon-production" /> Producción del pedido</span>
                     {!selectedOrder.isPaid && (
@@ -2576,7 +2596,16 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               <footer className="cmd-modal-footer">
                 <div className="cmd-footer-left">
                   {selectedOrder.status !== 'delivered' && (
-                    <button className="cmd-btn-outline"><Edit3 size={16} /> Editar pedido</button>
+                    <button
+                      type="button"
+                      className="cmd-btn-outline"
+                      disabled={selectedOrder.isPaid || selectedOrder.source === 'web'}
+                      title={selectedOrder.isPaid ? 'No se puede editar una comanda ya cobrada' : selectedOrder.source === 'web' ? 'Confirma primero el pedido web' : 'Ir a los productos del pedido'}
+                      onClick={() => orderItemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                    >
+                      <Edit3 size={16} />
+                      {selectedOrder.isPaid ? 'Pedido cobrado' : selectedOrder.source === 'web' ? 'Confirma el pedido' : 'Editar pedido'}
+                    </button>
                   )}
                 </div>
                 <div className="cmd-footer-right">

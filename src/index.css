@@ -66,11 +66,41 @@ img {
   display: block;
 }
 
+/* Keep vertical scroll discoverable without rendering horizontal scrollbar tracks. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.28) rgba(255, 255, 255, 0.035);
+}
+
 ::-webkit-scrollbar {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-  background: transparent !important;
+  width: 7px;
+  height: 0;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.035);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 77, 61, 0.62);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar:horizontal {
+  display: none;
+  height: 0;
 }
 
 .hide-scrollbar::-webkit-scrollbar {

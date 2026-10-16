@@ -43,6 +43,7 @@ export function Almacen() {
   const [modalMode, setModalMode] = useState<WarehouseModal>(null)
   const [itemMovements, setItemMovements] = useState<StockMovement[]>([])
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
+  const [operationalItemsLoaded, setOperationalItemsLoaded] = useState(false)
   const [editForm, setEditForm] = useState({ name: '', inventoryClass: 'raw_material' as Ingredient['inventoryClass'], price: '' })
   const [adjustment, setAdjustment] = useState({ direction: 1 as 1 | -1, quantity: '', notes: '' })
   const [modalLoading, setModalLoading] = useState(false)
@@ -69,6 +70,12 @@ export function Almacen() {
       setClosingQuickAction(false)
     }, 200)
   }
+  useEffect(() => {
+    if (!quickAction) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [quickAction])
   const openView = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('view'); setModalLoading(true); try { setItemMovements(await getStockMovements(item.id)) } catch { setErrorMsg('No se pudieron cargar los movimientos.') } finally { setModalLoading(false) } }
   const openEdit = async (item: WarehouseItem) => { setSelectedItem(item); setModalMode('edit'); setEditForm({ name: item.name, inventoryClass: item.inventoryClass, price: String(item.costPerUnit) }); if (!units.length) setUnits(await getUnits()) }
   const openAdjustment = (item: WarehouseItem, direction: 1 | -1) => { setSelectedItem(item); setModalMode('adjust'); setAdjustment({ direction, quantity: '', notes: '' }) }
@@ -100,9 +107,7 @@ export function Almacen() {
   useEffect(() => { setCurrentPage(1) }, [filterMode, searchTerm])
 
   const refreshAll = useCallback(async (silent = false) => {
-    try {
-      const [ingredients, operational] = await Promise.all([getWarehouseIngredients(), getIngredients()])
-      const mapItem = (item: Ingredient): WarehouseItem => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass })
+    const warehouseLoad = getWarehouseIngredients().then(ingredients => {
       setItems(ingredients.map(item => ({
         id: item.id,
         unitId: item.unitId,
@@ -114,15 +119,25 @@ export function Almacen() {
         unit: item.unitSymbol,
         inventoryClass: item.inventoryClass
       })))
+      setSelectedItemId(current => current || ingredients[0]?.id || '')
+    }).catch(error => {
+      setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén')
+    })
+
+    const operationalLoad = getIngredients().then(operational => {
+      const mapItem = (item: Ingredient): WarehouseItem => ({ id: item.id, unitId: item.unitId, name: item.name, category: 'Insumo', quantity: item.currentStock, costPerUnit: item.pricePerUnit ?? 0, minStock: 0, unit: item.unitSymbol, inventoryClass: item.inventoryClass })
       const operationalMapped = operational.map(mapItem)
       setOperationalItems(operationalMapped)
+      setOperationalItemsLoaded(true)
       setSelectedOperationalItemId(current => current || operationalMapped[0]?.id || '')
-      setSelectedItemId(current => current || ingredients[0]?.id || '')
-    } catch (error) {
+    }).catch(error => {
       setErrorMsg(error instanceof Error ? error.message : 'No se pudo cargar el almacén')
-    } finally {
-      if (!silent) setLoading(false)
-    }
+    })
+
+    // The warehouse table is the primary content. Reveal it as soon as its
+    // query finishes instead of making it wait for the secondary stock view.
+    if (!silent) await warehouseLoad.finally(() => setLoading(false))
+    await Promise.all([warehouseLoad, operationalLoad])
   }, [])
   useEffect(() => { void refreshAll() }, [refreshAll])
   useLiveDataRefresh('almacen', () => refreshAll(true))
@@ -196,12 +211,11 @@ export function Almacen() {
           <div>
             <p className="almacen-eyebrow">OPERACIÓN · ABASTECIMIENTO</p>
             <h1 className="page-title"><Warehouse size={22} className="page-title-icon" /> Almacén principal</h1>
-            <p>Controla la materia prima resguardada antes de despacharla al Food Truck.</p>
+            <p>
+              <span className="almacen-subtitle-desktop">Gestiona la materia prima y sus existencias antes de enviarla al Food Truck.</span>
+              <span className="almacen-subtitle-mobile">Insumos listos para el Food Truck.</span>
+            </p>
           </div>
-        </div>
-        <div className="almacen-header-note">
-          <span className="almacen-live-dot" />
-          Depósito central
         </div>
       </header>
 
@@ -240,7 +254,7 @@ export function Almacen() {
           <div className="metric-icon-box"><Plus size={18} /></div>
           <div className="metric-info-group">
             <span className="metric-label">Traer desde inventario</span>
-            <strong className="metric-large-val">{operationalItems.filter(i => i.quantity > 0).length}</strong>
+            <strong className="metric-large-val">{operationalItemsLoaded ? operationalItems.filter(i => i.quantity > 0).length : '…'}</strong>
             <span className="metric-sub-text">Disponibles en cocina</span>
           </div>
         </button>
@@ -262,16 +276,20 @@ export function Almacen() {
               <div className="card-header-icon"><Package size={18} /></div>
               <div>
                 <h2 className="almacen-card-title">Productos en almacén</h2>
-                <p className="almacen-card-description">Materia prima lista para transferir al Food Truck o registrar en producción.</p>
+                <p className="almacen-card-description">
+                  <span className="almacen-products-subtitle-desktop">Materia prima lista para transferir al Food Truck o registrar en producción.</span>
+                  <span className="almacen-products-subtitle-mobile">Insumos listos para transferir.</span>
+                </p>
               </div>
             </div>
             <button
               type="button"
               className="almacen-add-stock-btn"
               onClick={() => setQuickAction('receive')}
+              aria-label="Traer productos al almacén desde el Food Truck"
               title="Traer productos del Food Truck al almacén"
             >
-              <Plus size={15} /> Traer al almacén
+              <Plus size={15} /> <span className="almacen-add-stock-label-desktop">Traer al almacén</span><span className="almacen-add-stock-label-mobile">Traer</span>
             </button>
           </div>
 
@@ -367,7 +385,7 @@ export function Almacen() {
                       <td className="almacen-item-name" data-label="Insumo">{item.name}</td>
                       <td data-label="Categoría"><span className="almacen-category">{item.category}</span></td>
                       <td className="almacen-stock-value" data-label="Stock en almacén">{item.quantity} <small>{item.unit}</small></td>
-                      <td className="almacen-stock-operational" data-label="Stock en Food Truck">{operationalQty} <small>{item.unit}</small></td>
+                      <td className="almacen-stock-operational" data-label="Stock en Food Truck">{operationalItemsLoaded ? <>{operationalQty} <small>{item.unit}</small></> : '…'}</td>
                       <td data-label="Costo por unidad">{formatUsdPrecise(item.costPerUnit)}</td>
                       <td className="almacen-total-value" data-label="Valor en almacén">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
                       <td data-label="Estado">
@@ -416,7 +434,7 @@ export function Almacen() {
       </div></div>, document.body)}
 
       {quickAction && createPortal(<div className={`almacen-modal-overlay ${closingQuickAction ? 'closing' : ''}`} onClick={closeQuickAction}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeQuickAction} aria-label="Cerrar"><X size={16} /></button>
-        {quickAction === 'receive' && <form onSubmit={handleReceiveToWarehouse}><div className="almacen-modal-heading"><span><Package size={18} /></span><div><small>Transferencia interna</small><h3>Traer desde inventario</h3></div></div><p className="almacen-card-description">Mueve existencias del inventario operativo al almacén. No genera una compra.</p><div className="almacen-modal-fields transfer-modal-fields"><label>Producto de inventario<StyledSelect value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={warehouseQty} onChange={setWarehouseQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId}><ArrowRightLeft size={17} /> Traer al almacén</button></form>}
+        {quickAction === 'receive' && <form onSubmit={handleReceiveToWarehouse}><div className="almacen-modal-heading"><span><Package size={18} /></span><div><small>Transferencia interna</small><h3>Traer desde inventario</h3></div></div><p className="almacen-card-description">Mueve existencias del inventario operativo al almacén. No genera una compra.</p>{!operationalItemsLoaded && <p className="almacen-card-description" role="status">Cargando existencias del inventario…</p>}<div className="almacen-modal-fields transfer-modal-fields"><label>Producto de inventario<StyledSelect value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={warehouseQty} onChange={setWarehouseQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId || !operationalItemsLoaded}><ArrowRightLeft size={17} /> Traer al almacén</button></form>}
         {quickAction === 'transfer' && <form onSubmit={handleTransfer}><div className="almacen-modal-heading"><span className="positive"><ArrowRightLeft size={18} /></span><div><small>Transferencia interna</small><h3>Enviar a inventario</h3></div></div><p className="almacen-card-description">Despacha existencias del almacén al inventario operativo del Food Truck.</p><div className="almacen-modal-fields transfer-modal-fields"><label>Producto de almacén<StyledSelect value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>{items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={transferQty} onChange={setTransferQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedItemId}><ArrowRightLeft size={17} /> Enviar a inventario</button></form>}
         {quickAction === 'critical' && <><div className="almacen-modal-heading"><span className="negative"><AlertTriangle size={18} /></span><div><small>Revisión de existencias</small><h3>Stock crítico</h3></div></div><p className="almacen-card-description">Insumos en almacén con existencia igual o menor al mínimo configurado.</p>{items.filter(item => item.quantity <= item.minStock).length === 0 ? <p className="almacen-modal-empty">No hay insumos en estado crítico.</p> : <div className="almacen-critical-list"><div className="almacen-critical-header"><span>Insumo</span><span>Existencia actual</span></div><div className="almacen-history-list">{items.filter(item => item.quantity <= item.minStock).map(item => <div className="almacen-history-row" key={item.id}><div><strong>{item.name}</strong></div><b className="negative">{item.quantity} {item.unit}</b></div>)}</div></div>}</>}
       </div></div>, document.body)}

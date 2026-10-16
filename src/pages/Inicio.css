@@ -433,7 +433,8 @@
 .db-quick-card { min-height: 0 !important; }
 .db-quick-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
   flex: 1;
   min-height: 0;
@@ -870,6 +871,8 @@
   font-size: 0.78rem;
 }
 
+.db-notifications-back { display: none; }
+
 .db-notifications-tools {
   display: flex;
   align-items: center;
@@ -916,6 +919,8 @@
 .db-notification-row {
   display: flex;
   align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.55rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.045);
 }
 
@@ -926,7 +931,7 @@
   grid-template-columns: 8px 1fr;
   gap: 0.65rem;
   align-items: start;
-  padding: 0.8rem 0.9rem;
+  padding: 0.8rem 0.65rem;
   border: 0;
   border-bottom: 0;
   background: transparent;
@@ -934,17 +939,26 @@
   text-align: left;
   font-family: inherit;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .db-notification-item:hover { background: rgba(255, 255, 255, 0.035); }
+.db-notification-item:active { transform: none !important; }
 .db-notification-item.is-read { opacity: 0.62; }
-.db-notification-row .db-notification-dismiss { margin-right: 0.55rem; flex: 0 0 28px; }
+.db-notification-row .db-notification-dismiss { margin: 0; flex: 0 0 38px; }
 .db-notification-dot { width: 7px; height: 7px; margin-top: 0.3rem; border-radius: 50%; background: #f59e0b; }
 .db-notification-item.critical .db-notification-dot { background: #FF4D3D; }
 .db-notification-item.is-read .db-notification-dot { background: #686870; }
 .db-notification-item > span:last-child { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.db-notification-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; min-width: 0; }
 .db-notification-item strong { color: #ededf0; font-size: 0.74rem; }
-.db-notification-item small { color: #92929c; font-size: 0.67rem; line-height: 1.35; }
+.db-notification-status { align-self: flex-start; color: #f59e0b; font-size: 0.62rem; font-style: normal; font-weight: 700; }
+.db-notification-status.resolved { color: #8a8a94; }
+.db-notification-meta { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 0.35rem; min-width: 0; }
+.db-notification-item small { color: #92929c; font-size: 0.72rem; line-height: 1.25; }
+.db-notification-meta time,
+.db-notification-resolved-time { color: #7f808a; font-size: 0.68rem; line-height: 1.25; white-space: nowrap; }
+.db-notification-meta time::before { content: '·'; margin-right: 0.35rem; }
 
 .db-notifications-empty {
   min-height: 112px;
@@ -2018,11 +2032,27 @@
     min-height: 0;
     overflow: hidden;
   }
-  .db-quick-grid { grid-template-columns: 1fr 1fr; gap: 0.3rem; flex: 1; min-height: 0; overflow: hidden; }
-  .db-qa-btn { padding: 0; font-size: 0.58rem; flex: 1; min-height: 0; }
-  .db-qa-btn svg { width: 16px; height: 16px; }
-  /* Ocultar botones 5 y 6 en el breakpoint compacto — no hay altura */
-  .db-grid-4 > .db-card:nth-child(5) .db-qa-btn:nth-child(n+5) { display: none; }
+  .db-quick-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 0.4rem;
+    flex: 1;
+    min-height: 0;
+    overflow: visible;
+  }
+  .db-qa-btn {
+    min-width: 0;
+    min-height: 0;
+    padding: 0.55rem 0.25rem;
+    gap: 0.35rem;
+    border: 1px solid #292c34;
+    border-radius: 13px;
+    background: linear-gradient(155deg, #1a1c22, #15171c);
+    color: #e6e7eb;
+    font-size: 0.64rem;
+    font-weight: 650;
+  }
+  .db-qa-btn svg { width: 19px; height: 19px; color: #ff695e; }
 
   /* Comandas: filas compactas */
   .db-orders-list { gap: 0.05rem; }
@@ -2159,11 +2189,84 @@
   }
 
   .db-notifications {
-    position: absolute !important;
-    top: 4.25rem !important;
-    left: auto !important;
-    right: 0 !important;
-    width: min(330px, calc(100vw - 2rem)) !important;
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 120 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    max-height: 100dvh !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    padding: env(safe-area-inset-top, 0px) 0 calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #0b0b0d !important;
+    box-shadow: none !important;
+    animation: dbNotificationsPageIn 180ms ease-out both;
+  }
+
+  .db-notifications.closing {
+    pointer-events: none !important;
+    animation: dbNotificationsPageOut 180ms ease-in both;
+  }
+
+  .db-notifications-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 0.8rem !important;
+    min-height: 76px;
+    padding: 0.9rem 1rem !important;
+    background: #0b0b0d;
+    font-size: 1rem !important;
+  }
+
+  .db-notifications-back {
+    display: grid !important;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border: 1px solid var(--db-border);
+    border-radius: 12px;
+    background: #17191f;
+    color: #ededf0;
+    cursor: pointer;
+  }
+
+  .db-notifications-tools { gap: 0.45rem !important; }
+  .db-notifications-tools button,
+  .db-notification-dismiss { width: 38px !important; height: 38px !important; }
+
+  .db-notification-row {
+    min-height: 0;
+    gap: 0.5rem;
+    padding: 0.3rem 0.65rem;
+  }
+
+  .db-notification-item {
+    gap: 0.8rem !important;
+    padding: 1rem 0.65rem !important;
+  }
+
+  .db-notification-item strong { font-size: 0.88rem !important; }
+  .db-notification-item .db-notification-meta small { font-size: 0.75rem !important; }
+  .db-notification-item .db-notification-meta time,
+  .db-notification-item .db-notification-resolved-time { font-size: 0.68rem !important; }
+  .db-notification-row .db-notification-dismiss { flex-basis: 42px !important; }
+  .db-notifications-empty { flex: 1; min-height: 40vh !important; font-size: 0.9rem !important; }
+
+  @keyframes dbNotificationsPageIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes dbNotificationsPageOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(8px); }
   }
 
   .db-page.notifications-open .db-greeting-rates {
@@ -2444,6 +2547,57 @@
 .db-prod-empty-copy strong { color: #e8e8ec; font-size: 0.72rem; }
 .db-prod-empty-copy small { color: #90909a; font-size: 0.62rem; line-height: 1.4; }
 
+.db-prod-recent {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 0.28rem;
+  margin: 0.1rem 0 0.25rem;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.db-prod-recent-title { color: #a7a7b0; font-size: 0.62rem; font-weight: 700; }
+.db-prod-recent-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.22rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+.db-prod-recent-name { overflow: hidden; color: #e5e5e9; font-size: 0.64rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.db-prod-recent-meta { flex: 0 0 auto; color: #85858f; font-size: 0.58rem; white-space: nowrap; }
+.db-prod-recent-note { color: #85858f; font-size: 0.62rem; }
+
+.db-production-history { min-width: 0; order: 0; }
+.db-production-history .db-prod-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  overflow: visible;
+}
+.db-production-history .db-prod-recent-row {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  min-height: 34px;
+  padding: 0.2rem 0.12rem;
+}
+.db-production-history .db-prod-recent-name {
+  min-width: 0;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.25;
+}
+.db-production-history .db-prod-recent-meta { line-height: 1.2; white-space: normal; }
+
 .db-production-card.is-empty .db-prod-plan-btn {
   display: flex;
   align-items: center;
@@ -2498,12 +2652,6 @@
 .db-sellers-table .st-qty { display: inline-flex !important; align-self: flex-start !important; align-items: baseline !important; gap: 0.22rem !important; color: #9698a2 !important; font-size: 0.62rem !important; text-align: left !important; }
 .db-sellers-table .st-qty strong { color: #ffb23f !important; font-size: 0.68rem !important; font-weight: 750 !important; }
 .db-sellers-table .st-rev { align-self: center !important; font-size: 0.7rem !important; line-height: 1.15 !important; text-align: right !important; }
-
-/* En tablet horizontal y computadora se destacan los tres primeros; el móvil conserva cinco. */
-@media (min-width: 768px) {
-  /* El encabezado también es hijo: n+5 oculta desde el cuarto plato. */
-  .db-sellers-table .st-row:nth-child(n+5) { display: none !important; }
-}
 
 @media (min-width: 900px) {
   .db-grid-4 > .db-card:nth-child(4) .st-row { padding: 0.22rem 0.18rem !important; }
@@ -2565,4 +2713,51 @@
   .kpi-data { min-width: 0 !important; }
   .kpi-label { font-size: 0.61rem !important; }
   .kpi-value { font-size: 1.08rem !important; }
+}
+
+/* El layout depende del ancho real de la tarjeta, no solo del viewport.
+   Así sigue siendo legible cuando comparte fila con otros widgets. */
+.db-payment-card { container-type: inline-size; }
+
+@container (max-width: 460px) {
+  .db-payment-card .db-pago-layout {
+    grid-template-columns: 76px minmax(0, 1fr);
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .db-payment-card .db-pago-chart { grid-column: 1; }
+  .db-payment-card .db-donut-wrap { width: 76px; height: 76px; }
+  .db-payment-card .db-pago-legend { width: 100%; min-width: 0; gap: 0.35rem; }
+
+  .db-payment-card .pago-legend-row,
+  .db-payment-card .db-payment-special-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.35rem;
+    min-width: 0;
+    padding: 0.38rem 0.45rem;
+  }
+
+  .db-payment-card .pago-method {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .db-payment-card .pago-name {
+    min-width: 0;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    white-space: normal;
+    font-size: 0.62rem;
+    line-height: 1.2;
+  }
+
+  .db-payment-card .pago-legend-row .pago-method,
+  .db-payment-card .db-payment-special-row .pago-method { grid-column: 1; grid-row: 1; }
+  .db-payment-card .pago-legend-row .pago-pct,
+  .db-payment-card .db-payment-special-row .db-payment-special-note { grid-column: 1; grid-row: 2; justify-self: start; }
+  .db-payment-card .pago-amount { grid-column: 2; grid-row: 1 / 3; justify-self: end; }
+
+  .db-payment-card .pago-legend-row .pago-progress { grid-column: 1 / -1; }
 }

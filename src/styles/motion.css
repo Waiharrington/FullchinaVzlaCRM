@@ -396,3 +396,45 @@
 /* Fix for modal exit animations not overriding entrance animations */
 .modal-overlay-dark.closing, .modal-overlay.closing { animation: fc-overlay-exit var(--motion-fast) var(--motion-exit) both !important; }
 .modal-overlay-dark.closing > div, .modal-overlay.closing > div { animation: fc-dialog-exit var(--motion-fast) var(--motion-exit) both !important; }
+
+/* En teléfono los diálogos se presentan centrados, no como hojas pegadas al
+   borde inferior. Se excluyen drawers, navegación y dropdowns intencionales. */
+@media (max-width: 767px) {
+  :is(
+    .gs-overlay,
+    .confirm-overlay,
+    .almacen-modal-overlay,
+    .modal-overlay-dark,
+    .aito-overlay,
+    .mas-credit-overlay,
+    .inv-modal-overlay,
+    .cmp-modal-overlay,
+    .modal-overlay,
+    .fin-modal-overlay,
+    .rec-modal-overlay,
+    .nom-modal-overlay,
+    .prv-overlay,
+    .ws-modal-overlay
+  ) {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    box-sizing: border-box;
+  }
+
+  .gs-overlay > .gs-dropdown {
+    width: min(540px, 100%) !important;
+    max-height: min(78dvh, 680px);
+    border-radius: 18px !important;
+  }
+
+  :is(.confirm-overlay, .almacen-modal-overlay, .modal-overlay-dark, .aito-overlay,
+    .mas-credit-overlay, .inv-modal-overlay, .cmp-modal-overlay, .modal-overlay,
+    .fin-modal-overlay, .rec-modal-overlay, .nom-modal-overlay, .prv-overlay,
+    .ws-modal-overlay) > :is(.confirm-card, .almacen-action-modal, .client-modal-box,
+    .payment-modal-box, .variant-selector-modal, .aito-modal, .mas-modal-glow,
+    .inv-detail-modal, .inv-modal-card, .cmp-modal, .modal-content-custom,
+    .fin-dialog, .rec-modal, .nom-modal, .prv-modal, .ws-modal) {
+    border-radius: 18px !important;
+  }
+}

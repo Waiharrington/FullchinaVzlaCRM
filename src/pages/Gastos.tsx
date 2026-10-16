@@ -9,7 +9,7 @@ import { normalizeForSearch } from '../lib/textFormat'
 import { calculateMobilePaymentFee } from '../lib/paymentFees'
 import {
   Receipt, Store, Plus, TrendingDown, Wallet, Activity,
-  Search, Filter, Download, HelpCircle, X, Trash2, Pencil,
+  Search, Filter, Download, X, Trash2, Pencil,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { EmptyState } from '../components/EmptyState'
@@ -57,6 +57,7 @@ export function Gastos() {
   const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null)
   const [expenseModalOpen, setExpenseModalOpen] = useState(false)
   const [showAiCapture, setShowAiCapture] = useState(false)
+  const [showExpenseHelp, setShowExpenseHelp] = useState(false)
   const [aiPrefill, setAiPrefill] = useState<{ amount: number; currency: 'USD' | 'VES' | null } | null>(null)
   const [aiAmountEdited, setAiAmountEdited] = useState(false)
   const [closingExpense, setClosingExpense] = useState(false)
@@ -295,13 +296,19 @@ export function Gastos() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Wallet size={22} className="page-title-icon" /> Gastos</h1>
-          <p className="page-subtitle">Registra y controla todos los egresos operativos del negocio que no son compras de inventario.</p>
+          <p className="page-subtitle"><span className="gst-subtitle-desktop">Registra y controla todos los egresos operativos del negocio que no son compras de inventario.</span><span className="gst-subtitle-mobile">Control de gastos operativos.</span></p>
         </div>
         <div className="gst-header-actions">
-          <button className="gst-help" onClick={() => flash('Registra egresos que no son inventario (nómina, delivery, comisiones, servicios…). Compras de insumos van en el módulo Compras.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
+          <button type="button" className="gst-help" aria-label="Ayuda sobre gastos" title="Ayuda sobre gastos" aria-expanded={showExpenseHelp} aria-controls="gst-expense-help" onClick={() => setShowExpenseHelp((visible) => !visible)}>?</button>
           <button type="button" className="gst-ai-launch" onClick={() => setShowAiCapture(true)}><Sparkles size={16} /> Gasto con IA</button>
           <button type="button" className="gst-btn" aria-controls="expense-form" onClick={openExpenseForm}><Plus size={16} /> Registrar Gasto</button>
         </div>
+        {showExpenseHelp && <aside className="gst-help-popover" id="gst-expense-help" aria-label="Cómo registrar gastos">
+          <button className="gst-help-popover-close" type="button" aria-label="Cerrar ayuda" onClick={() => setShowExpenseHelp(false)}><X size={15} /></button>
+          <div className="gst-help-popover-heading"><span>GUÍA RÁPIDA</span><strong>¿Qué va en Gastos?</strong></div>
+          <p>Registra aquí nómina, delivery, comisiones y servicios: egresos que no corresponden a inventario.</p>
+          <div className="gst-help-purchase"><span>¿Es una compra de insumos?</span><strong>Regístrala en Compras</strong></div>
+        </aside>}
       </header>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
@@ -312,21 +319,21 @@ export function Gastos() {
       <div className="gst-summary management-workspace-metrics">
         <div className="gst-sum red">
           <span className="gst-sum-ic"><TrendingDown size={22} /></span>
-          <div><div className="gst-sum-lbl">Egresos totales (este mes)</div><div className="gst-sum-val">{formatUsd(summary.total)}</div>
+          <div><div className="gst-sum-lbl"><span className="gst-sum-label-desktop">Egresos totales (este mes)</span><span className="gst-sum-label-mobile">Egresos totales</span></div><div className="gst-sum-val">{formatUsd(summary.total)}</div>
             {summary.pct != null && <div className={`gst-sum-sub ${summary.pct > 0 ? 'up' : 'down'}`}>{summary.pct > 0 ? '▲' : '▼'} {Math.abs(summary.pct).toFixed(0)}% vs. mes anterior</div>}
           </div>
         </div>
         <div className="gst-sum purple">
           <span className="gst-sum-ic"><Receipt size={22} /></span>
-          <div><div className="gst-sum-lbl">Gastos Fijos (este mes)</div><div className="gst-sum-val">{formatUsd(summary.fixed)}</div><div className="gst-sum-sub">{summary.pctFixed.toFixed(0)}% del total</div></div>
+          <div><div className="gst-sum-lbl"><span className="gst-sum-label-desktop">Gastos Fijos (este mes)</span><span className="gst-sum-label-mobile">Gastos fijos</span></div><div className="gst-sum-val">{formatUsd(summary.fixed)}</div><div className="gst-sum-sub">{summary.pctFixed.toFixed(0)}% del total</div></div>
         </div>
         <div className="gst-sum orange">
           <span className="gst-sum-ic"><Activity size={22} /></span>
-          <div><div className="gst-sum-lbl">Gastos Variables (este mes)</div><div className="gst-sum-val">{formatUsd(summary.variable)}</div><div className="gst-sum-sub">{summary.pctVar.toFixed(0)}% del total</div></div>
+          <div><div className="gst-sum-lbl"><span className="gst-sum-label-desktop">Gastos Variables (este mes)</span><span className="gst-sum-label-mobile">Gastos variables</span></div><div className="gst-sum-val">{formatUsd(summary.variable)}</div><div className="gst-sum-sub">{summary.pctVar.toFixed(0)}% del total</div></div>
         </div>
         <div className="gst-sum green">
           <span className="gst-sum-ic"><Store size={22} /></span>
-          <div><div className="gst-sum-lbl">Otros gastos (este mes)</div><div className="gst-sum-val">{formatUsd(summary.other)}</div><div className="gst-sum-sub">{summary.pctOther.toFixed(0)}% del total</div></div>
+          <div><div className="gst-sum-lbl"><span className="gst-sum-label-desktop">Otros gastos (este mes)</span><span className="gst-sum-label-mobile">Otros gastos</span></div><div className="gst-sum-val">{formatUsd(summary.other)}</div><div className="gst-sum-sub">{summary.pctOther.toFixed(0)}% del total</div></div>
         </div>
       </div>
 
@@ -336,7 +343,7 @@ export function Gastos() {
           <div className="gst-card-head">
             <div className="gst-card-title">
               <span className="gst-sum-ic" style={{ width: 34, height: 34, background: 'rgba(225,29,42,0.15)', color: '#e11d2a' }}><Receipt size={16} /></span>
-              <div><h2>Registro de Egresos y Gastos Operativos</h2><p>Desglose por tipo, categoría y establecimiento comercial.</p></div>
+              <div><h2><span className="gst-copy-desktop">Registro de Egresos y Gastos Operativos</span><span className="gst-copy-mobile">Historial de gastos</span></h2><p><span className="gst-copy-desktop">Desglose por tipo, categoría y establecimiento comercial.</span><span className="gst-copy-mobile">Detalle de cada egreso registrado.</span></p></div>
             </div>
             <div className="gst-tools">
               <div className="gst-search"><Search size={14} className="ic" /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar gasto..." />{search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}</div>
@@ -384,6 +391,28 @@ export function Gastos() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="gst-mobile-expense-list">
+            {pageItems.map((e) => (
+              <article className="gst-mobile-expense" key={e.id}>
+                <header>
+                  <span className={`gst-badge ${e.type === 'fixed' ? 'fijo' : e.type === 'variable' ? 'variable' : 'otro'}`}>{e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro'}</span>
+                  <time dateTime={e.date}>{new Date(e.date).toLocaleDateString('es-VE')}</time>
+                </header>
+                <strong className="gst-mobile-expense-title">{e.description}</strong>
+                {e.purchaseExpenseItemId && <small className="gst-mobile-purchase-note">Registrado en Compras</small>}
+                <dl>
+                  <div><dt>Categoría</dt><dd><span className="gst-cat">{catLabel(e.category)}</span></dd></div>
+                  <div><dt>Proveedor</dt><dd>{e.vendor}</dd></div>
+                </dl>
+                <footer>
+                  <div className="gst-mobile-expense-amount"><strong>{formatUsd(e.amountUsd)}</strong><small>{formatVes(e.amountUsd * rate)}</small></div>
+                  {e.purchaseExpenseItemId ? <span className="gst-mobile-edit-note">Editar en Compras</span> : <div className="gst-row-actions"><button type="button" className="gst-icon-btn" title="Editar gasto" aria-label={`Editar gasto ${e.description}`} onClick={() => openEditExpense(e)}><Pencil size={16} /></button><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={16} />}</button></div>}
+                </footer>
+              </article>
+            ))}
+            {pageItems.length === 0 && <div className="gst-empty">No hay gastos registrados en esta búsqueda.</div>}
           </div>
 
           {filtered.length > 0 && (
@@ -442,14 +471,14 @@ export function Gastos() {
                   {isVes && acc?.accountType !== 'cash' && <div className="gst-src-meta"><label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={row.mobileFee} onChange={(e) => updateExpenseSource(i, { mobileFee: e.target.checked })} /> Pago móvil · comisión bancaria</label>{row.mobileFee && <><label>Comisión (Bs) <input aria-label="Comisión Pago móvil en bolívares" type="number" min="0" step="any" value={row.feeAmount} onChange={(e) => updateExpenseSource(i, { feeAmount: e.target.value, feeEdited: true })} /></label><span>0,3% del pago, mínimo Bs. 14. Editable.</span></>}</div>}
                 </div>
               })}
-              <div className="gst-src-foot">
+            <div className="gst-src-foot">
                 <button type="button" className="gst-src-add" onClick={() => setExpenseSources((prev) => [...prev, { accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])}><Plus size={14} /> Agregar cuenta</button>
                 <span className="gst-src-total">Total: <strong>{formatUsd(Math.round(expenseTotalUsd * 100) / 100)}</strong></span>
               </div>
             </div>
 
-            <div className="gst-field"><label>Notas (Opcional)</label>
-              <textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Agregar notas adicionales..." /></div>
+            <div className="gst-field gst-notes-field"><label>Notas (opcional)</label>
+              <textarea rows={3} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Escribe una nota para este gasto…" /></div>
 
             <div className="gst-form-actions">
               {!editingExpenseId && <label className="gst-check"><input type="checkbox" checked={keepOpen} onChange={(e) => setKeepOpen(e.target.checked)} /> Registrar otro</label>}

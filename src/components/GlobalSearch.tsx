@@ -437,7 +437,6 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
                   <X size={14} />
                 </button>
               )}
-              <button className="gs-close-btn" onClick={close} aria-label="Cerrar">Esc</button>
             </div>
 
             <div className="gs-results">

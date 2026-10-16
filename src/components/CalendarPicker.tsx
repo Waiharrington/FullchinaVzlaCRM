@@ -33,6 +33,8 @@ export function CalendarPicker({
   disableFuture = false,
 }: CalendarPickerProps) {
   const [open, setOpen] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | null>(null)
   const [viewMonth, setViewMonth] = useState(() => new Date())
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -44,6 +46,15 @@ export function CalendarPicker({
     ? selected.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : placeholder
   const monthTitle = viewMonth.toLocaleDateString('es-VE', { month: 'long', year: 'numeric' })
+
+  const closeCalendar = useCallback(() => {
+    if (!open || closing) return
+    setClosing(true)
+    closeTimer.current = window.setTimeout(() => {
+      setOpen(false)
+      setClosing(false)
+    }, 140)
+  }, [open, closing])
 
   const updatePosition = useCallback(() => {
     const rect = triggerRef.current?.getBoundingClientRect()
@@ -59,14 +70,14 @@ export function CalendarPicker({
   }, [])
 
   useEffect(() => {
-    if (!open) return
+    if (!open || closing) return
     updatePosition()
     const closeOnOutsidePointer = (event: PointerEvent) => {
       if (triggerRef.current?.contains(event.target as Node) || popoverRef.current?.contains(event.target as Node)) return
-      setOpen(false)
+      closeCalendar()
     }
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') closeCalendar()
     }
     window.addEventListener('resize', updatePosition)
     window.addEventListener('scroll', updatePosition, true)
@@ -78,9 +89,15 @@ export function CalendarPicker({
       document.removeEventListener('pointerdown', closeOnOutsidePointer)
       document.removeEventListener('keydown', closeOnEscape)
     }
-  }, [open, updatePosition])
+  }, [open, closing, updatePosition, closeCalendar])
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+  }, [])
 
   const openCalendar = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+    setClosing(false)
     setViewMonth(selected
       ? new Date(selected.getFullYear(), selected.getMonth(), 1)
       : new Date((monthCursor ?? today).getFullYear(), (monthCursor ?? today).getMonth(), 1))
@@ -96,7 +113,7 @@ export function CalendarPicker({
   })
   const canGoNext = !disableFuture || viewMonth.getFullYear() < today.getFullYear()
     || (viewMonth.getFullYear() === today.getFullYear() && viewMonth.getMonth() < today.getMonth())
-  const chooseDate = (dateKey: string) => { onChange(dateKey); setOpen(false) }
+  const chooseDate = (dateKey: string) => { onChange(dateKey); closeCalendar() }
   const triggerClass = trigger === 'icon'
     ? 'fc-calendar-icon-trigger'
     : trigger === 'field' ? 'fc-calendar-field-trigger' : 'fc-calendar-text-trigger'
@@ -121,7 +138,7 @@ export function CalendarPicker({
       {open && createPortal(
         <div
           ref={popoverRef}
-          className="fc-calendar-popover"
+          className={`fc-calendar-popover${closing ? ' closing' : ''}`}
           role="dialog"
           aria-label="Seleccionar fecha"
           style={{ top: position?.top ?? -1000, left: position?.left ?? -1000 }}

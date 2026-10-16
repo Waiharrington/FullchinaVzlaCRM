@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import './DashboardQuickAccess.css'
@@ -27,10 +27,18 @@ interface DashboardQuickAccessProps {
 }
 
 export function DashboardQuickAccess({ shortcut, onClose }: DashboardQuickAccessProps) {
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<number | null>(null)
+  const requestClose = useCallback(() => {
+    if (closing) return
+    setClosing(true)
+    closeTimer.current = window.setTimeout(onClose, 190)
+  }, [closing, onClose])
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') requestClose()
     }
 
     document.body.style.overflow = 'hidden'
@@ -39,7 +47,11 @@ export function DashboardQuickAccess({ shortcut, onClose }: DashboardQuickAccess
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onClose])
+  }, [onClose, requestClose])
+
+  useEffect(() => () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current)
+  }, [])
 
   const moduleView = (() => {
     switch (shortcut) {
@@ -53,14 +65,14 @@ export function DashboardQuickAccess({ shortcut, onClose }: DashboardQuickAccess
   })()
 
   return createPortal(
-    <div className="db-quick-access-overlay" onClick={event => { if (event.target === event.currentTarget) onClose() }}>
-      <section className="db-quick-access-dialog" role="dialog" aria-modal="true" aria-labelledby="db-quick-access-title" tabIndex={-1}>
+    <div className={`db-quick-access-overlay${closing ? ' closing' : ''}`} onClick={event => { if (event.target === event.currentTarget) requestClose() }}>
+      <section className={`db-quick-access-dialog${closing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby="db-quick-access-title" tabIndex={-1}>
         <header className="db-quick-access-header">
           <div>
             <span>Acceso directo</span>
             <h2 id="db-quick-access-title">{SHORTCUT_TITLES[shortcut]}</h2>
           </div>
-          <button type="button" className="db-quick-access-close" autoFocus onClick={onClose} aria-label={`Cerrar ${SHORTCUT_TITLES[shortcut]}`}>
+          <button type="button" className="db-quick-access-close" autoFocus onClick={requestClose} aria-label={`Cerrar ${SHORTCUT_TITLES[shortcut]}`}>
             <X size={19} />
           </button>
         </header>

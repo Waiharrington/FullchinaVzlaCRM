@@ -28,8 +28,9 @@ describe('Login con PIN', () => {
     fireEvent.click(screen.getByRole('button', { name: /ingresar con pin/i }))
     const pinInput = screen.getByLabelText(/pin de acceso/i) as HTMLInputElement
     fireEvent.change(pinInput, { target: { value: '0000' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Iniciar sesión' }))
 
-    await waitFor(() => expect(screen.getByText('PIN incorrecto.')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('PIN incorrecto.'))
     expect(pinInput.value).toBe('')
     expect(signInWithPin).toHaveBeenCalledTimes(1)
 

@@ -4,7 +4,10 @@ import { createResponseCache } from './responseCache'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-const RESPONSE_CACHE_MS = 2 * 60 * 1000
+// Keep read responses available while the user moves between modules. Real
+// changes invalidate the affected tables through the data-change feed; this
+// TTL is only a safety net if the feed is unavailable.
+const RESPONSE_CACHE_MS = 15 * 60 * 1000
 const CHANGE_CHECK_INTERVAL_MS = 30 * 1000
 const TABLE_CACHE_DEPENDENCIES: Record<string, readonly string[]> = {
   v_orders_with_items: ['orders', 'order_items', 'order_item_modifiers', 'payments', 'customers', 'sellable_products'],
@@ -63,19 +66,36 @@ export function publishDataChange(table: string) {
   for (const listener of dataChangeListeners) listener(table)
 }
 
+function reportLocalRequest(details: ReturnType<typeof requestDetails>, status: number, durationMs: number) {
+  if (!import.meta.env.DEV || typeof window === 'undefined' || (!details.table && !details.rpcName)) return
+  const resource = details.rpcName ? `rpc:${details.rpcName}` : `table:${details.table}`
+  void fetch('/__dev/performance', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ route: window.location.pathname, resource, method: details.method, status, durationMs }),
+    keepalive: true,
+  }).catch(() => { /* La medición local nunca debe afectar la consulta de datos. */ })
+}
+
 async function cachedSupabaseFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const details = requestDetails(input, init)
-  if (details.cacheable) {
-    return responseCache.fetch(details.key, details.table, () => fetch(input, init))
+  const startedAt = performance.now()
+  try {
+    const response = details.cacheable
+      ? await responseCache.fetch(details.key, details.table, () => fetch(input, init))
+      : await fetch(input, init)
+    if (response.ok && details.method !== 'GET' && details.table) {
+      // Direct REST writes identify their table. RPC reads and writes use POST
+      // with no table in the URL, so they must not evict every cached response;
+      // RPC writes are invalidated by the database change feed.
+      publishDataChange(details.table)
+    }
+    reportLocalRequest(details, response.status, performance.now() - startedAt)
+    return response
+  } catch (error) {
+    reportLocalRequest(details, 0, performance.now() - startedAt)
+    throw error
   }
-
-  const response = await fetch(input, init)
-  if (response.ok && details.method !== 'GET') {
-    // RPC writes do not expose their affected table, so invalidate broadly;
-    // direct REST writes can invalidate only that table and its dependent views.
-    publishDataChange(details.table ?? '*')
-  }
-  return response
 }
 
 export const supabase =

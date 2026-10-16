@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Inicio } from './Inicio'
+import { dateKeyInTimeZone } from '../lib/money'
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
@@ -9,11 +10,17 @@ const mocks = vi.hoisted(() => ({
   getTodayStats: vi.fn(),
   getOrdersWithItems: vi.fn(),
   getDailySales: vi.fn(),
+  getDailySalesFromOrders: vi.fn(),
   getProductRanking: vi.fn(),
   getCredits: vi.fn(),
   getPaymentMethodSales: vi.fn(),
-  getProductionStats: vi.fn(),
+  getRecentProductionBatches: vi.fn(),
   getIngredients: vi.fn(),
+  getPersonalAccountOptions: vi.fn(),
+  getActiveCashSession: vi.fn(),
+  getRecentCashSessionDiscrepancy: vi.fn(),
+  getTodayProductionYieldAlerts: vi.fn(),
+  syncDashboardAlertEvents: vi.fn(),
 }))
 
 vi.mock('react-router-dom', async () => {
@@ -68,11 +75,19 @@ vi.mock('../lib/dataService', () => ({
   getTodayStats: mocks.getTodayStats,
   getOrdersWithItems: mocks.getOrdersWithItems,
   getDailySales: mocks.getDailySales,
+  getDailySalesFromOrders: mocks.getDailySalesFromOrders,
   getProductRanking: mocks.getProductRanking,
   getCredits: mocks.getCredits,
   getPaymentMethodSales: mocks.getPaymentMethodSales,
-  getProductionStats: mocks.getProductionStats,
+  getRecentProductionBatches: mocks.getRecentProductionBatches,
   getIngredients: mocks.getIngredients,
+  getPersonalAccountOptions: mocks.getPersonalAccountOptions,
+  getActiveCashSession: mocks.getActiveCashSession,
+  getRecentCashSessionDiscrepancy: mocks.getRecentCashSessionDiscrepancy,
+  getTodayProductionYieldAlerts: mocks.getTodayProductionYieldAlerts,
+  syncDashboardAlertEvents: mocks.syncDashboardAlertEvents,
+  isPersonalAccountOrder: (order: { payments: Array<{ method: string }> }) => order.payments.some(payment => payment.method === 'personal_account'),
+  isCreditAuthorizedOrder: (order: { creditAuthorized?: boolean }) => order.creditAuthorized === true,
 }))
 
 describe('Dashboard Inicio', () => {
@@ -81,12 +96,18 @@ describe('Dashboard Inicio', () => {
     mocks.user = { id: 'owner-1', email: 'owner@fullchina.test', role: 'owner', allowedModules: null }
     mocks.getTodayStats.mockResolvedValue({ totalSales: 45, ordersCount: 3, avgTicket: 15 })
     mocks.getOrdersWithItems.mockResolvedValue([])
-    mocks.getDailySales.mockResolvedValue([{ date: '2026-08-28', total: 45 }])
+    mocks.getDailySales.mockResolvedValue([{ date: dateKeyInTimeZone(), total: 45 }])
+    mocks.getDailySalesFromOrders.mockResolvedValue([{ date: dateKeyInTimeZone(), total: 45 }])
     mocks.getProductRanking.mockResolvedValue([])
-    mocks.getCredits.mockResolvedValue([{ id: 'credit-1', customerName: 'Cliente', balancePending: 10, status: 'pending' }])
+    mocks.getCredits.mockResolvedValue([{ id: 'credit-1', customerName: 'Cliente', balancePending: 10, status: 'pending', dueDate: '2000-01-01' }])
     mocks.getPaymentMethodSales.mockResolvedValue([])
-    mocks.getProductionStats.mockResolvedValue({ batchesToday: 0, avgYield: 0, totalWaste: 0, avgCostPerPortion: 0 })
-    mocks.getIngredients.mockResolvedValue([{ id: 'ingredient-1', name: 'Aceite', currentStock: -2, unitSymbol: 'L', stockValue: 0 }])
+    mocks.getRecentProductionBatches.mockResolvedValue([])
+    mocks.getIngredients.mockResolvedValue([{ id: 'ingredient-1', name: 'Aceite', isActive: true, currentStock: -2, unitSymbol: 'L', stockValue: 0 }])
+    mocks.getPersonalAccountOptions.mockResolvedValue([])
+    mocks.getActiveCashSession.mockResolvedValue(null)
+    mocks.getRecentCashSessionDiscrepancy.mockResolvedValue(null)
+    mocks.getTodayProductionYieldAlerts.mockResolvedValue([])
+    mocks.syncDashboardAlertEvents.mockImplementation(async (alerts: Array<{ key: string; title: string; detail: string; path: string; tone: string }>) => alerts.map(alert => ({ ...alert, id: alert.key, key: alert.key, detectedAt: '', lastDetectedAt: '', resolvedAt: null })))
   })
 
   it('muestra el bloque de accesos rápidos del dashboard', async () => {
@@ -96,6 +117,10 @@ describe('Dashboard Inicio', () => {
     expect(screen.getByText('Acciones rápidas')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^comandas$/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^ventas$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^menú$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^mesas$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^inventario$/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^clientes$/i })).toBeInTheDocument()
   })
 
   it('abre los accesos rápidos dentro del dashboard sin cambiar de ruta', async () => {
@@ -153,11 +178,49 @@ describe('Dashboard Inicio', () => {
     expect(screen.queryByTestId('doughnut-chart[data-tooltip-enabled="false"]')).not.toBeInTheDocument()
   })
 
-  it('presenta el acceso al plan cuando todavía no hay lotes de producción', async () => {
+  it('arma el desglose de cobros desde las comandas cuando el RPC devuelve cero medios', async () => {
+    mocks.getPaymentMethodSales.mockResolvedValue([])
+    mocks.getOrdersWithItems.mockResolvedValue([{
+      id: 'paid-order-1',
+      status: 'paid',
+      createdAt: `${dateKeyInTimeZone()}T12:00:00-04:00`,
+      payments: [{ method: 'cash', amount: 45 }],
+    }] as never)
+
     render(<Inicio />)
 
-    expect(await screen.findByText('Aún no hay producción')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Ver plan de producción' })).toBeInTheDocument()
+    expect(await screen.findByText('Efectivo')).toBeInTheDocument()
+    expect(screen.queryByText('Aún no hay cobros hoy')).not.toBeInTheDocument()
+  })
+
+  it('reconstruye el gráfico desde las órdenes si el resumen tiene ventas pero el RPC del gráfico da cero', async () => {
+    const today = dateKeyInTimeZone()
+    mocks.getDailySales.mockResolvedValue([{ date: today, total: 0, count: 0 }])
+    mocks.getDailySalesFromOrders.mockResolvedValue([{ date: today, total: 45, count: 3 }])
+
+    render(<Inicio />)
+
+    await waitFor(() => expect(mocks.getDailySalesFromOrders).toHaveBeenCalledWith(7))
+    expect(await screen.findByTestId('sales-chart')).toBeInTheDocument()
+  })
+
+  it('reemplaza el resumen de producción de hoy por las producciones recientes en la misma fila', async () => {
+    mocks.getRecentProductionBatches.mockResolvedValue([{
+      id: 'batch-1',
+      name: 'Porcionamiento de Pollo',
+      productionDate: '2026-10-12',
+      quantityProduced: 68,
+      wasteQuantity: 1.5,
+    }])
+    render(<Inicio />)
+
+    expect(await screen.findByText('Últimas producciones')).toBeInTheDocument()
+    expect(await screen.findByText('Porcionamiento de Pollo')).toBeInTheDocument()
+    expect(screen.getByText(/68 producidas/)).toBeInTheDocument()
+    expect(screen.queryByText('Producción de hoy')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Últimas producciones' }).closest('.db-grid-3')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver historial' }))
+    expect(mocks.navigate).toHaveBeenCalledWith('/produccion')
   })
 
   it('permite cambiar el período de la gráfica de ventas', async () => {
@@ -175,13 +238,56 @@ describe('Dashboard Inicio', () => {
   it('muestra alertas operativas y navega a su módulo', async () => {
     render(<Inicio />)
 
+    await waitFor(() => expect(mocks.syncDashboardAlertEvents).toHaveBeenCalled())
+    expect(mocks.syncDashboardAlertEvents.mock.calls[0]?.[0]).toEqual(expect.arrayContaining([expect.objectContaining({ key: 'inventory' }), expect.objectContaining({ key: 'credits' })]))
+
     const bell = await screen.findByRole('button', { name: /notificaciones: 2 pendientes/i })
     fireEvent.click(bell)
 
     expect(screen.getByText('Inventario requiere atención')).toBeInTheDocument()
-    expect(screen.getByText('Cobros pendientes')).toBeInTheDocument()
+    expect(screen.getByText('Créditos vencidos')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Abrir alerta: Inventario requiere atención' }))
     expect(mocks.navigate).toHaveBeenCalledWith('/inventario')
+  })
+
+  it('mantiene la página de alertas durante la animación de salida', async () => {
+    const { container } = render(<Inicio />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /notificaciones: 2 pendientes/i }))
+    const alertsPage = container.querySelector('.db-notifications')
+    expect(alertsPage).not.toBeNull()
+
+    fireEvent.click((alertsPage as HTMLElement).querySelector('.db-notifications-back') as HTMLButtonElement)
+
+    expect(alertsPage).toHaveClass('closing')
+    await waitFor(() => expect(container.querySelector('.db-notifications')).not.toBeInTheDocument())
+  })
+
+  it('muestra fecha y hora reales del historial persistido', async () => {
+    mocks.syncDashboardAlertEvents.mockResolvedValueOnce([{
+      id: 'event-1', key: 'inventory', title: 'Inventario requiere atención',
+      detail: '1 producto agotado o con saldo negativo', path: '/inventario', tone: 'critical',
+      detectedAt: '2026-10-13T16:05:00Z', lastDetectedAt: '2026-10-13T16:05:00Z', resolvedAt: null,
+    }])
+    const { container } = render(<Inicio />)
+
+    fireEvent.click(await screen.findByRole('button', { name: /notificaciones: 1 pendiente/i }))
+
+    expect(container.querySelector('time[datetime="2026-10-13T16:05:00Z"]')).toBeInTheDocument()
+    expect(screen.queryByText('Activa')).not.toBeInTheDocument()
+  })
+
+  it('muestra cuándo detectó localmente una alerta si el historial no está instalado', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.syncDashboardAlertEvents.mockRejectedValueOnce(new Error('función de historial no instalada'))
+    const { container } = render(<Inicio />)
+
+    await waitFor(() => expect(mocks.syncDashboardAlertEvents).toHaveBeenCalled())
+    fireEvent.click(await screen.findByRole('button', { name: /notificaciones: 2 pendientes/i }))
+
+    expect(container.querySelectorAll('.db-notification-meta time[datetime]').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Fecha y hora disponibles al instalar el historial de alertas/)).not.toBeInTheDocument()
+    errorSpy.mockRestore()
   })
 
   it('permite marcar todas las alertas como leídas y borrarlas del panel', async () => {

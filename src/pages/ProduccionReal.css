@@ -5,6 +5,7 @@
 .prod-page {
   padding-bottom: 80px;
 }
+.prod-title-mobile,.prod-subtitle-mobile,.prod-action-mobile,.prod-stat-label-mobile { display: none; }
 
 /* Header & Workspace */
 .prod-header {
@@ -194,19 +195,23 @@
 .prod-date-filter button {
   padding: 6px 12px;
   border-radius: 8px;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: none;
 }
 .prod-date-filter button.active {
   background: rgba(227, 27, 43, 0.2);
   color: #fca5a5;
   border: 1px solid rgba(248, 113, 113, 0.35);
 }
+.prod-date-filter button { -webkit-tap-highlight-color: transparent; }
+.prod-date-filter button:focus:not(:focus-visible),
+.prod-date-filter button:active { outline: none; box-shadow: none; }
+.prod-date-filter button:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(248, 113, 113, .2); }
 
 /* Batches Table */
 .prod-table-wrap {
@@ -215,6 +220,7 @@
   border-radius: 12px;
   background: rgba(12, 12, 14, 0.6);
 }
+.prod-batch-cards { display: none; }
 .prod-table {
   width: 100%;
   border-collapse: collapse;
@@ -325,9 +331,10 @@
   display: grid;
   place-items: center;
   padding: 16px;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .prod-modal {
+  position: relative;
   background: #18181c;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
@@ -338,14 +345,21 @@
   flex-direction: column;
   gap: 18px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-  max-height: 90vh;
+  max-height: calc(100vh - 32px);
   overflow-y: auto;
+  overflow-x: hidden;
+}
+.prod-modal::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .prod-modal-header {
   display: flex;
   align-items: center;
   gap: 14px;
+  padding-right: 42px;
   padding-bottom: 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
@@ -370,12 +384,41 @@
   color: #fff;
   font-size: 1.15rem;
   font-weight: 800;
+  line-height: 1.2;
 }
+.prod-modal-title-mobile { display: none; }
 .prod-modal-header-text p {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.78rem;
+  line-height: 1.4;
 }
+.prod-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+}
+.prod-modal-close:hover:not(:disabled) {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.prod-modal-close:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.prod-options-loading { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--text-muted); font-size: .8rem; }
 
 /* Step 1: Protein Selector Chips */
 .prod-protein-chips-wrap {
@@ -384,6 +427,7 @@
   gap: 8px;
 }
 .prod-section-label {
+  display: block;
   font-size: 0.78rem;
   font-weight: 800;
   text-transform: uppercase;
@@ -401,6 +445,7 @@
   }
 }
 .prod-protein-chip {
+  min-height: 78px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -426,8 +471,15 @@
   border-color: rgba(248, 113, 113, 0.5);
   color: #fff;
 }
-.prod-protein-chip-emoji {
-  font-size: 1.3rem;
+.prod-protein-chip-icon {
+  width: 21px;
+  height: 21px;
+  stroke-width: 1.9;
+  color: #f87171;
+  flex: 0 0 auto;
+}
+.prod-protein-chip.active .prod-protein-chip-icon {
+  color: #ff7777;
 }
 
 /* Step 2: Location Switcher & Available Stock */
@@ -438,6 +490,8 @@
   margin-top: 4px;
 }
 .prod-location-btn {
+  min-height: 54px;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -449,8 +503,25 @@
   color: var(--text-secondary);
   font-size: 0.8rem;
   font-weight: 700;
+  line-height: 1.2;
   cursor: pointer;
   transition: all var(--transition-fast);
+}
+.prod-location-btn svg { flex: 0 0 auto; }
+.prod-raw-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 10px;
+  margin-top: 6px;
+}
+.prod-form-field { min-width: 0; }
+.prod-form-field label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 .prod-location-btn.active.warehouse {
   background: rgba(250, 204, 21, 0.18);
@@ -634,4 +705,114 @@
 .prod-detail-item strong {
   color: #fff;
   font-size: 0.88rem;
+}
+
+@media (max-width: 600px) {
+  .prod-modal-overlay {
+    place-items: center;
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  }
+  .prod-modal {
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+    padding: 18px 16px;
+    gap: 15px;
+    border-radius: 18px;
+  }
+  .prod-modal-header {
+    gap: 11px;
+    padding-right: 38px;
+    padding-bottom: 12px;
+  }
+  .prod-modal-header-icon { width: 40px; height: 40px; }
+  .prod-modal-header-text { min-width: 0; }
+  .prod-modal-header-text h3 { font-size: 1.02rem; letter-spacing: -0.02em; }
+  .prod-modal-title-desktop { display: none; }
+  .prod-modal-title-mobile { display: inline; white-space: nowrap; }
+  .prod-modal-header-text p { font-size: 0.74rem; line-height: 1.35; }
+  .prod-modal-close { top: 14px; right: 14px; width: 32px; height: 32px; }
+  .prod-protein-chips-wrap { gap: 7px; }
+  .prod-section-label { font-size: 0.72rem; line-height: 1.25; letter-spacing: 0.025em; }
+  .prod-protein-chips { gap: 7px; }
+  .prod-protein-chip { min-height: 72px; padding: 9px 5px; gap: 5px; }
+  .prod-protein-chip-icon { width: 20px; height: 20px; }
+  .prod-location-group { gap: 8px; }
+  .prod-location-btn { min-height: 50px; padding: 8px 6px; gap: 6px; font-size: 0.73rem; }
+  .prod-raw-inputs { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .prod-form-field label { font-size: 0.7rem; }
+  .management-workspace--production .prod-table-wrap { display: none; }
+  .management-workspace--production .prod-batch-cards { display: grid; gap: 12px; }
+  .management-workspace--production .prod-batch-card {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 14px;
+    background: linear-gradient(145deg, rgba(25,25,30,.98), rgba(18,18,21,.98));
+  }
+  .prod-batch-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .prod-batch-card-top time { color: var(--text-muted); font-size: .78rem; font-weight: 650; }
+  .prod-batch-card-top .prod-view-detail-btn { min-height: 34px; padding: 6px 10px; font-size: .74rem; }
+  .prod-batch-card h3 { margin: 0 0 10px; color: #fff; font-size: .98rem; line-height: 1.3; overflow-wrap: anywhere; text-wrap: balance; }
+  .prod-batch-card-operator { margin: 3px 0 12px; color: var(--text-muted); font-size: .76rem; }
+  .prod-batch-card-metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+  .prod-batch-card-metrics > div { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 9px; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; background: rgba(255,255,255,.025); }
+  .prod-batch-card-metrics > div.wide { grid-column: 1 / -1; margin-bottom: 4px; }
+  .prod-batch-card-metrics span { color: var(--text-muted); font-size: .68rem; font-weight: 700; }
+  .prod-batch-card-metrics strong { max-width: 100%; color: #f4f4f5; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
+  .prod-batch-card-metrics small { color: var(--text-muted); font-size: .68rem; }
+  .prod-batch-card-metrics .prod-badge { font-size: .66rem; }
+  .prod-batch-card-metrics .prod-batch-yield { color: #4ade80; }
+  .prod-batch-card-metrics .prod-batch-cost { color: #facc15; }
+  .prod-stat-label-desktop { display: none; }
+  .prod-stat-label-mobile { display: inline; }
+  .management-workspace--production .prod-stat-val { white-space: nowrap; }
+  .management-workspace--production .prod-stat-info { width: 0; flex: 1 1 0; }
+  .management-workspace--production .prod-stat-lbl { display: block; width: 100%; min-width: 0; max-width: 100%; overflow: visible; font-size: .72rem; line-height: 1.25; white-space: normal; text-overflow: clip; overflow-wrap: normal; }
+  .prod-title-desktop,.prod-subtitle-desktop,.prod-action-desktop { display: none; }
+  .prod-title-mobile,.prod-subtitle-mobile,.prod-action-mobile { display: inline; }
+  .management-workspace--production .prod-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    column-gap: 8px;
+    row-gap: 0;
+    flex-wrap: nowrap;
+    margin-bottom: 14px;
+  }
+  .management-workspace--production .prod-header-title-wrap {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    display: block;
+    min-width: 0;
+  }
+  .management-workspace--production .prod-header-title-wrap > div { display: grid; grid-template-rows: auto auto; align-content: start; gap: 0; min-width: 0; }
+  .management-workspace--production .prod-header h1 {
+    grid-column: 1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    font-size: 1.28rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .management-workspace--production .prod-header h1 .page-title-icon { width: 40px; height: 40px; flex: 0 0 40px; padding: 9px; border-radius: 12px; }
+  .management-workspace--production .prod-header p {
+    grid-row: 2;
+    margin: 2px 0 0;
+    font-size: .78rem;
+    line-height: 1.25;
+  }
+  .management-workspace--production .prod-new-batch-btn {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    min-height: 40px;
+    padding: 8px 10px;
+    gap: 5px;
+    border-radius: 10px;
+    font-size: .74rem;
+    white-space: nowrap;
+  }
+  .management-workspace--production .prod-new-batch-btn svg { width: 15px; height: 15px; flex: 0 0 auto; }
 }

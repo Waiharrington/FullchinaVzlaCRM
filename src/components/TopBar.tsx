@@ -1,7 +1,7 @@
 import { Bell, Search, Menu, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/auth-context'
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './TopBar.css'
 
 export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
@@ -9,6 +9,26 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const [notificationsClosing, setNotificationsClosing] = useState(false)
+  const notificationsTimer = useRef<number | null>(null)
+
+  const toggleNotifications = () => {
+    if (notificationsOpen && !notificationsClosing) {
+      setNotificationsClosing(true)
+      notificationsTimer.current = window.setTimeout(() => {
+        setNotificationsOpen(false)
+        setNotificationsClosing(false)
+      }, 170)
+      return
+    }
+    if (notificationsTimer.current !== null) window.clearTimeout(notificationsTimer.current)
+    setNotificationsClosing(false)
+    setNotificationsOpen(true)
+  }
+
+  useEffect(() => () => {
+    if (notificationsTimer.current !== null) window.clearTimeout(notificationsTimer.current)
+  }, [])
 
   const runSearch = () => {
     const value = query.trim().toLowerCase()
@@ -31,13 +51,13 @@ export function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
       </div>
 
       <div className="topbar-right">
-        <button className="icon-btn notification-btn" onClick={() => setNotificationsOpen(open => !open)} aria-expanded={notificationsOpen} aria-label="Notificaciones">
+        <button className="icon-btn notification-btn" onClick={toggleNotifications} aria-expanded={notificationsOpen && !notificationsClosing} aria-label="Notificaciones">
           <div className="bell-wrapper">
             <Bell size={20} />
           </div>
         </button>
         {notificationsOpen && (
-          <div className="topbar-notifications">
+          <div className={`topbar-notifications${notificationsClosing ? ' closing' : ''}`}>
             <div className="topbar-notifications-header">Notificaciones</div>
             <div className="topbar-notifications-empty">
               <Bell size={28} />

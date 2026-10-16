@@ -1077,6 +1077,27 @@
 .card-footer-line > .badge-delivered-tag,
 .card-footer-line > .timer-mins { margin-left: 0; }
 
+/* Las columnas Kanban de tablet dejan tarjetas de ~250px. Ordena pago, total y
+   tiempo en una cuadrícula para que los tres datos no compitan en una fila. */
+@container (max-width: 310px) {
+  .card-footer-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 5px;
+  }
+
+  .card-footer-line.is-paid { grid-template-areas: "payment total" ". timer"; }
+  .card-footer-line.is-unpaid { grid-template-areas: "payment timer"; }
+  .card-footer-line > :first-child { grid-area: payment; justify-self: start; min-width: 0; }
+  .card-footer-line > .card-total-amounts { grid-area: total; justify-self: end; margin: 0; }
+  .card-footer-line > .timer-mins,
+  .card-footer-line > .status-ready-group,
+  .card-footer-line > .badge-delivered-tag { grid-area: timer; justify-self: end; margin: 0; }
+  .card-footer-line > .badge-sin-pagar { max-width: 100%; white-space: normal; }
+}
+
 .payment-type-badge {
   font-size: 10px;
   font-weight: 700;

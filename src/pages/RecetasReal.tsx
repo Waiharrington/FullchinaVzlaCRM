@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent, updateRecipeComponent,
@@ -13,7 +13,7 @@ import { useRates } from '../context/rates-context'
 import { formatUsd, formatVes, formatUsdPrecise } from '../lib/money'
 import {
   Plus, Trash2, Pencil, Check, CheckCircle2, AlertTriangle, Search, ChevronLeft, ChevronRight,
-  List, LayoutGrid, Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
+  Soup, Coins, Tag, Percent, ShoppingCart, BookOpen, Info,
   UtensilsCrossed, Utensils, X,
 } from 'lucide-react'
 import './RecetasReal.css'
@@ -32,6 +32,9 @@ export function RecetasReal() {
   const [products, setProducts] = useState<SellableProduct[]>([])
   const [summaries, setSummaries] = useState<Map<string, RecipeSummary>>(new Map())
   const [selected, setSelected] = useState<SellableProduct | null>(null)
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false)
+  const [isMobileLayout, setIsMobileLayout] = useState(() => window.matchMedia('(max-width: 767px)').matches)
+  const recipeLayoutRef = useRef<HTMLDivElement>(null)
   const [components, setComponents] = useState<RecipeComponent[]>([])
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
@@ -53,9 +56,24 @@ export function RecetasReal() {
   const [tab, setTab] = useState<Tab>('todas')
   const [category, setCategory] = useState('all')
   const [sort, setSort] = useState<'az' | 'price'>('az')
-  const [view, setView] = useState<'list' | 'grid'>('list')
   const [page, setPage] = useState(1)
   const [detailTab, setDetailTab] = useState<'ingredientes' | 'info'>('ingredientes')
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const updateLayout = () => setIsMobileLayout(media.matches)
+    media.addEventListener('change', updateLayout)
+    return () => media.removeEventListener('change', updateLayout)
+  }, [])
+
+  useEffect(() => {
+    if (!isMobileLayout) setMobileDetailOpen(false)
+  }, [isMobileLayout])
+
+  useEffect(() => {
+    if (!mobileDetailOpen) return
+    requestAnimationFrame(() => recipeLayoutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }, [mobileDetailOpen])
 
   // Alta de componente
   const [showAdd, setShowAdd] = useState(false)
@@ -504,7 +522,10 @@ export function RecetasReal() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><BookOpen size={22} className="page-title-icon" /> Recetas</h1>
-          <p className="page-subtitle">Gestiona todas las recetas y sus componentes por producto vendible.</p>
+          <p className="page-subtitle">
+            <span className="rec-subtitle-desktop">Gestiona todas las recetas y sus componentes por producto vendible.</span>
+            <span className="rec-subtitle-mobile">Recetas para cada plato.</span>
+          </p>
         </div>
         <button
           className="rec-add-btn"
@@ -515,23 +536,24 @@ export function RecetasReal() {
       </header>
 
       <nav className="rec-module-tabs" aria-label="Tipos de receta">
-        <button className={recipeView === 'platos' ? 'active' : ''} onClick={() => setRecipeView('platos')}><UtensilsCrossed size={16} /><span>Recetas de platos</span></button>
-        <button className={recipeView === 'porciones' ? 'active' : ''} onClick={() => setRecipeView('porciones')}><Soup size={16} /><span>Recetas de porciones</span></button>
-        <button className={recipeView === 'personal' ? 'active' : ''} onClick={() => setRecipeView('personal')}><BookOpen size={16} /><span>Alimentación del personal</span></button>
+        <button aria-label="Recetas de platos" className={recipeView === 'platos' ? 'active' : ''} onClick={() => { setRecipeView('platos'); setMobileDetailOpen(false) }}><UtensilsCrossed size={16} /><span className="rec-tab-label-desktop">Recetas de platos</span><span className="rec-tab-label-mobile">Platos</span></button>
+        <button aria-label="Recetas de porciones" className={recipeView === 'porciones' ? 'active' : ''} onClick={() => { setRecipeView('porciones'); setMobileDetailOpen(false) }}><Soup size={16} /><span className="rec-tab-label-desktop">Recetas de porciones</span><span className="rec-tab-label-mobile">Porciones</span></button>
+        <button aria-label="Alimentación del personal" className={recipeView === 'personal' ? 'active' : ''} onClick={() => { setRecipeView('personal'); setMobileDetailOpen(false) }}><BookOpen size={16} /><span className="rec-tab-label-desktop">Alimentación del personal</span><span className="rec-tab-label-mobile">Personal</span></button>
       </nav>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
-      {recipeView === 'platos' ? <div className="rec-layout management-workspace-content">
+      {recipeView === 'platos' ? <div ref={recipeLayoutRef} className={`rec-layout management-workspace-content${mobileDetailOpen ? ' rec-layout--mobile-detail' : ''}`}>
         {/* ============ Lista ============ */}
-        <div className="rec-panel management-workspace-panel">
+        <div
+          className="rec-panel management-workspace-panel"
+          style={isMobileLayout && mobileDetailOpen ? { display: 'none' } : undefined}
+        >
           <div className="rec-search">
             <Search size={16} className="rec-search-ic" />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar receta..." />
-            {search
-              ? <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>
-              : <span className="rec-kbd">⌘K</span>}
+            {search && <button type="button" className="search-clear-btn search-clear-btn--floating" onClick={() => setSearch('')} aria-label="Borrar búsqueda"><X size={13} /></button>}
           </div>
 
           <div className="rec-tabs">
@@ -555,10 +577,6 @@ export function RecetasReal() {
               <option value="az">Ordenar: A - Z</option>
               <option value="price">Ordenar: Precio</option>
             </StyledSelect>
-            <div className="rec-view-toggle">
-              <button className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} aria-label="Lista"><List size={16} /></button>
-              <button className={view === 'grid' ? 'active' : ''} onClick={() => setView('grid')} aria-label="Cuadrícula"><LayoutGrid size={16} /></button>
-            </div>
           </div>
 
           <div className="rec-list">
@@ -569,7 +587,7 @@ export function RecetasReal() {
                 <button
                   key={p.id}
                   className={`rec-card${sel?.id === p.id ? ' active' : ''}`}
-                  onClick={() => { setSelected(p); setShowAdd(false); setDetailTab('ingredientes') }}
+                  onClick={() => { setSelected(p); setShowAdd(false); setDetailTab('ingredientes'); setMobileDetailOpen(true) }}
                 >
                   {p.imageUrl
                     ? <img className="rec-thumb" src={p.imageUrl} alt={p.name} loading="lazy" />
@@ -618,11 +636,17 @@ export function RecetasReal() {
         </div>
 
         {/* ============ Detalle ============ */}
-        <div className="rec-panel management-workspace-panel">
+        <div
+          className="rec-panel management-workspace-panel"
+          style={isMobileLayout && !mobileDetailOpen ? { display: 'none' } : undefined}
+        >
           {!sel ? (
             <p className="rec-empty-list">Selecciona una receta.</p>
           ) : (
             <>
+              <button type="button" className="rec-detail-back" onClick={() => setMobileDetailOpen(false)}>
+                <ChevronLeft size={17} /> Volver a recetas
+              </button>
               <div className="rec-detail-head">
                 {sel.imageUrl
                   ? <img className="rec-detail-thumb" src={sel.imageUrl} alt={sel.name} />
@@ -677,6 +701,15 @@ export function RecetasReal() {
                     </form>
                   )}
 
+                  {components.length > 0 && !showAdd && (
+                    <div className="rec-ingredients-toolbar">
+                      <span>Componentes</span>
+                      <button type="button" className="rec-add-component-btn" onClick={() => setShowAdd(true)}>
+                        <Plus size={15} /> Agregar ingrediente
+                      </button>
+                    </div>
+                  )}
+
                   {components.length === 0 && !showAdd ? (
                     <div className="rec-empty">
                       <div className="ic"><Soup size={44} /></div>
@@ -713,11 +746,6 @@ export function RecetasReal() {
                           )}
                         </div>
                       ))}
-                      {!showAdd && (
-                        <button className="rec-add-btn" style={{ marginTop: 4 }} onClick={() => setShowAdd(true)}>
-                          <Plus size={16} /> Agregar ingrediente
-                        </button>
-                      )}
                     </>
                   )}
                 </>
@@ -756,16 +784,25 @@ export function RecetasReal() {
           )}
         </div>
       </div> : recipeView === 'porciones' ? (
-        <section className="rec-module-view management-workspace-content"><div className="rec-module-view-head"><div><h2>Recetas de porciones</h2><p>Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</p></div><button className="rec-add-btn" onClick={openPortionForm}><Plus size={16} /> Nueva receta de porción</button></div>{portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una porción base como pollo de 125 g para usarla en tus platos." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-portion-list"><div className="rec-portion-header"><span>Porción</span><span>Ingrediente</span><span>Cantidad</span><span>Origen</span><span>Acciones</span></div>{portions.map(portion => <article className="rec-portion-row" key={portion.id}><strong>{portion.name}</strong><span>{portion.ingredientName || 'Ingrediente no encontrado'}</span><b>{portion.quantity} {portion.unitSymbol}</b><span className="rec-origin">Inventario</span><div className="rec-portion-actions"><button type="button" aria-label={`Editar ${portion.name}`} onClick={() => openEditPortion(portion)}><Pencil size={15} /></button><button type="button" aria-label={`Eliminar ${portion.name}`} onClick={() => void handleDeletePortion(portion)}><Trash2 size={15} /></button></div></article>)}</div>}</section>
+        <section className="rec-module-view management-workspace-content rec-portion-view">
+          <div className="rec-module-view-head">
+            <div>
+              <h2><span className="rec-portion-title-desktop">Recetas de porciones</span><span className="rec-portion-title-mobile">Porciones</span></h2>
+              <p><span className="rec-portion-copy-desktop">Define cuánto representa una porción de cada ingrediente para reutilizarla en los platos.</span><span className="rec-portion-copy-mobile">Porciones base para platos.</span></p>
+            </div>
+            <button className="rec-add-btn" onClick={openPortionForm}><Plus size={16} /><span className="rec-portion-action-desktop">Nueva receta de porción</span><span className="rec-portion-action-mobile">Nueva porción</span></button>
+          </div>
+          {portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una porción base como pollo de 125 g para usarla en tus platos." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-portion-list"><div className="rec-portion-header"><span>Porción</span><span>Ingrediente</span><span>Cantidad</span><span>Origen</span><span>Acciones</span></div>{portions.map(portion => <article className="rec-portion-row" key={portion.id}><strong>{portion.name}</strong><span>{portion.ingredientName || 'Ingrediente no encontrado'}</span><b>{portion.quantity} {portion.unitSymbol}</b><span className="rec-origin">Inventario</span><div className="rec-portion-actions"><button type="button" aria-label={`Editar ${portion.name}`} onClick={() => openEditPortion(portion)}><Pencil size={15} /></button><button type="button" aria-label={`Eliminar ${portion.name}`} onClick={() => void handleDeletePortion(portion)}><Trash2 size={15} /></button></div></article>)}</div>}
+        </section>
       ) : (
         <section className="rec-module-view management-workspace-content rec-staff-view">
           <div className="rec-module-view-head">
             <div>
-              <h2>Alimentación del personal</h2>
-              <p><strong>Control de raciones y autoconsumo.</strong> Configura los ingredientes base por ración (almuerzo y cena). Al registrar el consumo diario, se calcula el total para el número de personas y se descuenta del inventario físico sin alterar la facturación de caja ni métricas de venta.</p>
+              <h2><span className="rec-staff-title-desktop">Alimentación del personal</span><span className="rec-staff-title-mobile">Comida del personal</span></h2>
+              <p><span className="rec-staff-copy-desktop"><strong>Control de raciones y autoconsumo.</strong> Configura los ingredientes base por ración (almuerzo y cena). Al registrar el consumo diario, se calcula el total para el número de personas y se descuenta del inventario físico sin alterar la facturación de caja ni métricas de venta.</span><span className="rec-staff-copy-mobile">Control de almuerzo y cena.</span></p>
             </div>
             <button className="rec-add-btn rec-staff-main-btn" onClick={() => handleOpenConsumeModal('lunch')}>
-              <Utensils size={16} /> Registrar consumo de hoy
+              <Utensils size={16} /><span className="rec-staff-action-desktop">Registrar consumo de hoy</span><span className="rec-staff-action-mobile">Registrar</span>
             </button>
           </div>
 
@@ -887,7 +924,7 @@ export function RecetasReal() {
 
       {showNewRecipe && createPortal(
         <div className={`rec-modal-overlay ${closingNewRecipe ? 'closing' : ''}`} onClick={() => closeNewRecipe()}>
-          <div className="rec-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="rec-modal rec-new-recipe-modal" onClick={(e) => e.stopPropagation()}>
             <div className="rec-modal-header">
               <div className="rec-modal-header-icon"><UtensilsCrossed size={18} /></div>
               <h3>Configurar nueva receta</h3>
@@ -914,7 +951,7 @@ export function RecetasReal() {
             <div className="rec-modal-actions">
               <button className="rec-modal-cancel" onClick={() => closeNewRecipe()}>Cancelar</button>
               <button
-                className="rec-add-btn"
+                className="rec-add-btn rec-new-recipe-submit"
                 disabled={!newRecipeProductId}
                 onClick={() => {
                   const p = products.find((x) => x.id === newRecipeProductId)
@@ -923,6 +960,7 @@ export function RecetasReal() {
                     setSelected(p)
                     setDetailTab('ingredientes')
                     setShowAdd(true)
+                    setMobileDetailOpen(true)
                   })
                 }}
               >
