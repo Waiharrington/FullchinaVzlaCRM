@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type UIEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { CalendarDays, ChevronDown, Clock3, Search, Star, ArrowLeft, FileSpreadsheet, ArrowUpDown, X } from 'lucide-react'
 import { DateField } from './DateField'
 import { StyledSelect } from './StyledSelect'
@@ -137,6 +138,41 @@ export function ReportExplorer() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [detailOrder, setDetailOrder] = useState<FullOrder | null>(null)
+  const [detailClosing, setDetailClosing] = useState(false)
+  const detailCloseTimer = useRef<number | null>(null)
+  useEffect(() => () => { if (detailCloseTimer.current !== null) window.clearTimeout(detailCloseTimer.current) }, [])
+  useLayoutEffect(() => {
+    if (!detailOrder) return
+    const root = document.documentElement
+    const previousRootOverflow = root.style.overflow
+    const previousBodyOverflow = document.body.style.overflow
+    const appLayout = document.querySelector<HTMLElement>('.app-layout')
+    const appMain = document.querySelector<HTMLElement>('.app-main')
+    const sidebar = document.querySelector<HTMLElement>('.sidebar-container')
+    const previousLayoutInert = appLayout?.inert ?? false
+    const previousMainOverflowY = appMain?.style.overflowY
+    const previousSidebarOverflowY = sidebar?.style.overflowY
+    const mainScrollTop = appMain?.scrollTop ?? 0
+    const sidebarScrollTop = sidebar?.scrollTop ?? 0
+    root.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    if (appLayout) appLayout.inert = true
+    if (appMain) appMain.style.overflowY = 'hidden'
+    if (sidebar) sidebar.style.overflowY = 'hidden'
+    return () => {
+      root.style.overflow = previousRootOverflow
+      document.body.style.overflow = previousBodyOverflow
+      if (appLayout) appLayout.inert = previousLayoutInert
+      if (appMain) {
+        appMain.style.overflowY = previousMainOverflowY ?? ''
+        appMain.scrollTop = mainScrollTop
+      }
+      if (sidebar) {
+        sidebar.style.overflowY = previousSidebarOverflowY ?? ''
+        sidebar.scrollTop = sidebarScrollTop
+      }
+    }
+  }, [detailOrder])
   const definition = REPORTS.find(report => report.id === active)
   const family = definition?.group
 
@@ -209,10 +245,32 @@ export function ReportExplorer() {
   const openOrderDetail = (orderId?: string) => {
     if (!orderId) return
     const order = (loaded.orders ?? []).find(o => o.id === orderId)
-    if (order) setDetailOrder(order)
+    if (order) {
+      if (detailCloseTimer.current !== null) window.clearTimeout(detailCloseTimer.current)
+      setDetailClosing(false)
+      setDetailOrder(order)
+    }
+  }
+  const closeOrderDetail = () => {
+    if (detailClosing) return
+    setDetailClosing(true)
+    detailCloseTimer.current = window.setTimeout(() => {
+      setDetailOrder(null)
+      setDetailClosing(false)
+      detailCloseTimer.current = null
+    }, 220)
   }
   const pages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
   const visibleRows = filteredRows.slice((Math.min(page, pages) - 1) * pageSize, Math.min(page, pages) * pageSize)
+  const visiblePageTotal = active === 'orders'
+    ? visibleRows.reduce((sum, pair) => {
+      const order = loaded.orders?.find(item => item.id === pair.orderId)
+      if (!order) return sum
+      sum.usd += order.totalAmount
+      if (order.bcvRate && order.bcvRate > 0) sum.ves += order.totalAmount * order.bcvRate
+      return sum
+    }, { usd: 0, ves: 0 })
+    : null
   const matching = REPORTS.filter(report => `${report.title} ${report.description} ${report.group}`.toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es')))
   const catalogPages = Math.max(1, Math.ceil(matching.length / catalogPageSize))
   const visibleCatalogReports = matching.slice((Math.min(catalogPage, catalogPages) - 1) * catalogPageSize, Math.min(catalogPage, catalogPages) * catalogPageSize)
@@ -259,7 +317,7 @@ export function ReportExplorer() {
         <div className="report-result-heading"><span>{filteredRows.length} resultados</span>{table.total && <strong className="report-result-total">Total: {table.total}</strong>}</div>
         {table.note && <p className="report-note">{table.note}</p>}
         <div className={`report-table-wrap${filteredRows.length === 0 ? ' is-empty' : ''}`}>
-          {filteredRows.length === 0 ? <div className="report-empty-state" role="status"><span className="report-empty-state-icon"><Search size={22} aria-hidden="true" /></span><h3>Sin datos para este período</h3><p>No encontramos registros con estas fechas y filtros.</p><span className="report-empty-state-hint">Prueba con otro período o ajusta la búsqueda.</span></div> : <table><thead><tr>{table.columns.map((column, index) => <th key={column}><button className="report-sort" onClick={() => { setSortColumn(index); setSortAscending(current => sortColumn === index ? !current : true); setPage(1) }}>{column}<ArrowUpDown size={13} aria-hidden="true" /></button></th>)}</tr></thead><tbody className="report-screen-rows">{visibleRows.map((pair, index) => <tr key={`${page}-${index}`} className={pair.orderId ? 'report-row-clickable' : ''} onClick={pair.orderId ? () => openOrderDetail(pair.orderId) : undefined} title={pair.orderId ? 'Ver detalle de la comanda' : undefined}>{pair.row.map((value, cell) => <td key={cell} data-label={table.columns[cell]}>{formatReportCell(table.columns[cell], value)}</td>)}</tr>)}</tbody><tbody className="report-print-rows">{filteredRows.map((pair, index) => <tr key={index}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody></table>}
+        {filteredRows.length === 0 ? <div className="report-empty-state" role="status"><span className="report-empty-state-icon"><Search size={22} aria-hidden="true" /></span><h3>Sin datos para este período</h3><p>No encontramos registros con estas fechas y filtros.</p><span className="report-empty-state-hint">Prueba con otro período o ajusta la búsqueda.</span></div> : <table><thead><tr>{table.columns.map((column, index) => <th key={column}><button className="report-sort" onClick={() => { setSortColumn(index); setSortAscending(current => sortColumn === index ? !current : true); setPage(1) }}>{column}<ArrowUpDown size={13} aria-hidden="true" /></button></th>)}</tr></thead><tbody className="report-screen-rows">{visibleRows.map((pair, index) => <tr key={`${page}-${index}`} className={pair.orderId ? 'report-row-clickable' : ''} onClick={pair.orderId ? () => openOrderDetail(pair.orderId) : undefined} title={pair.orderId ? 'Ver detalle de la comanda' : undefined}>{pair.row.map((value, cell) => <td key={cell} data-label={table.columns[cell]}>{formatReportCell(table.columns[cell], value)}</td>)}</tr>)}</tbody><tbody className="report-print-rows">{filteredRows.map((pair, index) => <tr key={index}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody>{visiblePageTotal !== null && <tfoot className="report-page-total"><tr><th colSpan={table.columns.length - 1}>Subtotal de esta página</th><th><span>{formatVes(visiblePageTotal.ves)}</span><small>{formatUsd(visiblePageTotal.usd)}</small></th></tr></tfoot>}</table>}
         </div>
         <div className="report-pagination"><label><span>Filas por página</span><StyledSelect className="report-page-size-select" menuClassName="report-row-count-menu" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }} aria-label="Filas por página"><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></StyledSelect></label><span>Página {Math.min(page, pages)} de {pages}</span><div className="report-pagination-actions"><button onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Anterior</button><button onClick={() => setPage(value => Math.min(pages, value + 1))} disabled={page >= pages}>Siguiente</button></div></div>
       </>}
@@ -268,15 +326,16 @@ export function ReportExplorer() {
       const order = detailOrder
       const rate = order.bcvRate ?? 0
       const itemsSubtotal = order.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-      return <div className="report-detail-overlay" role="presentation" onClick={() => setDetailOrder(null)}>
+      return createPortal(<div className={`report-detail-overlay${detailClosing ? ' is-closing' : ''}`} role="presentation" onClick={closeOrderDetail}>
         <div className="report-detail-modal" role="dialog" aria-modal="true" aria-label={`Comanda ${order.orderNumber}`} onClick={event => event.stopPropagation()}>
           <div className="report-detail-head">
-            <div>
+            <img className="report-detail-logo" src="/optimized/root/splash-logo.webp" alt="Full China" />
+            <div className="report-detail-copy">
               <span className="report-eyebrow">COMANDA</span>
               <h3>#{order.orderNumber}</h3>
               <p>{order.customerName || 'Cliente'} · {order.tableNumber ? `Mesa ${order.tableNumber}` : detailOrderType(order.orderType)} · {dateKeyInTimeZone(new Date(order.createdAt))} {new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(order.createdAt))}</p>
             </div>
-            <button type="button" className="report-detail-close" onClick={() => setDetailOrder(null)} aria-label="Cerrar"><X size={18} /></button>
+            <button type="button" className="report-detail-close" onClick={closeOrderDetail} aria-label="Cerrar"><X size={18} /></button>
           </div>
           <div className="report-detail-body">
             <table className="report-detail-items"><thead><tr><th>Producto</th><th>Cant.</th><th>P. unit</th><th>Subtotal</th></tr></thead><tbody>
@@ -300,7 +359,7 @@ export function ReportExplorer() {
             </div>}
           </div>
         </div>
-      </div>
+      </div>, document.body)
     })()}
   </section>
 }

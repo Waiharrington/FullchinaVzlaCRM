@@ -1,5 +1,5 @@
 .gst-ai-overlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(0,0,0,.72); backdrop-filter: blur(5px); }
-.gst-ai-modal { width: min(620px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; padding: 16px; color: #fff; background: #141419; border: 1px solid rgba(225,29,42,.24); border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.65); }
+.gst-ai-modal { width: min(620px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 16px; color: #fff; background: #141419; border: 1px solid rgba(225,29,42,.24); border-radius: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.65); }
 .gst-ai-header { position: sticky; top: -16px; z-index: 1; display: flex; align-items: center; justify-content: space-between; margin: -16px -16px 14px; padding: 13px 16px; background: #141419; border-bottom: 1px solid rgba(255,255,255,.08); }
 .gst-ai-header h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 16px; }
 .gst-ai-header h3 svg, .gst-ai-option svg { color: #ff4d5a; }
@@ -14,7 +14,10 @@
 .gst-ai-selected strong { color: #fff; }
 .gst-ai-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
 .gst-ai-actions .gst-help, .gst-ai-actions .gst-btn { min-height: 40px; }
+.gst-ai-actions .gst-help { flex: 0 0 auto; width: auto; height: 40px; padding: 0 16px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: #1c1c22; color: #e4e4e7; font-size: 14px; line-height: 1; font-weight: 650; }
+.gst-ai-actions .gst-help:hover:not(:disabled), .gst-ai-actions .gst-help:active:not(:disabled) { border-color: rgba(225,29,42,.55); background: rgba(225,29,42,.12); color: #ff737d; }
+.gst-ai-actions .gst-help:focus-visible { outline: 2px solid rgba(225,29,42,.7); outline-offset: 2px; }
 .gst-ai-actions .gst-btn { justify-content: center; }
 .gst-ai-spinner { animation: gst-ai-spin .8s linear infinite; }
 @keyframes gst-ai-spin { to { transform: rotate(360deg); } }
-@media (max-width: 560px) { .gst-ai-overlay { align-items: flex-end; padding: 6px; } .gst-ai-modal { max-height: calc(100dvh - 12px); border-radius: 18px 18px 10px 10px; } .gst-ai-options { grid-template-columns: 1fr; } .gst-ai-option { min-height: 58px; flex-direction: row; } .gst-ai-actions { flex-wrap: wrap; } .gst-ai-actions > * { flex: 1; justify-content: center; } }
+@media (max-width: 560px) { .gst-ai-overlay { align-items: center; padding: 12px; } .gst-ai-modal { max-height: calc(100dvh - 24px); border-radius: 18px; } .gst-ai-options { grid-template-columns: 1fr; } .gst-ai-option { min-height: 58px; flex-direction: row; } .gst-ai-actions { flex-wrap: wrap; } .gst-ai-actions > * { flex: 1; justify-content: center; } }

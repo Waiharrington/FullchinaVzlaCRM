@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useLayoutEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getSuppliers, createSupplier, getPurchases, createPurchase, updatePurchase, saveMixedPurchase, setPurchasePaid, deletePurchase, voidPurchase, deleteVoidedPurchase,
@@ -152,14 +152,38 @@ export function ComprasReal() {
     }, 200)
   }, [closingForm, saving])
 
-  useEffect(() => {
+  const closePurchaseFormRef = useRef(closePurchaseForm)
+  closePurchaseFormRef.current = closePurchaseForm
+
+  useLayoutEffect(() => {
     if (!showForm) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') closePurchaseForm() }
+    const scrollContainers = [
+      document.documentElement,
+      document.body,
+      document.querySelector<HTMLElement>('.app-main'),
+      document.querySelector<HTMLElement>('.sidebar-container'),
+    ].filter((element): element is HTMLElement => element instanceof HTMLElement)
+    const previousStyles = scrollContainers.map((element) => ({
+      element,
+      overflow: element.style.overflow,
+      overflowY: element.style.overflowY,
+    }))
+    const scrollPositions = scrollContainers.map((element) => ({ element, top: element.scrollTop, left: element.scrollLeft }))
+    scrollContainers.forEach((element) => {
+      element.style.overflow = 'hidden'
+      element.style.overflowY = 'hidden'
+    })
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') closePurchaseFormRef.current() }
     window.addEventListener('keydown', onKeyDown)
-    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', onKeyDown) }
-  }, [closePurchaseForm, showForm])
+    return () => {
+      previousStyles.forEach(({ element, overflow, overflowY }) => {
+        element.style.overflow = overflow
+        element.style.overflowY = overflowY
+      })
+      scrollPositions.forEach(({ element, top, left }) => { element.scrollTop = top; element.scrollLeft = left })
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [showForm])
 
   const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3500) }
 
@@ -583,17 +607,17 @@ export function ComprasReal() {
               const shownUnitCost = unitCostDrafts[i] ?? (costCurrency === 'VES' ? (effectiveBcvRate > 0 ? String(Math.round((Number(it.unitCost) || 0) * effectiveBcvRate * 10000) / 10000) : '') : it.unitCost)
               return (
                 <div className="cmp-item-row" key={i}>
-                  {it.kind === 'purchase' ? <div className="cmp-item-name"><SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />{!it.ingredientId && it.description && <small>IA: {it.description}</small>}</div>
-                    : <input aria-label={`Concepto del gasto ${i + 1}`} value={it.description} onChange={(event) => changeItem(i, 'description', event.target.value)} placeholder="Concepto del gasto" />}
-                  <StyledSelect aria-label={`Tipo de ítem ${i + 1}`} value={it.kind} onChange={(event) => changeItem(i, 'kind', event.target.value)} disabled={Boolean(editingPurchaseId)}><option value="purchase">Compra</option><option value="expense">Gasto</option></StyledSelect>
-                  <NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} />
-                  <StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect>
-                  <NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={0.0001} min={0} hideControls allowComma value={shownUnitCost} onChange={(v) => updateUnitCostDraft(i, v)} disabled={costCurrency === 'VES' && effectiveBcvRate <= 0} />
-                  {it.kind === 'purchase' ? <StyledSelect aria-label={`Destino de ${ingredients.find((ingredient) => ingredient.id === it.ingredientId)?.name ?? 'ítem'}`} value={it.stockLocation} onChange={(e) => changeItem(i, 'stockLocation', e.target.value)}>
+                  <div className="cmp-item-cell cmp-item-cell--name" data-label="Ingrediente / concepto">{it.kind === 'purchase' ? <div className="cmp-item-name"><SearchSelect options={ingredients.map((x) => ({ value: x.id, label: `${x.name} (${x.unitSymbol})` }))} value={it.ingredientId} onChange={(v) => changeItem(i, 'ingredientId', v)} placeholder="Buscar ingrediente..." emptyText="Sin ingredientes" />{!it.ingredientId && it.description && <small>IA: {it.description}</small>}</div>
+                    : <input aria-label={`Concepto del gasto ${i + 1}`} value={it.description} onChange={(event) => changeItem(i, 'description', event.target.value)} placeholder="Concepto del gasto" />}</div>
+                  <div className="cmp-item-cell cmp-item-cell--type" data-label="Tipo"><StyledSelect aria-label={`Tipo de ítem ${i + 1}`} value={it.kind} onChange={(event) => changeItem(i, 'kind', event.target.value)} disabled={Boolean(editingPurchaseId)}><option value="purchase">Compra</option><option value="expense">Gasto</option></StyledSelect></div>
+                  <div className="cmp-item-cell cmp-item-cell--quantity" data-label="Cantidad"><NumberStepper step={0.01} min={0} value={it.quantity} onChange={(v) => changeItem(i, 'quantity', v)} /></div>
+                  <div className="cmp-item-cell cmp-item-cell--unit" data-label="Unidad"><StyledSelect value={it.unitId} onChange={(e) => changeItem(i, 'unitId', e.target.value)}>{units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}</StyledSelect></div>
+                  <div className="cmp-item-cell cmp-item-cell--cost" data-label="Costo unitario"><NumberStepper prefix={costCurrency === 'VES' ? 'Bs' : '$'} step={0.0001} min={0} hideControls allowComma value={shownUnitCost} onChange={(v) => updateUnitCostDraft(i, v)} disabled={costCurrency === 'VES' && effectiveBcvRate <= 0} /></div>
+                  <div className="cmp-item-cell cmp-item-cell--destination" data-label="Destino">{it.kind === 'purchase' ? <StyledSelect aria-label={`Destino de ${ingredients.find((ingredient) => ingredient.id === it.ingredientId)?.name ?? 'ítem'}`} value={it.stockLocation} onChange={(e) => changeItem(i, 'stockLocation', e.target.value)}>
                     <option value="operational">Inventario operativo</option>
                     <option value="warehouse">Almacén</option>
-                  </StyledSelect> : <span className="cmp-expense-destination">No entra a inventario</span>}
-                  <MoneyWithBcv usd={sub} rate={effectiveBcvRate} primaryCurrency="VES" align="end" compact className="cmp-subtotal" usdPrecise />
+                  </StyledSelect> : <span className="cmp-expense-destination">No entra a inventario</span>}</div>
+                  <div className="cmp-item-cell cmp-item-cell--subtotal" data-label="Subtotal"><MoneyWithBcv usd={sub} rate={effectiveBcvRate} primaryCurrency="VES" align="end" compact className="cmp-subtotal" usdPrecise /></div>
                   <button type="button" className="cmp-del" onClick={() => removeItem(i)} disabled={Boolean(editingPurchaseId && it.kind === 'purchase')} title={editingPurchaseId && it.kind === 'purchase' ? 'El inventario registrado no se puede eliminar aquí' : 'Quitar ítem'}><Trash2 size={16} /></button>
                 </div>
               )
@@ -619,8 +643,9 @@ export function ComprasReal() {
               </div>
             )}
 
-            <label className="cmp-field" style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 14, fontSize: 13, color: '#d4d4d8', cursor: 'pointer' }}>
-              <input type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#e11d2a' }} /> Marcar como pagada
+            <label className={`cmp-paid-toggle ${markPaid ? 'is-checked' : ''}`}>
+              <input className="cmp-checkbox" type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} />
+              <span className="cmp-paid-toggle-copy"><strong>Marcar como pagada</strong><small>Registrar el pago de esta compra ahora</small></span>
             </label>
             {markPaid && <div className="cmp-src-block">
               {purchaseSources.map((row, i) => {
@@ -639,7 +664,7 @@ export function ComprasReal() {
                     {acc && <span className={insufficient ? 'cmp-src-warn' : ''}>Disponible: {isVes ? formatVes(acc.currentBalance) : formatUsdPrecise(acc.currentBalance)}{fee > 0 ? ` · débito con comisión ${formatVes(amt + fee)}` : ''}</span>}
                     <span className="cmp-src-actions"><button type="button" className="cmp-src-link" onClick={() => fillPurchaseRemaining(i)}>Poner resto</button>{purchaseSources.length > 1 && <button type="button" className="cmp-src-remove" onClick={() => setPurchaseSources((prev) => prev.filter((_, idx) => idx !== i))}>Quitar</button>}</span>
                   </div>
-                  {isVes && acc?.accountType !== 'cash' && <div className="cmp-src-meta"><label style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" checked={row.mobileFee} onChange={(e) => updatePurchaseSource(i, { mobileFee: e.target.checked })} /> Pago móvil · comisión bancaria</label>{row.mobileFee && <><label>Comisión (Bs) <input aria-label="Comisión Pago móvil en bolívares" type="number" min="0" step="any" value={row.feeAmount} onChange={(e) => updatePurchaseSource(i, { feeAmount: e.target.value, feeEdited: true })} /></label><span>0,3% del pago, mínimo Bs. 14. Editable.</span></>}</div>}
+                  {isVes && acc?.accountType !== 'cash' && <div className="cmp-src-meta"><label><input className="cmp-checkbox" type="checkbox" checked={row.mobileFee} onChange={(e) => updatePurchaseSource(i, { mobileFee: e.target.checked })} /> Pago móvil · comisión bancaria</label>{row.mobileFee && <><label>Comisión (Bs) <input aria-label="Comisión Pago móvil en bolívares" type="number" min="0" step="any" value={row.feeAmount} onChange={(e) => updatePurchaseSource(i, { feeAmount: e.target.value, feeEdited: true })} /></label><span>0,3% del pago, mínimo Bs. 14. Editable.</span></>}</div>}
                 </div>
               })}
               <button type="button" className="cmp-src-add" onClick={() => setPurchaseSources((prev) => [...prev, { accountId: '', amount: '', reference: '', mobileFee: false, feeAmount: '0', feeEdited: false }])}><Plus size={14} /> Agregar cuenta</button>
@@ -651,8 +676,8 @@ export function ComprasReal() {
             </div>}
 
             <div className="cmp-form-foot">
-              <span style={{ color: '#a1a1aa', fontSize: 13 }}>Total de ítems: <strong style={{ color: '#fff' }}>{items.length}</strong></span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <span className="cmp-form-item-count"><strong>{items.length}</strong><span>{items.length === 1 ? 'artículo' : 'artículos'} en esta compra</span></span>
+              <div className="cmp-form-foot-summary">
                 <div className="cmp-total"><div className="lbl">Total a pagar</div><MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="end" className="cmp-total-money" usdClassName="val" usdPrecise />{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Tasa BCV {formatVes(effectiveBcvRate)}</div>}</div>
                 <div className="cmp-actions">
                   <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>

@@ -94,6 +94,65 @@
 .cmp-src-row { padding: 10px; border: 1px solid rgba(255,255,255,.08); border-radius: 11px; background: rgba(255,255,255,.02); }
 .cmp-src-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 10px; }
 .cmp-src-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: 11px; color: #9ca3af; flex-wrap: wrap; }
+.cmp-src-meta label:has(input[type="checkbox"]) { display: inline-flex; align-items: center; gap: 9px !important; cursor: pointer; }
+.cmp-purchase-modal .cmp-checkbox {
+  display: inline-grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #555761;
+  border-radius: 5px;
+  background: #1c1c22;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.cmp-purchase-modal .cmp-checkbox::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border-bottom: 2px solid #fff;
+  border-left: 2px solid #fff;
+  opacity: 0;
+  transform: translateY(-1px) rotate(-45deg) scale(.6);
+  transition: opacity .12s ease, transform .12s ease;
+}
+.cmp-purchase-modal .cmp-checkbox:checked { border-color: #e11d2a; background: #e11d2a; }
+.cmp-purchase-modal .cmp-checkbox:checked::after { opacity: 1; transform: translateY(-1px) rotate(-45deg) scale(1); }
+.cmp-purchase-modal .cmp-checkbox:focus,
+.cmp-purchase-modal .cmp-checkbox:focus-visible {
+  border-color: #ff4d5a !important;
+  outline: none !important;
+  background: #1c1c22 !important;
+  box-shadow: none !important;
+}
+.cmp-purchase-modal .cmp-checkbox:checked:focus,
+.cmp-purchase-modal .cmp-checkbox:checked:focus-visible { background: #e11d2a !important; }
+.cmp-paid-toggle {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 11px 14px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,.025);
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease;
+}
+.cmp-paid-toggle.is-checked { border-color: rgba(227,27,43,.32); background: rgba(227,27,43,.07); }
+.cmp-paid-toggle:hover { border-color: rgba(255,77,90,.42); }
+.cmp-paid-toggle-copy { display: grid; gap: 3px; }
+.cmp-paid-toggle-copy strong { color: #e4e4e7; font-size: 13px; font-weight: 700; line-height: 1.2; }
+.cmp-paid-toggle-copy small { color: #85858f; font-size: 11px; line-height: 1.3; }
+.cmp-paid-toggle.is-checked .cmp-paid-toggle-copy strong { color: #fff; }
 .cmp-src-actions { display: inline-flex; gap: 10px; margin-left: auto; }
 .cmp-src-link, .cmp-src-remove { background: none; border: 0; padding: 0; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
 .cmp-src-link { color: #60a5fa; }
@@ -154,9 +213,9 @@
 .cmp-table-wrap { overflow-x: auto; }
 .cmp-mobile-purchases { display: none; }
 .cmp-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.cmp-table th { text-align: left; color: #71717a; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.cmp-table th { text-align: left; color: #71717a; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .3px; padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,0.06); white-space: nowrap; }
 .cmp-table td { padding: 11px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
-.cmp-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; cursor: pointer; }
+.cmp-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
 .cmp-badge.ok { color: #22c55e; background: rgba(34,197,94,0.12); }
 .cmp-badge.warn { color: #fde047; background: rgba(250, 204, 21,0.12); }
 .cmp-badge.fixed { cursor: default; }
@@ -167,6 +226,13 @@
 .cmp-icon-btn.cmp-icon-danger { color: #f87171; }
 .cmp-icon-btn.cmp-icon-danger:hover { color: #ff4d5a; }
 .cmp-icon-btn:disabled { opacity: .45; cursor: wait; }
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .cmp-page.management-workspace--purchases .cmp-table { min-width: 900px; }
+  .cmp-page.management-workspace--purchases .cmp-table th:nth-child(3) { min-width: 88px; }
+  .cmp-page.management-workspace--purchases .cmp-table th:nth-child(4) { min-width: 62px; }
+  .cmp-page.management-workspace--purchases .cmp-table td:nth-child(7) { min-width: 92px; white-space: nowrap; }
+}
 
 .cmp-pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
 .cmp-pagination button { min-width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: #1c1c22; color: #d4d4d8; cursor: pointer; font-size: 13px; }
@@ -211,24 +277,105 @@
 /* Compra: reduce espacios y da más equilibrio al campo de ingrediente. */
 .cmp-purchase-modal { padding: 14px; }
 .cmp-purchase-header { top: -14px; margin: -14px -14px 12px; padding: 13px 16px; }
-.cmp-purchase-modal .cmp-form-grid { gap: 10px; margin-bottom: 12px; }
+.cmp-purchase-modal .cmp-form-grid { grid-template-columns: minmax(280px, 1.35fr) repeat(3, minmax(170px, 1fr)); gap: 14px; margin-bottom: 16px; }
+.cmp-purchase-modal .cmp-form-grid > *,
+.cmp-purchase-modal .cmp-prov-row > * { min-width: 0; }
 .cmp-purchase-modal .cmp-field label { margin-bottom: 4px; font-size: 11px; }
+.cmp-purchase-modal .cmp-form-grid .cmp-field > input,
+.cmp-purchase-modal .cmp-form-grid .search-select-input,
+.cmp-purchase-modal .cmp-form-grid .fc-date-field-shell > input {
+  box-sizing: border-box;
+  height: 48px;
+  min-height: 48px;
+}
+.cmp-purchase-modal .cmp-prov-row > .cmp-ghost-btn { min-height: 48px; }
+.cmp-purchase-modal .fc-date-field-shell > .fc-calendar-icon-trigger {
+  flex: 0 0 48px;
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  align-self: auto;
+}
 .cmp-purchase-modal .cmp-items-head,
 .cmp-purchase-modal .cmp-item-row {
-  grid-template-columns: minmax(200px, 26%) 90px 58px 64px 105px minmax(120px, 20%) minmax(110px, 1fr) 28px;
-  gap: 10px;
-  min-width: 850px;
+  grid-template-columns: minmax(0, 2.05fr) minmax(78px, .78fr) minmax(64px, .56fr) minmax(70px, .62fr) minmax(112px, 1fr) minmax(145px, 1.28fr) minmax(112px, .98fr) 30px;
+  gap: 8px;
+  min-width: 0;
 }
+.cmp-purchase-modal .cmp-item-cell { min-width: 0; }
+.cmp-purchase-modal .cmp-item-cell > *,
+.cmp-purchase-modal .cmp-item-cell .fc-select,
+.cmp-purchase-modal .cmp-item-cell .num-stepper { min-width: 0; width: 100%; }
+.cmp-purchase-modal .cmp-item-cell .num-stepper { box-sizing: border-box; height: 48px; min-height: 48px; }
+.cmp-purchase-modal .cmp-item-cell .num-stepper-input { box-sizing: border-box; height: 100%; line-height: 1; padding: 0 6px !important; }
+.cmp-purchase-modal .cmp-item-cell .num-stepper-prefix { padding-left: 10px; }
+.cmp-purchase-modal .cmp-item-cell .fc-select-trigger { box-sizing: border-box; height: 48px; min-height: 48px; }
+.cmp-purchase-modal .cmp-item-cell input,
+.cmp-purchase-modal .cmp-item-cell .search-select-input { box-sizing: border-box; height: 48px; min-height: 48px; }
 .cmp-purchase-modal .cmp-items-head { padding-bottom: 6px; font-size: 10px; }
 .cmp-purchase-modal .cmp-item-row { margin-bottom: 6px; }
 .cmp-purchase-modal .cmp-item-row input,
 .cmp-purchase-modal .cmp-item-row select,
 .cmp-purchase-modal .cmp-item-row .search-select-input { padding: 7px; font-size: 12px; }
-.cmp-purchase-modal .cmp-item-row .fc-select-trigger { height: 38px; padding-right: 8px; padding-left: 9px; font-size: 12px; }
-.cmp-purchase-modal .cmp-item-row .num-stepper-input { padding-top: 8px !important; padding-bottom: 8px !important; font-size: 13px; }
+.cmp-purchase-modal .cmp-item-row .fc-select-trigger { padding-right: 10px; padding-left: 10px; font-size: 12px; }
+.cmp-purchase-modal .cmp-item-row .num-stepper-input { font-size: 13px; }
 .cmp-purchase-modal .cmp-item-row .num-stepper-prefix { padding-left: 8px; font-size: 12px; }
 .cmp-purchase-modal .cmp-subtotal { font-size: 13px; text-align: right; }
+.cmp-purchase-modal .cmp-add-item,
+.cmp-purchase-modal .cmp-ghost-btn { min-height: 42px; box-sizing: border-box; }
 .cmp-purchase-modal .cmp-add-item { padding: 7px 11px; font-size: 12px; }
+.cmp-purchase-modal .cmp-item-row > .cmp-del { width: 30px; height: 40px; }
+.cmp-purchase-modal .cmp-form-foot { position: sticky; bottom: -14px; z-index: 5; min-height: 82px; margin: 18px -14px -14px; padding: 16px 20px; background: #141419; border-top-color: rgba(255,255,255,.1); box-shadow: 0 -14px 28px rgba(0,0,0,.3); }
+.cmp-form-item-count { display: inline-flex; align-items: center; gap: 9px; color: #8f929c; font-size: 12px; white-space: nowrap; }
+.cmp-form-item-count strong { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(255,77,90,.22); border-radius: 9px; background: rgba(227,27,43,.1); color: #ff737d; font-size: 13px; }
+.cmp-form-foot-summary { display: flex; align-items: center; gap: 22px; }
+.cmp-form-foot-summary .cmp-total { min-width: 190px; }
+.cmp-form-foot-summary .cmp-total .lbl { margin-bottom: 2px; }
+.cmp-form-foot-summary .cmp-actions > * { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; }
+.cmp-purchase-modal .cmp-cancel:hover:not(:disabled),
+.cmp-purchase-modal .cmp-cancel:focus-visible { border-color: rgba(225,29,42,.55); background: rgba(225,29,42,.1); color: #ff737d; outline-color: rgba(225,29,42,.65); }
+
+@media (max-width: 1100px) {
+  .cmp-purchase-modal .cmp-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cmp-purchase-modal .cmp-form-grid > .cmp-field:first-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 900px) {
+  .cmp-purchase-modal .cmp-items-head { display: none; }
+  .cmp-purchase-modal .cmp-item-row {
+    position: relative;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    min-width: 0;
+    margin: 0 0 10px;
+    padding: 14px 48px 14px 14px;
+    border: 1px solid rgba(255,255,255,.09);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+  }
+  .cmp-purchase-modal .cmp-item-cell { display: grid; align-content: start; gap: 6px; }
+  .cmp-purchase-modal .cmp-item-cell::before { content: attr(data-label); color: #8f8f99; font-size: 10px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
+  .cmp-purchase-modal .cmp-item-cell--name,
+  .cmp-purchase-modal .cmp-item-cell--destination { grid-column: 1 / -1; }
+  .cmp-purchase-modal .cmp-item-cell--subtotal { align-content: center; }
+  .cmp-purchase-modal .cmp-item-row > .cmp-del { position: absolute; top: 12px; right: 10px; width: 34px; height: 34px; border: 1px solid rgba(255,77,61,.18); border-radius: 9px; background: rgba(255,77,61,.06); }
+}
+
+@media (max-width: 560px) {
+  .cmp-purchase-modal .cmp-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .cmp-purchase-modal .cmp-form-grid > .cmp-field:first-child { grid-column: auto; }
+  .cmp-purchase-modal .cmp-item-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
+  .cmp-purchase-modal .cmp-item-cell--name,
+  .cmp-purchase-modal .cmp-item-cell--destination { grid-column: 1 / -1; }
+  .cmp-purchase-modal .cmp-form-foot { align-items: stretch; }
+  .cmp-purchase-modal .cmp-form-foot { padding: 14px 16px; }
+  .cmp-form-foot-summary { flex-direction: column; align-items: stretch; gap: 12px; }
+  .cmp-form-foot-summary .cmp-total { text-align: left; }
+  .cmp-form-foot-summary .cmp-total { min-width: 0; }
+  .cmp-form-foot-summary .cmp-actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; }
+  .cmp-form-foot-summary .cmp-actions > * { min-width: 0; padding-inline: 10px; }
+}
 
 @media (max-width: 767px) {
   .cmp-page.management-workspace--purchases .cmp-mobile-purchases {
@@ -377,7 +524,7 @@
   .cmp-detail-row { gap: 16px; align-items: flex-start; }
   .cmp-detail-row > * { min-width: 0; overflow-wrap: anywhere; }
   .cmp-detail-row > :last-child { text-align: right; }
-  .cmp-purchase-overlay { padding: 6px; }
-  .cmp-purchase-modal { max-height: calc(100dvh - 12px); border-radius: 18px 18px 10px 10px; }
+  .cmp-purchase-overlay { align-items: center; padding: 12px; }
+  .cmp-purchase-modal { max-height: calc(100dvh - 24px); border-radius: 18px; }
   .cmp-payment-grid { grid-template-columns: 1fr; }
 }

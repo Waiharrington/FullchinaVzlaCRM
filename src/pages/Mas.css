@@ -198,6 +198,24 @@
   align-items: center;
 }
 
+.new-credit-form .form-actions-inline .btn-ghost {
+  border-color: rgba(255, 77, 61, 0.3);
+  background: rgba(227, 27, 43, 0.045);
+  color: #d4d4d8;
+}
+
+.new-credit-form .form-actions-inline .btn-ghost:hover:not(:disabled),
+.new-credit-form .form-actions-inline .btn-ghost:active:not(:disabled) {
+  border-color: rgba(255, 77, 61, 0.58);
+  background: rgba(227, 27, 43, 0.14);
+  color: #ff6b73;
+}
+
+.new-credit-form .form-actions-inline .btn-ghost:focus-visible {
+  outline: 2px solid rgba(255, 77, 61, 0.7);
+  outline-offset: 2px;
+}
+
 .credit-amount-stepper {
   flex: 0 1 220px;
   min-width: 180px;

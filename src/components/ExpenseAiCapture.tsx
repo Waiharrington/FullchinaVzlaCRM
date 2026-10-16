@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Camera, FileImage, Loader2, Mic, Sparkles, Square, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -26,19 +26,41 @@ export function ExpenseAiCapture({ onClose, onDraft }: Props) {
   const [recording, setRecording] = useState(false)
   const [processing, setProcessing] = useState(false)
   const [error, setError] = useState('')
+  const onCloseRef = useRef(onClose)
+  const processingRef = useRef(processing)
+  onCloseRef.current = onClose
+  processingRef.current = processing
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !processing) onClose() }
+  useLayoutEffect(() => {
+    const scrollContainers = [
+      document.documentElement,
+      document.body,
+      document.querySelector<HTMLElement>('.app-main'),
+      document.querySelector<HTMLElement>('.sidebar-container'),
+    ].filter((element): element is HTMLElement => element instanceof HTMLElement)
+    const previousStyles = scrollContainers.map((element) => ({
+      element,
+      overflow: element.style.overflow,
+      overflowY: element.style.overflowY,
+    }))
+    const scrollPositions = scrollContainers.map((element) => ({ element, top: element.scrollTop, left: element.scrollLeft }))
+    scrollContainers.forEach((element) => {
+      element.style.overflow = 'hidden'
+      element.style.overflowY = 'hidden'
+    })
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape' && !processingRef.current) onCloseRef.current() }
     window.addEventListener('keydown', onKeyDown)
     return () => {
-      document.body.style.overflow = previousOverflow
+      previousStyles.forEach(({ element, overflow, overflowY }) => {
+        element.style.overflow = overflow
+        element.style.overflowY = overflowY
+      })
+      scrollPositions.forEach(({ element, top, left }) => element.scrollTo({ top, left, behavior: 'instant' }))
       window.removeEventListener('keydown', onKeyDown)
       recorderRef.current?.stop()
       streamRef.current?.getTracks().forEach((track) => track.stop())
     }
-  }, [onClose, processing])
+  }, [])
 
   const startRecording = async () => {
     setError('')

@@ -52,21 +52,26 @@ type DashboardCache = {
 }
 let inicioCache: DashboardCache | null = null
 let inicioCacheOwner: string | null = null
-const DASHBOARD_CACHE_KEY = 'fullchina-dashboard-cache-v1'
+let inicioCacheReady = false
+const DASHBOARD_CACHE_KEY = 'fullchina-dashboard-cache-v2'
 const DASHBOARD_CACHE_MAX_AGE_MS = 5 * 60 * 1000
 const ALERTS_EXIT_ANIMATION_MS = 180
 
 function readDashboardCache(ownerId: string | undefined) {
   const owner = ownerId ?? 'anonymous'
-  if (inicioCacheOwner && inicioCacheOwner !== owner) inicioCache = null
+  if (inicioCacheOwner && inicioCacheOwner !== owner) {
+    inicioCache = null
+    inicioCacheReady = false
+  }
   inicioCacheOwner = owner
-  if (inicioCache) return inicioCache
+  if (inicioCache && inicioCacheReady) return inicioCache
   try {
     const stored = localStorage.getItem(DASHBOARD_CACHE_KEY)
     if (!stored) return null
     const parsed = JSON.parse(stored) as { owner?: string; savedAt?: number; data?: DashboardCache }
     if (parsed.owner !== owner || !parsed.data || !parsed.savedAt || Date.now() - parsed.savedAt > DASHBOARD_CACHE_MAX_AGE_MS) return null
     inicioCache = parsed.data
+    inicioCacheReady = true
     return inicioCache
   } catch {
     return null
@@ -174,6 +179,7 @@ export function Inicio() {
   const [recentProductionLoadState, setRecentProductionLoadState] = useState<'loading' | 'ready' | 'error'>(initialCache?.recentProductionBatches ? 'ready' : 'loading')
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [loading, setLoading] = useState(!initialCache)
+  const [sectionLoading, setSectionLoading] = useState({ sales: !initialCache, payments: !initialCache, ranking: !initialCache, inventory: !initialCache, credits: !initialCache })
   const [chartLoading, setChartLoading] = useState(false)
   const [salesRange, setSalesRange] = useState(7)
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
@@ -214,7 +220,11 @@ export function Inicio() {
   }, [])
 
   const fetchData = useCallback(async (days: number = 7, silent = false) => {
-    if (!silent) setLoading(true)
+    inicioCache ??= { stats: null, todayOrders: [], dailySales: [], productRanking: [], credits: [], paymentMethods: [], personalAccounts: [], recentProductionBatches: [] }
+    if (!silent) {
+      setLoading(true)
+      setSectionLoading(previous => ({ ...previous, sales: true, payments: true, inventory: true, credits: true }))
+    }
     setDashboardError('')
     try {
       // El KPI/modal de comandas representa todas las órdenes creadas en el
@@ -226,11 +236,22 @@ export function Inicio() {
       // Only the two values used by the first dashboard summary gate the
       // initial screen. Start the rest at the same time, but let them hydrate
       // their own sections once the headline figures are ready.
+      const loadSection = <T,>(promise: Promise<T>, section: 'sales' | 'payments' | 'inventory' | 'credits') => promise.then(value => {
+        if (section === 'sales') setDailySales(value as DailySales[])
+        if (section === 'credits') setCredits(value as Credit[])
+        if (section === 'inventory') setIngredients(value as Ingredient[])
+        if (section === 'payments') setPaymentMethods(value as PaymentMethodSales[])
+        setSectionLoading(previous => ({ ...previous, [section]: false }))
+        return value
+      }, error => {
+        setSectionLoading(previous => ({ ...previous, [section]: false }))
+        throw error
+      })
       const secondaryDataPromise = Promise.allSettled([
-        getDailySales(days),
-        getCredits(),
-        getPaymentMethodSales(),
-        getIngredients(),
+        loadSection(getDailySales(days), 'sales'),
+        loadSection(getCredits(), 'credits'),
+        loadSection(getPaymentMethodSales(), 'payments'),
+        loadSection(getIngredients(), 'inventory'),
         getPersonalAccountOptions(),
         getActiveCashSession(),
         getRecentCashSessionDiscrepancy(),
@@ -259,7 +280,6 @@ export function Inicio() {
           localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache }))
         } catch { /* El dashboard sigue funcionando si el almacenamiento está lleno o deshabilitado. */ }
       }
-      persistDashboardCache()
 
       // Remove the full-page skeleton as soon as the essential summary data
       // has arrived; charts and secondary panels continue loading in parallel.
@@ -353,6 +373,7 @@ export function Inicio() {
         paymentMethods: resolvedPaymentMethods.length > 0 || paymentResult.status === 'fulfilled' ? resolvedPaymentMethods : inicioCache!.paymentMethods,
         personalAccounts: personalAccountsResult.status === 'fulfilled' ? personalAccountsResult.value : inicioCache!.personalAccounts,
       }
+      inicioCacheReady = true
       persistDashboardCache()
 
       const failedResults = [statsResult, ordersResult, salesResult, creditsResult, paymentResult, ingredientsResult, personalAccountsResult]
@@ -412,8 +433,12 @@ export function Inicio() {
           productRanking: ranking.status === 'fulfilled' ? ranking.value : inicioCache.productRanking,
           recentProductionBatches: recentProduction.status === 'fulfilled' ? recentProduction.value : inicioCache.recentProductionBatches,
         }
-        try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache })) } catch { /* caché opcional */ }
+        setSectionLoading(previous => ({ ...previous, ranking: false }))
+        if (inicioCacheReady) {
+          try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache })) } catch { /* caché opcional */ }
+        }
       }
+      else setSectionLoading(previous => ({ ...previous, ranking: false }))
     })
     return () => { cancelled = true }
   }, [user?.id])
@@ -758,7 +783,7 @@ export function Inicio() {
               <h3>Resumen de ventas</h3>
               <label className="db-period-control">
                 <span className="sr-only">Período de ventas</span>
-                <StyledSelect aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
+                <StyledSelect menuClassName="db-period-options-menu" aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
                   <option value={7}>Últimos 7 días</option>
                   <option value={14}>Últimos 14 días</option>
                   <option value={30}>Últimos 30 días</option>
@@ -770,7 +795,7 @@ export function Inicio() {
               <RefreshCw size={14} className={loading ? 'is-spinning' : ''} />
             </button>
           </div>
-          <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>
+          {sectionLoading.sales ? <div className="db-section-skeleton db-chart-skeleton" role="status" aria-label="Cargando resumen de ventas"><i /><i /><i /><i /><i /></div> : <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>}
         </div>
 
         <div className="db-card db-payment-card">
@@ -779,9 +804,9 @@ export function Inicio() {
               <h3>Método de pago</h3>
                 <span className="db-card-support">Cobros recibidos hoy · consumos internos y pendientes aparte</span>
             </div>
-            <span className="db-payment-count">{paymentMethods.length} medio{paymentMethods.length === 1 ? '' : 's'}</span>
+            <span className="db-payment-count">{sectionLoading.payments ? 'Cargando…' : `${paymentMethods.length} medio${paymentMethods.length === 1 ? '' : 's'}`}</span>
           </div>
-          <div className={`db-pago-layout${paymentMethods.length === 0 ? ' is-empty' : ''}`}>
+          {sectionLoading.payments ? <div className="db-section-skeleton db-payment-skeleton" role="status" aria-label="Cargando métodos de pago"><i /><i /><i /></div> : <div className={`db-pago-layout${paymentMethods.length === 0 ? ' is-empty' : ''}`}>
             {paymentMethods.length > 0 && (
               <div className="db-pago-chart" aria-label={`Total cobrado hoy: ${paymentTotal.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}`}>
                 <div className="db-donut-wrap">
@@ -838,7 +863,7 @@ export function Inicio() {
                 </button>
               </div>
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="db-card">
@@ -864,7 +889,7 @@ export function Inicio() {
           <div className="db-card-head">
             <h3>Platos más vendidos</h3>
           </div>
-          {productRanking.length === 0 ? (
+          {sectionLoading.ranking ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando platos más vendidos"><i /><i /><i /><i /></div> : productRanking.length === 0 ? (
             <div className="db-empty-state"><UtensilsCrossed size={20} /><span>Aún no hay platos vendidos</span></div>
           ) : (
             <div className="db-sellers-table">
@@ -921,7 +946,7 @@ export function Inicio() {
             <h3>Alertas de inventario</h3>
           </div>
           <div className="db-inv-alerts">
-            {lowStockItems.length === 0 ? (
+            {sectionLoading.inventory ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando alertas de inventario"><i /><i /><i /></div> : lowStockItems.length === 0 ? (
               <div className="inv-row"><span className="inv-row-name">Sin datos de inventario</span></div>
             ) : lowStockItems.map((it) => {
               const level = it.currentStock <= 0 ? 'Agotado' : 'Disponible'
@@ -970,10 +995,10 @@ export function Inicio() {
               <h3>Clientes con saldo pendiente</h3>
               <span className="db-card-support">Da seguimiento a los cobros</span>
             </div>
-            <span className="db-credit-count">{pendingCredits.length}</span>
+            <span className="db-credit-count">{sectionLoading.credits ? '…' : pendingCredits.length}</span>
           </div>
           <div className="db-cobrar-list">
-            {pendingCredits.length === 0 ? (
+            {sectionLoading.credits ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando saldos pendientes"><i /><i /><i /></div> : pendingCredits.length === 0 ? (
               <div className="db-credit-empty">
                 <CreditCard size={20} />
                 <span>Todos los saldos están al día</span>

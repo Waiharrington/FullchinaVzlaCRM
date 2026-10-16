@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDownLeft, ArrowUpRight, Banknote, Clock3, LockKeyhole, Plus, RefreshCw, WalletCards } from 'lucide-react'
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Banknote, Clock3, LockKeyhole, Plus, RefreshCw, WalletCards } from 'lucide-react'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
@@ -240,7 +240,15 @@ export function CajaOperativa() {
                 </form>
               )}
               <div className="cash-movement-list">
-                {session.movements.length === 0 && <p className="cash-empty">Todavía no hay movimientos manuales.</p>}
+                {session.movements.length === 0 && (
+                  <div className="cash-empty-state" role="status">
+                    <span className="cash-empty-state-icon" aria-hidden="true"><ArrowLeftRight size={22} /></span>
+                    <div>
+                      <strong>Tu turno aún no tiene movimientos</strong>
+                      <p>Las entradas, salidas, retiros y ajustes que registres aparecerán aquí.</p>
+                    </div>
+                  </div>
+                )}
                 {session.movements.map(movement => (
                   <div className="cash-movement-row" key={movement.id}>
                     <span className={`cash-direction ${movement.direction}`}>{movement.direction === 'in' ? <ArrowDownLeft size={17} /> : <ArrowUpRight size={17} />}</span>

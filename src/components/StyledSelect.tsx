@@ -96,13 +96,14 @@ export function StyledSelect({
     if (!rect) return
     const spaceBelow = window.innerHeight - rect.bottom
     const openAbove = spaceBelow < 260 && rect.top > spaceBelow
+    const menuWidth = menuClassName.includes('db-period-options-menu') ? rect.width : Math.max(rect.width, 220)
     setMenuStyle({
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - Math.max(rect.width, 220) - 8)),
-      width: Math.max(rect.width, 220),
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8)),
+      width: menuWidth,
       maxHeight: Math.max(160, Math.min(340, openAbove ? rect.top - 16 : spaceBelow - 16)),
       ...(openAbove ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
     })
-  }, [])
+  }, [menuClassName])
 
   useLayoutEffect(() => {
     if (!open || closing) return
