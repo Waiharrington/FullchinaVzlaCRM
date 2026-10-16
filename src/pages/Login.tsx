@@ -11,6 +11,7 @@ const CAROUSEL_IMAGES = [
   '/optimized/login-carousel/slide4.webp',
   '/optimized/login-carousel/slide5.webp'
 ];
+const CAROUSEL_INTERVAL_MS = 2000
 
 const CAROUSEL_SETTINGS = [
   {
@@ -105,7 +106,7 @@ export function Login() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
-    }, 6000); // 6 seconds per slide
+    }, CAROUSEL_INTERVAL_MS)
     return () => clearInterval(timer);
   }, []);
 

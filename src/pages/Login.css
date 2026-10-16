@@ -788,6 +788,9 @@ body:has(.login-page) {
   color: #9ca3af;
 }
 
+.keypad-back { grid-column: 1; grid-row: 5; }
+.keypad-clear { grid-column: 2 / 4; grid-row: 5; }
+
 .pin-active .form-options {
   display: none;
 }
@@ -1676,5 +1679,19 @@ body:has(.login-page) {
   }
   .login-card.pin-active .login-footer {
     display: none;
+  }
+}
+
+@media (max-width: 679px) {
+  .login-layout:has(.login-card:not(.pin-active)) {
+    overflow-y: hidden;
+  }
+
+  .login-card.pin-active .divider-row {
+    min-height: 18px;
+    margin: 0.3rem 0;
+  }
+  .login-card.pin-active .divider-line {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   }
 }
