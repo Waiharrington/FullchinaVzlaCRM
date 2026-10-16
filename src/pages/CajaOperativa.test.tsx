@@ -1,11 +1,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CajaOperativa } from './CajaOperativa'
-import type { CashSessionSnapshot } from '../lib/dataService'
+import type { CashSessionSnapshot, CashTransaction } from '../lib/dataService'
 
 const mocks = vi.hoisted(() => ({
   getActiveCashSession: vi.fn(),
   getCashSessionHistory: vi.fn(),
+  getCashSessionTransactions: vi.fn(),
   openCashSession: vi.fn(),
   addCashMovement: vi.fn(),
   closeCashSession: vi.fn(),
@@ -30,10 +31,26 @@ const activeSession: CashSessionSnapshot = {
   differenceUsd: null, differenceVes: null, closedAt: null, movements: [],
 }
 
+const manyCashTransactions: CashTransaction[] = Array.from({ length: 12 }, (_, index) => ({
+  id: `payment-${index}`,
+  kind: 'payment',
+  direction: 'in',
+  orderNumber: 100 + index,
+  orderType: 'delivery',
+  customerName: `Cliente ${index}`,
+  method: 'cash',
+  currency: 'USD',
+  amount: 10 + index,
+  referenceNumber: null,
+  createdAt: '2026-10-16T12:00:00.000Z',
+  itemsSummary: null,
+}))
+
 describe('CajaOperativa', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.getCashSessionHistory.mockResolvedValue([])
+    mocks.getCashSessionTransactions.mockResolvedValue([])
   })
 
   it('permite abrir la caja cuando no existe un turno', async () => {
@@ -65,5 +82,21 @@ describe('CajaOperativa', () => {
     expect(screen.getByText('Efectivo recibido')).toBeInTheDocument()
     expect(screen.queryByText('Punto')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /iniciar arqueo y cierre/i })).toBeEnabled()
+  })
+
+  it('muestra los movimientos en tandas manuales de diez y respeta el filtro', async () => {
+    mocks.getActiveCashSession.mockResolvedValue(activeSession)
+    mocks.getCashSessionTransactions.mockResolvedValue(manyCashTransactions)
+
+    render(<CajaOperativa />)
+
+    expect(await screen.findByText('#109 · Cliente 9')).toBeInTheDocument()
+    expect(screen.queryByText('#110 · Cliente 10')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Ver 2 más' }))
+    expect(await screen.findByText('#111 · Cliente 11')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Mostrar menos' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Salidas' }))
+    expect(await screen.findByText('No hay salidas registradas')).toBeInTheDocument()
   })
 })

@@ -118,6 +118,7 @@ export function ComprasReal() {
   const [deletingPurchaseId, setDeletingPurchaseId] = useState<string | null>(null)
   const [voidingPurchaseId, setVoidingPurchaseId] = useState<string | null>(null)
   const [closingDetail, setClosingDetail] = useState(false)
+  const purchaseFormDataRequest = useRef<Promise<void> | null>(null)
   const closeDetail = () => {
     if (closingDetail) return
     setClosingDetail(true)
@@ -131,15 +132,30 @@ export function ComprasReal() {
     try {
       if (!silent) setLoading(true)
       setError('')
-      const [sup, purch, ingr, un, accts] = await Promise.all([
-        getSuppliers(), getPurchases().catch(() => []), getIngredients(), getUnits(), getFinancialAccounts().catch(() => []),
-      ])
-      setSuppliers(sup); setPurchases(purch); setIngredients(ingr); setUnits(un); setAccounts(accts)
+      const purch = await getPurchases()
+      setPurchases(purch)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando datos') }
     finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
   useLiveDataRefresh('compras', () => load(true))
+
+  const ensurePurchaseFormData = useCallback(() => {
+    if (!purchaseFormDataRequest.current) {
+      purchaseFormDataRequest.current = Promise.all([
+        getSuppliers(), getIngredients(), getUnits(), getFinancialAccounts(),
+      ]).then(([sup, ingr, un, accts]) => {
+        setSuppliers(sup)
+        setIngredients(ingr)
+        setUnits(un)
+        setAccounts(accts)
+      }).catch((error: unknown) => {
+        purchaseFormDataRequest.current = null
+        throw error
+      })
+    }
+    return purchaseFormDataRequest.current
+  }, [])
 
   const closePurchaseForm = useCallback(() => {
     if (saving || closingForm) return
@@ -291,7 +307,9 @@ export function ComprasReal() {
 
   const resetForm = () => { setSupplierId(''); setInvoiceNumber(''); setNotes(''); setItems([]); setCostCurrency('VES'); setUnitCostDrafts({}); setMarkPaid(true); setPurchaseSources([]); setPurchaseDate(dateKeyInTimeZone()); setEditingPurchaseId(null); setEditingOriginal(null); setAiReviewNote('') }
 
-  const openPurchaseForm = () => {
+  const openPurchaseForm = async () => {
+    try { await ensurePurchaseFormData() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron cargar los datos de la compra'); return }
     resetForm()
     setClosingForm(false)
     setItems([{ kind: 'purchase', ingredientId: ingredients[0]?.id ?? '', description: '', quantity: '1', unitId: ingredients[0]?.unitId ?? units[0]?.id ?? '', unitCost: '0', stockLocation: 'operational' }])
@@ -299,7 +317,9 @@ export function ComprasReal() {
     setShowForm(true)
   }
 
-  const openAiDraft = (draft: ExtractedPurchaseDraft) => {
+  const openAiDraft = async (draft: ExtractedPurchaseDraft) => {
+    try { await ensurePurchaseFormData() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron cargar los datos de la compra'); return }
     resetForm()
     const supplier = suppliers.find((value) => normalizeForSearch(value.name) === normalizeForSearch(draft.supplier ?? ''))
     setSupplierId(supplier?.id ?? '')
@@ -341,7 +361,9 @@ export function ComprasReal() {
     setShowForm(true)
   }
 
-  const openEditPurchase = (p: Purchase) => {
+  const openEditPurchase = async (p: Purchase) => {
+    try { await ensurePurchaseFormData() }
+    catch (e) { setError(e instanceof Error ? e.message : 'No se pudieron cargar los datos de la compra'); return }
     setCostCurrency('VES')
     setUnitCostDrafts({})
     setEditingPurchaseId(p.id)

@@ -28,6 +28,7 @@ const MOVEMENT_LABELS: Record<string, string> = {
 const ORDER_TYPE_LABELS: Record<string, string> = {
   'dine-in': 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery',
 }
+const CASH_TRANSACTION_PAGE_SIZE = 10
 
 function money(value: number, currency: 'USD' | 'VES' = 'USD') {
   return new Intl.NumberFormat('es-VE', {
@@ -41,6 +42,7 @@ export function CajaOperativa() {
   const [history, setHistory] = useState<CashSessionSnapshot[]>([])
   const [transactions, setTransactions] = useState<CashTransaction[]>([])
   const [txFilter, setTxFilter] = useState<'all' | 'in' | 'out'>('all')
+  const [visibleTransactionCount, setVisibleTransactionCount] = useState(CASH_TRANSACTION_PAGE_SIZE)
   const [loading, setLoading] = useState(true)
   const [initialLoading, setInitialLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -104,6 +106,17 @@ export function CajaOperativa() {
     usd: (Number(countedUsd) || 0) - (session?.expectedCashUsd ?? 0),
     ves: (Number(countedVes) || 0) - (session?.expectedCashVes ?? 0),
   }), [countedUsd, countedVes, session])
+
+  const filteredTransactions = useMemo(
+    () => transactions.filter(transaction => txFilter === 'all' || transaction.direction === txFilter),
+    [transactions, txFilter],
+  )
+  const visibleTransactions = filteredTransactions.slice(0, visibleTransactionCount)
+  const remainingTransactions = filteredTransactions.length - visibleTransactions.length
+  const changeTransactionFilter = (filter: typeof txFilter) => {
+    setTxFilter(filter)
+    setVisibleTransactionCount(CASH_TRANSACTION_PAGE_SIZE)
+  }
 
   const handleOpen = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -179,7 +192,7 @@ export function CajaOperativa() {
     <div className="page cash-ops-page animate-fade-in management-workspace management-workspace--cash-ops">
       <header className="cash-ops-header management-workspace-header">
         <div>
-          <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /> Apertura y cierre de caja</h1>
+          <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /><span className="cash-ops-title-desktop">Apertura y cierre de caja</span><span className="cash-ops-title-mobile">Control de caja</span></h1>
           <p><span className="cash-subtitle-desktop">Fondos iniciales, movimientos, arqueo y diferencias del turno.</span><span className="cash-subtitle-mobile">Fondos y arqueo del turno.</span></p>
         </div>
         <button className="cash-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar caja" title="Actualizar caja">
@@ -278,18 +291,18 @@ export function CajaOperativa() {
                   <h2>Movimientos de efectivo</h2>
                 </div>
                 <div className="cash-tx-filters">
-                  <button className={`cash-tx-filter${txFilter === 'all' ? ' active' : ''}`} onClick={() => setTxFilter('all')}>Todo</button>
-                  <button className={`cash-tx-filter${txFilter === 'in' ? ' active' : ''}`} onClick={() => setTxFilter('in')}>Entradas</button>
-                  <button className={`cash-tx-filter${txFilter === 'out' ? ' active' : ''}`} onClick={() => setTxFilter('out')}>Salidas</button>
+                  <button className={`cash-tx-filter${txFilter === 'all' ? ' active' : ''}`} onClick={() => changeTransactionFilter('all')}>Todo</button>
+                  <button className={`cash-tx-filter${txFilter === 'in' ? ' active' : ''}`} onClick={() => changeTransactionFilter('in')}>Entradas</button>
+                  <button className={`cash-tx-filter${txFilter === 'out' ? ' active' : ''}`} onClick={() => changeTransactionFilter('out')}>Salidas</button>
                 </div>
               </div>
               <div className="cash-tx-list">
-                {transactions.filter(t => txFilter === 'all' || t.direction === txFilter).length === 0 && (
+                {filteredTransactions.length === 0 && (
                   <EmptyState
                     title={txFilter === 'all' ? 'No hay transacciones en este turno' : txFilter === 'in' ? 'No hay entradas registradas' : 'No hay salidas registradas'}
                   />
                 )}
-                {transactions.filter(t => txFilter === 'all' || t.direction === txFilter).map(tx => (
+                {visibleTransactions.map(tx => (
                   <div className="cash-tx-row" key={tx.id}>
                     <span className={`cash-direction ${tx.direction}`}>
                       {tx.direction === 'in' ? <ArrowDownLeft size={17} /> : <ArrowUpRight size={17} />}
@@ -315,6 +328,13 @@ export function CajaOperativa() {
                   </div>
                 ))}
               </div>
+              {filteredTransactions.length > CASH_TRANSACTION_PAGE_SIZE && <div className="cash-tx-pagination">
+                <span>Mostrando {visibleTransactions.length} de {filteredTransactions.length}</span>
+                <div>
+                  {remainingTransactions > 0 && <button type="button" className="cash-tx-show-more" onClick={() => setVisibleTransactionCount(count => count + CASH_TRANSACTION_PAGE_SIZE)}>Ver {Math.min(CASH_TRANSACTION_PAGE_SIZE, remainingTransactions)} más</button>}
+                  {remainingTransactions === 0 && visibleTransactionCount > CASH_TRANSACTION_PAGE_SIZE && <button type="button" className="cash-tx-show-less" onClick={() => setVisibleTransactionCount(CASH_TRANSACTION_PAGE_SIZE)}>Mostrar menos</button>}
+                </div>
+              </div>}
             </div>
           </section>
         </>
@@ -342,7 +362,32 @@ export function CajaOperativa() {
         <div><span className="cash-ops-eyebrow">Historial operativo</span><h2>Turnos cerrados recientemente</h2></div>
         <div className="cash-history-list">
           {history.length === 0 && <p className="cash-empty">No hay turnos cerrados todavía.</p>}
-          {history.map(item => <article key={item.id}><div><strong>Turno #{item.sessionNumber}</strong><span>{item.closedAt ? new Date(item.closedAt).toLocaleString('es-VE') : ''}</span></div><div><span>Esperado</span><b>{money(item.expectedCashUsd)} · {money(item.expectedCashVes, 'VES')}</b></div><div><span>Contado</span><b>{money(item.countedCashUsd ?? 0)} · {money(item.countedCashVes ?? 0, 'VES')}</b></div><div><span>Diferencia</span><b className={(item.differenceUsd ?? 0) < 0 || (item.differenceVes ?? 0) < 0 ? 'negative' : (item.differenceUsd ?? 0) > 0 || (item.differenceVes ?? 0) > 0 ? 'positive' : 'ok'}>{money(item.differenceUsd ?? 0)} · {money(item.differenceVes ?? 0, 'VES')}</b></div></article>)}
+          {history.map(item => {
+            const differenceUsd = item.differenceUsd ?? 0
+            const differenceVes = item.differenceVes ?? 0
+            const differenceState = differenceUsd < 0 || differenceVes < 0
+              ? 'shortage'
+              : differenceUsd > 0 || differenceVes > 0 ? 'surplus' : 'balanced'
+            const differenceLabel = differenceState === 'shortage' ? 'Faltante' : differenceState === 'surplus' ? 'Sobrante' : 'Cuadrado'
+            return <article className="cash-history-row" key={item.id}>
+              <div className="cash-history-session">
+                <span className="cash-history-session-icon"><Clock3 size={16} /></span>
+                <div><strong>Turno #{item.sessionNumber}</strong><time dateTime={item.closedAt ?? undefined}>{item.closedAt ? new Date(item.closedAt).toLocaleString('es-VE') : 'Fecha no disponible'}</time></div>
+              </div>
+              <div className="cash-history-metric">
+                <span>Esperado</span>
+                <div className="cash-history-amounts"><b className={(item.expectedCashUsd ?? 0) === 0 ? 'is-zero' : ''}>{money(item.expectedCashUsd)}</b><b className={(item.expectedCashVes ?? 0) === 0 ? 'is-zero' : ''}>{money(item.expectedCashVes, 'VES')}</b></div>
+              </div>
+              <div className="cash-history-metric">
+                <span>Contado</span>
+                <div className="cash-history-amounts"><b className={(item.countedCashUsd ?? 0) === 0 ? 'is-zero' : ''}>{money(item.countedCashUsd ?? 0)}</b><b className={(item.countedCashVes ?? 0) === 0 ? 'is-zero' : ''}>{money(item.countedCashVes ?? 0, 'VES')}</b></div>
+              </div>
+              <div className={`cash-history-metric cash-history-difference ${differenceState}`}>
+                <div className="cash-history-difference-heading"><span>Diferencia</span><em>{differenceLabel}</em></div>
+                <div className="cash-history-amounts"><b className={differenceUsd === 0 ? 'is-zero' : ''}>{money(differenceUsd)}</b><b className={differenceVes === 0 ? 'is-zero' : ''}>{money(differenceVes, 'VES')}</b></div>
+              </div>
+            </article>
+          })}
         </div>
       </section>
     </div>
