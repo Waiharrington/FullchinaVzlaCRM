@@ -25,7 +25,7 @@ describe('Centro de reportes', () => {
     render(<ReportExplorer />)
     fireEvent.click(screen.getAllByRole('button', { name: /Órdenes cerradas/i })[0])
     await waitFor(() => expect(mocks.getOrdersWithItems).toHaveBeenCalledWith(expect.stringContaining('T00:00:00-04:00'), expect.stringContaining('T00:00:00-04:00'), true))
-    expect(await screen.findByText('No hay datos registrados para este período.')).toBeInTheDocument()
+    expect(await screen.findByRole('status')).toHaveTextContent('Sin datos para este período')
     fireEvent.click(screen.getByRole('button', { name: /Todos los reportes/i }))
     expect(screen.getByText('Encuentra el dato que necesitas')).toBeInTheDocument()
   }, 10000)
