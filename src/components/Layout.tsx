@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
 import { BottomNav } from './BottomNav'
 import { GlobalSearch } from './GlobalSearch'
@@ -7,6 +7,8 @@ import { SearchProvider } from '../context/search-context'
 import './Layout.css'
 
 export function Layout() {
+  const location = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
@@ -25,6 +27,12 @@ export function Layout() {
     return () => tabletQuery.removeEventListener('change', syncSidebarWithViewport)
   }, [])
 
+  useLayoutEffect(() => {
+    if (!mainRef.current) return
+    mainRef.current.scrollTop = 0
+    mainRef.current.scrollLeft = 0
+  }, [location.key])
+
   return (
     <SearchProvider>
       <div className="app-layout">
@@ -39,7 +47,7 @@ export function Layout() {
         </div>
 
         <div className={`main-content-wrapper ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-          <main className="app-main">
+          <main className="app-main" ref={mainRef}>
             <Outlet />
           </main>
         </div>

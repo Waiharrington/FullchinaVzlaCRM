@@ -21,11 +21,22 @@ describe('Centro de reportes', () => {
     expect(JSON.parse(localStorage.getItem('fullchina-report-favorites') ?? '[]')).toContain('movements')
   })
 
+  it('muestra un skeleton mientras carga un reporte', async () => {
+    let finishLoad!: (rows: never[]) => void
+    mocks.getOrdersWithItems.mockImplementation(() => new Promise<never[]>(resolve => { finishLoad = resolve }))
+    render(<ReportExplorer />)
+    fireEvent.click(screen.getAllByRole('button', { name: /Órdenes cerradas/i })[0])
+    await waitFor(() => expect(mocks.getOrdersWithItems).toHaveBeenCalled())
+    expect(screen.getByLabelText('Cargando reporte')).toHaveAttribute('aria-busy', 'true')
+    finishLoad([])
+    expect(await screen.findByText('Sin datos para este período')).toBeInTheDocument()
+  }, 10000)
+
   it('abre un reporte, muestra estado vacío y consulta todas las páginas', async () => {
     render(<ReportExplorer />)
     fireEvent.click(screen.getAllByRole('button', { name: /Órdenes cerradas/i })[0])
     await waitFor(() => expect(mocks.getOrdersWithItems).toHaveBeenCalledWith(expect.stringContaining('T00:00:00-04:00'), expect.stringContaining('T00:00:00-04:00'), true))
-    expect(await screen.findByRole('status')).toHaveTextContent('Sin datos para este período')
+    expect(await screen.findByText('Sin datos para este período')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Todos los reportes/i }))
     expect(screen.getByText('Encuentra el dato que necesitas')).toBeInTheDocument()
   }, 10000)

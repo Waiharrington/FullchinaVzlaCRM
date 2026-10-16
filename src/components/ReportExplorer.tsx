@@ -8,7 +8,7 @@ import { buildReport, REPORTS, SOURCE_REPORT_IDS, type ReportData, type ReportId
 import './ReportExplorer.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
-type Loaded = ReportData & { family?: string; start?: string; end?: string }
+type Loaded = ReportData & { reportId?: ReportId; family?: string; start?: string; end?: string }
 const favoritesKey = 'fullchina-report-favorites'
 const dateShift = (date: Date, days: number) => { const result = new Date(date); result.setDate(result.getDate() + days); return result }
 const iso = (date: Date) => dateKeyInTimeZone(date)
@@ -145,7 +145,7 @@ export function ReportExplorer() {
     if (start > end) { setError('La fecha inicial no puede ser posterior a la fecha final.'); return }
     if (!silent) setLoading(true)
     setError('')
-    let next: Loaded = { family, start, end }
+    let next: Loaded = { reportId: active, family, start, end }
     try {
         if (definition?.ready === false && !SOURCE_REPORT_IDS.has(active)) { setLoaded(next); setPage(1); return }
       const needsLegacySales = ['creditNotes', 'partialCreditNotes', 'taxes', 'creditNoteTaxes', 'discounts', 'tipsByOrder', 'tipsByPayment'].includes(active)
@@ -199,7 +199,7 @@ export function ReportExplorer() {
   useEffect(() => { if (active) void load() }, [active, load])
   useLiveDataRefresh('reportes', () => { if (active) void load(true) })
 
-  const table = useMemo(() => active && loaded.family === family && loaded.start === start && loaded.end === end ? buildReport(active, start, end, loaded, startHour, endHour) : null, [active, end, endHour, family, loaded, start, startHour])
+  const table = useMemo(() => active && loaded.reportId === active && loaded.family === family && loaded.start === start && loaded.end === end ? buildReport(active, start, end, loaded, startHour, endHour) : null, [active, end, endHour, family, loaded, start, startHour])
   const filteredRows = useMemo(() => {
     const pairs = (table?.rows ?? []).map((row, index) => ({ row, orderId: table?.orderIds?.[index] }))
       .filter(pair => pair.row.join(' ').toLocaleLowerCase('es').includes(tableSearch.toLocaleLowerCase('es')))
@@ -254,6 +254,7 @@ export function ReportExplorer() {
         </div>}
       </div>
       {error && <p className="report-error" role="alert">{error}</p>}
+      {active && !table && !error && <div className="report-results-skeleton" aria-label="Cargando reporte" aria-busy="true"><div className="report-skeleton-summary"><i /><i /></div><div className="report-skeleton-table" aria-hidden="true">{Array.from({ length: 5 }, (_, row) => <div className="report-skeleton-row" key={row}><span className="report-skeleton-field"><i /><b /></span><span className="report-skeleton-field"><i /><b /></span><span className="report-skeleton-field"><i /><b /></span><span className="report-skeleton-field"><i /><b /></span></div>)}</div></div>}
       {table && !error && <>
         <div className="report-result-heading"><span>{filteredRows.length} resultados</span>{table.total && <strong className="report-result-total">Total: {table.total}</strong>}</div>
         {table.note && <p className="report-note">{table.note}</p>}
