@@ -4,10 +4,34 @@
 .nom-page { color: #fff; }
 .nom-page .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .nom-head-actions { display: flex; gap: 10px; align-items: center; }
+.nom-header-copy { flex: 1 1 auto; min-width: 0; }
+.nom-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.nom-title-row .page-title { min-width: 0; }
+.nom-subtitle-mobile { display: none; }
+.nom-help-label-mobile { display: none; }
+.nom-card-subtitle-mobile { display: none; }
 .nom-btn { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; background: #e11d2a; color: #fff; border: 0; border-radius: 12px; padding: 10px 16px; font-size: 14px; font-weight: 600; cursor: pointer; transition: filter .15s; }
 .nom-btn:hover { filter: brightness(1.08); }
 .nom-btn:disabled { opacity: .5; cursor: default; }
 .nom-ghost { display: inline-flex; align-items: center; gap: 7px; background: #1c1c22; border: 1px solid rgba(255,255,255,0.1); color: #d4d4d8; border-radius: 12px; padding: 9px 14px; font-size: 13px; cursor: pointer; }
+.nom-help-wrap { position: relative; flex: 0 0 auto; }
+.nom-help-trigger { border-color: rgba(255, 77, 61, .3); background: rgba(227, 27, 43, .09); color: #ff8a8f; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+.nom-help-trigger:hover, .nom-help-trigger[aria-expanded="true"] { border-color: rgba(255, 77, 61, .62); background: rgba(227, 27, 43, .18); color: #ffb0b3; }
+.nom-help-trigger:focus-visible, .nom-help-close:focus-visible { outline: 2px solid #ff4d3d; outline-offset: 3px; }
+.nom-help-popover { position: absolute; z-index: 50; top: calc(100% + 10px); right: 0; width: min(360px, calc(100vw - 36px)); padding: 16px; border: 1px solid rgba(255, 77, 61, .32); border-radius: 16px; background: linear-gradient(145deg, #21191b, #151518 72%); box-shadow: 0 18px 48px rgba(0, 0, 0, .55), 0 0 24px rgba(227, 27, 43, .1); animation: nom-help-enter .18s ease-out both; }
+.nom-help-popover::before { content: ''; position: absolute; top: -1px; left: 16px; right: 16px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, #e31b2b, #ff4d3d, transparent); }
+.nom-help-popover-head { display: flex; align-items: center; gap: 9px; }
+.nom-help-popover-icon { display: grid; flex: 0 0 auto; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(255, 77, 61, .25); border-radius: 10px; background: rgba(227, 27, 43, .14); color: #ff777e; }
+.nom-help-popover-head > strong { flex: 1; color: #fff; font-size: 14px; font-weight: 800; }
+.nom-help-close { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.08); border-radius: 9px; background: rgba(255,255,255,.035); color: #a1a1aa; cursor: pointer; }
+.nom-help-close:hover { border-color: rgba(255,77,61,.4); background: rgba(227,27,43,.12); color: #ff858b; }
+.nom-help-popover > p { margin: 11px 0 13px; color: #a1a1aa; font-size: 12px; line-height: 1.45; }
+.nom-help-popover ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.nom-help-popover li { display: flex; align-items: flex-start; gap: 9px; color: #d4d4d8; font-size: 12px; line-height: 1.45; }
+.nom-help-popover li > span:first-child { display: grid; flex: 0 0 auto; place-items: center; width: 20px; height: 20px; border-radius: 7px; background: rgba(227,27,43,.14); color: #ff777e; font-size: 10px; font-weight: 800; }
+.nom-help-popover li b { color: #fff; font-weight: 750; }
+@keyframes nom-help-enter { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .nom-help-popover { animation: none; } }
 
 /* Resumen */
 .nom-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0; }
@@ -196,7 +220,25 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  overflow-y: auto;
+  overflow: hidden;
+}
+.nom-modal-overlay--detail:not(.closing) .nom-modal{animation:fc-dialog-enter var(--motion-fast,180ms) var(--motion-enter,ease-out) both}
+.nom-modal-overlay--detail.closing{pointer-events:none;animation:fc-overlay-exit var(--motion-fast,180ms) var(--motion-exit,ease-in) both}
+.nom-modal-overlay--detail.closing .nom-modal{animation:fc-dialog-exit var(--motion-fast,180ms) var(--motion-exit,ease-in) both}
+
+/* The modal is the only scroll surface while payroll dialogs are open. */
+html:has(.nom-modal-overlay),
+body:has(.nom-modal-overlay) {
+  overflow: hidden !important;
+}
+
+body:has(.nom-modal-overlay) .app-main {
+  overflow: hidden !important;
+  scrollbar-width: none;
+}
+
+body:has(.nom-modal-overlay) .app-main::-webkit-scrollbar {
+  display: none;
 }
 
 .nom-modal {
@@ -212,7 +254,9 @@
   flex-direction: column;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   margin: auto;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .nom-modal h3 {
@@ -385,6 +429,18 @@
 }
 
 @media (max-width: 767px) {
+  .nom-page .page-header { display: block; }
+  .nom-title-row { justify-content: flex-start; gap: 8px; }
+  .nom-title-row .page-title { flex: 1 1 auto; gap: 8px; font-size: clamp(19px, 5.8vw, 24px); white-space: nowrap; }
+  .nom-title-row .page-title-icon { flex: 0 0 auto; width: 20px; height: 20px; }
+  .nom-title-row .nom-ghost { flex: 0 0 auto; gap: 5px; padding: 7px 9px; font-size: 11px; white-space: nowrap; }
+  .nom-help-popover { right: -2px; width: min(340px, calc(100vw - 34px)); }
+  .nom-help-label-desktop { display: none; }
+  .nom-help-label-mobile { display: inline; }
+  .nom-subtitle-desktop { display: none; }
+  .nom-subtitle-mobile { display: block; margin-top: 5px; font-size: 13px; line-height: 1.3; white-space: nowrap; }
+  .nom-card-subtitle-desktop { display: none; }
+  .nom-card-head .nom-card-subtitle-mobile { display: block; margin-top: 3px; font-size: 11px; line-height: 1.3; }
   .nom-modal-overlay { align-items: flex-end; padding: 6px; }
   .nom-modal {
     max-width: none;
@@ -452,23 +508,23 @@
 .nom-employee-total-label{display:flex;align-items:center;gap:4px;color:#a1a1aa;font-size:9px;font-weight:750;white-space:nowrap}
 .nom-trend{font-size:12px;font-weight:900;line-height:1}
 .nom-trend--up{color:#32d74b}.nom-trend--down{color:#ff6961}
-.nom-employee-totals>div>strong{overflow:hidden;color:#fff;font-size:12px;font-weight:900;text-overflow:ellipsis;white-space:nowrap}
+.nom-employee-totals>div>strong{min-width:0;color:#fff;font-size:12px;font-weight:900;line-height:1.25;overflow-wrap:anywhere;word-break:normal}
 .nom-employee-totals>div>strong.nom-employee-deduction{color:#ff6961}
 .nom-employee-meta{color:#a1a1aa;font-size:10.5px;font-weight:650}
 .nom-employee-meta span{padding:0 3px;color:#606068}
 .nom-employee-payment-methods{display:flex;flex-direction:column;gap:7px}
 .nom-employee-payment-methods>div{display:flex;flex-wrap:wrap;gap:6px}
-.nom-employee-payment-chip{display:inline-flex;max-width:100%;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.035);font-size:10px}
-.nom-employee-payment-chip>span{overflow:hidden;color:#a1a1aa;text-overflow:ellipsis;white-space:nowrap}
+.nom-employee-payment-chip{display:flex;width:100%;max-width:100%;align-items:center;justify-content:space-between;gap:10px;padding:7px 9px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(255,255,255,.035);font-size:10px}
+.nom-employee-payment-chip>span{min-width:0;color:#a1a1aa;overflow-wrap:anywhere;word-break:normal}
 .nom-employee-payment-chip>strong{color:#22c55e;font-size:10px;font-weight:850;white-space:nowrap}
-.nom-employee-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:auto;padding-top:2px}
+.nom-employee-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:auto;padding-top:2px}
 .nom-employee-action,.nom-employee-pay{display:inline-flex;min-width:0;min-height:42px;align-items:center;justify-content:center;gap:6px;padding:9px 10px;border:1px solid rgba(255,255,255,.1);border-radius:12px;background:rgba(255,255,255,.045);color:#e4e4e7;font-size:12px;font-weight:750;cursor:pointer;transition:background .15s ease,border-color .15s ease,transform .15s ease}
 .nom-employee-action:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.09)}
 .nom-employee-action--discount{border-color:rgba(255,105,97,.17);color:#ff827c}
 .nom-employee-action--discount:hover{border-color:rgba(255,105,97,.35);background:rgba(255,69,58,.1)}
-.nom-employee-action--detail{justify-content:center;padding-inline:10px}
+.nom-employee-action--detail{grid-column:1/-1;justify-content:center;padding-inline:10px;border-color:rgba(212,175,55,.18);background:rgba(212,175,55,.045);color:#e3c56c}
 .nom-employee-action--detail span{color:#c8a951;font-size:16px}
-.nom-employee-pay{grid-column:1/-1;min-height:48px;border-color:transparent;background:#e11d2a;box-shadow:0 5px 16px rgba(225,29,42,.2);color:#fff;font-size:13px;font-weight:900}
+.nom-employee-pay{grid-column:1/-1;min-height:46px;border-color:transparent;background:#e11d2a;box-shadow:0 5px 16px rgba(225,29,42,.2);color:#fff;font-size:13px;font-weight:900}
 .nom-employee-pay:not(:disabled):hover{transform:translateY(-1px);background:#f01f2e;box-shadow:0 7px 20px rgba(225,29,42,.28)}
 .nom-employee-pay:disabled{border-color:rgba(255,255,255,.07);background:rgba(255,255,255,.035);box-shadow:none;color:#777780;cursor:default}
 @media(max-width:1150px){.nom-employee-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -503,7 +559,44 @@
 .nom-detail-section{margin-top:16px}
 .nom-detail-section h4{display:flex;align-items:center;gap:8px;margin:0 0 8px;color:#e4e4e7;font-size:12px;font-weight:750}
 .nom-detail-section h4>span{padding:2px 8px;color:#a1a1aa;background:rgba(255,255,255,.06);border-radius:999px;font-size:10px;font-weight:700}
-.nom-detail-section h4 input[type=month]{margin-left:auto;max-width:150px;padding:6px 8px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#17171d;color:#e4e4e7;font:inherit;font-size:11px}
+.nom-detail-section h4 .nom-detail-section-title{min-width:0;padding:0;background:transparent;border:0;border-radius:0;color:#e4e4e7;font-size:inherit;font-weight:inherit;white-space:nowrap}
+.nom-detail-month-picker{position:relative;flex:0 0 auto;margin-left:auto;padding:0!important;background:transparent!important;border:0!important;border-radius:0!important}
+.nom-detail-month-trigger{display:inline-flex;max-width:100%;min-height:36px;align-items:center;gap:6px;padding:0 9px;border:1px solid rgba(255,77,61,.28);border-radius:10px;background:linear-gradient(145deg,rgba(227,27,43,.12),rgba(25,25,29,.98));color:#f4f4f5;font:inherit;font-size:11px;font-weight:700;line-height:1;cursor:pointer;white-space:nowrap;transition:border-color .16s ease,background .16s ease,color .16s ease}
+.nom-detail-month-trigger:hover,.nom-detail-month-trigger[aria-expanded="true"]{border-color:rgba(255,77,61,.62);background:linear-gradient(145deg,rgba(227,27,43,.2),rgba(30,30,34,.98));color:#fff}
+.nom-detail-month-trigger:focus-visible,.nom-detail-month-year button:focus-visible,.nom-detail-month-grid button:focus-visible{outline:2px solid #ff4d3d;outline-offset:2px}
+.nom-detail-month-trigger>svg:first-child{color:#ff777e;flex:0 0 auto}
+.nom-detail-month-trigger>svg:last-child{color:#a1a1aa;flex:0 0 auto}
+.nom-detail-month-popover{position:absolute;z-index:100000;top:calc(100% + 8px);right:0;width:min(264px,calc(100vw - 44px));padding:12px;border:1px solid rgba(255,77,61,.28);border-radius:14px;background:linear-gradient(150deg,#21191b,#151518 72%);box-shadow:0 18px 45px rgba(0,0,0,.6),0 0 22px rgba(227,27,43,.1);animation:nom-help-enter .16s ease-out both}
+.nom-detail-month-year{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.nom-detail-month-year strong{color:#fff;font-size:14px;font-weight:800}
+.nom-detail-month-year button{display:grid;place-items:center;width:32px;height:30px;border:1px solid rgba(255,255,255,.08);border-radius:8px;background:rgba(255,255,255,.035);color:#d4d4d8;cursor:pointer}
+.nom-detail-month-year button:hover:not(:disabled){border-color:rgba(255,77,61,.4);background:rgba(227,27,43,.12);color:#ff858b}
+.nom-detail-month-year button:disabled{opacity:.35;cursor:not-allowed}
+.nom-detail-month-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.nom-detail-month-grid button{min-width:0;min-height:36px;border:1px solid rgba(255,255,255,.07);border-radius:9px;background:rgba(255,255,255,.035);color:#c4c4cc;font:inherit;font-size:11px;font-weight:700;line-height:1;text-transform:capitalize;cursor:pointer;transition:background .14s ease,border-color .14s ease,color .14s ease}
+.nom-detail-month-grid button:hover{border-color:rgba(255,77,61,.4);background:rgba(227,27,43,.12);color:#fff}
+.nom-detail-month-grid button.is-selected{border-color:#e31b2b;background:linear-gradient(135deg,#e31b2b,#b91024);color:#fff;box-shadow:0 5px 14px rgba(227,27,43,.22)}
+.nom-modal--detail .nom-mini-table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:hidden}
+.nom-modal--detail .nom-mini-table{width:100%;max-width:100%;min-width:0;table-layout:fixed}
+.nom-modal--detail .nom-mini-table th,.nom-modal--detail .nom-mini-table td{min-width:0;overflow-wrap:anywhere;word-break:break-word}
+.nom-modal--detail .nom-mini-table--payments{table-layout:fixed}
+.nom-mini-table--payments .nom-payment-col--date{width:26%}
+.nom-mini-table--payments .nom-payment-col--amount{width:24%}
+.nom-mini-table--payments .nom-payment-col--account{width:24%}
+.nom-mini-table--payments .nom-payment-col--reference{width:26%}
+.nom-modal--detail .nom-mini-table--payments td:first-child{white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.nom-modal--detail .nom-mini-table--payments td:nth-child(2){overflow-wrap:normal;word-break:normal}
+.nom-modal--detail .nom-mini-table--payments th:last-child{white-space:nowrap;overflow-wrap:normal;word-break:normal}
+.nom-modal--detail .nom-mini-table--payments td:last-child{overflow-wrap:anywhere;word-break:normal}
+.nom-payment-list-mobile{display:none}
+.nom-payment-card{padding:11px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.025)}
+.nom-payment-card-head,.nom-payment-card-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.nom-payment-card-head>div,.nom-payment-card-details>div{display:flex;min-width:0;flex-direction:column;gap:4px}
+.nom-payment-card-head>div>span,.nom-payment-card-details>div>span{color:#92929b;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.nom-payment-card-head time{color:#f4f4f5;font-size:13px;font-weight:750;white-space:nowrap}
+.nom-payment-card-head strong{color:#34d16a;font-size:14px;font-weight:850;overflow-wrap:anywhere}
+.nom-payment-card-details{margin-top:10px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
+.nom-payment-card-details strong{color:#d4d4d8;font-size:11px;font-weight:650;overflow-wrap:anywhere}
 .nom-detail-empty{margin:0;padding:12px;color:#71717a;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.09);border-radius:9px;font-size:11.5px}
 .nom-detail-hint{margin:8px 0 0;color:#71717a;font-size:10.5px;line-height:1.45}
 .nom-mini-table tfoot td{padding:9px 6px;color:#d4d4d8;font-weight:750;border-top:1px solid rgba(255,255,255,.12)}
@@ -513,3 +606,6 @@
 .nom-chip--paid{color:#22c55e;background:rgba(34,197,94,.12)}
 .nom-detail-pay{width:100%;margin-top:12px;justify-content:center}
 .nom-detail-pay:disabled{opacity:.6;cursor:not-allowed}
+
+@media(max-width:560px){.nom-modal--detail .nom-mini-table th,.nom-modal--detail .nom-mini-table td{padding:7px 4px;font-size:10px}.nom-modal--detail .nom-mini-table th{font-size:9px}.nom-modal--detail .nom-mini-table-wrap--payments{display:none}.nom-modal--detail .nom-payment-list-mobile{display:grid;gap:8px}}
+@media(max-width:360px){.nom-detail-section h4{gap:5px;font-size:11px}.nom-detail-month-trigger{gap:4px;padding-inline:7px;font-size:10px}}

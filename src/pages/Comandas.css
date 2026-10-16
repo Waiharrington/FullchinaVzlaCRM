@@ -1433,7 +1433,7 @@
   background: transparent; color: #a1a1aa; display: flex; align-items: center; justify-content: center; cursor: pointer;
   transition: border-color .15s, color .15s;
 }
-.cmd-add-ref-btn:hover { border-color: #f97316; color: #f97316; }
+.cmd-add-ref-btn:hover { border-color: #e31b2b; color: #ff4d3d; }
 .cmd-remove-ref-btn { border-style: solid; border-color: #444; }
 .cmd-remove-ref-btn:hover { border-color: #FF4D3D; color: #FF4D3D; }
 
@@ -2606,8 +2606,8 @@
 .cmd-header-associate-customer { padding: 6px 9px; font-size: 11px; height: 30px; }
 .cmd-btn-secondary { background: #222; color: #fff; }
 .cmd-btn-secondary:hover { background: #333; }
-.cmd-btn-primary { background: #f97316; color: #fff; }
-.cmd-btn-primary:hover { background: #ea580c; }
+.cmd-btn-primary { background: #e31b2b; color: #fff; }
+.cmd-btn-primary:hover { background: #c91524; }
 .cmd-btn-cobrar { background: #e31b2b; color: #fff; }
 .cmd-btn-cobrar:hover { background: #ff4d3d; }
 

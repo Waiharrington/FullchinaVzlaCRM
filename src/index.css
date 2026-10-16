@@ -150,8 +150,8 @@ img {
 }
 
 .btn-accent {
-  background: var(--accent-gradient) !important;
-  color: #000 !important;
+  background: linear-gradient(135deg, #E31B2B 0%, #B91024 100%) !important;
+  color: #fff !important;
   border: none !important;
   padding: 0 24px;
   height: 48px;
@@ -159,7 +159,7 @@ img {
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition-slow);
-  box-shadow: 0 4px 15px rgba(249, 115, 22, 0.2);
+  box-shadow: 0 4px 15px rgba(227, 27, 43, 0.24);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -167,8 +167,8 @@ img {
 
 .btn-accent:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
-  filter: brightness(1.1);
+  background: linear-gradient(135deg, #C91524 0%, #A10D1E 100%) !important;
+  box-shadow: 0 8px 25px rgba(227, 27, 43, 0.4);
 }
 
 .btn-accent:active {
@@ -193,7 +193,7 @@ img {
 .btn-ghost:hover {
   border-color: var(--accent-primary);
   color: var(--accent-primary);
-  background: rgba(249, 115, 22, 0.08);
+  background: rgba(227, 27, 43, 0.12);
 }
 
 .animate-fade-in {

@@ -31,7 +31,7 @@ import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { DateField } from '../components/DateField'
-import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings, ChevronLeft, ChevronRight, Printer } from 'lucide-react'
+import { Loader2, Users, Award, MessageSquare, Tag, Lock, FileText, Trash2, CreditCard, Settings, ChevronLeft, ChevronRight, Printer, Search, History } from 'lucide-react'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Tab = 'credits' | 'close' | 'delivery'
@@ -363,7 +363,7 @@ export function Mas() {
             {isCreditsModule ? <CreditCard size={22} className="page-title-icon" /> : <Settings size={22} className="page-title-icon" />}
             {isCreditsModule ? 'Cuentas por cobrar' : 'Configuración'}
           </h1>
-          <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : <><span className="mas-subtitle-desktop">Administración general, accesos y servicio de delivery.</span><span className="mas-subtitle-mobile">Administra accesos y ajustes.</span></>}</p>
+          <p className="page-subtitle">{isCreditsModule ? <><span className="mas-subtitle-desktop">Controla los créditos pendientes y los pagos de tus clientes.</span><span className="mas-subtitle-mobile">Créditos y pagos pendientes.</span></> : <><span className="mas-subtitle-desktop">Administración general, accesos y servicio de delivery.</span><span className="mas-subtitle-mobile">Administra accesos y ajustes.</span></>}</p>
         </div>
       </header>
 
@@ -403,6 +403,7 @@ export function Mas() {
           {showNewCredit && (
             <div className={`new-credit-form animate-slide-up ${closingNewCredit ? 'closing' : ''}`}>
               <div className="form-row credit-customer-field">
+                <Search className="credit-customer-search-icon" size={18} aria-hidden="true" />
                 <input
                   type="text"
                   placeholder="Buscar cliente registrado"
@@ -492,14 +493,28 @@ export function Mas() {
                             <button type="button" className="btn-ghost btn-sm" onClick={() => handleToggleHistory(credit)}>
                               Historial
                             </button>
-                            <button type="button" className="btn-ghost btn-sm credit-delete-btn" title="Borrar crédito" onClick={() => handleDeleteCredit(credit)}>
+                            <button type="button" className="btn-ghost btn-sm credit-delete-btn" title="Borrar crédito" aria-label="Borrar crédito" onClick={() => handleDeleteCredit(credit)}>
                               <Trash2 size={15} />
                             </button>
                           </div>
                           {selectedCredit?.id === credit.id && (
                             <div className="credit-history credit-row-history">
-                              <strong>Historial de abonos</strong>
-                              {loadingHistory ? <span>Cargando...</span> : creditPayments.length === 0 ? <span>Sin abonos registrados</span> : creditPayments.map(payment => (
+                              <div className="credit-history-heading">
+                                <span className="credit-history-heading-icon"><History size={15} aria-hidden="true" /></span>
+                                <strong>Historial de abonos</strong>
+                              </div>
+                              {loadingHistory ? (
+                                <div className="credit-history-state credit-history-loading" role="status" aria-live="polite">
+                                  <Loader2 size={17} aria-hidden="true" />
+                                  <span>Cargando historial</span>
+                                  <span className="credit-history-loading-dots" aria-hidden="true"><i /><i /><i /></span>
+                                </div>
+                              ) : creditPayments.length === 0 ? (
+                                <div className="credit-history-state credit-history-empty">
+                                  <span className="credit-history-empty-icon"><CreditCard size={16} aria-hidden="true" /></span>
+                                  <span><strong>Sin abonos todavía</strong><small>Los pagos registrados aparecerán aquí.</small></span>
+                                </div>
+                              ) : creditPayments.map(payment => (
                                 <div className="credit-history-row" key={payment.id}>
                                   <span>{new Date(payment.createdAt).toLocaleString('es')}</span>
                                   <span className="text-success">${payment.amount.toFixed(2)}</span>

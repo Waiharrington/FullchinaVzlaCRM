@@ -49,7 +49,7 @@ describe('Historial de nómina', () => {
     expect(screen.getByRole('button', { name: '+ Bono' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '− Descuento' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /Detalle/ }))
-    expect(await screen.findByLabelText('Mes del detalle')).toHaveValue('2026-09')
+    expect(await screen.findByRole('button', { name: 'Mes seleccionado: Septiembre 2026' })).toBeInTheDocument()
     expect(screen.getAllByText('Nómina de período')).toHaveLength(2)
   })
 
@@ -66,7 +66,7 @@ describe('Historial de nómina', () => {
     mocks.getFinancialAccounts.mockResolvedValue([{ id: 'cash-usd', name: 'Caja USD', currency: 'USD', currentBalance: 500, isActive: true }])
     render(<Nomina />)
     await screen.findByText('Barbara')
-    fireEvent.click(screen.getByRole('button', { name: /Liquidar saldo/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Pagar saldo/ }))
     expect(await screen.findByText('Registrar pago directo')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Seleccionar cuenta...' }))
     expect(await screen.findByRole('option', { name: 'Caja USD · USD' })).toBeInTheDocument()

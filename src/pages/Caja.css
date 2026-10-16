@@ -146,12 +146,12 @@
 
 .cash-session-primary-btn {
   border-color: rgba(255, 255, 255, 0.12) !important;
-  background: linear-gradient(145deg, #f97316, #e85d04);
-  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background: linear-gradient(145deg, #e31b2b, #b91024);
+  box-shadow: 0 8px 20px rgba(227, 27, 43, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .cash-session-primary-btn:hover {
-  background: linear-gradient(145deg, #fb8124, #f46608);
+  background: linear-gradient(145deg, #c91524, #a10d1e);
 }
 
 .cash-session-actions button:disabled {

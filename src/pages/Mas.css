@@ -162,6 +162,18 @@
 }
 
 .credit-customer-field { position: relative; }
+.credit-customer-field .credit-customer-search-icon {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+.credit-customer-field input { padding-left: 42px; }
 .credit-customer-options {
   position: absolute;
   top: calc(100% + 6px);
@@ -503,6 +515,24 @@
   white-space: nowrap;
 }
 
+.credit-list-actions .btn-ghost {
+  border-color: rgba(255, 77, 61, 0.28);
+  background: rgba(227, 27, 43, 0.045);
+  color: #d4d4d8;
+}
+
+.credit-list-actions .btn-ghost:hover:not(:disabled),
+.credit-list-actions .btn-ghost:active:not(:disabled) {
+  border-color: rgba(255, 77, 61, 0.58);
+  background: rgba(227, 27, 43, 0.14);
+  color: #ff6b73;
+}
+
+.credit-list-actions .btn-ghost:focus-visible {
+  outline: 2px solid rgba(255, 77, 61, 0.7);
+  outline-offset: 2px;
+}
+
 .credit-row-history { grid-column: 1 / -1; }
 
 .credit-header {
@@ -620,9 +650,101 @@
   border-top: 1px solid var(--border-color);
 }
 
-.credit-history > strong {
-  display: block;
-  margin-bottom: 0.5rem;
+.credit-history-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.65rem;
+}
+
+.credit-history-heading > strong {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
+.credit-history-heading-icon,
+.credit-history-empty-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 77, 61, 0.2);
+  border-radius: 9px;
+  background: rgba(227, 27, 43, 0.1);
+  color: #ff6b73;
+}
+
+.credit-history-state {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 52px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.credit-history-empty-icon {
+  width: 32px;
+  height: 32px;
+  border-color: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
+  color: #a1a1aa;
+}
+
+.credit-history-empty > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.credit-history-empty strong {
+  color: #e4e4e7;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.credit-history-empty small {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+}
+
+.credit-history-loading {
+  color: #d4d4d8;
+  font-size: 0.8rem;
+}
+
+.credit-history-loading > svg {
+  color: #ff6b73;
+  animation: credit-history-spin 0.9s linear infinite;
+}
+
+.credit-history-loading-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.credit-history-loading-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #ff4d3d;
+  animation: credit-history-pulse 0.9s ease-in-out infinite alternate;
+}
+
+.credit-history-loading-dots i:nth-child(2) { animation-delay: 0.15s; }
+.credit-history-loading-dots i:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes credit-history-spin { to { transform: rotate(360deg); } }
+@keyframes credit-history-pulse { to { opacity: 0.3; transform: scale(0.7); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-history-loading > svg,
+  .credit-history-loading-dots i { animation: none; }
 }
 
 .credit-history-row {
@@ -1014,6 +1136,22 @@
   text-shadow: 0 0 20px rgba(227, 27, 43, 0.35);
 }
 
+.mas-credit-overlay .modal-actions .btn-accent {
+  background: #e31b2b !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px rgba(227, 27, 43, .2) !important;
+}
+
+.mas-credit-overlay .modal-actions .btn-accent:hover:not(:disabled) {
+  background: #c91524 !important;
+}
+
+.mas-credit-overlay .modal-actions .btn-ghost:hover:not(:disabled) {
+  background: rgba(227, 27, 43, 0.12) !important;
+  border-color: rgba(255, 77, 61, 0.55) !important;
+  color: #ff6b73 !important;
+}
+
 @media (max-width: 1000px) and (min-width: 768px) {
   .credit-list-row { grid-template-columns: minmax(0, 1fr) auto; }
   .credit-list-metrics,
@@ -1022,6 +1160,15 @@
 }
 
 @media (max-width: 767px) {
+  .new-credit-form .credit-amount-stepper {
+    flex: 0 0 48px;
+    width: 100%;
+    min-width: 0;
+    height: 48px;
+    min-height: 48px;
+    border-radius: 12px;
+  }
+
   .credit-unpaid-order {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.55rem;
@@ -1065,7 +1212,9 @@
 
   .credit-list-metrics { gap: 0.35rem; }
   .credit-list-metrics .credit-amount-value { font-size: 0.82rem; }
-  .credit-list-actions { justify-content: flex-start; flex-wrap: wrap; }
+  .credit-list-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .credit-list-actions .btn-sm { width: 100%; min-width: 0; min-height: 44px; padding-inline: 0.4rem; font-size: 0.82rem; }
+  .credit-list-actions .credit-delete-btn { justify-self: stretch; }
 
   .mas-modal-header-glow {
     margin: -20px -16px 1rem;

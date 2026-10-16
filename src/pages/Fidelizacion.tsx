@@ -7,7 +7,8 @@ import { supabase } from '../lib/supabase'
 import './Fidelizacion.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
-const PAGE_SIZE = 8
+const PHONE_PAGE_SIZE = 8
+const WIDE_PAGE_SIZE = 11
 type Account = { customer_id: string; customer_name: string; identification: string | null; phone: string | null; email: string | null; status: 'active' | 'disabled' }
 
 const AVATAR_COLORS = ['#E31B2B', '#FF6259', '#FF9E1B', '#FFD23F', '#b91c1c', '#c2410c']
@@ -31,11 +32,23 @@ export function Fidelizacion() {
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [page, setPage] = useState(1)
+  const [isWideLayout, setIsWideLayout] = useState(() => window.matchMedia('(min-width: 641px)').matches)
   const [loading, setLoading] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
   const [visitsPerReward, setVisitsPerReward] = useState(10)
   const [rewardDescription, setRewardDescription] = useState('Plato o ración gratis')
   const [adminNotice, setAdminNotice] = useState('')
+
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 641px)')
+    const updatePageSize = () => {
+      setIsWideLayout(media.matches)
+      setPage(1)
+    }
+    media.addEventListener('change', updatePageSize)
+    return () => media.removeEventListener('change', updatePageSize)
+  }, [])
+  const pageSize = isWideLayout ? WIDE_PAGE_SIZE : PHONE_PAGE_SIZE
 
   useEffect(() => {
     if (window.matchMedia('(max-width: 640px)').matches === false || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -111,10 +124,10 @@ export function Fidelizacion() {
       normalizeForSearch(cust.name).includes(q) || cust.phone.includes(searchTerm.trim()))
   }, [rankedCustomers, searchTerm])
 
-  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(filteredCustomers.length / pageSize))
   const safePage = Math.min(page, totalPages)
-  const pageStart = (safePage - 1) * PAGE_SIZE
-  const pagedCustomers = filteredCustomers.slice(pageStart, pageStart + PAGE_SIZE)
+  const pageStart = (safePage - 1) * pageSize
+  const pagedCustomers = filteredCustomers.slice(pageStart, pageStart + pageSize)
 
   if (loading) return <PageSkeleton cards={4} rows={5} hasTable={false} />
 
@@ -126,10 +139,10 @@ export function Fidelizacion() {
   const vipCount = customers.filter(c => c.totalVisits >= loyaltyCycle).length
 
   const METRICS = [
-    { icon: <Trophy size={22} />, cls: 'gold', label: 'Mejor Cliente del Mes', value: topVisitsCustomers[0]?.name.split(' ')[0] ?? '—', sub: `${topVisitsCustomers[0]?.totalVisits ?? 0} visitas recurrentes` },
-    { icon: <Flame size={22} />, cls: 'fire', label: 'Visitas Totales', value: totalVisitsAll.toLocaleString('es-VE'), sub: 'Acumuladas por clientes' },
-    { icon: <Gift size={22} />, cls: 'violet', label: 'Recompensas Entregadas', value: totalRewards.toLocaleString('es-VE'), sub: 'Platos o raciones gratis' },
-    { icon: <Star size={22} />, cls: 'red', label: `Clientes VIP (≥ ${loyaltyCycle})`, value: vipCount.toLocaleString('es-VE'), sub: 'Criterio de fidelización' },
+    { icon: <Trophy size={22} />, cls: 'gold', label: 'Mejor cliente', value: topVisitsCustomers[0]?.name.split(' ')[0] ?? '—', sub: `${topVisitsCustomers[0]?.totalVisits ?? 0} visitas recurrentes` },
+    { icon: <Flame size={22} />, cls: 'fire', label: 'Visitas', value: totalVisitsAll.toLocaleString('es-VE'), sub: 'Suma de visitas' },
+    { icon: <Gift size={22} />, cls: 'violet', label: 'Premios', value: totalRewards.toLocaleString('es-VE'), sub: 'Platos gratis' },
+    { icon: <Star size={22} />, cls: 'red', label: 'Clientes VIP', value: vipCount.toLocaleString('es-VE'), sub: `Mínimo ${loyaltyCycle} visitas` },
   ]
 
   const medal = (idx: number) => (idx === 0 ? <Trophy size={14} /> : idx === 1 ? <Medal size={14} /> : idx === 2 ? <Award size={14} /> : null)
@@ -313,17 +326,17 @@ export function Fidelizacion() {
               <span className="loyalty-automatic-note"><CheckCircle2 size={14} /> Visitas automáticas al pagar una comanda con comida</span>
             </div>
           </div>
+
+          <section className="fidel-accounts-panel">
+            <header><div><h2><Settings2 size={19} /> Programa de fidelización</h2><p>Configura el premio y administra las cuentas de clientes registrados en la página de pedidos.</p></div></header>
+            <div className="fidel-loyalty-settings"><label>Visitas para ganar un premio<input type="number" min={1} max={50} value={visitsPerReward} onChange={e => setVisitsPerReward(Number(e.target.value))} /></label><label>Premio<input maxLength={120} value={rewardDescription} onChange={e => setRewardDescription(e.target.value)} /></label><button type="button" onClick={() => void saveLoyaltySettings()}>Guardar programa</button></div>
+            {adminNotice && <p className="fidel-admin-notice">{adminNotice}</p>}
+            <div className="fidel-accounts-heading"><h3>Cuentas Mi perfil</h3><span>{accounts.length} registradas</span></div>
+            <div className="fidel-accounts-list">{accounts.length === 0 ? <p>Aún no hay cuentas registradas.</p> : accounts.map(account => <article key={account.customer_id}><div><strong>{account.customer_name}</strong><small>{account.identification || 'Sin cédula'} · {account.phone || 'Sin teléfono'}{account.email ? ` · ${account.email}` : ''}</small></div><span className={`fidel-account-status ${account.status}`}>{account.status === 'active' ? 'Activa' : 'Desactivada'}</span><div className="fidel-account-actions"><button type="button" onClick={() => void resetCustomerPassword(account)}><KeyRound size={14} /> Cambiar clave</button></div></article>)}</div>
+            <small className="fidel-password-note">El negocio puede establecer una clave nueva. Por seguridad, nunca se muestra la contraseña actual.</small>
+          </section>
         </div>
       </div>
-
-      <section className="fidel-accounts-panel">
-        <header><div><h2><Settings2 size={19} /> Programa de fidelización</h2><p>Configura el premio y administra las cuentas de clientes registrados en la página de pedidos.</p></div></header>
-        <div className="fidel-loyalty-settings"><label>Visitas para ganar un premio<input type="number" min={1} max={50} value={visitsPerReward} onChange={e => setVisitsPerReward(Number(e.target.value))} /></label><label>Premio<input maxLength={120} value={rewardDescription} onChange={e => setRewardDescription(e.target.value)} /></label><button type="button" onClick={() => void saveLoyaltySettings()}>Guardar programa</button></div>
-        {adminNotice && <p className="fidel-admin-notice">{adminNotice}</p>}
-        <div className="fidel-accounts-heading"><h3>Cuentas Mi perfil</h3><span>{accounts.length} registradas</span></div>
-        <div className="fidel-accounts-list">{accounts.length === 0 ? <p>Aún no hay cuentas registradas.</p> : accounts.map(account => <article key={account.customer_id}><div><strong>{account.customer_name}</strong><small>{account.identification || 'Sin cédula'} · {account.phone || 'Sin teléfono'}{account.email ? ` · ${account.email}` : ''}</small></div><span className={`fidel-account-status ${account.status}`}>{account.status === 'active' ? 'Activa' : 'Desactivada'}</span><div className="fidel-account-actions"><button type="button" onClick={() => void resetCustomerPassword(account)}><KeyRound size={14} /> Cambiar clave</button></div></article>)}</div>
-        <small className="fidel-password-note">El negocio puede establecer una clave nueva. Por seguridad, nunca se muestra la contraseña actual.</small>
-      </section>
     </div>
   )
 }

@@ -21,6 +21,27 @@
   overflow-y: auto;
 }
 
+/* Keep the loading placeholder clean without disabling the main scroll area. */
+.app-main:has(> .skeleton-page) {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+}
+
+.app-main:has(> .skeleton-page)::-webkit-scrollbar {
+  display: none !important;
+}
+
+html:has(.app-main > .skeleton-page),
+body:has(.app-main > .skeleton-page) {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+}
+
+html:has(.app-main > .skeleton-page)::-webkit-scrollbar,
+body:has(.app-main > .skeleton-page)::-webkit-scrollbar {
+  display: none !important;
+}
+
 @media (min-width: 768px) {
   .app-main { scrollbar-gutter: stable; }
 }

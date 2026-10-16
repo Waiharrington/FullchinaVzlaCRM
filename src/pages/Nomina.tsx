@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getAllEmployees, getPayrollPeriods, getPayrollEntries,
@@ -15,13 +15,80 @@ import { StyledSelect } from '../components/StyledSelect'
 import NumberStepper from '../components/NumberStepper'
 import {
   Loader2, Users, Banknote, Gift, Hourglass,
-  HelpCircle, X, Bike,
+  HelpCircle, X, Bike, CalendarDays, ChevronDown, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import './Nomina.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 const initials = (name: string) => name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()
+const DETAIL_MONTHS = Array.from({ length: 12 }, (_, index) => {
+  const label = new Intl.DateTimeFormat('es-VE', { month: 'long' }).format(new Date(2020, index, 1))
+  return { value: String(index + 1).padStart(2, '0'), label: label.charAt(0).toLocaleUpperCase('es-VE') + label.slice(1) }
+})
+
+function DetailMonthPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [year, month] = value.split('-')
+  const [viewYear, setViewYear] = useState(Number(year))
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const selectedMonth = DETAIL_MONTHS.find((item) => item.value === month) ?? DETAIL_MONTHS[0]
+
+  useEffect(() => {
+    if (!open) return
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [open])
+
+  return (
+    <div className="nom-detail-month-picker" ref={rootRef}>
+      <button
+        type="button"
+        className="nom-detail-month-trigger"
+        aria-label={`Mes seleccionado: ${selectedMonth.label} ${year}`}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => { setViewYear(Number(year)); setOpen((current) => !current) }}
+      >
+        <CalendarDays size={15} aria-hidden="true" />
+        <span>{selectedMonth.label} {year}</span>
+        <ChevronDown size={15} aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="nom-detail-month-popover" role="dialog" aria-label="Seleccionar mes de movimientos">
+          <div className="nom-detail-month-year">
+            <button type="button" aria-label="Año anterior" disabled={viewYear <= 2000} onClick={() => setViewYear((current) => current - 1)}><ChevronLeft size={17} /></button>
+            <strong>{viewYear}</strong>
+            <button type="button" aria-label="Año siguiente" disabled={viewYear >= new Date().getFullYear() + 1} onClick={() => setViewYear((current) => current + 1)}><ChevronRight size={17} /></button>
+          </div>
+          <div className="nom-detail-month-grid">
+            {DETAIL_MONTHS.map((item) => (
+              <button
+                type="button"
+                key={item.value}
+                className={item.value === month && String(viewYear) === year ? 'is-selected' : ''}
+                aria-pressed={item.value === month && String(viewYear) === year}
+                onClick={() => { onChange(`${viewYear}-${item.value}`); setOpen(false) }}
+              >
+                {item.label.slice(0, 3)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function Nomina() {
   const { bcvRate } = useRates()
@@ -38,6 +105,7 @@ export function Nomina() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
+  const [showPayrollHelp, setShowPayrollHelp] = useState(false)
 
   // Modales
   const [showAdvance, setShowAdvance] = useState(false)
@@ -51,6 +119,7 @@ export function Nomina() {
   const [payFeeEdited, setPayFeeEdited] = useState(false)
   const [payFeeAmount, setPayFeeAmount] = useState('')
   const [detailEmp, setDetailEmp] = useState<Employee | null>(null)
+  const [closingDetail, setClosingDetail] = useState(false)
   const [detailMonth, setDetailMonth] = useState(dateKeyInTimeZone().slice(0, 7))
   const [adjustmentModal, setAdjustmentModal] = useState<{ employee: Employee; type: 'salary' | 'bonus' | 'discount'; amount: string; description: string; date: string } | null>(null)
 
@@ -63,6 +132,11 @@ export function Nomina() {
     if (closingPayment) return
     setClosingPayment(true)
     window.setTimeout(() => { setShowPayment(false); setClosingPayment(false); then?.() }, 200)
+  }
+  const closeDetail = () => {
+    if (closingDetail) return
+    setClosingDetail(true)
+    window.setTimeout(() => { setDetailEmp(null); setClosingDetail(false) }, 180)
   }
 
   const load = useCallback(async (silent = false) => {
@@ -167,12 +241,40 @@ export function Nomina() {
   return (
     <div className="page nom-page animate-fade-in management-workspace management-workspace--payroll">
       <header className="page-header management-workspace-header">
-        <div>
-          <h1 className="page-title"><Banknote size={22} className="page-title-icon" /> Nómina y Personal</h1>
-          <p className="page-subtitle">Saldos acumulados por empleado, pagos parciales y movimientos organizados por mes.</p>
-        </div>
-        <div className="nom-head-actions">
-          <button className="nom-ghost" onClick={() => flash('Añade salario, bono, descuento o adelanto desde la tarjeta. Registra pagos completos o parciales; el saldo pendiente se acumula y el detalle se consulta por mes.')}><HelpCircle size={15} /> ¿Cómo funciona?</button>
+        <div className="nom-header-copy">
+          <div className="nom-title-row">
+            <h1 className="page-title"><Banknote size={22} className="page-title-icon" /> Nómina y Personal</h1>
+            <div className="nom-help-wrap">
+              <button
+                type="button"
+                className="nom-ghost nom-help-trigger"
+                aria-expanded={showPayrollHelp}
+                aria-controls="nom-payroll-help"
+                onClick={() => setShowPayrollHelp((open) => !open)}
+              >
+                <HelpCircle size={15} aria-hidden="true" />
+                <span className="nom-help-label-desktop">¿Cómo funciona?</span>
+                <span className="nom-help-label-mobile">¿Cómo?</span>
+              </button>
+              {showPayrollHelp && (
+                <div className="nom-help-popover" id="nom-payroll-help" role="region" aria-label="Cómo funciona Nómina">
+                  <div className="nom-help-popover-head">
+                    <span className="nom-help-popover-icon"><Banknote size={16} aria-hidden="true" /></span>
+                    <strong>Así funciona Nómina</strong>
+                    <button type="button" className="nom-help-close" aria-label="Cerrar ayuda" onClick={() => setShowPayrollHelp(false)}><X size={16} /></button>
+                  </div>
+                  <p>Todo el saldo y los movimientos de cada persona, en un solo lugar.</p>
+                  <ol>
+                    <li><span>1</span><span><b>Registra</b> salarios, bonos, descuentos o adelantos.</span></li>
+                    <li><span>2</span><span><b>Anota pagos</b> completos o parciales para actualizar el saldo.</span></li>
+                    <li><span>3</span><span><b>Revisa el detalle</b> de movimientos organizado por mes.</span></li>
+                  </ol>
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="page-subtitle nom-subtitle-desktop">Saldos acumulados por empleado, pagos parciales y movimientos organizados por mes.</p>
+          <p className="page-subtitle nom-subtitle-mobile">Pagos y saldos del equipo.</p>
         </div>
       </header>
 
@@ -180,7 +282,7 @@ export function Nomina() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <div className="nom-card">
-        <div className="nom-card-head"><div><h2>Cuenta corriente del personal</h2><p>Saldo acumulado por empleado. Añade conceptos y registra pagos parciales; el detalle se organiza por mes y abre en el movimiento más reciente.</p></div></div>
+        <div className="nom-card-head"><div><h2>Cuenta corriente del personal</h2><p className="nom-card-subtitle-desktop">Saldo acumulado por empleado. Añade conceptos y registra pagos parciales; el detalle se organiza por mes y abre en el movimiento más reciente.</p><p className="nom-card-subtitle-mobile">Consulta cada movimiento por mes.</p></div></div>
         <div className="nom-employee-grid">
           {activeEmployees.map((emp) => {
             const isDelivery = emp.position?.toLowerCase() === 'delivery' || employees.find((item) => item.id === emp.id)?.position?.toLowerCase() === 'delivery'
@@ -205,18 +307,18 @@ export function Nomina() {
                   <span className="nom-employee-avatar" aria-hidden="true">{emp.photoUrl ? <img src={emp.photoUrl} alt="" /> : initials(emp.fullName)}</span>
                   <div className="nom-employee-name-wrap"><strong title={emp.fullName}>{emp.fullName}</strong><span>{emp.position || (isDelivery ? 'Delivery' : 'Empleado')}</span></div>
                 </div>
-                <span className={`nom-employee-due${balance <= 0.005 ? ' nom-employee-due--paid' : ''}`}>{balance > 0.005 ? `◉ ${formatUsd(balance)} USD` : '✓ Al día'}</span>
+                <span className={`nom-employee-due${balance <= 0.005 ? ' nom-employee-due--paid' : ''}`}>{balance > 0.005 ? 'Saldo pendiente' : '✓ Al día'}</span>
               </div>
 
               <div className={`nom-employee-balance${balance < -0.005 ? ' nom-employee-balance--negative' : ''}`}>
                 <div className="nom-employee-balance-head">
-                  <div><span className="nom-employee-eyebrow">{balance < -0.005 ? 'Saldo por recuperar' : 'Por pagar (saldo neto)'}</span>
+                  <div><span className="nom-employee-eyebrow">{balance < -0.005 ? 'Saldo pendiente' : 'Por pagar'}</span>
                     <strong>{bcvRate && bcvRate > 0 ? formatVes(Math.abs(balance) * bcvRate) : formatUsd(Math.abs(balance))}</strong></div>
                   <span className="nom-employee-usd">{balance < -0.005 ? '−' : '≈ '}{formatUsd(Math.abs(balance))} USD</span>
                 </div>
                 <div className="nom-employee-totals">
-                  <div><span className="nom-employee-total-label"><span className="nom-trend nom-trend--up">↗</span> Generado neto</span><strong>{bcvRate && bcvRate > 0 ? formatVes(earned * bcvRate) : formatUsd(earned)}</strong></div>
-                  <div><span className="nom-employee-total-label"><span className="nom-trend nom-trend--down">↘</span> Vales / pagos</span><strong className="nom-employee-deduction">−{bcvRate && bcvRate > 0 ? formatVes(deductions * bcvRate) : formatUsd(deductions)}</strong></div>
+                  <div><span className="nom-employee-total-label"><span className="nom-trend nom-trend--up">↗</span> Generado</span><strong>{bcvRate && bcvRate > 0 ? formatVes(earned * bcvRate) : formatUsd(earned)}</strong></div>
+                  <div><span className="nom-employee-total-label"><span className="nom-trend nom-trend--down">↘</span> Pagado</span><strong className="nom-employee-deduction">−{bcvRate && bcvRate > 0 ? formatVes(deductions * bcvRate) : formatUsd(deductions)}</strong></div>
                 </div>
               </div>
 
@@ -233,7 +335,7 @@ export function Nomina() {
                 <button type="button" className="nom-employee-action nom-employee-action--discount" onClick={() => cardAdjust('discount')}>− Descuento</button>
                 <button type="button" className="nom-employee-action" onClick={() => { setAdvEmp(emp.id); setAdvAmt(''); setAdvAccount(''); setAdvRate(''); setAdvDate(dateKeyInTimeZone()); setShowAdvance(true) }}>Adelanto</button>
                 <button type="button" className="nom-employee-action nom-employee-action--detail" onClick={() => { setDetailMonth(latestMovementMonth(emp.id)); setDetailEmp(emp) }}>Detalle <span aria-hidden="true">→</span></button>
-                <button type="button" className="nom-employee-pay" disabled={balance <= 0.005} onClick={() => { setPayEmp(emp.id); setPayAmt(''); setPayAccount(''); setPayRate(String(bcvRate || '')); setPayRef(''); setPayNotes(''); setPayMobile(false); setPayFeeEdited(false); setPayFeeAmount(''); setShowPayment(true) }}>{balance > 0.005 ? `▣  Liquidar saldo (${formatUsd(balance)} USD)` : '✓  Al día · sin saldo pendiente'}</button>
+                {balance > 0.005 && <button type="button" className="nom-employee-pay" onClick={() => { setPayEmp(emp.id); setPayAmt(''); setPayAccount(''); setPayRate(String(bcvRate || '')); setPayRef(''); setPayNotes(''); setPayMobile(false); setPayFeeEdited(false); setPayFeeAmount(''); setShowPayment(true) }}>▣ Pagar saldo</button>}
               </div>
             </article>
           })}
@@ -312,23 +414,29 @@ export function Nomina() {
         const balance = payrollBalanceByEmployee.get(emp.id) ?? 0
         const empPayments = payments.filter((item) => item.employeeId === emp.id).sort((a, b) => b.paymentDate.localeCompare(a.paymentDate))
         return (
-          <div className="nom-modal-overlay" onClick={() => setDetailEmp(null)}>
+          <div className={`nom-modal-overlay nom-modal-overlay--detail${closingDetail ? ' closing' : ''}`} onClick={closeDetail}>
             <div className="nom-modal nom-modal--detail" onClick={(e) => e.stopPropagation()}>
               <div className="nom-modal-header">
                 <div className="nom-modal-header-icon">{emp.position?.toLowerCase() === 'delivery' ? <Bike size={18} /> : <Users size={18} />}</div>
                 <h3>{emp.fullName}</h3>
                 <span className="nom-status open">{emp.position || 'Empleado'}</span>
-                <button type="button" className="nom-detail-close" onClick={() => setDetailEmp(null)} aria-label="Cerrar"><X size={18} /></button>
+                <button type="button" className="nom-detail-close" onClick={closeDetail} aria-label="Cerrar"><X size={18} /></button>
               </div>
               <div className="nom-detail-summary"><div className="nom-detail-stat"><span>Saldo pendiente</span><strong>{formatUsd(Math.max(0, balance))}</strong><small>{bsReference(Math.max(0, balance))}</small></div><div className="nom-detail-stat"><span>Generado acumulado</span><strong>{formatUsd(balance + (paidByEmployee.get(emp.id) ?? 0) + advances.filter((item) => item.employeeId === emp.id && !item.isDeducted).reduce((sum, item) => sum + item.amount, 0))}</strong><small>Incluye períodos, ajustes y delivery</small></div><div className="nom-detail-stat"><span>Vales y pagos acumulados</span><strong>{formatUsd((paidByEmployee.get(emp.id) ?? 0) + advances.filter((item) => item.employeeId === emp.id && !item.isDeducted).reduce((sum, item) => sum + item.amount, 0))}</strong><small>Pagos registrados y adelantos pendientes</small></div></div>
-              <div className="nom-detail-section"><h4>Movimientos del mes <input aria-label="Mes del detalle" type="month" value={detailMonth} onChange={(event) => setDetailMonth(event.target.value)} /></h4>
+              <div className="nom-detail-section"><h4><span className="nom-detail-section-title">Movimientos del mes</span><DetailMonthPicker value={detailMonth} onChange={setDetailMonth} /></h4>
                 {items.length === 0 ? <p className="nom-detail-empty">No hay movimientos registrados este mes.</p> : <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Fecha</th><th>Concepto</th><th>Monto USD</th><th>Detalle</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td>{new Date(`${item.date}T00:00:00`).toLocaleDateString('es-VE')}</td><td>{item.label}</td><td><strong style={{ color: item.direction === 'add' ? '#22c55e' : item.direction === 'deduct' ? '#ef4444' : '#a1a1aa' }}>{item.direction === 'add' ? '+' : item.direction === 'deduct' ? '−' : ''}{formatUsd(item.amount)}</strong></td><td>{item.note || '—'}</td></tr>)}</tbody></table></div>}
               </div>
               <div className="nom-detail-section"><h4>Historial acumulado de pagos <span>{empPayments.length}</span><small style={{ display: 'block', color: '#a1a1aa', fontWeight: 400 }}>Pagado acumulado: {formatUsd(paidByEmployee.get(emp.id) ?? 0)}</small></h4>
-                {empPayments.length === 0 ? <p className="nom-detail-empty">Todavía no hay pagos registrados.</p> : <div className="nom-mini-table-wrap"><table className="nom-mini-table"><thead><tr><th>Mes</th><th>Fecha</th><th>Pagado</th><th>Cuenta</th><th>Referencia</th></tr></thead><tbody>{empPayments.map((payment) => <tr key={payment.id}><td>{payment.paymentDate.slice(0, 7)}</td><td>{new Date(`${payment.paymentDate}T00:00:00`).toLocaleDateString('es-VE')}</td><td><strong>{payment.currency === 'Bs' ? formatVes(payment.amount) : formatUsd(payment.amount)}</strong></td><td>{payment.paymentAccount || '—'}</td><td>{payment.reference || '—'}</td></tr>)}</tbody></table></div>}
+                {empPayments.length === 0 ? <p className="nom-detail-empty">Todavía no hay pagos registrados.</p> : <>
+                  <div className="nom-mini-table-wrap nom-mini-table-wrap--payments"><table className="nom-mini-table nom-mini-table--payments"><colgroup><col className="nom-payment-col--date" /><col className="nom-payment-col--amount" /><col className="nom-payment-col--account" /><col className="nom-payment-col--reference" /></colgroup><thead><tr><th>Fecha</th><th>Pagado</th><th>Cuenta</th><th>Referencia</th></tr></thead><tbody>{empPayments.map((payment) => <tr key={payment.id}><td><time dateTime={payment.paymentDate}>{new Date(`${payment.paymentDate}T00:00:00`).toLocaleDateString('es-VE')}</time></td><td><strong>{payment.currency === 'Bs' ? formatVes(payment.amount) : formatUsd(payment.amount)}</strong></td><td>{payment.paymentAccount || '—'}</td><td>{payment.reference || '—'}</td></tr>)}</tbody></table></div>
+                  <div className="nom-payment-list-mobile">{empPayments.map((payment) => <article className="nom-payment-card" key={`mobile-${payment.id}`}>
+                    <div className="nom-payment-card-head"><div><span>Fecha</span><time dateTime={payment.paymentDate}>{new Date(`${payment.paymentDate}T00:00:00`).toLocaleDateString('es-VE')}</time></div><div><span>Pagado</span><strong>{payment.currency === 'Bs' ? formatVes(payment.amount) : formatUsd(payment.amount)}</strong></div></div>
+                    <div className="nom-payment-card-details"><div><span>Cuenta</span><strong>{payment.paymentAccount || '—'}</strong></div><div><span>Referencia</span><strong>{payment.reference || '—'}</strong></div></div>
+                  </article>)}</div>
+                </>}
               </div>
 
-              <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={() => setDetailEmp(null)}>Cerrar</button></div>
+              <div className="nom-modal-actions"><button type="button" className="nom-cancel" onClick={closeDetail}>Cerrar</button></div>
             </div>
           </div>
         )
