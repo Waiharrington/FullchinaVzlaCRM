@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Search, Star, ArrowLeft, FileSpreadsheet, ArrowUpDown, X } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState, type UIEvent } from 'react'
+import { CalendarDays, ChevronDown, Clock3, Search, Star, ArrowLeft, FileSpreadsheet, ArrowUpDown, X } from 'lucide-react'
 import { DateField } from './DateField'
+import { StyledSelect } from './StyledSelect'
 import { getAdvances, getAuditLogs, getCredits, getCustomers, getDailyCloses, getExpenses, getFinancialOperations, getIngredients, getLegacyDeletedOrdersReport, getLegacyPurchaseOrdersReport, getLegacySalesReport, getOrdersWithItems, getPayrollPayments, getProducts, getProductionBatches, getPurchases, getRecipeSummaries, getReportAdjustments, getReportAttendance, getReportEventLogs, getReportGiftCards, getReportRequisitions, getReportStockMovements, getWarehouseIngredients, type Advance, type AuditLog, type Credit, type DailyCloseSummary, type Expense, type FinancialOperation, type FullOrder, type Ingredient, type LegacyDeletedOrderReportRow, type LegacyPurchaseOrderReportRow, type LegacySaleReportRow, type PayrollPayment, type ProductionBatch, type Product, type Purchase, type ReportAdjustmentRow, type ReportAttendanceRow, type ReportEventRow, type ReportGiftCardRow, type ReportRequisitionRow, type StockMovement, type WarehouseIngredient } from '../lib/dataService'
 import { dateKeyInTimeZone, formatUsd, formatVes } from '../lib/money'
 import { buildReport, REPORTS, SOURCE_REPORT_IDS, type ReportData, type ReportId } from '../lib/reporting'
@@ -14,6 +15,99 @@ const iso = (date: Date) => dateKeyInTimeZone(date)
 const detailPaymentNames: Record<string, string> = { cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto de venta', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro' }
 const detailOrderType = (value: string) => ({ 'dine-in': 'Mesa', dine_in: 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery', pickup: 'Para llevar' } as Record<string, string>)[value] ?? value
 const detailUsesBolivares = (method: string) => method === 'mobile' || method === 'card' || method === 'transfer'
+const formatReportCell = (column: string, value: string) => {
+  if (!/hora/i.test(column)) return value
+  const match = value.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return value
+  const hour = Number(match[1])
+  return `${hour % 12 || 12}:${match[2]} ${hour < 12 ? 'a. m.' : 'p. m.'}`
+}
+const timeHours = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, '0'))
+const timeMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, '0'))
+type TimeDraft = { hour: string; minute: string; period: 'AM' | 'PM' }
+const parseTimeDraft = (value: string): TimeDraft => {
+  const [rawHour = '12', minute = '00'] = value.split(':')
+  const hour24 = Number(rawHour)
+  return { hour: String(hour24 % 12 || 12).padStart(2, '0'), minute, period: hour24 >= 12 ? 'PM' : 'AM' }
+}
+function ReportTimeWheel({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<TimeDraft>(() => parseTimeDraft(value))
+  const rootRef = useRef<HTMLDivElement>(null)
+  const columnRefs = useRef<Array<HTMLDivElement | null>>([])
+  const scrollTimer = useRef<number | null>(null)
+  const formatLabel = (time: string) => {
+    if (!time) return 'Seleccionar hora'
+    const timeDraft = parseTimeDraft(time)
+    return `${timeDraft.hour}:${timeDraft.minute} ${timeDraft.period === 'AM' ? 'a. m.' : 'p. m.'}`
+  }
+
+  useEffect(() => {
+    if (!open) return
+    const parsed = parseTimeDraft(value)
+    setDraft(parsed)
+    const frame = window.requestAnimationFrame(() => {
+      const indexes = [timeHours.indexOf(parsed.hour), Number(parsed.minute), parsed.period === 'AM' ? 0 : 1]
+      columnRefs.current.forEach((column, index) => {
+        if (!column || index === 2) return
+        column.scrollTop = Math.max(0, indexes[index] * 38 - (column.clientHeight - 38) / 2)
+      })
+    })
+    const closeOutside = (event: PointerEvent) => { if (!rootRef.current?.contains(event.target as Node)) setOpen(false) }
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false) }
+    document.addEventListener('pointerdown', closeOutside)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('pointerdown', closeOutside)
+      document.removeEventListener('keydown', closeOnEscape)
+      if (scrollTimer.current !== null) window.clearTimeout(scrollTimer.current)
+    }
+  }, [open, value])
+
+  useEffect(() => {
+    if (!open) return
+    const indexes = [timeHours.indexOf(draft.hour), Number(draft.minute)]
+    indexes.forEach((selectedIndex, index) => {
+      const column = columnRefs.current[index]
+      if (column) column.scrollTop = Math.max(0, selectedIndex * 38 - (column.clientHeight - 38) / 2)
+    })
+    const periodColumn = columnRefs.current[2]
+    if (periodColumn) periodColumn.scrollTop = 0
+  }, [draft, open])
+
+  const onWheelScroll = (columnIndex: 0 | 1, event: UIEvent<HTMLDivElement>) => {
+    if (scrollTimer.current !== null) window.clearTimeout(scrollTimer.current)
+    const column = event.currentTarget
+    scrollTimer.current = window.setTimeout(() => {
+      const index = Math.max(0, Math.min(columnIndex === 0 ? 11 : 59, Math.round((column.scrollTop + (column.clientHeight - 38) / 2) / 38)))
+      setDraft(current => columnIndex === 0 ? { ...current, hour: timeHours[index] } : { ...current, minute: timeMinutes[index] })
+    }, 100)
+  }
+  const choose = (columnIndex: 0 | 1, item: string) => setDraft(current => columnIndex === 0 ? { ...current, hour: item } : { ...current, minute: item })
+  const hour24 = Number(draft.hour) % 12 + (draft.period === 'PM' ? 12 : 0)
+
+  return <div className={`report-time-wheel${label === 'Hora final' ? ' is-end' : ''}`} ref={rootRef}>
+    <button type="button" className="report-time-wheel-trigger" aria-label={`${label}: ${value ? formatLabel(value) : 'sin seleccionar'}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(current => !current)}>
+      <span className="report-time-wheel-trigger-value">{value ? formatLabel(value) : 'Seleccionar hora'}</span><Clock3 size={16} aria-hidden="true" /><ChevronDown size={15} aria-hidden="true" />
+    </button>
+    {open && <div className="report-time-wheel-popover" role="dialog" aria-label={label}>
+      <div className="report-time-wheel-heading"><span>{label}</span><small>Hora · minutos · período</small></div>
+      <div className="report-time-wheel-columns">
+        <div className="report-time-wheel-column" role="listbox" aria-label="Hora" ref={element => { columnRefs.current[0] = element }} onScroll={event => onWheelScroll(0, event)}>
+          {timeHours.map(hour => <button type="button" role="option" aria-selected={draft.hour === hour} className={draft.hour === hour ? 'is-selected' : ''} key={hour} onClick={() => choose(0, hour)}>{hour}</button>)}
+        </div>
+        <div className="report-time-wheel-column" role="listbox" aria-label="Minutos" ref={element => { columnRefs.current[1] = element }} onScroll={event => onWheelScroll(1, event)}>
+          {timeMinutes.map(minute => <button type="button" role="option" aria-selected={draft.minute === minute} className={draft.minute === minute ? 'is-selected' : ''} key={minute} onClick={() => choose(1, minute)}>{minute}</button>)}
+        </div>
+        <div className="report-time-wheel-column report-time-wheel-period" role="listbox" aria-label="Período" ref={element => { columnRefs.current[2] = element }}>
+          {(['AM', 'PM'] as const).map(period => <button type="button" role="option" aria-selected={draft.period === period} className={draft.period === period ? 'is-selected' : ''} key={period} onClick={() => setDraft(current => ({ ...current, period }))}>{period === 'AM' ? 'a. m.' : 'p. m.'}</button>)}
+        </div>
+      </div>
+      <div className="report-time-wheel-actions"><button type="button" onClick={() => { onChange(''); setOpen(false) }}>Limpiar</button><button type="button" className="report-time-wheel-done" onClick={() => { onChange(`${String(hour24).padStart(2, '0')}:${draft.minute}`); setOpen(false) }}>Listo</button></div>
+    </div>}
+  </div>
+}
 const downloadExcel =(name: string, columns: string[], rows: string[][]) => {
   const escape = (value: string) => value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const row = (values: string[]) => `<Row>${values.map(value => `<Cell><Data ss:Type="String">${escape(value)}</Data></Cell>`).join('')}</Row>`
@@ -142,16 +236,29 @@ export function ReportExplorer() {
       {favorites.length > 0 && !search && <div className="report-group"><h3><Star size={16} /> Favoritos</h3><div className="report-links">{REPORTS.filter(report => favorites.includes(report.id)).map(report => <button key={report.id} className="report-link" onClick={() => setActive(report.id)}>{report.title}<span>Ver reporte →</span></button>)}</div></div>}
       {(['Ventas', 'Finanzas', 'Inventario'] as const).map(group => { const reports = visibleCatalogReports.filter(report => report.group === group); return reports.length ? <div className="report-group" key={group}><h3>{group}</h3><div className="report-links">{reports.map(report => <div className="report-link-row" key={report.id}><button className="report-link" onClick={() => { setTableSearch(''); setActive(report.id) }}><strong>{report.title}</strong><small>{report.description}</small><em>{report.ready === false ? 'Requiere módulo de datos' : 'Disponible'}</em></button><button className={`report-favorite ${favorites.includes(report.id) ? 'is-active' : ''}`} aria-label={`${favorites.includes(report.id) ? 'Quitar' : 'Añadir'} ${report.title} a favoritos`} onClick={() => toggleFavorite(report.id)}><Star size={18} fill={favorites.includes(report.id) ? 'currentColor' : 'none'} /></button></div>)}</div></div> : null })}
       {matching.length === 0 && <p className="report-empty">No hay reportes que coincidan con la búsqueda.</p>}
-      {matching.length > 0 && <div className="report-pagination report-catalog-pagination" aria-label="Paginación del catálogo de reportes"><label>Reportes por página <select value={catalogPageSize} onChange={event => { setCatalogPageSize(Number(event.target.value)); setCatalogPage(1) }}><option value={12}>12</option><option value={24}>24</option><option value={48}>48</option></select></label><span>Página {Math.min(catalogPage, catalogPages)} de {catalogPages} · {matching.length} reportes</span><button onClick={() => setCatalogPage(value => Math.max(1, value - 1))} disabled={catalogPage <= 1}>Anterior</button><button onClick={() => setCatalogPage(value => Math.min(catalogPages, value + 1))} disabled={catalogPage >= catalogPages}>Siguiente</button></div>}
+      {matching.length > 0 && <div className="report-pagination report-catalog-pagination" aria-label="Paginación del catálogo de reportes"><label><span className="report-catalog-label-full">Reportes por página</span><span className="report-catalog-label-short">Por pág.</span><StyledSelect className="report-page-size-select" value={catalogPageSize} onChange={event => { setCatalogPageSize(Number(event.target.value)); setCatalogPage(1) }} aria-label="Reportes por página"><option value={12}>12</option><option value={24}>24</option><option value={48}>48</option></StyledSelect></label><span><span className="report-catalog-summary-full">Página {Math.min(catalogPage, catalogPages)} de {catalogPages} · {matching.length} reportes</span><span className="report-catalog-summary-short">{Math.min(catalogPage, catalogPages)}/{catalogPages} · {matching.length}</span></span><button onClick={() => setCatalogPage(value => Math.max(1, value - 1))} disabled={catalogPage <= 1}>Anterior</button><button onClick={() => setCatalogPage(value => Math.min(catalogPages, value + 1))} disabled={catalogPage >= catalogPages}>Siguiente</button></div>}
     </> : <>
       <div className="report-explorer-heading"><div><button className="report-back" onClick={() => setActive(null)}><ArrowLeft size={17} /> Todos los reportes</button><span className="report-eyebrow">{family?.toUpperCase()}</span><h2>{definition?.title}</h2><p>{definition?.description}</p></div></div>
-      <div className="report-filters"><label><span>Fecha inicial</span><DateField calendar className="report-date-picker" value={start} onChange={setStart} placeholder="Fecha inicial" /></label><label><span>Fecha final</span><DateField calendar className="report-date-picker" value={end} onChange={setEnd} placeholder="Fecha final" /></label>{(family === 'Ventas' || active === 'movements') && <><label><span>Hora inicial</span><input type="time" value={startHour} onChange={event => { setStartHour(event.target.value); setPage(1) }} /></label><label><span>Hora final</span><input type="time" value={endHour} onChange={event => { setEndHour(event.target.value); setPage(1) }} /></label></>}<button className="report-refresh" onClick={() => void load()} disabled={loading}><CalendarDays size={17} /> {loading ? 'Cargando...' : 'Actualizar'}</button><div className="report-presets">{['Hoy', 'Ayer', 'Semana', 'Mes'].map(preset => <button key={preset} onClick={() => setPreset(preset)}>{preset}</button>)}</div>{table && !error && <div className="report-filters-tools"><label className="report-table-search"><Search size={16} /><input value={tableSearch} onChange={event => { setTableSearch(event.target.value); setPage(1) }} placeholder="Buscar en tabla..." aria-label="Buscar en tabla" /></label><button onClick={() => downloadExcel(active, table.columns, filteredRows.map(pair => pair.row))}><FileSpreadsheet size={16} /> Excel</button></div>}</div>
+      <div className="report-filters">
+        <label><span>Fecha inicial</span><DateField calendar className="report-date-picker" value={start} onChange={setStart} placeholder="Fecha inicial" /></label>
+        <label><span>Fecha final</span><DateField calendar className="report-date-picker" value={end} onChange={setEnd} placeholder="Fecha final" /></label>
+        {(family === 'Ventas' || active === 'movements') && <>
+          <label><span>Hora inicial</span><ReportTimeWheel label="Hora inicial" value={startHour} onChange={value => { setStartHour(value); setPage(1) }} /></label>
+          <label><span>Hora final</span><ReportTimeWheel label="Hora final" value={endHour} onChange={value => { setEndHour(value); setPage(1) }} /></label>
+        </>}
+        <button className="report-refresh" onClick={() => void load()} disabled={loading}><CalendarDays size={17} /> {loading ? 'Cargando...' : 'Actualizar'}</button>
+        <div className="report-presets">{['Hoy', 'Ayer', 'Semana', 'Mes'].map(preset => <button key={preset} onClick={() => setPreset(preset)}>{preset}</button>)}</div>
+        {table && !error && <div className="report-filters-tools">
+          <label className="report-table-search"><Search size={16} /><input value={tableSearch} onChange={event => { setTableSearch(event.target.value); setPage(1) }} placeholder="Buscar en tabla..." aria-label="Buscar en tabla" /></label>
+          <button onClick={() => downloadExcel(active, table.columns, filteredRows.map(pair => pair.row))}><FileSpreadsheet size={16} /> Excel</button>
+        </div>}
+      </div>
       {error && <p className="report-error" role="alert">{error}</p>}
       {table && !error && <>
-        <div className="report-result-heading"><span>{filteredRows.length} resultados {table.total && <strong>· Total: {table.total}</strong>}</span></div>
+        <div className="report-result-heading"><span>{filteredRows.length} resultados</span>{table.total && <strong className="report-result-total">Total: {table.total}</strong>}</div>
         {table.note && <p className="report-note">{table.note}</p>}
-        <div className="report-table-wrap"><table><thead><tr>{table.columns.map((column, index) => <th key={column}><button className="report-sort" onClick={() => { setSortColumn(index); setSortAscending(current => sortColumn === index ? !current : true); setPage(1) }}>{column}<ArrowUpDown size={13} aria-hidden="true" /></button></th>)}</tr></thead><tbody className="report-screen-rows">{visibleRows.map((pair, index) => <tr key={`${page}-${index}`} className={pair.orderId ? 'report-row-clickable' : ''} onClick={pair.orderId ? () => openOrderDetail(pair.orderId) : undefined} title={pair.orderId ? 'Ver detalle de la comanda' : undefined}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody><tbody className="report-print-rows">{filteredRows.map((pair, index) => <tr key={index}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody></table>{filteredRows.length === 0 && <p className="report-empty">No hay datos registrados para este período.</p>}</div>
-        <div className="report-pagination"><label>Filas por página <select value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label><span>Página {Math.min(page, pages)} de {pages}</span><button onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Anterior</button><button onClick={() => setPage(value => Math.min(pages, value + 1))} disabled={page >= pages}>Siguiente</button></div>
+        <div className="report-table-wrap"><table><thead><tr>{table.columns.map((column, index) => <th key={column}><button className="report-sort" onClick={() => { setSortColumn(index); setSortAscending(current => sortColumn === index ? !current : true); setPage(1) }}>{column}<ArrowUpDown size={13} aria-hidden="true" /></button></th>)}</tr></thead><tbody className="report-screen-rows">{visibleRows.map((pair, index) => <tr key={`${page}-${index}`} className={pair.orderId ? 'report-row-clickable' : ''} onClick={pair.orderId ? () => openOrderDetail(pair.orderId) : undefined} title={pair.orderId ? 'Ver detalle de la comanda' : undefined}>{pair.row.map((value, cell) => <td key={cell} data-label={table.columns[cell]}>{formatReportCell(table.columns[cell], value)}</td>)}</tr>)}</tbody><tbody className="report-print-rows">{filteredRows.map((pair, index) => <tr key={index}>{pair.row.map((value, cell) => <td key={cell}>{value}</td>)}</tr>)}</tbody></table>{filteredRows.length === 0 && <p className="report-empty">No hay datos registrados para este período.</p>}</div>
+        <div className="report-pagination"><label><span>Filas por página</span><StyledSelect className="report-page-size-select" menuClassName="report-row-count-menu" value={pageSize} onChange={event => { setPageSize(Number(event.target.value)); setPage(1) }} aria-label="Filas por página"><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></StyledSelect></label><span>Página {Math.min(page, pages)} de {pages}</span><div className="report-pagination-actions"><button onClick={() => setPage(value => Math.max(1, value - 1))} disabled={page <= 1}>Anterior</button><button onClick={() => setPage(value => Math.min(pages, value + 1))} disabled={page >= pages}>Siguiente</button></div></div>
       </>}
     </>}
     {detailOrder && (() => {

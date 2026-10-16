@@ -26,6 +26,7 @@ interface SelectOption {
 
 export interface StyledSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   children: ReactNode
+  menuClassName?: string
 }
 
 function nodeText(node: ReactNode): string {
@@ -35,6 +36,7 @@ function nodeText(node: ReactNode): string {
 export function StyledSelect({
   children,
   className = '',
+  menuClassName = '',
   style,
   value,
   defaultValue,
@@ -223,7 +225,7 @@ export function StyledSelect({
       </button>
 
       {open ? createPortal(
-        <div ref={menuRef} className={`fc-select-menu${closing ? ' closing' : ''}`} style={menuStyle}>
+        <div ref={menuRef} className={`fc-select-menu ${menuClassName}${closing ? ' closing' : ''}`.trim()} style={menuStyle}>
           {searchable ? (
             <label className="fc-select-search">
               <Search size={15} aria-hidden="true" />
