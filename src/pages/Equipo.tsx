@@ -444,7 +444,7 @@ export function Equipo() {
       <div className="equipo-hero management-workspace-header">
         <div className="header-title-group">
           <div>
-            <h1 className="page-title"><Users size={22} className="page-title-icon" /> Gestión de Equipo y Personal</h1>
+            <h1 className="page-title"><Users size={22} className="page-title-icon" /><span className="equipo-title-desktop">Gestión de Equipo y Personal</span><span className="equipo-title-mobile">Equipo y personal</span></h1>
             <span className="metric-sub-text">
               {team.length} empleados · {team.filter(e => e.isActive).length} activos
               {isOwner && ` · ${authUsers.length} usuarios de acceso`}
@@ -465,14 +465,12 @@ export function Equipo() {
       {isOwner && (
         <div className="almacen-card">
           <div className="equipo-section-head">
-            <h3 className="equipo-section-title"><UserCog size={18} /> Usuarios de acceso (login)</h3>
-            <button className="equipo-primary-btn sm" onClick={openCreateUser}>
-              <UserPlus size={15} /> Crear usuario
+            <h3 className="equipo-section-title"><UserCog size={18} /><span className="equipo-login-desktop">Usuarios de acceso (login)</span><span className="equipo-login-mobile">Usuarios de acceso</span></h3>
+            <button className="equipo-primary-btn sm equipo-create-user-btn" onClick={openCreateUser}>
+              <UserPlus size={15} /> <span>Crear usuario</span>
             </button>
           </div>
-          <p className="equipo-section-hint">
-            Estos son los usuarios que pueden iniciar sesión en el sistema. Cambia su correo, contraseña o rol.
-          </p>
+          <p className="equipo-section-hint"><span className="equipo-login-desktop">Estos son los usuarios que pueden iniciar sesión en el sistema. Cambia su correo, contraseña o rol.</span><span className="equipo-login-mobile">Gestiona las cuentas, accesos y roles del sistema.</span></p>
 
           {usersError && <Toast type="error" message={usersError} onClose={() => setUsersError('')} />}
 
@@ -581,7 +579,7 @@ export function Equipo() {
         <h3 className="equipo-section-title" style={{ marginBottom: 12 }}>
           <Shield size={18} style={{ color: '#dc2626' }} /> Matriz de Permisos por Rol
         </h3>
-        <div style={{ overflowX: 'auto' }}>
+        <div className="perm-table-wrap">
           <table className="perm-table">
             <thead>
               <tr><th>Módulo</th><th>Owner</th><th>Manager</th><th>Cashier</th></tr>
@@ -619,6 +617,27 @@ export function Equipo() {
               </tr>
             </tbody>
           </table>
+          <div className="perm-mobile-list" aria-label="Permisos por módulo y rol">
+            {[
+              { module: 'Ventas y Caja', owner: ['total', 'Total'], manager: ['total', 'Total'], cashier: ['total', 'Total'] },
+              { module: 'Costos y Márgenes', owner: ['total', 'Visibles'], manager: ['total', 'Visibles'], cashier: ['blocked', 'Ocultos'] },
+              { module: 'Inventario y Almacén', owner: ['total', 'Total'], manager: ['partial', 'Transferencias'], cashier: ['partial', 'Solo lectura'] },
+              { module: 'Nómina y Finanzas', owner: ['total', 'Total'], manager: ['partial', 'Cierre operativo'], cashier: ['blocked', 'Bloqueado'] },
+              { module: 'Gestión de Usuarios', owner: ['total', 'Total'], manager: ['partial', 'Sólo empleados'], cashier: ['blocked', 'Bloqueado'] },
+            ].map(row => (
+              <article className="perm-mobile-card" key={row.module}>
+                <h4>{row.module}</h4>
+                <div className="perm-mobile-roles">
+                  {(['owner', 'manager', 'cashier'] as const).map(role => (
+                    <div className="perm-mobile-role" key={role}>
+                      <span>{role === 'owner' ? 'Owner' : role === 'manager' ? 'Manager' : 'Cashier'}</span>
+                      <PermCell level={row[role][0] as 'total' | 'partial' | 'blocked'} label={row[role][1]} />
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </div>
 

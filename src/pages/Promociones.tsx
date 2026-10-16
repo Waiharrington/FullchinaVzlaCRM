@@ -212,7 +212,7 @@ export function Promociones() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Tag size={22} className="page-title-icon" /> Promociones</h1>
-          <p className="page-subtitle">Cupones listos para tus automatizaciones de WhatsApp</p>
+          <p className="page-subtitle"><span className="promo-subtitle-desktop">Cupones listos para tus automatizaciones de WhatsApp</span><span className="promo-subtitle-mobile">Cupones para tus promociones</span></p>
         </div>
 
         <div className="promo-header-actions">

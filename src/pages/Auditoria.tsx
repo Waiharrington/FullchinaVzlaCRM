@@ -96,7 +96,7 @@ export function Auditoria() {
             <h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1>
             <button type="button" className="activity-history-refresh" onClick={() => void load()} aria-label="Actualizar historial general" title="Actualizar historial general"><RefreshCw size={16} /><span>Actualizar</span></button>
           </div>
-          <p className="page-subtitle">{logs.length} movimientos cargados · Quién hizo cada cambio y cuándo</p>
+          <p className="page-subtitle"><span className="activity-history-subtitle-desktop">{logs.length} movimientos cargados · Quién hizo cada cambio y cuándo</span><span className="activity-history-subtitle-mobile">{logs.length} cambios · Quién y cuándo</span></p>
         </div>
       </header>
 

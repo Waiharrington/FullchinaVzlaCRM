@@ -4,9 +4,12 @@
   flex-direction: column;
   gap: 16px;
 }
+.equipo-title-mobile,.equipo-login-mobile { display:none; }
 
 /* ---------- Tabla de empleados (nómina) ---------- */
 .team-table-wrap { overflow-x: auto; margin-top: 4px; }
+.perm-mobile-list { display: none; }
+.perm-table-wrap { overflow-x: auto; }
 .team-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .team-table th {
   background: rgba(255, 255, 255, 0.03);
@@ -315,6 +318,81 @@
 }
 
 @media (max-width: 767px) {
+  .management-workspace--team { padding-left: 8px; padding-right: 8px; }
+  .management-workspace--team { gap:12px; }
+  .management-workspace--team .equipo-hero { align-items:flex-start; gap:10px; padding:0; }
+  .management-workspace--team .header-title-group { min-width:0; align-items:flex-start; }
+  .management-workspace--team .equipo-hero .page-title { gap:10px; font-size:1.35rem; line-height:1.12; }
+  .management-workspace--team .equipo-hero .metric-sub-text { display:block; margin-top:7px; font-size:12px; line-height:1.4; }
+  .equipo-title-desktop,.equipo-login-desktop { display:none; }
+  .equipo-title-mobile,.equipo-login-mobile { display:inline; }
+  .management-workspace--team .equipo-hero > .equipo-primary-btn { min-height:44px; }
+  .management-workspace--team .almacen-card { padding:15px 10px; border-radius:14px; }
+  .management-workspace--team .equipo-section-head { align-items:center; flex-wrap:nowrap; gap:8px; }
+  .management-workspace--team .equipo-section-title { min-width:0; gap:7px; font-size:14px; line-height:1.2; }
+  .management-workspace--team .equipo-section-title svg { width:17px; height:17px; flex:0 0 17px; }
+  .management-workspace--team .equipo-create-user-btn { flex:0 0 auto; min-height:38px; padding:7px 10px; gap:6px; font-size:11px; white-space:nowrap; }
+  .management-workspace--team .equipo-create-user-btn svg { width:14px; height:14px; }
+  .management-workspace--team .equipo-section-hint { margin:8px 0 12px; font-size:11.5px; line-height:1.4; }
+  .management-workspace--team .users-grid { grid-template-columns:minmax(0,1fr); gap:9px; }
+
+  .team-table-wrap { overflow: visible; margin-top: 8px; }
+  .team-table,
+  .team-table tbody { display: block; width: 100%; }
+  .team-table thead { display: none; }
+  .team-table tbody { display: grid; gap: 9px; }
+  .team-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 11px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 13px;
+    background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.012));
+  }
+  .team-table td { min-width: 0; padding: 0; border: 0; background: transparent !important; }
+  .team-table td:first-child { grid-column: 1; grid-row: 1; }
+  .team-table td:nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+    padding-left: 44px;
+    color: #a1a1aa;
+    font-size: 12px;
+  }
+  .team-table td:nth-child(2)::before { content: 'Sueldo semanal · '; color: #71717a; }
+  .team-table td:nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; }
+  .team-table td:nth-child(4) { grid-column: 2; grid-row: 2; justify-self: end; }
+  .team-row-id { gap: 9px; }
+  .team-row-id strong { overflow-wrap: anywhere; font-size: 13px; }
+  .team-avatar { width: 34px; height: 34px; }
+  .status-toggle-btn { min-height: 34px; padding: 7px 9px; font-size: 11px; white-space: nowrap; }
+  .team-row-actions { gap: 5px; }
+  .team-row-actions .icon-action-btn { width: 34px; height: 34px; }
+
+  .perm-table-wrap { overflow: visible; }
+  .perm-table { display: none; }
+  .perm-mobile-list { display: grid; gap: 9px; }
+  .perm-mobile-card {
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    background: rgba(255,255,255,.025);
+  }
+  .perm-mobile-card h4 { margin: 0 0 10px; color: #f4f4f5; font-size: 13px; }
+  .perm-mobile-roles { display: grid; gap: 7px; }
+  .perm-mobile-role {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding-top: 7px;
+    border-top: 1px solid rgba(255,255,255,.06);
+  }
+  .perm-mobile-role > span { color: #85858f; font-size: 11px; font-weight: 700; }
+  .perm-mobile-role .perm-pill { flex: 0 1 auto; max-width: 72%; white-space: normal; line-height: 1.2; font-size: 10.5px; padding: 4px 7px; }
+
   .modal-overlay { align-items: flex-end; padding: 6px; }
   .modal-content-custom {
     max-width: none;
@@ -882,10 +960,19 @@
 }
 
 @media (max-width: 767px) {
-  .user-access-modal { max-height: calc(100dvh - 12px); }
+  .modal-overlay:has(.user-access-modal) {
+    overflow: hidden;
+    align-items: center;
+    padding: 8px;
+  }
+  .user-access-modal {
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    margin: 0;
+  }
   .user-access-header { min-height: 62px; padding: 11px 14px; }
   .user-access-heading p { display: none; }
-  .user-access-body { display: block; overflow-y: auto; }
+  .user-access-body { display: block; overflow-y: auto; overscroll-behavior: contain; }
   .user-access-identity,
   .user-access-permissions { overflow: visible; padding: 14px; }
   .user-access-identity { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.07); }

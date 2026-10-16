@@ -1,4 +1,5 @@
 /* ─── Promociones Admin (dark, brand Full China) ─────────────────────── */
+.promo-subtitle-mobile { display: none; }
 .promo-page {
   padding: 0 20px 24px;
   display: flex;
@@ -348,7 +349,7 @@
 .promo-btn-cancel:hover { color: #fff; background: rgba(255, 255, 255, 0.07); }
 .promo-btn-save {
   flex: 0 0 auto;
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-align: center;
   background: #E31B2B;
   color: #fff;
   border: none;
@@ -364,6 +365,8 @@
 
 /* ─── Mobile ────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
+  .promo-subtitle-desktop { display: none; }
+  .promo-subtitle-mobile { display: inline; }
   .promo-page { padding: 0 12px 20px; }
   .promo-header-actions { width: 100%; flex-wrap: wrap; }
   .promo-stats { flex: 1 1 auto; }
@@ -376,21 +379,37 @@
   .promo-form-modal {
     width: calc(100% - 12px);
     max-width: none;
-    max-height: calc(100dvh - 6px);
-    margin-top: auto;
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+    margin: 0;
     border-radius: 18px 18px 10px 10px;
   }
+  .promo-modal-overlay { overflow: hidden; align-items: center; padding: 8px; }
   .promo-form-header { padding: 16px; }
-  .promo-form-body { padding: 16px; }
-  .promo-form-content { flex-direction: column; overflow-y: auto; }
+  .promo-form-body { padding: 16px; gap: 16px; }
+  .promo-form-content { flex: 1 1 auto; min-height: 0; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
   .promo-form-fields { overflow-y: visible; }
+  .promo-form-row { min-width: 0; gap: 8px; }
+  .promo-form-row > label:not(.promo-toggle-label) { color: #c4c4cc; font-size: 12px; }
+  .promo-form-row input[type="text"],
+  .promo-form-row input[type="number"] { width: 100%; min-height: 48px; box-sizing: border-box; padding: 11px 13px; border-radius: 12px; background: #202025; font-size: 15px; }
+  .promo-form-row input::placeholder { color: #777780; }
+  .promo-emoji-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .promo-emoji-btn { width: min(100%, 48px); height: 48px; justify-self: start; border-radius: 12px; }
+  .promo-toggle-label { min-height: 48px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(255,255,255,.035); line-height: 1.4; }
   .promo-preview-pane {
     flex: 0 0 auto;
     border-left: none;
-    border-top: 1px dashed rgba(255,255,255,.1);
-    padding: 16px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    margin: 0 12px 14px;
+    padding: 16px 12px;
+    overflow: visible;
+    background: linear-gradient(160deg, rgba(227,27,43,.07), rgba(255,255,255,.015));
   }
-  .promo-coupon-preview { max-width: 190px; }
+  .promo-preview-label { color: #a1a1aa; font-size: 10px; }
+  .promo-coupon-preview { width: 100%; max-width: 280px; }
+  .promo-preview-hint { max-width: 280px; line-height: 1.4; }
   .promo-form-footer { display: grid; grid-template-columns: 1fr 1.2fr; padding: 14px 16px; }
   .promo-form-footer button { width: 100%; min-height: 44px; }
 }

@@ -363,7 +363,7 @@ export function Mas() {
             {isCreditsModule ? <CreditCard size={22} className="page-title-icon" /> : <Settings size={22} className="page-title-icon" />}
             {isCreditsModule ? 'Cuentas por cobrar' : 'Configuración'}
           </h1>
-          <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : 'Administración general, accesos y servicio de delivery.'}</p>
+          <p className="page-subtitle">{isCreditsModule ? 'Controla los créditos pendientes y los pagos de tus clientes.' : <><span className="mas-subtitle-desktop">Administración general, accesos y servicio de delivery.</span><span className="mas-subtitle-mobile">Administra accesos y ajustes.</span></>}</p>
         </div>
       </header>
 

@@ -15,6 +15,7 @@
 }
 
 .activity-history-header { align-items:flex-start; }
+.activity-history-subtitle-mobile { display:none; }
 .activity-history-heading { min-width:0; flex:1; }
 .activity-history-title-line { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .activity-history-title-line .page-title { margin:0; }
@@ -60,7 +61,10 @@
 .activity-history-footnote { margin: 13px 16px 16px; color: #71717a; font-size: 11px; line-height: 1.5; }
 
 @media (max-width: 640px) {
-  .activity-history-header { display:block; }
+  .activity-history-header { display:block; margin-bottom:10px; }
+  .activity-history-subtitle-desktop { display:none; }
+  .activity-history-subtitle-mobile { display:inline; white-space:nowrap; }
+  .activity-history-heading > .page-subtitle { white-space:nowrap; font-size:13px; }
   .activity-history-title-line { gap:8px; }
   .activity-history-refresh { min-height:38px; padding:0 10px; font-size:12px; }
   .activity-history-toolbar { align-items: stretch; flex-wrap: wrap; }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getLoyaltyCustomers, type Customer } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
 import { Trophy, Award, Gift, Star, Flame, Medal, Search, X, ChevronLeft, ChevronRight, Phone, KeyRound, CheckCircle2, Settings2 } from 'lucide-react'
@@ -24,6 +24,9 @@ function initialsFor(name: string): string {
 }
 
 export function Fidelizacion() {
+  const metricsCarouselRef = useRef<HTMLDivElement>(null)
+  const metricsCarouselPaused = useRef(false)
+  const currentMetricIndex = useRef(0)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -33,6 +36,20 @@ export function Fidelizacion() {
   const [visitsPerReward, setVisitsPerReward] = useState(10)
   const [rewardDescription, setRewardDescription] = useState('Plato o ración gratis')
   const [adminNotice, setAdminNotice] = useState('')
+
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 640px)').matches === false || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => {
+      const carousel = metricsCarouselRef.current
+      if (!carousel || metricsCarouselPaused.current || carousel.children.length < 2) return
+      const nextIndex = (currentMetricIndex.current + 1) % carousel.children.length
+      const nextSlide = carousel.children[nextIndex] as HTMLElement
+      const left = nextSlide.getBoundingClientRect().left - carousel.getBoundingClientRect().left + carousel.scrollLeft
+      carousel.scrollTo({ left, behavior: 'smooth' })
+      currentMetricIndex.current = nextIndex
+    }, 5000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const topVisitsCustomers = [...customers].sort((a, b) => b.totalVisits - a.totalVisits)
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId) || customers[0] || {
@@ -122,14 +139,40 @@ export function Fidelizacion() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Award size={22} className="page-title-icon" /> Fidelización</h1>
-          <p className="page-subtitle">Premia las visitas recurrentes y sigue a tus clientes VIP.</p>
+          <p className="page-subtitle"><span className="fidel-subtitle-desktop">Premia las visitas recurrentes y sigue a tus clientes VIP.</span><span className="fidel-subtitle-mobile">Premia la fidelidad de tus clientes.</span></p>
         </div>
       </header>
 
       {/* Métricas */}
-      <div className="fidel-metrics management-workspace-metrics">
+      <div
+        ref={metricsCarouselRef}
+        className="fidel-metrics management-workspace-metrics"
+        role="region"
+        aria-label="Resumen de fidelización"
+        aria-roledescription="carrusel"
+        onScroll={event => {
+          const carousel = event.currentTarget
+          const left = carousel.getBoundingClientRect().left
+          let nearestIndex = 0
+          let nearestDistance = Number.POSITIVE_INFINITY
+          Array.from(carousel.children).forEach((child, index) => {
+            const distance = Math.abs((child as HTMLElement).getBoundingClientRect().left - left)
+            if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = index }
+          })
+          currentMetricIndex.current = nearestIndex
+        }}
+        onPointerDown={() => { metricsCarouselPaused.current = true }}
+        onPointerUp={() => { metricsCarouselPaused.current = false }}
+        onPointerCancel={() => { metricsCarouselPaused.current = false }}
+        onPointerEnter={event => { if (event.pointerType === 'mouse') metricsCarouselPaused.current = true }}
+        onPointerLeave={() => { metricsCarouselPaused.current = false }}
+        onFocusCapture={() => { metricsCarouselPaused.current = true }}
+        onBlurCapture={event => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) metricsCarouselPaused.current = false
+        }}
+      >
         {METRICS.map((m, i) => (
-          <div key={i} className="fidel-metric">
+          <div key={i} className="fidel-metric" role="group" aria-roledescription="diapositiva" aria-label={`${i + 1} de ${METRICS.length}: ${m.label}`}>
             <div className={`fidel-metric-icon ${m.cls}`}>{m.icon}</div>
             <div className="fidel-metric-body">
               <span className="fidel-metric-label">{m.label}</span>
@@ -139,6 +182,7 @@ export function Fidelizacion() {
           </div>
         ))}
       </div>
+      <p className="fidel-carousel-hint">Pasan automáticamente · También puedes deslizar</p>
 
       <div className="fidel-grid">
         {/* Ranking */}
