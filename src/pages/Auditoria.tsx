@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Activity, AlertTriangle, ChevronDown, Clock3, RefreshCw, Search, Shield } from 'lucide-react'
+import { Activity, AlertTriangle, Clock3, RefreshCw, Search, Shield } from 'lucide-react'
 import { getSystemActivityLogs, type SystemActivityLog } from '../lib/dataService'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import './Auditoria.css'
 
@@ -89,12 +90,14 @@ export function Auditoria() {
 
   return (
     <div className="page animate-fade-in">
-      <header className="page-header">
-        <div>
-          <h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1>
+      <header className="page-header activity-history-header">
+        <div className="activity-history-heading">
+          <div className="activity-history-title-line">
+            <h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1>
+            <button type="button" className="activity-history-refresh" onClick={() => void load()} aria-label="Actualizar historial general" title="Actualizar historial general"><RefreshCw size={16} /><span>Actualizar</span></button>
+          </div>
           <p className="page-subtitle">{logs.length} movimientos cargados · Quién hizo cada cambio y cuándo</p>
         </div>
-        <button className="btn-transfer-submit" style={{ margin: 0 }} onClick={() => void load()}><RefreshCw size={16} /> Actualizar</button>
       </header>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
@@ -102,7 +105,7 @@ export function Auditoria() {
       <section className="card activity-history-card">
         <div className="activity-history-toolbar">
           <label className="activity-history-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar persona, acción o registro" /></label>
-          <label className="activity-history-module"><span>Módulo</span><select value={moduleFilter} onChange={event => setModuleFilter(event.target.value)}><option value="">Todos</option>{modules.map(module => <option key={module} value={module}>{module}</option>)}</select><ChevronDown size={14} /></label>
+          <div className="activity-history-module"><span>Módulo</span><StyledSelect className="activity-history-module-select" value={moduleFilter} onChange={event => setModuleFilter(event.target.value)} aria-label="Filtrar historial por módulo"><option value="">Todos</option>{modules.map(module => <option key={module} value={module}>{module}</option>)}</StyledSelect></div>
           <span className="activity-history-count">{filteredLogs.length} de {logs.length}</span>
         </div>
 
