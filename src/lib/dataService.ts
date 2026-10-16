@@ -4395,10 +4395,12 @@ export async function deleteRecipeComponent(id: string): Promise<void> {
   if (error) throw error
 }
 
-export async function updateRecipeComponent(id: string, updates: { quantity: number; unitId: string }): Promise<void> {
+export async function updateRecipeComponent(id: string, updates: { quantity: number; unitId: string; ingredientId?: string | null }): Promise<void> {
+  const payload: Record<string, unknown> = { quantity: updates.quantity, unit_id: updates.unitId }
+  if (updates.ingredientId !== undefined) payload.ingredient_id = updates.ingredientId
   const { error } = await client()
     .from('recipe_components')
-    .update({ quantity: updates.quantity, unit_id: updates.unitId })
+    .update(payload)
     .eq('id', id)
   if (error) throw error
 }

@@ -316,6 +316,21 @@
 .mnu-field input::placeholder, .mnu-field textarea::placeholder { color: #52525b; }
 .mnu-field textarea { resize: vertical; min-height: 60px; }
 .mnu-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.mnu-recipe-section { min-width: 0; }
+.mnu-recipe-help { margin: -3px 0 10px; color: #85858f; font-size: 11px; line-height: 1.5; }
+.mnu-recipe-warning { display: block; margin-top: 8px; color: #fbbf24; font-size: 11px; }
+.mnu-recipe-loading { display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-size: 12px; }
+.mnu-recipe-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px 92px 34px; align-items: center; gap: 8px; margin: 8px 0; }
+.mnu-recipe-ingredient { min-width: 0; }
+.mnu-recipe-legacy { display: block; overflow: hidden; padding: 11px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #a1a1aa; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.mnu-recipe-quantity, .mnu-recipe-unit { width: 100%; min-width: 0; height: 42px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: rgba(255,255,255,0.04); color: #f4f4f5; }
+.mnu-recipe-unit { height: auto; padding: 0; }
+.mnu-recipe-remove, .mnu-recipe-add { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid rgba(255,255,255,0.1); border-radius: 9px; background: rgba(255,255,255,0.04); color: #a1a1aa; cursor: pointer; }
+.mnu-recipe-remove { width: 34px; height: 36px; }
+.mnu-recipe-remove:hover { border-color: rgba(239,68,68,0.35); color: #f87171; }
+.mnu-recipe-add { min-height: 36px; padding: 0 11px; color: #fca5a5; font-size: 11px; font-weight: 700; }
+.mnu-recipe-add:hover { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.08); }
+.mnu-recipe-remove:disabled, .mnu-recipe-add:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* --- Photo Upload Area --- */
 .mnu-photo-card {
@@ -730,6 +745,8 @@
 
 @media (max-width: 380px) {
   .mnu-grid { grid-template-columns: minmax(0, 1fr); }
+  .mnu-recipe-row { grid-template-columns: minmax(0, 1fr) 1fr 1fr 32px; }
+  .mnu-recipe-ingredient { grid-column: 1 / -1; }
 }
 
 /* ============================================================
@@ -887,6 +904,9 @@
   .mnu-money-input { position: relative; }
   .mnu-money-input > span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #ef4c57; font-weight: 800; }
   .mnu-money-input input { padding-left: 30px; }
+  .mnu-recipe-row { grid-template-columns: minmax(0, 1fr) 66px 76px 32px; gap: 5px; }
+  .mnu-recipe-quantity, .mnu-recipe-unit { font-size: 12px; }
+  .mnu-recipe-remove { width: 32px; }
 }
 
 

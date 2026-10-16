@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, type SellableProduct, type MenuCategoryRow } from '../lib/dataService'
+import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, getIngredients, getUnits, getRecipeComponents, createRecipeComponent, updateRecipeComponent, deleteRecipeComponent, type SellableProduct, type MenuCategoryRow, type Ingredient } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2,
@@ -15,6 +15,7 @@ import NumberStepper from '../components/NumberStepper'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { StyledSelect } from '../components/StyledSelect'
+import { SearchSelect } from '../components/SearchSelect'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
 
@@ -51,6 +52,7 @@ function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
 }
 
 interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean; menuLabel: SellableProduct['menuLabel'] }
+interface RecipeDraft { key: string; id?: string; ingredientId: string | null; quantity: string; unitId: string; portionRecipeId?: string | null; preparationBatchId?: string | null; label?: string }
 const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true, menuLabel: null }
 
 export function Menu() {
@@ -76,6 +78,19 @@ export function Menu() {
   const editCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [form, setForm] = useState<Form>(emptyForm)
   const [saving, setSaving] = useState(false)
+  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
+  const [recipeRows, setRecipeRows] = useState<RecipeDraft[]>([])
+  const [beverageIngredientId, setBeverageIngredientId] = useState('')
+  const [recipeLoading, setRecipeLoading] = useState(false)
+  const [recipeLoadFailed, setRecipeLoadFailed] = useState(false)
+
+  useEffect(() => {
+    void Promise.all([getIngredients(), getUnits()]).then(([list, unitList]) => {
+      setIngredients(list)
+      setUnits(unitList)
+    }).catch((e) => setError(e instanceof Error ? e.message : 'No se pudo cargar el inventario'))
+  }, [])
 
   useEffect(() => {
     if (editing) document.body.classList.add('modal-open')
@@ -164,11 +179,68 @@ export function Menu() {
       editCloseTimer.current = null
     }, EDIT_MODAL_EXIT_MS)
   }
-  const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setEditing('new') }
-  const openEdit = (p: SellableProduct) => {
+  const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setRecipeRows([]); setBeverageIngredientId(''); setRecipeLoadFailed(false); setEditing('new') }
+  const openEdit = async (p: SellableProduct) => {
     prepareEditorOpen()
     setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive, menuLabel: p.menuLabel })
     setEditing(p)
+    setRecipeLoading(true)
+    setRecipeLoadFailed(false)
+    try {
+      const components = await getRecipeComponents(p.id)
+      setBeverageIngredientId(components.find((component) => component.ingredientId)?.ingredientId ?? '')
+      setRecipeRows(components.map((component) => ({
+        key: component.id, id: component.id, ingredientId: component.ingredientId,
+        quantity: String(component.quantity), unitId: component.unitId,
+        portionRecipeId: component.portionRecipeId, preparationBatchId: component.preparationBatchId,
+        label: component.ingredientName ?? (component.portionRecipeId ? 'Receta de porción existente' : 'Lote preparado existente'),
+      })))
+    } catch (e) {
+      setRecipeRows([])
+      setBeverageIngredientId('')
+      setRecipeLoadFailed(true)
+      setError(e instanceof Error ? e.message : 'No se pudo cargar la receta del producto')
+    } finally { setRecipeLoading(false) }
+  }
+
+  const selectedPrimaryCategory = useMemo(() => {
+    const chosen = form.categories.length ? form.categories : ['otros']
+    return [...chosen].sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b))[0]
+  }, [form.categories])
+  const isBeverage = selectedPrimaryCategory === 'bebidas'
+  const trackedIngredients = useMemo(() => ingredients.filter((ingredient) => ingredient.inventoryClass !== 'non_inventory'), [ingredients])
+  const addRecipeRow = () => setRecipeRows((rows) => [...rows, {
+    key: `new-${Date.now()}-${Math.random()}`, ingredientId: '', quantity: '1', unitId: '',
+  }])
+  const updateRecipeRow = (key: string, updates: Partial<RecipeDraft>) => setRecipeRows((rows) => rows.map((row) => row.key === key ? { ...row, ...updates } : row))
+  const removeRecipeRow = (key: string) => setRecipeRows((rows) => rows.filter((row) => row.key !== key))
+  const saveRecipeConfiguration = async (productId: string, beverage: boolean) => {
+    if (beverage) {
+      const ingredient = trackedIngredients.find((item) => item.id === beverageIngredientId)
+      if (!ingredient) throw new Error('Selecciona el artículo de inventario que se descontará por cada bebida vendida')
+      const existing = recipeRows.find((row) => row.ingredientId || row.id)
+      if (existing?.id) {
+        await updateRecipeComponent(existing.id, { ingredientId: ingredient.id, quantity: 1, unitId: ingredient.unitId })
+      } else {
+        await createRecipeComponent({ sellableProductId: productId, ingredientId: ingredient.id, quantity: 1, unitId: ingredient.unitId })
+      }
+      for (const row of recipeRows) if (row.id && row.id !== existing?.id) await deleteRecipeComponent(row.id)
+      return
+    }
+
+    const oldComponents = editing && editing !== 'new' ? await getRecipeComponents(productId) : []
+    const desiredIds = new Set(recipeRows.filter((row) => row.id).map((row) => row.id!))
+    for (const row of recipeRows) {
+      const quantity = Number.parseFloat(row.quantity.replace(',', '.'))
+      if (!row.id && !row.ingredientId) continue
+      if (!Number.isFinite(quantity) || quantity <= 0 || !row.unitId) throw new Error('Completa una cantidad y unidad válidas en cada componente de la receta')
+      if (row.id) {
+        await updateRecipeComponent(row.id, { ingredientId: row.ingredientId || undefined, quantity, unitId: row.unitId })
+      } else if (row.ingredientId) {
+        await createRecipeComponent({ sellableProductId: productId, ingredientId: row.ingredientId, quantity, unitId: row.unitId })
+      }
+    }
+    for (const component of oldComponents) if (!desiredIds.has(component.id)) await deleteRecipeComponent(component.id)
   }
 
   const pickImage = async (file: File | undefined) => {
@@ -269,7 +341,12 @@ export function Menu() {
     if (!form.name.trim() || !(parseFloat(form.price) >= 0)) { setError('Nombre y precio son obligatorios'); return }
     const chosen = form.categories.length ? form.categories : ['otros']
     const primary = [...chosen].sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b))[0]
+    const beverage = primary === 'bebidas'
+    if (recipeLoading) { setError('Espera a que termine de cargar el inventario y la receta'); return }
+    if (recipeLoadFailed) { setError('No se pudo leer la receta actual. Cierra y vuelve a abrir el producto antes de guardar.'); return }
+    if (beverage && !trackedIngredients.some((item) => item.id === beverageIngredientId)) { setError('Selecciona el artículo de inventario que se descontará por cada bebida vendida'); return }
     setSaving(true); setError('')
+    let createdProductId: string | null = null
     try {
       const payload = {
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
@@ -277,8 +354,21 @@ export function Menu() {
         category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '', imageUrl: form.imageUrl, isActive: form.isActive, menuLabel: form.menuLabel,
       }
       let productId: string
-      if (editing === 'new') { productId = await createProduct(payload); flash(`Plato "${payload.name}" creado`) }
-      else if (editing) { productId = editing.id; await updateProduct(editing.id, payload); flash(`"${payload.name}" actualizado`) }
+      if (editing === 'new') {
+        // Evita que el trigger heredado cree una bebida espejo antes de guardar
+        // el vínculo elegido explícitamente por quien administra el menú.
+        productId = await createProduct(beverage ? { ...payload, category: 'otros', isActive: false } : payload)
+        createdProductId = productId
+        await saveRecipeConfiguration(productId, beverage)
+        if (beverage) await updateProduct(productId, { category: payload.category, cost: trackedIngredients.find((item) => item.id === beverageIngredientId)?.pricePerUnit ?? payload.cost, isActive: payload.isActive })
+        flash(`Plato "${payload.name}" creado`)
+      }
+      else if (editing) {
+        productId = editing.id
+        await saveRecipeConfiguration(productId, beverage)
+        await updateProduct(editing.id, beverage ? { ...payload, cost: trackedIngredients.find((item) => item.id === beverageIngredientId)?.pricePerUnit ?? payload.cost } : payload)
+        flash(`"${payload.name}" actualizado`)
+      }
       else { productId = '' }
       if (productId) await setProductExtraCategories(productId, chosen, payload.category)
 
@@ -293,7 +383,14 @@ export function Menu() {
       closeEditor()
       // Silent background refresh to stay in sync (no loading spinner)
       void load(true)
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error al guardar el plato') }
+    } catch (e) {
+      let message = e instanceof Error ? e.message : 'Error al guardar el plato'
+      if (createdProductId) {
+        try { await deleteProduct(createdProductId) }
+        catch { message += '. No se pudo revertir el producto creado; revisa el menú antes de volver a intentarlo.' }
+      }
+      setError(message)
+    }
     finally { setSaving(false) }
   }
 
@@ -474,6 +571,57 @@ export function Menu() {
                     })}
                   </div>
                 </div>
+                {isBeverage ? (
+                  <div className="mnu-product-section mnu-recipe-section">
+                    <div className="mnu-product-section-title">Descuento de inventario <small>Vincula la bebida existente</small></div>
+                    <p className="mnu-recipe-help">Cada venta descontará 1 {trackedIngredients.find((item) => item.id === beverageIngredientId)?.unitSymbol || 'unidad'} del artículo seleccionado. No se creará otro producto en inventario.</p>
+                    <SearchSelect
+                      options={trackedIngredients.map((item) => ({ value: item.id, label: `${item.name} · ${item.currentStock} ${item.unitSymbol} disponibles` }))}
+                      value={beverageIngredientId}
+                      onChange={(id) => {
+                        setBeverageIngredientId(id)
+                        const selectedIngredient = trackedIngredients.find((item) => item.id === id)
+                        if (selectedIngredient?.pricePerUnit != null) setForm((current) => ({ ...current, cost: String(selectedIngredient.pricePerUnit) }))
+                      }}
+                      placeholder="Buscar bebida en inventario..."
+                      emptyText="No hay artículos activos en inventario"
+                      disabled={recipeLoading || saving}
+                    />
+                    {trackedIngredients.length === 0 && <small className="mnu-recipe-warning">Crea primero la bebida en Inventario para poder enlazarla.</small>}
+                  </div>
+                ) : (
+                  <div className="mnu-product-section mnu-recipe-section">
+                    <div className="mnu-product-section-title">Receta e inventario <small>Descuenta ingredientes al vender</small></div>
+                    <p className="mnu-recipe-help">Añade los ingredientes y cantidades que consume una porción. Si no configuras componentes, este plato no descontará inventario.</p>
+                    {recipeLoading ? <div className="mnu-recipe-loading"><Loader2 size={15} className="animate-spin" /> Cargando receta…</div> : (
+                      <>
+                        {recipeRows.map((row) => {
+                          const ingredient = trackedIngredients.find((item) => item.id === row.ingredientId)
+                          const unitOptions = units.length ? units : (ingredient ? [{ id: ingredient.unitId, name: ingredient.unitName, symbol: ingredient.unitSymbol }] : [])
+                          return (
+                            <div className="mnu-recipe-row" key={row.key}>
+                              <div className="mnu-recipe-ingredient">
+                                {row.ingredientId ? <SearchSelect options={trackedIngredients.map((item) => ({ value: item.id, label: `${item.name} · ${item.currentStock} ${item.unitSymbol}` }))} value={row.ingredientId} onChange={(id) => {
+                                  const selectedIngredient = trackedIngredients.find((item) => item.id === id)
+                                  updateRecipeRow(row.key, { ingredientId: id, unitId: selectedIngredient?.unitId ?? row.unitId })
+                                }} placeholder="Buscar ingrediente…" emptyText="Sin ingredientes" disabled={saving} /> : row.id ? <span className="mnu-recipe-legacy">{row.label || 'Componente de receta existente'}</span> : <SearchSelect options={trackedIngredients.map((item) => ({ value: item.id, label: `${item.name} · ${item.currentStock} ${item.unitSymbol}` }))} value="" onChange={(id) => {
+                                  const selectedIngredient = trackedIngredients.find((item) => item.id === id)
+                                  updateRecipeRow(row.key, { ingredientId: id, unitId: selectedIngredient?.unitId ?? '' })
+                                }} placeholder="Buscar ingrediente…" emptyText="Sin ingredientes" disabled={saving} />}
+                              </div>
+                              <input className="mnu-recipe-quantity" aria-label="Cantidad por porción" inputMode="decimal" value={row.quantity} onChange={(event) => updateRecipeRow(row.key, { quantity: event.target.value })} disabled={saving} />
+                              <StyledSelect className="mnu-recipe-unit" aria-label="Unidad" value={row.unitId} onChange={(event) => updateRecipeRow(row.key, { unitId: event.target.value })} disabled={saving || Boolean(row.id && !row.ingredientId && !row.portionRecipeId && !row.preparationBatchId)}>
+                                <option value="">Unidad</option>{unitOptions.map((unit) => <option key={unit.id} value={unit.id}>{unit.symbol}</option>)}
+                              </StyledSelect>
+                              <button type="button" className="mnu-recipe-remove" onClick={() => removeRecipeRow(row.key)} aria-label="Quitar ingrediente" title="Quitar ingrediente" disabled={saving}><Trash2 size={15} /></button>
+                            </div>
+                          )
+                        })}
+                        <button type="button" className="mnu-recipe-add" onClick={addRecipeRow} disabled={saving || trackedIngredients.length === 0}><Plus size={14} /> Agregar ingrediente</button>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div className="mnu-product-section">
                   <div className="mnu-product-section-title">Etiqueta del plato <small>Visible para los clientes</small></div>
                   <div className="mnu-cat-chips mnu-label-chips" role="radiogroup" aria-label="Etiqueta del plato">
