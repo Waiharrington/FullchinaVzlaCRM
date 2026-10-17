@@ -1,6 +1,6 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react'
 import './Toast.css'
 
 type ToastType = 'success' | 'error' | 'info'
@@ -8,16 +8,11 @@ type ToastType = 'success' | 'error' | 'info'
 interface ToastProps {
   type: ToastType
   message: string
+  title?: string
   onClose?: () => void
   duration?: number
   actionLabel?: string
   onAction?: () => void
-}
-
-const ICONS: Record<ToastType, typeof CheckCircle2> = {
-  success: CheckCircle2,
-  error: AlertTriangle,
-  info: Info,
 }
 
 function getToastRoot() {
@@ -30,7 +25,7 @@ function getToastRoot() {
   return root
 }
 
-export default function Toast({ type, message, onClose, duration = 3000, actionLabel, onAction }: ToastProps) {
+export default function Toast({ type, message, title, onClose, duration = 3000, actionLabel, onAction }: ToastProps) {
   const [closing, setClosing] = useState(false)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -51,21 +46,22 @@ export default function Toast({ type, message, onClose, duration = 3000, actionL
 
   if (!message) return null
 
-  const Icon = ICONS[type]
-
   return createPortal(
     <div className={`toast-item toast-${type}${closing ? ' toast-leaving' : ''}`} role={type === 'error' ? 'alert' : 'status'}>
-      <span className="toast-icon"><Icon size={17} /></span>
+      <div className="toast-head">
+        {type === 'error' ? <AlertCircle className="toast-icon" aria-hidden="true" /> : type === 'success' ? <CheckCircle2 className="toast-icon" aria-hidden="true" /> : <Info className="toast-icon" aria-hidden="true" />}
+        <span className="toast-brand-line" aria-hidden="true" />
+        <button type="button" className="toast-close" onClick={handleClose} aria-label="Cerrar">
+          <X size={14} />
+        </button>
+      </div>
       <span className="toast-message">
+        {title && <strong className="toast-title">{title}</strong>}
         {message}
         {actionLabel && onAction && (
           <button type="button" className="toast-action" onClick={onAction}>{actionLabel}</button>
         )}
       </span>
-      <button type="button" className="toast-close" onClick={handleClose} aria-label="Cerrar">
-        <X size={13} />
-      </button>
-      <span className="toast-progress" style={{ animationDuration: `${duration}ms` }} />
     </div>,
     getToastRoot()
   )

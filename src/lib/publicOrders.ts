@@ -12,6 +12,26 @@ export interface WebOrderCartItem {
   modifiers?: Array<{ optionId: string; quantity: number }>
 }
 
+export interface CustomerRepeatOrder {
+  orderId: string
+  orderType: 'takeaway' | 'delivery'
+  customerName: string
+  customerPhone: string
+  customerIdentification: string
+  deliveryAddress: string | null
+  deliveryLat: number | null
+  deliveryLng: number | null
+  customerNotes: string
+  items: Array<{
+    productId: string
+    productName: string
+    available: boolean
+    quantity: number
+    notes?: string
+    modifiers: Array<{ optionId: string; quantity: number }>
+  }>
+}
+
 export interface Promotion {
   id: string
   tag: string
@@ -57,6 +77,38 @@ export interface PendingWebOrder {
 function db() {
   if (!supabase) throw new Error('El menú no está disponible en este momento')
   return supabase
+}
+
+export async function getCustomerOrderForRepeat(orderId: string): Promise<CustomerRepeatOrder> {
+  const { data, error } = await db().rpc('fn_get_customer_order_for_repeat', { p_order_id: orderId })
+  if (error) throw error
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('No pudimos leer el pedido para repetirlo.')
+  const row = data as Record<string, unknown>
+  const orderType = row.orderType === 'delivery' ? 'delivery' : row.orderType === 'takeaway' ? 'takeaway' : null
+  if (!orderType) throw new Error('Este pedido tiene una modalidad que ya no está disponible.')
+  const items = Array.isArray(row.items) ? row.items as Record<string, unknown>[] : []
+  return {
+    orderId: String(row.orderId ?? orderId),
+    orderType,
+    customerName: String(row.customerName ?? ''),
+    customerPhone: String(row.customerPhone ?? ''),
+    customerIdentification: String(row.customerIdentification ?? ''),
+    deliveryAddress: row.deliveryAddress == null ? null : String(row.deliveryAddress),
+    deliveryLat: row.deliveryLat == null ? null : Number(row.deliveryLat),
+    deliveryLng: row.deliveryLng == null ? null : Number(row.deliveryLng),
+    customerNotes: String(row.customerNotes ?? ''),
+    items: items.map(item => ({
+      productId: String(item.productId),
+      productName: String(item.productName ?? ''),
+      available: Boolean(item.available),
+      quantity: Number(item.quantity),
+      notes: item.notes == null ? undefined : String(item.notes),
+      modifiers: (Array.isArray(item.modifiers) ? item.modifiers as Record<string, unknown>[] : []).map(modifier => ({
+        optionId: String(modifier.optionId),
+        quantity: Number(modifier.quantity),
+      })),
+    })),
+  }
 }
 
 export async function getPublicCatalog(): Promise<Product[]> {

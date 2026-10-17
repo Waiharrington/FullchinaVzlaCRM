@@ -27,7 +27,9 @@ Deno.serve(async request => {
     const phone = String(body.phone ?? '').trim()
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const password = String(body.password ?? '')
+    const identificationDigits = identification.replace(/\D/g, '')
     if (!firstName || !lastName || !identification || phone.replace(/\D/g, '').length < 7 || password.length < 8) return json({ message: 'Verifica nombre, apellido, cédula, teléfono y contraseña (mínimo 8 caracteres).' }, 400)
+    if (identificationDigits.length < 6 || identificationDigits.length > 10) return json({ message: 'La cédula debe tener entre 6 y 10 dígitos.' }, 400)
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json({ message: 'El correo no tiene un formato válido.' }, 400)
     const internalEmail = `customer-${crypto.randomUUID()}@accounts.fullchina.invalid`
     const { data: created, error: createError } = await admin.auth.admin.createUser({ email: internalEmail, password, email_confirm: true, user_metadata: { customer_account: true } })

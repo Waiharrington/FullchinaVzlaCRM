@@ -389,6 +389,45 @@
   margin-left: auto; padding: 9px 12px; flex-shrink: 0; border-radius: 9px;
   color: #fff; background: rgba(225,29,42,0.85); font-size: 12px; font-weight: 700;
 }
+.mnu-photo-library-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; margin-top: 10px; padding: 0 11px;
+  border: 1px solid rgba(239,68,68,.28); border-radius: 10px; background: rgba(225,29,42,.07); color: #fca5a5;
+  font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; transition: background .18s,border-color .18s,color .18s;
+}
+.mnu-photo-library-toggle:hover { border-color: rgba(239,68,68,.55); background: rgba(225,29,42,.14); color: #fff; }
+.mnu-photo-library { margin-top: 10px; padding: 10px; border: 1px solid rgba(255,255,255,.09); border-radius: 12px; background: rgba(0,0,0,.2); }
+.mnu-photo-library>input { width: 100%; height: 36px; padding: 0 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 9px; outline: none; background: #111014; color: #f4f4f5; font: inherit; font-size: 12px; }
+.mnu-photo-library>input:focus { border-color: rgba(239,68,68,.55); }
+.mnu-photo-library-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; max-height: 210px; margin-top: 9px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #843137 transparent; }
+.mnu-photo-library-item { min-width: 0; padding: 5px; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; background: rgba(255,255,255,.035); color: #e4e4e7; text-align: left; cursor: pointer; }
+.mnu-photo-library-item:hover { border-color: rgba(239,68,68,.65); background: rgba(225,29,42,.1); }
+.mnu-photo-library-item img { display: block; width: 100%; height: 58px; border-radius: 6px; background: #151217; object-fit: cover; }
+.mnu-photo-library-item span { display: block; overflow: hidden; margin: 5px 1px 1px; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.mnu-photo-library-empty { grid-column: 1/-1; margin: 5px 0; color: #a1a1aa; font-size: 11px; text-align: center; }
+
+/* The product photo library needs enough room to compare dishes at a glance. */
+@media (min-width: 701px) {
+  .mnu-product-modal-gallery-open { width: min(1180px, calc(100vw - 48px)); max-width: 1180px; }
+  .mnu-product-modal-gallery-open .mnu-product-body { grid-template-columns: minmax(330px, 390px) minmax(0, 1fr); }
+  .mnu-product-modal-gallery-open .mnu-product-aside { padding-right: 22px; }
+  .mnu-product-modal-gallery-open .mnu-product-aside .mnu-photo-card-filled { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .mnu-product-modal-gallery-open .mnu-product-aside .mnu-photo-preview { grid-column: 1 / -1; height: 150px; }
+  .mnu-product-modal-gallery-open .mnu-product-aside .mnu-photo-info { grid-column: 1 / -1; }
+  .mnu-product-modal-gallery-open .mnu-product-aside .mnu-photo-delete { position: static; }
+  .mnu-product-modal-gallery-open .mnu-photo-library { position: relative; z-index: 1; inset: auto; width: auto; margin-top: 10px; padding: 14px; border-color: rgba(239,68,68,.25); background: #141014; box-shadow: 0 12px 28px rgba(0,0,0,.42); }
+  .mnu-product-modal-gallery-open .mnu-photo-library-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); max-height: min(430px, 52vh); gap: 12px; }
+  .mnu-product-modal-gallery-open .mnu-photo-library-item { padding: 8px; border-radius: 12px; }
+  .mnu-product-modal-gallery-open .mnu-photo-library-item img { height: clamp(120px, 16vh, 180px); border-radius: 8px; object-fit: cover; }
+  .mnu-product-modal-gallery-open .mnu-photo-library-item span { margin: 8px 2px 2px; font-size: 12px; line-height: 1.35; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+}
+
+@media (max-width: 700px) {
+  .mnu-photo-library { padding: 12px; }
+  .mnu-photo-library-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 38vh; gap: 10px; }
+  .mnu-photo-library-item { padding: 7px; border-radius: 11px; }
+  .mnu-photo-library-item img { height: clamp(110px, 30vw, 160px); border-radius: 8px; }
+  .mnu-photo-library-item span { margin: 7px 2px 2px; font-size: 11px; line-height: 1.35; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+}
 
 /* --- Modal Divider --- */
 .mnu-modal-divider {

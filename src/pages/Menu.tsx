@@ -77,6 +77,8 @@ export function Menu() {
   const [editingClosing, setEditingClosing] = useState(false)
   const editCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [form, setForm] = useState<Form>(emptyForm)
+  const [photoLibraryOpen, setPhotoLibraryOpen] = useState(false)
+  const [photoLibrarySearch, setPhotoLibrarySearch] = useState('')
   const [saving, setSaving] = useState(false)
   const [ingredients, setIngredients] = useState<Ingredient[]>([])
   const [units, setUnits] = useState<Array<{ id: string; name: string; symbol: string }>>([])
@@ -179,10 +181,12 @@ export function Menu() {
       editCloseTimer.current = null
     }, EDIT_MODAL_EXIT_MS)
   }
-  const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setRecipeRows([]); setBeverageIngredientId(''); setRecipeLoadFailed(false); setEditing('new') }
+  const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setPhotoLibraryOpen(false); setPhotoLibrarySearch(''); setRecipeRows([]); setBeverageIngredientId(''); setRecipeLoadFailed(false); setEditing('new') }
   const openEdit = async (p: SellableProduct) => {
     prepareEditorOpen()
     setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive, menuLabel: p.menuLabel })
+    setPhotoLibraryOpen(false)
+    setPhotoLibrarySearch('')
     setEditing(p)
     setRecipeLoading(true)
     setRecipeLoadFailed(false)
@@ -208,6 +212,11 @@ export function Menu() {
     return [...chosen].sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b))[0]
   }, [form.categories])
   const isBeverage = selectedPrimaryCategory === 'bebidas'
+  const photoLibraryProducts = useMemo(() => {
+    const query = normalizeForSearch(photoLibrarySearch)
+    return products.filter(product => product.imageUrl && (editing === 'new' || !editing || product.id !== editing.id)
+      && (!query || normalizeForSearch(product.name).includes(query)))
+  }, [editing, photoLibrarySearch, products])
   const trackedIngredients = useMemo(() => ingredients.filter((ingredient) => ingredient.inventoryClass !== 'non_inventory'), [ingredients])
   const addRecipeRow = () => setRecipeRows((rows) => [...rows, {
     key: `new-${Date.now()}-${Math.random()}`, ingredientId: '', quantity: '1', unitId: '',
@@ -504,7 +513,7 @@ export function Menu() {
 
       {editing && createPortal(
         <div className={`mnu-modal-overlay ${editingClosing ? 'closing' : ''}`} onClick={closeEditor}>
-          <form className="mnu-modal mnu-product-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
+          <form className={`mnu-modal mnu-product-modal ${photoLibraryOpen ? 'mnu-product-modal-gallery-open' : ''}`} onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
             <div className="mnu-modal-header">
               <h3><UtensilsCrossed size={20} style={{ color: '#e11d2a' }} />{editing === 'new' ? 'Nuevo plato' : 'Editar plato'}</h3>
             </div>
@@ -534,6 +543,19 @@ export function Menu() {
                       <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => pickImage(e.target.files?.[0])} />
                     </label>
                   )}
+                  <button type="button" className="mnu-photo-library-toggle" aria-expanded={photoLibraryOpen} onClick={() => setPhotoLibraryOpen(open => !open)}>
+                    <ImagePlus size={15} /> {photoLibraryOpen ? 'Cerrar galería' : 'Elegir foto de otro producto'}
+                  </button>
+                  {photoLibraryOpen && <div className="mnu-photo-library">
+                    <input type="search" value={photoLibrarySearch} onChange={event => setPhotoLibrarySearch(event.target.value)} placeholder="Buscar producto con foto…" aria-label="Buscar producto con foto" />
+                    <div className="mnu-photo-library-grid">
+                      {photoLibraryProducts.map(product => <button type="button" key={product.id} className="mnu-photo-library-item" title={`Usar la foto de ${product.name}`} onClick={() => { setForm(current => ({ ...current, imageUrl: product.imageUrl })); setPhotoLibraryOpen(false); setPhotoLibrarySearch('') }}>
+                        <img src={product.imageUrl!} alt="" loading="lazy" />
+                        <span>{formatProductTitle(product.name)}</span>
+                      </button>)}
+                      {!photoLibraryProducts.length && <p className="mnu-photo-library-empty">No hay otros productos con foto que coincidan.</p>}
+                    </div>
+                  </div>}
                 </div>
 
                 <div className="mnu-product-status">
