@@ -125,7 +125,7 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orien
 type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 
 const readDesktopTab = (): DesktopTab => {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return 'inicio'
+  if (typeof window === 'undefined') return 'inicio'
   try {
     const savedTab = localStorage.getItem(DESKTOP_TAB_KEY)
     return savedTab === 'menu' || savedTab === 'contacto' || savedTab === 'perfil' ? savedTab : 'inicio'
@@ -655,7 +655,6 @@ export function PublicMenu() {
   }, [])
 
   useEffect(() => {
-    if (typeof window.matchMedia !== 'function' || !window.matchMedia(DESKTOP_MEDIA_QUERY).matches) return
     try { localStorage.setItem(DESKTOP_TAB_KEY, currentTab) } catch { /* storage unavailable */ }
   }, [currentTab])
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Award, ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Gift, History, LoaderCircle, LogOut, RotateCw, Tag, Utensils } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { Award, ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Gift, History, LoaderCircle, LogOut, Pause, Play, RotateCw, Tag, Utensils } from 'lucide-react'
+import { customerSupabase } from '../lib/supabase'
 import { customerAuthErrorMessage } from '../lib/customerAuthErrors'
 import Toast from './Toast'
 import CustomerRewardJourney from './CustomerRewardJourney'
@@ -19,6 +19,26 @@ const PROFILE_WELCOME_SEEN_KEY = 'fullchina_customer_profile_welcome_seen'
 const victoryDishImages = ['/optimized/productos/M1.webp', '/optimized/productos/M2.webp', '/optimized/productos/M3.webp', '/optimized/productos/M13.webp']
 
 type CustomerLoyaltyProfileProps = { onRepeatOrder?: (order: CustomerRepeatOrder) => Promise<void> }
+
+function CustomerLoyaltyDemoControls({ frame, totalFrames, playing, caption, onToggle, onStep, onSeek }: {
+  frame: number
+  totalFrames: number
+  playing: boolean
+  caption: string
+  onToggle: () => void
+  onStep: (delta: number) => void
+  onSeek: (frame: number) => void
+}) {
+  return <div className="customer-loyalty-demo-player" aria-label="Controles de demostración">
+    <div className="customer-loyalty-demo-player-top"><span>{caption}</span><small>{frame + 1} / {totalFrames + 1}</small></div>
+    <input type="range" min={0} max={totalFrames} step={1} value={frame} aria-label="Avance de la demostración de sellos" onChange={event => onSeek(Number(event.target.value))} />
+    <div className="customer-loyalty-demo-player-controls">
+      <button type="button" aria-label="Escena anterior" disabled={frame <= 0} onClick={() => onStep(-1)}><ArrowLeft size={16} /></button>
+      <button type="button" className="customer-loyalty-demo-play" aria-label={playing ? 'Pausar demostración' : 'Reproducir demostración'} onClick={onToggle}>{playing ? <Pause size={16} /> : <Play size={16} />}{playing ? 'Pausar' : 'Reproducir'}</button>
+      <button type="button" aria-label="Escena siguiente" disabled={frame >= totalFrames} onClick={() => onStep(1)}><ArrowRight size={16} /></button>
+    </div>
+  </div>
+}
 
 function customerProductImage(imageUrl: string) {
   const match = imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
@@ -245,19 +265,25 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   const [showVictoryDemo, setShowVictoryDemo] = useState(false)
   const [showStampDemo, setShowStampDemo] = useState(false)
   const [demoStamp, setDemoStamp] = useState(0)
+  const [demoFrame, setDemoFrame] = useState<number | null>(null)
+  const [demoPlaying, setDemoPlaying] = useState(false)
   const previousCelebrationCount = useRef<number | null>(null)
   const celebrationClose = useRef<HTMLButtonElement>(null)
-  const celebrationNext = useRef<HTMLButtonElement>(null)
+  const celebrationDialog = useRef<HTMLDivElement>(null)
+  const isCelebrationOpen = Boolean(celebration)
+  const threshold = Math.max(1, Number(profile?.visits_per_reward) || 10)
 
   const closeCelebration = useCallback(() => {
     setCelebration(null)
     setShowVictoryDemo(false)
     setShowStampDemo(false)
     setDemoStamp(0)
+    setDemoFrame(null)
+    setDemoPlaying(false)
   }, [])
 
   useEffect(() => {
-    if (!celebration) return
+    if (!isCelebrationOpen) return
     const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousBodyOverflow = document.body.style.overflow
     const previousRootOverflow = document.documentElement.style.overflow
@@ -268,8 +294,13 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
       if (event.key === 'Escape') closeCelebration()
       if (event.key === 'Tab') {
         event.preventDefault()
-        if (showStampDemo && document.activeElement === celebrationClose.current) celebrationNext.current?.focus()
-        else celebrationClose.current?.focus()
+        const focusable = Array.from(celebrationDialog.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])') ?? [])
+        if (!focusable.length) return
+        const index = focusable.indexOf(document.activeElement as HTMLButtonElement)
+        const nextIndex = event.shiftKey
+          ? (index <= 0 ? focusable.length - 1 : index - 1)
+          : (index >= focusable.length - 1 ? 0 : index + 1)
+        focusable[nextIndex]?.focus()
       }
     }
     document.addEventListener('keydown', handleKey)
@@ -279,7 +310,44 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
       document.documentElement.style.overflow = previousRootOverflow
       previousFocus?.focus({ preventScroll: true })
     }
-  }, [celebration, closeCelebration, showStampDemo])
+  }, [isCelebrationOpen, closeCelebration])
+
+  const applyDemoFrame = useCallback((requestedFrame: number) => {
+    const lastFrame = threshold * 2
+    const frame = Math.max(0, Math.min(lastFrame, requestedFrame))
+    const id = Date.now()
+    setDemoFrame(frame)
+    if (frame === lastFrame) {
+      setShowStampDemo(false)
+      setShowVictoryDemo(true)
+      setDemoStamp(threshold)
+      setNewestStamp({ index: threshold - 1, id })
+      setVictoryDishes(shuffledVictoryDishes())
+      setCelebration({ stamp: threshold, complete: true, id })
+      setDemoPlaying(false)
+      return
+    }
+    setShowStampDemo(true)
+    setShowVictoryDemo(false)
+    setVictoryDishes([])
+    if (frame % 2 === 0) {
+      const nextStamp = frame / 2 + 1
+      setDemoStamp(nextStamp - 1)
+      setCelebration({ stamp: nextStamp, complete: false, id })
+    } else {
+      const sealedStamp = (frame + 1) / 2
+      setDemoStamp(sealedStamp)
+      setNewestStamp({ index: sealedStamp - 1, id })
+      setCelebration(null)
+    }
+  }, [threshold])
+
+  useEffect(() => {
+    if (!demoPlaying || demoFrame === null || !showStampDemo && !showVictoryDemo) return
+    if (demoFrame >= threshold * 2) { setDemoPlaying(false); return }
+    const timer = window.setTimeout(() => applyDemoFrame(demoFrame + 1), 2100)
+    return () => window.clearTimeout(timer)
+  }, [applyDemoFrame, demoFrame, demoPlaying, showStampDemo, showVictoryDemo, threshold])
 
   useEffect(() => {
     if (!profile) { previousCelebrationCount.current = null; return }
@@ -307,14 +375,14 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   }
 
   const loadProfile = useCallback(async () => {
-    if (!supabase) { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true); return }
-    const { data: sessionData } = await supabase.auth.getSession()
+    if (!customerSupabase) { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true); return }
+    const { data: sessionData } = await customerSupabase.auth.getSession()
     if (!sessionData.session) { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true); return }
     setSessionActive(true)
     setProfileLoading(true)
     setProfileLoadError('')
     setAuthReady(true)
-    const { data, error: profileError } = await supabase.rpc('fn_get_customer_loyalty_profile', { p_page: page, p_page_size: pageSize })
+    const { data, error: profileError } = await customerSupabase.rpc('fn_get_customer_loyalty_profile', { p_page: page, p_page_size: pageSize })
     if (profileError || !data) {
       setProfile(null)
       setProfileLoadError('Tu sesión se inició, pero no pudimos abrir tu perfil. Intenta de nuevo.')
@@ -338,8 +406,8 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   useEffect(() => {
     void loadProfile().catch(() => failProfileLoad())
       .finally(() => setInitialAuthCheck(false))
-    if (!supabase) return
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    if (!customerSupabase) return
+    const { data } = customerSupabase.auth.onAuthStateChange((_event, session) => {
       if (session) window.setTimeout(() => { void loadProfile().catch(() => failProfileLoad(true)) }, 0)
       else window.setTimeout(() => { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true) }, 0)
     })
@@ -370,11 +438,11 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
     setBusy(true); setError(''); setNotice('')
     let sessionEstablished = false
     try {
-      if (!supabase) throw new Error('El perfil no está disponible ahora. Intenta más tarde.')
+      if (!customerSupabase) throw new Error('El perfil no está disponible ahora. Intenta más tarde.')
       const body = mode === 'login'
         ? { action: 'login', identifier: identifier.trim(), password }
         : { action: 'register', first_name: firstName.trim(), last_name: lastName.trim(), identification: identification.trim(), phone: phone.trim(), email: email.trim() || null, password }
-      const { data, error: authError } = await supabase.functions.invoke('customer-auth', { body })
+      const { data, error: authError } = await customerSupabase.functions.invoke('customer-auth', { body })
       if (authError) {
         setError(await customerAuthErrorMessage(authError, data))
         return
@@ -383,7 +451,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
         setNotice('¡Cuenta creada! Tu tarjeta comienza desde cero y sumará visitas en las comandas que pagues después de registrarte.')
         chooseMode('login')
       } else {
-        const { error: sessionError } = await supabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
+        const { error: sessionError } = await customerSupabase.auth.setSession({ access_token: data.access_token, refresh_token: data.refresh_token })
         if (sessionError) throw sessionError
         sessionEstablished = true
         await loadProfile()
@@ -400,7 +468,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
     } finally { setBusy(false) }
   }
 
-  const logout = async () => { await supabase?.auth.signOut(); setProfile(null); setShowHistory(false); setNotice('') }
+  const logout = async () => { await customerSupabase?.auth.signOut(); setProfile(null); setShowHistory(false); setNotice('') }
 
   if (initialAuthCheck) return <PublicMenuSkeleton />
 
@@ -469,51 +537,42 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   </main>
 
   if (showHistory) return <CustomerVisitHistory visits={profile.visits ?? []} page={page} hasMore={profile.has_more} onPage={setPage} onBack={() => setShowHistory(false)} onRepeatOrder={onRepeatOrder} />
-  const threshold = Math.max(1, Number(profile.visits_per_reward) || 10)
   const stamps = showVictoryDemo ? threshold : showStampDemo ? demoStamp : profile.total_visits % threshold
   const displayedRewards = profile.rewards_unlocked + (showVictoryDemo ? 1 : 0)
-  const previewStampJourney = () => {
-    const complete = threshold === 1
-    setShowVictoryDemo(complete)
-    setShowStampDemo(!complete)
-    setDemoStamp(complete ? 0 : 1)
-    setVictoryDishes(complete ? shuffledVictoryDishes() : [])
-    setCelebration({ stamp: complete ? threshold : 1, complete, id: Date.now() })
+  const demoActive = showStampDemo || showVictoryDemo
+  const activeDemoFrame = demoFrame ?? threshold * 2
+  const demoCaption = activeDemoFrame >= threshold * 2
+    ? 'Premio desbloqueado'
+    : activeDemoFrame % 2 === 0
+      ? `Celebración · sello ${activeDemoFrame / 2 + 1}`
+      : `Aplicando sello ${(activeDemoFrame + 1) / 2}`
+  const previewStampJourney = () => { applyDemoFrame(0); setDemoPlaying(true) }
+  const previewFinalReward = () => { setDemoPlaying(false); applyDemoFrame(threshold * 2) }
+  const stepDemo = (delta: number) => { setDemoPlaying(false); applyDemoFrame(activeDemoFrame + delta) }
+  const seekDemo = (frame: number) => { setDemoPlaying(false); applyDemoFrame(frame) }
+  const toggleDemoPlayback = () => {
+    if (activeDemoFrame >= threshold * 2) { applyDemoFrame(0); setDemoPlaying(true) }
+    else setDemoPlaying(value => !value)
   }
-  const advanceStampDemo = () => {
-    const nextStamp = (celebration?.stamp ?? 0) + 1
-    const complete = nextStamp >= threshold
-    setShowStampDemo(!complete)
-    setShowVictoryDemo(complete)
-    setDemoStamp(complete ? 0 : nextStamp)
-    setVictoryDishes(complete ? shuffledVictoryDishes() : [])
-    setCelebration({ stamp: complete ? threshold : nextStamp, complete, id: Date.now() })
-  }
-  const previewFinalReward = () => {
-    setShowStampDemo(false)
-    setDemoStamp(0)
-    setShowVictoryDemo(true)
-    setVictoryDishes(shuffledVictoryDishes())
-    setCelebration({ stamp: threshold, complete: true, id: Date.now() })
-  }
+  const renderDemoControls = () => <CustomerLoyaltyDemoControls frame={activeDemoFrame} totalFrames={threshold * 2} playing={demoPlaying} caption={demoCaption} onToggle={toggleDemoPlayback} onStep={stepDemo} onSeek={seekDemo} />
   return <main className="customer-profile-page customer-profile-member"><section className="customer-profile-dashboard">
-    {celebration && createPortal(<div className="customer-celebration-backdrop" onClick={closeCelebration}><div key={celebration.id} className={`customer-stamp-celebration${celebration.complete ? ' is-complete' : ''}${showStampDemo || showVictoryDemo ? ' customer-demo-celebration' : ''}`} role="dialog" aria-modal="true" aria-labelledby="customer-celebration-title" onClick={event => event.stopPropagation()}>
+    {celebration && createPortal(<div className="customer-celebration-backdrop" onClick={closeCelebration}><div ref={celebrationDialog} className={`customer-stamp-celebration${celebration.complete ? ' is-complete' : ''}${demoActive ? ' customer-demo-celebration' : ''}`} role="dialog" aria-modal="true" aria-labelledby="customer-celebration-title" onClick={event => event.stopPropagation()}>
       <button ref={celebrationClose} type="button" className="customer-celebration-close" aria-label="Cerrar celebración" onClick={closeCelebration}>×</button>
-      <div className="customer-celebration-confetti" aria-hidden="true">{Array.from({ length: 36 }, (_, i) => <i key={i} style={{ '--piece-x': `${(i * 37) % 100}%`, '--piece-delay': `${(i % 9) * (celebration.complete ? .02 : .12)}s`, '--piece-turn': `${i * 47}deg`, '--piece-drift': `${(i % 2 ? 1 : -1) * (20 + i % 5 * 13)}px`, '--piece-color': ['#ff3851', '#ffd269', '#ff9850'][i % 3] } as CSSProperties} />)}</div>
+      <div key={celebration.id} className="customer-celebration-confetti" aria-hidden="true">{Array.from({ length: 36 }, (_, i) => <i key={i} style={{ '--piece-x': `${(i * 37) % 100}%`, '--piece-delay': `${(i % 9) * (celebration.complete ? .02 : .12)}s`, '--piece-turn': `${i * 47}deg`, '--piece-drift': `${(i % 2 ? 1 : -1) * (20 + i % 5 * 13)}px`, '--piece-color': ['#ff3851', '#ffd269', '#ff9850'][i % 3] } as CSSProperties} />)}</div>
       <div className="customer-celebration-halo" aria-hidden="true" />
       <div className="customer-celebration-sparks" aria-hidden="true">{Array.from({ length: 12 }, (_, i) => <i key={i} style={{ transform: `rotate(${i * 30}deg)` }} />)}</div>
       {celebration.complete && <div className="customer-victory-rays" aria-hidden="true" />}
       {celebration.complete && <div className="customer-victory-impact" aria-hidden="true" />}
       {celebration.complete && <div className="customer-victory-food-showcase" aria-hidden="true">{victoryDishes.map((image, index) => <figure key={`${celebration.id}-${image}`} style={{ '--dish-index': index } as CSSProperties}><img src={image} alt="" decoding="async" /></figure>)}</div>}
-      <div className="customer-celebration-medal"><img src={celebration.complete ? '/optimized/customer-profile/victory-trophy.webp' : '/icons/wok-mark.png'} alt="" /></div>
+      <div key={`${celebration.id}-medal`} className="customer-celebration-medal"><img src={celebration.complete ? '/optimized/customer-profile/victory-trophy.webp' : '/icons/wok-mark.png'} alt="" /></div>
       <small>{celebration.complete ? 'TARJETA COMPLETA' : `SELLO ${celebration.stamp} · FULL CHINA`}</small>
       <strong id="customer-celebration-title">{celebration.complete ? '¡El premio es tuyo!' : celebration.stamp === 1 ? '¡Tu historia empieza con sabor!' : celebration.stamp === threshold - 1 ? '¡A un sello de saborearlo!' : celebration.stamp === Math.ceil(threshold / 2) ? '¡Mitad del camino, doble emoción!' : ['¡Otro momento para celebrar!', '¡El sabor de volver!', '¡Tu próxima alegría está más cerca!'][celebration.stamp % 3]}</strong>
       <p>{celebration.complete ? 'Tu recompensa ya está disponible.' : 'Una visita más. Un paso más hacia tu premio.'}</p>
       {celebration.complete && <div className="customer-victory-prize"><div className="customer-victory-prize-emblem"><Gift size={23} /></div><div className="customer-victory-prize-copy"><small>PREMIO DESBLOQUEADO</small><b>{profile.reward_description}</b><span>¡Completaste tu tarjeta!</span></div><div className="customer-victory-prize-seal"><span>FULL CHINA</span><strong>{threshold}/{threshold}</strong><small>SELLOS</small></div><i className="customer-victory-prize-shine" aria-hidden="true" /></div>}
-      {showStampDemo && <button ref={celebrationNext} type="button" className="customer-celebration-next" onClick={advanceStampDemo}>{celebration.stamp + 1 >= threshold ? 'Completar tarjeta' : 'Siguiente sello'}<ArrowRight size={16} /></button>}
+      {demoActive && renderDemoControls()}
     </div></div>, document.body)}
     <header className="customer-profile-welcome"><div><img className="customer-member-logo" src="/optimized/root/logo.webp" alt="Full China" /><span>MI PERFIL</span><h1>¡Hola, <em>{profile.customer.first_name || profile.customer.full_name.split(' ')[0]}</em><span className="customer-profile-greeting-mark">!</span></h1><p>Qué bueno tenerte de vuelta.</p></div><button onClick={() => void logout()}><LogOut size={16} /> Salir</button></header>
-    <article className={`customer-loyalty-card${showVictoryDemo ? ' customer-loyalty-card-demo-complete' : ''}${showStampDemo ? ' customer-loyalty-card-demo-stamps' : ''}`}><div className="customer-loyalty-head"><div><span>Tarjeta de Fidelidad</span><h2>{profile.customer.full_name}</h2><small>{profile.customer.phone}</small></div><img className="customer-member-physical-card" src="/optimized/customer-profile/loyalty-card.webp" alt="Tarjeta Full China" decoding="async" fetchPriority="high" /></div><div className="customer-loyalty-progress"><span>Sellos de visita{(showVictoryDemo || showStampDemo) && <small className="customer-loyalty-demo-label"> DEMO</small>}</span><strong>{stamps} / {threshold}</strong></div><div className="customer-loyalty-bar"><span style={{ width: `${(stamps / threshold) * 100}%` }} /></div><div className="customer-loyalty-stamps">{Array.from({ length: threshold }, (_, i) => <span className={`${i < stamps ? 'earned' : ''}${i === threshold - 1 && i < stamps ? ' customer-stamp-winner' : ''}${!celebration && i < stamps && newestStamp?.index === i ? ' customer-stamp-new' : ''}`} key={newestStamp?.index === i ? `${i}-${newestStamp.id}` : i}><img src="/icons/wok-mark.png" alt={i < stamps ? "Visita obtenida" : "Visita pendiente"} decoding="async" /><small>{i + 1}</small></span>)}</div><div className="customer-loyalty-demo-actions"><button type="button" className="customer-loyalty-demo-win" onClick={previewStampJourney}><Gift size={15} /> Demo: cada sello</button><button type="button" className="customer-loyalty-demo-win" onClick={previewFinalReward}><Award size={15} /> Premio final</button></div><CustomerRewardJourney stamps={stamps} threshold={threshold} rewards={displayedRewards} description={profile.reward_description} /></article>
+    <article className={`customer-loyalty-card${showVictoryDemo ? ' customer-loyalty-card-demo-complete' : ''}${showStampDemo ? ' customer-loyalty-card-demo-stamps' : ''}`}><div className="customer-loyalty-head"><div><span>Tarjeta de Fidelidad</span><h2>{profile.customer.full_name}</h2><small>{profile.customer.phone}</small></div><img className="customer-member-physical-card" src="/optimized/customer-profile/loyalty-card.webp" alt="Tarjeta Full China" decoding="async" fetchPriority="high" /></div><div className="customer-loyalty-progress"><span>Sellos de visita{(showVictoryDemo || showStampDemo) && <small className="customer-loyalty-demo-label"> DEMO</small>}</span><strong>{stamps} / {threshold}</strong></div><div className="customer-loyalty-bar"><span style={{ width: `${(stamps / threshold) * 100}%` }} /></div><div className="customer-loyalty-stamps">{Array.from({ length: threshold }, (_, i) => <span className={`${i < stamps ? 'earned' : ''}${i === threshold - 1 && i < stamps ? ' customer-stamp-winner' : ''}${!celebration && i < stamps && newestStamp?.index === i ? ' customer-stamp-new' : ''}`} key={newestStamp?.index === i ? `${i}-${newestStamp.id}` : i}><img src="/icons/wok-mark.png" alt={i < stamps ? "Visita obtenida" : "Visita pendiente"} decoding="async" /><small>{i + 1}</small></span>)}</div><div className="customer-loyalty-demo-actions"><button type="button" className="customer-loyalty-demo-win" onClick={previewStampJourney}><Gift size={15} /> Demo: cada sello</button><button type="button" className="customer-loyalty-demo-win" onClick={previewFinalReward}><Award size={15} /> Premio final</button></div>{demoActive && !celebration && renderDemoControls()}<CustomerRewardJourney stamps={stamps} threshold={threshold} rewards={displayedRewards} description={profile.reward_description} /></article>
     <CustomerRecentOrders visits={recentVisits} onRepeatOrder={onRepeatOrder} />
     <aside className="customer-profile-tools desktop-only" aria-label="Historial de visitas"><CustomerDesktopVisitHistory visits={profile.visits ?? []} onRepeatOrder={onRepeatOrder} /></aside>
     <button className="customer-profile-history-button" onClick={() => { setCelebration(null); setShowHistory(true) }}><History size={18} /> <span><strong>{showHistory ? 'Ocultar historial' : 'Historial de visitas'}</strong><small>Revisa todas tus visitas y avances.</small></span><ChevronRight className={showHistory ? 'rotated' : ''} size={17} /></button>

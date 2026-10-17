@@ -13557,8 +13557,9 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   }
 }
 
-/* Escritorio: el perfil autenticado usa una sola escena de fondo en toda la vista. */
-@media (min-width: 1280px) {
+/* El perfil autenticado usa el layout de escritorio también en tablets
+   horizontales, igual que el resto de la navegación pública. */
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .public-profile-tab-active .public-desktop-layout.is-contact-view {
     box-sizing: border-box !important;
     width: 100% !important;

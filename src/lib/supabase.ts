@@ -111,6 +111,23 @@ export const supabase =
       })
     : null
 
+// Customer loyalty accounts and staff accounts are different identity spaces.
+// Keep their persisted sessions separate so an open admin tab cannot treat a
+// customer login as an invalid staff session and sign it out (or vice versa).
+export const customerSupabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey, {
+        db: { schema: 'fullchinavzla' },
+        auth: {
+          storageKey: 'fullchina-customer-auth',
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+        },
+        global: { fetch: cachedSupabaseFetch },
+      })
+    : null
+
 export function subscribeToDataChanges(listener: (table: string) => void) {
   dataChangeListeners.add(listener)
   return () => dataChangeListeners.delete(listener)
