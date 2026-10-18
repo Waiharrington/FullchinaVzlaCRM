@@ -24,6 +24,24 @@ de `supabase_admin` y `SECURITY DEFINER`. La aplicación local muestra el sello
 más reciente y luego el premio cuando ambos están pendientes. La migración no
 despliega el frontend.
 
+## Corrección de sellos de cuentas nuevas (2026-10-18)
+
+Se confirmó que un cliente activo tenía contador de ciclo positivo sin visitas
+pagadas ni recompensas desde la fecha de creación de su cuenta. La función de
+registro reiniciaba los contadores generales, pero no `loyalty_cycle_visits`;
+por eso podía verse un sello sin visita en el historial ni pedido en Favoritos.
+
+Se aplicó `20261018160000_reset_unbacked_customer_loyalty_cycle.sql` al esquema
+`fullchinavzla`, después de crear el backup completo
+`/root/fullchina-backups/fullchinavzla-pre-loyalty-cycle-reset-20261018-090346.dump`
+(30.689.345 bytes; formato custom y lista verificada con `pg_restore --list`).
+SHA-256 del backup: `429c2264f61aeda5c738dcff23e9c04ba01b44c854cfafd837d48235f5490a4b`.
+
+La migración puso en cero el ciclo huérfano existente y añadió un trigger para
+que cada cuenta de fidelidad nueva comience en cero. Verificación posterior:
+no quedan cuentas activas con sellos de ciclo sin visita/recompensa posterior
+al registro; el trigger está habilitado y el perfil afectado quedó en cero.
+
 La infraestructura de demo (datos hardcodeados, modo demo, `DemoDataProvider`)
 fue eliminada en la fase de integración. El estado actual por módulo es:
 

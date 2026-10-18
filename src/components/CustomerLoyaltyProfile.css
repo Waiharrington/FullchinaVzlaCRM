@@ -946,3 +946,17 @@
   .customer-profile-member .customer-profile-tools{grid-column:3;grid-row:2/span 2;align-self:stretch}
   .customer-profile-member .customer-profile-tools .customer-desktop-history{height:100%;min-height:560px}
 }
+
+/* Give the member-card flip a single, weighty turn with a gentle settle. */
+.customer-profile-member .customer-member-mini-card{transition:transform .28s cubic-bezier(.2,.8,.2,1)}
+.customer-profile-member .customer-member-mini-card.is-spinning{animation:customer-mini-card-spin 1.85s cubic-bezier(.22,.68,.24,1) both}
+@keyframes customer-mini-card-spin{
+  0%{transform:perspective(600px) rotateX(4deg) rotateY(9deg) rotateZ(7deg) translateY(0) scale(1);animation-timing-function:cubic-bezier(.42,0,.75,.45)}
+  16%{transform:perspective(600px) rotateX(2deg) rotateY(42deg) rotateZ(9deg) translateY(-2px) scale(1.035);animation-timing-function:linear}
+  40%{transform:perspective(600px) rotateX(-1deg) rotateY(150deg) rotateZ(3deg) translateY(-6px) scale(1.085);animation-timing-function:linear}
+  66%{transform:perspective(600px) rotateX(-2deg) rotateY(267deg) rotateZ(-4deg) translateY(-5px) scale(1.09);animation-timing-function:cubic-bezier(.25,.72,.28,1)}
+  88%{transform:perspective(600px) rotateX(1deg) rotateY(354deg) rotateZ(8deg) translateY(-1px) scale(1.035);animation-timing-function:cubic-bezier(.2,.7,.25,1)}
+  96%{transform:perspective(600px) rotateX(0) rotateY(375deg) rotateZ(5deg) translateY(1px) scale(1.008);animation-timing-function:cubic-bezier(.2,.8,.3,1)}
+  100%{transform:perspective(600px) rotateX(4deg) rotateY(369deg) rotateZ(7deg) translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){.customer-profile-member .customer-member-mini-card.is-spinning{animation:none!important}}
