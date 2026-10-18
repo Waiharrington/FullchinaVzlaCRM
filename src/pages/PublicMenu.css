@@ -8374,6 +8374,28 @@ button.mobile-only {
   .customer-loyalty-promotion-card .customer-profile-welcome-stamps span { width:8px; height:8px; }
   .customer-loyalty-promotion-card .customer-profile-welcome-stamps img { width:6px; height:6px; }
   .public-contact-hub > .customer-loyalty-promotion { margin:0; padding:18px 14px; }
+  .public-contact-hub .customer-profile-welcome-card.customer-loyalty-promotion-card {
+    display:block;
+    height:134px;
+  }
+  .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-card-top {
+    position:absolute;
+    top:8px;
+    right:10px;
+    left:10px;
+  }
+  .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-card-top img { width:55px; height:38px; }
+  .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-card-copy {
+    position:absolute;
+    top:52px;
+    right:22px;
+    bottom:auto;
+    left:11px;
+    gap:7px;
+  }
+  .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-card-copy small { font-size:6px; line-height:1.3; }
+  .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-card-copy strong { font-size:12px; line-height:1.05; }
+  .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-stamps { position:absolute; right:8px; bottom:11px; }
 }
 @media (prefers-reduced-motion: reduce) { .customer-profile-welcome-card.customer-loyalty-promotion-card { animation:none; } .customer-loyalty-promotion-cta { transition:none; } }
 
