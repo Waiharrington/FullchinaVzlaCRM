@@ -124,6 +124,35 @@ const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
 const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orientation: landscape)'
 
+// El perfil se monta al abrir su pestaña. Calentar estos fondos después del
+// primer render evita que aparezcan progresivamente delante del cliente.
+const profileBackgroundImages = new Map<string, HTMLImageElement>()
+
+function warmProfileBackgroundImages() {
+  const desktop = window.matchMedia('(min-width: 680px) and (orientation: landscape), (min-width: 1280px)').matches
+  const suffix = desktop ? 'desktop' : 'phone'
+  const sources = [
+    `/optimized/customer-profile/login-${suffix}.webp`,
+    `/optimized/customer-profile/register-${suffix}.webp`,
+    '/optimized/customer-profile/profile-bg.webp',
+    '/optimized/customer-profile/profile-desktop-quiet.webp',
+    '/optimized/customer-profile/loyalty-bg.webp',
+    '/optimized/customer-profile/welcome-card-bg.webp',
+  ]
+
+  sources.forEach(source => {
+    if (profileBackgroundImages.has(source)) return
+    const image = new Image()
+    image.fetchPriority = 'low'
+    profileBackgroundImages.set(source, image)
+    image.src = source
+    void image.decode().catch(() => {
+      // El fondo CSS seguirá intentando cargarlo si esta solicitud falla.
+      profileBackgroundImages.delete(source)
+    })
+  })
+}
+
 type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 
 const readDesktopTab = (): DesktopTab => {
@@ -778,6 +807,12 @@ export function PublicMenu() {
       window.__removeFCSplash?.()
     }
   }, [loading])
+
+  useEffect(() => {
+    if (loading || currentTab === 'perfil') return
+    const timer = window.setTimeout(warmProfileBackgroundImages, 400)
+    return () => window.clearTimeout(timer)
+  }, [loading, currentTab])
 
   // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
   // descargues zonas y coordenadas en cada visita al menú: en conexiones
