@@ -6247,7 +6247,7 @@ button.mobile-only {
   .public-home-loyalty-copy { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
   .public-home-loyalty-kicker { display: inline-flex; align-items: center; gap: 8px; color: #ffc83d; font-size: 10px; font-weight: 850; letter-spacing: .14em; }
   .public-home-loyalty-kicker i { width: 8px; height: 8px; border-radius: 50%; background: #ff3b4c; box-shadow: 0 0 12px #ff3b4c; }
-  .public-home-loyalty-copy h2 { max-width: 560px; margin: 12px 0 8px; color: #fff; font-family: var(--font-display, 'Graduate', sans-serif); font-size: clamp(27px, 2.8vw, 40px); font-weight: 900; line-height: 1.1; letter-spacing: .025em; text-transform: uppercase; }
+  .public-home-loyalty-copy h2 { max-width: 560px; margin: 12px 0 8px; color: #fff; font-family: var(--font-display, 'Graduate', sans-serif); font-size: clamp(27px, 2.8vw, 40px); font-weight: 900; line-height: 1.1; letter-spacing: .025em; text-transform: uppercase; -webkit-text-stroke: 1.2px currentColor; paint-order: stroke fill; }
   .public-home-loyalty-copy h2 em { display: inline-block; color: #ffc83d; font-style: normal; white-space: nowrap; }
   .public-home-loyalty-copy > p { max-width: 470px; margin: 0; color: #e1d9d9; font-size: 13px; line-height: 1.5; }
   .public-home-loyalty-copy > p > span { display: block; }
@@ -8361,7 +8361,7 @@ button.mobile-only {
 .customer-loyalty-promotion-card .customer-profile-welcome-stamps span { width:12px; height:12px; }
 .customer-loyalty-promotion-card .customer-profile-welcome-stamps img { width:9px; height:9px; }
 .public-contact-hub > .customer-loyalty-promotion { grid-column:1/-1; margin:0; border:0; border-bottom:1px solid rgba(255,200,61,.2); border-radius:21px 21px 0 0; box-shadow:none; background:linear-gradient(115deg, rgba(227,27,43,.07), transparent 38%), repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 5px), #0d0f13; }
-.public-contact-hub > .customer-loyalty-promotion h2 { font-family:var(--font-display, 'Graduate', sans-serif); font-weight:900; line-height:1.1; letter-spacing:.025em; text-transform:uppercase; }
+.public-contact-hub > .customer-loyalty-promotion h2 { font-family:var(--font-display, 'Graduate', sans-serif); font-weight:900; line-height:1.1; letter-spacing:.025em; text-transform:uppercase; -webkit-text-stroke:1.2px currentColor; paint-order:stroke fill; }
 .public-contact-hub > .customer-loyalty-promotion .customer-loyalty-promotion-progress { display:grid; grid-template-columns:repeat(10,minmax(0,1fr)); gap:3px; width:92%; max-width:210px; }
 .public-contact-hub > .customer-loyalty-promotion .customer-loyalty-promotion-progress > span { width:100%; height:auto; min-width:0; aspect-ratio:1; }
 .public-contact-hub > .customer-loyalty-promotion .customer-loyalty-promotion-progress img { width:70%; height:70%; }
@@ -8370,7 +8370,7 @@ button.mobile-only {
 @media (max-width: 640px) {
   .customer-loyalty-promotion { grid-template-columns:minmax(0,1fr) 108px; gap:8px; min-height:0; margin:18px 14px; padding:20px 16px; border-radius:19px; }
   .customer-loyalty-promotion h2 { margin:9px 0 6px; font-size:23px; }
-  .public-contact-hub > .customer-loyalty-promotion h2 { font-size:20px; }
+  .public-contact-hub > .customer-loyalty-promotion h2 { font-size:20px; -webkit-text-stroke:.8px currentColor; }
   .customer-loyalty-promotion-copy > p { font-size:12px; line-height:1.45; }
   .customer-loyalty-promotion-kicker { font-size:8px; letter-spacing:.1em; }
   .customer-loyalty-promotion-progress { gap:3px; margin-top:13px; }
