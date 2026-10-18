@@ -23,6 +23,17 @@
         var link = document.getElementById('pwa-manifest');
         if (link && location.pathname.toLowerCase().indexOf('/pedir') === 0) {
           link.setAttribute('href', '/manifest-cliente.webmanifest');
+          var desktopScene = window.matchMedia('(min-width: 680px) and (orientation: landscape)').matches;
+          var sceneSize = desktopScene ? 'desktop' : 'phone';
+          ['login', 'register'].forEach(function (mode) {
+            var preload = document.createElement('link');
+            preload.rel = 'preload';
+            preload.as = 'image';
+            preload.type = 'image/webp';
+            preload.href = '/optimized/customer-profile/' + mode + '-' + sceneSize + '.webp';
+            preload.fetchPriority = mode === 'login' ? 'high' : 'low';
+            document.head.appendChild(preload);
+          });
         }
       })();
     </script>

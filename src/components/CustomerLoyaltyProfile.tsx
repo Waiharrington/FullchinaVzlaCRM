@@ -16,7 +16,6 @@ type LoyaltyProfile = { customer: { first_name: string; last_name: string; full_
 
 const pageSize = 5
 const AUTH_MODE_KEY = 'fullchina_customer_auth_preferred_mode'
-const PROFILE_WELCOME_SEEN_KEY = 'fullchina_customer_profile_welcome_seen'
 const victoryDishImages = ['/optimized/productos/M1.webp', '/optimized/productos/M2.webp', '/optimized/productos/M3.webp', '/optimized/productos/M13.webp']
 
 type CustomerLoyaltyProfileProps = { onRepeatOrder?: (order: CustomerRepeatOrder) => Promise<void> }
@@ -232,14 +231,6 @@ function getInitialAuthMode(): 'login' | 'register' {
   }
 }
 
-function hasSeenProfileWelcome(): boolean {
-  try { return window.localStorage.getItem(PROFILE_WELCOME_SEEN_KEY) === '1' } catch { return false }
-}
-
-function markProfileWelcomeSeen() {
-  try { window.localStorage.setItem(PROFILE_WELCOME_SEEN_KEY, '1') } catch { /* no afecta el flujo de acceso */ }
-}
-
 export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfileProps) {
   const [profile, setProfile] = useState<LoyaltyProfile | null>(null)
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
@@ -262,7 +253,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   const [sessionActive, setSessionActive] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileLoadError, setProfileLoadError] = useState('')
-  const [showWelcomeIntro, setShowWelcomeIntro] = useState(() => !hasSeenProfileWelcome())
+  const [showWelcomeIntro, setShowWelcomeIntro] = useState(true)
   const [initialAuthCheck, setInitialAuthCheck] = useState(true)
   const [celebration, setCelebration] = useState<{ stamp: number; complete: boolean; id: number } | null>(null)
   const [victoryDishes, setVictoryDishes] = useState<string[]>([])
@@ -487,12 +478,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
 
   useEffect(() => {
     if (!authReady || profile || !showWelcomeIntro) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setShowWelcomeIntro(false)
-      markProfileWelcomeSeen()
-      return
-    }
-    const timer = window.setTimeout(() => { setShowWelcomeIntro(false); markProfileWelcomeSeen() }, 3800)
+    const timer = window.setTimeout(() => setShowWelcomeIntro(false), 3600)
     return () => window.clearTimeout(timer)
   }, [authReady, profile, showWelcomeIntro])
 
@@ -553,17 +539,25 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   </main>
 
   if (!profile && showWelcomeIntro) return <main className="customer-profile-page customer-profile-auth customer-profile-auth-login customer-profile-welcome-intro">
+    <div className="customer-profile-welcome-embers" aria-hidden="true"><i /><i /><i /><i /><i /><i /><i /></div>
     <section className="customer-profile-welcome-content" aria-label="Bienvenida a Full China">
-      <img src="/optimized/root/logo.webp" alt="Full China" />
-      <p className="customer-profile-welcome-kicker">PROGRAMA DE LEALTAD</p>
-      <p className="customer-profile-welcome-sr-only" role="status">Bienvenido a Full China. Cada visita suma. Tu próximo premio te espera.</p>
-      <div className="customer-profile-welcome-words" aria-hidden="true">
-        <span className="customer-profile-welcome-line customer-profile-welcome-line-one">Bienvenido <em>a Full China</em></span>
-        <span className="customer-profile-welcome-line customer-profile-welcome-line-two">Cada visita <em>suma</em></span>
-        <span className="customer-profile-welcome-line customer-profile-welcome-line-three">Tu próximo <em>premio</em> te espera</span>
+      <p className="customer-profile-welcome-kicker"><span /> PROGRAMA DE LEALTAD <span /></p>
+      <p className="customer-profile-welcome-sr-only" role="status">Bienvenido a Full China. Cada visita suma un sello y te acerca al premio.</p>
+      <div className="customer-profile-welcome-motion-stage" aria-hidden="true">
+        <div className="customer-profile-welcome-kinetic-type">
+          <span className="customer-welcome-type-visit">CADA VISITA</span>
+          <span className="customer-welcome-type-suma">SUMA</span>
+          <span className="customer-welcome-type-sello">UN SELLO Y TE ACERCA AL</span>
+          <span className="customer-welcome-type-premio">PREMIO</span>
+        </div>
+        <article className="customer-profile-welcome-card">
+          <div className="customer-profile-welcome-card-top"><img src="/optimized/root/logo.webp" alt="" /><span>MEMBER<br />CARD</span></div>
+          <div className="customer-profile-welcome-card-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div>
+          <div className="customer-profile-welcome-stamps">{Array.from({ length: 10 }, (_, index) => <span key={index}><img src="/icons/wok-mark.png" alt="" /></span>)}</div>
+        </article>
       </div>
       <div className="customer-profile-welcome-progress" aria-hidden="true"><span /></div>
-      <button type="button" className="customer-profile-welcome-skip" onClick={() => { setShowWelcomeIntro(false); markProfileWelcomeSeen() }}>Saltar bienvenida <ArrowRight size={15} /></button>
+      <button type="button" className="customer-profile-welcome-skip" onClick={() => setShowWelcomeIntro(false)}>Continuar al login <ArrowRight size={15} /></button>
     </section>
   </main>
 
@@ -660,7 +654,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
     </div></div>, document.body)}
     <header className="customer-profile-welcome"><div><img className="customer-member-logo" src="/optimized/root/logo.webp" alt="Full China" /><span>MI PERFIL</span><h1>¡Hola, <em>{profile.customer.first_name || profile.customer.full_name.split(' ')[0]}</em><span className="customer-profile-greeting-mark">!</span></h1><p>Qué bueno tenerte de vuelta.</p></div><button onClick={() => void logout()}><LogOut size={16} /> Salir</button></header>
     <article className={`customer-loyalty-card${showVictoryDemo ? ' customer-loyalty-card-demo-complete' : ''}${showStampDemo ? ' customer-loyalty-card-demo-stamps' : ''}${showPendingRewardDemo ? ' customer-loyalty-card-demo-pending' : ''}`}>
-      <div className="customer-loyalty-head"><div><span>Tarjeta de Fidelidad</span><h2>{profile.customer.full_name}</h2><small>{profile.customer.phone}</small></div><img className="customer-member-physical-card" src="/optimized/customer-profile/loyalty-card.webp" alt="Tarjeta Full China" decoding="async" fetchPriority="high" /></div>
+      <div className="customer-loyalty-head"><div><span>Tarjeta de Fidelidad</span><h2>{profile.customer.full_name}</h2><small>{profile.customer.phone}</small></div><div className="customer-member-physical-card customer-member-mini-card" aria-label="Tarjeta Full China de fidelidad"><div className="customer-member-mini-top"><img src="/optimized/root/logo.webp" alt="Full China" decoding="async" /><span>MEMBER<br />CARD</span></div><div className="customer-member-mini-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div></div></div>
       <div className="customer-loyalty-progress"><span>Sellos de visita{(showVictoryDemo || showStampDemo || showPendingRewardDemo) && <small className="customer-loyalty-demo-label"> DEMO</small>}</span><strong>{stamps} / {threshold}</strong></div>
       <div className="customer-loyalty-bar"><span style={{ width: `${(stamps / threshold) * 100}%` }} /></div>
       <div className="customer-loyalty-stamps">{Array.from({ length: threshold }, (_, i) => <span className={`${i < stamps ? 'earned' : ''}${i === threshold - 1 && i < stamps ? ' customer-stamp-winner' : ''}${!celebration && i < stamps && newestStamp?.index === i ? ' customer-stamp-new' : ''}`} key={newestStamp?.index === i ? `${i}-${newestStamp.id}` : i}><img src="/icons/wok-mark.png" alt={i < stamps ? "Visita obtenida" : "Visita pendiente"} decoding="async" /><small>{i + 1}</small></span>)}</div>
