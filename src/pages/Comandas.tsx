@@ -705,6 +705,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [statusError, setStatusError] = useState('')
   const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(() => new Set())
+  const inFlightStatusRef = useRef(new Set<string>())
   const pendingStatusRef = useRef(new Map<string, ComandaStatus>())
   const [confirmingWebId, setConfirmingWebId] = useState<string | null>(null)
   const [reloadToken, setReloadToken] = useState(0)
@@ -796,6 +797,41 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [historyWeekStartKey, setHistoryWeekStartKey] = useState<string | null>(null)
   const [showHistoryYearMenu, setShowHistoryYearMenu] = useState(false)
   const historyYearMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!showHistoryModal) return
+    const scrollY = window.scrollY
+    const body = document.body
+    const root = document.documentElement
+    const previousBodyStyles = {
+      position: body.style.position,
+      top: body.style.top,
+      left: body.style.left,
+      right: body.style.right,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    }
+    const previousRootOverflow = root.style.overflow
+
+    body.style.position = 'fixed'
+    body.style.top = `-${scrollY}px`
+    body.style.left = '0'
+    body.style.right = '0'
+    body.style.width = '100%'
+    body.style.overflow = 'hidden'
+    root.style.overflow = 'hidden'
+
+    return () => {
+      body.style.position = previousBodyStyles.position
+      body.style.top = previousBodyStyles.top
+      body.style.left = previousBodyStyles.left
+      body.style.right = previousBodyStyles.right
+      body.style.width = previousBodyStyles.width
+      body.style.overflow = previousBodyStyles.overflow
+      root.style.overflow = previousRootOverflow
+      window.scrollTo(0, scrollY)
+    }
+  }, [showHistoryModal])
 
   useEffect(() => {
     if (!showHistoryYearMenu) return
@@ -1836,13 +1872,14 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const handleSetStatus = async (orderId: string, nextStatus: ComandaStatus) => {
     const previousOrder = comandas.find(order => order.id === orderId)
     if (!previousOrder || previousOrder.source === 'web' || previousOrder.status === nextStatus) return false
-    if (pendingStatusRef.current.has(orderId)) return false
+    if (inFlightStatusRef.current.has(orderId)) return false
     if (!canMoveComandaStatus(previousOrder.status, nextStatus)) {
       setStatusError(getInvalidComandaTransitionMessage(previousOrder.status, nextStatus))
       return false
     }
 
     setStatusError('')
+    inFlightStatusRef.current.add(orderId)
     pendingStatusRef.current.set(orderId, nextStatus)
     setUpdatingOrderIds(previous => new Set(previous).add(orderId))
     setComandas(prev =>
@@ -1859,6 +1896,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     )
 
     if (isDemoMode) {
+      inFlightStatusRef.current.delete(orderId)
       pendingStatusRef.current.delete(orderId)
       setUpdatingOrderIds(previous => {
         const next = new Set(previous)
@@ -1883,6 +1921,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       setStatusError(e instanceof Error ? `No se pudo guardar el cambio de estado: ${e.message}` : 'No se pudo guardar el cambio de estado. Intenta nuevamente.')
       return false
     } finally {
+      inFlightStatusRef.current.delete(orderId)
       if (!persisted) pendingStatusRef.current.delete(orderId)
       setUpdatingOrderIds(previous => {
         const next = new Set(previous)

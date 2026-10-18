@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { customerSupabase, supabase } from './supabase'
 import type { Product } from './dataService'
 
 export interface WebOrderCartItem {
@@ -79,8 +79,24 @@ function db() {
   return supabase
 }
 
+async function customerDb() {
+  if (!customerSupabase) throw new Error('El perfil del cliente no está disponible en este momento')
+  const { data, error } = await customerSupabase.auth.getSession()
+  if (error) throw error
+  if (!data.session) throw new Error('Inicia sesión en Mi perfil para consultar tus pedidos.')
+  return customerSupabase
+}
+
+async function webOrderWriteDb() {
+  if (!customerSupabase) return db()
+  const customerClient = customerSupabase
+  const { data, error } = await customerClient.auth.getSession()
+  if (error) throw error
+  return data.session ? customerClient : db()
+}
+
 export async function getCustomerOrderForRepeat(orderId: string): Promise<CustomerRepeatOrder> {
-  const { data, error } = await db().rpc('fn_get_customer_order_for_repeat', { p_order_id: orderId })
+  const { data, error } = await (await customerDb()).rpc('fn_get_customer_order_for_repeat', { p_order_id: orderId })
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('No pudimos leer el pedido para repetirlo.')
   const row = data as Record<string, unknown>
@@ -215,7 +231,8 @@ export async function createWebOrder(params: {
   deliveryLat?: number | null
   deliveryLng?: number | null
 }): Promise<WebOrderResult> {
-  const { data, error } = await db().rpc('fn_create_web_order', {
+  const customerClient = await webOrderWriteDb()
+  const { data, error } = await customerClient.rpc('fn_create_web_order', {
     p_customer_name: params.customerName,
     p_customer_phone: params.customerPhone,
     p_customer_identification: params.customerIdentification,

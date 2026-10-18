@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -13,6 +13,8 @@ import type { Product } from '../lib/dataService'
 import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
+import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
+import { customerSupabase } from '../lib/supabase'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
 import Toast from '../components/Toast'
@@ -126,7 +128,6 @@ type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 
 const readDesktopTab = (): DesktopTab => {
   if (typeof window === 'undefined') return 'inicio'
-  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('loyaltyDemo') === 'pending') return 'perfil'
   try {
     const savedTab = localStorage.getItem(DESKTOP_TAB_KEY)
     return savedTab === 'menu' || savedTab === 'contacto' || savedTab === 'perfil' ? savedTab : 'inicio'
@@ -301,14 +302,12 @@ export function PublicMenu() {
   const pageRef = useRef<HTMLElement>(null)
   const imageWarmupObserverRef = useRef<IntersectionObserver | null>(null)
   const fullImageRequestsRef = useRef(new WeakMap<HTMLImageElement, string>())
-  const designMode = new URLSearchParams(window.location.search).get('modo') === 'diseno'
-  const showDemoTools = designMode || window.location.hostname === 'localhost'
   const isDesktopViewport = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
   const initialCatalog = useMemo(() => {
-    const cached = designMode ? null : readCatalogCache()
+    const cached = readCatalogCache()
     if (cached?.categories.length) hydrateMenuCategories(cached.categories)
     return cached
-  }, [designMode])
+  }, [])
   const [products, setProducts] = useState<Product[]>(() => initialCatalog?.products.filter(product => !product.categories.includes('extras')) ?? [])
   const [extrasProducts, setExtrasProducts] = useState<Product[]>(() => initialCatalog?.products.filter(product => product.categories.includes('extras')) ?? [])
   // Los extras de catálogo siguen disponibles desde sus propias tarjetas;
@@ -316,7 +315,6 @@ export function PublicMenu() {
   const [cart, setCart] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
-  const [isDemoRepeatCart, setIsDemoRepeatCart] = useState(false)
   const [selectedGroup, setSelectedGroup] = useState<MenuProductGroup | null>(null)
   const [closingDetail, setClosingDetail] = useState(false)
   const [detailOrigin, setDetailOrigin] = useState<{ x: number; y: number } | null>(null)
@@ -399,6 +397,8 @@ export function PublicMenu() {
   const [identification, setIdentification] = useState('')
   const [idPrefix, setIdPrefix] = useState<'V' | 'E' | 'J'>('V')
   const [email, setEmail] = useState('')
+  const [customerDetailsAutofilled, setCustomerDetailsAutofilled] = useState(false)
+  const customerDetailsTouched = useRef(false)
   const [orderType, setOrderType] = useState<'takeaway' | 'delivery'>('takeaway')
   const [payMode, setPayMode] = useState<'single' | 'mixed'>('single')
   const [payPrimary, setPayPrimary] = useState<PayMethod>('cash')
@@ -467,6 +467,8 @@ export function PublicMenu() {
   const sidebarCardRef = useRef<HTMLDivElement>(null)
   const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false)
   const [recommendedIndex, setRecommendedIndex] = useState(0)
+  const [desktopHeroSlide, setDesktopHeroSlide] = useState(0)
+  const [desktopHeroPaused, setDesktopHeroPaused] = useState(false)
   const [requestedRecommendedIndex, setRequestedRecommendedIndex] = useState<number | null>(null)
   const [recommendedImageSrc, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
   const loadedRecommendedImageKey = useRef<string | null>(null)
@@ -504,6 +506,38 @@ export function PublicMenu() {
     try { return JSON.parse(localStorage.getItem(LAST_ORDER_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
   const [currentTab, setCurrentTab] = useState<DesktopTab>(readDesktopTab)
+
+  const autofillCustomerOrderDetails = useCallback(async () => {
+    if (customerDetailsTouched.current) return
+    try {
+      const customer = await getCustomerOrderProfile()
+      if (!customer || customerDetailsTouched.current) return
+      if (customer.fullName || customer.phone || customer.identification) setCustomerDetailsAutofilled(true)
+      setName(current => current || customer.fullName)
+      setPhone(current => current || customer.phone)
+      setEmail(current => current || customer.email)
+      const prefix = customer.identification.trim().match(/^([VEJ])\s*-/i)?.[1]?.toUpperCase()
+      if (prefix === 'V' || prefix === 'E' || prefix === 'J') setIdPrefix(prefix)
+      setIdentification(current => current || customer.identification)
+    } catch {
+      // El pedido sigue disponible si el RPC de perfil aún no está actualizado o la red falla.
+    }
+  }, [])
+
+  useEffect(() => {
+    void autofillCustomerOrderDetails()
+    if (!customerSupabase) return
+    const { data } = customerSupabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+        window.setTimeout(() => { void autofillCustomerOrderDetails() }, 0)
+      }
+    })
+    return () => data.subscription.unsubscribe()
+  }, [autofillCustomerOrderDetails])
+
+  useEffect(() => {
+    if (step === 'details') void autofillCustomerOrderDetails()
+  }, [autofillCustomerOrderDetails, step])
 
   // Cuando Editar se pulsa desde el resumen, el flujo vuelve al carrito para
   // modificar el producto. Al continuar (o cerrar ese carrito) debe regresar
@@ -667,13 +701,6 @@ export function PublicMenu() {
   }, [showSearch])
 
   useEffect(() => {
-    if (designMode) {
-      setProducts([])
-      setBcvRate(null)
-      setLoading(false)
-      window.__removeFCSplash?.()
-      return
-    }
     let active = true
     let secondaryTimer: number | null = null
 
@@ -726,7 +753,7 @@ export function PublicMenu() {
       active = false
       if (secondaryTimer !== null) window.clearTimeout(secondaryTimer)
     }
-  }, [designMode, initialCatalog])
+  }, [initialCatalog])
 
   useEffect(() => {
     if (!loading) {
@@ -739,13 +766,13 @@ export function PublicMenu() {
   // móviles esa RPC competía con el catálogo aunque el cliente fuera a
   // retirar el pedido en el local.
   useEffect(() => {
-    if (designMode || orderType !== 'delivery' || deliverySettings) return
+    if (orderType !== 'delivery' || deliverySettings) return
     let active = true
     getPublicDeliverySettings()
       .then(settings => { if (active) setDeliverySettings(settings) })
       .catch(() => { if (active) setDeliverySettings(null) })
     return () => { active = false }
-  }, [designMode, orderType, deliverySettings])
+  }, [orderType, deliverySettings])
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
@@ -765,6 +792,15 @@ export function PublicMenu() {
     return categoryMatch && (!term || normalizeForSearch(searchableText).includes(term))
   })), [products, activeCategory, search])
   const homeSearchTerm = normalizeForSearch(search.trim())
+  useEffect(() => {
+    if (homeSearchTerm.length >= 2) {
+      setDesktopHeroSlide(0)
+      return
+    }
+    if (currentTab !== 'inicio' || desktopHeroPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const timer = window.setInterval(() => setDesktopHeroSlide(slide => (slide + 1) % 2), 3000)
+    return () => window.clearInterval(timer)
+  }, [currentTab, desktopHeroPaused, homeSearchTerm])
   const homeSearchSuggestions = useMemo(() => {
     if (homeSearchTerm.length < 2) return []
     return groupMenuProducts(products)
@@ -936,14 +972,37 @@ export function PublicMenu() {
       .sort((a, b) => a.key.localeCompare(b.key))
       .slice(0, 8)
   }, [groups, activeCategory])
+  const recommendedSlides = useMemo(() => {
+    const slides: Array<{ kind: 'product'; group: typeof recommendedPool[number] } | { kind: 'loyalty' }> = []
+    slides.push({ kind: 'loyalty' })
+    if (recommendedPool.length === 0) return slides
+    // La tarjeta abre Recomendado; luego cada grupo de tres productos queda
+    // entre dos apariciones de fidelidad, también al cruzar el final del loop.
+    const productCount = Math.ceil(recommendedPool.length / 3) * 3
+    for (let index = 0; index < productCount; index += 1) {
+      slides.push({ kind: 'product', group: recommendedPool[index % recommendedPool.length] })
+      if ((index + 1) % 3 === 0 && index + 1 < productCount) slides.push({ kind: 'loyalty' })
+    }
+    return slides
+  }, [recommendedPool])
+  const recommendedSlideCount = recommendedSlides.length
+  const currentRecommendedSlide = recommendedSlides[recommendedIndex]
+  const isLoyaltyRecommended = currentRecommendedSlide?.kind === 'loyalty'
 
   useEffect(() => {
     setRequestedRecommendedIndex(0)
+    setRecommendedIndex(0)
   }, [activeCategory])
 
   useEffect(() => {
     const targetIndex = requestedRecommendedIndex ?? recommendedIndex
-    const targetGroup = recommendedPool[targetIndex]
+    if (recommendedSlides[targetIndex]?.kind === 'loyalty' && requestedRecommendedIndex != null) {
+      setRecommendedIndex(targetIndex)
+      if (requestedRecommendedIndex != null) setRequestedRecommendedIndex(null)
+      return
+    }
+    const targetSlide = recommendedSlides[targetIndex]
+    const targetGroup = targetSlide?.kind === 'product' ? targetSlide.group : null
     if (!targetGroup) return
     if (loadedRecommendedImageKey.current === targetGroup.key) {
       setRecommendedIndex(targetIndex)
@@ -983,15 +1042,15 @@ export function PublicMenu() {
     })()
 
     return () => { cancelled = true }
-  }, [recommendedIndex, recommendedPool, requestedRecommendedIndex])
+  }, [recommendedIndex, recommendedSlides, requestedRecommendedIndex])
 
   useEffect(() => {
-    if (recommendedPool.length <= 1 || recommendedPaused || requestedRecommendedIndex != null) return
+  if (recommendedSlideCount <= 1 || recommendedPaused || requestedRecommendedIndex != null) return
     recommendedTimer.current = setInterval(() => {
-      setRequestedRecommendedIndex(prev => ((prev ?? recommendedIndex) + 1) % recommendedPool.length)
+      setRequestedRecommendedIndex(prev => ((prev ?? recommendedIndex) + 1) % recommendedSlideCount)
     }, 4500)
     return () => { if (recommendedTimer.current) clearInterval(recommendedTimer.current) }
-  }, [recommendedPool.length, recommendedPaused, recommendedIndex, requestedRecommendedIndex])
+  }, [recommendedSlideCount, recommendedPaused, recommendedIndex, requestedRecommendedIndex])
 
   const clearRecommendedResumeTimer = () => {
     if (recommendedResumeTimer.current) {
@@ -1014,8 +1073,8 @@ export function PublicMenu() {
   }
 
   const moveRecommended = (direction: 1 | -1) => {
-    if (recommendedPool.length <= 1) return
-    setRequestedRecommendedIndex(prev => ((prev ?? recommendedIndex) + direction + recommendedPool.length) % recommendedPool.length)
+    if (recommendedSlideCount <= 1) return
+    setRequestedRecommendedIndex(prev => ((prev ?? recommendedIndex) + direction + recommendedSlideCount) % recommendedSlideCount)
     pauseRecommendedAutoplay()
     resumeRecommendedAutoplay()
   }
@@ -1049,7 +1108,7 @@ export function PublicMenu() {
     if (recommendedWheelUnlockTimer.current) clearTimeout(recommendedWheelUnlockTimer.current)
   }, [])
 
-  const recommendedGroup = recommendedPool[recommendedIndex] ?? recommendedPool[0] ?? groups[0]
+  const recommendedGroup = currentRecommendedSlide?.kind === 'product' ? currentRecommendedSlide.group : null
   const isStoreOpen = (() => {
     const hour = new Date().getHours()
     return hour >= 11 && hour < 22
@@ -1119,18 +1178,10 @@ export function PublicMenu() {
 
   useEffect(() => {
     try {
-      if (designMode) {
-        setCartOpen(true)
-        // El modo diseño siempre empieza desde el carrito para poder recorrer
-        // el checkout y probar el botón de datos demo.
-        setReturnToConfirmAfterEdit(false)
-        setStep('cart')
-        restoringFlow.current = false
-        return
-      }
       const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
       const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number; whatsappUrl?: string } | null
       if (saved && cart.length > 0) {
+        if (saved.name || saved.phone || saved.identification || saved.email) customerDetailsTouched.current = true
         setName(saved.name || '')
         setPhone(saved.phone || '')
         setIdentification(saved.identification || '')
@@ -1159,7 +1210,7 @@ export function PublicMenu() {
       }
     } catch { /* ignore malformed local flow state */ }
     restoringFlow.current = false
-  }, [cart.length, designMode])
+  }, [cart.length])
   useEffect(() => {
     // Volver desde WhatsApp puede recuperar esta página desde el bfcache sin
     // montar de nuevo React. Sincronizamos el estado también en pageshow para
@@ -1194,18 +1245,10 @@ export function PublicMenu() {
   }, [cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod])
 
   const toggleFavorite = (groupKey: string) => setFavoriteIds(current => current.includes(groupKey) ? current.filter(id => id !== groupKey) : [...current, groupKey])
-  const fillDemoData = () => {
-    setName('Cliente Demo')
-    setIdPrefix('V')
-    setIdentification('V-12345678')
-    setPhone('04120000000')
-    setFieldError('')
-  }
   const startNewOrder = () => {
     addressActionRef.current += 1
     setLocating(false)
     setCart([])
-    setIsDemoRepeatCart(false)
     setName('')
     setPhone('')
     setIdentification('')
@@ -1232,7 +1275,6 @@ export function PublicMenu() {
   }
 
   const repeatPreviousOrder = async (previousOrder: CustomerRepeatOrder) => {
-    if (designMode && !previousOrder.orderId.startsWith('demo-order-')) throw new Error('La repetición de pedidos solo está disponible en una cuenta real.')
     if (cart.length > 0 && !window.confirm('Tu carrito actual tiene productos. ¿Quieres reemplazarlo por el pedido anterior?')) return
 
     const catalog = await getPublicCatalog()
@@ -1278,9 +1320,9 @@ export function PublicMenu() {
     if (!nextCart.length) throw new Error('Los productos de ese pedido ya no están disponibles con las mismas opciones. Puedes volver a agregarlos desde el menú.')
 
     setCart(nextCart)
-    setIsDemoRepeatCart(previousOrder.orderId.startsWith('demo-order-'))
     setProducts(catalog.filter(product => !product.categories.includes('extras')))
     setExtrasProducts(catalog.filter(product => product.categories.includes('extras')))
+    customerDetailsTouched.current = true
     setName(previousOrder.customerName)
     setPhone(previousOrder.customerPhone)
     setIdentification(previousOrder.customerIdentification)
@@ -1659,7 +1701,31 @@ export function PublicMenu() {
       if (editingCartLineKey) {
         const imageUrl = optimizedProductImage(selectedProduct.imageUrl) || undefined
         const editedLine = { productId: selectedProduct.id, productName: formatProductTitle(selectedProduct.name), price: selectedProduct.price + extrasPrice, quantity: detailQuantity, imageUrl, notes: lineNotes || undefined, modifiers }
-        setCart(current => [...current.filter(item => cartLineKey(item) !== editingCartLineKey), editedLine])
+        const pickedCatalogExtras = catalogAddOnProducts.filter(product => (selectedCatalogExtras[product.id] ?? 0) > 0)
+        setCart(current => {
+          const editedProductName = formatProductTitle(selectedProduct.name)
+          const originalLine = current.find(item => cartLineKey(item) === editingCartLineKey)
+          const previousAccompanimentPrefix = originalLine ? `Acompañamiento de ${formatProductTitle(originalLine.productName)}` : ''
+          const accompanimentPrefix = `Acompañamiento de ${editedProductName}`
+          const withoutPreviousLineAndExtras = current.filter(item =>
+            cartLineKey(item) !== editingCartLineKey &&
+            !(item.notes === previousAccompanimentPrefix)
+          )
+          const next = [...withoutPreviousLineAndExtras, editedLine]
+          for (const product of pickedCatalogExtras) {
+            const notes = accompanimentPrefix
+            const quantity = detailQuantity * (selectedCatalogExtras[product.id] ?? 0)
+            const key = cartLineKey({ productId: product.id, notes, modifiers: [] })
+            const existing = next.find(item => cartLineKey(item) === key)
+            if (existing) {
+              const updated = { ...existing, quantity: existing.quantity + quantity }
+              next.splice(next.indexOf(existing), 1, updated)
+            } else {
+              next.push({ productId: product.id, productName: formatProductTitle(product.name), price: product.price, quantity, imageUrl: optimizedProductImage(product.imageUrl) || undefined, notes, modifiers: [] })
+            }
+          }
+          return next
+        })
         setEditingCartLineKey(null)
         closeProductDetail()
         setReturnToConfirmAfterEdit(true)
@@ -1698,6 +1764,16 @@ export function PublicMenu() {
       : undefined
     openGroup(group, undefined, item.productId, savedModifiers)
     setDetailQuantity(item.quantity)
+    const accompanimentNote = `Acompañamiento de ${formatProductTitle(item.productName)}`
+    const savedCatalogExtras = Object.fromEntries(
+      extrasProducts.concat(products)
+        .filter(product => product.categories.includes('extras') || product.categories.includes('bebidas'))
+        .flatMap(product => {
+          const companion = cart.find(candidate => candidate.productId === product.id && candidate.notes === accompanimentNote)
+          return companion ? [[product.id, Math.max(1, Math.floor(companion.quantity / item.quantity))] as const] : []
+        }),
+    )
+    setSelectedCatalogExtras(savedCatalogExtras)
     const savedNotes = item.notes || ''
     const userNotes = item.modifiers?.length
       ? savedNotes.replace(/^Extras: .*?(?: · |$)/, '')
@@ -1863,19 +1939,6 @@ export function PublicMenu() {
 
   const submitOrder = async () => {
     if (submitLockRef.current || submitting) return
-    if (isDemoRepeatCart) {
-      setError('Este carrito viene de un pedido de demostración. Puedes revisar el flujo, pero no se enviará ninguna orden.')
-      setStep('cart')
-      return
-    }
-    if (designMode) {
-      setError('')
-      setOrderCode('WEB-DEMO')
-      setSubmitting(false)
-      setWhatsappUrl('https://wa.me/?text=Pedido%20de%20demostraci%C3%B3n%20Full%20China')
-      setStep('whatsapp')
-      return
-    }
     setError('')
     setFieldError('')
     if (name.trim().length < 2) { setStep('details'); return setFieldError('name') }
@@ -2262,14 +2325,14 @@ export function PublicMenu() {
 
         {/* 3. Recommended Card */}
         <div
-          className="public-recommended-card"
+          className={`public-recommended-card${isLoyaltyRecommended ? ' is-loyalty-slide' : ''}`}
           onClick={(event) => {
             if (recommendedWasSwiped.current) {
               recommendedWasSwiped.current = false
               return
             }
             if ((event.target as HTMLElement).closest('button, .public-recommended-dots-overlay')) return
-            if (recommendedGroup) openGroup(recommendedGroup)
+            if (!isLoyaltyRecommended && recommendedGroup) openGroup(recommendedGroup)
           }}
           onPointerDown={(event) => {
             // Los botones (CTA e indicadores) conservan su interacción normal;
@@ -2284,7 +2347,7 @@ export function PublicMenu() {
           onPointerUp={(event) => {
             const start = recommendedSwipeStart.current
             recommendedSwipeStart.current = null
-            if (start == null || recommendedPool.length <= 1) {
+            if (start == null || recommendedSlideCount <= 1) {
               resumeRecommendedAutoplay()
               return
             }
@@ -2303,26 +2366,28 @@ export function PublicMenu() {
           onMouseEnter={pauseRecommendedAutoplay}
           onMouseLeave={resumeRecommendedAutoplay}
         >
-          <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
-            <small>RECOMENDADO <Flame size={12} /></small>
-            <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
-            <p>{recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
-            {recommendedGroup && <span className="public-recommended-price">{money(recommendedGroup.minPrice)}</span>}
-            {recommendedGroup && priceBs(recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedGroup.minPrice)}</span>}
-            <button
-              className="public-recommended-btn"
-              onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup) }}
-              aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
-            >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
-          </div>
-          <img src={recommendedImageSrc} onError={event => {
+          {isLoyaltyRecommended ? <CustomerLoyaltyProfile presentation="recommended" onJoin={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} /> : <>
+            <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
+              <small>RECOMENDADO <Flame size={12} /></small>
+              <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
+              <p>{recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
+              {recommendedGroup && <span className="public-recommended-price">{money(recommendedGroup.minPrice)}</span>}
+              {recommendedGroup && priceBs(recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedGroup.minPrice)}</span>}
+              <button
+                className="public-recommended-btn"
+                onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup) }}
+                aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
+              >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
+            </div>
+            <img src={recommendedImageSrc} onError={event => {
             if (event.currentTarget.getAttribute('src') !== '/optimized/fondos/hero-banner-food.webp') {
               setRecommendedImageSrc('/optimized/fondos/hero-banner-food.webp')
             }
-          }} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
+            }} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
+          </>}
           <div className="public-recommended-dots-overlay">
-            {recommendedPool.map((_, i) => (
-              <button key={i} type="button" className={i === recommendedIndex ? 'active' : ''} aria-label={`Ver recomendación ${i + 1}`} aria-current={i === recommendedIndex ? 'true' : undefined} onClick={(event) => {
+            {Array.from({ length: recommendedSlideCount }, (_, i) => (
+              <button key={i} type="button" className={i === recommendedIndex ? 'active' : ''} aria-label={recommendedSlides[i]?.kind === 'loyalty' ? 'Ver programa de fidelidad' : `Ver recomendación ${recommendedSlides.slice(0, i + 1).filter(slide => slide.kind === 'product').length}`} aria-current={i === recommendedIndex ? 'true' : undefined} onClick={(event) => {
                 event.stopPropagation()
                 if (i === recommendedIndex) {
                   setRequestedRecommendedIndex(null)
@@ -2358,7 +2423,7 @@ export function PublicMenu() {
         </nav>
 
         {/* 5. Products Section */}
-        <section className="public-content">
+          <section className="public-content">
           <div className="public-list-header">
             <h2 className={activeCategory === 'Todos' ? 'public-main-list-title' : undefined}>{activeCategory === 'Todos' ? 'Menú' : categoryLabel(activeCategory)}</h2>
             <div className="public-list-actions">
@@ -2414,6 +2479,7 @@ export function PublicMenu() {
             </section>
 
             <section className="public-contact-hub">
+              <CustomerLoyaltyProfile presentation="promotion" onJoin={() => setCurrentTab('perfil')} />
               <article className="public-contact-panel public-contact-talk">
                 <header className="public-order-ticket-head">
                   <span><Flame size={14} /> Pedido directo</span>
@@ -2577,10 +2643,11 @@ export function PublicMenu() {
           {currentTab === 'inicio' && (
             <>
               {/* 1. Cinematic Hero Banner with 3D Depth */}
-              <section className={`public-cinematic-hero ${homeSearchTerm.length >= 2 ? 'has-search-results' : ''}`}>
+              <section className={`public-cinematic-hero public-home-hero-carousel ${desktopHeroSlide === 1 ? 'is-loyalty-slide' : ''} ${homeSearchTerm.length >= 2 ? 'has-search-results' : ''}`} aria-roledescription="carrusel" aria-label="Promociones de Full China" onPointerEnter={() => setDesktopHeroPaused(true)} onPointerLeave={() => setDesktopHeroPaused(false)} onFocusCapture={() => setDesktopHeroPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopHeroPaused(false) }}>
                 {/* Organic Wok Fire Embers Canvas (Confined to Banner) */}
-                <HeroWokEmbers />
+                {desktopHeroSlide === 0 && <HeroWokEmbers />}
 
+                <div className={`public-home-hero-slide public-home-hero-food ${desktopHeroSlide === 0 ? 'is-active' : ''}`} aria-hidden={desktopHeroSlide !== 0}>
                 <div className="public-hero-left">
                   <span className="public-hero-tag">
                     <Flame size={14} className="fire-icon-pulse" />
@@ -2674,6 +2741,32 @@ export function PublicMenu() {
                     decoding="async" 
                   />
                   <div className="public-hero-gradient-overlay" />
+                </div>
+                </div>
+                <div className={`public-home-hero-slide public-home-hero-loyalty ${desktopHeroSlide === 1 ? 'is-active' : ''}`} aria-hidden={desktopHeroSlide !== 1}>
+                  <div className="public-home-loyalty-banner">
+                    <div className="public-home-loyalty-copy">
+                      <span className="public-home-loyalty-kicker"><i /> PROGRAMA DE FIDELIDAD</span>
+                      <h2>Cada visita te acerca a <em>un premio</em></h2>
+                      <p><span>Un sello por visita. Completa 10 visitas.</span><span>Gana tu premio Full China.</span></p>
+                      <div className="public-home-loyalty-progress" aria-label="Tarjeta de ejemplo de diez sellos">
+                        {Array.from({ length: 10 }, (_, index) => <span key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></span>)}
+                        <small>10 visitas · 1 premio</small>
+                      </div>
+                      <button type="button" className="public-home-loyalty-cta" onClick={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Únete al programa <ChevronRight size={17} /></button>
+                    </div>
+                    <div className="public-home-loyalty-card-wrap" aria-hidden="true">
+                      <div className="public-home-loyalty-card">
+                        <div className="public-home-loyalty-card-top"><img src="/optimized/root/logo.webp" alt="" /><span>MEMBER<br />CARD</span></div>
+                        <div className="public-home-loyalty-card-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div>
+                        <div className="public-home-loyalty-card-stamps">{Array.from({ length: 10 }, (_, index) => <i key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></i>)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="public-home-hero-dots" role="group" aria-label="Elegir portada">
+                  <button type="button" className={desktopHeroSlide === 0 ? 'is-active' : ''} aria-label="Ver portada de Full China" aria-current={desktopHeroSlide === 0 ? 'true' : undefined} onClick={() => setDesktopHeroSlide(0)} />
+                  <button type="button" className={desktopHeroSlide === 1 ? 'is-active' : ''} aria-label="Ver programa de fidelidad" aria-current={desktopHeroSlide === 1 ? 'true' : undefined} onClick={() => setDesktopHeroSlide(1)} />
                 </div>
               </section>
 
@@ -2940,6 +3033,7 @@ export function PublicMenu() {
               </section>
 
               <section className="public-contact-hub">
+                <CustomerLoyaltyProfile presentation="promotion" onJoin={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
                 <article className="public-contact-panel public-contact-talk">
                   <header className="public-order-ticket-head">
                     <span><Flame size={14} /> Pedido directo</span>
@@ -3620,7 +3714,7 @@ export function PublicMenu() {
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
         <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { setStep('delivery'); } else if (step === 'delivery') { if (isDesktop) closeCart(); else setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? 'Confirma que todo esté correcto antes de enviarlo.' : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : 'Revisa tu pedido.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
-        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { editCartItem(item) }, 240) }}>Editar</button></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
+        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-cart-item-controls"><div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { editCartItem(item) }, 240) }}>Editar</button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
         {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
         {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Casa / edificio / referencia</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. Torre B, Piso 4, Apt. 4B" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div><button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
         {step === 'details' && (
@@ -3629,8 +3723,8 @@ export function PublicMenu() {
               <strong>¿A nombre de quién?</strong>
               <span>Solo para coordinar tu pedido.</span>
             </div>
-            {showDemoTools && <button type="button" className="public-demo-data-button" onClick={fillDemoData}><Zap size={15} /> Rellenar datos demo</button>}
-            <div className="public-data-form-card">
+            {customerDetailsAutofilled && <p className="public-checkout-profile-note"><UserRound size={15} /> Cargamos tus datos de Mi perfil. Revísalos y corrige cualquier detalle antes de continuar.</p>}
+            <div className="public-data-form-card" onChangeCapture={() => { customerDetailsTouched.current = true }}>
               <label className={`public-data-field${fieldError === 'name' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={nameRef} autoComplete="name" value={name} onChange={event => { setName(event.target.value); if (fieldError === 'name') setFieldError('') }} placeholder="Nombre y apellido" /></div>{fieldError === 'name' && <em className="public-field-error" role="alert">Escribe tu nombre.</em>}</span></label>
               <label className={`public-data-field${fieldError === 'identification' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula <em className="public-data-req">*</em></span><div className="public-data-input"><div className="public-id-prefix-toggle">{(['V', 'E', 'J'] as const).map(p => <button key={p} type="button" className={idPrefix === p ? 'active' : ''} onClick={() => { setIdPrefix(p); setIdentification(`${p}-${identification.replace(/^[VEJ]-?/i, '')}`); if (fieldError === 'identification') setFieldError('') }}>{p}</button>)}</div><input ref={identificationRef} inputMode="numeric" autoComplete="off" value={identification.replace(/^[VEJ]-?/i, '')} maxLength={8} onChange={event => { const digits = event.target.value.replace(/\D/g, ''); setIdentification(`${idPrefix}-${digits}`); if (fieldError === 'identification') setFieldError('') }} onBlur={() => { const digits = identification.replace(/^[VEJ]-?/i, ''); if (digits && (digits.length < 6 || digits.length > 8)) setFieldError('identification') }} placeholder="12345678" /></div>{fieldError === 'identification' ? <em className="public-field-error" role="alert">La cédula debe tener entre 6 y 8 dígitos.</em> : <small>La usaremos para conservar tu historial de pedidos</small>}</span></label>
               <label className={`public-data-field${fieldError === 'phone' ? ' invalid' : ''}`}><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={phoneRef} type="tel" inputMode="tel" autoComplete="tel" value={phone} maxLength={15} onChange={event => { setPhone(event.target.value); if (fieldError === 'phone') setFieldError('') }} onBlur={() => { if (phone.trim() && phone.replace(/\D/g, '').length !== 11) setFieldError('phone') }} placeholder="0412 000 0000" /></div>{fieldError === 'phone' ? <em className="public-field-error" role="alert">Debe tener exactamente 11 dígitos, ej. 0412 000 0000.</em> : <small>Te escribiremos aquí para confirmar</small>}</span></label>

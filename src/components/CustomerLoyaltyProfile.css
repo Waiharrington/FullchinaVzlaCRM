@@ -505,8 +505,6 @@
 .customer-reward-unlocked-ticket.is-receiving{opacity:0}
 .customer-reward-unlocked-ticket.is-landing{animation:customer-reward-ticket-land .72s cubic-bezier(.16,.9,.26,1) both}
 .customer-reward-unlocked-ticket.is-landing::after{animation:customer-reward-ticket-flash .8s ease-out both}
-.customer-reward-pending-demo .customer-reward-unlocked-ticket{border-color:#f6d77b;background:linear-gradient(135deg,#684718,#3c260d 57%,#241607);box-shadow:inset 0 1px 0 #fff5c353,0 0 26px #ffc84831,0 8px 22px #0006}
-.customer-reward-pending-demo .customer-reward-unlocked-intro{color:#ffe196;font-weight:800;letter-spacing:.08em;font-size:9px}
 @keyframes customer-reward-ticket-land{0%{transform:scale(.94);filter:brightness(1.8) drop-shadow(0 0 18px #ffd66f);box-shadow:0 0 0 0 #ffdf7b00}65%{transform:scale(1.035);filter:brightness(1.25) drop-shadow(0 0 14px #ffd66f);box-shadow:0 0 0 8px #ffdf7b22}100%{transform:scale(1);filter:none}}
 @keyframes customer-reward-ticket-flash{0%{left:-30%;opacity:0}22%{opacity:1}100%{left:125%;opacity:0}}
 .customer-reward-unlocked-emblem,.customer-reward-unlocked-copy,.customer-reward-unlocked-seals{position:relative;z-index:1}
@@ -547,6 +545,7 @@
 @media(prefers-reduced-motion:reduce){.customer-profile-member .customer-profile-welcome button{transition:none}.customer-profile-member .customer-profile-welcome button:hover,.customer-profile-member .customer-profile-welcome button:active{transform:none}}
 .customer-profile-member .customer-loyalty-card{overflow:visible;padding:20px 16px 14px;border-radius:22px;border-color:rgba(255,77,77,.76);background:radial-gradient(ellipse at 100% 0,rgba(255,35,49,.19),transparent 50%),linear-gradient(125deg,rgba(255,208,178,.055),transparent 30%,rgba(10,4,6,.82) 72%),linear-gradient(rgba(12,5,6,.6),rgba(8,5,6,.86)),url('/optimized/customer-profile/loyalty-bg.webp') center/cover;box-shadow:inset 0 1px 0 rgba(255,185,151,.22),inset 0 -1px 0 rgba(255,79,64,.12),0 0 24px #e31b2b20,0 22px 46px #000a}
 .customer-profile-member .customer-loyalty-head{min-height:0;position:relative;padding-right:105px;padding-bottom:9px;border-bottom:1px solid rgba(255,131,117,.12)}
+.customer-profile-member .customer-loyalty-head>div:first-child{transform:translateY(-6px)}
 .customer-profile-member .customer-loyalty-head span{font-size:9px;letter-spacing:.17em;font-weight:600}
 .customer-profile-member .customer-loyalty-head h2{font-size:18px;margin:5px 0 2px;line-height:1.2;letter-spacing:-.025em;text-shadow:0 2px 8px #0008}
 .customer-profile-member .customer-loyalty-head>div{display:block;line-height:1.25}
@@ -621,9 +620,6 @@
 .customer-recent-orders-heading p{margin:0;color:#bcb0ad;font-size:11px}
 .customer-recent-orders-controls{display:flex;gap:6px;flex:none}
 .customer-recent-orders-actions{display:flex;align-items:center;gap:8px;flex:none}
-.customer-recent-orders-demo{min-height:31px;padding:0 10px;border:1px solid #a7783c88;border-radius:10px;background:#261710;color:#f4d186;font:inherit;font-size:9px;font-weight:700;cursor:pointer}
-.customer-recent-orders-demo:hover{border-color:#ffd05c;color:#fff1c4}
-.customer-recent-orders-demo-note{margin:0 0 10px;padding:9px 11px;border:1px solid #9f753b80;border-radius:10px;background:#2b1d0ecc;color:#f2d590;font-size:10px;line-height:1.45}
 .customer-recent-orders-controls button{display:grid;place-items:center;width:31px;height:31px;border:1px solid #75443d75;border-radius:10px;background:#1a1012;color:#f5d4c5;cursor:pointer}
 .customer-recent-orders-controls button:hover{border-color:#e7564e;color:#fff}
 .customer-recent-orders-rail{display:flex;gap:10px;overflow-x:auto;padding:1px 1px 8px;scroll-snap-type:x mandatory;scrollbar-width:thin;scrollbar-color:#7e3937 #1a1112;overscroll-behavior-inline:contain}
@@ -785,11 +781,6 @@
 .customer-history-empty-path small{color:#bf9e8a;font-size:9px;letter-spacing:.04em}
 .customer-history-empty-action{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:42px;border:1px solid #ff797c45;border-radius:11px;padding:11px 14px;background:linear-gradient(120deg,#80232970,#37101a80);color:#ffe1d2;font:inherit;font-size:12px;font-weight:600;cursor:pointer}
 .customer-history-empty-actions{grid-area:action;display:grid;justify-items:start;gap:9px;margin-top:18px}
-.customer-history-demo-action{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:9px 13px;border:1px solid #bf913f88;border-radius:11px;background:linear-gradient(120deg,#322310,#21170e);color:#ffdc8c;font:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
-.customer-history-demo-action:hover{transform:translateY(-1px);border-color:#ffd36a;background:linear-gradient(120deg,#493112,#2b1d0e)}
-.customer-history-demo-action:disabled{opacity:.6;cursor:wait}
-.customer-history-demo-banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:0 0 14px;padding:10px 12px;border:1px solid #a47b3d77;border-radius:12px;background:#2c1f10d9;color:#f3d48d;font-size:10px}
-.customer-history-demo-banner button{min-height:30px;padding:5px 10px;border:1px solid #a47b3d88;border-radius:9px;background:#1b130d;color:#ffdfa0;font:inherit;font-weight:700;cursor:pointer}
 @media(max-width:359px){.customer-history-first-chapter{padding-inline:16px}.customer-history-empty-art>img{right:-8px;width:160px}.customer-history-empty-art>b{font-size:8px;max-width:85px}}
 .customer-history-first-chapter{display:grid;grid-template-columns:minmax(0,1fr) 112px;grid-template-areas:"copy art" "action action";align-items:center;column-gap:8px;padding:21px 20px 18px;border-color:#8c46434d;background:linear-gradient(145deg,#1c1011ed,#0d090af5 76%),url('/optimized/customer-profile/loyalty-bg.webp') center/cover;box-shadow:inset 0 1px 0 #ffffff0c,0 14px 32px #0006;text-align:left}
 .customer-history-first-chapter .customer-history-empty-art{grid-area:art;display:grid;place-items:center;width:112px;height:112px;margin:0;background:radial-gradient(circle,#b94a2c22,transparent 70%)}
@@ -913,42 +904,16 @@
 .customer-desktop-history-order .customer-repeat-order-button{min-height:36px;margin-top:10px;padding-inline:11px;border-radius:10px;font-size:11px}
 @keyframes customer-repeat-order-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.customer-repeat-order-spinner{animation:none}}
-.customer-loyalty-demo-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 14px}
-.customer-loyalty-demo-win{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:36px;margin:0;padding:7px 10px;border:1px solid rgba(255,70,87,.48);border-radius:10px;color:#ffd4d7;background:rgba(159,16,34,.18);font-family:inherit;font-size:11px;font-weight:700;line-height:1.2;cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease}
-.customer-loyalty-demo-win:hover{border-color:#ff4657;color:#fff;background:rgba(190,20,42,.34)}
-.customer-loyalty-demo-win.is-active{border-color:#ffc83d;color:#ffe6a0;background:rgba(130,84,12,.24)}
-.customer-loyalty-demo-win:focus-visible{outline:2px solid #ffc83d;outline-offset:3px}
-.customer-redeemed-demo-action{grid-template-columns:1fr;max-width:260px;margin:0 auto 10px}
-.customer-redeemed-demo-label{padding:3px 6px;border:1px solid rgba(255,200,61,.3);border-radius:20px;color:#ffd452;background:rgba(255,200,61,.1);font-size:8px;font-weight:850;letter-spacing:.1em}
-.customer-loyalty-demo-label{margin-left:5px;color:#ffd452;font-size:9px;font-weight:800;letter-spacing:.12em}
-.customer-loyalty-demo-player{display:grid;gap:8px;width:min(100%,360px);margin:12px auto 0;padding:10px 12px;border:1px solid rgba(255,200,61,.35);border-radius:12px;background:rgba(12,10,12,.88);color:#f8e9c7;text-align:left}
-.customer-loyalty-demo-player-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;font-weight:700}
-.customer-loyalty-demo-player-top small{flex:none;color:#b8adb0;font-size:10px;font-variant-numeric:tabular-nums}
-.customer-loyalty-demo-player input[type=range]{width:100%;height:5px;margin:2px 0;accent-color:#ffc83d;cursor:pointer}
-.customer-loyalty-demo-player-controls{display:grid;grid-template-columns:40px minmax(112px,1fr) 40px;justify-content:center;gap:8px}
-.customer-loyalty-demo-player-controls button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 10px;border:1px solid rgba(255,200,61,.35);border-radius:9px;background:#211719;color:#ffe3a0;font:inherit;font-size:11px;font-weight:750;cursor:pointer}
-.customer-loyalty-demo-player-controls button:hover:not(:disabled){border-color:#ffd45c;background:#3a211c;color:#fff3d1}
-.customer-loyalty-demo-player-controls button:disabled{opacity:.4;cursor:not-allowed}
-.customer-loyalty-demo-player-controls .customer-loyalty-demo-play{background:linear-gradient(110deg,#8e1725,#54131d);border-color:#ff5961;color:#fff}
-.customer-loyalty-demo-player-controls button:focus-visible{outline:2px solid #ffc83d;outline-offset:2px}
-.customer-stamp-celebration .customer-loyalty-demo-player{position:relative;z-index:3;margin-top:18px}
-.customer-loyalty-card-demo-complete .customer-loyalty-bar span{background:linear-gradient(90deg,#ff4657,#ffc83d);box-shadow:0 0 12px rgba(255,200,61,.42)}
-.customer-loyalty-card-demo-stamps .customer-loyalty-bar span{background:linear-gradient(90deg,#ff4657,#ffc83d);box-shadow:0 0 12px rgba(255,70,87,.3)}
-.customer-loyalty-card-demo-pending{border-color:#ddb952;box-shadow:inset 0 1px 0 #fff2c426,0 0 26px #efb93a17,0 18px 45px #0007}
-.customer-loyalty-card-demo-pending .customer-loyalty-bar span{background:linear-gradient(90deg,#e7a93a,#fff0a0);box-shadow:0 0 14px #ffcf5c9c}
-.customer-pending-reward-demo{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:40px;margin:11px 0 0;padding:9px 12px;border:1px solid #e9c55c;border-radius:11px;color:#fff0bf;background:linear-gradient(110deg,#573714,#29190a);font:inherit;font-size:11px;font-weight:800;cursor:pointer;box-shadow:inset 0 1px 0 #fff3c31a,0 0 16px #f5bd3a17;transition:filter .18s ease,transform .18s ease,border-color .18s ease}
-.customer-pending-reward-demo:hover{border-color:#fff0a0;filter:brightness(1.18);transform:translateY(-1px)}
-.customer-pending-reward-demo[aria-pressed="true"]{border-color:#a87736;color:#e5c988;background:#24170d;box-shadow:none}
-.customer-pending-reward-demo:focus-visible{outline:2px solid #ffe38a;outline-offset:3px}
 .customer-celebration-next{position:relative;z-index:3;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;margin-top:22px;padding:0 18px;border:1px solid rgba(255,210,90,.72);border-radius:999px;color:#fff0c1;background:linear-gradient(110deg,rgba(177,26,47,.85),rgba(116,23,31,.92));font-family:inherit;font-size:13px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 7px 22px rgba(0,0,0,.24),0 0 18px rgba(255,70,87,.16)}
 .customer-celebration-next:focus-visible{outline:2px solid #ffd36d;outline-offset:3px}
-.customer-celebration-backdrop .customer-stamp-celebration.customer-demo-celebration{animation:customer-demo-celebration-in .38s ease-out both}
-@keyframes customer-demo-celebration-in{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){.customer-welcome-type-premio{opacity:1!important;animation:none!important;transform:none!important}}
 .customer-welcome-type-sello{right:4%;font-size:clamp(8px,2.1vw,10px);letter-spacing:.14em}@media(max-width:380px){.customer-welcome-type-sello{font-size:8px;letter-spacing:.1em}}
 
 /* Miniature of the welcome card, floating beside the member details. */
-.customer-profile-member .customer-member-mini-card{display:block;box-sizing:border-box;top:-30px;right:-16px;width:150px;height:104px;padding:7px 6px;overflow:hidden;border:1px solid rgba(255,211,119,.9);border-radius:13px;background:linear-gradient(105deg,rgba(16,5,8,.83),rgba(26,6,10,.72)),url('/optimized/customer-profile/welcome-card-bg.webp') center/cover;box-shadow:inset 0 0 0 2px rgba(255,206,113,.17),inset 0 1px 0 #fff5d54d,0 0 0 1px #8b3035,0 0 16px #ff3f4a55,0 8px 15px #0009;transform:perspective(600px) rotateX(4deg) rotateY(9deg) rotateZ(7deg);transform-origin:center;animation:customer-mini-card-float 4.8s ease-in-out infinite}
+.customer-profile-member .customer-member-mini-card{display:block;box-sizing:border-box;top:-18px;right:-16px;width:150px;height:104px;padding:7px 6px;overflow:hidden;border:1px solid rgba(255,211,119,.9);border-radius:13px;background:linear-gradient(105deg,rgba(16,5,8,.83),rgba(26,6,10,.72)),url('/optimized/customer-profile/welcome-card-bg.webp') center/cover;box-shadow:inset 0 0 0 2px rgba(255,206,113,.17),inset 0 1px 0 #fff5d54d,0 0 0 1px #8b3035,0 0 16px #ff3f4a55,0 8px 15px #0009;color:inherit;font:inherit;text-align:left;cursor:pointer;touch-action:none;pointer-events:auto;transform:perspective(600px) rotateX(calc(4deg + var(--member-card-tilt-x,0deg))) rotateY(calc(9deg + var(--member-card-tilt-y,0deg))) rotateZ(7deg);transform-origin:center;transition:transform .16s ease-out;animation:customer-mini-card-float 4.8s ease-in-out infinite}
+.customer-profile-member .customer-member-mini-card:focus-visible{outline:2px solid #ffd36d;outline-offset:4px}
+.customer-profile-member .customer-member-mini-card:disabled{cursor:default;opacity:1}
+.customer-profile-member .customer-member-mini-card.is-spinning{animation:customer-mini-card-spin 1.15s cubic-bezier(.16,.82,.24,1) both}
 .customer-profile-member .customer-member-mini-card::before{position:absolute;inset:4px;content:"";border:1px solid rgba(255,222,151,.33);border-radius:9px;pointer-events:none}
 .customer-profile-member .customer-member-mini-top{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;height:28px}
 .customer-profile-member .customer-member-mini-top img{width:78px;height:27px;object-fit:contain;filter:drop-shadow(0 2px 4px #000c)}
@@ -957,6 +922,13 @@
 .customer-profile-member .customer-member-mini-copy small{color:#f47d72;font-size:5px;font-weight:850;letter-spacing:.08em}
 .customer-profile-member .customer-member-mini-copy strong{color:#fff;font-size:11px;font-weight:900;line-height:1.06}
 .customer-profile-member .customer-member-mini-copy em{color:#ffd24d;font-style:normal}
-@keyframes customer-mini-card-float{0%,100%{transform:perspective(600px) rotateX(4deg) rotateY(9deg) rotateZ(7deg) translateY(0)}50%{transform:perspective(600px) rotateX(2deg) rotateY(5deg) rotateZ(5deg) translateY(-4px)}}
-@media(max-width:359px){.customer-profile-member .customer-member-mini-card{top:-24px;right:-12px;width:136px;height:95px;padding:6px 5px}.customer-profile-member .customer-member-mini-top img{width:70px}.customer-profile-member .customer-member-mini-copy{left:8px;bottom:12px}.customer-profile-member .customer-member-mini-copy strong{font-size:10px}}
-@media(prefers-reduced-motion:reduce){.customer-profile-member .customer-member-mini-card{animation:none}}
+.customer-profile-member .customer-member-mini-card{top:-18px}
+.customer-profile-member .customer-member-mini-top{position:absolute;top:5px;right:6px;left:6px;height:24px;transform:none}
+.customer-profile-member .customer-member-mini-top img{width:68px;height:23px;object-position:center top;transform:translateX(-2px)}
+@keyframes customer-mini-card-float{0%,100%{transform:perspective(600px) rotateX(calc(4deg + var(--member-card-tilt-x,0deg))) rotateY(calc(9deg + var(--member-card-tilt-y,0deg))) rotateZ(7deg) translateY(0)}50%{transform:perspective(600px) rotateX(calc(2deg + var(--member-card-tilt-x,0deg))) rotateY(calc(5deg + var(--member-card-tilt-y,0deg))) rotateZ(5deg) translateY(-4px)}}
+@keyframes customer-mini-card-spin{0%{transform:perspective(600px) rotateX(4deg) rotateY(9deg) rotateZ(7deg) scale(1)}25%{transform:perspective(600px) rotateX(8deg) rotateY(99deg) rotateZ(4deg) scale(1.06)}50%{transform:perspective(600px) rotateX(2deg) rotateY(189deg) rotateZ(-4deg) scale(1.1)}75%{transform:perspective(600px) rotateX(-3deg) rotateY(279deg) rotateZ(-2deg) scale(1.05)}100%{transform:perspective(600px) rotateX(4deg) rotateY(369deg) rotateZ(7deg) scale(1)}}
+@media(max-width:359px){.customer-profile-member .customer-member-mini-card{top:-12px;right:-12px;width:136px;height:95px;padding:6px 5px}.customer-profile-member .customer-member-mini-top{top:5px;right:5px;left:5px}.customer-profile-member .customer-member-mini-top img{width:64px;transform:translateX(-2px)}.customer-profile-member .customer-member-mini-copy{left:8px;bottom:12px}.customer-profile-member .customer-member-mini-copy strong{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.customer-profile-member .customer-member-mini-card{animation:none}.customer-profile-member .customer-member-mini-card.is-spinning{animation:none}}
+.customer-loyalty-personal-details{display:grid;justify-items:start;gap:3px;min-width:0;margin-top:5px}
+.customer-loyalty-personal-details small{display:inline-flex;align-items:center;gap:4px;max-width:100%;overflow-wrap:anywhere;line-height:1.35}
+.customer-loyalty-personal-details b{color:#e5dadd;font-weight:700}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 const LOADING_PHRASES = [
   "Cocinando tu experiencia...",
@@ -31,7 +32,7 @@ export function PublicMenuSkeleton() {
     return () => clearInterval(interval);
   }, []);
 
-  return (
+  return createPortal((
     <div className="onb-loader-screen" aria-label="Cargando menú">
       <style>{`
         .onb-loader-screen {
@@ -283,5 +284,5 @@ export function PublicMenuSkeleton() {
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

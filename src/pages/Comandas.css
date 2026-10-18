@@ -2668,6 +2668,7 @@
   border: 1px solid #262626;
   box-shadow: 0 30px 80px rgba(0,0,0,0.65);
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 .cmd-history-modal.animate-pop-out {
   animation: cmd-history-pop-out 200ms ease forwards;
@@ -2922,6 +2923,7 @@
 .cmd-history-body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0 24px 20px;
 }
 
@@ -3217,7 +3219,7 @@
   .cmd-history-nav {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: "month date" "weeks year";
+    grid-template-areas: "month date" "weeks weeks" "clear year";
     align-items: center;
     gap: 5px 8px;
     padding: 0 14px 6px;
@@ -3246,15 +3248,18 @@
   .cmd-history-date-filter .fc-calendar-value { min-width: 0; }
   .cmd-history-weeks {
     grid-area: weeks;
+    display: flex;
     min-width: 0;
     width: 100%;
     max-width: 100%;
     justify-content: flex-start;
-    overflow-x: auto;
+    flex-wrap: wrap;
+    overflow-x: hidden;
     padding: 0;
   }
   .cmd-history-week-btn {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
     padding: 5px 9px;
     font-size: 10px;
   }
