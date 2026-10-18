@@ -15,9 +15,9 @@ const chapters = [
   { title: '¡A una visita del premio!', message: 'Tu siguiente sello completa esta historia.', mobileMessage: 'Un sello más y lo tienes.', image: '/optimized/customer-profile/reward-gift.webp', color: '#ffe18c', theme: 'final' },
 ]
 
-type Props = { stamps: number; threshold: number; rewards: number; description: string }
+type Props = { stamps: number; threshold: number; rewards: number; description: string; pendingDemo?: boolean; arrival?: 'receiving' | 'landing' | null }
 
-export default function CustomerRewardJourney({ stamps, threshold, rewards, description }: Props) {
+export default function CustomerRewardJourney({ stamps, threshold, rewards, description, pendingDemo = false, arrival = null }: Props) {
   const chapterIndex = Math.min(9, Math.floor(stamps / threshold * 10))
   const remaining = threshold - stamps
   const chapter = chapters[chapterIndex]
@@ -26,15 +26,15 @@ export default function CustomerRewardJourney({ stamps, threshold, rewards, desc
   const image = available ? '/optimized/customer-profile/reward-gift.webp' : chapter.image
   const message = available ? `${rewards} ${rewards === 1 ? 'premio disponible' : 'premios disponibles'} para ti.` : remaining === 1 ? 'Tu siguiente sello completa esta historia.' : chapter.message
   const mobileMessage = available ? rewards === 1 ? 'Premio listo para ti.' : `${rewards} premios listos.` : remaining === 1 ? 'Un sello más y lo tienes.' : chapter.mobileMessage
-  return <section className={`customer-reward-journey journey-${available ? 'ready' : chapter.theme}`} style={{ '--journey-accent': chapter.color } as CSSProperties} aria-label="Tu próxima recompensa">
+  return <section className={`customer-reward-journey journey-${available ? 'ready' : chapter.theme}${pendingDemo ? ' customer-reward-pending-demo' : ''}`} style={{ '--journey-accent': chapter.color } as CSSProperties} aria-label="Tu próxima recompensa">
     {available ? <div className="customer-reward-unlocked">
-      <p className="customer-reward-unlocked-intro">{rewards === 1 ? 'Tu recompensa ya está disponible.' : `Tienes ${rewards} recompensas disponibles.`}</p>
-      <div className="customer-reward-unlocked-ticket">
+      <p className="customer-reward-unlocked-intro">{pendingDemo ? 'DEMO · PREMIO PENDIENTE DE ENTREGA' : rewards === 1 ? 'Tu premio está disponible para canjear.' : `Tienes ${rewards} premios disponibles para canjear.`}</p>
+      <div className={`customer-reward-unlocked-ticket${arrival ? ` is-${arrival}` : ''}`}>
         <div className="customer-reward-unlocked-emblem"><Gift size={25} aria-hidden="true" /></div>
         <div className="customer-reward-unlocked-copy">
           <small>PREMIO DESBLOQUEADO</small>
           <strong>{description}</strong>
-          <span>¡Completaste tu tarjeta!</span>
+          <span>El local confirmará el canje al entregarlo.</span>
         </div>
         <div className="customer-reward-unlocked-seals">
           <small>FULL CHINA</small>

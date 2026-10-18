@@ -126,6 +126,7 @@ type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 
 const readDesktopTab = (): DesktopTab => {
   if (typeof window === 'undefined') return 'inicio'
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('loyaltyDemo') === 'pending') return 'perfil'
   try {
     const savedTab = localStorage.getItem(DESKTOP_TAB_KEY)
     return savedTab === 'menu' || savedTab === 'contacto' || savedTab === 'perfil' ? savedTab : 'inicio'
