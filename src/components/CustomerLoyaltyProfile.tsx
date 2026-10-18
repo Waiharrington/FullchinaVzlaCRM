@@ -547,7 +547,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
         <div className="customer-profile-welcome-kinetic-type">
           <span className="customer-welcome-type-visit">CADA VISITA</span>
           <span className="customer-welcome-type-suma">SUMA</span>
-          <span className="customer-welcome-type-sello">UN SELLO Y TE ACERCA AL</span>
+          <span className="customer-welcome-type-sello">CADA SELLO, MÁS CERCA DEL</span>
           <span className="customer-welcome-type-premio">PREMIO</span>
         </div>
         <article className="customer-profile-welcome-card">
