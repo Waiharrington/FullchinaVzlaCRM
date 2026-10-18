@@ -2674,7 +2674,7 @@ export function PublicMenu() {
               {/* 1. Cinematic Hero Banner with 3D Depth */}
               <section className={`public-cinematic-hero public-home-hero-carousel ${desktopHeroSlide === 1 ? 'is-loyalty-slide' : ''} ${homeSearchTerm.length >= 2 ? 'has-search-results' : ''}`} aria-roledescription="carrusel" aria-label="Promociones de Full China" onPointerEnter={() => setDesktopHeroPaused(true)} onPointerLeave={() => setDesktopHeroPaused(false)} onFocusCapture={() => setDesktopHeroPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopHeroPaused(false) }}>
                 {/* Organic Wok Fire Embers Canvas (Confined to Banner) */}
-                {desktopHeroSlide === 0 && <HeroWokEmbers />}
+                <HeroWokEmbers />
 
                 <div className={`public-home-hero-slide public-home-hero-food ${desktopHeroSlide === 0 ? 'is-active' : ''}`} aria-hidden={desktopHeroSlide !== 0}>
                 <div className="public-hero-left">
