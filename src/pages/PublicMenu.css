@@ -13873,6 +13873,63 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
     max-width: calc(100vw - 100px) !important;
   }
 
+  /* Keep the member profile's three requested desktop columns after the
+     embedded profile layout overrides above. */
+  @media (min-width: 1100px) {
+    .public-profile-tab-active .customer-profile-member .customer-profile-dashboard {
+      width: min(100%, 1680px) !important;
+      max-width: 1680px !important;
+      grid-template-columns: minmax(0, .92fr) minmax(0, .88fr) minmax(0, 1.1fr) !important;
+      grid-template-areas: "welcome welcome welcome" "card favorites tools" "card redeemed tools" !important;
+      grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr) !important;
+      column-gap: 20px !important;
+      row-gap: 16px !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-loyalty-card {
+      grid-column: 1 !important;
+      grid-row: 2 / span 2 !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-recent-orders {
+      grid-column: 2 !important;
+      grid-row: 2 !important;
+      align-self: stretch !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-redeemed-history {
+      grid-column: 2 !important;
+      grid-row: 3 !important;
+      align-self: stretch !important;
+      margin-top: 0 !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-redeemed-history-empty {
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-redeemed-empty-content,
+    .public-profile-tab-active .customer-profile-member .customer-recent-orders-status {
+      flex: 1 1 auto !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-profile-tools {
+      grid-column: 3 !important;
+      grid-row: 2 / span 2 !important;
+      min-width: 0 !important;
+    }
+
+    .public-profile-tab-active .customer-profile-member .customer-desktop-history {
+      width: 100% !important;
+      max-width: none !important;
+      min-height: 560px !important;
+      height: 100% !important;
+    }
+  }
+
   .public-profile-tab-active .customer-visit-history {
     min-height: calc(100dvh - 78px);
     padding: 24px 30px 50px;

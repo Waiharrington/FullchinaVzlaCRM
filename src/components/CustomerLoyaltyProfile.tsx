@@ -14,11 +14,17 @@ import './CustomerLoyaltyProfile.css'
 type Visit = { order_id: string; order_number: string; visited_at: string; reward_description?: string | null }
 type LoyaltyReward = { id: number; cycle_number: number; reward_description: string; unlocked_at: string; redeemed_at?: string | null }
 type LoyaltyProfile = { customer: { first_name: string; last_name: string; full_name: string; phone: string; identification?: string }; total_visits: number; current_cycle_visits?: number; rewards_unlocked: number; reward_description: string; next_reward_description?: string; visits_per_reward: number; available_rewards: LoyaltyReward[]; redeemed_rewards: LoyaltyReward[]; has_more: boolean; visits: Visit[]; account_status: 'active' }
-type PendingCelebration = { pending: boolean; stamp?: number; reward_description?: string }
+type PendingCelebration = { pending: boolean; complete?: boolean; stamp?: number; stamp_pending?: boolean; reward_description?: string }
 
 const pageSize = 5
 const AUTH_MODE_KEY = 'fullchina_customer_auth_preferred_mode'
 const victoryDishImages = ['/optimized/productos/M1.webp', '/optimized/productos/M2.webp', '/optimized/productos/M3.webp', '/optimized/productos/M13.webp']
+const stampOrdinals = ['primer', 'segundo', 'tercer', 'cuarto', 'quinto', 'sexto', 'séptimo', 'octavo', 'noveno', 'décimo']
+
+function getStampCelebrationTitle(stamp: number) {
+  const ordinal = stampOrdinals[stamp - 1]
+  return ordinal ? `¡Felicidades, ya tienes tu ${ordinal} sello!` : `¡Felicidades, ya tienes ${stamp} sellos!`
+}
 
 type CustomerLoyaltyProfileProps = {
   onRepeatOrder?: (order: CustomerRepeatOrder) => Promise<void>
@@ -222,6 +228,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
   const [celebration, setCelebration] = useState<{ stamp: number; complete: boolean; id: number; rewardDescription?: string } | null>(null)
   const [victoryDishes, setVictoryDishes] = useState<string[]>([])
   const [newestStamp, setNewestStamp] = useState<{ index: number; id: number } | null>(null)
+  const queuedRewardCelebration = useRef<{ stamp: number; complete: true; id: number; rewardDescription?: string } | null>(null)
   const [rewardArrival, setRewardArrival] = useState<'receiving' | 'landing' | null>(null)
   const previousCelebrationCount = useRef<number | null>(null)
   const suppressNextCountCelebration = useRef(false)
@@ -262,6 +269,13 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
   }
 
   const closeCelebration = useCallback(() => {
+    if (celebration && !celebration.complete && queuedRewardCelebration.current) {
+      const rewardCelebration = queuedRewardCelebration.current
+      queuedRewardCelebration.current = null
+      setVictoryDishes(shuffledVictoryDishes())
+      setCelebration(rewardCelebration)
+      return
+    }
     const shouldFlyReward = Boolean(celebration?.complete && profile?.available_rewards?.length)
     const sourceTicket = shouldFlyReward ? celebrationDialog.current?.querySelector<HTMLElement>('.customer-victory-prize') : null
     const sourceRect = sourceTicket?.getBoundingClientRect()
@@ -358,7 +372,6 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
     previousCelebrationCount.current = count
     if (suppressNextCountCelebration.current) {
       suppressNextCountCelebration.current = false
-      setNewestStamp(null)
       return
     }
     if (previous === null || count <= previous) { setNewestStamp(null); return }
@@ -366,8 +379,14 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
     setNewestStamp({ index: complete ? limit - 1 : count - 1, id: Date.now() })
     const celebrationId = Date.now()
     setVictoryDishes(complete ? shuffledVictoryDishes() : [])
-    setCelebration({ stamp: complete ? limit : count, complete, id: celebrationId })
-    if (complete && customerSupabase) {
+    if (complete) {
+      queuedRewardCelebration.current = { stamp: limit, complete: true, id: celebrationId + 1 }
+      setVictoryDishes([])
+      setCelebration({ stamp: count, complete: false, id: celebrationId })
+    } else {
+      setCelebration({ stamp: count, complete: false, id: celebrationId })
+    }
+    if (customerSupabase) {
       void customerSupabase.rpc('fn_claim_customer_loyalty_celebration')
     }
   }, [profile])
@@ -418,14 +437,20 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
     })
     if (pendingCelebration?.pending) {
       const limit = Math.max(1, Number(loyaltyProfile.visits_per_reward) || 10)
-      setNewestStamp(null)
-      setVictoryDishes(shuffledVictoryDishes())
-      setCelebration({
-        stamp: Number(pendingCelebration.stamp) || limit,
-        complete: true,
-        id: Date.now(),
-        rewardDescription: pendingCelebration.reward_description,
-      })
+      const complete = pendingCelebration.complete === true
+      const stamp = Math.max(1, Number(pendingCelebration.stamp) || limit)
+      const celebrationId = Date.now()
+      const showStampFirst = complete && pendingCelebration.stamp_pending === true
+      setNewestStamp(!complete || showStampFirst ? { index: Math.min(stamp, limit) - 1, id: celebrationId } : null)
+      if (showStampFirst) {
+        queuedRewardCelebration.current = { stamp, complete: true, id: celebrationId + 1, rewardDescription: pendingCelebration.reward_description }
+        setVictoryDishes([])
+        setCelebration({ stamp, complete: false, id: celebrationId })
+      } else {
+        queuedRewardCelebration.current = null
+        setVictoryDishes(complete ? shuffledVictoryDishes() : [])
+        setCelebration({ stamp, complete, id: celebrationId, rewardDescription: pendingCelebration.reward_description })
+      }
     }
     if (page === 0) setRecentVisits((data as LoyaltyProfile).visits ?? [])
     setProfileLoading(false)
@@ -613,8 +638,8 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
       {celebration.complete && <div className="customer-victory-food-showcase" aria-hidden="true">{victoryDishes.map((image, index) => <figure key={`${celebration.id}-${image}`} style={{ '--dish-index': index } as CSSProperties}><img src={image} alt="" decoding="async" /></figure>)}</div>}
       <div key={`${celebration.id}-medal`} className="customer-celebration-medal"><img src={celebration.complete ? '/optimized/customer-profile/victory-trophy.webp' : '/icons/wok-mark.png'} alt="" /></div>
       <small>{celebration.complete ? 'TARJETA COMPLETA' : `SELLO ${celebration.stamp} · FULL CHINA`}</small>
-      <strong id="customer-celebration-title">{celebration.complete ? '¡El premio es tuyo!' : celebration.stamp === 1 ? '¡Tu historia empieza con sabor!' : celebration.stamp === threshold - 1 ? '¡A un sello de saborearlo!' : celebration.stamp === Math.ceil(threshold / 2) ? '¡Mitad del camino, doble emoción!' : ['¡Otro momento para celebrar!', '¡El sabor de volver!', '¡Tu próxima alegría está más cerca!'][celebration.stamp % 3]}</strong>
-      <p>{celebration.complete ? 'Tu recompensa ya está disponible.' : 'Una visita más. Un paso más hacia tu premio.'}</p>
+      <strong id="customer-celebration-title">{celebration.complete ? '¡El premio es tuyo!' : getStampCelebrationTitle(celebration.stamp)}</strong>
+      <p>{celebration.complete ? 'Tu recompensa ya está disponible.' : celebration.stamp >= threshold ? '¡Con este sello completaste tu tarjeta!' : 'Una visita más. Un paso más hacia tu premio.'}</p>
       {celebration.complete && <div className="customer-victory-prize"><div className="customer-victory-prize-emblem"><Gift size={23} /></div><div className="customer-victory-prize-copy"><small>PREMIO DESBLOQUEADO</small><b>{celebration.rewardDescription ?? availableRewards[0]?.reward_description ?? profile.next_reward_description ?? profile.reward_description}</b><span>¡Completaste tu tarjeta!</span></div><div className="customer-victory-prize-seal"><span>FULL CHINA</span><strong>{threshold}/{threshold}</strong><small>SELLOS</small></div><i className="customer-victory-prize-shine" aria-hidden="true" /></div>}
     </div></div>, document.body)}
     <header className="customer-profile-welcome"><div><img className="customer-member-logo" src="/optimized/root/logo.webp" alt="Full China" /><span>MI PERFIL</span><h1>¡Hola, <em>{profile.customer.first_name || profile.customer.full_name.split(' ')[0]}</em><span className="customer-profile-greeting-mark">!</span></h1><p>Qué bueno tenerte de vuelta.</p></div><button onClick={() => void logout()}><LogOut size={16} /> Salir</button></header>

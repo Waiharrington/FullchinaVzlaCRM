@@ -821,7 +821,7 @@
 .customer-history-visit-heading h2::first-letter{text-transform:uppercase}
 
 @media(min-width:1280px), (min-width:900px) and (orientation:landscape){
-  .customer-profile-member .customer-profile-dashboard{grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);grid-template-areas:"welcome welcome" "card favorites" "card tools";grid-template-rows:auto auto 1fr;align-items:start;gap:20px 24px;width:min(100%,1480px);max-width:1480px}
+  .customer-profile-member .customer-profile-dashboard{grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);grid-template-areas:"welcome welcome" "card favorites" "redeemed tools";grid-template-rows:auto auto 1fr;align-items:start;gap:20px 24px;width:min(100%,1480px);max-width:1480px}
   .customer-profile-member .customer-profile-welcome{grid-area:welcome;align-items:center;margin:0;padding:0 4px 19px;border-bottom:1px solid #f0c26730}
   .customer-profile-member .customer-profile-welcome>div>span{color:#fff;text-shadow:0 1px 6px #000a}
   .customer-profile-member .customer-profile-welcome h1{font-size:35px}
@@ -831,6 +831,10 @@
   .customer-profile-member .customer-loyalty-stamps{gap:18px;margin:22px 0 44px}
   .customer-profile-member .customer-profile-tools{grid-area:tools;display:block;min-width:0;padding:0;border:0;border-radius:0;background:none;box-shadow:none;backdrop-filter:none}
   .customer-profile-member .customer-recent-orders{grid-area:favorites;align-self:start;padding:16px 17px;border-radius:20px}
+  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history{grid-area:redeemed;align-self:start;min-width:0;margin:0;padding:0;border-color:#ff45376b;border-radius:18px;background:linear-gradient(145deg,#170c0dF2,#0c0809F5);box-shadow:inset 0 1px 0 #ffffff0b,0 14px 34px #0007;backdrop-filter:blur(12px)}
+  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history>summary,.customer-profile-member .customer-profile-dashboard>.customer-redeemed-history>.customer-redeemed-empty-head{padding:13px 15px;color:#fff5ed}
+  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history>.customer-redeemed-empty-content{margin:0 10px 10px;border-color:#a05d4c55;background:linear-gradient(110deg,#ffb15a0b,#00000020)}
+  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history .customer-redeemed-list{gap:8px;padding:0 10px 10px}
   .customer-profile-member .customer-recent-orders-rail{gap:12px;scrollbar-width:none}
   .customer-profile-member .customer-recent-orders-rail::-webkit-scrollbar{display:none}
   .customer-profile-member .customer-recent-order-card{flex-basis:calc(50% - 6px);min-height:158px}
@@ -932,3 +936,13 @@
 .customer-loyalty-personal-details{display:grid;justify-items:start;gap:3px;min-width:0;margin-top:5px}
 .customer-loyalty-personal-details small{display:inline-flex;align-items:center;gap:4px;max-width:100%;overflow-wrap:anywhere;line-height:1.35}
 .customer-loyalty-personal-details b{color:#e5dadd;font-weight:700}
+
+@media(min-width:1100px){
+  .customer-profile-member .customer-profile-dashboard{grid-template-columns:minmax(0,.92fr) minmax(0,.98fr) minmax(0,1.1fr);grid-template-areas:"welcome welcome welcome" "card favorites tools" "card redeemed tools";grid-template-rows:auto auto 1fr;column-gap:20px;width:min(100%,1480px);max-width:1480px}
+  .customer-profile-member .customer-profile-welcome{grid-column:1/-1;grid-row:1}
+  .customer-profile-member .customer-profile-dashboard>.customer-loyalty-card{grid-column:1;grid-row:2/span 2}
+  .customer-profile-member .customer-profile-dashboard>.customer-recent-orders{grid-column:2;grid-row:2}
+  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history{grid-column:2;grid-row:3}
+  .customer-profile-member .customer-profile-tools{grid-column:3;grid-row:2/span 2;align-self:stretch}
+  .customer-profile-member .customer-profile-tools .customer-desktop-history{height:100%;min-height:560px}
+}

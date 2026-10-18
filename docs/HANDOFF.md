@@ -1,12 +1,28 @@
 # Estado y continuidad de FullChinaVzla
 
-Última actualización: 2026-10-01.
+Última actualización: 2026-10-18.
 
 ## Resumen
 
 FullChinaVzla es una PWA React/Vite con Supabase self-hosted. El acuerdo inicial
 de USD 450 fue aceptado y el contrato está listo; el alcance completo se
 entregará por fases y superará USD 1000.
+
+## Migración de celebraciones de fidelidad (2026-10-18)
+
+Se aplicó al VPS `20261018150000_customer_loyalty_stamp_celebration.sql` en
+`fullchinavzla`, después de crear el backup completo
+`/root/fullchina-backups/fullchina-pre-stamp-celebration-20261018.dump`
+(30.686.982 bytes; formato custom, lista de restauración verificada con
+`pg_restore --list`). SHA-256 del backup:
+`c89af9c7367864004b27119b46ab725b68f6904a84fbe6ff4cefd1b32b53ae36`.
+
+Verificación posterior: columna `customer_loyalty_visits.celebration_seen_at`
+presente; `fn_claim_customer_loyalty_celebration()` devuelve `stamp_pending`;
+ejecución permitida a `authenticated` y denegada a `anon`; función propiedad
+de `supabase_admin` y `SECURITY DEFINER`. La aplicación local muestra el sello
+más reciente y luego el premio cuando ambos están pendientes. La migración no
+despliega el frontend.
 
 La infraestructura de demo (datos hardcodeados, modo demo, `DemoDataProvider`)
 fue eliminada en la fase de integración. El estado actual por módulo es:
