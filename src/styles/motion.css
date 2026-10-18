@@ -414,12 +414,49 @@
     .rec-modal-overlay,
     .nom-modal-overlay,
     .prv-overlay,
-    .ws-modal-overlay
+    .ws-modal-overlay,
+    .cmd-modal-overlay,
+    .cmd-sales-overlay,
+    .mobile-cart-modal-overlay
   ) {
     align-items: center !important;
     justify-content: center !important;
-    padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px)) !important;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px max(16px, env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box;
+  }
+
+  /* Keep the dialog inside the usable viewport on notched phones, Dynamic
+     Island devices and Android gesture/status-bar areas. A dialog still owns
+     its internal scroll; only the backdrop geometry changes here. */
+  :is(.cmd-modal-overlay, .cmd-sales-overlay, .modal-overlay-dark) {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .cmd-modal-overlay > .cmd-modal-container,
+  .modal-overlay-dark > .payment-modal-box,
+  .modal-overlay-dark > .client-modal-box {
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px)) - 16px) !important;
+    min-height: 0;
+    overscroll-behavior: contain;
+  }
+
+  .cmd-sales-overlay {
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px max(16px, env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  .cmd-sales-overlay > .cmd-sales-modal {
+    width: 100% !important;
+    height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px))) !important;
+    max-height: 100%;
+    min-height: 0;
+  }
+
+  .mobile-cart-modal-overlay > .cart-sidebar--modal.mobile-cart-open {
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
   }
 
   .gs-overlay > .gs-dropdown {
