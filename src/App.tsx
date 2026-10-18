@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useLayoutEffect } from 'react'
 import { BrowserRouter, useLocation } from 'react-router-dom'
 import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
 
@@ -8,6 +8,10 @@ const AdminApp = lazy(() => import('./AdminApp'))
 function AppContent() {
   const location = useLocation()
   const isPublicMenu = /^\/pedir\/?$/i.test(location.pathname)
+
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0)
+  }, [location.key])
 
   useEffect(() => {
     const link = document.getElementById('pwa-manifest')

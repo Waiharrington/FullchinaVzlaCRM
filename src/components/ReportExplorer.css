@@ -128,7 +128,7 @@
 }
 .report-pagination select { background: #28282a; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: .4rem; padding: .35rem; }
 .report-pagination .report-page-size-select { width: 78px; min-width: 78px; flex: 0 0 78px; }
-.fc-select-menu.report-row-count-menu { width: 88px !important; min-width: 88px !important; max-height: none !important; padding: 4px; }
+.fc-select-menu.report-row-count-menu { max-height: none !important; padding: 4px; }
 .fc-select-menu.report-row-count-menu .fc-select-options { overflow: visible; }
 .fc-select-menu.report-row-count-menu .fc-select-option { min-height: 34px; justify-content: center; padding: 6px 8px; font-size: .8rem; }
 .fc-select-menu.report-row-count-menu .fc-select-option svg { position: absolute; right: 12px; }

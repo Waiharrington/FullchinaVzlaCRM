@@ -167,7 +167,9 @@ function prepareCatalog(catalog: Product[]) {
   return catalog.map(product => {
     const primary = resolveCategory(product)
     const extras = (product.categories ?? []).filter(category => category !== product.category)
-    return { ...product, category: primary, categories: Array.from(new Set([primary, ...extras])) }
+    const categories = Array.from(new Set([primary, ...extras]))
+    const isBeverage = categories.includes('bebidas')
+    return { ...product, category: primary, categories, allowProteinExtras: product.allowProteinExtras ?? !isBeverage }
   }).sort((a, b) => {
     const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
     return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
@@ -245,6 +247,22 @@ function proteinOptionImage(products: Product[], optionName: string) {
     return normalizedProduct === normalizedOption
   })
   return optimizedProductImage(match?.imageUrl)
+}
+
+function isProteinCatalogExtra(product: Product) {
+  const name = normalizeForSearch(product.name)
+  return /\b(extra|adicional)\b/.test(name)
+    && /\b(proteina|pollo|camaron|carne|cerdo|jamon|res|tofu)\b/.test(name)
+}
+
+function filterProteinExtraGroups(groups: ProductModifierGroup[], enabled: boolean) {
+  if (enabled) return groups
+  return groups.filter(group => {
+    const name = normalizeForSearch(group.name)
+    const proteinGroup = name.includes('proteina')
+    const optionalExtra = name.includes('extra') || group.minSelections === 0
+    return !(proteinGroup && optionalExtra)
+  })
 }
 
 function previewImageSource(source: string) {
@@ -1289,8 +1307,9 @@ export function PublicMenu() {
         continue
       }
 
-      const groups = await getPublicProductModifiers(product.id)
-      const modifiers = historicalItem.modifiers.map(modifier => ({ optionId: modifier.optionId, quantity: modifier.quantity }))
+      const groups = filterProteinExtraGroups(await getPublicProductModifiers(product.id), product.allowProteinExtras !== false)
+      const validOptionIds = new Set(groups.flatMap(group => group.options.map(option => option.id)))
+      const modifiers = historicalItem.modifiers.filter(modifier => validOptionIds.has(modifier.optionId)).map(modifier => ({ optionId: modifier.optionId, quantity: modifier.quantity }))
       const selection = Object.fromEntries(modifiers.map(modifier => [modifier.optionId, modifier.quantity]))
       if (hasInvalidModifierSelection(groups, selection) || getModifierSelectionError(groups, selection)) {
         unavailable.push(historicalItem.productName || product.name)
@@ -1564,7 +1583,7 @@ export function PublicMenu() {
     setModifierValidationError('')
     const productId = initialVariant?.product.id
     const prepareModifierGroups = (remoteGroups: ProductModifierGroup[]) => {
-      const resolved = remoteGroups
+      const resolved = filterProteinExtraGroups(remoteGroups, initialVariant?.product.allowProteinExtras !== false)
         .filter(item => item.options.length > 0 || item.minSelections > 0)
         .map(item => ({ ...item, options: [...item.options] }))
       // Los extras del catálogo son productos independientes, no modificadores.
@@ -1574,7 +1593,11 @@ export function PublicMenu() {
     const applyModifierGroups = (remoteGroups: ProductModifierGroup[]) => {
       const prepared = prepareModifierGroups(remoteGroups)
       setDetailModifierGroups(prepared)
-      setSelectedExtras(initialModifiers ?? getDefaultModifierSelection(prepared))
+      const validOptionIds = new Set(prepared.flatMap(item => item.options.map(option => option.id)))
+      const initialSelection = initialModifiers
+        ? Object.fromEntries(Object.entries(initialModifiers).filter(([optionId]) => validOptionIds.has(optionId)))
+        : getDefaultModifierSelection(prepared)
+      setSelectedExtras(initialSelection)
     }
 
     if (!productId) {
@@ -1621,8 +1644,9 @@ export function PublicMenu() {
     if (!quickSelectedVariant) return () => { cancelled = true }
     const productId = quickSelectedVariant.product.id
     const applyModifierSummary = (groups: ProductModifierGroup[]) => {
-      setQuickVariantHasModifiers(groups.some(group => group.options.length > 0))
-      setQuickVariantOptionsLabel(groups.some(group => normalizeForSearch(group.name).includes('proteina')) ? 'Cambiar proteínas' : 'Ver opciones')
+      const availableGroups = filterProteinExtraGroups(groups, quickSelectedVariant.product.allowProteinExtras !== false)
+      setQuickVariantHasModifiers(availableGroups.some(group => group.options.length > 0))
+      setQuickVariantOptionsLabel(availableGroups.some(group => normalizeForSearch(group.name).includes('proteina')) ? 'Cambiar proteínas' : 'Ver opciones')
     }
     const cached = PUBLIC_MODIFIER_CACHE.get(productId)
     if (cached) {
@@ -1641,7 +1665,10 @@ export function PublicMenu() {
     return () => { cancelled = true }
   }, [quickSelectedVariant])
   const detailExtrasTotal = calculateModifierTotal(detailModifierGroups, selectedExtras)
-  const catalogExtraProducts = extrasProducts.filter(product => !product.categories.includes('bebidas'))
+  const catalogExtraProducts = selectedProduct?.categories.includes('bebidas')
+    ? []
+    : extrasProducts.filter(product => !product.categories.includes('bebidas')
+      && (selectedProduct?.allowProteinExtras !== false || !isProteinCatalogExtra(product)))
   const complementaryProducts = selectedProduct
     ? products.filter(product => product.id !== selectedProduct.id && (
       selectedProduct.categories.includes('bebidas')
@@ -3512,7 +3539,7 @@ export function PublicMenu() {
                           const requestId = modifierRequestRef.current + 1
                           modifierRequestRef.current = requestId
                           const cached = PUBLIC_MODIFIER_CACHE.get(product.id)
-                          const applyGroups = (groups: ProductModifierGroup[]) => groups.filter(item => item.options.length > 0).map(item => ({ ...item, options: [...item.options] }))
+                          const applyGroups = (groups: ProductModifierGroup[]) => filterProteinExtraGroups(groups, product.allowProteinExtras !== false).filter(item => item.options.length > 0).map(item => ({ ...item, options: [...item.options] }))
                           if (cached) {
                             const preparedGroups = applyGroups(cached)
                             setDetailModifierGroups(preparedGroups)

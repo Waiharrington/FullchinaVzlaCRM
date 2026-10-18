@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, getIngredients, getUnits, getRecipeComponents, createRecipeComponent, updateRecipeComponent, deleteRecipeComponent, type SellableProduct, type MenuCategoryRow, type Ingredient } from '../lib/dataService'
+import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, getIngredients, getUnits, getRecipeComponents, createRecipeComponent, updateRecipeComponent, deleteRecipeComponent, type SellableProduct, type MenuCategoryRow, type Ingredient, type RecipeComponent } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
   UtensilsCrossed, Plus, Search, Pencil, Loader2, CheckCircle2,
@@ -51,15 +51,17 @@ function fileToScaledDataUrl(file: File, max = 500): Promise<string> {
   })
 }
 
-interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean; menuLabel: SellableProduct['menuLabel'] }
+interface Form { name: string; description: string; categories: string[]; emoji: string; price: string; cost: string; imageUrl: string | null; isActive: boolean; allowProteinExtras: boolean; menuLabel: SellableProduct['menuLabel'] }
 interface RecipeDraft { key: string; id?: string; ingredientId: string | null; quantity: string; unitId: string; portionRecipeId?: string | null; preparationBatchId?: string | null; label?: string }
-const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true, menuLabel: null }
+const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true, allowProteinExtras: true, menuLabel: null }
 
 export function Menu() {
   const [products, setProducts] = useState<SellableProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [undoRecipe, setUndoRecipe] = useState<{ productId: string; productName: string; components: RecipeComponent[] } | null>(null)
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [search, setSearch] = useState('')
   const [catFilter, setCatFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
@@ -102,6 +104,7 @@ export function Menu() {
 
   useEffect(() => () => {
     if (editCloseTimer.current) clearTimeout(editCloseTimer.current)
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
   }, [])
 
   const [selectMode, setSelectMode] = useState(false)
@@ -144,7 +147,34 @@ export function Menu() {
   useEffect(() => { void load() }, [load])
   useLiveDataRefresh('menu', () => load(true))
 
-  const flash = (m: string) => { setNotice(m); setTimeout(() => setNotice(''), 3000) }
+  const flash = (m: string) => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+    setUndoRecipe(null)
+    setNotice(m)
+    noticeTimerRef.current = setTimeout(() => { setNotice(''); noticeTimerRef.current = null }, 3000)
+  }
+
+  const undoRecipeDeletion = async () => {
+    const pending = undoRecipe
+    if (!pending) return
+    try {
+      await Promise.all(pending.components.map(component => createRecipeComponent({
+        sellableProductId: pending.productId,
+        ingredientId: component.ingredientId ?? undefined,
+        preparationBatchId: component.preparationBatchId ?? undefined,
+        portionRecipeId: component.portionRecipeId ?? undefined,
+        quantity: component.quantity,
+        unitId: component.unitId,
+      })))
+      setUndoRecipe(null)
+      setNotice(`Receta de “${pending.productName}” restaurada`)
+      if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+      noticeTimerRef.current = setTimeout(() => { setNotice(''); noticeTimerRef.current = null }, 3000)
+      await load(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo restaurar la receta')
+    }
+  }
 
   // Categorías disponibles para asignar a un plato (todas las de la BD).
   const allCategoryKeys = useMemo(() => menuCats.map((c) => c.key), [menuCats])
@@ -184,7 +214,7 @@ export function Menu() {
   const openNew = () => { prepareEditorOpen(); setForm(emptyForm); setPhotoLibraryOpen(false); setPhotoLibrarySearch(''); setRecipeRows([]); setBeverageIngredientId(''); setRecipeLoadFailed(false); setEditing('new') }
   const openEdit = async (p: SellableProduct) => {
     prepareEditorOpen()
-    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive, menuLabel: p.menuLabel })
+    setForm({ name: p.name, description: p.description ?? '', categories: p.categories.length ? p.categories : [p.category], emoji: p.emoji || '', price: String(p.salePrice), cost: p.cost != null ? String(p.cost) : '', imageUrl: p.imageUrl, isActive: p.isActive, allowProteinExtras: p.allowProteinExtras, menuLabel: p.menuLabel })
     setPhotoLibraryOpen(false)
     setPhotoLibrarySearch('')
     setEditing(p)
@@ -212,6 +242,7 @@ export function Menu() {
     return [...chosen].sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b))[0]
   }, [form.categories])
   const isBeverage = selectedPrimaryCategory === 'bebidas'
+  const hasBeverageCategory = form.categories.includes('bebidas')
   const photoLibraryProducts = useMemo(() => {
     const query = normalizeForSearch(photoLibrarySearch)
     return products.filter(product => product.imageUrl && (editing === 'new' || !editing || product.id !== editing.id)
@@ -223,7 +254,8 @@ export function Menu() {
   }])
   const updateRecipeRow = (key: string, updates: Partial<RecipeDraft>) => setRecipeRows((rows) => rows.map((row) => row.key === key ? { ...row, ...updates } : row))
   const removeRecipeRow = (key: string) => setRecipeRows((rows) => rows.filter((row) => row.key !== key))
-  const saveRecipeConfiguration = async (productId: string, beverage: boolean) => {
+  const saveRecipeConfiguration = async (productId: string, beverage: boolean): Promise<RecipeComponent[]> => {
+    const oldComponents = editing && editing !== 'new' ? await getRecipeComponents(productId) : []
     if (beverage) {
       const ingredient = trackedIngredients.find((item) => item.id === beverageIngredientId)
       if (!ingredient) throw new Error('Selecciona el artículo de inventario que se descontará por cada bebida vendida')
@@ -233,11 +265,12 @@ export function Menu() {
       } else {
         await createRecipeComponent({ sellableProductId: productId, ingredientId: ingredient.id, quantity: 1, unitId: ingredient.unitId })
       }
-      for (const row of recipeRows) if (row.id && row.id !== existing?.id) await deleteRecipeComponent(row.id)
-      return
+      const keepId = existing?.id
+      const removed = oldComponents.filter(component => component.id !== keepId)
+      for (const component of removed) await deleteRecipeComponent(component.id)
+      return removed
     }
 
-    const oldComponents = editing && editing !== 'new' ? await getRecipeComponents(productId) : []
     const desiredIds = new Set(recipeRows.filter((row) => row.id).map((row) => row.id!))
     for (const row of recipeRows) {
       const quantity = Number.parseFloat(row.quantity.replace(',', '.'))
@@ -249,7 +282,9 @@ export function Menu() {
         await createRecipeComponent({ sellableProductId: productId, ingredientId: row.ingredientId, quantity, unitId: row.unitId })
       }
     }
-    for (const component of oldComponents) if (!desiredIds.has(component.id)) await deleteRecipeComponent(component.id)
+    const removed = oldComponents.filter(component => !desiredIds.has(component.id))
+    for (const component of removed) await deleteRecipeComponent(component.id)
+    return removed
   }
 
   const pickImage = async (file: File | undefined) => {
@@ -356,11 +391,13 @@ export function Menu() {
     if (beverage && !trackedIngredients.some((item) => item.id === beverageIngredientId)) { setError('Selecciona el artículo de inventario que se descontará por cada bebida vendida'); return }
     setSaving(true); setError('')
     let createdProductId: string | null = null
+    let removedRecipeComponents: RecipeComponent[] = []
+    let successMessage = ''
     try {
       const payload = {
         name: formatProductTitle(form.name), description: formatSpanishText(form.description.trim()) || null,
         price: parseFloat(form.price) || 0, cost: form.cost.trim() ? parseFloat(form.cost) : null,
-        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '', imageUrl: form.imageUrl, isActive: form.isActive, menuLabel: form.menuLabel,
+        category: isKnownCategory(primary) ? primary : classifyMenuCategory(form.name, primary), emoji: form.emoji || '', imageUrl: form.imageUrl, isActive: form.isActive, allowProteinExtras: form.allowProteinExtras && !hasBeverageCategory, menuLabel: form.menuLabel,
       }
       let productId: string
       if (editing === 'new') {
@@ -368,15 +405,15 @@ export function Menu() {
         // el vínculo elegido explícitamente por quien administra el menú.
         productId = await createProduct(beverage ? { ...payload, category: 'otros', isActive: false } : payload)
         createdProductId = productId
-        await saveRecipeConfiguration(productId, beverage)
+        removedRecipeComponents = await saveRecipeConfiguration(productId, beverage)
         if (beverage) await updateProduct(productId, { category: payload.category, cost: trackedIngredients.find((item) => item.id === beverageIngredientId)?.pricePerUnit ?? payload.cost, isActive: payload.isActive })
-        flash(`Plato "${payload.name}" creado`)
+        successMessage = `Plato "${payload.name}" creado`
       }
       else if (editing) {
         productId = editing.id
-        await saveRecipeConfiguration(productId, beverage)
+        removedRecipeComponents = await saveRecipeConfiguration(productId, beverage)
         await updateProduct(editing.id, beverage ? { ...payload, cost: trackedIngredients.find((item) => item.id === beverageIngredientId)?.pricePerUnit ?? payload.cost } : payload)
-        flash(`"${payload.name}" actualizado`)
+        successMessage = `"${payload.name}" actualizado`
       }
       else { productId = '' }
       if (productId) await setProductExtraCategories(productId, chosen, payload.category)
@@ -384,9 +421,17 @@ export function Menu() {
       // Optimistic update: add/update product in local state immediately
       if (productId) {
         const updated: SellableProduct = editing === 'new'
-          ? { id: productId, isDelivery: false, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive, menuLabel: payload.menuLabel }
-          : { ...(editing as SellableProduct), id: productId, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive, menuLabel: payload.menuLabel }
+          ? { id: productId, isDelivery: false, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive, allowProteinExtras: payload.allowProteinExtras, menuLabel: payload.menuLabel }
+          : { ...(editing as SellableProduct), id: productId, name: payload.name, description: payload.description ?? '', category: payload.category, categories: chosen, emoji: payload.emoji, salePrice: payload.price, cost: payload.cost, imageUrl: payload.imageUrl, isActive: payload.isActive, allowProteinExtras: payload.allowProteinExtras, menuLabel: payload.menuLabel }
         setProducts(prev => editing === 'new' ? [...prev, updated] : prev.map(p => p.id === productId ? updated : p))
+      }
+
+      if (removedRecipeComponents.length > 0 && productId) {
+        if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current)
+        setUndoRecipe({ productId, productName: payload.name, components: removedRecipeComponents })
+        setNotice(`${removedRecipeComponents.length} componente${removedRecipeComponents.length === 1 ? '' : 's'} quitado${removedRecipeComponents.length === 1 ? '' : 's'} de la receta`)
+      } else {
+        flash(successMessage)
       }
 
       closeEditor()
@@ -421,7 +466,7 @@ export function Menu() {
       </header>
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
-      {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
+      {notice && <Toast type={undoRecipe ? 'info' : 'success'} message={notice} duration={undoRecipe ? 5000 : 3000} actionLabel={undoRecipe ? 'Deshacer' : undefined} onAction={undoRecipe ? () => { void undoRecipeDeletion() } : undefined} onClose={() => { setNotice(''); setUndoRecipe(null) }} />}
 
       <div className="mnu-summary">
         <div className="mnu-sum mnu-sum-primary"><span className="mnu-sum-ic"><Package size={20} /></span><div><div className="mnu-sum-lbl">Total platos</div><div className="mnu-sum-val">{summary.total}</div></div></div>
@@ -562,6 +607,10 @@ export function Menu() {
                   <div><strong>Disponible en el menú</strong><small>{form.isActive ? 'Los clientes pueden verlo y pedirlo.' : 'El plato permanecerá oculto.'}</small></div>
                   <button type="button" className={`mnu-switch ${form.isActive ? 'on' : ''}`} aria-label={form.isActive ? 'Desactivar plato' : 'Activar plato'} onClick={() => setForm((f) => ({ ...f, isActive: !f.isActive }))} />
                 </div>
+                {!hasBeverageCategory && <div className="mnu-product-status mnu-protein-extras-status">
+                  <div><strong>Permitir extra de proteína</strong><small>{form.allowProteinExtras ? 'El cliente podrá añadir proteína adicional a este plato.' : 'Este plato se ofrecerá sin proteína adicional.'}</small></div>
+                  <button type="button" className={`mnu-switch ${form.allowProteinExtras ? 'on' : ''}`} aria-label={form.allowProteinExtras ? 'Desactivar extra de proteína' : 'Activar extra de proteína'} aria-pressed={form.allowProteinExtras} onClick={() => setForm((f) => ({ ...f, allowProteinExtras: !f.allowProteinExtras }))} />
+                </div>}
               </aside>
 
               <section className="mnu-product-main">
@@ -586,7 +635,11 @@ export function Menu() {
                       const on = form.categories.includes(c.key)
                       return (
                         <button type="button" key={c.key} className={`mnu-cat-chip ${on ? 'on' : ''}`}
-                          onClick={() => setForm((f) => ({ ...f, categories: on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key] }))}>
+                          onClick={() => setForm((f) => {
+                            const categories = on ? f.categories.filter((k) => k !== c.key) : [...f.categories, c.key]
+                            const hasBeverage = categories.includes('bebidas')
+                            return { ...f, categories, allowProteinExtras: hasBeverage ? false : f.allowProteinExtras || f.categories.includes('bebidas') }
+                          })}>
                           {on && <Check size={13} />}{c.label}
                         </button>
                       )
@@ -623,7 +676,8 @@ export function Menu() {
                           return (
                             <div className="mnu-recipe-row" key={row.key}>
                               <div className="mnu-recipe-ingredient">
-                                {row.ingredientId ? <SearchSelect options={trackedIngredients.map((item) => ({ value: item.id, label: `${item.name} · ${item.currentStock} ${item.unitSymbol}` }))} value={row.ingredientId} onChange={(id) => {
+                                {ingredient && <span className="mnu-recipe-name">{ingredient.name} · {ingredient.currentStock} {ingredient.unitSymbol}</span>}
+                                {row.ingredientId ? <SearchSelect mobileLabel="Cambiar ingrediente" options={trackedIngredients.map((item) => ({ value: item.id, label: `${item.name} · ${item.currentStock} ${item.unitSymbol}` }))} value={row.ingredientId} onChange={(id) => {
                                   const selectedIngredient = trackedIngredients.find((item) => item.id === id)
                                   updateRecipeRow(row.key, { ingredientId: id, unitId: selectedIngredient?.unitId ?? row.unitId })
                                 }} placeholder="Buscar ingrediente…" emptyText="Sin ingredientes" disabled={saving} /> : row.id ? <span className="mnu-recipe-legacy">{row.label || 'Componente de receta existente'}</span> : <SearchSelect options={trackedIngredients.map((item) => ({ value: item.id, label: `${item.name} · ${item.currentStock} ${item.unitSymbol}` }))} value="" onChange={(id) => {

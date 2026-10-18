@@ -14,6 +14,7 @@ interface Props {
   placeholder?: string
   emptyText?: string
   disabled?: boolean
+  mobileLabel?: string
 }
 
 /**
@@ -27,6 +28,7 @@ export function SearchSelect({
   placeholder = 'Buscar...',
   emptyText = 'Sin resultados',
   disabled = false,
+  mobileLabel,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -103,7 +105,7 @@ export function SearchSelect({
   }
 
   return (
-    <div className="search-select" ref={rootRef}>
+    <div className={`search-select${mobileLabel && !open ? ' has-mobile-label' : ''}`} ref={rootRef}>
       <input
         className="search-select-input"
         type="text"
@@ -117,6 +119,7 @@ export function SearchSelect({
         aria-expanded={open}
         autoComplete="off"
       />
+      {mobileLabel && !open && <span className="search-select-mobile-label" aria-hidden="true">{mobileLabel}</span>}
       {open && (
         <ul className={`search-select-list${closing ? ' closing' : ''}`} role="listbox">
           {filtered.length === 0 && <li className="search-select-empty">{emptyText}</li>}

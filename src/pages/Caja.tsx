@@ -73,6 +73,7 @@ import {
   Hexagon,
   IdCard,
   MapPin,
+  Info,
   RefreshCw,
   Circle,
   User,
@@ -288,6 +289,23 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     if (mobileCartCloseTimer.current !== null) window.clearTimeout(mobileCartCloseTimer.current)
     if (mobileCartTriggerTimer.current !== null) window.clearTimeout(mobileCartTriggerTimer.current)
   }, [])
+
+  useEffect(() => {
+    if (!mobileCartOpen || !isPhoneViewport) return
+
+    const root = document.documentElement
+    const body = document.body
+    const previousRootOverflow = root.style.overflow
+    const previousBodyOverflow = body.style.overflow
+
+    root.style.overflow = 'hidden'
+    body.style.overflow = 'hidden'
+
+    return () => {
+      root.style.overflow = previousRootOverflow
+      body.style.overflow = previousBodyOverflow
+    }
+  }, [mobileCartOpen, isPhoneViewport])
 
   useEffect(() => {
     const phoneQuery = window.matchMedia('(max-width: 767px)')
@@ -1655,7 +1673,6 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 <span className="mobile-cart-trigger-action">Ver pedido</span>
               </button>
             )}
-            {mobileCartOpen && !embedded && <button type="button" className={`mobile-cart-overlay${mobileCartClosing ? ' closing' : ''}`} onClick={closeMobileCart} aria-label="Cerrar pedido" />}
           </>,
           document.body,
         )}
@@ -1663,7 +1680,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         {/* RIGHT: Cart Sidebar */}
         {(() => {
           const cartSidebar = (
-        <div className={`cart-sidebar${mobileCartOpen && (!embedded || isPhoneViewport) ? ' mobile-cart-open' : ''}${embedded && isPhoneViewport ? ' cart-sidebar--modal' : ''}${mobileCartClosing ? ' cart-sidebar--closing' : ''}`} onClick={(event) => event.stopPropagation()}>
+        <div className={`cart-sidebar${mobileCartOpen && (!embedded || isPhoneViewport) ? ' mobile-cart-open' : ''}${mobileCartOpen && isPhoneViewport ? ' cart-sidebar--modal' : ''}${mobileCartClosing ? ' cart-sidebar--closing' : ''}`} onClick={(event) => event.stopPropagation()}>
           <div className="cart-sidebar-header">
             <div className="cart-order-title-group">
               <span className="cart-eyebrow">Comanda activa</span>
@@ -1973,7 +1990,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         </div>
           )
 
-          return embedded && mobileCartOpen && isPhoneViewport
+          return mobileCartOpen && isPhoneViewport
             ? createPortal(
                 <div className={`mobile-cart-modal-overlay${mobileCartClosing ? ' closing' : ''}`} role="dialog" aria-modal="true" aria-label="Comanda activa" aria-hidden={mobileCartClosing} onClick={closeMobileCart}>
                   {cartSidebar}
@@ -2526,7 +2543,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                   </div>
                 </div>
                 <span className="birthday-hint mt-1">
-                  Solo para promociones y recordatorios
+                  <Info size={14} /> Solo para promociones y recordatorios
                 </span>
               </div>
 

@@ -923,11 +923,6 @@
   margin-top: 6px;
 }
 
-/* La clase compartida con Caja añade su propia "i"; en Clientes ya se usa el icono Info de Lucide. */
-.birthday-hint::before {
-  content: none;
-}
-
 .modal-actions-row-right {
   display: flex;
   justify-content: flex-end;
@@ -1008,6 +1003,7 @@
   .modal-actions-row-right .btn-modal-cancel,
   .modal-actions-row-right .btn-modal-submit-red,
   .modal-actions-row button { width: 100%; min-width: 0; min-height: 44px; }
+
 }
 
 .btn-modal-cancel {
@@ -3171,5 +3167,45 @@
     letter-spacing: -0.025em;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Pedido rápido móvil: filas completas mantienen etiquetas y controles
+   alineados, y el listado desplaza su contenido dentro del modal. */
+@media (max-width: 767px) {
+  .quick-order-modal {
+    display: flex;
+    flex-direction: column;
+    min-height: min(560px, calc(100dvh - 32px));
+    max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px)) - 16px);
+    overflow: hidden;
+  }
+  .quick-order-modal > .quick-order-search-row,
+  .quick-order-modal > .quick-order-config-row,
+  .quick-order-modal > .quick-order-total-row,
+  .quick-order-modal > .modal-actions-row-right { flex: 0 0 auto; }
+  .quick-order-modal > .quick-order-product-list {
+    flex: 1 1 auto;
+    min-height: 100px;
+    max-height: min(30dvh, 260px);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .quick-order-config-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 10px;
+  }
+  .quick-order-config-row .field { min-width: 0; }
+  .quick-order-config-row .field-label-white {
+    min-height: 18px;
+    margin-bottom: 5px;
+    line-height: 18px;
+  }
+  .quick-order-config-row .fc-select { min-height: 48px; }
+  .quick-order-modal > .modal-actions-row-right {
+    position: static;
+    margin: 14px -16px -18px;
   }
 }

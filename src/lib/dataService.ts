@@ -12,6 +12,7 @@ export interface Product {
   emoji: string
   active: boolean
   imageUrl: string | null
+  allowProteinExtras?: boolean
   menuLabel?: 'top_sales' | 'new' | 'recommended' | 'free_drink' | null
 }
 
@@ -414,6 +415,7 @@ export interface SellableProduct {
   isActive: boolean
   imageUrl: string | null
   isDelivery: boolean
+  allowProteinExtras: boolean
   menuLabel: 'top_sales' | 'new' | 'recommended' | 'free_drink' | null
 }
 
@@ -717,21 +719,43 @@ function mergeCategories(primary: string, extras: string[] | undefined): string[
   return Array.from(new Set([primary, ...(extras ?? [])]))
 }
 
+function isMissingProteinExtrasColumn(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  const detail = `${error.code ?? ''} ${error.message ?? ''}`.toLowerCase()
+  return detail.includes('allow_protein_extras')
+    && (detail.includes('column') || error.code === 'PGRST204' || error.code === '42703')
+}
+
+// El esquema TypeScript puede estar desfasado respecto a una migración nueva;
+// normalizamos las respuestas PostgREST al tipo de fila conocido en este módulo.
+type SellableProductRow = {
+  id: string; name: string; description: string | null; price: number; cost: number | null
+  category: string; emoji: string; is_active: boolean; image_url: string | null
+  is_delivery?: boolean; menu_label: Product['menuLabel']; allow_protein_extras?: boolean | null
+}
+
+type SellableProductsResult = { data: SellableProductRow[] | null; error: { code?: string; message?: string } | null }
+
 export async function getProducts(): Promise<Product[]> {
   if (!supabase) throw new Error('Supabase no está configurado')
   try {
-    const [{ data, error }, extraMap] = await Promise.all([
-      supabase
+    const queryProducts = async (withProteinExtras: boolean): Promise<SellableProductsResult> => await (supabase!
         .from('sellable_products')
-        .select('id,name,description,price,cost,category,emoji,is_active,image_url,menu_label')
+        .select(withProteinExtras
+          ? 'id,name,description,price,cost,category,emoji,is_active,image_url,menu_label,allow_protein_extras'
+          : 'id,name,description,price,cost,category,emoji,is_active,image_url,menu_label')
         .eq('is_active', true)
         .order('category', { ascending: true })
-        .order('name', { ascending: true }),
+        .order('name', { ascending: true }) as unknown as Promise<SellableProductsResult>)
+    const [initialProducts, extraMap] = await Promise.all([
+      queryProducts(true),
       getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
     ])
 
+    let { data, error } = initialProducts
+    if (isMissingProteinExtrasColumn(error)) ({ data, error } = await queryProducts(false))
     if (error) throw error
-    return data.map((r) => ({
+    return (data ?? []).map((r) => ({
       id: r.id as string,
       name: r.name as string,
       description: (r.description as string) ?? null,
@@ -742,6 +766,7 @@ export async function getProducts(): Promise<Product[]> {
       emoji: r.emoji as string,
       active: Boolean(r.is_active),
       imageUrl: (r.image_url as string) ?? null,
+      allowProteinExtras: r.allow_protein_extras == null ? (r.category as string) !== 'bebidas' : Boolean(r.allow_protein_extras),
       menuLabel: (r.menu_label as Product['menuLabel']) ?? null,
     }))
   } catch (err) {
@@ -752,13 +777,18 @@ export async function getProducts(): Promise<Product[]> {
 
 /** Todos los productos vendibles (activos e inactivos) para el módulo Menú. */
 export async function getAllSellableProducts(): Promise<SellableProduct[]> {
-  const [{ data, error }, extraMap] = await Promise.all([
-    client()
+    const queryProducts = async (withProteinExtras: boolean): Promise<SellableProductsResult> => await (client()
       .from('sellable_products')
-      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
-      .order('name', { ascending: true }),
+      .select(withProteinExtras
+        ? 'id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label,allow_protein_extras'
+        : 'id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
+      .order('name', { ascending: true }) as unknown as Promise<SellableProductsResult>)
+  const [initialProducts, extraMap] = await Promise.all([
+    queryProducts(true),
     getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
   ])
+  let { data, error } = initialProducts
+  if (isMissingProteinExtrasColumn(error)) ({ data, error } = await queryProducts(false))
   if (error) throw error
   return (data ?? []).map((r) => ({
     id: r.id as string, name: r.name as string, description: (r.description as string) ?? null,
@@ -766,18 +796,20 @@ export async function getAllSellableProducts(): Promise<SellableProduct[]> {
     category: r.category as string, categories: mergeCategories(r.category as string, extraMap.get(r.id as string)),
     emoji: r.emoji as string, isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null, isDelivery: (r.is_delivery as boolean) ?? false,
+    allowProteinExtras: r.allow_protein_extras == null ? (r.category as string) !== 'bebidas' : Boolean(r.allow_protein_extras),
     menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
   }))
 }
 
 export async function createProduct(p: {
   name: string; description?: string | null; price: number; cost?: number | null
-  category: string; emoji?: string; imageUrl?: string | null; isActive?: boolean; menuLabel?: SellableProduct['menuLabel']
+  category: string; emoji?: string; imageUrl?: string | null; isActive?: boolean; allowProteinExtras?: boolean; menuLabel?: SellableProduct['menuLabel']
 }): Promise<string> {
   const { data, error } = await client().from('sellable_products').insert({
     name: p.name, description: p.description ?? null, price: p.price, cost: p.cost ?? null,
     category: p.category, emoji: p.emoji ?? '🍽️', /* DB default: emoji */ image_url: p.imageUrl ?? null,
     is_active: p.isActive ?? true, menu_label: p.menuLabel ?? null,
+    allow_protein_extras: p.allowProteinExtras ?? p.category !== 'bebidas',
   }).select('id').single()
   if (error) throw error
   return data.id as string
@@ -785,7 +817,7 @@ export async function createProduct(p: {
 
 export async function updateProduct(id: string, updates: Partial<{
   name: string; description: string | null; price: number; cost: number | null
-  category: string; emoji: string; imageUrl: string | null; isActive: boolean; menuLabel: SellableProduct['menuLabel']
+  category: string; emoji: string; imageUrl: string | null; isActive: boolean; allowProteinExtras: boolean; menuLabel: SellableProduct['menuLabel']
 }>): Promise<void> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (updates.name !== undefined) payload.name = updates.name
@@ -796,6 +828,7 @@ export async function updateProduct(id: string, updates: Partial<{
   if (updates.emoji !== undefined) payload.emoji = updates.emoji
   if (updates.imageUrl !== undefined) payload.image_url = updates.imageUrl
   if (updates.isActive !== undefined) payload.is_active = updates.isActive
+  if (updates.allowProteinExtras !== undefined) payload.allow_protein_extras = updates.allowProteinExtras
   if (updates.menuLabel !== undefined) payload.menu_label = updates.menuLabel
   const { error } = await client().from('sellable_products').update(payload).eq('id', id)
   if (error) throw error
@@ -3086,11 +3119,15 @@ export async function updateIngredientCost(ingredientId: string, pricePerUnit: n
 // --- Producción --------------------------------------------------------------
 
 export async function getSellableProducts(): Promise<SellableProduct[]> {
-  const { data, error } = await client()
+  const queryProducts = async (withProteinExtras: boolean): Promise<SellableProductsResult> => await (client()
     .from('sellable_products')
-    .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
+    .select(withProteinExtras
+      ? 'id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label,allow_protein_extras'
+      : 'id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
     .eq('is_active', true)
-    .order('name', { ascending: true })
+    .order('name', { ascending: true }) as unknown as Promise<SellableProductsResult>)
+  let { data, error } = await queryProducts(true)
+  if (isMissingProteinExtrasColumn(error)) ({ data, error } = await queryProducts(false))
 
   if (error) throw error
   return (data ?? []).map((r) => ({
@@ -3105,6 +3142,7 @@ export async function getSellableProducts(): Promise<SellableProduct[]> {
     isActive: r.is_active as boolean,
     imageUrl: (r.image_url as string) ?? null,
     isDelivery: (r.is_delivery as boolean) ?? false,
+    allowProteinExtras: r.allow_protein_extras == null ? (r.category as string) !== 'bebidas' : Boolean(r.allow_protein_extras),
     menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
   }))
 }

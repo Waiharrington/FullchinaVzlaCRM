@@ -7,6 +7,22 @@
   width: 100%;
 }
 
+.search-select-mobile-label { display: none; }
+
+@media (max-width: 700px) {
+  .mnu-recipe-ingredient .search-select.has-mobile-label .search-select-input { color: transparent; caret-color: transparent; }
+  .mnu-recipe-ingredient .search-select-mobile-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    color: #a1a1aa;
+    font-size: 12px;
+    pointer-events: none;
+  }
+}
+
 .search-select-list {
   position: absolute;
   z-index: 60;

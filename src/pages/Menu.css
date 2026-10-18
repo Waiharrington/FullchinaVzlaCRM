@@ -322,6 +322,7 @@
 .mnu-recipe-loading { display: flex; align-items: center; gap: 8px; color: #a1a1aa; font-size: 12px; }
 .mnu-recipe-row { display: grid; grid-template-columns: minmax(0, 1fr) 76px 92px 34px; align-items: center; gap: 8px; margin: 8px 0; }
 .mnu-recipe-ingredient { min-width: 0; }
+.mnu-recipe-name { display: none; }
 .mnu-recipe-legacy { display: block; overflow: hidden; padding: 11px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #a1a1aa; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .mnu-recipe-quantity, .mnu-recipe-unit { width: 100%; min-width: 0; height: 42px; padding: 0 9px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; background: rgba(255,255,255,0.04); color: #f4f4f5; }
 .mnu-recipe-unit { height: auto; padding: 0; }
@@ -861,7 +862,7 @@
   .mnu-product-aside .mnu-photo-select { width: 100%; margin: 8px 0 0; text-align: center; }
 
   .mnu-product-status {
-    margin-top: auto;
+    margin-top: 0;
     padding: 14px 12px;
     min-height: 72px;
     display: flex;
@@ -877,6 +878,7 @@
   .mnu-product-status strong { color: #e4e4e7; font-size: 12.5px; white-space: nowrap; }
   .mnu-product-status small { color: #71717a; font-size: 10px; line-height: 1.35; }
   .mnu-product-status .mnu-switch { flex: 0 0 auto; }
+  .mnu-product-status + .mnu-product-status { margin-top: 10px; }
 
   .mnu-product-main { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
   .mnu-product-section { padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.065); }
@@ -943,12 +945,59 @@
   .mnu-money-input { position: relative; }
   .mnu-money-input > span { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: #ef4c57; font-weight: 800; }
   .mnu-money-input input { padding-left: 30px; }
-  .mnu-recipe-row { grid-template-columns: minmax(0, 1fr) 66px 76px 32px; gap: 5px; }
-  .mnu-recipe-quantity, .mnu-recipe-unit { font-size: 12px; }
-  .mnu-recipe-remove { width: 32px; }
+  .mnu-recipe-row {
+    grid-template-columns: minmax(68px, 1fr) minmax(100px, 1.4fr) 40px;
+    gap: 8px;
+    padding: 11px;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px;
+    background: rgba(255,255,255,0.025);
+  }
+  .mnu-recipe-row > * { min-width: 0; }
+  .mnu-recipe-ingredient { grid-column: 1 / -1; }
+  .mnu-recipe-name { display: block; margin-bottom: 7px; color: #eeeef0; font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+  .mnu-recipe-ingredient .search-select-input { height: 38px; font-size: 12px; }
+  .mnu-recipe-quantity, .mnu-recipe-unit { font-size: 13px; }
+  .mnu-recipe-unit.fc-select { width: 100%; min-width: 0; max-width: 100%; }
+  .mnu-recipe-unit .fc-select-trigger { gap: 6px; padding-inline: 12px; font-size: 13px; }
+  .mnu-recipe-remove { width: 40px; height: 42px; }
 }
 
 
 @media (min-width: 600px) {
   .mnu-page .page-header { flex-wrap: nowrap; }
+}
+
+/* Menú mobile dialogs sit below the complete status/cutout area instead of
+   relying on the browser's safe-area values alone (some embedded browsers
+   report a zero inset despite viewport-fit=cover). Their content keeps its
+   own scroll area, above the home/gesture region. */
+@media (max-width: 767px) {
+  .mnu-modal-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    align-items: center;
+    justify-content: center;
+    padding: max(56px, env(safe-area-inset-top, 0px)) 12px max(28px, env(safe-area-inset-bottom, 0px)) !important;
+    overflow: hidden;
+    overscroll-behavior: none;
+    box-sizing: border-box;
+  }
+
+  .mnu-modal-overlay > .mnu-modal {
+    width: 100%;
+    max-height: calc(100dvh - max(56px, env(safe-area-inset-top, 0px)) - max(28px, env(safe-area-inset-bottom, 0px)) - 12px) !important;
+    min-height: 0;
+    margin: auto;
+    box-sizing: border-box;
+  }
+
+  .mnu-modal-overlay > .mnu-modal > .mnu-modal-body {
+    min-height: 0;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
 }

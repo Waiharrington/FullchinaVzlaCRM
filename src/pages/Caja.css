@@ -1244,17 +1244,6 @@
   color: #777781;
   font-size: 10px;
 }
-.client-modal-box .birthday-hint::before {
-  content: 'i';
-  width: 14px;
-  height: 14px;
-  display: grid;
-  place-items: center;
-  border: 1px solid #686873;
-  border-radius: 50%;
-  font-size: 9px;
-  font-weight: 800;
-}
 
 .client-modal-error {
   margin-top: 14px;
@@ -2771,15 +2760,16 @@
     z-index: 100000;
     inset: 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px));
+    align-items: center !important;
+    justify-content: center !important;
+    padding: max(56px, env(safe-area-inset-top, 0px)) 12px max(76px, env(safe-area-inset-bottom, 0px)) !important;
     box-sizing: border-box;
     overflow: hidden;
-    overscroll-behavior: contain;
-    background: rgba(0, 0, 0, .78);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    overscroll-behavior: none;
+    touch-action: none;
+    background: #050506;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* El resumen pertenece a Nueva comanda y debe mantenerse por encima de ese
@@ -2792,17 +2782,24 @@
     position: relative;
     z-index: auto;
     inset: auto;
-    width: min(100%, 540px);
+    flex: 1 1 auto;
+    width: 100%;
     height: 100%;
-    max-height: 100%;
+    max-height: none;
     min-height: 0;
-    display: block;
+    display: flex;
+    flex-direction: column;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
     touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 14px max(14px, env(safe-area-inset-bottom, 0px));
+    border: 1px solid var(--cart-border-strong);
     border-radius: 20px;
     background: #151518;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .34);
+    box-sizing: border-box;
   }
   .cart-sidebar--modal.mobile-cart-open .cart-sidebar-header {
     align-items: flex-start;

@@ -2324,11 +2324,11 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                 <button className="cmd-btn-outline cmd-header-print-btn" onClick={() => printThermalReceipt(thermalReceiptForComanda(selectedOrder))}>
                   <Printer size={16} /> {selectedOrder.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}
                 </button>
-                <button className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda">
-                  <Trash2 size={18} />
+                <button type="button" className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda" aria-label="Eliminar comanda">
+                  <Trash2 size={18} /><span>Eliminar</span>
                 </button>
-                <button className="cmd-close-btn" onClick={() => closeSelectedOrder()} title="Cerrar">
-                  <X size={20} />
+                <button type="button" className="cmd-close-btn" onClick={() => closeSelectedOrder()} title="Cerrar detalle" aria-label="Cerrar detalle de comanda">
+                  <X size={20} /><span>Cerrar</span>
                 </button>
               </div>
             </header>
