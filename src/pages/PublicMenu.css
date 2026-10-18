@@ -14182,3 +14182,24 @@ body:has(.public-menu-page) .public-drawer-backdrop .public-cart-drawer *::-webk
     text-wrap: pretty;
   }
 }
+/* El carrito completo se desliza a la derecha en cualquier cierre. */
+.public-drawer-backdrop.closing {
+  animation: public-cart-backdrop-out 360ms ease-in both !important;
+}
+.public-drawer-backdrop.closing .public-cart-drawer {
+  animation: public-cart-panel-out 360ms cubic-bezier(.45, 0, .75, .3) both !important;
+}
+@keyframes public-cart-backdrop-out {
+  0%, 75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes public-cart-panel-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-drawer-backdrop.closing,
+  .public-drawer-backdrop.closing .public-cart-drawer {
+    animation: none !important;
+  }
+}
