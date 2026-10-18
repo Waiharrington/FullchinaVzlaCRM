@@ -11,7 +11,8 @@ import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder }
 import './CustomerLoyaltyProfile.css'
 
 type Visit = { order_id: string; order_number: string; visited_at: string; reward_description?: string | null }
-type LoyaltyProfile = { customer: { first_name: string; last_name: string; full_name: string; phone: string }; total_visits: number; rewards_unlocked: number; reward_description: string; visits_per_reward: number; has_more: boolean; visits: Visit[]; account_status: 'active' }
+type LoyaltyReward = { id: number; cycle_number: number; reward_description: string; unlocked_at: string; redeemed_at?: string | null }
+type LoyaltyProfile = { customer: { first_name: string; last_name: string; full_name: string; phone: string }; total_visits: number; current_cycle_visits?: number; rewards_unlocked: number; reward_description: string; next_reward_description?: string; visits_per_reward: number; available_rewards: LoyaltyReward[]; redeemed_rewards: LoyaltyReward[]; has_more: boolean; visits: Visit[]; account_status: 'active' }
 
 const pageSize = 5
 const AUTH_MODE_KEY = 'fullchina_customer_auth_preferred_mode'
@@ -352,15 +353,15 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   useEffect(() => {
     if (!profile) { previousCelebrationCount.current = null; return }
     const limit = Math.max(1, Number(profile.visits_per_reward) || 10)
-    const count = profile.total_visits
+    const count = profile.current_cycle_visits ?? profile.total_visits % limit
     const previous = previousCelebrationCount.current
     previousCelebrationCount.current = count
     if (previous === null || count <= previous) { setCelebration(null); setNewestStamp(null); return }
-    const complete = count > 0 && count % limit === 0
-    setNewestStamp({ index: complete ? limit - 1 : count % limit - 1, id: Date.now() })
+    const complete = count >= limit
+    setNewestStamp({ index: complete ? limit - 1 : count - 1, id: Date.now() })
     const celebrationId = Date.now()
     setVictoryDishes(complete ? shuffledVictoryDishes() : [])
-    setCelebration({ stamp: complete ? limit : count % limit, complete, id: celebrationId })
+    setCelebration({ stamp: complete ? limit : count, complete, id: celebrationId })
     const timer = window.setTimeout(() => setCelebration(null), complete ? 4300 : 3000)
     return () => window.clearTimeout(timer)
   }, [profile])
@@ -537,8 +538,10 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
   </main>
 
   if (showHistory) return <CustomerVisitHistory visits={profile.visits ?? []} page={page} hasMore={profile.has_more} onPage={setPage} onBack={() => setShowHistory(false)} onRepeatOrder={onRepeatOrder} />
-  const stamps = showVictoryDemo ? threshold : showStampDemo ? demoStamp : profile.total_visits % threshold
-  const displayedRewards = profile.rewards_unlocked + (showVictoryDemo ? 1 : 0)
+  const availableRewards = profile.available_rewards ?? []
+  const redeemedRewards = profile.redeemed_rewards ?? []
+  const stamps = showVictoryDemo ? threshold : showStampDemo ? demoStamp : availableRewards.length ? threshold : profile.current_cycle_visits ?? profile.total_visits % threshold
+  const displayedRewards = availableRewards.length + (showVictoryDemo ? 1 : 0)
   const demoActive = showStampDemo || showVictoryDemo
   const activeDemoFrame = demoFrame ?? threshold * 2
   const demoCaption = activeDemoFrame >= threshold * 2
@@ -568,11 +571,15 @@ export function CustomerLoyaltyProfile({ onRepeatOrder }: CustomerLoyaltyProfile
       <small>{celebration.complete ? 'TARJETA COMPLETA' : `SELLO ${celebration.stamp} · FULL CHINA`}</small>
       <strong id="customer-celebration-title">{celebration.complete ? '¡El premio es tuyo!' : celebration.stamp === 1 ? '¡Tu historia empieza con sabor!' : celebration.stamp === threshold - 1 ? '¡A un sello de saborearlo!' : celebration.stamp === Math.ceil(threshold / 2) ? '¡Mitad del camino, doble emoción!' : ['¡Otro momento para celebrar!', '¡El sabor de volver!', '¡Tu próxima alegría está más cerca!'][celebration.stamp % 3]}</strong>
       <p>{celebration.complete ? 'Tu recompensa ya está disponible.' : 'Una visita más. Un paso más hacia tu premio.'}</p>
-      {celebration.complete && <div className="customer-victory-prize"><div className="customer-victory-prize-emblem"><Gift size={23} /></div><div className="customer-victory-prize-copy"><small>PREMIO DESBLOQUEADO</small><b>{profile.reward_description}</b><span>¡Completaste tu tarjeta!</span></div><div className="customer-victory-prize-seal"><span>FULL CHINA</span><strong>{threshold}/{threshold}</strong><small>SELLOS</small></div><i className="customer-victory-prize-shine" aria-hidden="true" /></div>}
+      {celebration.complete && <div className="customer-victory-prize"><div className="customer-victory-prize-emblem"><Gift size={23} /></div><div className="customer-victory-prize-copy"><small>PREMIO DESBLOQUEADO</small><b>{availableRewards[0]?.reward_description ?? profile.next_reward_description ?? profile.reward_description}</b><span>¡Completaste tu tarjeta!</span></div><div className="customer-victory-prize-seal"><span>FULL CHINA</span><strong>{threshold}/{threshold}</strong><small>SELLOS</small></div><i className="customer-victory-prize-shine" aria-hidden="true" /></div>}
       {demoActive && renderDemoControls()}
     </div></div>, document.body)}
     <header className="customer-profile-welcome"><div><img className="customer-member-logo" src="/optimized/root/logo.webp" alt="Full China" /><span>MI PERFIL</span><h1>¡Hola, <em>{profile.customer.first_name || profile.customer.full_name.split(' ')[0]}</em><span className="customer-profile-greeting-mark">!</span></h1><p>Qué bueno tenerte de vuelta.</p></div><button onClick={() => void logout()}><LogOut size={16} /> Salir</button></header>
-    <article className={`customer-loyalty-card${showVictoryDemo ? ' customer-loyalty-card-demo-complete' : ''}${showStampDemo ? ' customer-loyalty-card-demo-stamps' : ''}`}><div className="customer-loyalty-head"><div><span>Tarjeta de Fidelidad</span><h2>{profile.customer.full_name}</h2><small>{profile.customer.phone}</small></div><img className="customer-member-physical-card" src="/optimized/customer-profile/loyalty-card.webp" alt="Tarjeta Full China" decoding="async" fetchPriority="high" /></div><div className="customer-loyalty-progress"><span>Sellos de visita{(showVictoryDemo || showStampDemo) && <small className="customer-loyalty-demo-label"> DEMO</small>}</span><strong>{stamps} / {threshold}</strong></div><div className="customer-loyalty-bar"><span style={{ width: `${(stamps / threshold) * 100}%` }} /></div><div className="customer-loyalty-stamps">{Array.from({ length: threshold }, (_, i) => <span className={`${i < stamps ? 'earned' : ''}${i === threshold - 1 && i < stamps ? ' customer-stamp-winner' : ''}${!celebration && i < stamps && newestStamp?.index === i ? ' customer-stamp-new' : ''}`} key={newestStamp?.index === i ? `${i}-${newestStamp.id}` : i}><img src="/icons/wok-mark.png" alt={i < stamps ? "Visita obtenida" : "Visita pendiente"} decoding="async" /><small>{i + 1}</small></span>)}</div><div className="customer-loyalty-demo-actions"><button type="button" className="customer-loyalty-demo-win" onClick={previewStampJourney}><Gift size={15} /> Demo: cada sello</button><button type="button" className="customer-loyalty-demo-win" onClick={previewFinalReward}><Award size={15} /> Premio final</button></div>{demoActive && !celebration && renderDemoControls()}<CustomerRewardJourney stamps={stamps} threshold={threshold} rewards={displayedRewards} description={profile.reward_description} /></article>
+    <article className={`customer-loyalty-card${showVictoryDemo ? ' customer-loyalty-card-demo-complete' : ''}${showStampDemo ? ' customer-loyalty-card-demo-stamps' : ''}`}><div className="customer-loyalty-head"><div><span>Tarjeta de Fidelidad</span><h2>{profile.customer.full_name}</h2><small>{profile.customer.phone}</small></div><img className="customer-member-physical-card" src="/optimized/customer-profile/loyalty-card.webp" alt="Tarjeta Full China" decoding="async" fetchPriority="high" /></div><div className="customer-loyalty-progress"><span>Sellos de visita{(showVictoryDemo || showStampDemo) && <small className="customer-loyalty-demo-label"> DEMO</small>}</span><strong>{stamps} / {threshold}</strong></div><div className="customer-loyalty-bar"><span style={{ width: `${(stamps / threshold) * 100}%` }} /></div><div className="customer-loyalty-stamps">{Array.from({ length: threshold }, (_, i) => <span className={`${i < stamps ? 'earned' : ''}${i === threshold - 1 && i < stamps ? ' customer-stamp-winner' : ''}${!celebration && i < stamps && newestStamp?.index === i ? ' customer-stamp-new' : ''}`} key={newestStamp?.index === i ? `${i}-${newestStamp.id}` : i}><img src="/icons/wok-mark.png" alt={i < stamps ? "Visita obtenida" : "Visita pendiente"} decoding="async" /><small>{i + 1}</small></span>)}</div><div className="customer-loyalty-demo-actions"><button type="button" className="customer-loyalty-demo-win" onClick={previewStampJourney}><Gift size={15} /> Demo: cada sello</button><button type="button" className="customer-loyalty-demo-win" onClick={previewFinalReward}><Award size={15} /> Premio final</button></div>{demoActive && !celebration && renderDemoControls()}<CustomerRewardJourney stamps={stamps} threshold={threshold} rewards={displayedRewards} description={showVictoryDemo ? profile.next_reward_description ?? profile.reward_description : availableRewards[0]?.reward_description ?? profile.next_reward_description ?? profile.reward_description} /></article>
+    <details className="customer-redeemed-history">
+      <summary><span><Gift size={17} /> Premios canjeados</span><b>{redeemedRewards.length}</b></summary>
+      {redeemedRewards.length ? <div className="customer-redeemed-list">{redeemedRewards.map(reward => <article className="customer-redeemed-item" key={reward.id}><span className="customer-redeemed-icon"><Gift size={17} /></span><span><strong>{reward.reward_description}</strong><small>Tarjeta {reward.cycle_number} · Canjeado el {new Date(reward.redeemed_at ?? reward.unlocked_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'long', year: 'numeric' })}</small></span><span className="customer-redeemed-status">Canjeado</span></article>)}</div> : <p className="customer-redeemed-empty">Tus premios canjeados aparecerán aquí.</p>}
+    </details>
     <CustomerRecentOrders visits={recentVisits} onRepeatOrder={onRepeatOrder} />
     <aside className="customer-profile-tools desktop-only" aria-label="Historial de visitas"><CustomerDesktopVisitHistory visits={profile.visits ?? []} onRepeatOrder={onRepeatOrder} /></aside>
     <button className="customer-profile-history-button" onClick={() => { setCelebration(null); setShowHistory(true) }}><History size={18} /> <span><strong>{showHistory ? 'Ocultar historial' : 'Historial de visitas'}</strong><small>Revisa todas tus visitas y avances.</small></span><ChevronRight className={showHistory ? 'rotated' : ''} size={17} /></button>

@@ -21,6 +21,15 @@ const SHORTCUT_TITLES: Record<DashboardShortcut, string> = {
   clientes: 'Clientes',
 }
 
+const SHORTCUT_LOADING_COPY: Record<DashboardShortcut, string> = {
+  comandas: 'Tus pedidos y sus estados están por aparecer.',
+  ventas: 'Tu resumen de caja estará listo enseguida.',
+  menu: 'Platos y precios, listos para revisar.',
+  mesas: 'Estamos organizando tus mesas.',
+  inventario: 'Existencias y alertas en un instante.',
+  clientes: 'Tus clientes estarán aquí enseguida.',
+}
+
 interface DashboardQuickAccessProps {
   shortcut: DashboardShortcut
   onClose: () => void
@@ -77,7 +86,20 @@ export function DashboardQuickAccess({ shortcut, onClose }: DashboardQuickAccess
           </button>
         </header>
         <div className={`db-quick-access-body db-quick-access-body--${shortcut}`}>
-          <Suspense fallback={<div className="db-quick-access-loading" role="status">Cargando {SHORTCUT_TITLES[shortcut].toLowerCase()}…</div>}>
+          <Suspense fallback={<div className="db-quick-access-loading" role="status" aria-label={`Preparando ${SHORTCUT_TITLES[shortcut]}`}>
+            <div className="db-quick-access-loading-art" aria-hidden="true">
+              <span className="db-quick-access-loading-orbit" />
+              <span className="db-quick-access-loading-orbit db-quick-access-loading-orbit--inner" />
+              <span className="db-quick-access-loading-logo"><img src="/optimized/root/splash-logo.webp" alt="" /></span>
+              <i className="db-quick-access-loading-spark db-quick-access-loading-spark--one" />
+              <i className="db-quick-access-loading-spark db-quick-access-loading-spark--two" />
+              <i className="db-quick-access-loading-spark db-quick-access-loading-spark--three" />
+            </div>
+            <span className="db-quick-access-loading-kicker">Full China · Acceso directo</span>
+            <strong>Alistando {SHORTCUT_TITLES[shortcut]}</strong>
+            <p>{SHORTCUT_LOADING_COPY[shortcut]}</p>
+            <span className="db-quick-access-loading-track" aria-hidden="true"><i /></span>
+          </div>}>
             {moduleView}
           </Suspense>
         </div>

@@ -18,6 +18,44 @@
   color: #a1a1aa;
 }
 
+/* ─── Premios ganados que esperan entrega ────────────────────────────── */
+.fidel-pending-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border: 1px solid rgba(255, 200, 61, .25);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(66, 43, 12, .28), rgba(20, 18, 18, .94) 55%);
+}
+.fidel-pending-panel > header,
+.fidel-pending-panel > header > div {
+  display: flex;
+  align-items: center;
+}
+.fidel-pending-panel > header { justify-content: space-between; gap: 14px; }
+.fidel-pending-panel > header > div { gap: 11px; min-width: 0; }
+.fidel-pending-panel > header > div > svg { flex: 0 0 auto; color: #ffd23f; }
+.fidel-pending-panel h2 { margin: 0; color: #fff; font-size: 16px; }
+.fidel-pending-panel header p { margin: 4px 0 0; color: #aaa5a0; font-size: 12px; line-height: 1.4; }
+.fidel-pending-panel > header > b { display: grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 999px; color: #ffe28a; background: rgba(255, 200, 61, .12); font-size: 13px; }
+.fidel-pending-list { display: grid; gap: 9px; margin-top: 15px; }
+.fidel-pending-list article { display: grid; grid-template-columns: minmax(150px, .8fr) minmax(180px, 1fr) auto; align-items: center; gap: 14px; padding: 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 12px; background: rgba(7,7,9,.52); }
+.fidel-pending-customer,.fidel-pending-prize { display: grid; gap: 4px; min-width: 0; }
+.fidel-pending-customer strong { overflow: hidden; color: #fff; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.fidel-pending-customer small,.fidel-pending-prize small { color: #949198; font-size: 11px; }
+.fidel-pending-prize span { color: #ffe28a; font-size: 13px; font-weight: 750; }
+.fidel-pending-list article > button { min-height: 36px; padding: 0 12px; border: 1px solid rgba(255,98,89,.48); border-radius: 9px; color: #ffaaa5; background: rgba(227,27,43,.14); font: inherit; font-size: 11px; font-weight: 750; cursor: pointer; white-space: nowrap; }
+.fidel-pending-list article > button:hover:not(:disabled) { color: #fff; background: #e31b2b; }
+.fidel-pending-list article > button:disabled { opacity: .55; cursor: wait; }
+.fidel-pending-empty,.fidel-reward-storage-notice { margin: 14px 0 0; padding: 12px; border-radius: 10px; color: #aaa5a0; background: rgba(0,0,0,.2); font-size: 12px; line-height: 1.5; }
+.fidel-reward-storage-notice { color: #ffd98a; border: 1px solid rgba(255,200,61,.2); }
+@media (max-width: 700px) {
+  .fidel-pending-panel { padding: 14px; }
+  .fidel-pending-list article { grid-template-columns: minmax(0,1fr) auto; gap: 10px; }
+  .fidel-pending-customer { grid-column: 1 / -1; }
+  .fidel-pending-list article > button { grid-column: 1 / -1; width: 100%; }
+}
+
 /* ─── Métricas ───────────────────────────────────────────────────────── */
 .fidel-metrics {
   display: grid;
@@ -25,6 +63,31 @@
   gap: 14px;
 }
 .fidel-carousel-hint { display: none; }
+.fidel-section-tabs { display:flex;gap:8px;overflow-x:auto;padding:5px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(18,18,21,.92);scrollbar-width:thin; }
+.fidel-section-tabs button { display:flex;align-items:center;justify-content:center;gap:9px;flex:1 0 auto;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:10px;color:#a4a1a8;background:transparent;font:inherit;font-size:13px;font-weight:750;white-space:nowrap;cursor:pointer;transition:background .16s,color .16s,border-color .16s; }
+.fidel-section-tabs button:hover { color:#fff;background:rgba(255,255,255,.05); }
+.fidel-section-tabs button[aria-selected="true"] { color:#fff;border-color:rgba(255,77,91,.32);background:linear-gradient(135deg,rgba(227,27,43,.22),rgba(227,27,43,.08));box-shadow:inset 0 -2px #e31b2b; }
+.fidel-section-tabs button>svg { color:#ff6259;flex:0 0 auto; }
+.fidel-section-tabs button>b { display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;color:#ffd96a;background:rgba(255,200,61,.1);font-size:10px; }
+.fidel-tab-panel { min-width:0; }
+.fidel-accounts-page { margin-top:0; }
+.fidel-accounts-page-head { display:flex;align-items:center;justify-content:space-between;gap:16px; }
+.fidel-accounts-page-head>div { min-width:0; }
+.fidel-accounts-page-head .fidel-card-count { flex:0 0 auto; }
+.fidel-account-search { max-width:680px;margin-top:18px; }
+.fidel-account-search input { min-width:0; }
+.fidel-accounts-page .fidel-accounts-list { gap:10px;margin-top:16px; }
+.fidel-accounts-page .fidel-accounts-list article { min-height:66px;padding:14px 16px; }
+.fidel-account-identity { display:grid;gap:5px;min-width:0; }
+.fidel-account-identity strong { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-account-identity small { overflow-wrap:anywhere; }
+.fidel-account-pagination { display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);color:#a4a1a8;font-size:12px; }
+.fidel-account-pagination>div { display:flex;align-items:center;gap:10px; }
+.fidel-account-pagination b { color:#e6e3e8;font-size:12px;white-space:nowrap; }
+.fidel-account-pagination button { display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;background:#202024;cursor:pointer; }
+.fidel-account-pagination button:hover:not(:disabled) { border-color:rgba(255,98,89,.55);background:rgba(227,27,43,.17); }
+.fidel-account-pagination button:disabled { opacity:.35;cursor:not-allowed; }
+.fidel-program-panel { margin-top:0; }
 @media (max-width: 1100px) { .fidel-metrics { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px)  { .fidel-metrics { grid-template-columns: 1fr; } }
 
@@ -84,6 +147,7 @@
 @media (min-width: 1024px) { .fidel-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
 
 .fidel-card {
+  container: fidel-card / inline-size;
   position: relative;
   overflow: hidden;
   background: linear-gradient(160deg, #18161a 0%, #131215 55%, #0e0e11 100%);
@@ -164,7 +228,9 @@
 }
 
 /* ─── Lista ranking ──────────────────────────────────────────────────── */
-.fidel-list { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 8px; }
+.fidel-list { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr; align-items: stretch; gap: 10px; }
+@container fidel-card (min-width: 620px) { .fidel-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container fidel-card (min-width: 940px) { .fidel-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .fidel-list-empty {
   padding: 28px 14px; text-align: center; color: #8a8a93; font-size: 13px;
   background: rgba(255,255,255,.02); border: 1px dashed rgba(255,255,255,.1); border-radius: 12px;
@@ -172,11 +238,12 @@
 
 .fidel-row {
   display: grid;
-  grid-template-columns: 34px 40px minmax(0, 1fr) auto auto auto;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 11px;
   width: 100%;
-  padding: 10px 11px;
+  min-height: 86px;
+  padding: 11px;
   text-align: left;
   color: inherit;
   font: inherit;
@@ -188,18 +255,6 @@
 }
 .fidel-row:hover { background: #232327; transform: translateY(-1px); }
 .fidel-row.selected { background: rgba(227, 27, 43, 0.1); border-color: rgba(227,27,43,.4); }
-.fidel-row.podium-1 { box-shadow: inset 3px 0 0 #FFC83D; }
-.fidel-row.podium-2 { box-shadow: inset 3px 0 0 #cbd5e1; }
-.fidel-row.podium-3 { box-shadow: inset 3px 0 0 #d97706; }
-
-.fidel-row-rank {
-  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
-  font-weight: 800; font-size: 11.5px; color: #a1a1aa;
-}
-.fidel-row.podium-1 .fidel-row-rank { color: #FFC83D; }
-.fidel-row.podium-2 .fidel-row-rank { color: #e2e8f0; }
-.fidel-row.podium-3 .fidel-row-rank { color: #fdba74; }
-
 .fidel-row-avatar {
   width: 40px; height: 40px; flex-shrink: 0; border-radius: 11px;
   display: grid; place-items: center;
@@ -301,7 +356,7 @@
   .management-workspace.management-workspace--loyalty .fidel-metric-value { font-size: 24px; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
   .management-workspace.management-workspace--loyalty .fidel-metric-sub { font-size: 11px; line-height: 1.4; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
   .fidel-carousel-hint { display: block; margin: -8px 0 0; color: #85858f; text-align: center; font-size: 10px; line-height: 1.3; }
-  .fidel-row { grid-template-columns: 26px 36px minmax(0, 1fr) auto; row-gap: 6px; }
+  .fidel-row { grid-template-columns: 36px minmax(0, 1fr) auto; row-gap: 6px; }
   .fidel-row-reward { display: none; }
 }
 
@@ -439,10 +494,44 @@
 .fidel-loyalty-settings { display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;align-items:end;gap:12px;margin-top:18px;padding-bottom:17px;border-bottom:1px solid rgba(255,255,255,.08); }
 .fidel-side .fidel-loyalty-settings { grid-template-columns: minmax(0, 1fr); }
 .fidel-loyalty-settings label { display:grid;gap:7px;color:#bbb;font-size:12px;font-weight:700; }
-.fidel-loyalty-settings input { width:100%;box-sizing:border-box;height:39px;padding:0 10px;border:1px solid #37373e;border-radius:9px;color:#fff;background:#111114; }
-.fidel-side .fidel-loyalty-settings input { min-width: 0; }
-.fidel-loyalty-settings button,.fidel-account-actions button { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid rgba(227,27,43,.42);border-radius:9px;color:#fff;background:rgba(227,27,43,.15);font-size:12px;font-weight:700;cursor:pointer; }
-.fidel-side .fidel-loyalty-settings button { width: 100%; }
+.fidel-loyalty-settings input,.fidel-loyalty-settings textarea { width:100%;box-sizing:border-box;min-height:39px;padding:10px;border:1px solid #37373e;border-radius:9px;color:#fff;background:#111114;font:inherit; }
+.fidel-loyalty-settings input { height:39px;padding:0 10px; }
+.fidel-loyalty-settings textarea { resize:vertical;line-height:1.45; }
+.fidel-loyalty-settings label small { color:#929099;font-size:10px;font-weight:500;line-height:1.4; }
+.fidel-reward-picker { display:grid;gap:9px;min-width:0; }
+.fidel-reward-picker-heading { display:grid;gap:5px;color:#eee;font-size:13px;font-weight:750; }
+.fidel-reward-picker-heading strong { display:flex;align-items:center;justify-content:space-between;gap:8px; }
+.fidel-reward-picker-heading strong span { padding:3px 8px;border:1px solid rgba(255,200,61,.2);border-radius:999px;color:#ffd65a;background:rgba(255,200,61,.09);font-size:10px; }
+.fidel-reward-picker-heading small { color:#929099;font-size:10px;font-weight:500;line-height:1.4; }
+.fidel-reward-selected-list { display:grid;gap:6px; }
+.fidel-reward-selected-item { display:flex;align-items:center;gap:8px;min-width:0;padding:6px 8px;border:1px solid rgba(255,200,61,.2);border-radius:10px;background:linear-gradient(110deg,rgba(255,200,61,.09),rgba(255,255,255,.025)); }
+.fidel-reward-selected-image,.fidel-reward-selected-fallback { display:grid;place-items:center;flex:0 0 48px;width:48px;height:40px;border-radius:7px;object-fit:cover;color:#f5bf45;background:#28221a; }
+.fidel-reward-selected-number { display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:8px;color:#211600;background:#ffd34f;font-size:11px;font-weight:900; }
+.fidel-reward-selected-name { display:grid;gap:2px;min-width:0;flex:1; }
+.fidel-reward-selected-name strong { overflow:hidden;color:#fff;font-size:11px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-reward-selected-name small { overflow:hidden;color:#a4a0a5;font-size:9px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-reward-selected-item>button { display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border:1px solid rgba(255,77,91,.24);border-radius:8px;color:#ff8992;background:rgba(227,27,43,.08);cursor:pointer; }
+.fidel-reward-selected-item>button:hover { color:#fff;background:rgba(227,27,43,.28); }
+.fidel-side .fidel-loyalty-settings .fidel-reward-search { display:flex;align-items:center;gap:8px;min-height:40px;padding:0 11px;border:1px solid #37373e;border-radius:10px;color:#999;background:#111114;font-size:12px;font-weight:400; }
+.fidel-reward-search:focus-within { border-color:#ff4c59;box-shadow:0 0 0 3px rgba(227,27,43,.12); }
+.fidel-side .fidel-loyalty-settings .fidel-reward-search input { width:100%;min-width:0;height:38px;min-height:0;padding:0;border:0;outline:0;color:#fff;background:transparent;font:inherit;font-size:12px; }
+.fidel-reward-search input::placeholder { color:#85828b; }
+.fidel-reward-menu-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:260px;overflow:auto;padding:1px 3px 1px 1px;overscroll-behavior:contain; }
+.fidel-reward-menu-option { display:flex;align-items:center;gap:8px;min-width:0;min-height:66px;padding:7px;border:1px solid rgba(255,255,255,.08);border-radius:10px;color:#fff;background:linear-gradient(135deg,#1c1c20,#131316);text-align:left;cursor:pointer;transition:border-color .16s,background .16s,transform .16s; }
+.fidel-reward-menu-option:hover:not(:disabled) { transform:translateY(-1px);border-color:rgba(255,200,61,.52);background:linear-gradient(135deg,rgba(255,200,61,.13),#17171a); }
+.fidel-reward-menu-option:disabled { opacity:.45;cursor:not-allowed; }
+.fidel-reward-menu-option-image,.fidel-reward-menu-option-fallback { display:grid;place-items:center;flex:0 0 62px;width:62px;height:50px;border-radius:7px;object-fit:cover;color:#f5bf45;background:#28221a; }
+.fidel-reward-menu-option-fallback { border:1px solid rgba(255,200,61,.18); }
+.fidel-reward-menu-option-add { display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;margin-left:auto;border:1px solid rgba(255,77,91,.28);border-radius:50%;color:#ff8992;background:rgba(227,27,43,.1); }
+.fidel-reward-menu-option-copy { display:grid;gap:3px;min-width:0;flex:1; }
+.fidel-reward-menu-option-copy strong { overflow:hidden;font-size:10px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-reward-menu-option-copy small { color:#aaa6ad;font-size:9px;text-transform:capitalize; }
+.fidel-reward-inventory-note { display:flex;align-items:center;gap:6px;margin:0;color:#a6d9b4;font-size:10px;line-height:1.35; }
+.fidel-reward-inventory-note svg { flex:0 0 auto; }
+.fidel-reward-picker-empty { margin:0;padding:10px 11px;border:1px dashed rgba(255,255,255,.12);border-radius:9px;color:#aaa6ad;font-size:11px;line-height:1.45; }
+.fidel-side .fidel-loyalty-settings input,.fidel-side .fidel-loyalty-settings textarea { min-width: 0; }
+.fidel-loyalty-settings > button,.fidel-account-actions button { display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:0 12px;border:1px solid rgba(227,27,43,.42);border-radius:9px;color:#fff;background:rgba(227,27,43,.15);font-size:12px;font-weight:700;cursor:pointer; }
+.fidel-side .fidel-loyalty-settings > button { width: 100%; }
 .fidel-admin-notice { margin:12px 0 0;padding:10px 12px;border-radius:9px;color:#bde8ca;background:rgba(38,132,76,.14);font-size:12px; }
 .fidel-accounts-heading { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px; }
 .fidel-accounts-heading h3 { margin:0;color:#eee;font-size:15px; }
@@ -461,6 +550,7 @@
 .fidel-account-actions button { min-height:34px;padding:0 9px;font-size:11px; }
 .fidel-password-note { display:block;margin-top:12px;color:#89878e;font-size:11px; }
 @media(max-width:700px) { .fidel-loyalty-settings { grid-template-columns:1fr; }.fidel-accounts-list article { grid-template-columns:minmax(0,1fr) auto;gap:9px; }.fidel-account-actions { grid-column:1/-1;justify-content:flex-end; }.fidel-account-actions button { flex:1; }.fidel-accounts-panel { padding:15px; } }
+@media(max-width:420px) { .fidel-reward-menu-grid { grid-template-columns:1fr;max-height:230px; }.fidel-reward-picker-heading { font-size:12px; } }
 
 .loyalty-reward-box {
   position: relative; z-index: 1;
@@ -472,6 +562,15 @@
 .loyalty-reward-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .loyalty-reward-label { font-size: 10.5px; color: #8a8a93; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .loyalty-reward-value { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: #fff; font-weight: 700; font-size: 13px; line-height: 1.35; }
+.fidel-customer-reward-row { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,200,61,.24);border-radius:10px;background:rgba(255,200,61,.06); }
+.fidel-customer-reward-row>span { display:grid;gap:4px;min-width:0; }
+.fidel-customer-reward-row strong { color:#ffe6a5;font-size:12px; }
+.fidel-customer-reward-row small,.fidel-customer-redeemed small { color:#98939b;font-size:10px; }
+.fidel-customer-reward-row button { flex:none;min-height:34px;padding:0 10px;border:1px solid rgba(227,27,43,.5);border-radius:9px;color:#fff;background:rgba(227,27,43,.18);font-size:11px;font-weight:750;cursor:pointer; }
+.fidel-customer-reward-row button:disabled { opacity:.55;cursor:wait; }
+.fidel-customer-redeemed { border-top:1px solid rgba(255,255,255,.08);padding-top:9px;color:#bbb;font-size:11px; }
+.fidel-customer-redeemed summary { cursor:pointer; }
+.fidel-customer-redeemed>div { display:flex;justify-content:space-between;gap:10px;margin-top:7px;padding:8px;border-radius:8px;background:#ffffff08;color:#c4bfc7;filter:saturate(.45);opacity:.7; }
 .loyalty-mark-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   width: 100%;
@@ -485,3 +584,114 @@
 }
 .loyalty-mark-btn:hover { transform: scale(1.03); }
 .loyalty-mark-btn:active { transform: scale(0.97); }
+
+/* Programa de fidelización: ajustes en una secuencia clara y equilibrada. */
+.fidel-program-panel { display:grid; gap:20px; padding:clamp(18px,2.4vw,30px); }
+.fidel-program-panel > header { padding-bottom:16px; border-bottom:1px solid rgba(255,255,255,.08); }
+.fidel-program-panel .fidel-loyalty-settings { display:grid; grid-template-columns:minmax(0,1fr); align-items:stretch; gap:16px; margin:0; padding:0; border:0; }
+.fidel-program-panel .fidel-loyalty-settings > label { grid-template-columns:minmax(0,1fr) minmax(140px,220px); align-items:center; gap:16px; min-height:76px; padding:14px 18px; border:1px solid rgba(255,255,255,.09); border-radius:14px; color:#f3f1f4; background:linear-gradient(110deg,rgba(227,27,43,.1),rgba(255,255,255,.025)); font-size:14px; }
+.fidel-program-panel .fidel-loyalty-settings > label input { height:44px; border-color:rgba(255,255,255,.13); border-radius:10px; background:#101013; font-size:15px; }
+.fidel-program-panel .fidel-reward-picker { gap:14px; padding:18px; border:1px solid rgba(255,255,255,.09); border-radius:16px; background:linear-gradient(145deg,rgba(255,255,255,.035),rgba(10,10,12,.4)); }
+.fidel-program-panel .fidel-reward-picker-heading { gap:6px; }
+.fidel-program-panel .fidel-reward-picker-heading strong { justify-content:flex-start; gap:12px; font-size:15px; }
+.fidel-program-panel .fidel-reward-picker-heading small { color:#aaa6ad; font-size:12px; }
+.fidel-program-panel .fidel-reward-search { display:flex; align-items:center; gap:10px; min-height:46px; padding:0 14px; border:1px solid #37373e; border-radius:11px; color:#999; background:#111114; }
+.fidel-program-panel .fidel-reward-search:focus-within { border-color:#ff4c59; box-shadow:0 0 0 3px rgba(227,27,43,.12); }
+.fidel-program-panel .fidel-reward-search input { width:100%; min-width:0; height:44px; min-height:0; padding:0; border:0; outline:0; color:#fff; background:transparent; font:inherit; font-size:13px; }
+.fidel-program-panel .fidel-reward-menu-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; max-height:440px; padding:2px 4px 2px 2px; }
+.fidel-program-panel .fidel-reward-menu-option { min-height:76px; gap:10px; padding:8px; }
+.fidel-program-panel .fidel-reward-menu-option-image,.fidel-program-panel .fidel-reward-menu-option-fallback { flex-basis:76px; width:76px; height:58px; border-radius:8px; }
+.fidel-program-panel .fidel-reward-menu-option-copy strong { font-size:11px; }
+.fidel-program-panel .fidel-reward-menu-option-copy small { font-size:10px; }
+.fidel-program-panel .fidel-reward-selected-list { grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:8px; }
+.fidel-program-panel .fidel-reward-selected-item { min-height:56px; padding:8px 10px; }
+.fidel-program-panel .fidel-reward-inventory-note { padding-top:2px; font-size:12px; }
+.fidel-program-panel .fidel-loyalty-settings > button { justify-self:end; min-width:190px; min-height:46px; padding:0 20px; border-radius:11px; font-size:13px; }
+@media (max-width:1100px) {
+  .fidel-program-panel .fidel-reward-menu-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:700px) {
+  .fidel-program-panel { padding:16px; gap:16px; }
+  .fidel-program-panel .fidel-loyalty-settings > label { grid-template-columns:minmax(0,1fr) 110px; gap:10px; padding:12px; font-size:12px; }
+  .fidel-program-panel .fidel-reward-picker { padding:13px; }
+  .fidel-program-panel .fidel-reward-menu-grid { grid-template-columns:1fr; max-height:340px; }
+  .fidel-program-panel .fidel-loyalty-settings > button { width:100%; }
+}
+
+/* Cuentas Mi perfil: directorio visual para búsqueda y gestión frecuente. */
+.fidel-accounts-page { gap:0; padding:clamp(20px,2.5vw,34px); border-color:rgba(255,255,255,.1); background:radial-gradient(ellipse at 0 0,rgba(227,27,43,.11),transparent 38%),linear-gradient(145deg,#171619,#111113 72%); }
+.fidel-accounts-page-head { align-items:center; padding-bottom:22px; border-bottom:1px solid rgba(255,255,255,.08); }
+.fidel-accounts-eyebrow { display:block; margin-bottom:7px; color:#ff7774; font-size:10px; font-weight:850; letter-spacing:.14em; }
+.fidel-accounts-page-head h2 { gap:10px; font-size:22px; }
+.fidel-accounts-page-head h2 svg { width:22px;height:22px;padding:9px;box-sizing:content-box;border:1px solid rgba(255,98,89,.2);border-radius:12px;color:#ff6259;background:rgba(227,27,43,.12); }
+.fidel-accounts-page-head p { margin:7px 0 0 42px;max-width:620px;color:#a4a1a8;font-size:13px;line-height:1.5; }
+.fidel-accounts-total { display:grid;place-items:center;align-content:center;gap:2px;min-width:78px;height:72px;padding:0 12px;border:1px solid rgba(255,200,61,.2);border-radius:16px;color:#ffd65a;background:linear-gradient(145deg,rgba(255,200,61,.12),rgba(255,200,61,.04)); }
+.fidel-accounts-total strong { font-size:23px;line-height:1;font-weight:900; }
+.fidel-accounts-total small { color:#bdb3a0;font-size:10px;font-weight:750; }
+.fidel-account-search { width:min(100%,760px);max-width:none;height:54px;margin-top:22px;border-color:rgba(255,255,255,.09);background:#19191d; }
+.fidel-account-search:focus-within { border-color:rgba(255,98,89,.52);box-shadow:0 0 0 3px rgba(227,27,43,.1); }
+.fidel-account-search input { font-size:14px; }
+.fidel-accounts-page .fidel-accounts-list { grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch;gap:14px;margin-top:20px; }
+.fidel-accounts-page .fidel-accounts-list article.fidel-account-card { display:flex;flex-direction:column;align-items:stretch;gap:17px;min-width:0;min-height:0;padding:17px;border-color:rgba(255,255,255,.08);border-radius:16px;background:linear-gradient(145deg,#202023,#17171a);transition:transform .18s,border-color .18s,box-shadow .18s; }
+.fidel-accounts-page .fidel-accounts-list article.fidel-account-card:hover { transform:translateY(-2px);border-color:rgba(255,98,89,.36);box-shadow:0 12px 28px rgba(0,0,0,.2); }
+.fidel-accounts-page .fidel-accounts-list article.fidel-account-card .fidel-account-card-head { display:flex;align-items:center;gap:11px;min-width:0; }
+.fidel-account-card-head { display:flex;align-items:center;gap:11px;min-width:0; }
+.fidel-account-avatar { display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;border:1px solid rgba(255,255,255,.12);border-radius:13px;color:#fff;font-size:13px;font-weight:900;box-shadow:0 5px 14px rgba(0,0,0,.2); }
+.fidel-account-identity { display:grid;gap:4px;flex:1;min-width:0; }
+.fidel-accounts-page .fidel-account-identity strong { overflow:hidden;color:#fff;font-size:14px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-account-identity>span { color:#8e8b94;font-size:11px; }
+.fidel-accounts-page .fidel-account-status { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:6px 9px;font-size:10px; }
+.fidel-account-status i { width:6px;height:6px;border-radius:50%;background:currentColor; }
+.fidel-account-details { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px; }
+.fidel-account-details>span { display:grid;gap:5px;min-width:0;padding:10px 11px;border:1px solid rgba(255,255,255,.055);border-radius:10px;background:rgba(0,0,0,.16); }
+.fidel-account-details small { color:#77747e;font-size:9px;font-weight:800;letter-spacing:.08em; }
+.fidel-account-details strong { overflow:hidden;color:#d5d2d9;font-size:11px;font-weight:650;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-account-details .fidel-account-email { grid-column:1/-1; }
+.fidel-accounts-page .fidel-account-actions { margin-top:auto; }
+.fidel-accounts-page .fidel-account-actions button { width:100%;min-height:42px;border-color:rgba(255,98,89,.28);border-radius:11px;color:#ffaaa5;background:rgba(227,27,43,.09);font-size:12px;transition:background .15s,border-color .15s,color .15s; }
+.fidel-accounts-page .fidel-account-actions button:hover { border-color:#e31b2b;color:#fff;background:#c91828; }
+.fidel-accounts-page .fidel-account-pagination { margin-top:20px;padding:16px 0 0; }
+.fidel-accounts-page .fidel-password-note { display:flex;align-items:center;gap:7px;margin-top:17px;padding:12px 14px;border:1px solid rgba(255,255,255,.06);border-radius:10px;color:#93909a;background:rgba(255,255,255,.025); }
+.fidel-accounts-page .fidel-password-note svg { flex:0 0 auto;color:#a6d9b4; }
+.fidel-accounts-empty { grid-column:1/-1;display:grid;justify-items:center;gap:8px;padding:44px 20px;border:1px dashed rgba(255,255,255,.14);border-radius:15px;color:#99969f;text-align:center;background:rgba(255,255,255,.02); }
+.fidel-accounts-empty svg { margin-bottom:3px;color:#ff6259; }
+.fidel-accounts-empty strong { color:#eee;font-size:15px; }
+.fidel-accounts-empty span { font-size:12px; }
+@media(max-width:1100px) { .fidel-accounts-page .fidel-accounts-list { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:700px) {
+  .fidel-accounts-page { padding:16px; }
+  .fidel-accounts-page-head { align-items:flex-start;gap:10px; }
+  .fidel-accounts-page-head h2 { font-size:18px; }
+  .fidel-accounts-page-head p { margin-left:0;font-size:12px; }
+  .fidel-accounts-total { min-width:58px;height:60px;padding:0 8px;border-radius:13px; }
+  .fidel-accounts-total strong { font-size:19px; }
+  .fidel-account-search { height:48px;margin-top:16px; }
+  .fidel-accounts-page .fidel-accounts-list { grid-template-columns:1fr;gap:10px;margin-top:14px; }
+  .fidel-accounts-page .fidel-accounts-list article.fidel-account-card { gap:13px;padding:14px; }
+  .fidel-account-pagination { flex-direction:column;align-items:stretch; }
+  .fidel-account-pagination>div { justify-content:space-between; }
+}
+
+/* En pantallas medianas y grandes, las cuentas se leen como directorio tabular. */
+.fidel-accounts-table-wrap { display:block;width:100%;margin-top:20px;overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(12,12,14,.38); }
+.fidel-accounts-table { width:100%;min-width:720px;border-collapse:separate;border-spacing:0;text-align:left; }
+.fidel-accounts-table th { height:46px;padding:0 17px;border-bottom:1px solid rgba(255,255,255,.08);color:#85828c;background:rgba(255,255,255,.025);font-size:10px;font-weight:850;letter-spacing:.09em;text-transform:uppercase; }
+.fidel-accounts-table td { height:72px;padding:10px 17px;border-bottom:1px solid rgba(255,255,255,.055);color:#cbc8d0;font-size:12px; }
+.fidel-accounts-table tbody tr:last-child td { border-bottom:0; }
+.fidel-accounts-table tbody tr { transition:background .14s; }
+.fidel-accounts-table tbody tr:hover { background:rgba(255,255,255,.025); }
+.fidel-account-table-customer { display:flex;align-items:center;gap:11px;min-width:190px; }
+.fidel-account-table-customer strong { overflow:hidden;color:#fff;font-size:13px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-account-table-customer .fidel-account-avatar { width:38px;height:38px;flex-basis:38px;border-radius:11px;font-size:11px; }
+.fidel-account-table-contact { display:grid;gap:4px; }
+.fidel-account-table-contact strong { color:#e6e3e8;font-size:12px;font-weight:650; }
+.fidel-account-table-contact small { max-width:240px;overflow:hidden;color:#898690;font-size:10px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-table-muted { color:#797680; }
+.fidel-accounts-table .fidel-account-status { display:inline-flex;align-items:center;gap:6px;padding:6px 9px;white-space:nowrap; }
+.fidel-account-table-action { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 11px;border:1px solid rgba(255,98,89,.24);border-radius:9px;color:#ffaaa5;background:rgba(227,27,43,.08);font:inherit;font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s,color .15s; }
+.fidel-account-table-action:hover { border-color:#e31b2b;color:#fff;background:#c91828; }
+.fidel-accounts-page .fidel-accounts-list { display:none; }
+@media(max-width:700px) {
+  .fidel-accounts-table-wrap { display:none; }
+  .fidel-accounts-page .fidel-accounts-list { display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px; }
+}

@@ -866,7 +866,7 @@ export function Inicio() {
           </div>}
         </div>
 
-        <div className="db-card">
+        <div className="db-card db-orders-card">
           <div className="db-card-head">
             <h3>Últimas comandas</h3>
             {hasAccess('/comandas') ? <button className="db-link-btn" onClick={() => navigate('/comandas')}>Ver todas</button> : null}

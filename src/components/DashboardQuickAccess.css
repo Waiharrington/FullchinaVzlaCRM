@@ -104,12 +104,139 @@
 }
 
 .db-quick-access-loading {
-  display: grid;
-  min-height: 240px;
-  place-items: center;
-  color: #a7a8b0;
-  font-size: 0.9rem;
+  position: relative;
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 32px 20px;
+  color: #f4f4f5;
+  text-align: center;
+  isolation: isolate;
 }
+
+.db-quick-access-loading::before {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: 50%;
+  width: min(520px, 82vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(227, 27, 43, 0.11), rgba(255, 158, 27, 0.035) 40%, transparent 70%);
+  content: '';
+  transform: translate(-50%, -57%);
+  animation: dbQuickAccessGlow 2.8s ease-in-out infinite;
+}
+
+.db-quick-access-loading-art {
+  position: relative;
+  display: grid;
+  width: 154px;
+  height: 144px;
+  place-items: center;
+  margin-bottom: 12px;
+}
+
+.db-quick-access-loading-orbit {
+  position: absolute;
+  width: 128px;
+  height: 128px;
+  border: 1px solid rgba(255, 200, 61, 0.2);
+  border-right-color: rgba(255, 77, 61, 0.95);
+  border-bottom-color: rgba(255, 77, 61, 0.5);
+  border-radius: 50%;
+  filter: drop-shadow(0 0 9px rgba(255, 77, 61, 0.18));
+  animation: dbQuickAccessSpin 3.2s linear infinite;
+}
+
+.db-quick-access-loading-orbit--inner {
+  width: 102px;
+  height: 102px;
+  border-color: transparent rgba(255, 200, 61, 0.45) rgba(255, 200, 61, 0.12) transparent;
+  animation: dbQuickAccessSpinReverse 4.5s linear infinite;
+}
+
+.db-quick-access-loading-logo {
+  display: grid;
+  width: 90px;
+  height: 78px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(43, 22, 24, 0.96), rgba(17, 18, 21, 0.97));
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4), 0 0 26px rgba(227, 27, 43, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  animation: dbQuickAccessBob 2.3s ease-in-out infinite;
+}
+
+.db-quick-access-loading-logo img { width: 72px; height: 62px; object-fit: contain; }
+
+.db-quick-access-loading-spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffc83d;
+  box-shadow: 0 0 12px 3px rgba(255, 158, 27, 0.35);
+  animation: dbQuickAccessSpark 1.7s ease-in-out infinite;
+}
+
+.db-quick-access-loading-spark--one { top: 21px; right: 31px; }
+.db-quick-access-loading-spark--two { bottom: 24px; left: 23px; width: 4px; height: 4px; animation-delay: -0.6s; }
+.db-quick-access-loading-spark--three { top: 46px; left: 13px; width: 3px; height: 3px; animation-delay: -1.1s; }
+
+.db-quick-access-loading-kicker {
+  margin-top: 2px;
+  color: #ffb832;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.db-quick-access-loading > strong {
+  margin-top: 8px;
+  color: #fff;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.db-quick-access-loading > p {
+  margin: 7px 0 0;
+  color: #a7a8b0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.db-quick-access-loading-track {
+  position: relative;
+  width: 112px;
+  height: 3px;
+  overflow: hidden;
+  margin-top: 23px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.db-quick-access-loading-track i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #e31b2b, #ff9e1b, #ffc83d);
+  box-shadow: 0 0 12px rgba(255, 77, 61, 0.5);
+  animation: dbQuickAccessProgress 1.25s ease-in-out infinite;
+}
+
+@keyframes dbQuickAccessSpin { to { transform: rotate(360deg); } }
+@keyframes dbQuickAccessSpinReverse { to { transform: rotate(-360deg); } }
+@keyframes dbQuickAccessBob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-5px) rotate(2deg); } }
+@keyframes dbQuickAccessSpark { 0%, 100% { opacity: 0.35; transform: scale(0.7); } 50% { opacity: 1; transform: scale(1.25); } }
+@keyframes dbQuickAccessProgress { 0% { transform: translateX(-110%); } 100% { transform: translateX(270%); } }
+@keyframes dbQuickAccessGlow { 0%, 100% { opacity: 0.55; transform: translate(-50%, -57%) scale(0.92); } 50% { opacity: 1; transform: translate(-50%, -57%) scale(1.08); } }
 
 @keyframes dbQuickAccessIn {
   from { opacity: 0; transform: translateY(8px) scale(0.99); }
@@ -146,5 +273,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .db-quick-access-dialog { animation: none; }
+  .db-quick-access-dialog,
+  .db-quick-access-loading::before,
+  .db-quick-access-loading-orbit,
+  .db-quick-access-loading-logo,
+  .db-quick-access-loading-spark,
+  .db-quick-access-loading-track i { animation: none; }
 }
