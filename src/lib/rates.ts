@@ -21,12 +21,15 @@ interface DolarApiEntry {
 
 const OFFICIAL_URL = 'https://ve.dolarapi.com/v1/dolares/oficial'
 const ALL_RATES_URL = 'https://ve.dolarapi.com/v1/dolares'
-const BCV_EFFECTIVE_RATE_URL = 'https://bcv.today/api/v1/history'
+const BCV_HISTORY_URL = 'https://bcv.today/api/v1/history.json'
 const CACHE_KEY = 'fullchina_bcv_rates_v3'
+const HISTORY_CACHE_KEY = 'fullchina_bcv_history_v1'
 const FRESH_CACHE_MS = 30 * 60 * 1000
+const HISTORY_CACHE_MS = 30 * 60 * 1000
 const REQUEST_TIMEOUT_MS = 8_000
 
 let memoryCache: Rates | null = null
+let historyCache: { fetchedAt: string; entries: BcvEffectiveRateEntry[] } | null = null
 let pendingRequest: Promise<Rates> | null = null
 
 function isValidRate(value: unknown): value is number {
@@ -36,12 +39,6 @@ function isValidRate(value: unknown): value is number {
 interface BcvEffectiveRateEntry {
   USD: number
   effective_date: string
-}
-
-function addCalendarDays(date: string, days: number): string {
-  const next = new Date(`${date}T00:00:00Z`)
-  next.setUTCDate(next.getUTCDate() + days)
-  return next.toISOString().slice(0, 10)
 }
 
 function isCaracasWeekend(now = new Date()): boolean {
@@ -58,20 +55,35 @@ function caracasDateKey(now = new Date()): string {
 }
 
 async function getNextAvailableRate(lastPublishedDate: string): Promise<BcvEffectiveRateEntry | null> {
-  // El BCV no siempre publica una tasa con fecha efectiva de lunes. Consultamos
-  // los próximos días y elegimos la primera tasa realmente publicada después
-  // de la última, sin confundir los registros del fin de semana con una tasa nueva.
-  const candidates = await Promise.all(Array.from({ length: 7 }, async (_, index) => {
-    const requestedDate = addCalendarDays(lastPublishedDate, index + 1)
+  // El endpoint por fecha devuelve 404 para días futuros que aún no existen.
+  // El índice histórico ya contiene solo snapshots publicados y evita sondear
+  // siete URLs inexistentes cada vez que se refresca la tasa.
+  const now = Date.now()
+  let cached = historyCache
+  if (!cached && typeof localStorage !== 'undefined') {
     try {
-      const entry = await fetchJson<BcvEffectiveRateEntry>(`${BCV_EFFECTIVE_RATE_URL}/${requestedDate}.json`)
-      if (!isValidRate(entry.USD) || entry.effective_date <= lastPublishedDate) return null
-      return entry
+      const parsed = JSON.parse(localStorage.getItem(HISTORY_CACHE_KEY) || 'null') as typeof historyCache
+      if (parsed && Array.isArray(parsed.entries) && parsed.fetchedAt) cached = parsed
+    } catch { /* Se vuelve a consultar el índice si la caché local está dañada. */ }
+  }
+  const cacheAge = cached ? now - new Date(cached.fetchedAt).getTime() : Number.POSITIVE_INFINITY
+  const cacheIsFresh = Number.isFinite(cacheAge) && cacheAge >= 0 && cacheAge < HISTORY_CACHE_MS
+  if (!cached || !cacheIsFresh) {
+    try {
+      const entries = await fetchJson<BcvEffectiveRateEntry[]>(BCV_HISTORY_URL)
+      if (!Array.isArray(entries)) return null
+      cached = { fetchedAt: new Date(now).toISOString(), entries }
+      historyCache = cached
+      if (typeof localStorage !== 'undefined') {
+        try { localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(cached)) } catch { /* La caché solo evita consultas repetidas. */ }
+      }
     } catch {
       return null
     }
-  }))
-  return candidates.find((entry): entry is BcvEffectiveRateEntry => entry !== null) ?? null
+  } else {
+    historyCache = cached
+  }
+  return cached.entries.find(entry => isValidRate(entry.USD) && entry.effective_date > lastPublishedDate) ?? null
 }
 
 function readCache(): Rates | null {
