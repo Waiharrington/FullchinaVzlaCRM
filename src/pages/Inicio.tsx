@@ -726,6 +726,7 @@ export function Inicio() {
         <Toast
           type="error"
           message={dashboardError}
+          duration={0}
           onClose={() => setDashboardError('')}
           actionLabel="Reintentar"
           onAction={() => void fetchData(salesRange)}
