@@ -1280,8 +1280,8 @@ export async function removeOrderItem(orderItemId: string): Promise<void> {
 }
 
 /**
- * Elimina una comanda completa y revierte el consumo de inventario de todos sus
- * items. Solo permite eliminar comandas no cobradas.
+ * Elimina una comanda completa, revierte el inventario y borra sus efectos de
+ * pago/caja. La RPC bloquea el borrado si la comisión de delivery ya se liquidó.
  */
 export async function deleteOrder(orderId: string): Promise<void> {
   const { error } = await client().rpc('fn_delete_order', { p_order_id: orderId })

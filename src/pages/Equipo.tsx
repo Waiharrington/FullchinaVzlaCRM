@@ -138,6 +138,7 @@ export function Equipo() {
   const canManage = user?.role === 'owner' || user?.role === 'manager'
 
   const [team, setTeam] = useState<Employee[]>([])
+  const activeTeam = team.filter(employee => employee.isActive)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
@@ -446,7 +447,7 @@ export function Equipo() {
           <div>
             <h1 className="page-title"><Users size={22} className="page-title-icon" /><span className="equipo-title-desktop">Gestión de Equipo y Personal</span><span className="equipo-title-mobile">Equipo y personal</span></h1>
             <span className="metric-sub-text">
-              {team.length} empleados · {team.filter(e => e.isActive).length} activos
+              {activeTeam.length} empleados activos
               {isOwner && ` · ${authUsers.length} usuarios de acceso`}
             </span>
           </div>
@@ -527,10 +528,10 @@ export function Equipo() {
         <div className="equipo-section-head">
           <h3 className="equipo-section-title"><Users size={18} /> Empleados (nómina)</h3>
         </div>
-        {team.length === 0 ? (
+        {activeTeam.length === 0 ? (
           <EmptyState
-            title="No hay empleados registrados"
-            description="Crea el primero para empezar a gestionar tu equipo."
+            title="No hay empleados activos"
+            description="Los empleados suspendidos o archivados no aparecen en la nómina. Crea o activa un empleado para continuar."
             actionLabel="Nuevo empleado"
             onAction={() => handleOpenModal()}
           />
@@ -541,7 +542,7 @@ export function Equipo() {
                 <tr><th>Empleado</th><th>Sueldo semanal</th><th>Estado</th><th></th></tr>
               </thead>
               <tbody>
-                {team.map(emp => (
+                {activeTeam.map(emp => (
                   <tr key={emp.id} className={!emp.isActive ? 'inactive' : ''}>
                     <td>
                       <div className="team-row-id">

@@ -2735,6 +2735,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               <h3>Autorización requerida</h3>
             </div>
             <p className="cmd-pin-text">Ingresa tu PIN para eliminar la comanda <strong className="cmd-pin-order-no">{selectedOrder?.orderNumber}</strong></p>
+            <p className="cmd-pin-text">Si ya estaba cobrada o entregada, se eliminarán sus pagos de caja y se revertirá el inventario. Esta acción no se puede deshacer.</p>
             <input
               key={deletePin}
               type="password"
