@@ -226,6 +226,8 @@ export interface FinancialOperation {
   counterparty: string | null
   referenceNumber: string | null
   affectsProfit: boolean
+  fromAccountId?: string | null
+  toAccountId?: string | null
   fromAccount: string | null
   toAccount: string | null
 }
@@ -2356,7 +2358,7 @@ export async function getFinancialOperations(dateStart?: string, dateEnd?: strin
   let offset = 0
   for (;;) {
     let query = client().from('financial_operations').select(`
-    id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,
+    id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,from_account_id,to_account_id,
     counterparty,reference_number,affects_profit,
     from_account:financial_accounts!financial_operations_from_account_id_fkey(name),
     to_account:financial_accounts!financial_operations_to_account_id_fkey(name)
@@ -2383,7 +2385,10 @@ export async function getFinancialOperations(dateStart?: string, dateEnd?: strin
     exchangeRate: row.exchange_rate == null ? null : Number(row.exchange_rate),
     counterparty: row.counterparty ? String(row.counterparty) : null,
     referenceNumber: row.reference_number ? String(row.reference_number) : null,
-    affectsProfit: Boolean(row.affects_profit), fromAccount: relationName(row.from_account), toAccount: relationName(row.to_account),
+    affectsProfit: Boolean(row.affects_profit),
+    fromAccountId: row.from_account_id == null ? null : String(row.from_account_id),
+    toAccountId: row.to_account_id == null ? null : String(row.to_account_id),
+    fromAccount: relationName(row.from_account), toAccount: relationName(row.to_account),
   }))
 }
 
@@ -3585,6 +3590,29 @@ export async function createFinancialTransfer(params: {
     original_amount: params.originalAmount, exchange_rate: params.exchangeRate ?? null,
     from_account_id: params.fromAccountId, to_account_id: params.toAccountId,
     reference_number: params.referenceNumber?.trim() || null, notes: params.notes?.trim() || null,
+    affects_profit: false, created_by: params.userId,
+  })
+  if (error) throw error
+}
+
+/** Registra un ingreso manual (por ejemplo, capital) como movimiento de cuenta, sin tratarlo como venta. */
+export async function createManualFinancialIncome(params: {
+  concept: string; operationDate: string; accountId: string;
+  originalCurrency: 'USD' | 'VES'; originalAmount: number; exchangeRate?: number | null;
+  notes?: string | null; userId: string;
+}): Promise<void> {
+  if (!params.concept.trim()) throw new Error('Indica el motivo del ingreso.')
+  if (!params.accountId) throw new Error('Selecciona la cuenta donde entró el dinero.')
+  if (!Number.isFinite(params.originalAmount) || params.originalAmount <= 0) throw new Error('El monto debe ser mayor que cero.')
+  const amountUsd = params.originalCurrency === 'VES'
+    ? params.originalAmount / Number(params.exchangeRate)
+    : params.originalAmount
+  if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new Error('La tasa BCV es necesaria para registrar un ingreso en bolívares.')
+  const { error } = await client().from('financial_operations').insert({
+    operation_type: 'adjustment', concept: params.concept.trim(), operation_date: params.operationDate,
+    amount_usd: Math.round(amountUsd * 100) / 100, original_currency: params.originalCurrency,
+    original_amount: params.originalAmount, exchange_rate: params.exchangeRate ?? null,
+    to_account_id: params.accountId, notes: params.notes?.trim() || null,
     affects_profit: false, created_by: params.userId,
   })
   if (error) throw error

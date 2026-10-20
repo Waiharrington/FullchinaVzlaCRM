@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, deleteFinancialOperation,
+  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation,
   getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder,
   type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type PersonalAccount,
 } from '../lib/dataService'
@@ -20,7 +20,7 @@ import {
   Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
   Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X, Plus,
   ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2,
-  Clock, Gift, Users, Landmark, ArrowRight,
+  Clock, Gift, Users, Landmark, ArrowRight, TrendingDown,
 } from 'lucide-react'
 import './Finanzas.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
@@ -44,6 +44,7 @@ const DELIVERY_EMPLOYEE_RATE = 0.70
 const isDeliveryItem = (item: FullOrder['items'][number]) => item.productName.trim().toLowerCase() === 'delivery'
 
 type FinanceTab = 'overview' | 'daily' | 'closing' | 'history'
+type ManualFinanceMode = 'income' | 'expense'
 type HistoryDirection = 'in' | 'out' | 'transfer'
 interface FinancialHistoryEntry {
   id: string
@@ -93,6 +94,8 @@ export function Finanzas() {
   const [operations, setOperations] = useState<FinancialOperation[]>([])
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>([])
+  const [selectedPersonalAccount, setSelectedPersonalAccount] = useState<PersonalAccount | null>(null)
+  const [personalConsumptionPage, setPersonalConsumptionPage] = useState(1)
   const [newPersonalAccountName, setNewPersonalAccountName] = useState('')
   const [savingPersonalAccount, setSavingPersonalAccount] = useState(false)
   const [personalAccountError, setPersonalAccountError] = useState('')
@@ -118,6 +121,59 @@ export function Finanzas() {
   const [transferSaving, setTransferSaving] = useState(false)
   const [transferError, setTransferError] = useState('')
   const [opsError, setOpsError] = useState('')
+  const [manualFinanceMode, setManualFinanceMode] = useState<ManualFinanceMode | null>(null)
+  const [manualFinanceSaving, setManualFinanceSaving] = useState(false)
+  const [manualFinanceError, setManualFinanceError] = useState('')
+  const [manualFinanceForm, setManualFinanceForm] = useState({ kind: 'capital', concept: '', accountId: '', amount: '', notes: '' })
+
+  const openManualFinance = (mode: ManualFinanceMode) => {
+    setManualFinanceError('')
+    setManualFinanceForm({ kind: 'capital', concept: '', accountId: '', amount: '', notes: '' })
+    setManualFinanceMode(mode)
+  }
+  const saveManualFinance = async () => {
+    setManualFinanceError('')
+    const account = accounts.find(item => item.id === manualFinanceForm.accountId)
+    const amount = parseFinancialAmount(manualFinanceForm.amount)
+    if (!user || !account || !Number.isFinite(amount) || amount <= 0) {
+      setManualFinanceError('Selecciona la cuenta e indica un monto mayor que cero.')
+      return
+    }
+    if (!manualFinanceForm.concept.trim()) {
+      setManualFinanceError('Indica el motivo o concepto del movimiento.')
+      return
+    }
+    if (account.currency === 'VES' && !(Number(bcvRate) > 0)) {
+      setManualFinanceError('No hay una tasa BCV válida para registrar este movimiento en bolívares.')
+      return
+    }
+    const rate = account.currency === 'VES' ? bcvRate : null
+    const amountUsd = account.currency === 'VES' ? amount / Number(rate) : amount
+    try {
+      setManualFinanceSaving(true)
+      if (manualFinanceMode === 'income') {
+        const prefix = manualFinanceForm.kind === 'capital' ? 'Inyección de capital' : 'Otro ingreso'
+        await createManualFinancialIncome({
+          concept: `${prefix} · ${manualFinanceForm.concept.trim()}`,
+          operationDate: isoDate(new Date()), accountId: account.id, originalCurrency: account.currency,
+          originalAmount: amount, exchangeRate: rate, notes: manualFinanceForm.notes, userId: user.id,
+        })
+      } else {
+        await createExpense({
+          concept: manualFinanceForm.concept.trim(), amount: amountUsd, category: 'other',
+          expenseDate: isoDate(new Date()), notes: manualFinanceForm.notes, accountId: account.id,
+          exchangeRate: rate, userId: user.id,
+          payments: [{ accountId: account.id, amount, currency: account.currency, exchangeRate: rate }],
+        })
+      }
+      setManualFinanceMode(null)
+      await load()
+    } catch (error) {
+      setManualFinanceError(error instanceof Error ? error.message : 'No se pudo guardar el movimiento.')
+    } finally {
+      setManualFinanceSaving(false)
+    }
+  }
 
   const closeTransfer = useCallback(() => {
     if (closingTransfer) return
@@ -149,16 +205,18 @@ export function Finanzas() {
   }, [closingLedger, selectedLedgerCurrency])
 
   useEffect(() => {
-    if (!selectedAccount && !selectedLedgerCurrency && !showTransfer) return
+    if (!selectedAccount && !selectedLedgerCurrency && !selectedPersonalAccount && !showTransfer && !manualFinanceMode) return
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || transferSaving) return
+      if (event.key !== 'Escape' || transferSaving || manualFinanceSaving) return
       if (selectedAccount) closeAccount()
       else if (selectedLedgerCurrency) closeLedger()
-      else closeTransfer()
+      else if (selectedPersonalAccount) setSelectedPersonalAccount(null)
+      else if (showTransfer) closeTransfer()
+      else setManualFinanceMode(null)
     }
     document.addEventListener('keydown', closeOnEscape)
     return () => document.removeEventListener('keydown', closeOnEscape)
-  }, [closeAccount, closeLedger, closeTransfer, selectedAccount, selectedLedgerCurrency, showTransfer, transferSaving])
+  }, [closeAccount, closeLedger, closeTransfer, selectedAccount, selectedLedgerCurrency, selectedPersonalAccount, showTransfer, transferSaving, manualFinanceMode, manualFinanceSaving])
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -250,14 +308,30 @@ export function Finanzas() {
   const nextMobileWeekDay = dailyRows.find(row => row.date > (weekRows[weekRows.length - 1]?.date ?? ''))
   const weekTotals = useMemo(() => sumFinancialRows(weekRows), [weekRows])
   const selectedDay = dailyRows.find(row => row.date === selectedDailyDate) ?? dailyRows[0]
-  const accountActivity = useMemo(() => buildFinancialAccountActivity(
-    accounts,
-    orders,
-    expenses,
-    purchases,
-    isoDate(ranges[period][0]),
-    isoDate(ranges[period][1]),
-  ), [accounts, orders, expenses, purchases, period, ranges])
+  const accountActivity = useMemo(() => {
+    const start = isoDate(ranges[period][0])
+    const end = isoDate(ranges[period][1])
+    const result = buildFinancialAccountActivity(accounts, orders, expenses, purchases, start, end)
+    for (const operation of operations) {
+      if (operation.operationDate < start || operation.operationDate > end) continue
+      const add = (accountId: string | null | undefined, direction: 'inflows' | 'outflows') => {
+        if (!accountId) return
+        const account = accounts.find(item => item.id === accountId)
+        const activity = result.get(accountId)
+        if (!account || !activity) return
+        const amount = account.currency === operation.originalCurrency
+          ? operation.originalAmount
+          : account.currency === 'VES'
+            ? operation.amountUsd * (operation.exchangeRate || bcvRate || 0)
+            : operation.amountUsd
+        activity[direction] += amount
+        activity.net = activity.inflows - activity.outflows
+      }
+      add(operation.toAccountId, 'inflows')
+      add(operation.fromAccountId, 'outflows')
+    }
+    return result
+  }, [accounts, orders, expenses, purchases, operations, period, ranges, bcvRate])
   const mostActiveAccountId = useMemo(() => {
     let bestId: string | null = null
     let bestScore = 0
@@ -335,12 +409,14 @@ export function Finanzas() {
     for (const operation of operations) {
       if (operation.type === 'receivable') continue
       let direction: HistoryDirection
+      const manualIncome = operation.type === 'adjustment' && Boolean(operation.toAccountId) && !operation.fromAccountId
       if (operation.type === 'transfer') direction = 'transfer'
+      else if (manualIncome) direction = 'in'
       else if (['receivable_collection', 'loan', 'tip'].includes(operation.type)) direction = 'in'
       else direction = 'out'
       entries.push({
         id: `operation-${operation.id}`, date: operation.operationDate, direction,
-        category: direction === 'transfer' ? 'Traspaso interno' : OP_META[operation.type]?.label ?? 'Movimiento administrativo',
+        category: direction === 'transfer' ? 'Traspaso interno' : manualIncome ? 'Ingreso manual' : OP_META[operation.type]?.label ?? 'Movimiento administrativo',
         concept: operation.concept,
         detail: [operation.fromAccount, operation.toAccount].filter(Boolean).join(' → ') || operation.counterparty || (operation.affectsProfit ? 'Afecta el resultado' : 'Movimiento de cuenta'),
         account: operation.fromAccount || operation.toAccount || 'Cuenta sin asignar',
@@ -707,8 +783,15 @@ export function Finanzas() {
       </div>
 
       <div className="fin-card fin-accounts-card management-workspace-panel">
-        <h2><span className="fin-accounts-title-desktop">Saldos actuales por cuenta</span><span className="fin-accounts-title-mobile">Saldos por cuenta</span></h2>
-        <p className="sub"><span className="fin-accounts-sub-desktop">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</span><span className="fin-accounts-sub-mobile">Saldo disponible y movimientos por cuenta.</span></p>
+        <div className="fin-accounts-toolbar">
+          <div><h2><span className="fin-accounts-title-desktop">Saldos actuales por cuenta</span><span className="fin-accounts-title-mobile">Saldos por cuenta</span></h2>
+            <p className="sub"><span className="fin-accounts-sub-desktop">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</span><span className="fin-accounts-sub-mobile">Saldo disponible y movimientos por cuenta.</span></p>
+          </div>
+          <div className="fin-manual-movement-actions">
+            <button type="button" className="fin-manual-movement-btn income" onClick={() => openManualFinance('income')}><TrendingUp size={15}/> Registrar ingreso</button>
+            <button type="button" className="fin-manual-movement-btn expense" onClick={() => openManualFinance('expense')}><TrendingDown size={15}/> Registrar gasto</button>
+          </div>
+        </div>
         {accounts.length === 0 ? (
           <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>
         ) : (
@@ -723,9 +806,11 @@ export function Finanzas() {
                     <div className="fin-personal-account-list">
                       {personalAccounts.map(account => (
                         <div className="fin-personal-account-row" key={account.id}>
-                          <span><strong>{account.name}</strong><small>{account.isActive ? `${account.movementCount} consumo${account.movementCount === 1 ? '' : 's'}` : 'Inactiva · historial conservado'}</small></span>
-                          <b>{formatUsd(account.totalConsumption)}</b>
-                          {account.isActive && <button type="button" aria-label={`Quitar ${account.name}`} title="Quitar cuenta" onClick={() => void removePersonalAccount(account)}><X size={14}/></button>}
+                          <button type="button" className="fin-personal-account-open" onClick={() => { setPersonalConsumptionPage(1); setSelectedPersonalAccount(account) }} aria-label={`Ver consumos de ${account.name}`}>
+                            <span><strong>{account.name}</strong><small>{account.isActive ? `${account.movementCount} consumo${account.movementCount === 1 ? '' : 's'}` : 'Inactiva · historial conservado'}</small></span>
+                            <b>{formatUsd(account.totalConsumption)}</b>
+                          </button>
+                          {account.isActive && <button type="button" className="fin-personal-account-remove" aria-label={`Quitar ${account.name}`} title="Quitar cuenta" onClick={() => void removePersonalAccount(account)}><X size={14}/></button>}
                         </div>
                       ))}
                       {personalAccounts.length === 0 && <p className="fin-account-empty">No hay cuentas activas.</p>}
@@ -851,7 +936,10 @@ export function Finanzas() {
         {opsError && <p className="fin-dialog-error" role="alert" style={{ margin: '10px 0 0' }}><CircleAlert size={16}/>{opsError}</p>}
         <div className="fin-ops">
           {periodOperations.slice(0, 12).map((op) => {
-            const meta = OP_META[op.type] ?? OP_META.adjustment
+            const manualIncome = op.type === 'adjustment' && Boolean(op.toAccountId) && !op.fromAccountId
+            const meta = manualIncome
+              ? { label: 'Ingreso manual', icon: <TrendingUp size={15}/>, color: '#22c55e' }
+              : OP_META[op.type] ?? OP_META.adjustment
             return (
             <div className="fin-op" key={op.id}>
               <span className="fin-op-ic" style={{ background: `${meta.color}22`, color: meta.color }}>{meta.icon}</span>
@@ -956,6 +1044,34 @@ export function Finanzas() {
             </tbody></table></div>
           </div>
           <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeAccount()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+        </section></div>, document.body)
+      })()}
+      {selectedPersonalAccount && (() => {
+        const rows = orders.flatMap(order => {
+          const payments = order.payments.filter(payment => payment.method === 'personal_account' && payment.personalAccountId === selectedPersonalAccount.id)
+          if (payments.length === 0) return []
+          return [{ order, amount: payments.reduce((sum, payment) => sum + payment.amount, 0) }]
+        }).sort((a, b) => new Date(b.order.createdAt).getTime() - new Date(a.order.createdAt).getTime())
+        const pageSize = 10
+        const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
+        const page = Math.min(personalConsumptionPage, pageCount)
+        const pageRows = rows.slice((page - 1) * pageSize, page * pageSize)
+        const accountTotal = rows.reduce((sum, row) => sum + row.amount, 0)
+        return createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => setSelectedPersonalAccount(null)}><section className="modal-card fin-dialog fin-personal-consumption-modal" role="dialog" aria-modal="true" aria-labelledby="fin-personal-consumption-title" onClick={event => event.stopPropagation()}>
+          <header className="fin-dialog-header">
+            <span className="fin-dialog-icon"><Users size={20}/></span>
+            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Consumo acumulado · no entra a caja</span><h2 id="fin-personal-consumption-title">{selectedPersonalAccount.name}</h2><p>{rows.length} comanda{rows.length === 1 ? '' : 's'} · Total {formatUsd(accountTotal)}</p></div>
+            <button type="button" className="fin-dialog-close" onClick={() => setSelectedPersonalAccount(null)} aria-label="Cerrar ventana"><X size={18}/></button>
+          </header>
+          <div className="fin-dialog-body fin-personal-consumption-body">
+            {pageRows.length === 0 ? <EmptyState compact title="Sin consumos registrados" description="Las comandas cargadas a esta cuenta aparecerán aquí." /> : <div className="fin-personal-consumption-list">{pageRows.map(({ order, amount }) => <article className="fin-personal-consumption-order" key={order.id}>
+              <div className="fin-personal-consumption-order-head"><div><strong>Comanda #{String(order.orderNumber).padStart(6, '0')}</strong><small>{new Date(order.createdAt).toLocaleString('es-VE', { dateStyle: 'medium', timeStyle: 'short' })}</small></div><b>{formatUsd(amount)}</b></div>
+              <p>{order.customerName || 'Cliente sin nombre'}{order.orderType ? ` · ${order.orderType}` : ''}</p>
+              <small className="fin-personal-consumption-items">{order.items.map(item => `${item.quantity} × ${item.productName}`).join(' · ') || 'Sin detalle de productos'}</small>
+            </article>)}</div>}
+            {rows.length > pageSize && <div className="fin-history-pagination fin-personal-consumption-pagination"><span>Mostrando {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} de {rows.length}</span><div><button type="button" onClick={() => setPersonalConsumptionPage(Math.max(1, page - 1))} disabled={page <= 1}><ChevronLeft size={15}/> Anterior</button><strong>Página {page} de {pageCount}</strong><button type="button" onClick={() => setPersonalConsumptionPage(Math.min(pageCount, page + 1))} disabled={page >= pageCount}>Siguiente <ChevronRight size={15}/></button></div></div>}
+          </div>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedPersonalAccount(null)}>Cerrar</button></footer>
         </section></div>, document.body)
       })()}
       {selectedLedgerCurrency && (() => {
@@ -1075,6 +1191,24 @@ export function Finanzas() {
           {transferError && <p className="fin-dialog-error" role="alert"><CircleAlert size={16}/>{transferError}</p>}
         </div>
         <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={transferSaving} onClick={() => closeTransfer()}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={transferSaving}>{transferSaving ? 'Guardando…' : <><Check size={16}/> {isConvertMode ? 'Guardar conversión' : 'Guardar transferencia'}</>}</button></footer>
+      </form></div>, document.body)}
+      {manualFinanceMode && createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => { if (!manualFinanceSaving) setManualFinanceMode(null) }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-manual-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveManualFinance() }}>
+        <header className="fin-dialog-header">
+          <span className="fin-dialog-icon">{manualFinanceMode === 'income' ? <TrendingUp size={20}/> : <TrendingDown size={20}/>}</span>
+          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento de caja</span><h2 id="fin-manual-title">Registrar {manualFinanceMode === 'income' ? 'ingreso' : 'gasto'}</h2><p>{manualFinanceMode === 'income' ? 'Registra capital u otro dinero que entró a una cuenta.' : 'Registra un egreso y descuéntalo de la cuenta de origen.'}</p></div>
+          <button type="button" className="fin-dialog-close" disabled={manualFinanceSaving} onClick={() => setManualFinanceMode(null)} aria-label="Cerrar ventana"><X size={18}/></button>
+        </header>
+        <div className="fin-dialog-body fin-transfer-body">
+          {manualFinanceMode === 'income' && <label className="fin-field"><span>Tipo de ingreso <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" value={manualFinanceForm.kind} onChange={event => setManualFinanceForm({ ...manualFinanceForm, kind: event.target.value })}><option value="capital">Inyección de capital</option><option value="other">Otro ingreso</option></StyledSelect></label>}
+          <label className="fin-field"><span>Motivo o concepto <b>*</b></span><input className="fin-field-control" required autoFocus maxLength={120} placeholder={manualFinanceMode === 'income' ? 'Ej. Aporte de la dueña' : 'Ej. Compra de artículos de limpieza'} value={manualFinanceForm.concept} onChange={event => setManualFinanceForm({ ...manualFinanceForm, concept: event.target.value })}/></label>
+          <label className="fin-field"><span>{manualFinanceMode === 'income' ? 'Cuenta donde entró el dinero' : 'Cuenta de donde salió el dinero'} <b>*</b></span><StyledSelect className="modal-select-dark fin-field-select" required value={manualFinanceForm.accountId} onChange={event => setManualFinanceForm({ ...manualFinanceForm, accountId: event.target.value })}><option value="">Selecciona una cuenta</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name} · {account.currency}</option>)}</StyledSelect></label>
+          <label className="fin-field"><span>Monto total <b>*</b>{manualFinanceForm.accountId && <span className="fin-field-cur"> ({accounts.find(account => account.id === manualFinanceForm.accountId)?.currency})</span>}</span><input className="fin-field-control" required type="text" inputMode="decimal" placeholder="0,00" value={manualFinanceForm.amount} onChange={event => setManualFinanceForm({ ...manualFinanceForm, amount: event.target.value })}/>
+            {manualFinanceForm.accountId && accounts.find(account => account.id === manualFinanceForm.accountId)?.currency === 'VES' && <small className="fin-field-hint">Se guardará con la tasa BCV de hoy: <b>{bcvRate || '—'} Bs/$</b></small>}
+          </label>
+          <label className="fin-field"><span>Observación <small>(opcional)</small></span><textarea className="fin-field-control" rows={3} maxLength={500} placeholder="Detalle adicional" value={manualFinanceForm.notes} onChange={event => setManualFinanceForm({ ...manualFinanceForm, notes: event.target.value })}/></label>
+          {manualFinanceError && <p className="fin-dialog-error" role="alert"><CircleAlert size={16}/>{manualFinanceError}</p>}
+        </div>
+        <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" disabled={manualFinanceSaving} onClick={() => setManualFinanceMode(null)}>Cancelar</button><button type="submit" className="fin-dialog-primary" disabled={manualFinanceSaving || accounts.length === 0}>{manualFinanceSaving ? 'Guardando…' : <><Check size={16}/> Registrar {manualFinanceMode === 'income' ? 'ingreso' : 'gasto'}</>}</button></footer>
       </form></div>, document.body)}
     </div>
   )
