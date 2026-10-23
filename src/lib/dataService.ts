@@ -3877,6 +3877,8 @@ export async function createProductionBatch(params: {
   quantityProduced: number
   unitId: string
   wasteQuantity: number
+  sourceStockLocation: 'warehouse' | 'operational'
+  outputIngredientId: string | null
   notes?: string
   items: Array<{ ingredientId: string; quantityUsed: number; unitId: string }>
   createdBy: string
@@ -3890,6 +3892,8 @@ export async function createProductionBatch(params: {
       quantity_produced: params.quantityProduced,
       unit_produced_id: params.unitId,
       waste_quantity: params.wasteQuantity,
+      source_stock_location: params.sourceStockLocation,
+      output_ingredient_id: params.outputIngredientId,
       notes: params.notes ?? null,
       created_by: params.createdBy,
     })

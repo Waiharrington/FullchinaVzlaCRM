@@ -295,6 +295,16 @@ export function ProduccionReal() {
 
       const operatorObj = employees.find(e => e.id === operatorId)
       const opName = operatorObj ? operatorObj.fullName : (user?.email ? user.email.split('@')[0] : 'Operador')
+      const outputName = proteinType === 'cerdo' ? 'chuleta' : proteinType === 'pollo' ? 'pollo' : null
+      const outputIngredient = outputName
+        ? operationalIngredients.find(i =>
+            normalizeForSearch(i.name) === outputName && normalizeForSearch(i.unitSymbol) === 'und'
+          )
+        : undefined
+      if (outputName && !outputIngredient) {
+        setError(`No se encontró el ingrediente de salida "${proteinType === 'cerdo' ? 'Chuleta' : 'Pollo'}" con unidad und en el inventario del Food Truck.`)
+        return
+      }
 
       const fullNotes = [
         batchNotes.trim(),
@@ -308,6 +318,8 @@ export function ProduccionReal() {
         quantityProduced: prodQty,
         unitId: unitProducedId,
         wasteQuantity: parseFloat(wasteQuantity) || 0,
+        sourceStockLocation: originLocation,
+        outputIngredientId: outputIngredient?.id ?? null,
         notes: fullNotes,
         items: [{
           ingredientId: rawIngredientId,
@@ -804,6 +816,12 @@ export function ProduccionReal() {
                   <span style={{ color: '#f87171', marginLeft: '6px' }}>(¡Atención: Stock insuficiente!)</span>
                 )}
               </div>
+              {(proteinType === 'pollo' || proteinType === 'cerdo') && (
+                <div className="prod-stock-available-badge">
+                  <Package size={13} />
+                  <span>Las porciones producidas se sumarán al inventario del Food Truck como <strong>{proteinType === 'cerdo' ? 'Chuleta' : 'Pollo'}</strong>.</span>
+                </div>
+              )}
             </div>
 
             {/* Paso 3: Calculadora de Porcionamiento y Merma */}
