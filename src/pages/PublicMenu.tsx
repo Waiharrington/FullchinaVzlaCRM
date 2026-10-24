@@ -1174,7 +1174,11 @@ export function PublicMenu() {
   const startInstagramReelWithSound = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
+    // En escritorio el CTA «Toca para ver» es hermano del frame del reel,
+    // no descendiente suyo. Búscalo desde el stage antes de intentar play().
+    const stage = event.currentTarget.closest<HTMLElement>('.public-instagram-desktop-stage')
     const reel = event.currentTarget.closest<HTMLElement>('.public-instagram-desktop-reel')
+      ?? stage?.querySelector<HTMLElement>('.public-instagram-desktop-reel')
     const video = reel?.querySelector('video')
     if (!video || video.dataset.active !== 'true') return
 
