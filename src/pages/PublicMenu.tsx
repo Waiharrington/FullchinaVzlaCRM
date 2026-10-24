@@ -127,6 +127,69 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orien
 // Se mantienen decodificados mientras el cliente cambia entre pestañas.
 const profileBackgroundImages = new Map<string, HTMLImageElement>()
 const contactBackgroundImageWarmups = new Map<string, HTMLImageElement>()
+const publicMenuImageWarmups = new Map<string, HTMLImageElement>()
+
+function warmPublicMenuImages(products: Product[]) {
+  const productSources = products
+    .map(product => optimizedProductImage(product.imageUrl))
+    .filter((source): source is string => Boolean(source))
+  const previewSources = productSources
+    .map(source => previewImageSource(source))
+    .filter((source): source is string => Boolean(source))
+  const desktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+  const contactSource = desktop
+    ? '/optimized/fondos/contacto-banner.webp'
+    : window.matchMedia('(max-width: 767px)').matches
+      ? '/optimized/fondos/contacto-banner-mobile-chatgpt.webp'
+      : '/optimized/fondos/contacto-banner-mobile.webp'
+  const profileSuffix = desktop ? 'desktop' : 'phone'
+  const sources = [...new Set([
+    contactSource,
+    ...Object.values(CATEGORY_ICONS),
+    ...previewSources,
+    '/optimized/menu-product-placeholder.webp',
+    ...INSTAGRAM_REELS.map(reel => reel.poster),
+    `/optimized/customer-profile/login-${profileSuffix}.webp`,
+    `/optimized/customer-profile/register-${profileSuffix}.webp`,
+    '/optimized/customer-profile/profile-bg.webp',
+    '/optimized/customer-profile/profile-desktop-quiet.webp',
+    '/optimized/customer-profile/loyalty-bg.webp',
+    '/optimized/customer-profile/welcome-card-bg.webp',
+  ])]
+
+  // Las miniaturas caben en una descarga ligera y evitan tarjetas negras al
+  // cambiar de pestaña o recorrer categorías. La versión completa se sigue
+  // actualizando cerca de pantalla para no competir con el primer render.
+  let nextIndex = 0
+  let active = 0
+  const maxConcurrent = 3
+  const loadNext = () => {
+    while (active < maxConcurrent && nextIndex < sources.length) {
+      const source = sources[nextIndex++]
+      if (publicMenuImageWarmups.has(source)) continue
+      const image = new Image()
+      image.decoding = 'async'
+      image.fetchPriority = source === contactSource ? 'high' : 'low'
+      publicMenuImageWarmups.set(source, image)
+      active += 1
+      let finished = false
+      const finish = () => {
+        if (finished) return
+        finished = true
+        active -= 1
+        loadNext()
+      }
+      image.onload = () => { void image.decode().catch(() => undefined).finally(finish) }
+      image.onerror = () => { publicMenuImageWarmups.delete(source); finish() }
+      image.src = source
+      if (image.complete) {
+        if (image.naturalWidth > 0) void image.decode().catch(() => undefined).finally(finish)
+        else { publicMenuImageWarmups.delete(source); finish() }
+      }
+    }
+  }
+  loadNext()
+}
 
 function warmContactBackgroundImage() {
   // El hero de Contacto es fondo CSS y no se solicita mientras esa pestaña
@@ -822,6 +885,7 @@ export function PublicMenu() {
         const resolved = prepareCatalog(catalog)
         if (!active) return resolved
         saveCatalogCache(resolved, initialCatalog?.categories ?? [])
+        window.setTimeout(() => warmPublicMenuImages(resolved), 250)
         setExtrasProducts(resolved.filter(product => product.categories.includes('extras')))
         setProducts(resolved.filter(p => !p.categories.includes('extras')))
         setError('')
@@ -874,8 +938,15 @@ export function PublicMenu() {
 
   useEffect(() => {
     const contactImageTimer = window.setTimeout(warmContactBackgroundImage, 250)
+    if (initialCatalog) {
+      const menuImageTimer = window.setTimeout(() => warmPublicMenuImages(initialCatalog.products), 250)
+      return () => {
+        window.clearTimeout(contactImageTimer)
+        window.clearTimeout(menuImageTimer)
+      }
+    }
     return () => window.clearTimeout(contactImageTimer)
-  }, [])
+  }, [initialCatalog])
 
   // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
   // descargues zonas y coordenadas en cada visita al menú: en conexiones
