@@ -565,8 +565,13 @@ export function PublicMenu() {
   })
   const [currentTab, setCurrentTab] = useState<DesktopTab>(readDesktopTab)
   const [hasVisitedProfile, setHasVisitedProfile] = useState(() => readDesktopTab() === 'perfil')
+  const [hasLeftMobileMenu, setHasLeftMobileMenu] = useState(() => {
+    const savedTab = readDesktopTab()
+    return savedTab === 'perfil' || savedTab === 'contacto'
+  })
   const openCustomerProfile = () => {
     warmProfileBackgroundImages(true)
+    setHasLeftMobileMenu(true)
     setHasVisitedProfile(true)
     setCurrentTab('perfil')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -2407,7 +2412,7 @@ export function PublicMenu() {
       <div className="public-mobile-view mobile-only">
 
         {/* MENU VIEW */}
-        <div className="public-mobile-tab-content" key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
+        <div className={`public-mobile-tab-content${hasLeftMobileMenu ? ' is-retained' : ''}`} key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
         {/* 2. Hero Status */}
         <div className="public-hero-header">
           <div className="public-hero-title-row">
@@ -2739,7 +2744,7 @@ export function PublicMenu() {
             <Utensils size={18} />
             <span>Menú</span>
           </button>
-          <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onClick={() => setCurrentTab('contacto')}>
+          <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onClick={() => { setHasLeftMobileMenu(true); setCurrentTab('contacto') }}>
             <Store size={18} />
             <span>Contacto</span>
           </button>
