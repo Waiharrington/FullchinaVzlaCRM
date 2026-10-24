@@ -73,17 +73,9 @@ function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) 
   const appUrl = isIOS
     ? 'instagram://user?username=fullchinavzla'
     : `intent://www.instagram.com/_u/fullchinavzla/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=${encodeURIComponent(INSTAGRAM_PROFILE_URL)};end`
-  const handleVisibilityChange = () => {
-    if (document.visibilityState !== 'hidden') return
-    window.clearTimeout(fallbackTimer)
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }
-
-  const fallbackTimer = window.setTimeout(() => {
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
-    if (document.visibilityState === 'visible') window.location.assign(INSTAGRAM_PROFILE_URL)
-  }, 1200)
-  document.addEventListener('visibilitychange', handleVisibilityChange)
+  // No agregar un fallback temporizado aquí: iOS puede dejar Safari como
+  // visible aunque ya haya abierto Instagram, y eso sacaría al cliente de la app.
+  // Android ya lleva su fallback web dentro del intent si Instagram no existe.
   window.location.assign(appUrl)
 }
 
