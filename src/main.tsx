@@ -20,13 +20,33 @@ window.addEventListener('vite:preloadError', () => {
 
 // Las actualizaciones se descargan en segundo plano, pero no toman control ni
 // recargan el sitio hasta que la persona elija aplicarlas.
+let appServiceWorkerRegistration: ServiceWorkerRegistration | undefined
+
+const checkForAppUpdate = () => {
+  if (!navigator.onLine || document.visibilityState !== 'visible') return
+  void appServiceWorkerRegistration?.update().catch(() => {
+    // La próxima revisión (al volver a la pestaña, conectarse o por intervalo)
+    // volverá a intentarlo sin interrumpir el uso de la app.
+  })
+}
+
 const updateServiceWorker = registerSW({
   immediate: true,
+  onRegisteredSW(_swUrl, registration) {
+    appServiceWorkerRegistration = registration
+  },
   onNeedRefresh() {
     ;(window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable = true
     window.dispatchEvent(new Event('fullchina:pwa-update-available'))
   },
 })
+
+// Revisa actualizaciones cuando el usuario vuelve a la app, recupera internet
+// o mantiene una pestaña abierta durante mucho tiempo (incluye WebView Android).
+window.addEventListener('online', checkForAppUpdate)
+window.addEventListener('pageshow', checkForAppUpdate)
+document.addEventListener('visibilitychange', checkForAppUpdate)
+window.setInterval(checkForAppUpdate, 30 * 60 * 1000)
 
 window.addEventListener('fullchina:pwa-apply-update', () => {
   void updateServiceWorker(true)
