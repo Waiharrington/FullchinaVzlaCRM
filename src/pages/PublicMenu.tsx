@@ -60,6 +60,32 @@ const INSTAGRAM_REELS = [
   { src: '/videos/instagram/reel-5.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-5.webp', href: 'https://www.instagram.com/p/DYnlFGtNg93/?hl=es' },
   { src: '/videos/instagram/reel-6.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-6.webp', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
 ] as const
+const INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
+
+function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) {
+  const userAgent = navigator.userAgent
+  const isIOS = /iPad|iPhone|iPod/.test(userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const isAndroid = /Android/i.test(userAgent)
+  if (!isIOS && !isAndroid) return
+
+  event.preventDefault()
+  const appUrl = isIOS
+    ? 'instagram://user?username=fullchinavzla'
+    : `intent://www.instagram.com/_u/fullchinavzla/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=${encodeURIComponent(INSTAGRAM_PROFILE_URL)};end`
+  const handleVisibilityChange = () => {
+    if (document.visibilityState !== 'hidden') return
+    window.clearTimeout(fallbackTimer)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+
+  const fallbackTimer = window.setTimeout(() => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    if (document.visibilityState === 'visible') window.location.assign(INSTAGRAM_PROFILE_URL)
+  }, 1200)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.location.assign(appUrl)
+}
 
 type InstagramNetworkInfo = {
   type?: string
@@ -2801,9 +2827,8 @@ export function PublicMenu() {
                   ))}
                 </div>
                 <a
-                  href="https://www.instagram.com/fullchinavzla/?hl=es"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={INSTAGRAM_PROFILE_URL}
+                  onClick={handleInstagramProfileClick}
                   className="public-contact-footer-cta is-instagram"
                 >
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -3347,9 +3372,8 @@ export function PublicMenu() {
                     ))}
                   </div>
                   <a
-                    href="https://www.instagram.com/fullchinavzla/?hl=es"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={INSTAGRAM_PROFILE_URL}
+                    onClick={handleInstagramProfileClick}
                     className="public-contact-footer-cta is-instagram"
                   >
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
