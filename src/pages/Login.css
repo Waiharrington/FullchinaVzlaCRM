@@ -1485,6 +1485,12 @@ body:has(.login-page) {
     transition: none !important;
   }
 
+  /* Mostrar la primera foto sin fundido para evitar el flash negro inicial;
+     después, habilitar el fundido entre los cambios automáticos del carrusel. */
+  .desktop-carousel-img[data-transition-ready='true'] {
+    transition: opacity 1.5s ease-in-out !important;
+  }
+
   /* Override login-page background to allow desktop layers */
   .login-page {
     background-image: none !important;

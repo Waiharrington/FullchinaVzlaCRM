@@ -9,7 +9,8 @@ const CAROUSEL_IMAGES = [
   '/optimized/login-carousel/slide2.webp',
   '/optimized/login-carousel/slide3.webp',
   '/optimized/login-carousel/slide4.webp',
-  '/optimized/login-carousel/slide5.webp'
+  '/optimized/login-carousel/slide5.webp',
+  '/optimized/login-carousel/slide8.webp'
 ];
 const CAROUSEL_INTERVAL_MS = 2000
 
@@ -33,16 +34,22 @@ const CAROUSEL_SETTINGS = [
     "maskRight": 56
   },
   {
-    "posY": 49,
-    "posX": 48,
-    "zoom": 3.06,
-    "maskRight": 86
+    "posY": 50,
+    "posX": 50,
+    "zoom": 1,
+    "maskRight": 100
   },
   {
     "posY": 0,
     "posX": 41,
     "zoom": 2.62,
     "maskRight": 56
+  },
+  {
+    "posY": 50,
+    "posX": 50,
+    "zoom": 1,
+    "maskRight": 100
   }
 ];
 
@@ -64,13 +71,18 @@ const MOBILE_CAROUSEL_SETTINGS = [
   },
   {
     "posX": 50,
-    "posY": 45,
-    "zoom": 1
+    "posY": 88,
+    "zoom": 1.18
   },
   {
     "posX": 50,
     "posY": 89,
     "zoom": 1
+  },
+  {
+    "posX": 50,
+    "posY": 78,
+    "zoom": 1.04
   }
 ];
 
@@ -173,7 +185,8 @@ export function Login({ authInitializing = false }: { authInitializing?: boolean
             className={`carousel-img ${index === currentSlide ? 'active' : ''}`}
             style={isMobileViewport ? {
               objectPosition: `${mobileSettings[index]?.posX ?? 50}% ${mobileSettings[index]?.posY ?? 50}%`,
-              transform: `scale(${mobileSettings[index]?.zoom ?? 1})`
+              transform: `scale(${mobileSettings[index]?.zoom ?? 1})`,
+              transformOrigin: index === 3 ? 'center bottom' : 'center center'
             } : {
               objectPosition: 'center'
             }}
@@ -197,6 +210,7 @@ export function Login({ authInitializing = false }: { authInitializing?: boolean
               fetchPriority={index === 0 ? 'high' : 'low'}
               decoding="async"
               className={`desktop-carousel-img ${index === currentSlide ? 'active' : ''}`}
+              data-transition-ready={currentSlide > 0 ? 'true' : undefined}
               style={{
                 objectPosition: 'center',
                 transform: `translate(${(carouselSettings[index]?.posX ?? 50) - 50}%, ${(carouselSettings[index]?.posY ?? 50) - 50}%) scale(${carouselSettings[index]?.zoom ?? 1})`,
