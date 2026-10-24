@@ -37,7 +37,7 @@ const CAROUSEL_SETTINGS = [
     "posY": 50,
     "posX": 50,
     "zoom": 1,
-    "maskRight": 100
+    "maskRight": 86
   },
   {
     "posY": 0,
@@ -49,7 +49,7 @@ const CAROUSEL_SETTINGS = [
     "posY": 50,
     "posX": 50,
     "zoom": 1,
-    "maskRight": 100
+    "maskRight": 86
   }
 ];
 
