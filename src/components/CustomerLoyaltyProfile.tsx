@@ -20,6 +20,32 @@ const pageSize = 5
 const AUTH_MODE_KEY = 'fullchina_customer_auth_preferred_mode'
 const victoryDishImages = ['/optimized/productos/M1.webp', '/optimized/productos/M2.webp', '/optimized/productos/M3.webp', '/optimized/productos/M13.webp']
 const stampOrdinals = ['primer', 'segundo', 'tercer', 'cuarto', 'quinto', 'sexto', 'séptimo', 'octavo', 'noveno', 'décimo']
+const authBackgroundLoads = new Map<string, Promise<void>>()
+
+function ensureAuthBackground(mode: 'login' | 'register') {
+  const desktop = window.matchMedia('(min-width: 1280px), (min-width: 900px) and (orientation: landscape)').matches
+  const source = `/optimized/customer-profile/${mode}-${desktop ? 'desktop' : 'phone'}.webp`
+  const cached = authBackgroundLoads.get(source)
+  if (cached) return cached
+
+  const image = new Image()
+  image.decoding = 'async'
+  image.fetchPriority = 'high'
+  const loaded = new Promise<void>((resolve, reject) => {
+    const finish = () => {
+      const decoded = image.decode?.()
+      if (decoded) void decoded.then(() => resolve(), () => resolve())
+      else resolve()
+    }
+    image.onload = finish
+    image.onerror = () => reject(new Error(`No se pudo cargar ${source}`))
+    image.src = source
+    if (image.complete && image.naturalWidth > 0) finish()
+  })
+  authBackgroundLoads.set(source, loaded)
+  void loaded.catch(() => authBackgroundLoads.delete(source))
+  return loaded
+}
 
 function getStampCelebrationTitle(stamp: number) {
   const ordinal = stampOrdinals[stamp - 1]
@@ -209,6 +235,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [mode, setMode] = useState<'login' | 'register'>(getInitialAuthMode)
+  const [switchingMode, setSwitchingMode] = useState(false)
   const [hasSwitchedMode, setHasSwitchedMode] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [page, setPage] = useState(0)
@@ -397,12 +424,19 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
     return () => window.clearTimeout(timer)
   }, [celebration, closeCelebration])
 
-  const chooseMode = (nextMode: 'login' | 'register') => {
-    if (nextMode === mode) return
+  const chooseMode = async (nextMode: 'login' | 'register') => {
+    if (nextMode === mode || switchingMode) return
+    setSwitchingMode(true)
+    try {
+      await ensureAuthBackground(nextMode)
+    } catch {
+      // Si la imagen falla, cambiamos igual; el fondo CSS conserva su fallback oscuro.
+    }
     setMode(nextMode)
     setError('')
     setShowPassword(false)
     setHasSwitchedMode(true)
+    setSwitchingMode(false)
     try { window.localStorage.setItem(AUTH_MODE_KEY, nextMode) } catch { /* el formulario sigue funcionando sin almacenamiento */ }
   }
 
@@ -604,7 +638,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
       </div>
       <div className="customer-profile-form-wrap">
         <header className="customer-profile-desktop-card-header"><img src="/optimized/root/logo.webp" alt="Full China" /><h2>{mode === 'login' ? 'Bienvenido de nuevo' : 'Únete a Full China'}</h2><p>{mode === 'login' ? 'Ingresa a tu cuenta de Full China.' : 'Crea tu cuenta y empieza a sumar beneficios.'}</p></header>
-        <div className="customer-profile-toggle"><button className={mode === 'login' ? 'active' : ''} onClick={() => chooseMode('login')}>Iniciar sesión</button><button className={mode === 'register' ? 'active' : ''} onClick={() => chooseMode('register')}>Crear cuenta</button></div>
+        <div className="customer-profile-toggle" aria-busy={switchingMode}><button type="button" disabled={switchingMode} className={mode === 'login' ? 'active' : ''} onClick={() => { void chooseMode('login') }}>{switchingMode && mode === 'register' ? 'Cargando…' : 'Iniciar sesión'}</button><button type="button" disabled={switchingMode} className={mode === 'register' ? 'active' : ''} onClick={() => { void chooseMode('register') }}>{switchingMode && mode === 'login' ? 'Cargando…' : 'Crear cuenta'}</button></div>
         <form className="customer-profile-form" onSubmit={submit}>
           {mode === 'register' ? <>
             <div className="customer-profile-two customer-profile-desktop-name-fields"><label>Nombre<input required autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} /></label><label>Apellido<input required autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} /></label></div>

@@ -8161,6 +8161,7 @@ button.mobile-only {
 .public-mobile-tab-content {
   animation: tabSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+.public-mobile-tab-content[hidden] { display: none !important; }
 .public-mobile-profile-tab-content {
   min-height: calc(100dvh - 72px - env(safe-area-inset-bottom, 0px));
   padding-bottom: 0;

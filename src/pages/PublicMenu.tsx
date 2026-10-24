@@ -128,8 +128,8 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orien
 // primer render evita que aparezcan progresivamente delante del cliente.
 const profileBackgroundImages = new Map<string, HTMLImageElement>()
 
-function warmProfileBackgroundImages() {
-  const desktop = window.matchMedia('(min-width: 680px) and (orientation: landscape), (min-width: 1280px)').matches
+function warmProfileBackgroundImages(prioritizeAuth = false) {
+  const desktop = window.matchMedia('(min-width: 1280px), (min-width: 900px) and (orientation: landscape)').matches
   const suffix = desktop ? 'desktop' : 'phone'
   const sources = [
     `/optimized/customer-profile/login-${suffix}.webp`,
@@ -141,9 +141,14 @@ function warmProfileBackgroundImages() {
   ]
 
   sources.forEach(source => {
-    if (profileBackgroundImages.has(source)) return
+    const isAuthBackground = source.includes('/login-') || source.includes('/register-')
+    const existing = profileBackgroundImages.get(source)
+    if (existing) {
+      if (prioritizeAuth && isAuthBackground) existing.fetchPriority = 'high'
+      return
+    }
     const image = new Image()
-    image.fetchPriority = 'low'
+    image.fetchPriority = prioritizeAuth && isAuthBackground ? 'high' : 'low'
     profileBackgroundImages.set(source, image)
     image.src = source
     void image.decode().catch(() => {
@@ -559,6 +564,13 @@ export function PublicMenu() {
     try { return JSON.parse(localStorage.getItem(LAST_ORDER_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
   const [currentTab, setCurrentTab] = useState<DesktopTab>(readDesktopTab)
+  const [hasVisitedProfile, setHasVisitedProfile] = useState(() => readDesktopTab() === 'perfil')
+  const openCustomerProfile = () => {
+    warmProfileBackgroundImages(true)
+    setHasVisitedProfile(true)
+    setCurrentTab('perfil')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const autofillCustomerOrderDetails = useCallback(async () => {
     if (customerDetailsTouched.current) return
@@ -815,10 +827,10 @@ export function PublicMenu() {
   }, [loading])
 
   useEffect(() => {
-    if (loading || currentTab === 'perfil') return
+    if (loading) return
     const timer = window.setTimeout(warmProfileBackgroundImages, 400)
     return () => window.clearTimeout(timer)
-  }, [loading, currentTab])
+  }, [loading])
 
   // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
   // descargues zonas y coordenadas en cada visita al menú: en conexiones
@@ -2365,7 +2377,7 @@ export function PublicMenu() {
                 onClick={() => { setCurrentTab('contacto'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                 Contacto
               </button>
-              <button type="button" className={`public-nav-tab-btn ${currentTab === 'perfil' ? 'active' : ''}`} onClick={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+              <button type="button" className={`public-nav-tab-btn ${currentTab === 'perfil' ? 'active' : ''}`} onClick={openCustomerProfile}>
                 Mi perfil
               </button>
             </nav>
@@ -2395,8 +2407,7 @@ export function PublicMenu() {
       <div className="public-mobile-view mobile-only">
 
         {/* MENU VIEW */}
-        {currentTab !== 'contacto' && currentTab !== 'perfil' && (
-          <div className="public-mobile-tab-content" key="menu">
+        <div className="public-mobile-tab-content" key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
         {/* 2. Hero Status */}
         <div className="public-hero-header">
           <div className="public-hero-title-row">
@@ -2474,7 +2485,7 @@ export function PublicMenu() {
           onMouseEnter={pauseRecommendedAutoplay}
           onMouseLeave={resumeRecommendedAutoplay}
         >
-          {isLoyaltyRecommended ? <CustomerLoyaltyProfile presentation="recommended" onJoin={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} /> : <>
+          {isLoyaltyRecommended ? <CustomerLoyaltyProfile presentation="recommended" onJoin={openCustomerProfile} /> : <>
             <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
               <small>RECOMENDADO <Flame size={12} /></small>
               <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
@@ -2559,7 +2570,6 @@ export function PublicMenu() {
           )}
         </section>
           </div>
-        )}
 
         {/* CONTACT VIEW */}
         {currentTab === 'contacto' && (
@@ -2587,7 +2597,7 @@ export function PublicMenu() {
             </section>
 
             <section className="public-contact-hub">
-              <CustomerLoyaltyProfile presentation="promotion" onJoin={() => setCurrentTab('perfil')} />
+              <CustomerLoyaltyProfile presentation="promotion" onJoin={openCustomerProfile} />
               <article className="public-contact-panel public-contact-talk">
                 <header className="public-order-ticket-head">
                   <span><Flame size={14} /> Pedido directo</span>
@@ -2721,7 +2731,7 @@ export function PublicMenu() {
           </div>
         )}
 
-        {currentTab === 'perfil' && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil"><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} /></div>}
+        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} /></div>}
 
         {/* Bottom Tab Bar */}
         <nav className="public-mobile-tab-bar">
@@ -2733,7 +2743,7 @@ export function PublicMenu() {
             <Store size={18} />
             <span>Contacto</span>
           </button>
-          <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onClick={() => setCurrentTab('perfil')}>
+          <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onClick={openCustomerProfile}>
             <UserRound size={18} />
             <span>Mi perfil</span>
           </button>
@@ -2861,7 +2871,7 @@ export function PublicMenu() {
                         {Array.from({ length: 10 }, (_, index) => <span key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></span>)}
                         <small>10 visitas · 1 premio</small>
                       </div>
-                      <button type="button" className="public-home-loyalty-cta" onClick={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>Únete al programa <ChevronRight size={17} /></button>
+                      <button type="button" className="public-home-loyalty-cta" onClick={openCustomerProfile}>Únete al programa <ChevronRight size={17} /></button>
                     </div>
                     <div className="public-home-loyalty-card-wrap" aria-hidden="true">
                       <div className="public-home-loyalty-card">
@@ -3141,7 +3151,7 @@ export function PublicMenu() {
               </section>
 
               <section className="public-contact-hub">
-                <CustomerLoyaltyProfile presentation="promotion" onJoin={() => { setCurrentTab('perfil'); window.scrollTo({ top: 0, behavior: 'smooth' }) }} />
+                <CustomerLoyaltyProfile presentation="promotion" onJoin={openCustomerProfile} />
                 <article className="public-contact-panel public-contact-talk">
                   <header className="public-order-ticket-head">
                     <span><Flame size={14} /> Pedido directo</span>
