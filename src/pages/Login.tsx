@@ -98,6 +98,7 @@ export function Login({ authInitializing = false }: { authInitializing?: boolean
   const [isPinMode, setIsPinMode] = useState(false)
   const [pin, setPin] = useState('')
   const [currentSlide, setCurrentSlide] = useState(0)
+  const [carouselTransitionReady, setCarouselTransitionReady] = useState(false)
   const carouselSettings = CAROUSEL_SETTINGS
   const mobileSettings = MOBILE_CAROUSEL_SETTINGS
   const [isTabletViewport, setIsTabletViewport] = useState(false)
@@ -117,6 +118,7 @@ export function Login({ authInitializing = false }: { authInitializing?: boolean
 
   useEffect(() => {
     const timer = setInterval(() => {
+      setCarouselTransitionReady(true)
       setCurrentSlide((prev) => (prev + 1) % CAROUSEL_IMAGES.length);
     }, CAROUSEL_INTERVAL_MS)
     return () => clearInterval(timer);
@@ -210,9 +212,10 @@ export function Login({ authInitializing = false }: { authInitializing?: boolean
               fetchPriority={index === 0 ? 'high' : 'low'}
               decoding="async"
               className={`desktop-carousel-img ${index === currentSlide ? 'active' : ''}`}
-              data-transition-ready={currentSlide > 0 ? 'true' : undefined}
+              data-transition-ready={carouselTransitionReady ? 'true' : undefined}
               style={{
-                objectPosition: 'center',
+                objectFit: index === 3 || index === 5 ? 'cover' : 'contain',
+                objectPosition: index === 3 ? 'center 76%' : index === 5 ? 'center 72%' : 'center',
                 transform: `translate(${(carouselSettings[index]?.posX ?? 50) - 50}%, ${(carouselSettings[index]?.posY ?? 50) - 50}%) scale(${carouselSettings[index]?.zoom ?? 1})`,
                 WebkitMaskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`,
                 maskImage: `linear-gradient(to right, black ${carouselSettings[index]?.maskRight ?? 100}%, transparent ${(carouselSettings[index]?.maskRight ?? 100) + 10}%)`
