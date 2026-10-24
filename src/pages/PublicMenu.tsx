@@ -127,6 +127,69 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orien
 // El perfil se monta al abrir su pestaña. Calentar estos fondos después del
 // primer render evita que aparezcan progresivamente delante del cliente.
 const profileBackgroundImages = new Map<string, HTMLImageElement>()
+const publicMenuImageWarmups = new Map<string, HTMLImageElement>()
+const CONTACT_BACKGROUND_IMAGES = [
+  '/optimized/fondos/contacto-banner-mobile-chatgpt.webp',
+  '/optimized/fondos/contacto-banner-mobile.webp',
+  '/optimized/fondos/contacto-banner.webp',
+]
+
+function warmPublicMenuImages(products: Product[]) {
+  // Los fondos de Contacto están declarados en CSS; al estar esa pestaña
+  // desmontada el navegador no los solicita hasta que el cliente la abre.
+  // Descárgalos primero junto con las imágenes del catálogo, sin depender de
+  // que las tarjetas con loading="lazy" estén dentro de una pestaña visible.
+  const catalogSources = products
+    .map(product => optimizedProductImage(product.imageUrl))
+    .filter((source): source is string => Boolean(source))
+  const sources = [...new Set([
+    ...CONTACT_BACKGROUND_IMAGES,
+    ...Object.values(CATEGORY_ICONS),
+    '/optimized/menu-product-placeholder.webp',
+    ...catalogSources,
+  ])]
+  let nextIndex = 0
+  let active = 0
+  const maxConcurrent = 3
+
+  const loadNext = () => {
+    while (active < maxConcurrent && nextIndex < sources.length) {
+      const source = sources[nextIndex++]
+      if (publicMenuImageWarmups.has(source)) continue
+
+      const image = new Image()
+      image.decoding = 'async'
+      image.fetchPriority = CONTACT_BACKGROUND_IMAGES.includes(source) ? 'high' : 'low'
+      publicMenuImageWarmups.set(source, image)
+      active += 1
+      let finished = false
+
+      const finish = () => {
+        if (finished) return
+        finished = true
+        active -= 1
+        loadNext()
+      }
+      image.onload = () => {
+        void image.decode().catch(() => undefined).finally(finish)
+      }
+      image.onerror = () => {
+        publicMenuImageWarmups.delete(source)
+        finish()
+      }
+      image.src = source
+      if (image.complete) {
+        if (image.naturalWidth > 0) void image.decode().catch(() => undefined).finally(finish)
+        else {
+          publicMenuImageWarmups.delete(source)
+          finish()
+        }
+      }
+    }
+  }
+
+  loadNext()
+}
 
 function warmProfileBackgroundImages(prioritizeAuth = false) {
   const desktop = window.matchMedia('(min-width: 1280px), (min-width: 900px) and (orientation: landscape)').matches
@@ -832,10 +895,19 @@ export function PublicMenu() {
   }, [loading])
 
   useEffect(() => {
+    const contactImageTimer = window.setTimeout(() => warmPublicMenuImages([]), 0)
+    return () => window.clearTimeout(contactImageTimer)
+  }, [])
+
+  useEffect(() => {
     if (loading) return
+    const imageTimer = window.setTimeout(() => warmPublicMenuImages([...products, ...extrasProducts]), 250)
     const timer = window.setTimeout(warmProfileBackgroundImages, 400)
-    return () => window.clearTimeout(timer)
-  }, [loading])
+    return () => {
+      window.clearTimeout(imageTimer)
+      window.clearTimeout(timer)
+    }
+  }, [extrasProducts, loading, products])
 
   // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
   // descargues zonas y coordenadas en cada visita al menú: en conexiones
