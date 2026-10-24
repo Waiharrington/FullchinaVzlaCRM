@@ -42,7 +42,7 @@ const CAROUSEL_SETTINGS = [
   {
     "posY": 0,
     "posX": 41,
-    "zoom": 2.62,
+    "zoom": 3.15,
     "maskRight": 56
   },
   {
