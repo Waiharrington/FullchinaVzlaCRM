@@ -15,4 +15,10 @@ describe('publicVariantLabel', () => {
   it('conserva los títulos de otros productos', () => {
     expect(publicVariantCopy('Arroz Cantonés', 'Medio Kilo')).toEqual({ name: 'Medio Kilo' })
   })
+
+  it('corrige las tildes del español en cualquier opción del menú', () => {
+    expect(publicVariantCopy('Trío', 'Con Camaron')).toEqual({ name: 'Con Camarón' })
+    expect(publicVariantCopy('Trio', 'Clasico')).toEqual({ name: 'Clásico' })
+    expect(publicVariantCopy('Arroz', 'Con Jamon y Pimenton')).toEqual({ name: 'Con Jamón y Pimentón' })
+  })
 })

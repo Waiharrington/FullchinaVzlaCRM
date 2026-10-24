@@ -2096,6 +2096,7 @@ button.mobile-only {
 .public-total strong { font-size: 26px; color: #FFD666; }
 .public-total small { grid-column: 1/-1; color: #E5E7EB; margin-top: 6px; font-size: 14px; }
 .public-primary { width: 100%; border: 0; border-radius: 15px; padding: 16px 20px; background: #E31B2B; color: #fff; font: 800 15px 'DM Sans'; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; }
+.public-primary svg { color: currentColor; }
 .public-primary:disabled { opacity: .55; cursor: wait; }
 
 .public-checkout { padding-top: 24px; display: grid; gap: 17px; }
@@ -2336,7 +2337,7 @@ button.mobile-only {
 }
 @media (max-width: 520px) {
   .public-category-hint { display: flex; align-items: center; justify-content: flex-end; gap: 3px; margin: 0 20px 5px; color: #858994; font-size: 10px; letter-spacing: .01em; }
-  .public-category-hint svg { color: #ed1b2f; animation: public-hint-nudge 1.8s ease-in-out infinite; }
+  .public-category-hint svg { color: #fff; animation: public-hint-nudge 1.8s ease-in-out infinite; }
   .public-recommended-card { margin: 0 16px 24px; min-height: 166px; border-radius: 18px; }
   .public-recommended-card.is-loyalty-slide { min-height:232px; }
   .public-recommended-card.is-loyalty-slide > .customer-loyalty-promotion--recommended { padding:16px 14px 30px; grid-template-columns:minmax(0,1fr) 122px; gap:4px; }
@@ -8348,6 +8349,7 @@ button.mobile-only {
 .customer-loyalty-promotion-progress .is-earned img { opacity:1; filter:none; }
 .customer-loyalty-promotion-progress small { margin-left:7px; color:#a6a2a4; font:700 11px 'DM Sans',sans-serif; }
 .customer-loyalty-promotion-cta { display:inline-flex; align-items:center; justify-content:center; gap:9px; min-height:46px; margin-top:20px; padding:0 18px; border:1px solid #ff5865; border-radius:13px; background:linear-gradient(135deg,#f32138,#c90e25); box-shadow:0 8px 24px #df152e3d,inset 0 1px #ffffff29; color:#fff; font:800 13px 'DM Sans',sans-serif; cursor:pointer; transition:transform .18s,box-shadow .18s; }
+.customer-loyalty-promotion-cta > svg { color:#fff; stroke:#fff; }
 .customer-loyalty-promotion-cta:hover { transform:translateY(-2px); box-shadow:0 12px 28px #df152e55,inset 0 1px #ffffff29; }
 .customer-loyalty-promotion-cta:focus-visible { outline:3px solid #ffc83d; outline-offset:3px; }
 .customer-loyalty-promotion-card-wrap { display:grid; min-height:170px; place-items:center; perspective:800px; }
@@ -12822,6 +12824,31 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   line-height: 1.4;
 }
 
+.ppdm-required-guidance {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 18px 0 20px;
+  padding: 0;
+  border: 0;
+  color: #e5d8b7;
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.ppdm-required-guidance > svg { flex: 0 0 auto; margin-top: 1px; color: #ffd23f; }
+.ppdm-required-guidance > span { flex: 0 1 auto; }
+.ppdm-required-guidance strong { color: #ffd23f; font-weight: 800; }
+.ppdm-required-guidance .ppdm-required-guidance-arrow { flex: 0 0 auto; margin: 0 auto 0 2px; color: #ffd23f; animation: ppdm-required-arrow-tap 1.25s ease-in-out infinite; }
+.ppdm-modifier-group--required { padding: 10px; margin: 0 -10px; border: 1px solid rgba(255, 198, 61, .24); border-radius: 13px; background: rgba(255, 198, 61, .035); }
+.ppdm-modifier-group--required .ppdm-section-header > span { color: #ffd23f; }
+.ppdm-modifier-group--required:not(.has-selection-error) { animation: ppdm-required-prompt 2.8s ease-in-out infinite; }
+.ppdm-modifier-group--required.has-selection-error { border-color: rgba(255, 109, 109, .78); background: rgba(227, 27, 43, .09); box-shadow: 0 0 0 2px rgba(227, 27, 43, .1); }
+.ppdm-required-group-error { margin: -1px 0 9px; color: #ff9b9b; font-size: 12px; font-weight: 600; line-height: 1.4; }
+@keyframes ppdm-required-arrow-tap { 0%, 100% { transform: translateY(-2px); opacity: .72; } 50% { transform: translateY(4px); opacity: 1; } }
+@keyframes ppdm-required-prompt { 0%, 100% { border-color: rgba(255, 198, 61, .24); box-shadow: 0 0 0 0 rgba(255, 198, 61, 0); } 50% { border-color: rgba(255, 198, 61, .68); box-shadow: 0 0 0 3px rgba(255, 198, 61, .07), 0 0 18px rgba(227, 27, 43, .2); } }
+@media (prefers-reduced-motion: reduce) { .ppdm-required-guidance-arrow, .ppdm-modifier-group--required:not(.has-selection-error) { animation: none; } }
+
 .ppdm-error-group-name {
   display: inline-block;
   white-space: nowrap;
@@ -13391,6 +13418,7 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  color: #ffd23f;
 }
 
 .ppdm-modifier-group--included-proteins .ppdm-section-header h3 small {

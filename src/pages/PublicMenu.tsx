@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
+import { ArrowDown, ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
@@ -378,9 +378,11 @@ export function PublicMenu() {
   const [loadingModifiers, setLoadingModifiers] = useState(false)
   const [modifierLoadError, setModifierLoadError] = useState(false)
   const [modifierValidationError, setModifierValidationError] = useState('')
+  const [showModifierGuidance, setShowModifierGuidance] = useState(true)
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
   const [selectedCatalogExtras, setSelectedCatalogExtras] = useState<Record<string, number>>({})
   const [proteinSwapSourceId, setProteinSwapSourceId] = useState<string | null>(null)
+  const requiredModifierRef = useRef<HTMLDivElement>(null)
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [scrollCategory, setScrollCategory] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -1618,6 +1620,7 @@ export function PublicMenu() {
     setSelectedCatalogExtras({})
     setModifierLoadError(false)
     setModifierValidationError('')
+    setShowModifierGuidance(true)
     const productId = initialVariant?.product.id
     const prepareModifierGroups = (remoteGroups: ProductModifierGroup[]) => {
       const resolved = filterProteinExtraGroups(remoteGroups, initialVariant?.product.allowProteinExtras !== false)
@@ -1731,7 +1734,9 @@ export function PublicMenu() {
         return
       }
       if (modifierSelectionError) {
-        setModifierValidationError(`Completa las opciones requeridas de “${modifierSelectionError.name}”.`)
+        setModifierValidationError('')
+        requiredModifierRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        requiredModifierRef.current?.querySelector<HTMLButtonElement>('.ppdm-chip:not(:disabled)')?.focus({ preventScroll: true })
         return
       }
       if (invalidModifierSelection) {
@@ -3553,6 +3558,13 @@ export function PublicMenu() {
             </div>
             <div className="ppdm-content">
               <p className="ppdm-desc">{selectedProduct.description || 'Preparado al momento con el sabor de Full China.'}</p>
+              {showModifierGuidance && !loadingModifiers && detailModifierGroups.some(group => group.minSelections > 0 && !isIncludedProteinGroup(group)) && (
+                <div className="ppdm-required-guidance" role="status">
+                  <CircleAlert size={17} aria-hidden="true" />
+                  <span>Este plato requiere que elijas una opción antes de agregarlo. Completa el grupo marcado como obligatorio.</span>
+                  <ArrowDown className="ppdm-required-guidance-arrow" size={19} aria-hidden="true" />
+                </div>
+              )}
               {selectedGroup.variants.length > 1 && (
                 <div className="ppdm-section">
                   <div className="ppdm-section-header"><h3>Elige tu presentación</h3><span>Obligatorio</span></div>
@@ -3625,7 +3637,9 @@ export function PublicMenu() {
                     const count = countModifierSelections(group, selectedExtras)
                     const proteinGroup = isIncludedProteinGroup(group)
                     const includedPortions = group.maxSelections ?? group.minSelections
-                    return <div className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}`} key={group.modifierId}>
+                    const requiredGroup = !proteinGroup && group.minSelections > 0
+                    const groupError = requiredGroup && modifierSelectionError?.modifierId === group.modifierId
+                    return <div ref={requiredGroup ? requiredModifierRef : undefined} className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}${requiredGroup ? ' ppdm-modifier-group--required' : ''}${groupError ? ' has-selection-error' : ''}`} key={group.modifierId}>
                       {proteinGroup ? <>
                         <div className="ppdm-section-header">
                           <h3>Proteínas incluidas</h3>
@@ -3634,13 +3648,14 @@ export function PublicMenu() {
                         <p className="ppdm-protein-hint">Las proteínas ya vienen seleccionadas; puedes tocar “Cambiar” para sustituir alguna sin alterar las {includedPortions} porciones.</p>
                         <div className="ppdm-protein-options">{group.options.map(option => {
                           const quantity = selectedExtras[option.id] ?? 0
+                          const optionName = formatSpanishText(option.name)
                           return <div className="ppdm-protein-option" key={option.id}>
-                            <span className="ppdm-protein-option-name">{option.name}</span>
+                            <span className="ppdm-protein-option-name">{optionName}</span>
                             <span className={`ppdm-protein-option-quantity${quantity === 0 ? ' is-unselected' : ''}`}>
                               {quantity === 0 ? 'No incluida' : `${quantity} ${quantity === 1 ? 'porción' : 'porciones'}`}
                               {option.price > 0 && quantity > 0 && <small>+{money(option.price)} por porción</small>}
                             </span>
-                            {quantity > 0 && <button type="button" className="ppdm-protein-change" onClick={() => setProteinSwapSourceId(current => current === option.id ? null : option.id)} aria-label={`Cambiar una porción de ${option.name}`}>
+                            {quantity > 0 && <button type="button" className="ppdm-protein-change" onClick={() => setProteinSwapSourceId(current => current === option.id ? null : option.id)} aria-label={`Cambiar una porción de ${optionName}`}>
                               Cambiar{quantity > 1 && <small>una porción</small>}
                             </button>}
                           </div>
@@ -3653,7 +3668,7 @@ export function PublicMenu() {
                               const imageUrl = proteinOptionImage(extrasProducts, option.name)
                               return <button type="button" key={option.id} onClick={() => completeProteinSwap(sourceOption.id, option.id)}>
                                 {imageUrl ? <img src={imageUrl} alt="" loading="lazy" decoding="async" /> : <span className="ppdm-protein-swap-image-fallback">🥢</span>}
-                                <span className="ppdm-protein-swap-option-copy"><strong>{option.name}</strong>{option.price > 0 && <small>+{money(option.price)} por porción</small>}</span>
+                                <span className="ppdm-protein-swap-option-copy"><strong>{formatSpanishText(option.name)}</strong>{option.price > 0 && <small>+{money(option.price)} por porción</small>}</span>
                                 <span className="ppdm-protein-swap-select">Elegir</span>
                               </button>
                             })}</div>
@@ -3661,7 +3676,8 @@ export function PublicMenu() {
                           </div>
                         })()}
                       </> : <>
-                        <div className="ppdm-section-header"><h3>{group.name} <small>{group.minSelections > 0 ? `· Elige al menos ${group.minSelections}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
+                        <div className="ppdm-section-header"><h3>{formatSpanishText(group.name)} <small>{group.minSelections > 0 ? `· Elige ${group.minSelections === 1 ? '1 opción' : `al menos ${group.minSelections}`}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{group.minSelections > 0 ? 'Obligatorio · ' : ''}{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
+                        {groupError && <p className="ppdm-required-group-error" role="alert">Elige una opción de {formatSpanishText(group.name)} para continuar.</p>}
                         <div className="ppdm-chip-row">{group.options.map(option => {
                           const selectedCount = selectedExtras[option.id] ?? 0
                           const active = selectedCount > 0
@@ -3680,7 +3696,7 @@ export function PublicMenu() {
                                 return next
                               })
                             }}>
-                            <span className="ppdm-chip-name">{option.name}</span>
+                            <span className="ppdm-chip-name">{formatSpanishText(option.name)}</span>
                             {group.allowRepeat && active && <span className="ppdm-chip-count">×{selectedCount}</span>}
                             {option.price > 0 && <span className="ppdm-chip-price">+{money(option.price)}</span>}
                             <span className="ppdm-chip-check"><Check size={12} /></span>
@@ -3727,7 +3743,7 @@ export function PublicMenu() {
                   </div>
                 </div>
               )}
-              {modifierSelectionError && <p className="ppdm-modifier-error" role="status">{modifierSelectionError.options.length === 0 ? <><span className="ppdm-error-group-name">“{modifierSelectionError.name}”</span> no tiene opciones disponibles. Elige otro producto o contacta al local.</> : isIncludedProteinGroup(modifierSelectionError) ? `Completa las ${modifierSelectionError.minSelections} porciones de proteína para agregar el plato.` : <>Debes completar las selecciones del grupo <span className="ppdm-error-group-name">“{modifierSelectionError.name}”</span>.</>}</p>}
+              {modifierSelectionError?.options.length === 0 && <p className="ppdm-modifier-error" role="alert"><span className="ppdm-error-group-name">“{formatSpanishText(modifierSelectionError.name)}”</span> no tiene opciones disponibles. Elige otro producto o contacta al local.</p>}
               {invalidModifierSelection && <p className="ppdm-modifier-error" role="alert">Algunas opciones guardadas ya no están disponibles. <button type="button" onClick={() => { setSelectedExtras({}); setModifierValidationError('') }}>Limpiar opciones anteriores</button></p>}
               {modifierLoadError && <p className="ppdm-modifier-error" role="alert">No pudimos cargar las opciones de este producto. Inténtalo de nuevo.</p>}
               {modifierValidationError && <p className="ppdm-modifier-error" role="alert">{modifierValidationError}</p>}
