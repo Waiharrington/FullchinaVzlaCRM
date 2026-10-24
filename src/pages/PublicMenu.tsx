@@ -510,8 +510,9 @@ export function PublicMenu() {
   const [orderCode, setOrderCode] = useState('')
   const [draftOrderCode, setDraftOrderCode] = useState('')
   const [whatsappUrl, setWhatsappUrl] = useState('')
-  const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string } | null>(null)
+  const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string; productId: string; status: 'checking' | 'added' } | null>(null)
   const [addFeedbackClosing, setAddFeedbackClosing] = useState(false)
+  const [pendingQuickAdds, setPendingQuickAdds] = useState<Set<string>>(() => new Set())
   const [cartPulse, setCartPulse] = useState(false)
   const sidebarCardRef = useRef<HTMLDivElement>(null)
   const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false)
@@ -537,6 +538,9 @@ export function PublicMenu() {
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addFeedbackExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingQuickAddsRef = useRef(new Set<string>())
+  const quickVariantConfirmRef = useRef(false)
+  const [confirmingQuickVariant, setConfirmingQuickVariant] = useState(false)
   const cartPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const modifierRequestRef = useRef(0)
   const heroSearchRef = useRef<HTMLInputElement>(null)
@@ -1441,6 +1445,17 @@ export function PublicMenu() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const showAddedFeedback = (product: Product, imageUrl?: string) => {
+    setAddFeedback({ productId: product.id, name: formatProductTitle(product.name), imageUrl, status: 'added' })
+    setAddFeedbackClosing(false)
+    if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current)
+    if (addFeedbackExitTimer.current) window.clearTimeout(addFeedbackExitTimer.current)
+    addFeedbackTimer.current = setTimeout(() => {
+      setAddFeedbackClosing(true)
+      addFeedbackExitTimer.current = setTimeout(() => setAddFeedback(null), 320)
+    }, 1800)
+  }
+
   const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0, modifiers: WebOrderCartItem['modifiers'] = []) => {
     const imageUrl = optimizedProductImage(product.imageUrl) || undefined
     const linePrice = product.price + extrasPrice
@@ -1449,22 +1464,15 @@ export function PublicMenu() {
     const existingLine = cart.find(item => cartLineKey(item) === prospectiveKey)
     if (!existingLine && cart.length >= 40) {
       setError('Tu pedido llegó al máximo de 40 productos distintos. Quita uno para agregar otro.')
-      return
+      return false
     }
     if ((existingLine?.quantity ?? 0) + quantity > 30) {
       setError('Puedes pedir hasta 30 unidades de una misma presentación.')
-      return
+      return false
     }
-    setAddFeedback({ name: formatProductTitle(product.name), imageUrl })
-    setAddFeedbackClosing(false)
+    showAddedFeedback(product, imageUrl)
     setCartPulse(true)
-    if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current)
-    if (addFeedbackExitTimer.current) window.clearTimeout(addFeedbackExitTimer.current)
     if (cartPulseTimer.current) window.clearTimeout(cartPulseTimer.current)
-    addFeedbackTimer.current = setTimeout(() => {
-      setAddFeedbackClosing(true)
-      addFeedbackExitTimer.current = setTimeout(() => setAddFeedback(null), 320)
-    }, 1800)
     cartPulseTimer.current = setTimeout(() => setCartPulse(false), 520)
     setCart(current => {
       const key = prospectiveKey
@@ -1474,6 +1482,7 @@ export function PublicMenu() {
         : [...current, { productId: product.id, productName: formatProductTitle(product.name), price: linePrice, quantity, imageUrl, notes: notes || undefined, modifiers }]
     })
     closeProductDetail()
+    return true
   }
 
   const closeQuickVariant = () => {
@@ -1491,22 +1500,40 @@ export function PublicMenu() {
     if (group.variants.length <= 1) {
       const product = group.variants[0]?.product
       if (product) {
-        let modifierGroups = PUBLIC_MODIFIER_CACHE.get(product.id)
-        if (!modifierGroups) {
-          try {
-            modifierGroups = await getPublicProductModifiers(product.id)
-            PUBLIC_MODIFIER_CACHE.set(product.id, modifierGroups)
-          } catch {
+        if (pendingQuickAddsRef.current.has(group.key)) return
+        pendingQuickAddsRef.current.add(group.key)
+        setPendingQuickAdds(current => new Set(current).add(group.key))
+        if (addFeedbackTimer.current) window.clearTimeout(addFeedbackTimer.current)
+        if (addFeedbackExitTimer.current) window.clearTimeout(addFeedbackExitTimer.current)
+        setAddFeedbackClosing(false)
+        setAddFeedback({ productId: product.id, name: formatProductTitle(product.name), imageUrl: optimizedProductImage(product.imageUrl) || undefined, status: 'checking' })
+        try {
+          let modifierGroups = PUBLIC_MODIFIER_CACHE.get(product.id)
+          if (!modifierGroups) {
+            try {
+              modifierGroups = await getPublicProductModifiers(product.id)
+              PUBLIC_MODIFIER_CACHE.set(product.id, modifierGroups)
+            } catch {
+              setAddFeedback(current => current?.productId === product.id && current.status === 'checking' ? null : current)
+              openGroup(group, undefined, product.id)
+              return
+            }
+          }
+          if (modifierGroups.some(modifier => modifier.minSelections > 0)) {
+            setAddFeedback(current => current?.productId === product.id && current.status === 'checking' ? null : current)
             openGroup(group, undefined, product.id)
             return
           }
+          if (addProduct(product, quantity)) setCardQtys(prev => ({ ...prev, [group.key]: 1 }))
+          else setAddFeedback(current => current?.productId === product.id && current.status === 'checking' ? null : current)
+        } finally {
+          pendingQuickAddsRef.current.delete(group.key)
+          setPendingQuickAdds(current => {
+            const next = new Set(current)
+            next.delete(group.key)
+            return next
+          })
         }
-        if (modifierGroups.some(modifier => modifier.minSelections > 0)) {
-          openGroup(group, undefined, product.id)
-          return
-        }
-        addProduct(product, quantity)
-        setCardQtys(prev => ({ ...prev, [group.key]: 1 }))
       }
       return
     }
@@ -1519,24 +1546,29 @@ export function PublicMenu() {
 
   const confirmQuickVariant = async () => {
     const variant = quickVariantGroup?.variants.find(({ product }) => product.id === quickVariantId)
-    if (!variant || !quickVariantGroup) return
-    let modifierGroups = PUBLIC_MODIFIER_CACHE.get(variant.product.id)
-    if (!modifierGroups) {
-      try {
+    if (!variant || !quickVariantGroup || quickVariantConfirmRef.current) return
+    quickVariantConfirmRef.current = true
+    setConfirmingQuickVariant(true)
+    try {
+      let modifierGroups = PUBLIC_MODIFIER_CACHE.get(variant.product.id)
+      if (!modifierGroups) {
         modifierGroups = await getPublicProductModifiers(variant.product.id)
         PUBLIC_MODIFIER_CACHE.set(variant.product.id, modifierGroups)
-      } catch {
-        setError('No pudimos verificar las opciones obligatorias. Inténtalo de nuevo.')
+      }
+      if (modifierGroups.some(group => group.minSelections > 0)) {
+        personalizeQuickVariant()
         return
       }
+      if (addProduct(variant.product, quickVariantQuantity)) {
+        setCardQtys(prev => ({ ...prev, [quickVariantGroup.key]: 1 }))
+        closeQuickVariant()
+      }
+    } catch {
+        setError('No pudimos verificar las opciones obligatorias. Inténtalo de nuevo.')
+    } finally {
+      quickVariantConfirmRef.current = false
+      setConfirmingQuickVariant(false)
     }
-    if (modifierGroups.some(group => group.minSelections > 0)) {
-      personalizeQuickVariant()
-      return
-    }
-    addProduct(variant.product, quickVariantQuantity)
-    setCardQtys(prev => ({ ...prev, [quickVariantGroup.key]: 1 }))
-    closeQuickVariant()
   }
 
   const personalizeQuickVariant = () => {
@@ -2157,6 +2189,7 @@ export function PublicMenu() {
     const isTallBottle = /^(agua|refresco\s+2\s+litros)$/i.test(group.name.trim())
     const isLiptonBottle = /^lipton\b/i.test(group.name.trim())
     const hasOptions = group.variants.length > 1
+    const isQuickAddPending = pendingQuickAdds.has(group.key)
     return (
       <article className="public-prod-card" key={group.key}>
         {group.variants.find(v => v.product.menuLabel)?.product.menuLabel === 'free_drink' && (
@@ -2172,12 +2205,12 @@ export function PublicMenu() {
           <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onPointerDown={stopProductCardInteraction} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         </div>
-        <button type="button" className="public-prod-add" aria-label={hasOptions ? `Ver opciones de ${group.name}` : `Agregar ${group.name} al carrito`} onPointerDown={stopProductCardInteraction} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
-          {hasOptions
+        <button type="button" className={`public-prod-add${isQuickAddPending ? ' is-loading' : ''}`} disabled={isQuickAddPending} aria-busy={isQuickAddPending} aria-label={isQuickAddPending ? `Revisando opciones de ${group.name}` : hasOptions ? `Ver opciones de ${group.name}` : `Agregar ${group.name} al carrito`} onPointerDown={stopProductCardInteraction} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
+          {isQuickAddPending ? <LoaderCircle className="public-add-spinner" size={18} aria-hidden="true" /> : hasOptions
             ? <ChevronRight size={18} strokeWidth={2.4} aria-hidden="true" />
             : <ShoppingCart size={18} strokeWidth={2.4} aria-hidden="true" />}
-          <span className="public-prod-add-label-full">{hasOptions ? 'Ver opciones' : 'Agregar al carrito'}</span>
-          <span className="public-prod-add-label-short">{hasOptions ? 'Opciones' : 'Agregar'}</span>
+          <span className="public-prod-add-label-full">{isQuickAddPending ? 'Revisando…' : hasOptions ? 'Ver opciones' : 'Agregar al carrito'}</span>
+          <span className="public-prod-add-label-short">{isQuickAddPending ? 'Revisando…' : hasOptions ? 'Opciones' : 'Agregar'}</span>
         </button>
         <div className="public-prod-info" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
           <h3 className="public-prod-title">{productTitle(group.name)}</h3>
@@ -2195,6 +2228,7 @@ export function PublicMenu() {
 
   const renderDesktopProductCard = (group: MenuProductGroup) => {
     const qty = getCardQty(group.key)
+    const isQuickAddPending = pendingQuickAdds.has(group.key)
 
     return (
       <article className="public-home-product-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
@@ -2240,10 +2274,12 @@ export function PublicMenu() {
             <button 
               type="button" 
               className="public-home-add-btn"
+              disabled={isQuickAddPending}
+              aria-busy={isQuickAddPending}
               onPointerDown={stopProductCardInteraction}
               onClick={(event) => { event.stopPropagation(); handleCardAdd(group) }}
             >
-              Agregar
+              {isQuickAddPending ? <><LoaderCircle className="public-add-spinner" size={14} /> Revisando…</> : 'Agregar'}
             </button>
           </div>
         </div>
@@ -2252,6 +2288,7 @@ export function PublicMenu() {
   }
 
   const renderDesktopPromoCard = (group: MenuProductGroup) => {
+    const isQuickAddPending = pendingQuickAdds.has(group.key)
     return (
       <article className="public-home-promo-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
         <div className="public-home-promo-top">
@@ -2276,11 +2313,13 @@ export function PublicMenu() {
           <button 
             type="button" 
             className="public-home-promo-add-btn"
+            disabled={isQuickAddPending}
+            aria-busy={isQuickAddPending}
             onPointerDown={stopProductCardInteraction}
             onClick={(event) => { event.stopPropagation(); handleCardAdd(group) }}
           >
-            <Plus size={15} />
-            <span>Pedir promo</span>
+            {isQuickAddPending ? <LoaderCircle className="public-add-spinner" size={15} /> : <Plus size={15} />}
+            <span>{isQuickAddPending ? 'Revisando…' : 'Pedir promo'}</span>
           </button>
         </div>
       </article>
@@ -3347,7 +3386,7 @@ export function PublicMenu() {
                           <strong>{productTitle(activeReco.name)}</strong>
                           <b>{money(activeReco.minPrice)}{priceBs(activeReco.minPrice) && <small className="public-reco-bs">{priceBs(activeReco.minPrice)}</small>}</b>
                         </div>
-                        <button type="button" onClick={() => requestQuickAdd(activeReco)}><Plus size={15} /></button>
+                        <button type="button" disabled={pendingQuickAdds.has(activeReco.key)} aria-busy={pendingQuickAdds.has(activeReco.key)} onClick={() => requestQuickAdd(activeReco)}>{pendingQuickAdds.has(activeReco.key) ? <LoaderCircle className="public-add-spinner" size={15} /> : <Plus size={15} />}</button>
                       </div>
                       {recommendations.length > 1 && (
                         <div className="public-sidebar-reco-dots">
@@ -3460,15 +3499,15 @@ export function PublicMenu() {
 
       {/* Add-to-cart mini-toast */}
       {addFeedback && (
-        <div className={`public-add-toast ${addFeedbackClosing ? 'closing' : ''}`} role="status" aria-live="polite">
+        <div className={`public-add-toast ${addFeedback.status === 'checking' ? 'is-pending' : ''} ${addFeedbackClosing ? 'closing' : ''}`} role="status" aria-live="polite">
           <span className="public-add-toast-img" aria-hidden="true">
             {addFeedback.imageUrl ? <img src={addFeedback.imageUrl} alt="" /> : <ShoppingBag size={16} />}
           </span>
           <span className="public-add-toast-copy">
-            <strong className="public-add-toast-label">Agregado al carrito</strong>
+            <strong className="public-add-toast-label">{addFeedback.status === 'checking' ? 'Revisando opciones…' : 'Agregado al carrito'}</strong>
             <span className="public-add-toast-name">{addFeedback.name}</span>
           </span>
-          <span className="public-add-toast-check"><CircleCheck size={16} /></span>
+          <span className="public-add-toast-check">{addFeedback.status === 'checking' ? <LoaderCircle size={16} className="public-add-toast-spinner" /> : <CircleCheck size={16} />}</span>
         </div>
       )}
 
@@ -3528,9 +3567,9 @@ export function PublicMenu() {
                 </div>
                 <div className="public-variant-actions">
                   {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>{quickVariantOptionsLabel === 'Cambiar proteínas' ? <Drumstick size={16} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}{quickVariantOptionsLabel}</button>}
-                  <button type="button" className="public-variant-add" onClick={confirmQuickVariant}>
-                    <ShoppingCart size={16} />
-                    <span>Agregar · {money(quickSelectedVariant.product.price * quickVariantQuantity)}</span>
+                  <button type="button" className="public-variant-add" onClick={confirmQuickVariant} disabled={confirmingQuickVariant} aria-busy={confirmingQuickVariant}>
+                    {confirmingQuickVariant ? <LoaderCircle className="public-add-spinner" size={16} /> : <ShoppingCart size={16} />}
+                    <span>{confirmingQuickVariant ? 'Revisando opciones…' : `Agregar · ${money(quickSelectedVariant.product.price * quickVariantQuantity)}`}</span>
                   </button>
                 </div>
               </> : <p className="public-variant-selection-hint" role="status"><span className="public-variant-tap-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12V5.75a1.75 1.75 0 0 1 3.5 0V12l.45-1.1a1.75 1.75 0 0 1 3.3.65v1.02l.45-.43a1.7 1.7 0 0 1 2.87 1.17l-.4 3.72A5 5 0 0 1 14.2 21h-1.45a5.1 5.1 0 0 1-3.95-1.87L5.6 15.2a1.6 1.6 0 0 1 2.26-2.27L9 14.1" /><path d="m6.1 5.1-1-1M18 6l1-1M4.5 9H3" /></svg></span><span>Toca una presentación para continuar</span></p>}
@@ -3549,6 +3588,9 @@ export function PublicMenu() {
           >
             <div className="ppdm-image">
               <img src={optimizedProductImage(selectedProduct.imageUrl) || productImage(selectedGroup.category)} alt={selectedProduct.name} decoding="async" />
+              {selectedGroup.variants.find(variant => variant.product.menuLabel)?.product.menuLabel === 'free_drink' && (
+                <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="ppdm-free-drink-sticker" />
+              )}
               <button className="ppdm-close" onClick={closeProductDetail} aria-label="Cerrar detalle"><X /></button>
               <div className="ppdm-image-gradient" />
               <div className="ppdm-hero-copy">

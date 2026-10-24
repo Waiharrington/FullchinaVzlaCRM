@@ -1250,6 +1250,16 @@ button.mobile-only {
   flex-shrink: 0;
   animation: public-check-pop 420ms 260ms cubic-bezier(.34, 1.56, .64, 1) both;
 }
+.public-add-toast.is-pending { border-color: rgba(255, 210, 63, .32); box-shadow: 0 16px 40px rgba(0, 0, 0, .45), 0 0 0 1px rgba(255, 210, 63, .12); }
+.public-add-toast.is-pending .public-add-toast-label,
+.public-add-toast.is-pending .public-add-toast-check { color: #ffd23f; }
+.public-add-toast-spinner,
+.public-add-spinner { animation: public-add-spin .8s linear infinite; }
+@keyframes public-add-spin { to { transform: rotate(360deg); } }
+.public-prod-add:disabled,
+.public-home-add-btn:disabled,
+.public-home-promo-add-btn:disabled,
+.public-sidebar-reco-card > button:disabled { opacity: .78; cursor: wait; }
 @keyframes public-toast-in {
   0% { opacity: 0; transform: translate(-50%, -28px) scale(0.82); }
   55% { opacity: 1; transform: translate(-50%, 6px) scale(1.04); }
@@ -7481,6 +7491,19 @@ button.mobile-only {
   width: 100%;
   flex: 0 0 auto;
 }
+.ppdm-image .ppdm-free-drink-sticker {
+  position: absolute;
+  z-index: 3;
+  top: 18px;
+  right: 18px;
+  width: 82px;
+  height: 82px;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .5));
+  transform: rotate(-8deg);
+  animation: free-drink-sticker-pulse 2.4s ease-in-out infinite;
+}
 .ppdm-image img {
   width: 100%;
   height: 100%;
@@ -7491,6 +7514,7 @@ button.mobile-only {
   opacity: 1;
   transform: none;
 }
+.ppdm-image .ppdm-free-drink-sticker { transform: rotate(-8deg); }
 .ppdm-close {
   position: absolute;
   top: 12px;
@@ -7514,6 +7538,13 @@ button.mobile-only {
 }
 .ppdm-close svg { display: block; }
 .ppdm-close:hover { transform: scale(1.1); background: rgba(227, 27, 43, 0.6); }
+
+@media (max-width: 560px) {
+  .ppdm-image .ppdm-free-drink-sticker { top: 16px; right: 16px; width: 68px; height: 68px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ppdm-image .ppdm-free-drink-sticker { animation: none; }
+}
 .ppdm-close:active { transform: scale(0.9); }
 .ppdm-image-gradient {
   position: absolute;
@@ -9710,6 +9741,7 @@ body:has(.public-menu-page):hover::-webkit-scrollbar-thumb {
 .public-variant-customize:active { transform: translateY(0) scale(.98); }
 .public-variant-add { display: flex; align-items: center; justify-content: center; gap: 7px; color: #fff; border: 1px solid #E31B2B; background: linear-gradient(135deg, #E31B2B, #b51020); box-shadow: 0 7px 18px rgba(227,27,43,.25); }
 .public-variant-actions button:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
+.public-variant-actions .public-variant-add:disabled { opacity: .78; cursor: wait; box-shadow: 0 7px 18px rgba(227,27,43,.25); }
 .public-variant-footer.needs-selection { grid-template-columns: minmax(0, 1fr); }
 .public-variant-selection-hint {
   display: flex;
