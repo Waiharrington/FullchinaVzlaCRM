@@ -74,7 +74,7 @@ const MOBILE_CAROUSEL_SETTINGS = [
   }
 ];
 
-export function Login() {
+export function Login({ authInitializing = false }: { authInitializing?: boolean }) {
   const { signIn, signInWithPin } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -134,6 +134,7 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (authInitializing) return
     setError('')
     if (isPinMode && pin.length < 4) {
       setError('El PIN debe tener al menos 4 caracteres.')
@@ -358,8 +359,8 @@ export function Login() {
 
               {error && <Toast type="error" message={error} onClose={() => setError('')} />}
 
-              <button type="submit" className="btn-primary" disabled={loading || (isPinMode && pin.length < 4)}>
-                {loading ? 'Ingresando...' : 'Iniciar sesión'}
+              <button type="submit" className="btn-primary" disabled={authInitializing || loading || (isPinMode && pin.length < 4)}>
+                {authInitializing ? 'Comprobando sesión...' : loading ? 'Ingresando...' : 'Iniciar sesión'}
                 <ArrowRight size={18} />
               </button>
 

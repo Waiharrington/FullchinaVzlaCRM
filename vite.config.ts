@@ -89,7 +89,11 @@ export default defineConfig({
     react(),
     localPerformanceProbe(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // No activar una versión nueva a mitad de una sesión: autoUpdate hace
+      // que el cliente recargue la página en cuanto el SW nuevo toma control.
+      // La app mostrará una acción explícita para aplicar la actualización.
+      registerType: 'prompt',
+      injectRegister: null,
       // Usamos dos manifests propios (cliente/admin) enlazados dinámicamente en
       // index.html, así que desactivamos el manifest que genera el plugin.
       manifest: false,

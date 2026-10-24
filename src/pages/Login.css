@@ -1,15 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap');
 
+html:has(.login-page),
+body:has(.login-page) {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 body:has(.login-page) {
   background-color: #000;
 }
 
 .login-page {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  right: 0.75rem;
-  bottom: 0.75rem;
+  position: fixed;
+  inset: 0.75rem;
   background-color: #000;
   background-image: url('/optimized/root/login-bg.webp');
   background-size: cover;
@@ -21,18 +25,20 @@ body:has(.login-page) {
   box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
   border: 1px solid #E31B2B;
   border-radius: 16px;
-  animation: pageFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pageEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+.login-page::-webkit-scrollbar { display: none; }
 
 .login-page.exiting {
   animation: pageFadeOut 0.6s cubic-bezier(0.87, 0, 0.13, 1) forwards;
 }
 
-@keyframes pageFadeIn {
-  0% { opacity: 0; transform: scale(1.05); }
-  100% { opacity: 1; transform: scale(1); }
+@keyframes pageEnter {
+  from { transform: translateY(5px); }
+  to { transform: translateY(0); }
 }
 
 @keyframes pageFadeOut {
@@ -1448,6 +1454,37 @@ body:has(.login-page) {
 }
 
 @media (min-width: 1201px), (min-width: 680px) and (orientation: landscape) and (min-height: 600px) {
+  html:has(.login-page),
+  body:has(.login-page),
+  body:has(.login-page) #root {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden !important;
+  }
+
+  .login-page {
+    overflow: hidden !important;
+    scrollbar-width: none !important;
+  }
+
+  .login-page::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* El login debe estar visible desde el primer frame; evita el flash negro
+     causado por elementos que empiezan transparentes mientras cargan los assets. */
+  .login-card.animate-fade-in,
+  .login-hero-text {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .desktop-carousel-img {
+    transition: none !important;
+  }
+
   /* Override login-page background to allow desktop layers */
   .login-page {
     background-image: none !important;

@@ -41,6 +41,7 @@ export function PublicMenuSkeleton() {
           left: 0;
           width: 100vw;
           height: 100dvh;
+          background-color: #0a0b0e;
           background-image: url('${backgroundAsset}');
           background-size: cover;
           background-position: center;
@@ -50,8 +51,8 @@ export function PublicMenuSkeleton() {
           justify-content: center;
           z-index: 99999;
           overflow: hidden;
-          opacity: 0;
-          animation: onb-fade-in 0.8s ease-out forwards;
+          opacity: 1;
+          animation: none;
         }
 
         @keyframes onb-fade-in {

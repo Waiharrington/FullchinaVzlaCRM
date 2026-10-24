@@ -56,6 +56,7 @@ type CustomerLoyaltyProfileProps = {
   onRepeatOrder?: (order: CustomerRepeatOrder) => Promise<void>
   presentation?: 'profile' | 'promotion' | 'recommended'
   onJoin?: () => void
+  interactivePromotionCard?: boolean
 }
 
 function customerProductImage(imageUrl: string) {
@@ -223,7 +224,7 @@ function getInitialAuthMode(): 'login' | 'register' {
   }
 }
 
-export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile', onJoin }: CustomerLoyaltyProfileProps) {
+export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile', onJoin, interactivePromotionCard = false }: CustomerLoyaltyProfileProps) {
   const [profile, setProfile] = useState<LoyaltyProfile | null>(null)
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
   const [identifier, setIdentifier] = useState('')
@@ -247,6 +248,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileLoadError, setProfileLoadError] = useState('')
   const [memberCardAnimating, setMemberCardAnimating] = useState(false)
+  const [promotionCardAnimating, setPromotionCardAnimating] = useState(false)
   const memberCardElement = useRef<HTMLButtonElement>(null)
   const memberCardPointer = useRef<{ x: number; y: number } | null>(null)
   const memberCardDragged = useRef(false)
@@ -263,6 +265,12 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
   const celebrationDialog = useRef<HTMLDivElement>(null)
   const isCelebrationOpen = Boolean(celebration)
   const threshold = Math.max(1, Number(profile?.visits_per_reward) || 10)
+
+  const promotionCardArtwork = <article className="customer-profile-welcome-card customer-loyalty-promotion-card" aria-hidden="true">
+    <div className="customer-profile-welcome-card-top"><img src="/optimized/root/logo.webp" alt="" /><span>MEMBER<br />CARD</span></div>
+    <div className="customer-profile-welcome-card-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div>
+    <div className="customer-profile-welcome-stamps">{Array.from({ length: 10 }, (_, index) => <span key={index}><img src="/icons/wok-mark.png" alt="" /></span>)}</div>
+  </article>
 
   const handleMemberCardPointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     memberCardDragged.current = false
@@ -584,12 +592,18 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
       </div>
       <button type="button" className="customer-loyalty-promotion-cta" onClick={onJoin}>Únete al programa <ArrowRight size={17} /></button>
     </div>
-    <div className="customer-loyalty-promotion-card-wrap" aria-hidden="true">
-      <article className="customer-profile-welcome-card customer-loyalty-promotion-card">
-        <div className="customer-profile-welcome-card-top"><img src="/optimized/root/logo.webp" alt="" /><span>MEMBER<br />CARD</span></div>
-        <div className="customer-profile-welcome-card-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div>
-        <div className="customer-profile-welcome-stamps">{Array.from({ length: 10 }, (_, index) => <span key={index}><img src="/icons/wok-mark.png" alt="" /></span>)}</div>
-      </article>
+    <div className="customer-loyalty-promotion-card-wrap" aria-hidden={!interactivePromotionCard}>
+      {interactivePromotionCard ? <button
+        type="button"
+        className={`customer-loyalty-promotion-card-trigger${promotionCardAnimating ? ' is-spinning' : ''}`}
+        aria-label="Girar tarjeta de fidelidad en 3D"
+        title="Haz clic para girar la tarjeta"
+        disabled={promotionCardAnimating}
+        onAnimationEnd={() => setPromotionCardAnimating(false)}
+        onClick={() => {
+          if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) setPromotionCardAnimating(true)
+        }}
+      >{promotionCardArtwork}</button> : promotionCardArtwork}
     </div>
   </main>
 

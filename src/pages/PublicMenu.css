@@ -4591,7 +4591,7 @@ button.mobile-only {
   .public-howto-steps {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
-    gap: 12px !important;
+    gap: 8px !important;
   }
   .public-howto-step {
     display: flex !important;
@@ -8718,6 +8718,122 @@ button.mobile-only {
   background: rgba(0,0,0,0.4);
   color: #fff;
   text-shadow: 0 2px 8px #000;
+}
+.public-instagram-play-toggle {
+  position: absolute;
+  z-index: 4;
+  right: 9px;
+  bottom: 9px;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .48);
+  border-radius: 50%;
+  background: rgba(5, 6, 8, .72);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+  backdrop-filter: blur(6px);
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.public-instagram-play-toggle:hover {
+  border-color: #ffc83d;
+  background: rgba(15, 16, 19, .92);
+  transform: scale(1.06);
+}
+.public-instagram-play-toggle:focus-visible {
+  outline: 2px solid #ffc83d;
+  outline-offset: 3px;
+}
+.public-instagram-start-prompt {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  left: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: max-content !important;
+  max-width: none !important;
+  min-height: 36px;
+  padding: 0 12px;
+  transform: translate(-50%, -50%) !important;
+  border: 1px solid rgba(255, 200, 61, .72);
+  border-radius: 999px;
+  background: rgba(12, 12, 15, .82);
+  color: #fff;
+  font: 750 11px/1 'DM Sans', sans-serif;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .4);
+  backdrop-filter: blur(7px);
+  cursor: pointer;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.public-instagram-start-prompt:hover {
+  transform: translate(-50%, -50%) !important;
+  border-color: #ffc83d;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, .5);
+}
+.public-instagram-start-prompt:active {
+  transform: translate(-50%, -50%) !important;
+}
+.public-instagram-start-prompt:focus-visible {
+  outline: 2px solid #ffc83d;
+  outline-offset: 3px;
+}
+.public-instagram-start-prompt > svg { color: #ffc83d; flex: 0 0 auto; }
+.public-contact-instagram-studio .public-instagram-reel .public-instagram-start-prompt {
+  display: inline-flex !important;
+  position: absolute !important;
+  z-index: 30 !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: 50% !important;
+  width: max-content !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  transform: translate(-50%, -50%) !important;
+}
+.public-contact-instagram-studio .public-instagram-desktop-reel .public-instagram-start-prompt {
+  display: inline-flex !important;
+}
+.public-contact-instagram-studio .public-instagram-desktop-reel .public-instagram-play-toggle {
+  display: none !important;
+}
+.public-desktop-layout .public-instagram-desktop-stage > .public-instagram-desktop-start-prompt {
+  position: absolute !important;
+  z-index: 100 !important;
+  top: 50% !important;
+  left: 50% !important;
+  display: inline-flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) !important;
+  min-height: 42px !important;
+  padding: 0 16px !important;
+  border: 1px solid #ffc83d !important;
+  border-radius: 999px !important;
+  background: rgba(12, 12, 15, .94) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, .65) !important;
+  color: #fff !important;
+  pointer-events: auto !important;
+}
+.public-contact-instagram-studio .public-instagram-desktop-reel[data-video-playing='true'] .public-instagram-play-toggle {
+  display: grid !important;
 }
 .public-instagram-reel.is-reel-1 { z-index: 1; left: 0; top: 34px; transform: rotate(-9deg); }
 .public-instagram-reel.is-reel-2 { z-index: 2; left: 16%; top: 12px; transform: rotate(-5deg); }
@@ -14311,5 +14427,330 @@ body:has(.public-menu-page) .public-drawer-backdrop .public-cart-drawer *::-webk
   .public-drawer-backdrop.closing,
   .public-drawer-backdrop.closing .public-cart-drawer {
     animation: none !important;
+  }
+}
+
+/* Contacto de escritorio: fidelidad como franja principal, información y mapa debajo. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-desktop-layout.is-contact-view .public-contact-hub {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(320px, .82fr) !important;
+    grid-template-rows: minmax(286px, max-content) max-content !important;
+    grid-template-areas:
+      "loyalty loyalty instagram"
+      "talk location instagram" !important;
+    align-items: start !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-hub > .customer-loyalty-promotion {
+    grid-area: loyalty !important;
+    align-self: stretch !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 28px !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 26px 34px !important;
+    border: 0 !important;
+    border-bottom: 1px solid rgba(255, 200, 61, .28) !important;
+    border-radius: 0 !important;
+    background: radial-gradient(ellipse at 84% 48%, rgba(171, 28, 40, .24), transparent 40%), linear-gradient(115deg, #121013 0%, #0c0d11 65%, #160d11 100%) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion h2 {
+    margin: 10px 0 8px !important;
+    color: #fff !important;
+    font: 800 clamp(25px, 2.1vw, 32px)/1.08 var(--font-display, 'Graduate'), sans-serif !important;
+    letter-spacing: .025em !important;
+    text-transform: uppercase !important;
+    text-wrap: balance !important;
+    -webkit-text-stroke: 0 !important;
+    paint-order: normal !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion h2 em {
+    color: #ffc83d !important;
+    font-style: normal !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-kicker {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    color: #ffc83d !important;
+    font: 800 10px 'DM Sans', sans-serif !important;
+    letter-spacing: .12em !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-kicker i {
+    width: 8px !important;
+    height: 8px !important;
+    border-radius: 50% !important;
+    background: #ff3b4c !important;
+    box-shadow: 0 0 12px #ff3b4c !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-copy > p {
+    max-width: 440px !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-copy {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    /* Alinear kicker, título y CTA con el borde de contenido de las tarjetas
+       inferiores (pedido/ubicación) en el panel de contacto de escritorio. */
+    transform: translateX(calc(-1 * clamp(18px, 2.8vw, 38px)));
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-progress {
+    display: block !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    margin-top: 12px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-progress > span {
+    display: none !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-progress small {
+    display: block !important;
+    width: auto !important;
+    margin: 0 !important;
+    color: #a6a2a4 !important;
+    font: 700 12px 'DM Sans', sans-serif !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card-wrap {
+    display: grid !important;
+    flex: 0 0 clamp(280px, 23vw, 340px) !important;
+    width: clamp(280px, 23vw, 340px) !important;
+    min-height: clamp(190px, 15vw, 230px) !important;
+    height: clamp(190px, 15vw, 230px) !important;
+    place-items: center !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-cta {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    align-self: flex-start !important;
+    gap: 9px !important;
+    min-height: 46px !important;
+    margin-top: 12px !important;
+    padding: 0 14px !important;
+    border: 1px solid #ff5865 !important;
+    border-radius: 12px !important;
+    background: linear-gradient(135deg, #f32138, #c90e25) !important;
+    box-shadow: 0 8px 24px #df152e3d, inset 0 1px #ffffff29 !important;
+    color: #fff !important;
+    font: 800 13px 'DM Sans', sans-serif !important;
+    cursor: pointer !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-cta > svg {
+    color: #fff !important;
+    stroke: #fff !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-profile-welcome-card.customer-loyalty-promotion-card {
+    position: relative !important;
+    inset: auto !important;
+    width: min(100%, 340px) !important;
+    height: clamp(180px, 13.5vw, 220px) !important;
+    padding: 17px !important;
+    transform: perspective(700px) rotateX(4deg) rotateY(-8deg) rotateZ(-3deg) !important;
+    animation: none !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-card-top img {
+    width: 116px !important;
+    max-width: 116px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-card-copy {
+    left: 14px !important;
+    bottom: 14px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-card-copy small {
+    font-size: 9px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-card-copy strong {
+    font-size: 18px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-stamps {
+    right: 8px !important;
+    bottom: 9px !important;
+    gap: 2px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-stamps > span {
+    width: 9px !important;
+    min-width: 9px !important;
+    height: 9px !important;
+    min-height: 9px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-stamps > span img {
+    width: 6px !important;
+    max-width: 6px !important;
+    height: 6px !important;
+    max-height: 6px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-stamps {
+    position: relative !important;
+    inset: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, 14px) !important;
+    grid-template-rows: repeat(5, 14px) !important;
+    gap: 4px !important;
+    transform: none !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-stamps > span {
+    display: grid !important;
+    width: 14px !important;
+    min-width: 14px !important;
+    height: 14px !important;
+    min-height: 14px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card .customer-profile-welcome-stamps > span img {
+    width: 9px !important;
+    max-width: 9px !important;
+    height: 9px !important;
+    max-height: 9px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card-trigger {
+    display: grid !important;
+    width: 100% !important;
+    height: 100% !important;
+    place-items: center !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: inherit !important;
+    cursor: pointer !important;
+    transform-origin: center !important;
+    transition: transform .28s cubic-bezier(.2,.8,.2,1) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card-trigger:focus-visible {
+    outline: 2px solid #ffd36d !important;
+    outline-offset: 5px !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card-trigger.is-spinning {
+    animation: customer-mini-card-spin 1.85s cubic-bezier(.22,.68,.24,1) both !important;
+    cursor: wait !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion-card-trigger:disabled {
+    opacity: 1 !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-hub > .public-contact-location {
+    grid-area: location !important;
+    align-self: stretch !important;
+    min-width: 0 !important;
+    border-top: 1px solid rgba(255, 255, 255, .08) !important;
+    border-left: 1px solid rgba(255, 255, 255, .08) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-hub > .public-contact-talk {
+    grid-area: talk !important;
+    align-self: stretch !important;
+    border-top: 1px solid rgba(255, 255, 255, .08) !important;
+    border-left: 0 !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-hub > .public-contact-instagram-studio {
+    grid-area: instagram !important;
+    grid-row: 1 / 3 !important;
+    align-self: stretch !important;
+    border-left: 1px solid rgba(255, 255, 255, .08) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-instagram-desktop-stage {
+    width: min(100%, 190px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 9 / 16 !important;
+    align-self: center !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-instagram-desktop-reel {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-instagram-filmstrip {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    justify-content: stretch !important;
+    gap: clamp(4px, .55vw, 8px) !important;
+    box-sizing: border-box !important;
+    padding: 8px 0 6px !important;
+    overflow: visible !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-instagram-filmstrip > button {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    aspect-ratio: 9 / 16 !important;
+    transform: none !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-instagram-filmstrip > button.is-active {
+    transform: translateY(-2px) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-location-stage {
+    min-height: 270px !important;
+    height: 100% !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-location-overlay > span {
+    width: fit-content !important;
+    padding: 5px 8px !important;
+    border: 1px solid rgba(255, 200, 61, .5) !important;
+    border-radius: 6px !important;
+    background: rgba(8, 9, 11, .94) !important;
+    color: #ffd45a !important;
+    font-size: 9px !important;
+    font-weight: 800 !important;
+    letter-spacing: .1em !important;
+    line-height: 1.2 !important;
+    text-shadow: none !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, .45) !important;
+    backdrop-filter: blur(6px) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .public-contact-location-overlay > strong {
+    font-weight: 700 !important;
+    -webkit-text-stroke: .65px currentColor !important;
+    paint-order: stroke fill !important;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, .72) !important;
+  }
+
+  .public-desktop-layout.is-contact-view .customer-loyalty-promotion h2,
+  .public-desktop-layout.is-contact-view .public-order-ticket-head > h2,
+  .public-desktop-layout.is-contact-view .public-instagram-ticket-head > h2,
+  .public-desktop-layout.is-contact-view .public-contact-location-overlay > strong {
+    font-weight: 800 !important;
+    -webkit-text-stroke: 0 !important;
+    paint-order: normal !important;
   }
 }

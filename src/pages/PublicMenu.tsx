@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, ArrowUpRight, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
+import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pause, Pencil, Play, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
@@ -52,16 +52,15 @@ const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
   ejecutivos: 'Ejecutivo',
 }
 
-const INSTAGRAM_REELS = [
-  { src: '/videos/instagram/reel-1.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-1.webp', href: 'https://www.instagram.com/p/DR7aYwlDsTD/?hl=es' },
-  { src: '/videos/instagram/reel-2.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-2.webp', href: 'https://www.instagram.com/p/DPj331MCW87/?hl=es' },
-  { src: '/videos/instagram/reel-3.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-3.webp', href: 'https://www.instagram.com/p/DQANX2cCVkj/?hl=es' },
-  { src: '/videos/instagram/reel-4.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-4.webp', href: 'https://www.instagram.com/p/DZLUKT5sKeW/?hl=es' },
-  { src: '/videos/instagram/reel-5.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-5.webp', href: 'https://www.instagram.com/p/DYnlFGtNg93/?hl=es' },
-  { src: '/videos/instagram/reel-6.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-6.webp', href: 'https://www.instagram.com/p/DLA5ITEy_GH/?hl=es' },
-] as const
 const INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
-
+const INSTAGRAM_REELS = [
+  { src: '/videos/instagram/reel-1.mp4?v=20261024-new', poster: '/optimized/instagram/reel-1.webp?v=20261024-new' },
+  { src: '/videos/instagram/reel-2.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-2.webp' },
+  { src: '/videos/instagram/reel-3.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-3.webp' },
+  { src: '/videos/instagram/reel-4.mp4?v=20261024-reel4', poster: '/optimized/instagram/reel-4.webp?v=20261024-reel4' },
+  { src: '/videos/instagram/reel-5.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-5.webp' },
+  { src: '/videos/instagram/reel-6.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-6.webp' },
+] as const
 function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) {
   const userAgent = navigator.userAgent
   const isIOS = /iPad|iPhone|iPod/.test(userAgent)
@@ -77,29 +76,6 @@ function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) 
   // visible aunque ya haya abierto Instagram, y eso sacaría al cliente de la app.
   // Android ya lleva su fallback web dentro del intent si Instagram no existe.
   window.location.assign(appUrl)
-}
-
-type InstagramNetworkInfo = {
-  type?: string
-  effectiveType?: string
-  saveData?: boolean
-  addEventListener?: (type: 'change', listener: EventListener) => void
-  removeEventListener?: (type: 'change', listener: EventListener) => void
-}
-
-function getInstagramNetworkInfo() {
-  return (navigator as Navigator & { connection?: InstagramNetworkInfo }).connection
-}
-
-function shouldSaveInstagramDataAutomatically() {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
-  const connection = getInstagramNetworkInfo()
-  if (connection?.saveData || connection?.type === 'cellular') return true
-  if (['slow-2g', '2g', '3g'].includes(connection?.effectiveType ?? '')) return true
-  if (connection?.type === 'wifi' || connection?.type === 'ethernet') return false
-  // Algunos navegadores móviles no revelan si usan Wi-Fi o datos celulares.
-  // En esos teléfonos evitamos descargar reels en cadena de forma silenciosa.
-  return window.matchMedia('(max-width: 767px)').matches
 }
 
 function instagramReelOrder(activeIndex: number) {
@@ -659,7 +635,9 @@ export function PublicMenu() {
   const [sidebarRecoIndex, setSidebarRecoIndex] = useState(0)
   const [instagramActiveIndex, setInstagramActiveIndex] = useState(0)
   const [instagramAudioEnabled, setInstagramAudioEnabled] = useState(false)
-  const [instagramDataSaverEnabled, setInstagramDataSaverEnabled] = useState(shouldSaveInstagramDataAutomatically)
+  const [instagramPlaybackStarted, setInstagramPlaybackStarted] = useState(false)
+  const [instagramDesktopPlaybackConfirmed, setInstagramDesktopPlaybackConfirmed] = useState(false)
+  const [instagramPaused, setInstagramPaused] = useState(false)
   const instagramReels = useMemo(() => instagramReelOrder(instagramActiveIndex), [instagramActiveIndex])
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1113,31 +1091,30 @@ export function PublicMenu() {
     const timer = window.setTimeout(() => {
       const videos = Array.from(document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video'))
       videos.forEach(video => {
+        const playbackStarted = video.closest('.public-instagram-desktop-reel') ? instagramDesktopPlaybackConfirmed : instagramPlaybackStarted
         video.muted = !instagramAudioEnabled
-        if (video.dataset.active === 'true' && video.offsetParent !== null) startInstagramVideo(video)
+        if (video.dataset.active === 'true' && video.offsetParent !== null && playbackStarted && !instagramPaused) startInstagramVideo(video)
+        else if (video.dataset.active === 'true') video.pause()
         else { video.pause(); video.currentTime = 0 }
       })
     }, 180)
     return () => window.clearTimeout(timer)
-  }, [currentTab, instagramActiveIndex, instagramAudioEnabled])
-
-  useEffect(() => {
-    const updateDataSaver = () => setInstagramDataSaverEnabled(shouldSaveInstagramDataAutomatically())
-    const connection = getInstagramNetworkInfo()
-    connection?.addEventListener?.('change', updateDataSaver)
-    window.addEventListener('resize', updateDataSaver, { passive: true })
-    updateDataSaver()
-    return () => {
-      connection?.removeEventListener?.('change', updateDataSaver)
-      window.removeEventListener('resize', updateDataSaver)
-    }
-  }, [])
+  }, [currentTab, instagramActiveIndex, instagramAudioEnabled, instagramPlaybackStarted, instagramDesktopPlaybackConfirmed, instagramPaused])
 
   const toggleInstagramAudio = (event: ReactMouseEvent<HTMLButtonElement>) => {
     event.preventDefault()
     event.stopPropagation()
-    const nextEnabled = !instagramAudioEnabled
+    const activeVideo = Array.from(document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video'))
+      .find(video => video.dataset.active === 'true' && video.offsetParent !== null)
+    const isDesktopPlayback = Boolean(activeVideo?.closest('.public-instagram-desktop-reel'))
+    const hasStarted = isDesktopPlayback ? instagramDesktopPlaybackConfirmed : instagramPlaybackStarted
+    const startingPlayback = !hasStarted
+    const nextEnabled = startingPlayback ? true : !instagramAudioEnabled
     setInstagramAudioEnabled(nextEnabled)
+    if (startingPlayback) {
+      if (!isDesktopPlayback) setInstagramPlaybackStarted(true)
+      setInstagramPaused(false)
+    }
     document.querySelectorAll<HTMLVideoElement>('.public-instagram-reel video').forEach(video => {
       const isActiveReel = video.dataset.active === 'true' && video.offsetParent !== null
       if (!isActiveReel) {
@@ -1156,8 +1133,64 @@ export function PublicMenu() {
         }
       }
       video.muted = !nextEnabled
-      void video.play().catch(() => undefined)
+      if (!startingPlayback && instagramPaused) video.pause()
+      else void video.play().catch(() => undefined)
     })
+  }
+
+  const toggleInstagramPlayback = (event: ReactMouseEvent<HTMLElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const video = event.currentTarget.closest<HTMLElement>('.public-instagram-reel')?.querySelector('video')
+    if (!video || video.dataset.active !== 'true') return
+    const isDesktopPlayback = Boolean(video.closest('.public-instagram-desktop-reel'))
+    const hasStarted = isDesktopPlayback ? instagramDesktopPlaybackConfirmed : instagramPlaybackStarted
+
+    if (!video.paused) {
+      video.pause()
+      setInstagramPaused(true)
+      return
+    }
+
+    if (!video.src) {
+      const source = video.dataset.src || video.querySelector('source')?.dataset.src
+      if (source) {
+        video.src = source
+        video.load()
+      }
+    }
+    const firstPlayback = !hasStarted || video.currentTime === 0
+    if (firstPlayback) {
+      video.muted = false
+      setInstagramAudioEnabled(true)
+      if (!isDesktopPlayback) setInstagramPlaybackStarted(true)
+    } else {
+      video.muted = !instagramAudioEnabled
+    }
+    setInstagramPaused(false)
+    void video.play().catch(() => undefined)
+  }
+
+  const startInstagramReelWithSound = (event: ReactMouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    event.stopPropagation()
+    const reel = event.currentTarget.closest<HTMLElement>('.public-instagram-desktop-reel')
+    const video = reel?.querySelector('video')
+    if (!video || video.dataset.active !== 'true') return
+
+    if (!video.src) {
+      const source = video.dataset.src || video.querySelector('source')?.dataset.src
+      if (source) {
+        video.src = source
+        video.load()
+      }
+    }
+
+    video.muted = false
+    setInstagramAudioEnabled(true)
+    setInstagramDesktopPlaybackConfirmed(true)
+    setInstagramPaused(false)
+    void video.play().catch(() => undefined)
   }
 
   const displayAccentCategory = activeCategory !== 'Todos' ? activeCategory : scrollCategory
@@ -2769,7 +2802,7 @@ export function PublicMenu() {
                   <h2>El wok en movimiento</h2>
                 </header>
                 <div className="public-instagram-intro">
-                  <p><span>Fuego alto.</span> {instagramDataSaverEnabled ? 'Ahorro de datos: elige cada reel.' : 'El wok en acción.'}</p>
+                  <p><span>Fuego alto.</span> El wok en acción.</p>
                   <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
                     {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
                   </button>
@@ -2779,40 +2812,32 @@ export function PublicMenu() {
                     const reelIndex = INSTAGRAM_REELS.indexOf(reel)
                     const isActive = reelIndex === instagramActiveIndex
                     return (
-                    <a
-                      key={reel.href}
-                      href={reel.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <div
+                      key={reel.src}
                       className={`public-instagram-reel is-reel-${position + 1}`}
                       data-active={isActive ? 'true' : undefined}
-                      onClick={(event) => {
-                        if (!isActive) {
-                          event.preventDefault()
-                          setInstagramActiveIndex(reelIndex)
-                        }
-                      }}
-                      aria-label={`Ver reel ${reelIndex + 1} de Full China en Instagram`}
+                      onClick={!isActive ? () => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) } : undefined}
                     >
-                      <video autoPlay={isActive} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onTimeUpdate={event => {
+                      <video autoPlay={isActive && instagramPlaybackStarted && !instagramPaused} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onClick={isActive ? toggleInstagramPlayback : undefined} onTimeUpdate={event => {
                         if (!isActive) return
                         const video = event.currentTarget
                         const progress = video.duration > 0 ? video.currentTime / video.duration : 0
                         video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
-                      }} onEnded={() => isActive && !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
+                      }} onEnded={() => { if (isActive) { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length) } }}>
                         <source data-src={reel.src} type="video/mp4" />
                       </video>
                       <span className="public-instagram-reel-shade" aria-hidden="true" />
                       {isActive && <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(reelIndex + 1).padStart(2, '0')} / 06</b></span>}
                       <span className="public-instagram-reel-progress" aria-hidden="true" />
-                      <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
-                    </a>
+                      {isActive && !instagramPlaybackStarted && <button type="button" className="public-instagram-start-prompt" onClick={toggleInstagramPlayback} aria-label="Toca para ver el reel"><Play size={14} fill="currentColor" /><span>Toca para ver</span></button>}
+                      {isActive && instagramPlaybackStarted && <button type="button" className="public-instagram-play-toggle" aria-label={instagramPaused ? 'Reanudar video' : 'Pausar video'} title={instagramPaused ? 'Reanudar video' : 'Pausar video'} onClick={toggleInstagramPlayback}>{instagramPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} />}</button>}
+                    </div>
                     )
                   })}
                 </div>
                 <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
                   {INSTAGRAM_REELS.map((reel, reelIndex) => (
-                    <button key={reel.href} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => setInstagramActiveIndex(reelIndex)}>
+                    <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
                       <img src={reel.poster} alt="" loading="lazy" />
                       <span>{String(reelIndex + 1).padStart(2, '0')}</span>
                     </button>
@@ -3284,7 +3309,7 @@ export function PublicMenu() {
               </section>
 
               <section className="public-contact-hub">
-                <CustomerLoyaltyProfile presentation="promotion" onJoin={openCustomerProfile} />
+                <CustomerLoyaltyProfile presentation="promotion" onJoin={openCustomerProfile} interactivePromotionCard />
                 <article className="public-contact-panel public-contact-talk">
                   <header className="public-order-ticket-head">
                     <span><Flame size={14} /> Pedido directo</span>
@@ -3322,7 +3347,7 @@ export function PublicMenu() {
                     <h2>El wok en movimiento</h2>
                   </header>
                   <div className="public-instagram-intro">
-                    <p><span>Fuego alto.</span> {instagramDataSaverEnabled ? 'Ahorro de datos: elige cada reel.' : 'El wok en acción.'}</p>
+                    <p><span>Fuego alto.</span> El wok en acción.</p>
                     <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
                       {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
                     </button>
@@ -3331,33 +3356,61 @@ export function PublicMenu() {
                     {(() => {
                       const reel = INSTAGRAM_REELS[instagramActiveIndex]
                       return (
-                        <a
-                          key={reel.href}
-                          href={reel.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <div
+                          key={reel.src}
                           className="public-instagram-reel public-instagram-desktop-reel"
                           data-active="true"
-                          aria-label={`Ver reel ${instagramActiveIndex + 1} de Full China en Instagram`}
                         >
-                          <video autoPlay muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active="true" onTimeUpdate={event => {
+                          <video autoPlay={instagramDesktopPlaybackConfirmed && !instagramPaused} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active="true" onPlay={event => { event.currentTarget.closest('.public-instagram-desktop-reel')?.setAttribute('data-video-playing', 'true'); setInstagramDesktopPlaybackConfirmed(true) }} onPause={event => event.currentTarget.closest('.public-instagram-desktop-reel')?.removeAttribute('data-video-playing')} onClick={toggleInstagramPlayback} onTimeUpdate={event => {
                             const video = event.currentTarget
                             const progress = video.duration > 0 ? video.currentTime / video.duration : 0
                             video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
-                          }} onEnded={() => !instagramDataSaverEnabled && setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length)}>
+                          }} onEnded={() => { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length) }}>
                             <source data-src={reel.src} type="video/mp4" />
                           </video>
                           <span className="public-instagram-reel-shade" aria-hidden="true" />
                           <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(instagramActiveIndex + 1).padStart(2, '0')} / 06</b></span>
                           <span className="public-instagram-reel-progress" aria-hidden="true" />
-                          <span className="public-instagram-reel-link-icon" aria-hidden="true"><ArrowUpRight size={13} /></span>
-                        </a>
+                          <button type="button" className="public-instagram-play-toggle" aria-label="Pausar o reanudar video" title="Pausar o reanudar video" onClick={toggleInstagramPlayback}>{instagramPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} />}</button>
+                        </div>
                       )
                     })()}
+                    {!instagramAudioEnabled && (
+                      <button
+                        type="button"
+                        className="public-instagram-start-prompt public-instagram-desktop-start-prompt"
+                        onClick={startInstagramReelWithSound}
+                        aria-label="Toca para ver el reel"
+                        style={{
+                          position: 'absolute',
+                          zIndex: 100,
+                          top: '50%',
+                          left: '50%',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                          minHeight: 42,
+                          padding: '0 16px',
+                          border: '1px solid rgba(255, 200, 61, .9)',
+                          borderRadius: 999,
+                          background: 'rgba(12, 12, 15, .94)',
+                          color: '#fff',
+                          font: '750 12px/1 Inter, system-ui, sans-serif',
+                          whiteSpace: 'nowrap',
+                          cursor: 'pointer',
+                          boxShadow: '0 6px 20px rgba(0, 0, 0, .65)',
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        <Play size={14} fill="currentColor" style={{ color: '#ffc83d', fill: '#ffc83d' }} />
+                        <span>Toca para ver</span>
+                      </button>
+                    )}
                   </div>
                   <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
                     {INSTAGRAM_REELS.map((reel, reelIndex) => (
-                      <button key={reel.href} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => setInstagramActiveIndex(reelIndex)}>
+                      <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
                         <img src={reel.poster} alt="" loading="lazy" />
                         <span>{String(reelIndex + 1).padStart(2, '0')}</span>
                       </button>

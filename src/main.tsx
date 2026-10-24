@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './styles/motion.css'
 import App from './App'
+import { registerSW } from 'virtual:pwa-register'
 
 // Auto-recuperación de chunks vencidos: tras un nuevo deploy, los archivos
 // JS/CSS de los módulos cambian de hash. Una pestaña abierta con el service
@@ -17,17 +18,19 @@ window.addEventListener('vite:preloadError', () => {
   window.location.reload()
 })
 
-// Cuando el service worker NUEVO toma control tras un deploy, recargar para
-// traer index/JS/CSS frescos antes de que falle algún chunk. El guard por
-// `controller` evita recargar en la primera visita (instalación inicial).
-if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-  let reloaded = false
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloaded) return
-    reloaded = true
-    window.location.reload()
-  })
-}
+// Las actualizaciones se descargan en segundo plano, pero no toman control ni
+// recargan el sitio hasta que la persona elija aplicarlas.
+const updateServiceWorker = registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    ;(window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable = true
+    window.dispatchEvent(new Event('fullchina:pwa-update-available'))
+  },
+})
+
+window.addEventListener('fullchina:pwa-apply-update', () => {
+  void updateServiceWorker(true)
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
