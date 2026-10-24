@@ -124,71 +124,43 @@ const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
 const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orientation: landscape)'
 
-// El perfil se monta al abrir su pestaña. Calentar estos fondos después del
-// primer render evita que aparezcan progresivamente delante del cliente.
+// Se mantienen decodificados mientras el cliente cambia entre pestañas.
 const profileBackgroundImages = new Map<string, HTMLImageElement>()
-const publicMenuImageWarmups = new Map<string, HTMLImageElement>()
-const CONTACT_BACKGROUND_IMAGES = [
-  '/optimized/fondos/contacto-banner-mobile-chatgpt.webp',
-  '/optimized/fondos/contacto-banner-mobile.webp',
-  '/optimized/fondos/contacto-banner.webp',
-]
+const contactBackgroundImageWarmups = new Map<string, HTMLImageElement>()
 
-function warmPublicMenuImages(products: Product[]) {
-  // Los fondos de Contacto están declarados en CSS; al estar esa pestaña
-  // desmontada el navegador no los solicita hasta que el cliente la abre.
-  // Descárgalos primero junto con las imágenes del catálogo, sin depender de
-  // que las tarjetas con loading="lazy" estén dentro de una pestaña visible.
-  const catalogSources = products
-    .map(product => optimizedProductImage(product.imageUrl))
-    .filter((source): source is string => Boolean(source))
-  const sources = [...new Set([
-    ...CONTACT_BACKGROUND_IMAGES,
-    ...Object.values(CATEGORY_ICONS),
-    '/optimized/menu-product-placeholder.webp',
-    ...catalogSources,
-  ])]
-  let nextIndex = 0
-  let active = 0
-  const maxConcurrent = 3
+function warmContactBackgroundImage() {
+  // El hero de Contacto es fondo CSS y no se solicita mientras esa pestaña
+  // está desmontada. Calienta solo la variante que usa este dispositivo;
+  // las 135 fotos del catálogo siguen la carga progresiva de sus tarjetas.
+  const desktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+  const source = desktop
+    ? '/optimized/fondos/contacto-banner.webp'
+    : window.matchMedia('(max-width: 767px)').matches
+      ? '/optimized/fondos/contacto-banner-mobile-chatgpt.webp'
+      : '/optimized/fondos/contacto-banner-mobile.webp'
+  if (contactBackgroundImageWarmups.has(source)) return
 
-  const loadNext = () => {
-    while (active < maxConcurrent && nextIndex < sources.length) {
-      const source = sources[nextIndex++]
-      if (publicMenuImageWarmups.has(source)) continue
+  const image = new Image()
+  image.decoding = 'async'
+  image.fetchPriority = 'low'
+  contactBackgroundImageWarmups.set(source, image)
+  image.src = source
+  void image.decode().catch(() => contactBackgroundImageWarmups.delete(source))
+}
 
-      const image = new Image()
-      image.decoding = 'async'
-      image.fetchPriority = CONTACT_BACKGROUND_IMAGES.includes(source) ? 'high' : 'low'
-      publicMenuImageWarmups.set(source, image)
-      active += 1
-      let finished = false
+async function getPublicCatalogWithRetry() {
+  try {
+    return await getPublicCatalog()
+  } catch (error) {
+    const status = error && typeof error === 'object' && 'status' in error
+      ? Number((error as { status: unknown }).status)
+      : null
+    const missingClient = error instanceof Error && error.message === 'El menú no está disponible en este momento'
+    if (missingClient || (status !== null && status > 0 && status < 500 && status !== 429)) throw error
 
-      const finish = () => {
-        if (finished) return
-        finished = true
-        active -= 1
-        loadNext()
-      }
-      image.onload = () => {
-        void image.decode().catch(() => undefined).finally(finish)
-      }
-      image.onerror = () => {
-        publicMenuImageWarmups.delete(source)
-        finish()
-      }
-      image.src = source
-      if (image.complete) {
-        if (image.naturalWidth > 0) void image.decode().catch(() => undefined).finally(finish)
-        else {
-          publicMenuImageWarmups.delete(source)
-          finish()
-        }
-      }
-    }
+    await new Promise(resolve => window.setTimeout(resolve, 900))
+    return getPublicCatalog()
   }
-
-  loadNext()
 }
 
 function warmProfileBackgroundImages(prioritizeAuth = false) {
@@ -544,6 +516,11 @@ export function PublicMenu() {
     return estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng)
   }, [orderType, geoCoords, deliverySettings])
   const [loading, setLoading] = useState(() => !initialCatalog)
+  const [catalogRetryVersion, setCatalogRetryVersion] = useState(0)
+  const retryPublicCatalog = () => {
+    setLoading(true)
+    setCatalogRetryVersion(version => version + 1)
+  }
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   // Al aparecer un error de validación, subir la tarjeta al tope para que se vea
@@ -840,13 +817,14 @@ export function PublicMenu() {
     // Solo el catálogo es crítico para pintar el menú. Las categorías, la tasa
     // y delivery llegan después para que una respuesta lenta no mantenga al
     // cliente mirando la pantalla de carga.
-    const catalogPromise = getPublicCatalog()
+    const catalogPromise = getPublicCatalogWithRetry()
       .then(catalog => {
         const resolved = prepareCatalog(catalog)
         if (!active) return resolved
         saveCatalogCache(resolved, initialCatalog?.categories ?? [])
         setExtrasProducts(resolved.filter(product => product.categories.includes('extras')))
         setProducts(resolved.filter(p => !p.categories.includes('extras')))
+        setError('')
         setLoading(false)
         window.__removeFCSplash?.()
         return resolved
@@ -886,7 +864,7 @@ export function PublicMenu() {
       active = false
       if (secondaryTimer !== null) window.clearTimeout(secondaryTimer)
     }
-  }, [initialCatalog])
+  }, [catalogRetryVersion, initialCatalog])
 
   useEffect(() => {
     if (!loading) {
@@ -895,19 +873,9 @@ export function PublicMenu() {
   }, [loading])
 
   useEffect(() => {
-    const contactImageTimer = window.setTimeout(() => warmPublicMenuImages([]), 0)
+    const contactImageTimer = window.setTimeout(warmContactBackgroundImage, 250)
     return () => window.clearTimeout(contactImageTimer)
   }, [])
-
-  useEffect(() => {
-    if (loading) return
-    const imageTimer = window.setTimeout(() => warmPublicMenuImages([...products, ...extrasProducts]), 250)
-    const timer = window.setTimeout(warmProfileBackgroundImages, 400)
-    return () => {
-      window.clearTimeout(imageTimer)
-      window.clearTimeout(timer)
-    }
-  }, [extrasProducts, loading, products])
 
   // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
   // descargues zonas y coordenadas en cada visita al menú: en conexiones
@@ -2628,7 +2596,7 @@ export function PublicMenu() {
           </div>
 
           {error && products.length > 0 && <Toast type="error" message={error} onClose={() => setError('')} />}
-          {error && products.length === 0 ? <div className="public-state error">{error}</div> : (
+          {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
             <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
               {visibleGroups.length === 0 ? (
                 <div className="public-empty-menu">
@@ -3162,7 +3130,7 @@ export function PublicMenu() {
                   </div>
                 )}
 
-                {error && products.length === 0 ? <div className="public-state error">{error}</div> : (
+                {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
                   <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
                     {visibleGroups.length === 0 ? (
                       <div className="public-empty-menu">

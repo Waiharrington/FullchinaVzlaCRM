@@ -2158,6 +2158,9 @@ button.mobile-only {
 @keyframes public-search-spin { to { transform: rotate(360deg); } }
 .public-state { padding: 80px 20px; text-align: center; color: #E5E7EB; }
 .public-state.error { color: #E31B2B; }
+.public-state.error > p { margin: 0; }
+.public-catalog-retry { min-height: 42px; margin-top: 16px; padding: 0 18px; border: 1px solid rgba(255, 83, 92, .48); border-radius: 12px; background: rgba(227, 27, 43, .14); color: #FFF; font: 800 13px 'DM Sans', sans-serif; cursor: pointer; }
+.public-catalog-retry:focus-visible { outline: 2px solid #FFC83D; outline-offset: 3px; }
 
 /* Skeleton del menú público: conserva la composición final y evita el salto
    visual mientras llegan catálogo y tasa BCV. */
