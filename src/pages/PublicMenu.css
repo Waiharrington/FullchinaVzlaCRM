@@ -8166,6 +8166,8 @@ button.mobile-only {
 }
 .public-mobile-tab-content[hidden] { display: none !important; }
 .public-mobile-tab-content.is-retained,
+.public-mobile-tab-content.is-retained .public-hero-header,
+.public-mobile-tab-content.is-retained .public-hero-title-row,
 .public-mobile-tab-content.is-retained .public-content,
 .public-mobile-tab-content.is-retained .public-category-section,
 .public-mobile-tab-content.is-retained .public-prod-card {
