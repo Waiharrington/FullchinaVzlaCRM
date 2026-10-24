@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap');
-
 html:has(.login-page),
 body:has(.login-page) {
   height: 100%;
@@ -72,11 +70,15 @@ body:has(.login-page) {
 }
 
 .login-hero-text h2 {
+  font-family: var(--font-display, 'Graduate', serif);
   font-size: clamp(2rem, 3.5vw, 2.85rem);
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1.1;
   margin: 0;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  -webkit-text-stroke: 4px #e31b2b;
+  paint-order: stroke fill;
   text-shadow: 0 4px 15px rgba(0, 0, 0, 1), 0 2px 6px rgba(0, 0, 0, 1);
   white-space: nowrap;
 }
@@ -109,19 +111,32 @@ body:has(.login-page) {
 }
 
 .login-hero-text .text-highlight {
-  font-family: 'Kaushan Script', cursive;
-  font-size: clamp(2.3rem, 4vw, 3.25rem); /* Fluid so it fits on the same line at narrower widths */
-  font-weight: 400; 
-  background: linear-gradient(to right, #ff0000, #ffcc00, #ffffff, #ff0000, #ffcc00);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(255, 77, 77, 0.6)); /* Bright red glow instead of black shadow */
+  color: #ffd84a;
+  font-family: inherit;
+  font-size: inherit;
+  font-style: normal;
+  font-weight: inherit;
+  -webkit-text-stroke: 4px #e31b2b;
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: #ffcc00;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 61, 0.45));
   text-shadow: none !important; /* Stop the black shadow from leaking through the transparent text */
   display: inline-block; /* Revert back to inline-block so padding applies properly to the clipping box, but without margin-top */
   position: relative;
-  padding-right: 0.8rem; /* Extra padding so the cursive 'o' doesn't get clipped */
-  animation: fireGradient 3s linear infinite;
+  padding-right: 0;
+  animation: chino-gold-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes chino-gold-glow {
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 200, 61, 0.32)); }
+  50% { filter: drop-shadow(0 0 11px rgba(255, 214, 92, 0.7)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hero-text .text-highlight {
+    animation: none;
+  }
 }
 
 @keyframes fireGradient {
@@ -129,7 +144,7 @@ body:has(.login-page) {
   100% { background-position: 200% center; }
 }
 
-/* Red brush stroke underneath */
+/* Gold brush stroke underneath */
 .login-hero-text .text-highlight::after {
   content: '';
   position: absolute;
@@ -137,7 +152,7 @@ body:has(.login-page) {
   left: 0;
   width: 90%;
   height: 4px;
-  background: #E31B2B;
+  background: #ffcc00;
   border-radius: 50%;
   transform: rotate(-2deg);
 }
