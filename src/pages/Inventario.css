@@ -206,6 +206,8 @@
 @keyframes inv-file-spin { to { transform:rotate(360deg); } }
 .inv-import-alert { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:11px 14px;border:1px solid rgba(248,113,113,.32);border-radius:10px;background:rgba(127,29,29,.18);color:#fecaca;font-size:.84rem;white-space:pre-line; }
 .inv-import-alert button { border:0;background:transparent;color:inherit;font-size:20px;cursor:pointer; }
+.inv-import-alert-actions { display:flex;align-items:center;gap:10px;flex-shrink:0; }
+.inv-import-alert-actions button:first-child { font-size:.82rem;font-weight:700;text-decoration:underline; }
 .inv-import-modal { width:min(640px,100%); }
 .inv-modal-overlay .inv-import-modal { flex:0 1 640px;margin:auto; }
 .inv-import-filename { margin:-8px 0 14px;color:var(--text-secondary);font-size:.82rem;overflow-wrap:anywhere; }

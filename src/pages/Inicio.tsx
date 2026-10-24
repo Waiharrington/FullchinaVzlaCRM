@@ -47,6 +47,7 @@ type DashboardCache = {
   productRanking: ProductRanking[]
   credits: Credit[]
   paymentMethods: PaymentMethodSales[]
+  ingredients: Ingredient[]
   personalAccounts: PersonalAccountOption[]
   recentProductionBatches: RecentProductionBatch[]
 }
@@ -177,9 +178,10 @@ export function Inicio() {
   const [personalAccounts, setPersonalAccounts] = useState<PersonalAccountOption[]>(initialCache?.personalAccounts ?? [])
   const [recentProductionBatches, setRecentProductionBatches] = useState<RecentProductionBatch[]>(initialCache?.recentProductionBatches ?? [])
   const [recentProductionLoadState, setRecentProductionLoadState] = useState<'loading' | 'ready' | 'error'>(initialCache?.recentProductionBatches ? 'ready' : 'loading')
-  const [ingredients, setIngredients] = useState<Ingredient[]>([])
+  const [ingredients, setIngredients] = useState<Ingredient[]>(initialCache?.ingredients ?? [])
   const [loading, setLoading] = useState(!initialCache)
-  const [sectionLoading, setSectionLoading] = useState({ sales: !initialCache, payments: !initialCache, ranking: !initialCache, inventory: !initialCache, credits: !initialCache })
+  const [sectionLoading, setSectionLoading] = useState({ sales: !initialCache, payments: !initialCache, ranking: !initialCache, inventory: !initialCache?.ingredients, credits: !initialCache })
+  const [inventorySectionError, setInventorySectionError] = useState(false)
   const [chartLoading, setChartLoading] = useState(false)
   const [salesRange, setSalesRange] = useState(7)
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
@@ -220,7 +222,7 @@ export function Inicio() {
   }, [])
 
   const fetchData = useCallback(async (days: number = 7, silent = false) => {
-    inicioCache ??= { stats: null, todayOrders: [], dailySales: [], productRanking: [], credits: [], paymentMethods: [], personalAccounts: [], recentProductionBatches: [] }
+    inicioCache ??= { stats: null, todayOrders: [], dailySales: [], productRanking: [], credits: [], paymentMethods: [], ingredients: [], personalAccounts: [], recentProductionBatches: [] }
     if (!silent) {
       setLoading(true)
       setSectionLoading(previous => ({ ...previous, sales: true, payments: true, inventory: true, credits: true }))
@@ -239,12 +241,16 @@ export function Inicio() {
       const loadSection = <T,>(promise: Promise<T>, section: 'sales' | 'payments' | 'inventory' | 'credits') => promise.then(value => {
         if (section === 'sales') setDailySales(value as DailySales[])
         if (section === 'credits') setCredits(value as Credit[])
-        if (section === 'inventory') setIngredients(value as Ingredient[])
+        if (section === 'inventory') {
+          setIngredients(value as Ingredient[])
+          setInventorySectionError(false)
+        }
         if (section === 'payments') setPaymentMethods(value as PaymentMethodSales[])
         setSectionLoading(previous => ({ ...previous, [section]: false }))
         return value
       }, error => {
         setSectionLoading(previous => ({ ...previous, [section]: false }))
+        if (section === 'inventory') setInventorySectionError(true)
         throw error
       })
       const secondaryDataPromise = Promise.allSettled([
@@ -272,6 +278,7 @@ export function Inicio() {
         productRanking: inicioCache?.productRanking ?? [],
         credits: inicioCache?.credits ?? [],
         paymentMethods: inicioCache?.paymentMethods ?? [],
+        ingredients: inicioCache?.ingredients ?? [],
         personalAccounts: inicioCache?.personalAccounts ?? [],
         recentProductionBatches: inicioCache?.recentProductionBatches ?? [],
       }
@@ -371,6 +378,7 @@ export function Inicio() {
         dailySales: resolvedDailySales,
         credits: creditsResult.status === 'fulfilled' ? creditsResult.value : inicioCache!.credits,
         paymentMethods: resolvedPaymentMethods.length > 0 || paymentResult.status === 'fulfilled' ? resolvedPaymentMethods : inicioCache!.paymentMethods,
+        ingredients: ingredientsResult.status === 'fulfilled' ? ingredientsResult.value : inicioCache!.ingredients,
         personalAccounts: personalAccountsResult.status === 'fulfilled' ? personalAccountsResult.value : inicioCache!.personalAccounts,
       }
       inicioCacheReady = true
@@ -387,6 +395,24 @@ export function Inicio() {
       setDashboardError('No pudimos actualizar todos los datos del dashboard. Puedes reintentar sin perder la información visible.')
     } finally {
       if (!silent) setLoading(false)
+    }
+  }, [user?.id])
+
+  const retryInventorySection = useCallback(async () => {
+    setInventorySectionError(false)
+    setSectionLoading(previous => ({ ...previous, inventory: true }))
+    try {
+      const data = await getIngredients()
+      setIngredients(data)
+      if (inicioCache) {
+        inicioCache = { ...inicioCache, ingredients: data }
+        try { localStorage.setItem(DASHBOARD_CACHE_KEY, JSON.stringify({ owner: user?.id ?? 'anonymous', savedAt: Date.now(), data: inicioCache })) } catch { /* cache opcional */ }
+      }
+    } catch (error) {
+      console.error('No se pudieron cargar las alertas de inventario:', error)
+      setInventorySectionError(true)
+    } finally {
+      setSectionLoading(previous => ({ ...previous, inventory: false }))
     }
   }, [user?.id])
 
@@ -947,8 +973,13 @@ export function Inicio() {
             <h3>Alertas de inventario</h3>
           </div>
           <div className="db-inv-alerts">
-            {sectionLoading.inventory ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando alertas de inventario"><i /><i /><i /></div> : lowStockItems.length === 0 ? (
-              <div className="inv-row"><span className="inv-row-name">Sin datos de inventario</span></div>
+            {sectionLoading.inventory ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando alertas de inventario"><i /><i /><i /></div> : inventorySectionError ? (
+              <div className="inv-row" role="alert">
+                <span className="inv-row-name">No se pudieron cargar los datos de inventario.</span>
+                <button className="db-link-btn" type="button" onClick={() => void retryInventorySection()}>Reintentar</button>
+              </div>
+            ) : lowStockItems.length === 0 ? (
+              <div className="inv-row"><span className="inv-row-name">No hay insumos activos registrados.</span></div>
             ) : lowStockItems.map((it) => {
               const level = it.currentStock <= 0 ? 'Agotado' : 'Disponible'
               return (

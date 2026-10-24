@@ -337,21 +337,30 @@ export function Inventario() {
   }
 
   const fetchAll = useCallback(async (silent = false) => {
+    const supportDataPromise = Promise.allSettled([getStockMovements(), getUnits()])
+    let refreshedIngredients = inventarioCache?.ingredients ?? []
+    let refreshedMovements = inventarioCache?.stockMovements ?? []
     try {
-      const [ingData, movData, unitData] = await Promise.all([
-        getIngredients(),
-        getStockMovements(),
-        getUnits().catch(() => []),
-      ])
+      const ingData = await getIngredients()
+      refreshedIngredients = ingData
       setIngredients(ingData)
-      setStockMovements(movData)
-      if (unitData.length > 0) setUnits(unitData)
-      inventarioCache = { ingredients: ingData, stockMovements: movData }
+      setInventoryActionError('')
     } catch (e) {
       console.error('Error:', e)
+      setInventoryActionError('No se pudo actualizar el inventario. Intenta de nuevo.')
     } finally {
       if (!silent) setLoading(false)
     }
+    const [movementsResult, unitsResult] = await supportDataPromise
+    if (movementsResult.status === 'fulfilled') {
+      refreshedMovements = movementsResult.value
+      setStockMovements(movementsResult.value)
+    } else {
+      console.error('No se pudieron actualizar los movimientos de inventario:', movementsResult.reason)
+    }
+    if (unitsResult.status === 'fulfilled' && unitsResult.value.length > 0) setUnits(unitsResult.value)
+    else if (unitsResult.status === 'rejected') console.error('No se pudieron actualizar las unidades:', unitsResult.reason)
+    inventarioCache = { ingredients: refreshedIngredients, stockMovements: refreshedMovements }
   }, [])
 
   const handleInventoryFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -917,7 +926,7 @@ export function Inventario() {
         </div>
       </div>
       {successMessage && <div className="inv-success" role="status">{successMessage}<button onClick={() => setSuccessMessage('')} aria-label="Cerrar mensaje">×</button></div>}
-      {inventoryActionError && <div className="inv-import-alert" role="alert">{inventoryActionError}<button type="button" onClick={() => setInventoryActionError('')} aria-label="Cerrar mensaje">×</button></div>}
+      {inventoryActionError && <div className="inv-import-alert" role="alert"><span>{inventoryActionError}</span><div className="inv-import-alert-actions"><button type="button" onClick={() => void fetchAll(true)}>Reintentar</button><button type="button" onClick={() => setInventoryActionError('')} aria-label="Cerrar mensaje">×</button></div></div>}
       {inventoryImportPreview && createPortal(
         <div className="inv-modal-overlay" role="presentation" onClick={() => !inventoryImportBusy && setInventoryImportPreview(null)}>
           <section className="inv-sidebar-card inv-detail-modal inv-detail-modal--view inv-import-modal" role="dialog" aria-modal="true" aria-labelledby="inv-import-title" onClick={event => event.stopPropagation()}>

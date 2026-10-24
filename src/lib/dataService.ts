@@ -2842,7 +2842,9 @@ export async function getLegacyPurchaseOrders(): Promise<LegacyPurchaseOrder[]> 
 
 export async function getIngredients(): Promise<Ingredient[]> {
   const [{ data, error }, { data: metadata, error: metadataError }] = await Promise.all([
-    client().from('v_current_stock').select('*').order('ingredient_name', { ascending: true }),
+    client().from('v_current_stock')
+      .select('ingredient_id,ingredient_name,unit_id,unit_name,unit_symbol,current_stock,price_per_unit,stock_value')
+      .order('ingredient_name', { ascending: true }),
     client().from('ingredients').select('id,inventory_class,is_active'),
   ])
 
