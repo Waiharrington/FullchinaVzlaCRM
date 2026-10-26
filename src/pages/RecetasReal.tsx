@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+import { Fragment, useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getRecipeComponents, getSellableProducts, createRecipeComponent, deleteRecipeComponent, updateRecipeComponent,
@@ -620,16 +620,20 @@ export function RecetasReal() {
 
           {totalPages > 1 && (
             <div className="rec-pagination">
-              <button disabled={safePage === 1} onClick={() => setPage(safePage - 1)}><ChevronLeft size={15} /></button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1)
-                .filter((n) => n === 1 || n === totalPages || Math.abs(n - safePage) <= 1)
-                .map((n, idx, arr) => (
-                  <span key={n} style={{ display: 'inline-flex', gap: 6 }}>
-                    {idx > 0 && n - arr[idx - 1] > 1 && <span style={{ color: '#52525b' }}>…</span>}
-                    <button className={n === safePage ? 'active' : ''} onClick={() => setPage(n)}>{n}</button>
-                  </span>
-                ))}
-              <button disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}><ChevronRight size={15} /></button>
+              <div className="rec-pagination-controls">
+                <button disabled={safePage === 1} onClick={() => setPage(safePage - 1)}><ChevronLeft size={15} /></button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((n) => isMobileLayout
+                    ? n === 1 || n === totalPages || n === safePage
+                    : n === 1 || n === totalPages || Math.abs(n - safePage) <= 1)
+                  .map((n, idx, arr) => (
+                    <Fragment key={n}>
+                      {idx > 0 && n - arr[idx - 1] > 1 && <span className="rec-pagination-ellipsis">…</span>}
+                      <button className={n === safePage ? 'active' : ''} onClick={() => setPage(n)}>{n}</button>
+                    </Fragment>
+                  ))}
+                <button disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}><ChevronRight size={15} /></button>
+              </div>
               <span className="rec-total">{filtered.length} recetas en total</span>
             </div>
           )}
@@ -653,7 +657,7 @@ export function RecetasReal() {
                     : <span className="rec-detail-thumb"><UtensilsCrossed size={16} /></span>}
                 <div className="rec-detail-title">
                   <h2>
-                    {formatProductTitle(sel.name)}
+                    <span className="rec-detail-product-name">{formatProductTitle(sel.name)}</span>
                     <span className={`rec-pill ${selComplete ? 'ok' : 'warn'}`}>
                       {selComplete ? <><CheckCircle2 size={13} /> Completa</> : <><AlertTriangle size={13} /> Falta configurar</>}
                     </span>
@@ -720,7 +724,7 @@ export function RecetasReal() {
                   ) : (
                     <>
                       {components.map((c) => (
-                        <div key={c.id} className="rec-ing-row">
+                        <div key={c.id} className={`rec-ing-row${editingComponentId === c.id ? ' is-editing' : ''}`}>
                           <span className="rec-ing-name">{c.ingredientName ?? 'Preparación'}</span>
                           {editingComponentId === c.id ? (
                             <div className="rec-ing-edit-fields">
@@ -733,10 +737,10 @@ export function RecetasReal() {
                           <span className="rec-ing-cost">{c.costPerUnit == null ? 'Sin costo' : formatUsdPrecise(c.costPerUnit * c.quantity)}</span>
                           {c.ingredientId && (
                             editingComponentId === c.id ? (
-                              <>
+                              <div className="rec-ing-edit-actions">
                                 <button className="rec-ing-action rec-ing-save" onClick={() => void handleUpdateComponent(c)} title="Guardar"><Check size={15} /></button>
                                 <button className="rec-ing-action rec-ing-cancel" onClick={cancelEditingComponent} title="Cancelar"><X size={15} /></button>
-                              </>
+                              </div>
                             ) : (
                               <>
                                 <button className="rec-ing-action rec-ing-edit" onClick={() => startEditingComponent(c)} title="Editar"><Pencil size={15} /></button>
@@ -974,12 +978,12 @@ export function RecetasReal() {
 
       {showPortionForm && createPortal(
         <div className={`rec-modal-overlay ${closingPortionForm ? 'closing' : ''}`} onClick={() => closeTimedModal(showPortionForm, closingPortionForm, setClosingPortionForm, setShowPortionForm)}>
-          <form className="rec-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreatePortion}>
+          <form className="rec-modal rec-portion-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreatePortion}>
             <div className="rec-modal-header">
               <div className="rec-modal-header-icon"><Soup size={18} /></div>
               <h3>{editingPortionId ? 'Editar receta de porción' : 'Nueva receta de porción'}</h3>
             </div>
-            <p className="rec-detail-sub">Define la cantidad exacta que representa una porción.</p>
+            <p className="rec-detail-sub">Define la cantidad exacta que representa una&nbsp;porción.</p>
             <label className="rec-form-label">
               Nombre de la porción
               <input value={portionName} onChange={(e) => setPortionName(e.target.value)} placeholder="Ej. Porción de pollo" required />
@@ -1000,11 +1004,11 @@ export function RecetasReal() {
             </div>
             <div className="rec-portion-fields">
               <label className="rec-form-label">
-                Cantidad por porción
+                <span>Cantidad por porción</span>
                 <input type="number" min="0.001" step="0.001" value={portionQuantity} onChange={(e) => setPortionQuantity(e.target.value)} placeholder="125" required />
               </label>
               <label className="rec-form-label">
-                Unidad
+                <span>Unidad</span>
                 <StyledSelect value={portionUnitId} onChange={(e) => setPortionUnitId(e.target.value)}>
                   {units.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.symbol})</option>)}
                 </StyledSelect>

@@ -92,6 +92,8 @@
 
 /* Paginación */
 .rec-pagination { display: flex; align-items: center; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+.rec-pagination-controls { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.rec-pagination-ellipsis { display: inline-grid; place-items: center; flex: 0 0 20px; width: 20px; min-width: 20px; height: 34px; color: #71717a; line-height: 1; text-align: center; }
 .rec-pagination button {
   min-width: 34px; height: 34px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.08);
   background: #1c1c22; color: #d4d4d8; cursor: pointer; font-size: 13px;
@@ -148,6 +150,41 @@
 .rec-ing-cost { color: #d4d4d8; font-size: 13px; min-width: 70px; text-align: right; }
 .rec-ing-del { background: none; border: 0; color: #FF4D3D; cursor: pointer; padding: 4px; }
 .rec-ing-action { background: none; border: 0; cursor: pointer; padding: 4px; }
+.rec-ing-row.is-editing {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(170px, 1.2fr) minmax(80px, auto) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.rec-ing-row.is-editing .rec-ing-name { min-width: 0; font-weight: 600; }
+.rec-ing-row.is-editing .rec-ing-edit-fields {
+  display: grid;
+  grid-template-columns: minmax(82px, 1fr) minmax(72px, .8fr);
+  gap: 8px;
+  min-width: 0;
+}
+.rec-ing-row.is-editing .rec-ing-edit-fields > .num-stepper,
+.rec-ing-row.is-editing .rec-ing-edit-fields > .fc-select { width: 100%; min-width: 0; max-width: none; }
+.rec-ing-row.is-editing .rec-ing-edit-fields .num-stepper-input { box-sizing: border-box; width: 100%; min-width: 0; height: 40px; padding: 8px 10px; }
+.rec-ing-row.is-editing .rec-ing-edit-fields .fc-select-trigger { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; height: 42px; padding-inline: 10px; }
+.rec-ing-row.is-editing .rec-ing-cost { min-width: 0; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rec-ing-edit-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.rec-ing-edit-actions .rec-ing-action {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: #202027;
+  color: #a1a1aa;
+}
+.rec-ing-edit-actions .rec-ing-save { color: #22c55e; border-color: rgba(34,197,94,.22); background: rgba(34,197,94,.08); }
+.rec-ing-edit-actions .rec-ing-cancel { color: #d4d4d8; }
+.rec-ing-edit-actions .rec-ing-action:hover { background: #2a2a32; border-color: rgba(255,255,255,.2); }
 .rec-ing-edit { color: #a1a1aa; }
 .rec-ing-save { color: #22c55e; }
 .rec-ing-cancel { color: #4ade80; }
@@ -239,6 +276,105 @@
 .rec-add-btn:disabled { opacity: .5; cursor: default; filter: none; }
 
 @media (max-width: 767px) {
+  .rec-modal.rec-portion-modal {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 440px;
+    max-height: calc(100dvh - 18px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px;
+    border-radius: 21px 21px 16px 16px;
+    background: #141419;
+    scrollbar-gutter: stable;
+  }
+  .rec-portion-modal .rec-modal-header {
+    align-items: center;
+    gap: 11px;
+    margin: -16px -16px 15px;
+    padding: 16px;
+  }
+  .rec-portion-modal .rec-modal-header-icon { width: 40px; height: 40px; border-radius: 12px; }
+  .rec-portion-modal .rec-modal-header h3 { min-width: 0; font-size: clamp(17px, 4.8vw, 20px); line-height: 1.15; letter-spacing: -.02em; }
+  .rec-portion-modal .rec-detail-sub {
+    margin: 0 0 15px;
+    font-size: .82rem;
+    line-height: 1.4;
+  }
+  .rec-portion-modal .rec-form-label {
+    min-width: 0;
+    margin: 0 0 14px;
+    gap: 7px;
+    font-size: .78rem;
+    line-height: 1.2;
+  }
+  .rec-portion-modal .rec-form-label input { min-height: 48px; border-radius: 12px; }
+  .rec-portion-modal .rec-portion-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 10px;
+    margin-bottom: 2px;
+  }
+  .rec-portion-modal .rec-portion-fields .rec-form-label > span {
+    display: flex;
+    align-items: flex-end;
+    min-height: 2.4em;
+    line-height: 1.2;
+  }
+  .rec-portion-modal .rec-portion-fields .rec-form-label > input,
+  .rec-portion-modal .rec-portion-fields .fc-select-trigger { height: 52px; }
+  .rec-portion-modal .rec-modal-actions {
+    display: grid;
+    grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr);
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .rec-portion-modal .rec-modal-actions > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    box-sizing: border-box;
+    padding-inline: 9px;
+    border-radius: 12px;
+    font-size: .86rem;
+    white-space: nowrap;
+  }
+  .management-workspace--recipes .rec-pagination {
+    align-items: stretch;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .management-workspace--recipes .rec-pagination-controls {
+    box-sizing: border-box;
+    align-self: stretch;
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    max-width: 100%;
+  }
+  .management-workspace--recipes .rec-pagination-controls > button {
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: clamp(40px, 12vw, 48px);
+    min-width: clamp(40px, 12vw, 48px) !important;
+    height: clamp(40px, 12vw, 48px);
+    min-height: clamp(40px, 12vw, 48px);
+  }
+  .management-workspace--recipes .rec-pagination-ellipsis {
+    flex-basis: clamp(16px, 5vw, 20px);
+    width: clamp(16px, 5vw, 20px);
+    min-width: clamp(16px, 5vw, 20px);
+    height: clamp(40px, 12vw, 48px);
+  }
+  .management-workspace--recipes .rec-total {
+    align-self: flex-end;
+    margin-left: 0;
+    white-space: nowrap;
+  }
   .rec-modal-overlay { align-items: flex-end; padding: 6px; overflow: hidden; }
   .rec-modal {
     max-width: none;
@@ -272,7 +408,22 @@
  .rec-empty-module{display:flex;justify-content:center;align-items:center;min-height:270px;text-align:center}.rec-empty-module .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;margin:0 auto}.rec-empty-module .empty-state p{margin:0 auto;text-align:center}
 .rec-form-label{display:flex;flex-direction:column;gap:7px;margin-top:14px;color:var(--text-secondary);font-size:.8rem;font-weight:700}.rec-form-label input,.rec-form-label select{box-sizing:border-box;width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--border-color);border-radius:10px;background:#151515;color:var(--text-primary);font:inherit}.rec-portion-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .rec-portion-list{display:flex;flex-direction:column;border:1px solid var(--border-color);border-radius:12px;overflow:hidden}.rec-portion-row{display:grid;grid-template-columns:1.4fr 1fr .8fr .7fr auto;align-items:center;gap:16px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.07);background:#18181c}.rec-portion-row:last-child{border-bottom:0}.rec-portion-row strong{color:var(--text-primary)}.rec-portion-row span:not(.rec-badge),.rec-portion-row b{color:var(--text-secondary);font-size:.85rem}.rec-portion-row .rec-badge{justify-self:end}.rec-portion-actions{display:flex;gap:6px;justify-content:flex-end}.rec-portion-actions button{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--border-color);border-radius:8px;background:transparent;color:var(--text-secondary);cursor:pointer}.rec-portion-actions button:hover{color:var(--text-primary);border-color:rgba(255,255,255,.3)}.rec-portion-actions button:last-child:hover{color:#ff6b61;border-color:rgba(255,77,61,.5)}
-.rec-portion-header{display:grid;grid-template-columns:1.4fr 1fr .8fr .7fr auto;gap:16px;padding:9px 16px;background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.rec-origin{color:#facc15!important;font-size:.8rem!important}.rec-portion-row .rec-origin{justify-self:end}@media(max-width:640px){.rec-portion-header{display:none}.rec-portion-row{grid-template-columns:1fr auto;gap:7px}.rec-portion-row span:not(.rec-badge){grid-column:1}.rec-portion-row .rec-origin{grid-column:1;justify-self:start}.rec-portion-actions{grid-column:2;grid-row:1 / span 3;align-self:center}}
+.rec-portion-header{display:grid;grid-template-columns:1.4fr 1fr .8fr .7fr auto;gap:16px;padding:9px 16px;background:rgba(255,255,255,.04);color:var(--text-muted);font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.04em}.rec-origin{color:#facc15!important;font-size:.8rem!important}.rec-portion-row .rec-origin{justify-self:end}@media(max-width:640px){
+  .rec-portion-header{display:none}
+  .rec-portion-row{
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-rows:auto auto auto;
+    align-items:center;
+    gap:6px 12px;
+    padding:13px 14px;
+  }
+  .rec-portion-row > strong{grid-column:1;grid-row:1;min-width:0;text-wrap:balance;line-height:1.25}
+  .rec-portion-row > span:nth-child(2){grid-column:1;grid-row:2;min-width:0;line-height:1.25}
+  .rec-portion-row > b{grid-column:1;grid-row:3;justify-self:start;white-space:nowrap}
+  .rec-portion-row .rec-origin{grid-column:2;grid-row:3;justify-self:start;padding:3px 8px;border:1px solid rgba(250,204,21,.22);border-radius:999px;background:rgba(250,204,21,.08);white-space:nowrap}
+  .rec-portion-actions{grid-column:2;grid-row:1 / span 2;align-self:center;gap:6px}
+  .rec-portion-actions button{width:38px;height:38px;border-radius:10px}
+}
 .rec-portion-title-mobile,.rec-portion-copy-mobile,.rec-portion-action-mobile{display:none}
 
 /* ============================================================
@@ -685,20 +836,22 @@
   .management-workspace--recipes .rec-panel { overflow: hidden; }
   .management-workspace--recipes .rec-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
-    flex-wrap: wrap !important;
     min-width: 0;
   }
   .management-workspace--recipes .rec-tab {
+    box-sizing: border-box;
+    width: 100%;
     min-width: 0;
     justify-content: center;
-    gap: 4px;
-    padding: 7px 5px;
-    font-size: .68rem;
-    line-height: 1.15;
-    white-space: normal;
+    gap: 6px;
+    padding: 8px 9px;
+    font-size: .74rem;
+    line-height: 1.2;
+    white-space: nowrap;
   }
+  .management-workspace--recipes .rec-tab:last-child { grid-column: 1 / -1; justify-content: space-between; padding-inline: 12px; }
   .management-workspace--recipes .rec-filters {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -760,6 +913,99 @@
   .rec-portion-title-mobile,.rec-portion-copy-mobile,.rec-portion-action-mobile { display: inline; }
   .rec-staff-title-desktop,.rec-staff-copy-desktop,.rec-staff-action-desktop { display: none; }
   .rec-staff-title-mobile,.rec-staff-copy-mobile,.rec-staff-action-mobile { display: inline; }
+  .management-workspace--recipes .rec-detail-back { margin-bottom: 10px; }
+  .management-workspace--recipes .rec-detail-head {
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .management-workspace--recipes .rec-detail-thumb { grid-column: 1; grid-row: 1; width: 58px; height: 58px; }
+  .management-workspace--recipes .rec-detail-title { grid-column: 2; grid-row: 1; }
+  .management-workspace--recipes .rec-detail-title h2 { display: block; font-size: 1.08rem; line-height: 1.15; }
+  .management-workspace--recipes .rec-detail-product-name { display: block; text-wrap: balance; overflow-wrap: normal; word-break: normal; }
+  .management-workspace--recipes .rec-detail-title h2 .rec-pill { margin-top: 6px; vertical-align: middle; }
+  .management-workspace--recipes .rec-detail-sub { margin-top: 5px; line-height: 1.25; }
+  .management-workspace--recipes .rec-detail-ref { margin-top: 3px; }
+  .management-workspace--recipes .rec-price-box {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 3px 12px;
+    margin-top: 3px;
+    padding: 11px 13px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 11px;
+    background: #17171d;
+    text-align: left;
+  }
+  .management-workspace--recipes .rec-price-box .lbl { grid-column: 1; grid-row: 1; font-size: .68rem; }
+  .management-workspace--recipes .rec-price-box .price { grid-column: 1; grid-row: 2; font-size: 1.08rem; line-height: 1.15; }
+  .management-workspace--recipes .rec-price-box .cost {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    margin: 0;
+    padding-left: 12px;
+    border-left: 1px solid rgba(255,255,255,.1);
+    font-size: .74rem;
+    line-height: 1.4;
+  }
+  .management-workspace--recipes .rec-detail-tabs { gap: 10px; margin-bottom: 14px; }
+  .management-workspace--recipes .rec-detail-tab { padding: 8px 2px 10px; font-size: .74rem; white-space: nowrap; }
+  .management-workspace--recipes .rec-ing-row {
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 7px 9px;
+    padding: 10px 11px;
+  }
+  .management-workspace--recipes .rec-ing-name {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+    text-wrap: pretty;
+    line-height: 1.25;
+  }
+  .management-workspace--recipes .rec-ing-qty { grid-column: 1; grid-row: 2; justify-self: start; }
+  .management-workspace--recipes .rec-ing-cost { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; }
+  .management-workspace--recipes .rec-ing-action,
+  .management-workspace--recipes .rec-ing-del {
+    grid-row: 2;
+    min-width: 30px;
+    min-height: 30px;
+    display: grid;
+    place-items: center;
+  }
+  .management-workspace--recipes .rec-ing-action:nth-last-of-type(2),
+  .management-workspace--recipes .rec-ing-edit { grid-column: 3; }
+  .management-workspace--recipes .rec-ing-del { grid-column: 4; }
+  .management-workspace--recipes .rec-ing-edit-fields { grid-column: 1; grid-row: 2; }
+  .management-workspace--recipes .rec-ing-row.is-editing {
+    grid-template-columns: minmax(58px, 1fr) minmax(58px, .9fr) max-content auto;
+    grid-template-rows: auto 44px;
+    align-items: center;
+    gap: 7px 5px;
+  }
+  .management-workspace--recipes .rec-ing-row.is-editing .rec-ing-edit-fields {
+    display: grid;
+    grid-column: 1 / 3;
+    grid-row: 2;
+    grid-template-columns: minmax(58px, 1fr) minmax(58px, .9fr);
+    gap: 5px;
+    min-width: 0;
+  }
+  .management-workspace--recipes .rec-ing-row.is-editing .num-stepper,
+  .management-workspace--recipes .rec-ing-row.is-editing .fc-select { width: 100%; min-width: 0; max-width: none; }
+  .management-workspace--recipes .rec-ing-row.is-editing .num-stepper-input { box-sizing: border-box; width: 100%; min-width: 0; height: 44px; padding-inline: 9px; text-align: center; }
+  .management-workspace--recipes .rec-ing-row.is-editing .fc-select-trigger { box-sizing: border-box; width: 100%; min-width: 0; min-height: 44px; height: 44px; padding: 0 8px; }
+  .management-workspace--recipes .rec-ing-row.is-editing .rec-ing-cost { grid-column: 3; grid-row: 2; text-align: right; font-size: .68rem; }
+  .management-workspace--recipes .rec-ing-row.is-editing .rec-ing-edit-actions { grid-column: 4; grid-row: 2; gap: 4px; }
+  .management-workspace--recipes .rec-ing-row.is-editing .rec-ing-action { box-sizing: border-box; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; }
   .management-workspace--recipes .rec-portion-view { min-height: 0; padding: 14px; }
   .management-workspace--recipes .rec-portion-view .rec-module-view-head {
     display: flex !important;
@@ -800,16 +1046,57 @@
   .management-workspace--recipes .rec-staff-view .rec-module-view-head p { font-size: .76rem; line-height: 1.25; }
   .management-workspace--recipes .rec-staff-view .rec-staff-main-btn {
     flex: 0 0 auto;
-    min-width: 92px;
+    min-width: 0;
     width: auto;
-    min-height: 34px;
-    padding: 6px 7px;
-    border-radius: 9px;
-    font-size: .64rem;
+    min-height: 40px;
+    padding: 0 12px;
+    gap: 7px;
+    border: 1px solid #e11d2a !important;
+    border-radius: 10px;
+    background: #e11d2a !important;
+    color: #fff !important;
+    box-shadow: 0 5px 14px rgba(225, 29, 42, .22) !important;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1;
     white-space: nowrap;
   }
-  .management-workspace--recipes .rec-staff-view .rec-staff-main-btn svg { width: 12px; height: 12px; }
+  .management-workspace--recipes .rec-staff-view .rec-staff-main-btn:hover { background: #c91525 !important; border-color: #c91525 !important; }
+  .management-workspace--recipes .rec-staff-view .rec-staff-main-btn svg { width: 15px; height: 15px; color: #fff; }
   .management-workspace--recipes .rec-staff-card { gap: 18px; padding: 18px 16px; }
+  .management-workspace--recipes .rec-staff-card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .management-workspace--recipes .rec-staff-card-actions > button {
+    box-sizing: border-box;
+    min-width: 0;
+    min-height: 62px;
+    padding: 9px 6px;
+    flex: initial;
+    flex-direction: column;
+    gap: 5px;
+    border-radius: 11px;
+    font-size: .7rem;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+  .management-workspace--recipes .rec-staff-card-actions > button svg {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+  }
+  .management-workspace--recipes .rec-staff-card-actions .rec-staff-add-ing-btn {
+    background: #1c1c22;
+    border-color: rgba(255,255,255,.12);
+    color: #e4e4e7;
+  }
+  .management-workspace--recipes .rec-staff-card-actions .rec-staff-consume-cta-btn {
+    background: #b91526;
+    border-color: #d32636;
+    color: #fff;
+  }
   .management-workspace--recipes .rec-staff-card-head { align-items: flex-start; flex-direction: column; gap: 10px; }
   .management-workspace--recipes .rec-staff-card-title-wrap { min-width: 0; width: 100%; align-items: center; gap: 12px; }
   .management-workspace--recipes .rec-staff-card-title-wrap > div { min-width: 0; flex: 1 1 auto; }

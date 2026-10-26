@@ -623,7 +623,7 @@ export function ProduccionReal() {
           ============================================================ */}
       {showModal && createPortal(
         <div className={`prod-modal-overlay ${closingBatchForm ? 'closing' : ''}`} onClick={closeBatchForm}>
-          <form className="prod-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitBatch}>
+          <form className="prod-modal prod-batch-create-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmitBatch}>
             <div className="prod-modal-header">
               <div className="prod-modal-header-icon">
                 <Flame size={22} />
@@ -700,46 +700,39 @@ export function ProduccionReal() {
             </div>
 
             {/* Receta de Porción vinculada (opcional) */}
-            {portionRecipes.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span className="prod-section-label" style={{ fontSize: '0.72rem' }}>O vincular a Receta de Porción existente:</span>
-                <StyledSelect
-                  value={selectedPortionRecipeId}
-                  onChange={(e) => handlePortionRecipeChange(e.target.value)}
-                >
-                  <option value="">-- Sin vincular (usar configuración manual) --</option>
-                  {portionRecipes.map(pr => (
-                    <option key={pr.id} value={pr.id}>
-                      {pr.name} ({pr.quantity} {pr.unitSymbol})
-                    </option>
-                  ))}
-                </StyledSelect>
-              </div>
-            )}
+            <div className={`prod-batch-identity${portionRecipes.length > 0 ? ' has-portion-link' : ''}`}>
+              {portionRecipes.length > 0 && (
+                <div className="prod-batch-portion-link">
+                  <span className="prod-section-label">O vincular a Receta de Porción existente:</span>
+                  <StyledSelect
+                    value={selectedPortionRecipeId}
+                    onChange={(e) => handlePortionRecipeChange(e.target.value)}
+                  >
+                    <option value="">-- Sin vincular (usar configuración manual) --</option>
+                    {portionRecipes.map(pr => (
+                      <option key={pr.id} value={pr.id}>
+                        {pr.name} ({pr.quantity} {pr.unitSymbol})
+                      </option>
+                    ))}
+                  </StyledSelect>
+                </div>
+              )}
 
-            {/* Nombre del Lote */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <span className="prod-section-label">Nombre del Lote / Preparación</span>
-              <input
-                type="text"
-                value={batchName}
-                onChange={(e) => setBatchName(e.target.value)}
-                placeholder="Ej. Porcionamiento de Pollo para Arroz"
-                style={{
-                  padding: '10px 12px',
-                  background: '#121214',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  borderRadius: '10px',
-                  color: '#fff',
-                  font: 'inherit',
-                  fontSize: '0.86rem',
-                }}
-                required
-              />
+              {/* Nombre del Lote */}
+              <div className="prod-batch-name-field">
+                <span className="prod-section-label">Nombre del Lote / Preparación</span>
+                <input
+                  type="text"
+                  value={batchName}
+                  onChange={(e) => setBatchName(e.target.value)}
+                  placeholder="Ej. Porcionamiento de Pollo para Arroz"
+                  required
+                />
+              </div>
             </div>
 
             {/* Paso 2: Origen y Materia Prima */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="prod-batch-source">
               <span className="prod-section-label">2. Origen de la materia prima</span>
               <div className="prod-location-group">
                 <button
@@ -895,7 +888,7 @@ export function ProduccionReal() {
             </div>
 
             {/* Paso 4: Operador y Notas */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
+            <div className="prod-batch-meta">
               <div>
                 <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
                   <User size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
@@ -952,9 +945,9 @@ export function ProduccionReal() {
                 disabled={saving || batchOptionsLoading || !batchOptionsLoaded || !rawIngredientId || (parseFloat(quantityProduced) || 0) <= 0}
               >
                 {saving ? (
-                  <><Loader2 size={16} className="animate-spin" /> Guardando lote...</>
+                  <><Loader2 size={16} className="animate-spin" /><span className="prod-submit-copy"><strong>Guardando lote...</strong></span></>
                 ) : (
-                  <><CheckCircle2 size={16} /> Confirmar ({quantityProduced || '0'} porciones)</>
+                  <><CheckCircle2 size={17} /><span className="prod-submit-copy"><strong>Confirmar lote</strong><small>{quantityProduced || '0'} porciones</small></span></>
                 )}
               </button>
             </div>

@@ -243,7 +243,7 @@
 /* Modal */
 .cmp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px; overflow-y: auto; }
 .cmp-purchase-overlay { z-index: 1000; background: rgba(0,0,0,0.72); backdrop-filter: blur(5px); overflow: hidden; }
-.cmp-purchase-modal { width: min(1120px, 100%); max-height: calc(100dvh - 40px); overflow-y: auto; margin: 0; box-shadow: 0 24px 80px rgba(0,0,0,.65); }
+.cmp-purchase-modal { box-sizing: border-box; width: min(1120px, 100%); min-width: 0; max-height: calc(100dvh - 40px); overflow-y: auto; margin: 0; box-shadow: 0 24px 80px rgba(0,0,0,.65); }
 .cmp-purchase-overlay.closing { pointer-events: none; animation: fc-overlay-exit var(--motion-fast) var(--motion-exit) both; }
 .cmp-purchase-overlay.closing .cmp-purchase-modal { animation: fc-dialog-exit var(--motion-fast) var(--motion-exit) both; }
 .cmp-purchase-header { position: sticky; top: -18px; z-index: 4; display: flex; align-items: center; justify-content: space-between; margin: -18px -18px 16px; padding: 16px 18px; background: #141419; border-bottom: 1px solid rgba(255,255,255,.08); }
@@ -326,13 +326,13 @@
 .cmp-purchase-modal .cmp-ghost-btn { min-height: 42px; box-sizing: border-box; }
 .cmp-purchase-modal .cmp-add-item { padding: 7px 11px; font-size: 12px; }
 .cmp-purchase-modal .cmp-item-row > .cmp-del { width: 30px; height: 40px; }
-.cmp-purchase-modal .cmp-form-foot { position: sticky; bottom: -14px; z-index: 5; min-height: 82px; margin: 18px -14px -14px; padding: 16px 20px; background: #141419; border-top-color: rgba(255,255,255,.1); box-shadow: 0 -14px 28px rgba(0,0,0,.3); }
+.cmp-purchase-modal .cmp-form-foot { position: sticky; bottom: 0; z-index: 5; min-height: 82px; margin: 18px -14px 0; padding: 16px 20px; background: #141419; border-top-color: rgba(255,255,255,.1); box-shadow: 0 -14px 28px rgba(0,0,0,.3); }
 .cmp-form-item-count { display: inline-flex; align-items: center; gap: 9px; color: #8f929c; font-size: 12px; white-space: nowrap; }
 .cmp-form-item-count strong { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid rgba(255,77,90,.22); border-radius: 9px; background: rgba(227,27,43,.1); color: #ff737d; font-size: 13px; }
-.cmp-form-foot-summary { display: flex; align-items: center; gap: 22px; }
-.cmp-form-foot-summary .cmp-total { min-width: 190px; }
-.cmp-form-foot-summary .cmp-total .lbl { margin-bottom: 2px; }
-.cmp-form-foot-summary .cmp-actions > * { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; }
+.cmp-form-foot > .cmp-total { min-width: 190px; margin-left: auto; }
+.cmp-form-foot > .cmp-total .lbl { margin-bottom: 2px; }
+.cmp-form-foot > .cmp-actions { display: flex; gap: 10px; }
+.cmp-form-foot > .cmp-actions > * { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; }
 .cmp-purchase-modal .cmp-cancel:hover:not(:disabled),
 .cmp-purchase-modal .cmp-cancel:focus-visible { border-color: rgba(225,29,42,.55); background: rgba(225,29,42,.1); color: #ff737d; outline-color: rgba(225,29,42,.65); }
 
@@ -363,18 +363,39 @@
 }
 
 @media (max-width: 560px) {
+  .cmp-purchase-overlay { box-sizing: border-box; width: 100%; min-width: 0; padding: 6px; overflow: hidden; }
+  .cmp-purchase-modal { width: 100%; max-width: 100%; min-width: 0; max-height: calc(100dvh - 12px); padding: 14px; }
+  .cmp-purchase-modal form,
+  .cmp-purchase-modal form > :not(.cmp-form-foot),
+  .cmp-purchase-modal .cmp-form-grid,
+  .cmp-purchase-modal .cmp-items-scroll,
+  .cmp-purchase-modal .cmp-src-row,
+  .cmp-purchase-modal .cmp-src-grid,
+  .cmp-purchase-modal .cmp-src-summary { min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .cmp-purchase-modal .cmp-items-scroll { overflow-x: hidden; }
+  .cmp-purchase-modal .cmp-src-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .cmp-purchase-modal .cmp-src-summary { display: grid; grid-template-columns: minmax(0,1fr); justify-content: stretch; gap: 8px; }
+  .cmp-purchase-modal .cmp-src-money-group { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+  .cmp-purchase-modal .cmp-src-summary .money-with-bcv { min-width: 0; }
+  .cmp-new-supplier-inline { display: grid !important; grid-template-columns: minmax(0,1fr); }
+  .cmp-new-supplier-inline > * { width: 100%; min-width: 0; box-sizing: border-box; }
+  .cmp-purchase-header { top: -14px; margin: -14px -14px 12px; padding: 13px 14px; }
   .cmp-purchase-modal .cmp-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .cmp-purchase-modal .cmp-form-grid > .cmp-field:first-child { grid-column: auto; }
   .cmp-purchase-modal .cmp-item-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
   .cmp-purchase-modal .cmp-item-cell--name,
   .cmp-purchase-modal .cmp-item-cell--destination { grid-column: 1 / -1; }
-  .cmp-purchase-modal .cmp-form-foot { align-items: stretch; }
-  .cmp-purchase-modal .cmp-form-foot { padding: 14px 16px; }
-  .cmp-form-foot-summary { flex-direction: column; align-items: stretch; gap: 12px; }
-  .cmp-form-foot-summary .cmp-total { text-align: left; }
-  .cmp-form-foot-summary .cmp-total { min-width: 0; }
-  .cmp-form-foot-summary .cmp-actions { display: grid; grid-template-columns: 1fr 1.3fr; gap: 8px; }
-  .cmp-form-foot-summary .cmp-actions > * { min-width: 0; padding-inline: 10px; }
+  .cmp-purchase-modal .cmp-form-foot { position: sticky; bottom: -14px; display: grid; width: calc(100% + 28px); max-width: none; box-sizing: border-box; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); align-items: center; gap: 10px 12px; min-height: 0; margin: 18px -14px -14px; padding: 12px 14px calc(26px + env(safe-area-inset-bottom)); }
+  .cmp-form-item-count { min-width: 0; gap: 7px; white-space: normal; font-size: 11px; line-height: 1.25; }
+  .cmp-form-item-count strong { flex: 0 0 30px; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total { grid-column: 2; grid-row: 1; min-width: 0; margin-left: 0; text-align: right; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total .lbl { margin-bottom: 1px; font-size: 11px; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total .val { font-size: clamp(20px, 5.5vw, 24px); line-height: 1.1; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total-money { align-items: flex-end; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total .money-ves { color: #d4d4d8; font-size: 13px; font-weight: 700; line-height: 1.2; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total .cmp-payment-ref { font-size: 10px; line-height: 1.2; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-actions { grid-column: 1 / -1; display: grid; width: auto; min-width: 0; grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); gap: 8px; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-actions > * { width: 100%; min-width: 0; min-height: 44px; padding-inline: 8px; box-sizing: border-box; font-size: 12px; }
 }
 
 @media (max-width: 767px) {

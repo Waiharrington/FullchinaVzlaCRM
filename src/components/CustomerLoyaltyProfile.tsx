@@ -508,6 +508,9 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
   }, [])
 
   useEffect(() => {
+    // Promotional cards are static carousel content; they must not trigger an
+    // auth/profile request or replace the public menu with its loading screen.
+    if (presentation !== 'profile') return
     void loadProfile().catch(() => failProfileLoad())
       .finally(() => setInitialAuthCheck(false))
     if (!customerSupabase) return
@@ -516,7 +519,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
       else window.setTimeout(() => { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true) }, 0)
     })
     return () => data.subscription.unsubscribe()
-  }, [failProfileLoad, loadProfile])
+  }, [failProfileLoad, loadProfile, presentation])
 
   useEffect(() => {
     if (!authReady || profile || !showWelcomeIntro) return
@@ -569,11 +572,11 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
 
   const logout = async () => { await customerSupabase?.auth.signOut(); setProfile(null); setShowHistory(false); setNotice('') }
 
-  if (initialAuthCheck) return <PublicMenuSkeleton />
+  if (presentation === 'profile' && initialAuthCheck) return <PublicMenuSkeleton />
 
-  if (!profile && sessionActive && profileLoading) return <PublicMenuSkeleton />
+  if (presentation === 'profile' && !profile && sessionActive && profileLoading) return <PublicMenuSkeleton />
 
-  if (!profile && sessionActive && profileLoadError) return <main className="customer-profile-page customer-profile-auth customer-profile-auth-login">
+  if (presentation === 'profile' && !profile && sessionActive && profileLoadError) return <main className="customer-profile-page customer-profile-auth customer-profile-auth-login">
     <section className="customer-profile-shell">
       <header className="customer-profile-brand"><h1>No pudimos abrir tu perfil</h1><span>Tu sesión sigue activa. Prueba cargarlo otra vez.</span></header>
       <div className="customer-profile-form-wrap"><p className="customer-profile-message error" role="alert">{profileLoadError}</p><button type="button" className="customer-profile-submit" onClick={() => { void loadProfile().catch(() => failProfileLoad(true)) }}>Reintentar</button></div>

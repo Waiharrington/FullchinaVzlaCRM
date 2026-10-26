@@ -186,6 +186,18 @@ export function Inventario() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!selectedIngredient || modalMode !== 'view' || window.matchMedia('(max-width: 767px)').matches) return
+    const previousBodyOverflow = document.body.style.overflow
+    const previousRootOverflow = document.documentElement.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousRootOverflow
+    }
+  }, [selectedIngredient, modalMode])
+
   const closeIngredientModal = (then?: () => void) => {
     if (closingIngredient) return
     setClosingIngredient(true)
@@ -958,14 +970,18 @@ export function Inventario() {
         </div>, document.body,
       )}
       {selectedIngredient && modalMode && createPortal(
-        <div className={`inv-modal-overlay ${closingIngredient ? 'closing' : ''}`} onClick={closeModal}>
-          <div className={`inv-sidebar-card inv-detail-modal ${modalMode === 'view' ? 'inv-detail-modal--view' : ''}`} onClick={event => event.stopPropagation()}>
+        <div className={`inv-modal-overlay ${modalMode === 'view' ? 'inv-modal-overlay-history' : ''} ${closingIngredient ? 'closing' : ''}`} onClick={closeModal}>
+          <div className={`inv-sidebar-card inv-detail-modal ${modalMode === 'view' ? 'inv-detail-modal--view inv-detail-modal-history' : ''} ${modalMode === 'edit' ? 'inv-detail-modal-edit' : ''}`} onClick={event => event.stopPropagation()}>
             <button className="inv-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} strokeWidth={2.4} /></button>
             {modalMode === 'view' && <>
-              <div className="inv-modal-heading"><span><Eye size={18} /></span><div><small>Historial del artículo</small><h3>{selectedIngredient.name}</h3></div></div>
-              <div className="inv-current-stock"><small>Stock actual</small><strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></div>
+              <div className="inv-history-layout">
+                <div className="inv-history-desktop-summary">
+                  <div className="inv-modal-heading"><span><Eye size={18} /></span><div><small>Historial del artículo</small><h3>{selectedIngredient.name}</h3></div></div>
+                  <div className="inv-current-stock"><small>Stock actual</small><strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></div>
+                </div>
+                <div className="inv-history-desktop-content">
 
-              <div className="inv-modal-toolbar" style={{ marginTop: '0.75rem', marginBottom: '0.5rem' }}>
+              <div className="inv-modal-toolbar inv-history-toolbar">
                 <div className="inv-modal-filter-pills">
                   {[
                     ['all', 'Todos'],
@@ -1080,6 +1096,8 @@ export function Inventario() {
                   )}
                 </>
               )}
+                </div>
+              </div>
             </>}
             {modalMode === 'edit' && <form onSubmit={saveEdit}>
               <div className="inv-modal-heading"><span><Pencil size={18} /></span><div><small>Editar artículo</small><h3>{selectedIngredient.name}</h3></div></div>
