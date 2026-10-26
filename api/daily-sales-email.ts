@@ -206,7 +206,6 @@ export async function sendReport(request: Request): Promise<Response> {
     }
   }
   const staticImageAssets = await Promise.all([
-    inlineAsset('/logo.png', 'fullchina-logo@fullchina'),
     inlineAsset('/daily-sales-report-banner.jpg', 'fullchina-report-header@fullchina'),
     inlineAsset('/daily-sales-metrics/orders.png', 'fullchina-metric-orders@fullchina'),
     inlineAsset('/daily-sales-metrics/order-average.png', 'fullchina-metric-order-average@fullchina'),
@@ -220,14 +219,13 @@ export async function sendReport(request: Request): Promise<Response> {
     personalConsumptionToday, businessName: 'Full China',
     bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
   })
-  data.logoUrl = staticImageAssets[0]
-  data.headerImageUrl = staticImageAssets[1]
+  data.headerImageUrl = staticImageAssets[0]
   data.bcvBackgroundUrl = `${publicSiteOrigin}/daily-sales-bcv-bg.png`
   data.metricIcons = {
-    'orders.png': staticImageAssets[2],
-    'order-average.png': staticImageAssets[3],
-    'customers.png': staticImageAssets[4],
-    'customer-average.png': staticImageAssets[5],
+    'orders.png': staticImageAssets[1],
+    'order-average.png': staticImageAssets[2],
+    'customers.png': staticImageAssets[3],
+    'customer-average.png': staticImageAssets[4],
   }
   const productIds = [...new Set(data.topItems.map(item => item.productId).filter((id): id is string => Boolean(id)))]
   if (productIds.length) {
