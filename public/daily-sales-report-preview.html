@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vista previa | Reporte diario Full China</title>
+  <style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#f3f4f6}iframe{display:block;width:100%;height:100%;border:0}</style>
+</head>
+<body>
+  <iframe title="Vista previa del correo diario Full China"></iframe>
+  <script type="module">
+    import { buildDailySalesEmailHtml } from '/src/lib/dailySalesEmail.ts'
+    import { getPublicCatalog } from '/src/lib/publicOrders.ts'
+    const metric = (label, value, extra = {}) => ({ label, value, ...extra })
+    const moneyRow = (label, count, total) => ({ label, count, total })
+    const sample = {
+      businessName: 'Full China',
+      reportDate: '2026-10-25',
+      currency: 'USD',
+      bcvRate: 450.25,
+      bcvRateDate: '2026-10-25',
+      bcvRateSource: 'history',
+      logoUrl: new URL('/logo.png', window.location.href).href,
+      headerImageUrl: new URL('/daily-sales-report-banner.jpg', window.location.href).href,
+      bcvBackgroundUrl: new URL('/daily-sales-bcv-bg.png', window.location.href).href,
+      metricIconsBaseUrl: new URL('/daily-sales-metrics', window.location.href).href,
+      dailySummary: [
+        metric('Ventas registradas', 842.5, { detail: 'Incluye comandas pagadas y ventas autorizadas a crédito.' }),
+        metric('Comandas de venta', 38, { format: 'number' }),
+        metric('Promedio por comanda', 22.17),
+      ],
+      customers: [
+        metric('Clientes únicos identificados', 31, { format: 'number', detail: 'Cada cliente asociado por cuenta o teléfono cuenta una sola vez, aunque haga varias comandas.' }),
+        metric('Consumo promedio por cliente identificado', 27.18, { detail: 'No incluye comandas sin cliente asociado o teléfono identificable.' }),
+      ],
+      weekComparison: [
+        metric('Ventas del mismo día la semana pasada', 790),
+        metric('Variación frente a esa fecha', 52.5, { detail: 'Diferencia en ventas registradas.' }),
+      ],
+      collections: [
+        metric('Total de dinero recibido', 815, { detail: 'Pagos registrados más abonos a créditos recibidos hoy.' }),
+        metric('Cobros aplicados a comandas', 760),
+        metric('Abonos de créditos recibidos hoy', 55),
+      ],
+      monthlySales: [
+        metric('Ventas registradas en el mes', 12450),
+        metric('Dinero recibido en el mes', 11980, { detail: 'Pagos registrados por fecha de recepción más abonos a créditos; no equivale a las ventas del mes.' }),
+        metric('Cobros de créditos recibidos en el mes', 410, { detail: 'Abonos cobrados este mes; no se vuelven a sumar como ventas.' }),
+      ],
+      monthlyProjection: [
+        metric('Promedio diario de ventas este mes', 498),
+        metric('Estimación de ventas al cierre del mes', 15438, { detail: 'Estimación lineal usando el promedio diario hasta la fecha.' }),
+      ],
+      dailyCredits: [
+        metric('Créditos autorizados hoy', 3, { format: 'number' }),
+        metric('Monto de ventas a crédito autorizadas hoy', 82),
+        metric('Saldo pendiente de esos créditos', 66),
+        metric('Saldo pendiente de todos los créditos', 285, { detail: 'Saldo vigente al momento de generar el reporte.' }),
+      ],
+      paymentMethods: [
+        moneyRow('Pago móvil', 18, 365), moneyRow('Efectivo', 12, 250), moneyRow('Punto de venta', 8, 145),
+      ],
+      personalConsumption: [
+        metric('Consumos cargados a cuentas personales', 18, { detail: 'Se muestran aparte porque no son dinero recibido en caja.' }),
+      ],
+      topItems: [
+        moneyRow('Combo Familiar', 24, 288), moneyRow('Arroz Frito Especial', 19, 171),
+        moneyRow('Pollo agridulce', 16, 144), moneyRow('Lumpias', 14, 42),
+        moneyRow('Chop Suey', 12, 108), moneyRow('Arroz frito especial', 11, 99),
+        moneyRow('Tequeños', 9, 36), moneyRow('Costillas', 8, 96),
+        moneyRow('Tallarín de arroz mixto', 7, 70), moneyRow('Camarones crispy', 6, 72),
+      ],
+    }
+    try {
+      const products = await getPublicCatalog()
+      const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es').replace(/[^a-z0-9]+/g, ' ').trim()
+      const names = new Map(products.map(product => [normalize(product.name), product]))
+      sample.topItems = sample.topItems.map(item => {
+        const label = normalize(item.label)
+        const product = names.get(label) ?? products.find(candidate => {
+          const name = normalize(candidate.name)
+          return name.includes(label) || name.startsWith(`${label} `) || label.startsWith(`${name} `)
+        })
+        return product ? { ...item, productId: product.id, imageUrl: product.imageUrl } : item
+      })
+    } catch (error) {
+      console.warn('No se pudieron cargar las fotos reales del catálogo para la vista previa.', error)
+    }
+    document.querySelector('iframe').srcdoc = buildDailySalesEmailHtml(sample)
+  </script>
+</body>
+</html>

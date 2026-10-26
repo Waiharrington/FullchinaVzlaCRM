@@ -165,9 +165,28 @@ async function sendReport(request: Request): Promise<Response> {
     reportDate, dayOrders: dayOrderRows.map(orderRecord), monthOrders: monthOrderRows.map(orderRecord),
     previousWeekdayOrders: priorOrderRows.map(orderRecord), dayPayments, monthPayments,
     dayCredits, openCredits: allCreditRows.map(creditRecord), creditCollectionsToday, creditCollectionsMonth,
-    personalConsumptionToday, businessName: 'Full China',
+    personalConsumptionToday, businessName: 'Full China', logoUrl: `${new URL(request.url).origin}/logo.png`,
+    headerImageUrl: `${new URL(request.url).origin}/daily-sales-report-banner.jpg`,
+    bcvBackgroundUrl: `${new URL(request.url).origin}/daily-sales-bcv-bg.png`,
+    metricIconsBaseUrl: `${new URL(request.url).origin}/daily-sales-metrics`,
     bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
   })
+  const productIds = [...new Set(data.topItems.map(item => item.productId).filter((id): id is string => Boolean(id)))]
+  if (productIds.length) {
+    const { data: productRows, error: productImageError } = await supabase.from('sellable_products')
+      .select('id,image_url').in('id', productIds)
+    if (productImageError) console.error('No se pudieron cargar las fotos del top de productos:', productImageError.message)
+    else {
+      const origin = new URL(request.url).origin
+      const imageById = new Map((productRows ?? []).map(product => {
+        const imagePath = typeof product.image_url === 'string' ? product.image_url : null
+        const match = imagePath?.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
+        const optimized = match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imagePath
+        return [String(product.id), optimized ? (/^https?:\/\//i.test(optimized) || optimized.startsWith('data:') ? optimized : `${origin}${optimized.startsWith('/') ? '' : '/'}${optimized}`) : null]
+      }))
+      data.topItems = data.topItems.map(item => ({ ...item, imageUrl: item.productId ? imageById.get(item.productId) ?? null : null }))
+    }
+  }
   const html = buildDailySalesEmailHtml({ ...data, currency: CURRENCY })
   const sample = url.searchParams.get('sample') === '1'
   const subject = `${sample ? '[Prueba] ' : ''}Full China · Reporte diario · ${reportDate}`
