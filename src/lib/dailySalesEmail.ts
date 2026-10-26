@@ -38,6 +38,7 @@ export interface DailySalesEmailData {
   headerImageUrl?: string | null
   bcvBackgroundUrl?: string | null
   metricIconsBaseUrl?: string | null
+  metricIcons?: Partial<Record<'orders.png' | 'order-average.png' | 'customers.png' | 'customer-average.png', string>>
 }
 
 export interface DailySalesEmailSource {
@@ -252,7 +253,7 @@ function summaryStats(data: DailySalesEmailData, currency: string): string {
     { label: 'Clientes únicos', metric: data.customers[0], icon: 'customers.png' },
     { label: 'Consumo promedio por cliente', metric: data.customers[1], icon: 'customer-average.png' },
   ]
-  const icon = (name: string) => `<img src="${escapeHtml(data.metricIconsBaseUrl ? `${data.metricIconsBaseUrl}/${name}` : '')}" width="27" height="27" alt="" style="display:block;width:27px;height:27px;border:0">`
+  const icon = (name: string) => `<img src="${escapeHtml(data.metricIcons?.[name as keyof NonNullable<DailySalesEmailData['metricIcons']>] ?? (data.metricIconsBaseUrl ? `${data.metricIconsBaseUrl}/${name}` : ''))}" width="27" height="27" alt="" style="display:block;width:27px;height:27px;border:0">`
   const value = (metric: DailySalesMetric | undefined) => `<div style="font-size:18px;line-height:23px;font-weight:800;white-space:nowrap">${escapeHtml(display(metric?.value ?? null, currency, metric?.format))}</div>${metric?.detail ? `<div style="font-size:10px;line-height:14px;color:#667080;margin-top:5px">${escapeHtml(metric.detail)}</div>` : ''}`
   const cells = metrics.map(({ label, metric, icon: iconName }, index) => `<td class="summary-stat" width="25%" valign="top" style="width:25%;padding:12px 12px 10px;${index < metrics.length - 1 ? 'border-right:1px solid #efe6d5;' : ''}color:#202124;vertical-align:top"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse"><tr><td width="32" valign="top" style="width:32px;padding:2px 7px 0 0">${icon(iconName)}</td><td valign="top"><div class="summary-stat-label" style="height:40px;font-size:10px;line-height:13px;color:#243746;font-weight:700;text-transform:uppercase;letter-spacing:.25px">${escapeHtml(label)}</div></td></tr><tr><td colspan="2" style="padding:0">${value(metric)}</td></tr></table></td>`).join('')
   const desktop = `<table role="presentation" class="summary-stats summary-stats-desktop" width="100%" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed;border-collapse:collapse;background:#fffaf2;border-top:1px solid #eadfca;border-bottom:1px solid #eadfca"><tr>${cells}</tr></table>`

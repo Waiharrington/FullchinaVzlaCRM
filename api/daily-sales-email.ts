@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { Buffer } from 'node:buffer'
 import { buildDailySalesEmailData, buildDailySalesEmailHtml } from '../src/lib/dailySalesEmail.js'
 
 const TIME_ZONE = 'America/Caracas'
@@ -180,18 +181,49 @@ async function sendReport(request: Request): Promise<Response> {
   const dayCredits = dayCreditRows.map(creditRecord)
   const bcvReference = await getReportBcvRate(reportDate, [...dayOrderRows, ...monthOrderRows, ...priorOrderRows])
   const publicSiteOrigin = getPublicSiteOrigin()
+  const inlineImageAttachments: Array<{ content: string; filename: string; content_type: string; content_id: string }> = []
+  const inlineAsset = async (path: string, contentId: string) => {
+    try {
+      const response = await fetch(`${publicSiteOrigin}${path}`)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const contentType = response.headers.get('content-type')?.split(';')[0] ?? ''
+      if (!contentType.startsWith('image/')) throw new Error(`Unexpected content type: ${contentType || 'missing'}`)
+      inlineImageAttachments.push({
+        content: Buffer.from(await response.arrayBuffer()).toString('base64'),
+        filename: path.split('/').pop() ?? 'report-image',
+        content_type: contentType,
+        content_id: contentId,
+      })
+      return `cid:${contentId}`
+    } catch (error) {
+      console.error(`No se pudo incrustar recurso del reporte ${path}:`, error instanceof Error ? error.message : 'unknown error')
+      return `${publicSiteOrigin}${path}`
+    }
+  }
+  const staticImageAssets = await Promise.all([
+    inlineAsset('/logo.png', 'fullchina-logo@fullchina'),
+    inlineAsset('/daily-sales-report-banner.jpg', 'fullchina-report-header@fullchina'),
+    inlineAsset('/daily-sales-metrics/orders.png', 'fullchina-metric-orders@fullchina'),
+    inlineAsset('/daily-sales-metrics/order-average.png', 'fullchina-metric-order-average@fullchina'),
+    inlineAsset('/daily-sales-metrics/customers.png', 'fullchina-metric-customers@fullchina'),
+    inlineAsset('/daily-sales-metrics/customer-average.png', 'fullchina-metric-customer-average@fullchina'),
+  ])
   const data = buildDailySalesEmailData({
     reportDate, dayOrders: dayOrderRows.map(orderRecord), monthOrders: monthOrderRows.map(orderRecord),
     previousWeekdayOrders: priorOrderRows.map(orderRecord), dayPayments, monthPayments,
     dayCredits, openCredits: allCreditRows.map(creditRecord), creditCollectionsToday, creditCollectionsMonth,
-    personalConsumptionToday, businessName: 'Full China', logoUrl: `${publicSiteOrigin}/logo.png`,
-    headerImageUrl: `${publicSiteOrigin}/daily-sales-report-banner.jpg`,
+    personalConsumptionToday, businessName: 'Full China', logoUrl: staticImageAssets[0],
+    headerImageUrl: staticImageAssets[1],
     bcvBackgroundUrl: `${publicSiteOrigin}/daily-sales-bcv-bg.png`,
-    metricIconsBaseUrl: `${publicSiteOrigin}/daily-sales-metrics`,
+    metricIcons: {
+      'orders.png': staticImageAssets[2],
+      'order-average.png': staticImageAssets[3],
+      'customers.png': staticImageAssets[4],
+      'customer-average.png': staticImageAssets[5],
+    },
     bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
   })
   const productIds = [...new Set(data.topItems.map(item => item.productId).filter((id): id is string => Boolean(id)))]
-  const inlineImageAttachments: Array<{ content: string; filename: string; content_type: string; content_id: string }> = []
   if (productIds.length) {
     const { data: productRows, error: productImageError } = await supabase.from('sellable_products')
       .select('id,image_url').in('id', productIds)
