@@ -226,7 +226,7 @@ function formatReportDate(value: string): string {
 }
 
 const SECTION_NUMBERS: Record<string, string> = {
-    'Clientes y consumo promedio': '02', 'Comparación semanal': '03', 'Estimación de cierre mensual': '04',
+    'Resumen de ventas': '01', 'Clientes y consumo promedio': '02', 'Comparación semanal': '03', 'Estimación de cierre mensual': '04',
     'Dinero recibido': '05', 'Ventas del mes': '06', 'Créditos': '07',
     'Cobros por método de pago': '08', 'Consumos de cuentas personales': '09', '10 productos más vendidos': '10',
 }
@@ -320,8 +320,8 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
     ? `<tr><td style="padding:0;line-height:0"><img src="${escapeHtml(data.headerImageUrl)}" width="700" alt="Full China · comida china" style="display:block;width:100%;max-width:700px;height:auto;border:0"></td></tr>`
     : ''
   const blocks = [
-    `<tr><td class="email-pad" style="padding:12px 28px 8px">${salesSummary(data.dailySummary, currency, bcvRate)}</td></tr>`,
-    `<tr><td class="email-pad" style="padding:0 28px 18px">${summaryStats(data, currency)}</td></tr>`,
+    `<tr><td class="email-pad" style="padding:12px 28px 8px">${sectionContent('Resumen de ventas', salesSummary(data.dailySummary, currency, bcvRate))}</td></tr>`,
+    `<tr><td class="email-pad" style="padding:0 28px 18px">${sectionContent('Clientes y consumo promedio', summaryStats(data, currency))}</td></tr>`,
     pairedSections({ title: 'Comparación semanal', content: metricsTable(data.weekComparison, currency, bcvRate) }, { title: 'Estimación de cierre mensual', content: metricsTable(data.monthlyProjection, currency, bcvRate) }),
     pairedSections({ title: 'Dinero recibido', content: metricsTable(data.collections, currency, bcvRate) }, { title: 'Ventas del mes', content: metricsTable(data.monthlySales, currency, bcvRate) }),
     pairedSections({ title: 'Créditos', content: metricsTable(data.dailyCredits, currency, bcvRate) }, { title: 'Cobros por método de pago', content: rowsTable(data.paymentMethods, currency, 'Pagos', bcvRate) }),
