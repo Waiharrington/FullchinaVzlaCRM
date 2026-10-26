@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { Buffer } from 'node:buffer'
 import { buildDailySalesEmailData, buildDailySalesEmailHtml } from '../src/lib/dailySalesEmail.js'
 
 const TIME_ZONE = 'America/Caracas'
@@ -7,10 +6,11 @@ const CURRENCY = 'USD'
 const PAGE_SIZE = 1000
 const BCV_HISTORY_URL = 'https://bcv.today/api/v1/history.json'
 const PUBLIC_SITE_FALLBACK = 'https://fullchinavzla.vercel.app'
+const environment = (globalThis as typeof globalThis & { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {}
 
 function getPublicSiteOrigin(): string {
-  const configured = process.env.DAILY_SALES_REPORT_PUBLIC_URL?.trim()
-    || process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+  const configured = environment.DAILY_SALES_REPORT_PUBLIC_URL?.trim()
+    || environment.VERCEL_PROJECT_PRODUCTION_URL?.trim()
     || PUBLIC_SITE_FALLBACK
   try {
     return new URL(/^https?:\/\//i.test(configured) ? configured : `https://${configured}`).origin
@@ -120,12 +120,12 @@ function creditRecord(row: DbRow) {
 }
 
 async function sendReport(request: Request): Promise<Response> {
-  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const resendKey = process.env.RESEND_API_KEY
-  const cronSecret = process.env.CRON_SECRET
-  const recipient = process.env.DAILY_SALES_REPORT_TO
-  const sender = process.env.DAILY_SALES_REPORT_FROM ?? 'Full China <fullchinareportes@somosdostudio.com>'
+  const supabaseUrl = environment.SUPABASE_URL ?? environment.VITE_SUPABASE_URL
+  const serviceKey = environment.SUPABASE_SERVICE_ROLE_KEY
+  const resendKey = environment.RESEND_API_KEY
+  const cronSecret = environment.CRON_SECRET
+  const recipient = environment.DAILY_SALES_REPORT_TO
+  const sender = environment.DAILY_SALES_REPORT_FROM ?? 'Full China <fullchinareportes@somosdostudio.com>'
   if (!supabaseUrl || !serviceKey || !resendKey || !cronSecret || !recipient) {
     return Response.json({ error: 'Faltan variables de configuración del reporte.' }, { status: 500 })
   }
@@ -188,8 +188,13 @@ async function sendReport(request: Request): Promise<Response> {
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const contentType = response.headers.get('content-type')?.split(';')[0] ?? ''
       if (!contentType.startsWith('image/')) throw new Error(`Unexpected content type: ${contentType || 'missing'}`)
+      const bytes = new Uint8Array(await response.arrayBuffer())
+      let binary = ''
+      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
+      }
       inlineImageAttachments.push({
-        content: Buffer.from(await response.arrayBuffer()).toString('base64'),
+        content: btoa(binary),
         filename: path.split('/').pop() ?? 'report-image',
         content_type: contentType,
         content_id: contentId,
@@ -212,17 +217,18 @@ async function sendReport(request: Request): Promise<Response> {
     reportDate, dayOrders: dayOrderRows.map(orderRecord), monthOrders: monthOrderRows.map(orderRecord),
     previousWeekdayOrders: priorOrderRows.map(orderRecord), dayPayments, monthPayments,
     dayCredits, openCredits: allCreditRows.map(creditRecord), creditCollectionsToday, creditCollectionsMonth,
-    personalConsumptionToday, businessName: 'Full China', logoUrl: staticImageAssets[0],
-    headerImageUrl: staticImageAssets[1],
-    bcvBackgroundUrl: `${publicSiteOrigin}/daily-sales-bcv-bg.png`,
-    metricIcons: {
-      'orders.png': staticImageAssets[2],
-      'order-average.png': staticImageAssets[3],
-      'customers.png': staticImageAssets[4],
-      'customer-average.png': staticImageAssets[5],
-    },
+    personalConsumptionToday, businessName: 'Full China',
     bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
   })
+  data.logoUrl = staticImageAssets[0]
+  data.headerImageUrl = staticImageAssets[1]
+  data.bcvBackgroundUrl = `${publicSiteOrigin}/daily-sales-bcv-bg.png`
+  data.metricIcons = {
+    'orders.png': staticImageAssets[2],
+    'order-average.png': staticImageAssets[3],
+    'customers.png': staticImageAssets[4],
+    'customer-average.png': staticImageAssets[5],
+  }
   const productIds = [...new Set(data.topItems.map(item => item.productId).filter((id): id is string => Boolean(id)))]
   if (productIds.length) {
     const { data: productRows, error: productImageError } = await supabase.from('sellable_products')
