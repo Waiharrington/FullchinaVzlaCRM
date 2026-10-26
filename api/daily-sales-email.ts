@@ -5,6 +5,18 @@ const TIME_ZONE = 'America/Caracas'
 const CURRENCY = 'USD'
 const PAGE_SIZE = 1000
 const BCV_HISTORY_URL = 'https://bcv.today/api/v1/history.json'
+const PUBLIC_SITE_FALLBACK = 'https://fullchinavzla.vercel.app'
+
+function getPublicSiteOrigin(): string {
+  const configured = process.env.DAILY_SALES_REPORT_PUBLIC_URL?.trim()
+    || process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim()
+    || PUBLIC_SITE_FALLBACK
+  try {
+    return new URL(/^https?:\/\//i.test(configured) ? configured : `https://${configured}`).origin
+  } catch {
+    return PUBLIC_SITE_FALLBACK
+  }
+}
 
 // La respuesta PostgREST contiene columnas dinámicas definidas por el esquema desplegado.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,28 +179,42 @@ async function sendReport(request: Request): Promise<Response> {
   const personalConsumptionToday = dayPayments.filter(payment => payment.method === 'personal_account').reduce((sum, payment) => sum + payment.amount, 0)
   const dayCredits = dayCreditRows.map(creditRecord)
   const bcvReference = await getReportBcvRate(reportDate, [...dayOrderRows, ...monthOrderRows, ...priorOrderRows])
+  const publicSiteOrigin = getPublicSiteOrigin()
   const data = buildDailySalesEmailData({
     reportDate, dayOrders: dayOrderRows.map(orderRecord), monthOrders: monthOrderRows.map(orderRecord),
     previousWeekdayOrders: priorOrderRows.map(orderRecord), dayPayments, monthPayments,
     dayCredits, openCredits: allCreditRows.map(creditRecord), creditCollectionsToday, creditCollectionsMonth,
-    personalConsumptionToday, businessName: 'Full China', logoUrl: `${new URL(request.url).origin}/logo.png`,
-    headerImageUrl: `${new URL(request.url).origin}/daily-sales-report-banner.jpg`,
-    bcvBackgroundUrl: `${new URL(request.url).origin}/daily-sales-bcv-bg.png`,
-    metricIconsBaseUrl: `${new URL(request.url).origin}/daily-sales-metrics`,
+    personalConsumptionToday, businessName: 'Full China', logoUrl: `${publicSiteOrigin}/logo.png`,
+    headerImageUrl: `${publicSiteOrigin}/daily-sales-report-banner.jpg`,
+    bcvBackgroundUrl: `${publicSiteOrigin}/daily-sales-bcv-bg.png`,
+    metricIconsBaseUrl: `${publicSiteOrigin}/daily-sales-metrics`,
     bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
   })
   const productIds = [...new Set(data.topItems.map(item => item.productId).filter((id): id is string => Boolean(id)))]
+  const inlineImageAttachments: Array<{ content: string; filename: string; content_type: string; content_id: string }> = []
   if (productIds.length) {
     const { data: productRows, error: productImageError } = await supabase.from('sellable_products')
       .select('id,image_url').in('id', productIds)
     if (productImageError) console.error('No se pudieron cargar las fotos del top de productos:', productImageError.message)
     else {
-      const origin = new URL(request.url).origin
       const imageById = new Map((productRows ?? []).map(product => {
         const imagePath = typeof product.image_url === 'string' ? product.image_url : null
+        const dataImage = imagePath?.match(/^data:(image\/(?:png|jpe?g|webp|gif|avif));base64,([a-z0-9+/=\s]+)$/i)
+        if (dataImage) {
+          const mimeType = dataImage[1].toLowerCase().replace('jpg', 'jpeg')
+          const contentId = `top-product-${String(product.id).replace(/[^a-z0-9-]/gi, '')}@fullchina`
+          const extension = mimeType.split('/')[1].replace('jpeg', 'jpg')
+          inlineImageAttachments.push({
+            content: dataImage[2].replace(/\s+/g, ''),
+            filename: `${contentId}.${extension}`,
+            content_type: mimeType,
+            content_id: contentId,
+          })
+          return [String(product.id), `cid:${contentId}`]
+        }
         const match = imagePath?.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
         const optimized = match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imagePath
-        return [String(product.id), optimized ? (/^https?:\/\//i.test(optimized) || optimized.startsWith('data:') ? optimized : `${origin}${optimized.startsWith('/') ? '' : '/'}${optimized}`) : null]
+        return [String(product.id), optimized ? (/^https?:\/\//i.test(optimized) ? optimized : `${publicSiteOrigin}${optimized.startsWith('/') ? '' : '/'}${optimized}`) : null]
       }))
       data.topItems = data.topItems.map(item => ({ ...item, imageUrl: item.productId ? imageById.get(item.productId) ?? null : null }))
     }
@@ -201,7 +227,7 @@ async function sendReport(request: Request): Promise<Response> {
       Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json',
       ...(sample ? {} : { 'Idempotency-Key': `fullchina-daily-report-${reportDate}` }),
     },
-    body: JSON.stringify({ from: sender, to: [sendTo], subject, html }),
+    body: JSON.stringify({ from: sender, to: [sendTo], subject, html, ...(inlineImageAttachments.length ? { attachments: inlineImageAttachments } : {}) }),
   })
   const resendBody = await resendResponse.json().catch(() => ({})) as DbRow
   if (!resendResponse.ok) {
