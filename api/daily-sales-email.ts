@@ -1,0 +1,197 @@
+import { createClient } from '@supabase/supabase-js'
+import { buildDailySalesEmailData, buildDailySalesEmailHtml } from '../src/lib/dailySalesEmail.js'
+
+const TIME_ZONE = 'America/Caracas'
+const CURRENCY = 'USD'
+const PAGE_SIZE = 1000
+const BCV_HISTORY_URL = 'https://bcv.today/api/v1/history.json'
+
+// La respuesta PostgREST contiene columnas dinámicas definidas por el esquema desplegado.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DbRow = Record<string, any>
+type PaymentMethod = 'cash' | 'mobile' | 'card' | 'transfer' | 'binance' | 'zelle' | 'other' | 'personal_account'
+
+interface BcvHistoryEntry {
+  USD?: number
+  effective_date?: string
+}
+
+async function getReportBcvRate(reportDate: string, orderRows: DbRow[]) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5_000)
+  try {
+    const response = await fetch(BCV_HISTORY_URL, { signal: controller.signal, headers: { Accept: 'application/json' } })
+    if (response.ok) {
+      const entries = await response.json() as BcvHistoryEntry[]
+      if (Array.isArray(entries)) {
+        const historicalRate = entries
+          .filter(entry => entry.effective_date && entry.effective_date <= reportDate && Number.isFinite(entry.USD) && Number(entry.USD) > 0)
+          .sort((a, b) => String(b.effective_date).localeCompare(String(a.effective_date)))[0]
+        if (historicalRate?.effective_date && historicalRate.USD) {
+          return { rate: Number(historicalRate.USD), date: historicalRate.effective_date, source: 'history' as const }
+        }
+      }
+    }
+  } catch {
+    // El reporte puede usar como respaldo la tasa guardada en las comandas.
+  } finally {
+    clearTimeout(timeout)
+  }
+
+  const latestOrderRate = orderRows
+    .filter(row => row.created_at && String(row.created_at).slice(0, 10) <= reportDate && Number.isFinite(Number(row.bcv_rate)) && Number(row.bcv_rate) > 0)
+    .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))[0]
+  return latestOrderRate
+    ? { rate: Number(latestOrderRate.bcv_rate), date: String(latestOrderRate.created_at).slice(0, 10), source: 'order' as const }
+    : { rate: null, date: null, source: null }
+}
+
+function dateKey(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date)
+}
+
+function shiftDate(key: string, days: number): string {
+  const date = new Date(`${key}T12:00:00-04:00`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return dateKey(date)
+}
+
+function utcStart(key: string): string {
+  return `${key}T04:00:00.000Z`
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function rows(queryFactory: () => any): Promise<DbRow[]> {
+  const result: DbRow[] = []
+  for (let offset = 0; ; offset += PAGE_SIZE) {
+    const { data, error } = await queryFactory().range(offset, offset + PAGE_SIZE - 1)
+    if (error) throw new Error(error.message)
+    result.push(...(data ?? []))
+    if (!data || data.length < PAGE_SIZE) return result
+  }
+}
+
+function orderRecord(row: DbRow) {
+  const payments = (row.payments ?? []).map((payment: DbRow) => ({
+    id: String(payment.id ?? ''), method: payment.method as PaymentMethod, amount: Number(payment.amount ?? 0),
+    createdAt: String(payment.created_at ?? ''), accountId: payment.account_id ?? null,
+    personalAccountId: payment.personal_account_id ?? null, referenceNumber: payment.reference_number ?? null,
+    receivedAmount: payment.received_amount == null ? null : Number(payment.received_amount), notes: payment.notes ?? null,
+  }))
+  const items = (row.items ?? []).map((item: DbRow) => ({
+    id: String(item.id ?? ''), sellableProductId: String(item.sellable_product_id ?? ''),
+    productName: String(item.product_name ?? 'Producto'), emoji: String(item.emoji ?? ''),
+    category: String(item.category ?? ''), quantity: Number(item.quantity ?? 0),
+    unitPrice: Number(item.unit_price ?? 0),
+  }))
+  return {
+    id: String(row.id), orderNumber: Number(row.order_number ?? 0), status: String(row.status ?? ''),
+    creditAuthorized: Boolean(row.credit_authorized), customerId: row.customer_id ?? null,
+    fulfillmentStatus: String(row.fulfillment_status ?? 'new') as 'new', notes: row.notes ?? null,
+    orderType: String(row.order_type ?? ''), tableNumber: row.table_number == null ? null : Number(row.table_number),
+    customerName: String(row.customer_name ?? ''), customerPhone: row.customer_phone ?? null,
+    customerAddress: row.customer_address ?? null, customerIdentification: row.customer_identification ?? null,
+    bcvRate: row.bcv_rate == null ? null : Number(row.bcv_rate), createdBy: String(row.created_by ?? ''),
+    createdAt: String(row.created_at ?? ''), updatedAt: String(row.updated_at ?? ''), items, payments,
+    totalAmount: Number(row.total_amount ?? 0),
+  }
+}
+
+function creditRecord(row: DbRow) {
+  return {
+    id: String(row.credit_id), customerId: row.customer_id ?? null, customerName: String(row.customer_name ?? ''),
+    totalAmount: Number(row.total_amount ?? 0), totalPaid: Number(row.total_paid ?? 0),
+    balancePending: Number(row.balance_pending ?? 0), status: String(row.status ?? ''),
+    orderId: row.order_id == null ? '' : String(row.order_id), createdAt: String(row.created_at ?? ''),
+  }
+}
+
+async function sendReport(request: Request): Promise<Response> {
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const resendKey = process.env.RESEND_API_KEY
+  const cronSecret = process.env.CRON_SECRET
+  const recipient = process.env.DAILY_SALES_REPORT_TO
+  const sender = process.env.DAILY_SALES_REPORT_FROM ?? 'Full China <fullchinareportes@somosdostudio.com>'
+  if (!supabaseUrl || !serviceKey || !resendKey || !cronSecret || !recipient) {
+    return Response.json({ error: 'Faltan variables de configuración del reporte.' }, { status: 500 })
+  }
+  if (request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
+    return Response.json({ error: 'No autorizado.' }, { status: 401 })
+  }
+
+  const url = new URL(request.url)
+  const override = url.searchParams.get('date')
+  const reportDate = override && /^\d{4}-\d{2}-\d{2}$/.test(override) ? override : shiftDate(dateKey(new Date()), -1)
+  const dayAfter = shiftDate(reportDate, 1)
+  const monthStart = `${reportDate.slice(0, 7)}-01`
+  const weekStart = shiftDate(reportDate, -7)
+  const supabase = createClient(supabaseUrl, serviceKey, {
+    db: { schema: 'fullchinavzla' }, auth: { persistSession: false, autoRefreshToken: false },
+  })
+  const fetchOrders = (from: string, to: string) => rows(() => supabase.from('v_orders_with_credit_status').select('*')
+    .gte('created_at', utcStart(from)).lt('created_at', utcStart(to)).order('created_at', { ascending: true }))
+  const fetchPayments = (from: string, to: string) => rows(() => supabase.from('payments').select('method,amount,created_at')
+    .gte('created_at', utcStart(from)).lt('created_at', utcStart(to)).order('created_at', { ascending: true }))
+  const fetchCredits = (from: string, to: string) => rows(() => supabase.from('v_credit_balances').select('*')
+    .gte('created_at', utcStart(from)).lt('created_at', utcStart(to)).order('created_at', { ascending: true }))
+
+  const [[dayOrderRows, monthOrderRows, priorOrderRows], [dayPaymentRows, monthPaymentRows], [dayCreditRows, allCreditRows]] = await Promise.all([
+    Promise.all([fetchOrders(reportDate, dayAfter), fetchOrders(monthStart, dayAfter), fetchOrders(weekStart, reportDate)]),
+    Promise.all([fetchPayments(reportDate, dayAfter), fetchPayments(monthStart, dayAfter)]),
+    Promise.all([fetchCredits(reportDate, dayAfter), rows(() => supabase.from('v_credit_balances').select('*').order('created_at', { ascending: true }))]),
+  ])
+
+  const standaloneCreditIds = allCreditRows.filter(credit => credit.order_id == null).map(credit => String(credit.credit_id))
+  let creditCollectionsToday = 0
+  let creditCollectionsMonth = 0
+  if (standaloneCreditIds.length) {
+    const [todayPayments, monthPayments] = await Promise.all([
+      rows(() => supabase.from('credit_payments').select('credit_id,amount,created_at').in('credit_id', standaloneCreditIds)
+        .gte('created_at', utcStart(reportDate)).lt('created_at', utcStart(dayAfter))),
+      rows(() => supabase.from('credit_payments').select('credit_id,amount,created_at').in('credit_id', standaloneCreditIds)
+        .gte('created_at', utcStart(monthStart)).lt('created_at', utcStart(dayAfter))),
+    ])
+    creditCollectionsToday = todayPayments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0)
+    creditCollectionsMonth = monthPayments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0)
+  }
+
+  const dayPayments = dayPaymentRows.map(row => ({ method: row.method as PaymentMethod, amount: Number(row.amount ?? 0) }))
+  const monthPayments = monthPaymentRows.map(row => ({ method: row.method as PaymentMethod, amount: Number(row.amount ?? 0) }))
+  const personalConsumptionToday = dayPayments.filter(payment => payment.method === 'personal_account').reduce((sum, payment) => sum + payment.amount, 0)
+  const dayCredits = dayCreditRows.map(creditRecord)
+  const bcvReference = await getReportBcvRate(reportDate, [...dayOrderRows, ...monthOrderRows, ...priorOrderRows])
+  const data = buildDailySalesEmailData({
+    reportDate, dayOrders: dayOrderRows.map(orderRecord), monthOrders: monthOrderRows.map(orderRecord),
+    previousWeekdayOrders: priorOrderRows.map(orderRecord), dayPayments, monthPayments,
+    dayCredits, openCredits: allCreditRows.map(creditRecord), creditCollectionsToday, creditCollectionsMonth,
+    personalConsumptionToday, businessName: 'Full China',
+    bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
+  })
+  const html = buildDailySalesEmailHtml({ ...data, currency: CURRENCY })
+  const sample = url.searchParams.get('sample') === '1'
+  const subject = `${sample ? '[Prueba] ' : ''}Full China · Reporte diario · ${reportDate}`
+  const resendResponse = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json',
+      ...(sample ? {} : { 'Idempotency-Key': `fullchina-daily-report-${reportDate}` }),
+    },
+    body: JSON.stringify({ from: sender, to: [recipient], subject, html }),
+  })
+  const resendBody = await resendResponse.json().catch(() => ({})) as DbRow
+  if (!resendResponse.ok) {
+    console.error('No se pudo enviar reporte diario:', resendResponse.status, resendBody.name ?? resendBody.message ?? 'Resend error')
+    return Response.json({ error: 'No se pudo enviar el reporte por correo.', providerStatus: resendResponse.status }, { status: 502 })
+  }
+  return Response.json({ sent: true, reportDate, recipient, emailId: resendBody.id ?? null, mode: sample ? 'sample' : 'scheduled' })
+}
+
+export async function GET(request: Request): Promise<Response> {
+  try {
+    return await sendReport(request)
+  } catch (error) {
+    console.error('Error generando reporte diario:', error instanceof Error ? error.message : 'error desconocido')
+    return Response.json({ error: 'No se pudo generar el reporte diario.' }, { status: 500 })
+  }
+}
