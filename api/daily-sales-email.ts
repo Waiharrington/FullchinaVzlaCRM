@@ -121,6 +121,12 @@ async function sendReport(request: Request): Promise<Response> {
   }
 
   const url = new URL(request.url)
+  const sample = url.searchParams.get('sample') === '1'
+  const requestedRecipient = sample ? url.searchParams.get('to')?.trim() : null
+  if (requestedRecipient && (requestedRecipient.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedRecipient))) {
+    return Response.json({ error: 'El destinatario de prueba no es válido.' }, { status: 400 })
+  }
+  const sendTo = requestedRecipient || recipient
   const override = url.searchParams.get('date')
   const reportDate = override && /^\d{4}-\d{2}-\d{2}$/.test(override) ? override : shiftDate(dateKey(new Date()), -1)
   const dayAfter = shiftDate(reportDate, 1)
@@ -188,7 +194,6 @@ async function sendReport(request: Request): Promise<Response> {
     }
   }
   const html = buildDailySalesEmailHtml({ ...data, currency: CURRENCY })
-  const sample = url.searchParams.get('sample') === '1'
   const subject = `${sample ? '[Prueba] ' : ''}Full China · Reporte diario · ${reportDate}`
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -196,14 +201,14 @@ async function sendReport(request: Request): Promise<Response> {
       Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json',
       ...(sample ? {} : { 'Idempotency-Key': `fullchina-daily-report-${reportDate}` }),
     },
-    body: JSON.stringify({ from: sender, to: [recipient], subject, html }),
+    body: JSON.stringify({ from: sender, to: [sendTo], subject, html }),
   })
   const resendBody = await resendResponse.json().catch(() => ({})) as DbRow
   if (!resendResponse.ok) {
     console.error('No se pudo enviar reporte diario:', resendResponse.status, resendBody.name ?? resendBody.message ?? 'Resend error')
     return Response.json({ error: 'No se pudo enviar el reporte por correo.', providerStatus: resendResponse.status }, { status: 502 })
   }
-  return Response.json({ sent: true, reportDate, recipient, emailId: resendBody.id ?? null, mode: sample ? 'sample' : 'scheduled' })
+  return Response.json({ sent: true, reportDate, recipient: sendTo, emailId: resendBody.id ?? null, mode: sample ? 'sample' : 'scheduled' })
 }
 
 export async function GET(request: Request): Promise<Response> {
