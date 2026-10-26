@@ -119,7 +119,7 @@ function creditRecord(row: DbRow) {
   }
 }
 
-export async function sendReport(request: Request): Promise<Response> {
+async function sendReport(request: Request): Promise<Response> {
   const supabaseUrl = environment.SUPABASE_URL ?? environment.VITE_SUPABASE_URL
   const serviceKey = environment.SUPABASE_SERVICE_ROLE_KEY
   const resendKey = environment.RESEND_API_KEY
