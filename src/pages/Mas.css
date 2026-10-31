@@ -1154,6 +1154,38 @@
   text-shadow: 0 0 20px rgba(227, 27, 43, 0.35);
 }
 
+.mas-payment-field {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0;
+}
+
+.mas-payment-field > label {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.mas-payment-select .fc-select-trigger { min-height: 44px; }
+.mas-payment-field .mas-payment-input { min-height: 44px; }
+.mas-payment-amount { margin: 12px 0 4px; }
+.mas-payment-hint {
+  display: block;
+  margin: 4px 0 10px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+.mas-payment-error {
+  margin: 10px 0;
+  padding: 9px 11px;
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  border-radius: 9px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  font-size: 0.82rem;
+}
+
 .mas-credit-overlay .modal-actions .btn-accent {
   background: #e31b2b !important;
   color: #fff !important;

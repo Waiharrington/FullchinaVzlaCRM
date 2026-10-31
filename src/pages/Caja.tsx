@@ -5,11 +5,12 @@ import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
+import { CashChangeSummary } from '../components/CashChangeSummary'
 import { StyledSelect } from '../components/StyledSelect'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import Toast from '../components/Toast'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
-import { formatRateDate, formatUsd, formatVes } from '../lib/money'
+import { formatRateDate, formatUsd, formatVes, parseMoneyInput } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
@@ -538,6 +539,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       method: payment.method,
       amount: payment.amount,
       referenceNumber: payment.referenceNumber,
+      receivedAmount: payment.receivedAmount,
     })) ?? [],
   })
 
@@ -1065,7 +1067,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       }
       setCashSession(activeSession)
 
-      const enteredAmountRaw = Number(amountReceived)
+      const enteredAmountRaw = parseMoneyInput(amountReceived)
       if (!Number.isFinite(enteredAmountRaw) || enteredAmountRaw <= 0) {
         throw new Error('Ingresa un monto válido')
       }
@@ -2317,6 +2319,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         ? `Ref. ${formatUsd(total)}`
                         : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
                   </span>
+                   {selectedPaymentTab === 'cash' && (
+                     <CashChangeSummary amountReceived={amountReceived} totalUsd={total} currency={cashCurrency} bcvRate={bcvRate} />
+                   )}
                 </div>}
 
                 <div className="payment-field-group mt-3">

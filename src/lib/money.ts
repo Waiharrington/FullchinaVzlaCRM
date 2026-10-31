@@ -12,6 +12,12 @@ export function formatVes(value: number) {
   })}`
 }
 
+export function parseMoneyInput(value: string): number {
+  const normalized = value.trim().replace(/\s/g, '').replace(/\.(?=.*[,])/g, '').replace(',', '.')
+  const amount = Number(normalized)
+  return Number.isFinite(amount) ? amount : 0
+}
+
 /**
  * Igual que formatUsd pero muestra hasta `maxDecimals` decimales cuando el
  * valor los tiene (sin rellenar con ceros más allá de 2). Útil para costos

@@ -28,6 +28,7 @@ export interface ThermalReceiptPayment {
   method: string
   amount: number
   referenceNumber?: string | null
+  receivedAmount?: number | null
 }
 
 export interface ThermalReceiptData {
@@ -96,7 +97,10 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
         const name = paymentNames[payment.method] ?? payment.method
         const reference = payment.referenceNumber?.trim()
         const vesAmount = data.bcvRate && data.bcvRate > 0 ? `<div class="payment"><span>Pago ${escapeHtml(name)} (Bs)</span><span>${escapeHtml(formatVes(payment.amount * data.bcvRate))}</span></div>` : ''
-        return `<div class="payment"><span>Pago ${escapeHtml(name)}</span><span>${escapeHtml(formatUsd(payment.amount))}</span></div>${vesAmount}${reference ? `<div class="reference">Referencia: ${escapeHtml(reference)}</div>` : ''}`
+        const cashReceived = payment.method === 'cash' && payment.receivedAmount != null && payment.receivedAmount >= payment.amount
+          ? `<div class="payment"><span>Efectivo recibido</span><span>${escapeHtml(formatUsd(payment.receivedAmount))}</span></div><div class="payment"><span>Vuelto</span><span>${escapeHtml(formatUsd(payment.receivedAmount - payment.amount))}</span></div>`
+          : ''
+        return `<div class="payment"><span>Pago ${escapeHtml(name)}</span><span>${escapeHtml(formatUsd(payment.amount))}</span></div>${vesAmount}${cashReceived}${reference ? `<div class="reference">Referencia: ${escapeHtml(reference)}</div>` : ''}`
       }).join('')
     : data.kind === 'venta' ? '<div class="payment">Pago registrado</div>' : ''
   const orderType = data.tableNumber ? `Mesa ${data.tableNumber}` : data.orderType

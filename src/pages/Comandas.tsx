@@ -5,6 +5,7 @@ import { DndContext, DragOverlay, useDraggable, useDroppable, KeyboardSensor, Mo
 import { Caja } from './Caja'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
+import { CashChangeSummary } from '../components/CashChangeSummary'
 import {
   getOrdersWithItems,
   getOrderById,
@@ -36,7 +37,7 @@ import { subscribeToDataChanges, supabase } from '../lib/supabase'
 import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes, dayRangeInTimeZone } from '../lib/money'
+import { formatUsd, formatVes, dayRangeInTimeZone, parseMoneyInput } from '../lib/money'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
 import {
   Search,
@@ -149,7 +150,7 @@ export interface ComandaOrder {
   items: ComandaItem[]
   notes?: string
   paymentMethod: string
-  payments?: Array<{ method: PaymentMethod; amount: number; referenceNumber?: string | null }>
+  payments?: Array<{ method: PaymentMethod; amount: number; referenceNumber?: string | null; receivedAmount?: number | null }>
   paymentType: 'card' | 'cash' | 'app' | 'pending'
   isPaid: boolean
   creditAuthorized?: boolean
@@ -201,7 +202,7 @@ function mapFullOrderToComanda(order: FullOrder): ComandaOrder {
     })),
     notes: order.notes || '',
     paymentMethod: order.status === 'paid' ? paymentMethod : '⚠️ Sin pagar',
-    payments: order.payments.map(payment => ({ method: payment.method, amount: payment.amount, referenceNumber: payment.referenceNumber })),
+    payments: order.payments.map(payment => ({ method: payment.method, amount: payment.amount, referenceNumber: payment.referenceNumber, receivedAmount: payment.receivedAmount })),
     paymentType: order.status !== 'paid' ? 'pending' : paymentMethods.includes('cash') ? 'cash' : paymentMethods.includes('mobile') || paymentMethods.includes('transfer') ? 'app' : 'card',
     isPaid: order.status === 'paid',
     creditAuthorized: order.creditAuthorized,
@@ -248,6 +249,7 @@ function thermalReceiptForComanda(order: ComandaOrder): ThermalReceiptData {
       method: payment.method,
       amount: payment.amount,
       referenceNumber: payment.referenceNumber,
+      receivedAmount: payment.receivedAmount,
     })) ?? (order.paymentReference ? [{ method: 'other', amount: order.totalAmount ?? 0, referenceNumber: order.paymentReference }] : []),
   }
 }
@@ -1181,7 +1183,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       }
 
       const total = Number(paymentOrder.balanceDue ?? paymentOrder.totalAmount ?? 0)
-      let enteredAmount = Number(amountReceived)
+      let enteredAmount = parseMoneyInput(amountReceived)
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
       if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
         throw new Error('Ingresa un monto válido')
@@ -1288,6 +1290,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           method: payment.method,
           amount: payment.amount,
           referenceNumber: payment.referenceNumber ?? null,
+           receivedAmount: payment.receivedAmount ?? null,
         })),
       }
 
@@ -2958,6 +2961,9 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                         ? `Ref. ${formatUsd(paymentDue)}`
                         : (paymentRate ? `Ref. ${formatVes(paymentDue * paymentRate)}` : 'Referencia BCV no disponible')}
                   </span>
+                   {selectedPaymentTab === 'cash' && (
+                     <CashChangeSummary amountReceived={amountReceived} totalUsd={paymentDue} currency={cashCurrency} bcvRate={paymentRate} />
+                   )}
                 </div>}
 
                 {paymentError && <div className="payment-error-message" role="alert">{paymentError}</div>}

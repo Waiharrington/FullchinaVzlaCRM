@@ -1,0 +1,41 @@
+.cash-change-summary {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.cash-change-row,
+.cash-change-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cash-change-row {
+  color: #a1a1aa;
+  font-size: 11px;
+}
+
+.cash-change-row strong { color: #e4e4e7; }
+
+.cash-change-result {
+  margin-top: 2px;
+  padding-top: 9px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.13);
+  color: #d4d4d8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.cash-change-result strong { font-size: 17px; }
+.cash-change-summary.change { border-color: rgba(34, 197, 94, 0.35); background: rgba(34, 197, 94, 0.08); }
+.cash-change-summary.change .cash-change-result { color: #4ade80; }
+.cash-change-summary.exact { border-color: rgba(59, 130, 246, 0.3); background: rgba(59, 130, 246, 0.07); }
+.cash-change-summary.exact .cash-change-result { color: #93c5fd; }
+.cash-change-summary.short { border-color: rgba(248, 113, 113, 0.35); background: rgba(239, 68, 68, 0.08); }
+.cash-change-summary.short .cash-change-result { color: #fca5a5; }
