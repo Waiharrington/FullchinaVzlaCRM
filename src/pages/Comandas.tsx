@@ -20,6 +20,7 @@ import {
   getAllSellableProducts,
   getCustomers,
   getPersonalAccountOptions,
+  getFinancialAccounts,
   updateOrderCustomer,
   authorizeOrderCredit,
   type PaymentMethod,
@@ -27,6 +28,7 @@ import {
   type Customer,
   type PersonalAccountOption,
   type FullOrder,
+  type FinancialAccount,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { CalendarPicker } from '../components/CalendarPicker'
@@ -37,7 +39,7 @@ import { subscribeToDataChanges, supabase } from '../lib/supabase'
 import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes, dayRangeInTimeZone, parseMoneyInput } from '../lib/money'
+import { calculateCashChange, formatUsd, formatVes, dayRangeInTimeZone, parseMoneyInput } from '../lib/money'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
 import {
   Search,
@@ -150,7 +152,7 @@ export interface ComandaOrder {
   items: ComandaItem[]
   notes?: string
   paymentMethod: string
-  payments?: Array<{ method: PaymentMethod; amount: number; referenceNumber?: string | null; receivedAmount?: number | null }>
+  payments?: Array<{ method: PaymentMethod; amount: number; referenceNumber?: string | null; receivedAmount?: number | null; receivedCurrency?: 'USD' | 'VES' | null; changeAmount?: number | null; changeCurrency?: 'USD' | 'VES' | null }>
   paymentType: 'card' | 'cash' | 'app' | 'pending'
   isPaid: boolean
   creditAuthorized?: boolean
@@ -202,7 +204,7 @@ function mapFullOrderToComanda(order: FullOrder): ComandaOrder {
     })),
     notes: order.notes || '',
     paymentMethod: order.status === 'paid' ? paymentMethod : '⚠️ Sin pagar',
-    payments: order.payments.map(payment => ({ method: payment.method, amount: payment.amount, referenceNumber: payment.referenceNumber, receivedAmount: payment.receivedAmount })),
+    payments: order.payments.map(payment => ({ method: payment.method, amount: payment.amount, referenceNumber: payment.referenceNumber, receivedAmount: payment.receivedAmount, receivedCurrency: payment.receivedCurrency, changeAmount: payment.changeAmount, changeCurrency: payment.changeCurrency })),
     paymentType: order.status !== 'paid' ? 'pending' : paymentMethods.includes('cash') ? 'cash' : paymentMethods.includes('mobile') || paymentMethods.includes('transfer') ? 'app' : 'card',
     isPaid: order.status === 'paid',
     creditAuthorized: order.creditAuthorized,
@@ -250,6 +252,9 @@ function thermalReceiptForComanda(order: ComandaOrder): ThermalReceiptData {
       amount: payment.amount,
       referenceNumber: payment.referenceNumber,
       receivedAmount: payment.receivedAmount,
+      receivedCurrency: payment.receivedCurrency,
+      changeAmount: payment.changeAmount,
+      changeCurrency: payment.changeCurrency,
     })) ?? (order.paymentReference ? [{ method: 'other', amount: order.totalAmount ?? 0, referenceNumber: order.paymentReference }] : []),
   }
 }
@@ -696,6 +701,10 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('')
   const [amountReceivedSecondary, setAmountReceivedSecondary] = useState('')
+  const [splitPrimaryCashReceived, setSplitPrimaryCashReceived] = useState('')
+  const [splitSecondaryCashReceived, setSplitSecondaryCashReceived] = useState('')
+  const [splitPrimaryCashCurrency, setSplitPrimaryCashCurrency] = useState<'USD' | 'VES'>('USD')
+  const [splitSecondaryCashCurrency, setSplitSecondaryCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
   const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
   const [splitPrimaryReference, setSplitPrimaryReference] = useState('')
@@ -705,6 +714,8 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [creditAuthorizationPin, setCreditAuthorizationPin] = useState('')
   const [paying, setPaying] = useState(false)
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
+  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
+  const [changeAccountId, setChangeAccountId] = useState('')
   const [statusError, setStatusError] = useState('')
   const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(() => new Set())
   const inFlightStatusRef = useRef(new Set<string>())
@@ -1048,6 +1059,14 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   }
   const paymentRate = paymentOrder?.bcvRate && paymentOrder.bcvRate > 0 ? paymentOrder.bcvRate : bcvRate
   const paymentDue = paymentOrder?.balanceDue ?? paymentOrder?.totalAmount ?? 0
+  const changeAccount = financialAccounts.find(account => account.id === changeAccountId)
+  const cashChange = calculateCashChange(parseMoneyInput(amountReceived), paymentDue, cashCurrency, paymentRate, changeAccount?.currency ?? cashCurrency)
+  useEffect(() => {
+    getFinancialAccounts().then(setFinancialAccounts).catch(error => {
+      console.error('No se pudieron cargar las cuentas de vuelto:', error)
+      setFinancialAccounts([])
+    })
+  }, [])
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
   const splitSecondaryAmountUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, paymentRate)
   // Los dos métodos del pago combinado están enlazados: editar uno recalcula el
@@ -1073,6 +1092,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     // Abrir primero el modal para que el clic siempre tenga respuesta visual,
     // incluso si la validación de caja tarda o el backend devuelve un error.
     setPaymentOrder(order)
+    setChangeAccountId('')
     // Pre-seleccionar el método que el cliente indicó en la web (si lo hay).
     const pref = extractPreferredPayment(order.notes)
     if (pref && pref.methods.length >= 2) {
@@ -1160,9 +1180,17 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       const half = paymentDue / 2
       setAmountReceived(usdToPaymentInput(half, splitPrimaryMethod, paymentRate))
       setAmountReceivedSecondary(usdToPaymentInput(paymentDue - half, splitSecondaryMethod, paymentRate))
+      setSplitPrimaryCashReceived(half.toFixed(2))
+      setSplitSecondaryCashReceived((paymentDue - half).toFixed(2))
+      setSplitPrimaryCashCurrency('USD')
+      setSplitSecondaryCashCurrency('USD')
     } else {
       const inputMethod: SplitPaymentMethod = method === 'split' || method === 'personal_account' || method === 'credit' ? 'cash' : method
       setAmountReceived(usdToPaymentInput(paymentDue, inputMethod, paymentRate))
+      setSplitPrimaryCashReceived(paymentDue.toFixed(2))
+      setSplitSecondaryCashReceived((paymentDue / 2).toFixed(2))
+      setSplitPrimaryCashCurrency('USD')
+      setSplitSecondaryCashCurrency('USD')
     }
     if (method === 'credit') setCreditAuthorizationPin('')
     if (method === 'personal_account') setPaymentPersonalAccountId(personalAccounts.find(account => account.isActive)?.id ?? '')
@@ -1183,7 +1211,8 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       }
 
       const total = Number(paymentOrder.balanceDue ?? paymentOrder.totalAmount ?? 0)
-      let enteredAmount = parseMoneyInput(amountReceived)
+      const enteredAmountRaw = parseMoneyInput(amountReceived)
+      let enteredAmount = enteredAmountRaw
       if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
       if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
         throw new Error('Ingresa un monto válido')
@@ -1203,6 +1232,13 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         personalAccountId?: string
         referenceNumber?: string
         receivedAmount?: number
+        receivedCurrency?: 'USD' | 'VES'
+        receivedExchangeRate?: number
+        changeAmount?: number
+        changeCurrency?: 'USD' | 'VES'
+        changeAccountId?: string
+        changeExchangeRate?: number
+        accountId?: string
         notes?: string
       }>
 
@@ -1226,14 +1262,28 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
             method: splitPrimaryMethod,
             amount: primaryAmount,
             referenceNumber: splitPrimaryReference.trim() || undefined,
-            receivedAmount: splitPrimaryMethod === 'cash' ? primaryAmount : undefined,
+            receivedAmount: splitPrimaryMethod === 'cash' ? parseMoneyInput(splitPrimaryCashReceived) : undefined,
+            receivedCurrency: splitPrimaryMethod === 'cash' ? splitPrimaryCashCurrency : undefined,
+            receivedExchangeRate: splitPrimaryMethod === 'cash' && splitPrimaryCashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
+            accountId: splitPrimaryMethod === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === splitPrimaryCashCurrency)?.id : undefined,
+            changeAmount: splitPrimaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, paymentRate, changeAccount?.currency ?? splitPrimaryCashCurrency)?.amount : undefined,
+            changeCurrency: splitPrimaryMethod === 'cash' ? changeAccount?.currency ?? splitPrimaryCashCurrency : undefined,
+            changeAccountId: splitPrimaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, paymentRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
+            changeExchangeRate: splitPrimaryMethod === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
             notes: paymentNote || undefined,
           },
           {
             method: splitSecondaryMethod,
             amount: secondaryAmount,
             referenceNumber: splitSecondaryReference.trim() || undefined,
-            receivedAmount: splitSecondaryMethod === 'cash' ? secondaryAmount : undefined,
+            receivedAmount: splitSecondaryMethod === 'cash' ? parseMoneyInput(splitSecondaryCashReceived) : undefined,
+            receivedCurrency: splitSecondaryMethod === 'cash' ? splitSecondaryCashCurrency : undefined,
+            receivedExchangeRate: splitSecondaryMethod === 'cash' && splitSecondaryCashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
+            accountId: splitSecondaryMethod === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === splitSecondaryCashCurrency)?.id : undefined,
+            changeAmount: splitSecondaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, paymentRate, changeAccount?.currency ?? splitSecondaryCashCurrency)?.amount : undefined,
+            changeCurrency: splitSecondaryMethod === 'cash' ? changeAccount?.currency ?? splitSecondaryCashCurrency : undefined,
+            changeAccountId: splitSecondaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, paymentRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
+            changeExchangeRate: splitSecondaryMethod === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
             notes: paymentNote || undefined,
           },
         ]
@@ -1247,9 +1297,20 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           amount: total,
           personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : undefined,
           referenceNumber: allRefs || undefined,
-          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
+          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmountRaw : undefined,
+          receivedCurrency: selectedPaymentTab === 'cash' ? cashCurrency : undefined,
+          receivedExchangeRate: selectedPaymentTab === 'cash' && cashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
+          changeAmount: selectedPaymentTab === 'cash' ? cashChange?.amount : undefined,
+          changeCurrency: selectedPaymentTab === 'cash' ? cashChange?.currency : undefined,
+          changeAccountId: selectedPaymentTab === 'cash' && (cashChange?.amount ?? 0) > 0 ? changeAccountId : undefined,
+          changeExchangeRate: selectedPaymentTab === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
+          accountId: selectedPaymentTab === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === cashCurrency)?.id : undefined,
           notes: paymentNote || undefined,
         }]
+      }
+
+      if (payments.some(payment => (payment.changeAmount ?? 0) > 0) && !changeAccountId) {
+        throw new Error('Selecciona la cuenta de origen de donde saldrá el vuelto')
       }
 
       if (selectedPaymentTab === 'personal_account' && !personalAccounts.some(account => account.id === paymentPersonalAccountId && account.isActive)) {
@@ -1291,6 +1352,9 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           amount: payment.amount,
           referenceNumber: payment.referenceNumber ?? null,
            receivedAmount: payment.receivedAmount ?? null,
+          receivedCurrency: payment.receivedCurrency ?? null,
+          changeAmount: payment.changeAmount ?? null,
+          changeCurrency: payment.changeCurrency ?? null,
         })),
       }
 
@@ -2870,6 +2934,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                       <PaymentMethodSelect ariaLabel="Primer método de pago" value={splitPrimaryMethod} options={SPLIT_PAYMENT_METHODS} disabledMethod={splitSecondaryMethod} onChange={(nextMethod) => {
                         const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, paymentRate)
                         setSplitPrimaryMethod(nextMethod)
+                        if (nextMethod === 'cash') setSplitPrimaryCashReceived(currentUsd.toFixed(2))
                         setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, paymentRate))
                         const secUsd = Math.max(0, Math.round((paymentDue - currentUsd) * 100) / 100)
                         setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, paymentRate))
@@ -2886,6 +2951,18 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                           ? `Ref. ${formatUsd(splitPrimaryAmountUsd)}`
                           : paymentRate ? `Ref. ${formatVes(splitPrimaryAmountUsd * paymentRate)}` : 'Referencia BCV no disponible'}
                       </span>
+                      {splitPrimaryMethod === 'cash' && <>
+                        <div className="cash-currency-toggle">
+                          {(['USD','VES'] as const).map(currency => <button key={currency} type="button" className={`cash-currency-btn ${splitPrimaryCashCurrency === currency ? 'active' : ''}`} onClick={() => {
+                            const usd = splitPrimaryCashCurrency === 'VES' ? parseMoneyInput(splitPrimaryCashReceived) / (paymentRate || 1) : parseMoneyInput(splitPrimaryCashReceived)
+                            setSplitPrimaryCashCurrency(currency)
+                            setSplitPrimaryCashReceived((currency === 'VES' ? usd * (paymentRate || 0) : usd).toFixed(2))
+                          }}>{currency === 'USD' ? 'USD' : 'Bs'}</button>)}
+                        </div>
+                        <label className="payment-field-label">Efectivo físico recibido</label>
+                        <input className="payment-field-input" inputMode="decimal" value={splitPrimaryCashReceived} onChange={e => setSplitPrimaryCashReceived(e.target.value)} />
+                        <CashChangeSummary amountReceived={splitPrimaryCashReceived} totalUsd={splitPrimaryAmountUsd} currency={splitPrimaryCashCurrency} bcvRate={paymentRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
+                      </>}
                       {requiresPaymentReference(splitPrimaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitPrimaryMethod)}</label>
@@ -2899,6 +2976,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                       <PaymentMethodSelect ariaLabel="Segundo método de pago" value={splitSecondaryMethod} options={SPLIT_PAYMENT_METHODS} disabledMethod={splitPrimaryMethod} onChange={(nextMethod) => {
                         const currentUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, paymentRate)
                         setSplitSecondaryMethod(nextMethod)
+                        if (nextMethod === 'cash') setSplitSecondaryCashReceived(currentUsd.toFixed(2))
                         setAmountReceivedSecondary(usdToPaymentInput(currentUsd, nextMethod, paymentRate))
                         setSplitSecondaryReference('')
                         setPaymentError('')
@@ -2913,6 +2991,18 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                           ? `Ref. ${formatUsd(splitSecondaryAmountUsd)}`
                           : paymentRate ? `Ref. ${formatVes(splitSecondaryAmountUsd * paymentRate)}` : 'Referencia BCV no disponible'}
                       </span>
+                      {splitSecondaryMethod === 'cash' && <>
+                        <div className="cash-currency-toggle">
+                          {(['USD','VES'] as const).map(currency => <button key={currency} type="button" className={`cash-currency-btn ${splitSecondaryCashCurrency === currency ? 'active' : ''}`} onClick={() => {
+                            const usd = splitSecondaryCashCurrency === 'VES' ? parseMoneyInput(splitSecondaryCashReceived) / (paymentRate || 1) : parseMoneyInput(splitSecondaryCashReceived)
+                            setSplitSecondaryCashCurrency(currency)
+                            setSplitSecondaryCashReceived((currency === 'VES' ? usd * (paymentRate || 0) : usd).toFixed(2))
+                          }}>{currency === 'USD' ? 'USD' : 'Bs'}</button>)}
+                        </div>
+                        <label className="payment-field-label">Efectivo físico recibido</label>
+                        <input className="payment-field-input" inputMode="decimal" value={splitSecondaryCashReceived} onChange={e => setSplitSecondaryCashReceived(e.target.value)} />
+                        <CashChangeSummary amountReceived={splitSecondaryCashReceived} totalUsd={splitSecondaryAmountUsd} currency={splitSecondaryCashCurrency} bcvRate={paymentRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
+                      </>}
                       {requiresPaymentReference(splitSecondaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
@@ -2962,7 +3052,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                         : (paymentRate ? `Ref. ${formatVes(paymentDue * paymentRate)}` : 'Referencia BCV no disponible')}
                   </span>
                    {selectedPaymentTab === 'cash' && (
-                     <CashChangeSummary amountReceived={amountReceived} totalUsd={paymentDue} currency={cashCurrency} bcvRate={paymentRate} />
+                     <CashChangeSummary amountReceived={amountReceived} totalUsd={paymentDue} currency={cashCurrency} bcvRate={paymentRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
                    )}
                 </div>}
 

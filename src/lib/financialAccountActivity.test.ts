@@ -2,6 +2,33 @@ import { describe, expect, it } from 'vitest'
 import { buildFinancialAccountActivity } from './financialAccountActivity'
 
 describe('buildFinancialAccountActivity', () => {
+  it('registra el efectivo recibido y descuenta el vuelto de una cuenta bancaria en otra moneda', () => {
+    const result = buildFinancialAccountActivity(
+      [{ id: 'cash-usd', currency: 'USD' }, { id: 'bank-ves', currency: 'VES' }],
+      [{ status: 'paid', createdAt: '2026-08-23T16:00:00-04:00', bcvRate: 800, payments: [{
+        method: 'cash', amount: 22, accountId: 'cash-usd', receivedAmount: 25, receivedCurrency: 'USD',
+        receivedExchangeRate: null, changeAmount: 2400, changeCurrency: 'VES', changeAccountId: 'bank-ves', changeExchangeRate: 800,
+      }] }],
+      [], [], '2026-08-23', '2026-08-23',
+    )
+
+    expect(result.get('cash-usd')).toEqual({ inflows: 25, outflows: 0, net: 25 })
+    expect(result.get('bank-ves')).toEqual({ inflows: 0, outflows: 2400, net: -2400 })
+  })
+
+  it('reconcilia el neto cuando el vuelto sale de la misma cuenta que recibe el efectivo', () => {
+    const result = buildFinancialAccountActivity(
+      [{ id: 'cash-usd', currency: 'USD' }],
+      [{ status: 'paid', createdAt: '2026-08-23T16:00:00-04:00', bcvRate: 800, payments: [{
+        method: 'cash', amount: 22, accountId: 'cash-usd', receivedAmount: 25, receivedCurrency: 'USD',
+        changeAmount: 3, changeCurrency: 'USD', changeAccountId: 'cash-usd',
+      }] }],
+      [], [], '2026-08-23', '2026-08-23',
+    )
+
+    expect(result.get('cash-usd')).toEqual({ inflows: 25, outflows: 3, net: 22 })
+  })
+
   it('reconcilia cobros y egresos por cuenta respetando su moneda', () => {
     const result = buildFinancialAccountActivity(
       [{ id: 'usd', currency: 'USD' }, { id: 'ves', currency: 'VES' }],

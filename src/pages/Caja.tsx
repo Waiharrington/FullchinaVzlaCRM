@@ -10,7 +10,7 @@ import { StyledSelect } from '../components/StyledSelect'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import Toast from '../components/Toast'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
-import { formatRateDate, formatUsd, formatVes, parseMoneyInput } from '../lib/money'
+import { calculateCashChange, formatRateDate, formatUsd, formatVes, parseMoneyInput } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
@@ -483,6 +483,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   const [extraRefs, setExtraRefs] = useState<string[]>([])
   const [amountReceived, setAmountReceived] = useState('0.00')
   const [amountReceivedSecondary, setAmountReceivedSecondary] = useState('0.00')
+  const [splitPrimaryCashReceived, setSplitPrimaryCashReceived] = useState('0.00')
+  const [splitSecondaryCashReceived, setSplitSecondaryCashReceived] = useState('0.00')
   const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
   const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
   const [splitPrimaryCashCurrency, setSplitPrimaryCashCurrency] = useState<'USD' | 'VES'>('USD')
@@ -501,6 +503,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const [paying, setPaying] = useState(false)
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
+  const [changeAccountId, setChangeAccountId] = useState('')
   const [payError, setPayError] = useState('')
   const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
   const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
@@ -540,6 +543,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       amount: payment.amount,
       referenceNumber: payment.referenceNumber,
       receivedAmount: payment.receivedAmount,
+      receivedCurrency: payment.receivedCurrency,
+      changeAmount: payment.changeAmount,
+      changeCurrency: payment.changeCurrency,
     })) ?? [],
   })
 
@@ -905,6 +911,9 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
   const total = subtotal + deliveryFeeUsd
+  const changeAccount = financialAccounts.find(account => account.id === changeAccountId)
+  const selectedCashChange = calculateCashChange(parseMoneyInput(amountReceived), total, cashCurrency, bcvRate, changeAccount?.currency ?? cashCurrency)
+  const cashChange = selectedCashChange?.amountUsd ?? 0
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency)
   const splitSecondaryAmountUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency)
   // Los dos métodos del pago combinado están enlazados: editar uno recalcula el
@@ -984,11 +993,14 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       return
     }
     setSelectedPaymentTab(preferredMethod)
+    setChangeAccountId('')
     setRefNumber('')
     setExtraRefs([])
     const initialMethod: SplitPaymentMethod = preferredMethod === 'split' || preferredMethod === 'other' || preferredMethod === 'personal_account' ? 'cash' : preferredMethod
     setAmountReceived(usdToPaymentInput(preferredMethod === 'split' ? total / 2 : total, initialMethod, bcvRate))
     if (preferredMethod === 'split') setAmountReceivedSecondary(usdToPaymentInput(total - total / 2, splitSecondaryMethod, bcvRate))
+    setSplitPrimaryCashReceived(usdToPaymentInput(preferredMethod === 'split' ? total / 2 : total, 'cash', bcvRate, splitPrimaryCashCurrency))
+    setSplitSecondaryCashReceived(usdToPaymentInput(preferredMethod === 'split' ? total - total / 2 : total / 2, 'cash', bcvRate, splitSecondaryCashCurrency))
     setSplitPrimaryMethod('cash')
     setSplitSecondaryMethod('mobile')
     setSplitPrimaryReference('')
@@ -1120,7 +1132,13 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
             amount: primaryAmount,
             referenceNumber: primaryRefs || undefined,
             accountId: splitPrimaryAccountId || null,
-            receivedAmount: splitPrimaryMethod === 'cash' ? Number(amountReceived.replace(',', '.')) : undefined,
+            receivedAmount: splitPrimaryMethod === 'cash' ? parseMoneyInput(splitPrimaryCashReceived) : undefined,
+            receivedCurrency: splitPrimaryMethod === 'cash' ? (splitPrimaryCashCurrency) : undefined,
+            receivedExchangeRate: splitPrimaryMethod === 'cash' && splitPrimaryCashCurrency === 'VES' ? bcvRate : undefined,
+            changeAmount: splitPrimaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, bcvRate, financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitPrimaryCashCurrency)?.amount : undefined,
+            changeCurrency: splitPrimaryMethod === 'cash' ? financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitPrimaryCashCurrency : undefined,
+            changeAccountId: splitPrimaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, bcvRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
+            changeExchangeRate: splitPrimaryMethod === 'cash' && financialAccounts.find(a => a.id === changeAccountId)?.currency === 'VES' ? bcvRate : undefined,
             notes: paymentNote || undefined,
           },
           {
@@ -1128,7 +1146,13 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
             amount: secondaryAmount,
             referenceNumber: secondaryRefs || undefined,
             accountId: splitSecondaryAccountId || null,
-            receivedAmount: splitSecondaryMethod === 'cash' ? Number(amountReceivedSecondary.replace(',', '.')) : undefined,
+            receivedAmount: splitSecondaryMethod === 'cash' ? parseMoneyInput(splitSecondaryCashReceived) : undefined,
+            receivedCurrency: splitSecondaryMethod === 'cash' ? splitSecondaryCashCurrency : undefined,
+            receivedExchangeRate: splitSecondaryMethod === 'cash' && splitSecondaryCashCurrency === 'VES' ? bcvRate : undefined,
+            changeAmount: splitSecondaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, bcvRate, financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitSecondaryCashCurrency)?.amount : undefined,
+            changeCurrency: splitSecondaryMethod === 'cash' ? financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitSecondaryCashCurrency : undefined,
+            changeAccountId: splitSecondaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, bcvRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
+            changeExchangeRate: splitSecondaryMethod === 'cash' && financialAccounts.find(a => a.id === changeAccountId)?.currency === 'VES' ? bcvRate : undefined,
             notes: paymentNote || undefined,
           },
         ]
@@ -1143,9 +1167,19 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           referenceNumber: combinedRefs || undefined,
           accountId: selectedPaymentTab === 'personal_account' ? null : paymentAccountId || null,
           personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : null,
-          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmount : undefined,
+          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmountRaw : undefined,
+          receivedCurrency: selectedPaymentTab === 'cash' ? cashCurrency : undefined,
+          receivedExchangeRate: selectedPaymentTab === 'cash' && cashCurrency === 'VES' ? bcvRate : undefined,
+          changeAmount: selectedPaymentTab === 'cash' ? selectedCashChange?.amount : undefined,
+          changeCurrency: selectedPaymentTab === 'cash' ? selectedCashChange?.currency : undefined,
+          changeAccountId: selectedPaymentTab === 'cash' && cashChange > 0 ? changeAccountId : undefined,
+          changeExchangeRate: selectedPaymentTab === 'cash' && changeAccount?.currency === 'VES' ? bcvRate : undefined,
           notes: paymentNote || undefined,
         }]
+      }
+
+      if (paymentComponents.some((payment: { changeAmount?: number }) => (payment.changeAmount ?? 0) > 0) && !changeAccountId) {
+        throw new Error('Selecciona la cuenta de origen de donde saldrá el vuelto')
       }
 
       const order = await checkout({
@@ -2109,6 +2143,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         onChange={(nextMethod) => {
                           const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency)
                           setSplitPrimaryMethod(nextMethod)
+                          if (nextMethod === 'cash') setSplitPrimaryCashReceived(usdToPaymentInput(currentUsd, 'cash', bcvRate, splitPrimaryCashCurrency))
                           setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, bcvRate, splitPrimaryCashCurrency))
                           const secUsd = Math.max(0, Math.round((total - currentUsd) * 100) / 100)
                           setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency))
@@ -2123,8 +2158,10 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                           {(['USD', 'VES'] as const).map((currency) => (
                             <button key={currency} type="button" className={`cash-currency-btn ${splitPrimaryCashCurrency === currency ? 'active' : ''}`} onClick={() => {
                               const currentUsd = paymentInputToUsd(amountReceived, 'cash', bcvRate, splitPrimaryCashCurrency)
+                              const receivedUsd = paymentInputToUsd(splitPrimaryCashReceived, 'cash', bcvRate, splitPrimaryCashCurrency)
                               setSplitPrimaryCashCurrency(currency)
                               setAmountReceived(usdToPaymentInput(currentUsd, 'cash', bcvRate, currency))
+                              setSplitPrimaryCashReceived(usdToPaymentInput(receivedUsd, 'cash', bcvRate, currency))
                               const otherUsd = Math.max(0, Math.round((total - currentUsd) * 100) / 100)
                               setAmountReceivedSecondary(usdToPaymentInput(otherUsd, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency))
                               setSplitPrimaryAccountId(ensureAccountForMethod('cash', currency))
@@ -2153,6 +2190,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                           ? `Ref. ${formatUsd(splitPrimaryAmountUsd)}`
                           : bcvRate ? `Ref. ${formatVes(splitPrimaryAmountUsd * bcvRate)}` : 'Referencia BCV no disponible'}
                       </span>
+                      {splitPrimaryMethod === 'cash' && <>
+                        <label className="payment-field-label">Efectivo físico recibido</label>
+                        <input className="payment-field-input" inputMode="decimal" value={splitPrimaryCashReceived} onChange={e => setSplitPrimaryCashReceived(e.target.value)} />
+                        <CashChangeSummary amountReceived={splitPrimaryCashReceived} totalUsd={splitPrimaryAmountUsd} currency={splitPrimaryCashCurrency} bcvRate={bcvRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
+                      </>}
                       {requiresPaymentReference(splitPrimaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitPrimaryMethod)}</label>
@@ -2201,6 +2243,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         onChange={(nextMethod) => {
                           const currentUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency)
                           setSplitSecondaryMethod(nextMethod)
+                          if (nextMethod === 'cash') setSplitSecondaryCashReceived(usdToPaymentInput(currentUsd, 'cash', bcvRate, splitSecondaryCashCurrency))
                           setAmountReceivedSecondary(usdToPaymentInput(currentUsd, nextMethod, bcvRate, splitSecondaryCashCurrency))
                           setSplitSecondaryReference('')
                           setSplitSecondaryExtraRefs([])
@@ -2213,8 +2256,10 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                           {(['USD', 'VES'] as const).map((currency) => (
                             <button key={currency} type="button" className={`cash-currency-btn ${splitSecondaryCashCurrency === currency ? 'active' : ''}`} onClick={() => {
                               const currentUsd = paymentInputToUsd(amountReceivedSecondary, 'cash', bcvRate, splitSecondaryCashCurrency)
+                              const receivedUsd = paymentInputToUsd(splitSecondaryCashReceived, 'cash', bcvRate, splitSecondaryCashCurrency)
                               setSplitSecondaryCashCurrency(currency)
                               setAmountReceivedSecondary(usdToPaymentInput(currentUsd, 'cash', bcvRate, currency))
+                              setSplitSecondaryCashReceived(usdToPaymentInput(receivedUsd, 'cash', bcvRate, currency))
                               const otherUsd = Math.max(0, Math.round((total - currentUsd) * 100) / 100)
                               setAmountReceived(usdToPaymentInput(otherUsd, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency))
                               setSplitSecondaryAccountId(ensureAccountForMethod('cash', currency))
@@ -2243,6 +2288,11 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                           ? `Ref. ${formatUsd(splitSecondaryAmountUsd)}`
                           : bcvRate ? `Ref. ${formatVes(splitSecondaryAmountUsd * bcvRate)}` : 'Referencia BCV no disponible'}
                       </span>
+                      {splitSecondaryMethod === 'cash' && <>
+                        <label className="payment-field-label">Efectivo físico recibido</label>
+                        <input className="payment-field-input" inputMode="decimal" value={splitSecondaryCashReceived} onChange={e => setSplitSecondaryCashReceived(e.target.value)} />
+                        <CashChangeSummary amountReceived={splitSecondaryCashReceived} totalUsd={splitSecondaryAmountUsd} currency={splitSecondaryCashCurrency} bcvRate={bcvRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
+                      </>}
                       {requiresPaymentReference(splitSecondaryMethod) && (
                         <>
                           <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
@@ -2289,12 +2339,12 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                       <button
                         type="button"
                         className={`cash-currency-btn ${cashCurrency === 'USD' ? 'active' : ''}`}
-                        onClick={() => { setCashCurrency('USD'); setAmountReceived(total.toFixed(2)) }}
+                        onClick={() => { setCashCurrency('USD'); setAmountReceived(total.toFixed(2)); setPaymentAccountId(ensureAccountForMethod('cash', 'USD')) }}
                       >USD</button>
                       <button
                         type="button"
                         className={`cash-currency-btn ${cashCurrency === 'VES' ? 'active' : ''}`}
-                        onClick={() => { setCashCurrency('VES'); setAmountReceived(bcvRate ? (total * bcvRate).toFixed(2) : '') }}
+                        onClick={() => { setCashCurrency('VES'); setAmountReceived(bcvRate ? (total * bcvRate).toFixed(2) : ''); setPaymentAccountId(ensureAccountForMethod('cash', 'VES')) }}
                       >Bs</button>
                     </div>
                   )}
@@ -2320,7 +2370,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
                   </span>
                    {selectedPaymentTab === 'cash' && (
-                     <CashChangeSummary amountReceived={amountReceived} totalUsd={total} currency={cashCurrency} bcvRate={bcvRate} />
+                     <CashChangeSummary amountReceived={amountReceived} totalUsd={total} currency={cashCurrency} bcvRate={bcvRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
                    )}
                 </div>}
 

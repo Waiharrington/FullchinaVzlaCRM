@@ -66,6 +66,12 @@ export interface OrderPaymentComponent {
   personalAccountId?: string | null
   referenceNumber?: string | null
   receivedAmount?: number | null
+  receivedCurrency?: 'USD' | 'VES' | null
+  receivedExchangeRate?: number | null
+  changeAmount?: number | null
+  changeCurrency?: 'USD' | 'VES' | null
+  changeAccountId?: string | null
+  changeExchangeRate?: number | null
   notes?: string | null
 }
 
@@ -1566,6 +1572,12 @@ export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, a
       personalAccountId: (p.personal_account_id as string) ?? null,
       referenceNumber: (p.reference_number as string) ?? null,
       receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
+      receivedCurrency: (p.received_currency as 'USD' | 'VES') ?? null,
+      receivedExchangeRate: p.received_exchange_rate == null ? null : Number(p.received_exchange_rate),
+      changeAmount: Number(p.change_amount ?? 0),
+      changeCurrency: (p.change_currency as 'USD' | 'VES') ?? null,
+      changeAccountId: (p.change_account_id as string) ?? null,
+      changeExchangeRate: p.change_exchange_rate == null ? null : Number(p.change_exchange_rate),
       notes: (p.notes as string) ?? null,
       createdAt: p.created_at as string,
     })) : [],

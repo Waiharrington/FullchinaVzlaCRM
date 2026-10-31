@@ -3,7 +3,18 @@ export interface AccountActivityInput {
   currency: 'USD' | 'VES'
 }
 
-interface PaymentInput { amount: number; accountId?: string | null }
+interface PaymentInput {
+  amount: number
+  accountId?: string | null
+  method?: string | null
+  receivedAmount?: number | null
+  receivedCurrency?: 'USD' | 'VES' | null
+  receivedExchangeRate?: number | null
+  changeAmount?: number | null
+  changeCurrency?: 'USD' | 'VES' | null
+  changeExchangeRate?: number | null
+  changeAccountId?: string | null
+}
 interface OrderInput { status: string; createdAt: string; bcvRate: number | null; payments: PaymentInput[] }
 interface ExpenseInput { expenseDate: string; amount: number; accountId: string | null; exchangeRate: number | null; payments?: PaymentInput[] }
 interface PurchaseInput { purchaseDate: string; totalAmount: number; accountId: string | null; exchangeRate: number | null; isPaid: boolean; isVoided?: boolean; payments?: PaymentInput[] }
@@ -32,9 +43,28 @@ export function buildFinancialAccountActivity(
   for (const order of orders) {
     if (order.status !== 'paid' || !inRange(isoDate(new Date(order.createdAt)), start, end)) continue
     for (const payment of order.payments) {
-      if (!payment.accountId || !result.has(payment.accountId)) continue
-      const row = result.get(payment.accountId)!
-      row.inflows += accountAmount(payment.amount, currencies.get(payment.accountId)!, order.bcvRate)
+      if (payment.accountId && result.has(payment.accountId)) {
+        const currency = currencies.get(payment.accountId)!
+        const row = result.get(payment.accountId)!
+        const nativeCash = payment.method === 'cash' && payment.receivedAmount != null && payment.receivedCurrency
+        row.inflows += nativeCash
+          ? payment.receivedCurrency === currency
+            ? payment.receivedAmount!
+            : payment.receivedCurrency === 'VES'
+              ? payment.receivedAmount! / (payment.receivedExchangeRate || order.bcvRate || 0)
+              : payment.receivedAmount! * (payment.receivedExchangeRate || order.bcvRate || 0)
+          : accountAmount(payment.amount, currency, order.bcvRate)
+      }
+      if (payment.changeAccountId && payment.changeAmount != null && payment.changeCurrency && result.has(payment.changeAccountId)) {
+        const currency = currencies.get(payment.changeAccountId)!
+        const row = result.get(payment.changeAccountId)!
+        const change = payment.changeCurrency === currency
+          ? payment.changeAmount
+          : payment.changeCurrency === 'VES'
+            ? payment.changeAmount / (payment.changeExchangeRate || order.bcvRate || 0)
+            : payment.changeAmount * (payment.changeExchangeRate || order.bcvRate || 0)
+        row.outflows += change
+      }
     }
   }
   for (const expense of expenses) {

@@ -351,8 +351,11 @@ export function Finanzas() {
       for (const payment of order.payments) {
         if (payment.method === 'personal_account') continue
         const account = payment.accountId ? accountById.get(payment.accountId) : undefined
-        const currency = account?.currency ?? (payment.method === 'mobile' || payment.method === 'card' ? 'VES' : 'USD')
+        const currency = payment.method === 'cash' && payment.receivedCurrency
+          ? payment.receivedCurrency
+          : account?.currency ?? (payment.method === 'mobile' || payment.method === 'card' ? 'VES' : 'USD')
         const rate = order.bcvRate || bcvRate || 0
+        const receivedAmount = payment.method === 'cash' && payment.receivedAmount != null ? payment.receivedAmount : null
         entries.push({
           id: `order-payment-${payment.id}`,
           date: isoDate(new Date(payment.createdAt || order.createdAt)),
@@ -360,10 +363,25 @@ export function Finanzas() {
           concept: `Comanda #${order.orderNumber}`,
           detail: `${order.customerName || 'Cliente general'} · ${PAY_META[payment.method]?.label ?? 'Otro método'}${payment.referenceNumber ? ` · Ref. ${payment.referenceNumber}` : ''}`,
           account: account?.name ?? 'Cuenta sin asignar',
-          amountUsd: payment.amount,
-          nativeAmount: currency === 'VES' ? payment.amount * rate : payment.amount,
+          amountUsd: receivedAmount == null ? payment.amount : currency === 'VES' ? receivedAmount / (payment.receivedExchangeRate || rate || 1) : receivedAmount,
+          nativeAmount: receivedAmount ?? (currency === 'VES' ? payment.amount * rate : payment.amount),
           currency,
         })
+        if (payment.changeAmount != null && payment.changeAmount > 0 && payment.changeCurrency && payment.changeAccountId) {
+          const changeAccount = accountById.get(payment.changeAccountId)
+          const changeRate = payment.changeExchangeRate || rate || 0
+          entries.push({
+            id: `order-change-${payment.id}`,
+            date: isoDate(new Date(payment.createdAt || order.createdAt)),
+            direction: 'out', category: 'Vuelto de venta',
+            concept: `Comanda #${order.orderNumber}`,
+            detail: `${order.customerName || 'Cliente general'} · Vuelto entregado desde la caja${payment.referenceNumber ? ` · Ref. ${payment.referenceNumber}` : ''}`,
+            account: changeAccount?.name ?? 'Cuenta sin asignar',
+            amountUsd: payment.changeCurrency === 'VES' ? payment.changeAmount / (changeRate || 1) : payment.changeAmount,
+            nativeAmount: payment.changeAmount,
+            currency: payment.changeCurrency,
+          })
+        }
       }
     }
 
@@ -472,10 +490,25 @@ export function Finanzas() {
       ? op.originalAmount
       : account.currency === 'USD' ? op.amountUsd : op.amountUsd * (op.exchangeRate || bcvRate || 0)
     const day = selectedSummaryDate
-    const sales = orders.filter(order => order.status === 'paid' && isoDate(new Date(order.createdAt)) === day)
+    const accountPayments = orders.filter(order => order.status === 'paid' && isoDate(new Date(order.createdAt)) === day)
       .flatMap(order => order.payments.map(payment => ({ payment, rate: order.bcvRate })))
-      .filter(row => row.payment.accountId === account.id)
-      .reduce((sum, row) => sum + amountFor(row.payment.amount, row.rate), 0)
+    const sales = accountPayments.filter(row => row.payment.accountId === account.id)
+      .reduce((sum, row) => {
+        const payment = row.payment
+        if (payment.method === 'cash' && payment.receivedAmount != null && payment.receivedCurrency) {
+          if (payment.receivedCurrency === account.currency) return sum + payment.receivedAmount
+          const rate = payment.receivedExchangeRate || row.rate || 0
+          return sum + (payment.receivedCurrency === 'VES' ? payment.receivedAmount / rate : payment.receivedAmount * rate)
+        }
+        return sum + amountFor(payment.amount, row.rate)
+      }, 0)
+    const cashChange = accountPayments.filter(row => row.payment.changeAccountId === account.id && row.payment.changeAmount != null)
+      .reduce((sum, row) => {
+        const payment = row.payment
+        if (payment.changeCurrency === account.currency) return sum + (payment.changeAmount ?? 0)
+        const rate = payment.changeExchangeRate || row.rate || 0
+        return sum + (payment.changeCurrency === 'VES' ? (payment.changeAmount ?? 0) / rate : (payment.changeAmount ?? 0) * rate)
+      }, 0)
     const expensesDay = expenses.filter(row => row.expenseDate === day)
       .reduce((sum, row) => sum + (row.payments.length
         ? row.payments.filter(payment => payment.accountId === account.id).reduce((total, payment) => total + payment.amount, 0)
@@ -492,7 +525,7 @@ export function Finanzas() {
       else if (op.type === 'transfer') transfers += signed
       else others += signed
     }
-    const dayNet = sales - expensesDay - purchasesDay + collections + transfers + others
+    const dayNet = sales - cashChange - expensesDay - purchasesDay + collections + transfers + others
     const tomorrow = isoDate(addDays(new Date(`${day}T12:00:00`), 1))
     const afterStart = day < isoDate(new Date()) ? tomorrow : '9999-12-31'
     const afterActivity = buildFinancialAccountActivity(accounts, orders, expenses, purchases, afterStart, '9999-12-31').get(account.id)?.net ?? 0
@@ -501,7 +534,7 @@ export function Finanzas() {
       return sum + (op.toAccount === account.name ? value : op.fromAccount === account.name ? -value : 0)
     }, 0)
     const closing = account.currentBalance - afterActivity - afterOperations
-    return { opening: closing - dayNet, sales, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing }
+    return { opening: closing - dayNet, sales, cashChange, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing }
   }
   const saveOpeningBalance = async (account: FinancialAccount) => {
     const value = parseFinancialAmount(openingBalanceDraft)
@@ -1041,6 +1074,7 @@ export function Finanzas() {
             <div className="fin-account-table-wrap"><table className="fin-account-ledger"><tbody>
               <tr><th>Saldo anterior</th><td>{money(ledger.opening)}</td></tr>
               <tr className="income"><th>Ventas del día</th><td>+ {money(ledger.sales)}</td></tr>
+              <tr className="expense"><th>Vuelto entregado</th><td>- {money(ledger.cashChange)}</td></tr>
               <tr className="expense"><th>Gastos del día</th><td>- {money(ledger.expenses)}</td></tr>
               <tr className="expense"><th>Compras pagadas</th><td>- {money(ledger.purchases)}</td></tr>
               <tr><th>Cuentas cobradas</th><td>{ledger.collections >= 0 ? '+' : '-'} {money(Math.abs(ledger.collections))}</td></tr>
@@ -1091,6 +1125,7 @@ export function Finanzas() {
         const mobileLines = (ledger: ReturnType<typeof buildAccountDay>) => [
           { label: 'Saldo anterior', value: money(ledger.opening), tone: '' },
           { label: 'Ventas del día', value: `${ledger.sales ? '+ ' : ''}${money(Math.abs(ledger.sales))}`, tone: 'income' },
+          { label: 'Vuelto entregado', value: `${ledger.cashChange ? '- ' : ''}${money(Math.abs(ledger.cashChange))}`, tone: 'expense' },
           { label: 'Gastos del día', value: `${ledger.expenses ? '- ' : ''}${money(Math.abs(ledger.expenses))}`, tone: 'expense' },
           { label: 'Compras pagadas', value: `${ledger.purchases ? '- ' : ''}${money(Math.abs(ledger.purchases))}`, tone: 'expense' },
           { label: 'Cuentas cobradas', value: money(Math.abs(ledger.collections)), tone: '' },
@@ -1109,6 +1144,7 @@ export function Finanzas() {
             </article>)}</div><div className="fin-ledger-scroll"><table className="fin-account-ledger fin-account-ledger-wide"><thead><tr><th>Movimiento</th>{rows.map(({ account }) => <th key={account.id}>{account.name}</th>)}</tr></thead><tbody>
               <tr><th>Saldo anterior</th>{cells(ledger => ledger.opening)}</tr>
               <tr className="income"><th>Ventas del día</th>{cells(ledger => ledger.sales, 'income')}</tr>
+              <tr className="expense"><th>Vuelto entregado</th>{cells(ledger => ledger.cashChange, 'expense')}</tr>
               <tr className="expense"><th>Gastos del día</th>{cells(ledger => ledger.expenses, 'expense')}</tr>
               <tr className="expense"><th>Compras pagadas</th>{cells(ledger => ledger.purchases, 'expense')}</tr>
               <tr><th>Cuentas cobradas</th>{cells(ledger => ledger.collections)}</tr>

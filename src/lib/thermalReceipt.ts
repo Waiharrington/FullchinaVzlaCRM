@@ -29,6 +29,9 @@ export interface ThermalReceiptPayment {
   amount: number
   referenceNumber?: string | null
   receivedAmount?: number | null
+  receivedCurrency?: 'USD' | 'VES' | null
+  changeAmount?: number | null
+  changeCurrency?: 'USD' | 'VES' | null
 }
 
 export interface ThermalReceiptData {
@@ -97,8 +100,11 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
         const name = paymentNames[payment.method] ?? payment.method
         const reference = payment.referenceNumber?.trim()
         const vesAmount = data.bcvRate && data.bcvRate > 0 ? `<div class="payment"><span>Pago ${escapeHtml(name)} (Bs)</span><span>${escapeHtml(formatVes(payment.amount * data.bcvRate))}</span></div>` : ''
-        const cashReceived = payment.method === 'cash' && payment.receivedAmount != null && payment.receivedAmount >= payment.amount
-          ? `<div class="payment"><span>Efectivo recibido</span><span>${escapeHtml(formatUsd(payment.receivedAmount))}</span></div><div class="payment"><span>Vuelto</span><span>${escapeHtml(formatUsd(payment.receivedAmount - payment.amount))}</span></div>`
+        const receivedCurrency = payment.receivedCurrency ?? 'USD'
+        const receivedLabel = receivedCurrency === 'VES' ? formatVes(payment.receivedAmount ?? 0) : formatUsd(payment.receivedAmount ?? 0)
+        const changeLabel = payment.changeCurrency === 'VES' ? formatVes(payment.changeAmount ?? 0) : formatUsd(payment.changeAmount ?? 0)
+        const cashReceived = payment.method === 'cash' && payment.receivedAmount != null
+          ? `<div class="payment"><span>Efectivo recibido</span><span>${escapeHtml(receivedLabel)}</span></div>${(payment.changeAmount ?? 0) > 0 ? `<div class="payment"><span>Vuelto</span><span>${escapeHtml(changeLabel)}</span></div>` : ''}`
           : ''
         return `<div class="payment"><span>Pago ${escapeHtml(name)}</span><span>${escapeHtml(formatUsd(payment.amount))}</span></div>${vesAmount}${cashReceived}${reference ? `<div class="reference">Referencia: ${escapeHtml(reference)}</div>` : ''}`
       }).join('')

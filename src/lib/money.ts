@@ -18,6 +18,19 @@ export function parseMoneyInput(value: string): number {
   return Number.isFinite(amount) ? amount : 0
 }
 
+export function calculateCashChange(received: number, amountUsd: number, tenderCurrency: 'USD' | 'VES', rate: number | null | undefined, changeCurrency: 'USD' | 'VES' = tenderCurrency) {
+  if (tenderCurrency === 'VES' && (!rate || rate <= 0)) return null
+  // La base de datos guarda los montos recibidos en NUMERIC(...,2).
+  // Normalizar aquí evita diferencias entre la vista previa y el RPC.
+  const receivedRounded = Math.round((received + Number.EPSILON) * 100) / 100
+  const receivedUsd = tenderCurrency === 'VES' ? receivedRounded / rate! : receivedRounded
+  const changeUsd = Math.round((receivedUsd - amountUsd) * 100) / 100
+  if (changeUsd <= 0) return { amount: 0, currency: changeCurrency, amountUsd: 0 }
+  if (changeCurrency === 'VES' && (!rate || rate <= 0)) return null
+  const amount = changeCurrency === 'VES' ? Math.round(changeUsd * rate! * 100) / 100 : changeUsd
+  return { amount, currency: changeCurrency, amountUsd: changeUsd }
+}
+
 /**
  * Igual que formatUsd pero muestra hasta `maxDecimals` decimales cuando el
  * valor los tiene (sin rellenar con ceros más allá de 2). Útil para costos
