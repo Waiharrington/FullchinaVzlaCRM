@@ -147,6 +147,24 @@ describe('Dashboard Inicio', () => {
     }
   })
 
+  it('identifica los créditos autorizados y abre la comanda elegida desde el detalle del día', async () => {
+    const createdAt = new Date().toISOString()
+    mocks.getOrdersWithItems.mockResolvedValue([
+      { id: 'credit-order', orderNumber: 466, status: 'pending', creditAuthorized: true, customerName: 'Elias Acosta', createdAt, totalAmount: 47.28, payments: [], items: [] },
+      { id: 'pending-order', orderNumber: 465, status: 'pending', creditAuthorized: false, customerName: 'Cliente general', createdAt, totalAmount: 13.48, payments: [], items: [] },
+    ] as never)
+    render(<Inicio />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ver 2 comandas de hoy' }))
+
+    expect(await screen.findByRole('heading', { name: 'Comandas de hoy' })).toBeInTheDocument()
+    expect(screen.getByText('Crédito autorizado')).toBeInTheDocument()
+    expect(screen.getByText('Pendiente')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Abrir comanda #0466' }))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/comandas', { state: { openOrderId: 'credit-order' } })
+  })
+
   it('muestra la foto del plato y aclara cuántas unidades se vendieron', async () => {
     mocks.getProductRanking.mockResolvedValue([{
       name: 'Promo Full Kilo y Refresco',

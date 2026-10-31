@@ -1094,10 +1094,19 @@ export function Inicio() {
             </header>
             <div className="db-modal-list db-orders-detail-list">
               {ordersToday.length === 0 ? <div className="db-modal-empty"><ClipboardList size={24} /><span>No hay comandas registradas hoy.</span></div> : ordersToday.map(order => (
-                <div className="db-order-detail-row" key={order.id}>
-                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className={`ord-badge ${order.status === 'paid' ? 'paid' : 'pending'}`}>{order.status === 'paid' ? 'Pagada' : 'Pendiente'}</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
+                <button
+                  type="button"
+                  className="db-order-detail-row"
+                  key={order.id}
+                  aria-label={`Abrir comanda #${String(order.orderNumber).padStart(4, '0')}`}
+                  onClick={() => {
+                    setTodayOrdersOpen(false)
+                    navigate('/comandas', { state: { openOrderId: order.id } })
+                  }}
+                >
+                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className={`ord-badge ${order.status === 'paid' ? 'paid' : 'pending'}`}>{order.status === 'paid' ? 'Pagada' : isCreditAuthorizedOrder(order) ? 'Crédito autorizado' : 'Pendiente'}</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
                   <MoneyWithBcv usd={order.totalAmount} className="db-payment-detail-amount" compact />
-                </div>
+                </button>
               ))}
             </div>
             <footer className="db-modal-footer"><button type="button" className="db-modal-secondary" onClick={() => { setTodayOrdersOpen(false); navigate('/comandas') }}><ExternalLink size={14} /> Ver módulo de comandas</button></footer>
