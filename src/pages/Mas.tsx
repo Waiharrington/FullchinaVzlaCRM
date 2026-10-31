@@ -23,10 +23,9 @@ import {
   type Customer,
   type CreditPayment,
   type FinancialAccount,
-  type PaymentMethod,
 } from '../lib/dataService'
 import NumberStepper from '../components/NumberStepper'
-import { StyledSelect } from '../components/StyledSelect'
+import { ReceivablePaymentEditor, type ReceivablePaymentComponent } from '../components/ReceivablePaymentEditor'
 import { useRates } from '../context/rates-context'
 import './Mas.css'
 import { dateKeyInTimeZone } from '../lib/money'
@@ -41,16 +40,7 @@ import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
 type Tab = 'credits' | 'close' | 'delivery'
 const CREDITS_PER_PAGE = 5
-
-function receivableAccountsForMethod(accounts: FinancialAccount[], method: PaymentMethod) {
-  const accepted = accounts.filter(account => account.isActive && account.acceptsCustomerPayments)
-  if (method === 'cash') return accepted.filter(account => account.accountType === 'cash')
-  if (method === 'mobile') return accepted.filter(account => account.currency === 'VES' && account.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(account.name))
-  if (method === 'card') return accepted.filter(account => account.currency === 'VES' && account.name === 'Punto de venta')
-  if (method === 'transfer') return accepted.filter(account => account.currency === 'VES' && account.accountType === 'bank')
-  if (method === 'binance') return accepted.filter(account => account.currency === 'USD' && ['bank', 'digital'].includes(account.accountType))
-  return accepted
-}
+const CREDIT_PAYMENT_LABELS: Record<string, string> = { cash: 'Efectivo', mobile: 'Pago móvil', card: 'Punto', transfer: 'Transferencia', binance: 'Binance', other: 'Otro' }
 
 // Cache a nivel de módulo: al volver a Más se muestran los datos de la
 // última visita al instante, sin el parpadeo de "Cargando...", mientras se
@@ -86,10 +76,6 @@ export function Mas() {
   const [newDueDate, setNewDueDate] = useState('')
   const [newIndefinite, setNewIndefinite] = useState(true)
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
-  const [paymentAmount, setPaymentAmount] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
-  const [paymentAccountId, setPaymentAccountId] = useState('')
-  const [paymentReference, setPaymentReference] = useState('')
   const [paymentError, setPaymentError] = useState('')
   const [paymentSaving, setPaymentSaving] = useState(false)
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
@@ -107,31 +93,6 @@ export function Mas() {
       setFinancialAccounts([])
     })
   }, [])
-
-  const availablePaymentAccounts = useMemo(
-    () => receivableAccountsForMethod(financialAccounts, paymentMethod),
-    [financialAccounts, paymentMethod],
-  )
-  const selectedPaymentAccount = availablePaymentAccounts.find(account => account.id === paymentAccountId) ?? null
-  const paymentUsesBolivares = selectedPaymentAccount?.currency === 'VES'
-  const enteredPaymentAmount = Number(paymentAmount)
-  const paymentAmountUsd = paymentUsesBolivares
-    ? (bcvRate && bcvRate > 0 ? enteredPaymentAmount / bcvRate : 0)
-    : enteredPaymentAmount
-  const paymentAmountMax = paymentUsesBolivares
-    ? (paymentModal?.balancePending ?? 0) * (bcvRate ?? 0)
-    : paymentModal?.balancePending ?? 0
-  const paymentRequiresReference = ['mobile', 'card', 'transfer', 'binance'].includes(paymentMethod)
-
-  useEffect(() => {
-    if (paymentModal && !availablePaymentAccounts.some(account => account.id === paymentAccountId)) {
-      const preferred = paymentMethod === 'cash'
-        ? availablePaymentAccounts.find(account => account.accountType === 'cash' && account.currency === 'USD')
-        : undefined
-      setPaymentAccountId((preferred ?? availablePaymentAccounts[0])?.id ?? '')
-      setPaymentAmount('')
-    }
-  }, [paymentModal, paymentAccountId, paymentMethod, availablePaymentAccounts])
 
   const closeNewCredit = () => {
     if (!showNewCredit || closingNewCredit) return
@@ -208,39 +169,18 @@ export function Mas() {
     }
   }
 
-  const handlePayment = async () => {
+  const handlePayment = async (payments: ReceivablePaymentComponent[], notes: string) => {
     if (!paymentModal || !user) return
     setPaymentError('')
-    if (!paymentAccountId) {
-      setPaymentError('Selecciona la cuenta donde ingresará el dinero.')
-      return
-    }
-    if (!Number.isFinite(paymentAmountUsd) || paymentAmountUsd <= 0 || paymentAmountUsd > paymentModal.balancePending) {
-      setPaymentError('Ingresa un monto válido que no supere el saldo pendiente.')
-      return
-    }
-    if (paymentUsesBolivares && (!bcvRate || bcvRate <= 0)) {
-      setPaymentError('No hay una tasa BCV válida para convertir el abono.')
-      return
-    }
-    if (paymentRequiresReference && !paymentReference.trim()) {
-      setPaymentError('Ingresa la referencia de este pago.')
-      return
-    }
     setPaymentSaving(true)
     try {
       await addCreditPayment({
         creditId: paymentModal.id,
-        amount: Math.round(paymentAmountUsd * 100) / 100,
-        method: paymentMethod,
-        accountId: paymentAccountId,
-        exchangeRate: paymentUsesBolivares ? bcvRate : null,
-        referenceNumber: paymentReference.trim() || undefined,
+        payments,
+        notes: notes || undefined,
         userId: user.id,
       })
       closePaymentModal()
-      setPaymentAmount('')
-      setPaymentReference('')
       setActiveCreditPage(1)
       setSettledCreditPage(1)
       fetchAll()
@@ -569,10 +509,6 @@ export function Mas() {
                           <div className="credit-list-actions">
                             <button type="button" className="btn-accent btn-sm" onClick={() => {
                               setPaymentError('')
-                              setPaymentAmount('')
-                              setPaymentReference('')
-                              setPaymentMethod('cash')
-                              setPaymentAccountId('')
                               setPaymentModal(credit)
                             }}>
                               <CreditCard size={14} /> Abonar
@@ -603,7 +539,7 @@ export function Mas() {
                                 </div>
                               ) : creditPayments.map(payment => (
                                 <div className="credit-history-row" key={payment.id}>
-                                  <span>{new Date(payment.createdAt).toLocaleString('es')}</span>
+                                  <span>{new Date(payment.createdAt).toLocaleString('es')} · {CREDIT_PAYMENT_LABELS[payment.method ?? ''] ?? 'Abono'}{(payment.changeAmount ?? 0) > 0 ? ` · Vuelto ${payment.changeCurrency === 'VES' ? 'Bs ' : '$'}${payment.changeAmount?.toFixed(2)}${payment.changeAccountId ? ` desde ${financialAccounts.find(account => account.id === payment.changeAccountId)?.name ?? 'cuenta registrada'}` : ''}` : ''}</span>
                                   <span className="text-success">${payment.amount.toFixed(2)}</span>
                                 </div>
                               ))}
@@ -720,77 +656,8 @@ export function Mas() {
               <span className="modal-remaining">Pendiente</span>
               <span className="text-danger mas-debt-amount">${paymentModal.balancePending.toFixed(2)}</span>
             </div>
-            <div className="mas-payment-field">
-              <label>Método de pago</label>
-              <StyledSelect
-                className="mas-payment-select"
-                value={paymentMethod}
-                onChange={(event) => {
-                  setPaymentMethod(event.target.value as PaymentMethod)
-                  setPaymentAccountId('')
-                  setPaymentAmount('')
-                  setPaymentReference('')
-                  setPaymentError('')
-                }}
-              >
-                <option value="cash">Efectivo</option>
-                <option value="mobile">Pago móvil</option>
-                <option value="card">Punto de venta</option>
-                <option value="transfer">Transferencia</option>
-                <option value="binance">Binance Pay</option>
-                <option value="other">Otro método</option>
-              </StyledSelect>
-            </div>
-            <div className="mas-payment-field">
-              <label>Cuenta donde ingresa el dinero</label>
-              <StyledSelect
-                className="mas-payment-select"
-                value={paymentAccountId}
-                onChange={(event) => {
-                  setPaymentAccountId(event.target.value)
-                  setPaymentAmount('')
-                  setPaymentError('')
-                }}
-              >
-                <option value="">Selecciona una cuenta</option>
-                {availablePaymentAccounts.map(account => (
-                  <option key={account.id} value={account.id}>{account.name} · {account.currency === 'VES' ? 'Bs' : '$'}</option>
-                ))}
-              </StyledSelect>
-              {availablePaymentAccounts.length === 0 && <small className="mas-payment-hint">No hay cuentas activas para este método que acepten pagos de clientes.</small>}
-            </div>
-            <NumberStepper
-              className="mas-payment-amount"
-              step={0.01}
-              max={paymentAmountMax || undefined}
-              prefix={paymentUsesBolivares ? 'Bs' : '$'}
-              placeholder={`Monto (máx. ${paymentUsesBolivares ? `Bs ${paymentAmountMax.toFixed(2)}` : `$${paymentModal.balancePending.toFixed(2)}`})`}
-              value={paymentAmount}
-              onChange={(v) => { setPaymentAmount(v); setPaymentError('') }}
-            />
-            {selectedPaymentAccount?.currency === 'VES' && <small className="mas-payment-hint">{bcvRate ? `Equivale a $${paymentAmountUsd.toFixed(2)} · tasa BCV: Bs ${bcvRate.toFixed(2)} por USD.` : 'Se necesita una tasa BCV válida para convertir este abono.'}</small>}
-            {paymentRequiresReference && <div className="mas-payment-field">
-              <label>Referencia del pago *</label>
-              <input
-                type="text"
-                value={paymentReference}
-                onChange={(event) => { setPaymentReference(event.target.value); setPaymentError('') }}
-                className="mas-payment-input"
-                maxLength={120}
-                required
-              />
-            </div>}
-            {paymentError && <p className="mas-payment-error" role="alert">{paymentError}</p>}
-            <div className="modal-actions">
-              <button className="btn-ghost" onClick={() => closePaymentModal()}>Cancelar</button>
-              <button
-                className="btn-accent"
-                onClick={() => void handlePayment()}
-                disabled={paymentSaving || !paymentAccountId || !paymentAmount || paymentAmountUsd <= 0 || paymentAmountUsd > paymentModal.balancePending || (paymentUsesBolivares && !bcvRate) || (paymentRequiresReference && !paymentReference.trim())}
-              >
-                {paymentSaving ? 'Registrando…' : 'Confirmar abono'}
-              </button>
-            </div>
+            <ReceivablePaymentEditor key={paymentModal.id} variant="mas" credit={paymentModal} accounts={financialAccounts} exchangeRate={bcvRate} saving={paymentSaving} error={paymentError} onSubmit={(payments, notes) => void handlePayment(payments, notes)} />
+            <div className="modal-actions"><button className="btn-ghost" onClick={() => closePaymentModal()}>Cancelar</button></div>
           </div>
         </div>,
         document.body

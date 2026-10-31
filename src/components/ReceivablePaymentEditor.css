@@ -1,0 +1,19 @@
+.receivable-editor { display: flex; flex-direction: column; gap: 12px; max-height: min(65vh, 620px); overflow: auto; padding: 2px 2px 6px; color: #f4f4f5; }
+.receivable-editor-note { margin: 0; color: #a1a1aa; font-size: .78rem; line-height: 1.45; }
+.receivable-editor-line { display: grid; gap: 10px; padding: 12px; border: 1px solid #34343a; border-radius: 12px; background: #17171a; }
+.receivable-editor-line-head { display: flex; align-items: center; justify-content: space-between; color: #fff; font-size: .82rem; }
+.receivable-editor-line-head button { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid #3a3a42; border-radius: 8px; background: #202024; color: #c4c4cc; cursor: pointer; }
+.receivable-editor label { display: grid; gap: 6px; color: #d4d4d8; font-size: .75rem; font-weight: 650; }
+.receivable-editor input { width: 100%; min-height: 40px; box-sizing: border-box; border: 1px solid #3b3b42; border-radius: 8px; padding: 9px 11px; background: #202024; color: #fff; font: inherit; font-size: .85rem; }
+.receivable-editor small { color: #9b9ba5; font-size: .7rem; line-height: 1.4; }
+.receivable-editor-cash { display: grid; gap: 10px; padding-top: 10px; border-top: 1px solid #303036; }
+.receivable-editor-change { display: grid; gap: 10px; padding: 11px; border: 1px solid rgba(245,158,11,.35); border-radius: 9px; background: rgba(245,158,11,.07); }
+.receivable-editor-change > strong { color: #fbbf24; font-size: .84rem; }
+.receivable-editor-add { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; border: 1px solid #414149; border-radius: 8px; padding: 8px 11px; background: #202024; color: #f4f4f5; font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; }
+.receivable-editor-total { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-top: 1px solid #34343a; border-bottom: 1px solid #34343a; color: #c4c4cc; font-size: .78rem; }
+.receivable-editor-total strong { color: #fff; white-space: nowrap; }
+.receivable-editor-error { margin: 0; color: #ff7770 !important; font-size: .75rem; }
+.receivable-editor-submit { min-height: 43px; border: 0; border-radius: 9px; background: #e31d2b; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+.receivable-editor-submit:disabled { opacity: .48; cursor: not-allowed; }
+.receivable-editor--mas .receivable-editor-line { border-color: #35353b; }
+@media (max-width: 520px) { .receivable-editor { max-height: 62vh; } .receivable-editor-line { padding: 10px; } }

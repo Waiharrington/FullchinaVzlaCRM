@@ -168,6 +168,14 @@ export interface CreditPayment {
   notes: string | null
   createdBy: string
   createdAt: string
+  method?: PaymentMethod | null
+  accountId?: string | null
+  referenceNumber?: string | null
+  receivedAmount?: number | null
+  receivedCurrency?: 'USD' | 'VES' | null
+  changeAmount?: number | null
+  changeCurrency?: 'USD' | 'VES' | null
+  changeAccountId?: string | null
 }
 
 export interface DailyClose {
@@ -1840,16 +1848,41 @@ export async function authorizeOrderCredit(params: { orderId: string; pin: strin
 
 export async function addCreditPayment(params: {
   creditId: string
-  amount: number
+  amount?: number
   method?: PaymentMethod
   accountId?: string
   exchangeRate?: number | null
   referenceNumber?: string
   notes?: string
   userId?: string
+  payments?: Array<{
+    amount: number
+    method: Exclude<PaymentMethod, 'personal_account' | 'zelle'>
+    accountId: string
+    exchangeRate?: number | null
+    referenceNumber?: string
+    receivedAmount?: number
+    receivedCurrency?: 'USD' | 'VES'
+    receivedExchangeRate?: number | null
+    changeAmount?: number
+    changeCurrency?: 'USD' | 'VES'
+    changeAccountId?: string
+    changeExchangeRate?: number | null
+  }>
 }): Promise<void> {
+  if (params.payments) {
+    if (params.payments.length === 0) throw new Error('Agrega al menos un método de pago')
+    const { error } = await client().rpc('fn_record_receivable_payment_batch', {
+      p_credit_id: params.creditId,
+      p_payments: params.payments,
+      p_notes: params.notes ?? null,
+    })
+    if (error) throw error
+    return
+  }
   if (!params.method || !params.accountId) {
     if (!params.userId) throw new Error('Usuario requerido para registrar este abono')
+    if (params.amount == null) throw new Error('Monto de abono requerido')
     const { error } = await client().from('credit_payments').insert({
       credit_id: params.creditId, amount: params.amount,
       notes: params.notes ?? null, created_by: params.userId,
@@ -1857,6 +1890,7 @@ export async function addCreditPayment(params: {
     if (error) throw error
     return
   }
+  if (params.amount == null) throw new Error('Monto de abono requerido')
   const { error } = await client().rpc('fn_record_receivable_payment', {
     p_credit_id: params.creditId,
     p_amount: params.amount,
@@ -1885,6 +1919,14 @@ export async function getCreditPayments(creditId: string): Promise<CreditPayment
     notes: (p.notes as string) ?? null,
     createdBy: p.created_by as string,
     createdAt: p.created_at as string,
+    method: (p.method as PaymentMethod) ?? null,
+    accountId: (p.account_id as string) ?? null,
+    referenceNumber: (p.reference_number as string) ?? null,
+    receivedAmount: p.received_amount == null ? null : Number(p.received_amount),
+    receivedCurrency: (p.received_currency as 'USD' | 'VES') ?? null,
+    changeAmount: p.change_amount == null ? null : Number(p.change_amount),
+    changeCurrency: (p.change_currency as 'USD' | 'VES') ?? null,
+    changeAccountId: (p.change_account_id as string) ?? null,
   }))
 }
 
