@@ -1,0 +1,23 @@
+/* Fondo unificado para los diálogos emergentes de la app.
+   Se carga como estilo global para mantener la misma lectura en todas las vistas. */
+:is(
+  [class*="modal-overlay"],
+  .cmd-sales-overlay,
+  .cmp-purchase-overlay,
+  .prv-overlay,
+  .mas-credit-overlay,
+  .confirm-overlay,
+  .aito-overlay,
+  .gst-ai-overlay,
+  .db-quick-access-overlay,
+  .gs-overlay,
+  .print-choice-overlay,
+  .bottom-nav-overlay,
+  .sidebar-overlay,
+  .mobile-cart-overlay,
+  .report-detail-overlay
+) {
+  background-color: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(0.72) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(0.72) !important;
+}

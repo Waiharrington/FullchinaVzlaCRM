@@ -96,14 +96,16 @@ export function StyledSelect({
     if (!rect) return
     const spaceBelow = window.innerHeight - rect.bottom
     const openAbove = spaceBelow < 260 && rect.top > spaceBelow
-    const menuWidth = rect.width
+    const widestLabel = options.reduce((width, option) => Math.max(width, option.label.length * 7.4), 0)
+    const availableWidth = Math.max(0, window.innerWidth - 16)
+    const menuWidth = Math.min(availableWidth, Math.max(rect.width, 156, widestLabel + 60, searchable ? 190 : 0))
     setMenuStyle({
-      left: Math.max(0, Math.min(rect.left, window.innerWidth - menuWidth)),
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - menuWidth - 8)),
       width: menuWidth,
       maxHeight: Math.max(160, Math.min(340, openAbove ? rect.top - 16 : spaceBelow - 16)),
       ...(openAbove ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
     })
-  }, [])
+  }, [options, searchable])
 
   useLayoutEffect(() => {
     if (!open || closing) return

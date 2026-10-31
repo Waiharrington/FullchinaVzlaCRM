@@ -268,11 +268,13 @@
 
 /* Purchases Badge */
 .prv-purchases-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   padding: 3px 9px;
   border-radius: 9999px;
   font-size: 12px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .prv-purchases-badge.active {
   background: rgba(250, 204, 21, 0.12);
@@ -779,6 +781,12 @@
     border-right: 1px solid rgba(255,255,255,.08);
     padding: 0 16px 20px;
   }
+  .prv-history-weeks {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .prv-history-week-btn { width: 100%; min-width: 0; padding-inline: 8px; font-size: 11px; }
   .prv-purchase-chevron { display: none; }
   .prv-purchase-details-inline { display: none; }
   .prv-history-detail-pane {

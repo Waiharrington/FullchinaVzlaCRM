@@ -458,6 +458,9 @@ button.mobile-only {
 .public-recommended-card.is-loyalty-slide { min-height:236px; cursor:grab; background:radial-gradient(ellipse at 76% 42%,rgba(227,27,43,.22),transparent 42%),linear-gradient(115deg,#17090b,#100d11 58%,#1b090c); }
 .public-recommended-card.is-loyalty-slide::after { background:linear-gradient(90deg,rgba(10,11,15,.2),rgba(10,11,15,0) 75%); }
 .public-recommended-card.is-loyalty-slide > .customer-loyalty-promotion--recommended { position:relative; z-index:2; flex:1 1 auto; width:100%; min-height:inherit; margin:0; padding:20px 22px 34px; grid-template-columns:minmax(0,1.1fr) minmax(130px,.9fr); gap:12px; border:0; border-radius:inherit; background:transparent; box-shadow:none; }
+.public-recommended-card.is-loyalty-slide > .customer-loyalty-promotion--recommended { animation:public-loyalty-slide-in 460ms cubic-bezier(.22,.8,.3,1) both; }
+@keyframes public-loyalty-slide-in { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+@media (prefers-reduced-motion:reduce) { .public-recommended-card.is-loyalty-slide > .customer-loyalty-promotion--recommended { animation:none; } }
 .public-recommended-card.is-loyalty-slide .customer-loyalty-promotion-copy { align-self:center; }
 .public-recommended-card.is-loyalty-slide .customer-loyalty-promotion h2 { max-width:390px; margin:8px 0 6px; font-size:clamp(21px,2.4vw,29px); }
 .public-recommended-card.is-loyalty-slide .customer-loyalty-promotion-copy > p { max-width:350px; font-size:12px; }

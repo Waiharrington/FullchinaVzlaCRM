@@ -610,7 +610,13 @@ export function Finanzas() {
         <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
         <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
         <div className="fin-account-activity"><span>Entradas <b>{money(activity.inflows)}</b></span><span>Salidas <b>{money(activity.outflows)}</b></span><span className={activity.net >= 0 ? 'positive' : 'negative'}>Neto {money(activity.net)}</span></div>
-        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}><input type="text" inputMode="decimal" value={openingBalanceDraft} aria-label="Saldo inicial" aria-invalid={Boolean(openingBalanceError)} onChange={(e) => { setOpeningBalanceDraft(e.target.value); setOpeningBalanceError('') }} /><button onClick={() => void saveOpeningBalance(account)} title="Guardar"><Check size={14}/></button><button onClick={() => { setEditingAccountId(null); setOpeningBalanceError('') }} title="Cancelar"><X size={14}/></button>{openingBalanceError && <small className="fin-opening-error" role="alert">{openingBalanceError}</small>}</div> : <div className="fin-account-card-actions" onClick={event => event.stopPropagation()}>
+        {editingAccountId === account.id ? <div className="fin-opening-edit" onClick={event => event.stopPropagation()}>
+          <label className="fin-opening-edit-label" htmlFor={`fin-opening-balance-${account.id}`}>Saldo inicial</label>
+          <input className="fin-opening-edit-input" id={`fin-opening-balance-${account.id}`} type="text" inputMode="decimal" value={openingBalanceDraft} aria-label="Saldo inicial" aria-invalid={Boolean(openingBalanceError)} onChange={(e) => { setOpeningBalanceDraft(e.target.value); setOpeningBalanceError('') }} />
+          <button className="fin-opening-save" onClick={() => void saveOpeningBalance(account)} title="Guardar saldo inicial" aria-label="Guardar saldo inicial"><Check size={16}/></button>
+          <button className="fin-opening-cancel" onClick={() => { setEditingAccountId(null); setOpeningBalanceError('') }} title="Cancelar edición" aria-label="Cancelar edición"><X size={16}/></button>
+          {openingBalanceError && <small className="fin-opening-error" role="alert">{openingBalanceError}</small>}
+        </div> : <div className="fin-account-card-actions" onClick={event => event.stopPropagation()}>
           {account.name === 'Punto de venta' && account.currency === 'VES' && <button className="fin-pos-transfer-btn" type="button" disabled={account.currentBalance < 0.01 || !accounts.some(a => a.name === 'Banesco' && a.currency === 'VES')} onClick={() => openPosSettlementTransfer(account)}><ArrowRightLeft size={13}/> Transferir todo a Banesco</button>}
           <button className="fin-opening-btn" onClick={() => { setEditingAccountId(account.id); setOpeningBalanceDraft(String(account.openingBalance)); setOpeningBalanceError('') }}><Pencil size={12}/> Saldo inicial</button>
         </div>}
@@ -1043,7 +1049,7 @@ export function Finanzas() {
               <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
             </tbody></table></div>
           </div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeAccount()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {selectedPersonalAccount && (() => {
@@ -1071,7 +1077,6 @@ export function Finanzas() {
             </article>)}</div>}
             {rows.length > pageSize && <div className="fin-history-pagination fin-personal-consumption-pagination"><span>Mostrando {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, rows.length)} de {rows.length}</span><div><button type="button" onClick={() => setPersonalConsumptionPage(Math.max(1, page - 1))} disabled={page <= 1}><ChevronLeft size={15}/> Anterior</button><strong>Página {page} de {pageCount}</strong><button type="button" onClick={() => setPersonalConsumptionPage(Math.min(pageCount, page + 1))} disabled={page >= pageCount}>Siguiente <ChevronRight size={15}/></button></div></div>}
           </div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setSelectedPersonalAccount(null)}>Cerrar</button></footer>
         </section></div>, document.body)
       })()}
       {selectedLedgerCurrency && (() => {
@@ -1111,7 +1116,7 @@ export function Finanzas() {
               <tr><th>Otros movimientos</th>{cells(ledger => ledger.others)}</tr>
               <tr className="total"><th>Saldo actual</th>{cells(ledger => ledger.closing)}</tr>
             </tbody></table></div></> : <p className="fin-ledger-empty">No hay cuentas activas configuradas en esta moneda.</p>}</div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeLedger()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-primary" onClick={() => closeLedger(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {kpiDetail && createPortal((() => {
@@ -1164,7 +1169,6 @@ export function Finanzas() {
             <button type="button" className="fin-dialog-close" onClick={() => setKpiDetail(null)} aria-label="Cerrar ventana"><X size={18} /></button>
           </header>
           <div className="fin-dialog-body fin-kd-body">{body}</div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-secondary" onClick={() => setKpiDetail(null)}>Cerrar</button></footer>
         </div></div>
       })(), document.body)}
       {(showTransfer || closingTransfer) && createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingTransfer ? 'closing' : ''}`} role="presentation" onClick={() => { if (!transferSaving) closeTransfer() }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>

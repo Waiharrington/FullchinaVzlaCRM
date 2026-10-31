@@ -247,10 +247,10 @@ export function Promociones() {
               tabIndex={0}
               onKeyDown={(e) => { if (e.key === 'Enter') openEdit(p) }}
             >
-              <div className="promo-item-drag">
-                <button className="promo-move" onClick={(e) => { e.stopPropagation(); moveUp(p, idx) }} disabled={idx === 0} title="Subir"><ChevronUp size={14} /></button>
-                <button className="promo-move" onClick={(e) => { e.stopPropagation(); moveDown(p, idx) }} disabled={idx >= promos.length - 1} title="Bajar"><ChevronDown size={14} /></button>
-              </div>
+              {promos.length > 1 && <div className="promo-item-drag" aria-label={`Ordenar promoción ${p.title}`}>
+                <button className="promo-move" onClick={(e) => { e.stopPropagation(); moveUp(p, idx) }} disabled={idx === 0} title="Subir" aria-label="Subir promoción"><ChevronUp size={14} /></button>
+                <button className="promo-move" onClick={(e) => { e.stopPropagation(); moveDown(p, idx) }} disabled={idx >= promos.length - 1} title="Bajar" aria-label="Bajar promoción"><ChevronDown size={14} /></button>
+              </div>}
 
               <div className="promo-item-actions">
                 <button className="promo-btn-toggle" onClick={(e) => { e.stopPropagation(); toggleActive(p) }} title={p.isActive ? 'Desactivar' : 'Activar'}>

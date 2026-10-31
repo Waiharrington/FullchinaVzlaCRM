@@ -375,6 +375,21 @@
   .promo-item { padding: 58px 12px 16px; }
   .promo-icon-preview { width: 46px; height: 46px; font-size: 23px; }
   .promo-item-title { font-size: 15px; }
+  .promo-item-drag {
+    top: 8px;
+    left: 8px;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+  .promo-move {
+    width: 25px;
+    height: 28px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, .62);
+  }
+  .promo-item-actions { top: 8px; right: 8px; gap: 5px; }
+  .promo-item-actions button { width: 32px; height: 32px; border-radius: 8px; }
   .promo-form-grid { grid-template-columns: 1fr; }
   .promo-form-modal {
     width: calc(100% - 12px);

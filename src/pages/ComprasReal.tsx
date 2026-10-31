@@ -609,7 +609,7 @@ export function ComprasReal() {
 
             {showSupplierForm && (
               <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 12, marginBottom: 16 }}>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="cmp-new-supplier-inline" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <input placeholder="Nombre del proveedor *" value={newSupplierName} onChange={(e) => setNewSupplierName(e.target.value)} style={{ flex: 2, background: '#17171d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#fff', padding: 9 }} />
                   <input placeholder="Teléfono" value={newSupplierPhone} onChange={(e) => setNewSupplierPhone(e.target.value)} style={{ flex: 1, background: '#17171d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#fff', padding: 9 }} />
                   <button type="button" className="cmp-new-btn" onClick={handleCreateSupplier}>Crear</button>
@@ -699,12 +699,10 @@ export function ComprasReal() {
 
             <div className="cmp-form-foot">
               <span className="cmp-form-item-count"><strong>{items.length}</strong><span>{items.length === 1 ? 'artículo' : 'artículos'} en esta compra</span></span>
-              <div className="cmp-form-foot-summary">
-                <div className="cmp-total"><div className="lbl">Total a pagar</div><MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="end" className="cmp-total-money" usdClassName="val" usdPrecise />{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Tasa BCV {formatVes(effectiveBcvRate)}</div>}</div>
-                <div className="cmp-actions">
-                  <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
-                  <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0 || items.some((item) => item.kind === 'purchase' ? !item.ingredientId : !item.description.trim() || Number(item.unitCost) <= 0) || (markPaid && (!purchaseSourcesValid || !purchaseCovered))}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
-                </div>
+              <div className="cmp-total"><div className="lbl">Total a pagar</div><MoneyWithBcv usd={totalForm} rate={effectiveBcvRate} primaryCurrency="VES" align="end" className="cmp-total-money" usdClassName="val" usdPrecise />{effectiveBcvRate > 0 && <div className="cmp-payment-ref">Tasa BCV {formatVes(effectiveBcvRate)}</div>}</div>
+              <div className="cmp-actions">
+                <button type="button" className="cmp-cancel" onClick={() => { closePurchaseForm(); resetForm() }}>Cancelar</button>
+                <button type="submit" className="cmp-new-btn" disabled={saving || !supplierId || items.length === 0 || items.some((item) => item.kind === 'purchase' ? !item.ingredientId : !item.description.trim() || Number(item.unitCost) <= 0) || (markPaid && (!purchaseSourcesValid || !purchaseCovered))}>{saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />} {editingPurchaseId ? 'Guardar cambios' : 'Guardar Compra'}</button>
               </div>
             </div>
           </form>

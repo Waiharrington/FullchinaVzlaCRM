@@ -330,6 +330,33 @@
 .almacen-history-row time { color: var(--text-muted); font-size: 0.7rem; }
 .almacen-history-row b.positive { color: #22c55e; }
 .almacen-history-row b.negative { color: #ff4d3d; }
+
+/* En tablet y escritorio, el historial usa un único scroll dentro de la lista.
+   La ventana ocupa el espacio disponible sin dejar la barra encima de los datos. */
+@media (min-width: 768px) {
+  .almacen-action-modal.almacen-history-modal {
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: min(1120px, calc(100vw - 64px));
+    height: min(820px, calc(100dvh - 64px));
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .almacen-history-modal > .almacen-history-list {
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    padding-right: 14px;
+  }
+}
+
 .almacen-modal-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
 .almacen-modal-fields label {
   display: flex;

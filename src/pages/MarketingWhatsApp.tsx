@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cancelQueuedWhatsAppMessages, deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAppMessages, getWhatsAppSegments, getWhatsAppTemplates, queueWhatsAppMessages, saveWhatsAppSegment, saveWhatsAppTemplate, type Customer, type WhatsAppMessage, type WhatsAppSegment, type WhatsAppTemplate } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
@@ -43,6 +43,7 @@ export function MarketingWhatsApp() {
   const [segments, setSegments] = useState<WhatsAppSegment[]>([])
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([])
   const [editingTemplate, setEditingTemplate] = useState<WhatsAppTemplate | null>(null)
+  const templateMessageRef = useRef<HTMLTextAreaElement>(null)
   const [selectedSegment, setSelectedSegment] = useState('birthday')
   const [audienceMode, setAudienceMode] = useState<'segment' | 'recipient'>('segment')
   
@@ -156,6 +157,7 @@ export function MarketingWhatsApp() {
   const visibleAudienceCustomers = audienceModal?.customers.slice((audiencePage - 1) * MODAL_PAGE_SIZE, audiencePage * MODAL_PAGE_SIZE) ?? []
   const historyPageCount = Math.max(1, Math.ceil(messages.length / MODAL_PAGE_SIZE))
   const visibleMessages = messages.slice((historyPage - 1) * MODAL_PAGE_SIZE, historyPage * MODAL_PAGE_SIZE)
+  const templateMessage = editingTemplate?.message
 
   useEffect(() => {
     setSegmentPage(1)
@@ -183,6 +185,13 @@ export function MarketingWhatsApp() {
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = previousOverflow }
   }, [audienceModal, showSegmentModal])
+
+  useLayoutEffect(() => {
+    const textarea = templateMessageRef.current
+    if (!textarea) return
+    textarea.style.height = 'auto'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [templateMessage])
 
   const openAudienceModal = (title: string, subtitle: string, audience: Customer[]) => {
     setAudienceModal({ title, subtitle, customers: audience })
@@ -386,8 +395,8 @@ export function MarketingWhatsApp() {
           <label><span>Nombre</span><input value={editingTemplate.name} onChange={event => setEditingTemplate({ ...editingTemplate, name: event.target.value })} maxLength={100} placeholder="Ej. Promoción de viernes" required /></label>
           <label><span>Categoría</span><input value={editingTemplate.category} onChange={event => setEditingTemplate({ ...editingTemplate, category: event.target.value })} maxLength={60} placeholder="Promoción, cumpleaños, post-compra..." required /></label>
           <label><span>Descripción <small>Opcional</small></span><input value={editingTemplate.description ?? ''} onChange={event => setEditingTemplate({ ...editingTemplate, description: event.target.value })} maxLength={180} /></label>
-          <div className="wa-schedule-field"><span className="wa-field-label">Programación <small>Opcional</small></span><div className="wa-schedule-mode"><StyledSelect value={scheduleMode} onChange={event => setScheduleMode(event.target.value as typeof scheduleMode)} aria-label="Tipo de programación"><option value="none">Sin programación</option><option value="time">A una hora fija</option><option value="delay">Después de un evento</option><option value="date">En una fecha</option></StyledSelect>{scheduleMode === 'time' && <label className="wa-schedule-control"><Clock3 size={15} /><input type="time" value={scheduleTime} onChange={event => setScheduleTime(event.target.value)} aria-label="Hora de envío" /></label>}{scheduleMode === 'delay' && <label className="wa-schedule-control"><Timer size={15} /><input type="number" min="1" value={scheduleAmount} onChange={event => setScheduleAmount(event.target.value)} aria-label="Cantidad de demora" /><StyledSelect value={scheduleUnit} onChange={event => setScheduleUnit(event.target.value as typeof scheduleUnit)} aria-label="Unidad de demora"><option>minutos</option><option>horas</option><option>días</option></StyledSelect></label>}{scheduleMode === 'date' && <label className="wa-schedule-control"><CalendarDays size={15} /><DateField calendar value={scheduleDate} onChange={setScheduleDate} placeholder="Fecha de envío" showCalendarIcon={false} /></label>}</div></div>
-          <label className="wa-message-field"><span>Mensaje <small>{editingTemplate.message.length} caracteres</small></span><textarea rows={7} value={editingTemplate.message} onChange={event => setEditingTemplate({ ...editingTemplate, message: event.target.value })} placeholder="Usa [Nombre] para personalizar" required /></label>
+          <div className="wa-schedule-field"><span className="wa-field-label">Programación <small>Opcional</small></span><div className="wa-schedule-mode"><StyledSelect value={scheduleMode} onChange={event => setScheduleMode(event.target.value as typeof scheduleMode)} aria-label="Tipo de programación"><option value="none">Sin programación</option><option value="time">A una hora fija</option><option value="delay">Después de un evento</option><option value="date">En una fecha</option></StyledSelect>{scheduleMode === 'time' && <label className="wa-schedule-control"><Clock3 size={15} /><input type="time" value={scheduleTime} onChange={event => setScheduleTime(event.target.value)} aria-label="Hora de envío" /></label>}{scheduleMode === 'delay' && <label className="wa-schedule-control wa-delay-control"><Timer size={15} /><input type="number" min="1" value={scheduleAmount} onChange={event => setScheduleAmount(event.target.value)} aria-label="Cantidad de demora" /><StyledSelect value={scheduleUnit} onChange={event => setScheduleUnit(event.target.value as typeof scheduleUnit)} aria-label="Unidad de demora"><option>minutos</option><option>horas</option><option>días</option></StyledSelect></label>}{scheduleMode === 'date' && <label className="wa-schedule-control"><CalendarDays size={15} /><DateField calendar value={scheduleDate} onChange={setScheduleDate} placeholder="Fecha de envío" showCalendarIcon={false} /></label>}</div></div>
+          <label className="wa-message-field"><span>Mensaje <small>{editingTemplate.message.length} caracteres</small></span><textarea ref={templateMessageRef} rows={1} value={editingTemplate.message} onChange={event => setEditingTemplate({ ...editingTemplate, message: event.target.value })} placeholder="Usa [Nombre] para personalizar" required /></label>
           <label className="wa-template-active-toggle"><input type="checkbox" checked={editingTemplate.isActive} onChange={event => setEditingTemplate({ ...editingTemplate, isActive: event.target.checked })} /><span className="wa-toggle-track" aria-hidden="true"><span /></span><span><strong>Plantilla activa</strong><small>Disponible para automatizaciones</small></span></label>
           <div className="wa-segment-form-actions"><button type="button" className="wa-cancel-button" onClick={() => setEditingTemplate(null)}>Cancelar</button><button type="submit" className="wa-send-button">Guardar plantilla</button></div>
         </form>

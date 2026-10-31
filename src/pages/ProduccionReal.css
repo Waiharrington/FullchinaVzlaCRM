@@ -354,6 +354,23 @@
   width: 0;
   height: 0;
 }
+.prod-batch-identity { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.prod-batch-portion-link,
+.prod-batch-name-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.prod-batch-portion-link .prod-section-label { font-size: .72rem; }
+.prod-batch-name-field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  background: #121214;
+  color: #fff;
+  font: inherit;
+  font-size: .86rem;
+}
+.prod-batch-source { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.prod-batch-meta { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 10px; }
 
 .prod-modal-header {
   display: flex;
@@ -679,6 +696,64 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.prod-submit-copy { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; line-height: 1.1; }
+.prod-submit-copy strong { font-size: inherit; font-weight: 800; }
+.prod-submit-copy small { color: rgba(255,255,255,.82); font-size: .68rem; font-weight: 650; }
+
+/* En tablet y escritorio, el formulario aprovecha el ancho con dos columnas
+   de trabajo, reduciendo el scroll sin apretar los campos. */
+@media (min-width: 700px) {
+  .prod-batch-create-modal {
+    box-sizing: border-box;
+    width: min(1160px, calc(100vw - 48px));
+    max-width: 1160px;
+    max-height: calc(100dvh - 40px);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 16px 22px;
+    padding: 26px 30px;
+  }
+  .prod-batch-create-modal > .prod-modal-header,
+  .prod-batch-create-modal > .prod-options-loading,
+  .prod-batch-create-modal > .prod-protein-chips-wrap,
+  .prod-batch-create-modal > .prod-batch-identity,
+  .prod-batch-create-modal > .prod-batch-meta,
+  .prod-batch-create-modal > .prod-modal-actions { grid-column: 1 / -1; }
+  .prod-batch-create-modal > .prod-batch-source { grid-column: 1; min-width: 0; }
+  .prod-batch-create-modal > .prod-calc-card { grid-column: 2; min-width: 0; height: 100%; box-sizing: border-box; }
+  .prod-batch-identity {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: 14px;
+  }
+  .prod-batch-portion-link,
+  .prod-batch-name-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .prod-batch-identity:not(.has-portion-link) .prod-batch-name-field { grid-column: 1 / -1; }
+  .prod-batch-create-modal .prod-batch-name-field input,
+  .prod-batch-create-modal .prod-batch-meta input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 10px;
+    background: #121214;
+    color: #fff;
+    font: inherit;
+    font-size: .86rem;
+  }
+  .prod-batch-create-modal .prod-batch-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 14px;
+  }
+  .prod-batch-create-modal .prod-batch-meta > div { min-width: 0; }
+  .prod-batch-create-modal .prod-batch-meta label { display: block; min-height: 1.4em; margin-bottom: 5px; }
+  .prod-batch-create-modal .prod-calc-card { padding: 20px; }
+}
 
 /* Detail Inspection Modal */
 .prod-detail-grid {
@@ -739,6 +814,23 @@
   .prod-location-btn { min-height: 50px; padding: 8px 6px; gap: 6px; font-size: 0.73rem; }
   .prod-raw-inputs { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .prod-form-field label { font-size: 0.7rem; }
+  .prod-batch-create-modal .prod-modal-actions { grid-template-columns: minmax(96px, .78fr) minmax(0, 1.22fr); gap: 8px; }
+  .prod-batch-create-modal .prod-modal-cancel { min-height: 52px; padding: 10px 8px; border-radius: 12px; font-size: .8rem; }
+  .prod-batch-create-modal .prod-modal-submit {
+    min-width: 0;
+    min-height: 52px;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: #e31b2b;
+    border-color: #ff4d3d;
+    box-shadow: 0 4px 12px rgba(227,27,43,.2);
+    white-space: nowrap;
+  }
+  .prod-batch-create-modal .prod-modal-submit .prod-submit-copy { min-width: 0; }
+  .prod-batch-create-modal .prod-modal-submit .prod-submit-copy strong { font-size: .76rem; }
+  .prod-batch-create-modal .prod-modal-submit .prod-submit-copy small { font-size: .66rem; }
   .management-workspace--production .prod-table-wrap { display: none; }
   .management-workspace--production .prod-batch-cards { display: grid; gap: 12px; }
   .management-workspace--production .prod-batch-card {

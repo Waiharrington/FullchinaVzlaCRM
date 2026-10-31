@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { getLoyaltyCustomers, type Customer } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
 import { Award, Gift, Star, Flame, Search, X, ChevronLeft, ChevronRight, Phone, KeyRound, CheckCircle2, Settings2, Plus, Trash2, UtensilsCrossed, UsersRound, CreditCard, SlidersHorizontal } from 'lucide-react'
@@ -41,6 +42,7 @@ export function Fidelizacion() {
   const metricsCarouselRef = useRef<HTMLDivElement>(null)
   const metricsCarouselPaused = useRef(false)
   const currentMetricIndex = useRef(0)
+  const mobileCardCloseTimer = useRef<number | null>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
@@ -48,6 +50,8 @@ export function Fidelizacion() {
   const [accountPage, setAccountPage] = useState(1)
   const [accountSearch, setAccountSearch] = useState('')
   const [activeSection, setActiveSection] = useState<LoyaltySection>('cards')
+  const [showMobileCustomerCard, setShowMobileCustomerCard] = useState(false)
+  const [closingMobileCustomerCard, setClosingMobileCustomerCard] = useState(false)
   const [isWideLayout, setIsWideLayout] = useState(() => window.matchMedia('(min-width: 641px)').matches)
   const [loading, setLoading] = useState(true)
   const [accounts, setAccounts] = useState<Account[]>([])
@@ -62,6 +66,28 @@ export function Fidelizacion() {
   const [rewardActionNotice, setRewardActionNotice] = useState('')
   const [redeemingRewardId, setRedeemingRewardId] = useState<number | null>(null)
 
+  const openMobileCustomerCard = useCallback(() => {
+    if (mobileCardCloseTimer.current !== null) window.clearTimeout(mobileCardCloseTimer.current)
+    mobileCardCloseTimer.current = null
+    setClosingMobileCustomerCard(false)
+    setShowMobileCustomerCard(true)
+  }, [])
+
+  const closeMobileCustomerCard = useCallback(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setShowMobileCustomerCard(false)
+      setClosingMobileCustomerCard(false)
+      return
+    }
+    setClosingMobileCustomerCard(true)
+    if (mobileCardCloseTimer.current !== null) window.clearTimeout(mobileCardCloseTimer.current)
+    mobileCardCloseTimer.current = window.setTimeout(() => {
+      setShowMobileCustomerCard(false)
+      setClosingMobileCustomerCard(false)
+      mobileCardCloseTimer.current = null
+    }, 220)
+  }, [])
+
   useEffect(() => {
     const media = window.matchMedia('(min-width: 641px)')
     const updatePageSize = () => {
@@ -70,6 +96,27 @@ export function Fidelizacion() {
     }
     media.addEventListener('change', updatePageSize)
     return () => media.removeEventListener('change', updatePageSize)
+  }, [])
+  useEffect(() => {
+    if (isWideLayout) {
+      setShowMobileCustomerCard(false)
+      return
+    }
+    if (!showMobileCustomerCard) return
+    const previousOverflow = document.body.style.overflow
+    document.body.classList.add('modal-open')
+    document.body.style.overflow = 'hidden'
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') closeMobileCustomerCard() }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape)
+      document.body.classList.remove('modal-open')
+      document.body.style.overflow = previousOverflow
+    }
+  }, [closeMobileCustomerCard, isWideLayout, showMobileCustomerCard])
+
+  useEffect(() => () => {
+    if (mobileCardCloseTimer.current !== null) window.clearTimeout(mobileCardCloseTimer.current)
   }, [])
   const pageSize = isWideLayout ? WIDE_PAGE_SIZE : PHONE_PAGE_SIZE
 
@@ -223,6 +270,61 @@ export function Fidelizacion() {
     { icon: <Star size={22} />, cls: 'red', label: 'Clientes VIP', value: vipCount.toLocaleString('es-VE'), sub: `Mínimo ${loyaltyCycle} visitas` },
   ]
 
+  const selectedCustomerCard = (
+    <div className="loyalty-card">
+      <div className="loyalty-card-shine" aria-hidden />
+      <div className="loyalty-bg-art" aria-hidden />
+      <div className="loyalty-head">
+        <div>
+          <span className="loyalty-kicker">Tarjeta de Fidelidad</span>
+          <h3 className="loyalty-name">{selectedCustomer.name}</h3>
+          <span className="loyalty-meta">
+            {selectedCustomer.phone || 'Sin teléfono'}
+            {selectedCustomer.favoriteProduct ? ` · ${selectedCustomer.favoriteProduct}` : ''}
+          </span>
+        </div>
+        <div className="loyalty-award"><img src="/icons/wok-mark.png" alt="" /></div>
+      </div>
+
+      <div className="loyalty-perforation" aria-hidden />
+
+      <div className="loyalty-progress-block">
+        <div className="loyalty-progress-top">
+          <span>Sellos de visita</span>
+          <strong>{stampsInCycle} / {loyaltyCycle}</strong>
+        </div>
+        <div className="loyalty-progress-bar">
+          <div className="loyalty-progress-fill" style={{ width: `${progressPct}%` }} />
+        </div>
+      </div>
+
+      <div className="loyalty-stamps">
+        {Array.from({ length: loyaltyCycle }).map((_, i) => {
+          const isStamped = i < stampsInCycle
+          return (
+            <div key={i} className={`loyalty-stamp ${isStamped ? 'on' : ''}`}>
+              {isStamped ? <img src="/icons/wok-mark.png" alt="" /> : i + 1}
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="loyalty-reward-box">
+        <div className="loyalty-reward-info">
+          <span className="loyalty-reward-label">Premios pendientes de entregar</span>
+          <span className="loyalty-reward-value">
+            {customerRewards.available.length > 0
+              ? <><Gift size={14} /> {customerRewards.available.length} premio(s) por canjear</>
+              : `Faltan ${loyaltyCycle - stampsInCycle} visita(s) para el próximo premio`}
+          </span>
+        </div>
+        {customerRewards.available.map(reward => <div className="fidel-customer-reward-row" key={reward.id}><span><strong>{reward.reward_description}</strong><small>Tarjeta {reward.cycle_number} · {new Date(reward.unlocked_at).toLocaleDateString('es-VE')}</small></span><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></div>)}
+        {customerRewards.redeemed.length > 0 && <details className="fidel-customer-redeemed"><summary>Premios canjeados ({customerRewards.redeemed.length})</summary>{customerRewards.redeemed.map(reward => <div key={reward.id}><span>{reward.reward_description}</span><small>Tarjeta {reward.cycle_number} · {new Date(reward.redeemed_at ?? reward.unlocked_at).toLocaleDateString('es-VE')}</small></div>)}</details>}
+        <span className="loyalty-automatic-note"><CheckCircle2 size={14} /> Visitas automáticas al pagar una comanda con comida</span>
+      </div>
+    </div>
+  )
+
   return (
     <div className="page fidel-page animate-fade-in management-workspace management-workspace--loyalty" key="fidel-full">
       <header className="page-header management-workspace-header">
@@ -294,7 +396,7 @@ export function Fidelizacion() {
               const hasPendingReward = pendingRewards.some(reward => reward.customer_id === cust.id)
               const stamps = hasPendingReward ? loyaltyCycle : cust.totalVisits % loyaltyCycle
               const pct = (stamps / loyaltyCycle) * 100
-              return <button type="button" key={cust.id} className={`fidel-row ${cust.id === selectedCustomerId ? 'selected' : ''}`} onClick={() => setSelectedCustomerId(cust.id)}>
+              return <button type="button" key={cust.id} className={`fidel-row ${cust.id === selectedCustomerId ? 'selected' : ''}`} onClick={() => { setSelectedCustomerId(cust.id); openMobileCustomerCard() }}>
                 <span className="fidel-row-avatar" style={{ background: avatarColorFor(cust.name) }}>{initialsFor(cust.name)}</span>
                 <span className="fidel-row-body"><span className="fidel-row-name">{cust.name}</span><span className="fidel-row-meta">{cust.phone ? <><Phone size={11} /> {cust.phone}</> : 'Sin teléfono'}{cust.lastVisit ? ` · Últ. visita ${cust.lastVisit}` : ''}</span><span className="fidel-row-progress-track"><span className="fidel-row-progress-fill" style={{ width: `${pct}%` }} /></span></span>
                 <span className="fidel-row-visits"><strong>{cust.totalVisits}</strong><small>visitas</small></span><span className="fidel-row-reward"><Gift size={13} /> {cust.rewardsUnlocked}</span>
@@ -305,61 +407,22 @@ export function Fidelizacion() {
         </section>
 
         <div className="fidel-side">
-          <div className="loyalty-card">
-            <div className="loyalty-card-shine" aria-hidden />
-            <div className="loyalty-bg-art" aria-hidden />
-            <div className="loyalty-head">
-              <div>
-                <span className="loyalty-kicker">Tarjeta de Fidelidad</span>
-                <h3 className="loyalty-name">{selectedCustomer.name}</h3>
-                <span className="loyalty-meta">
-                  {selectedCustomer.phone || 'Sin teléfono'}
-                  {selectedCustomer.favoriteProduct ? ` · ${selectedCustomer.favoriteProduct}` : ''}
-                </span>
-              </div>
-              <div className="loyalty-award"><img src="/icons/wok-mark.png" alt="" /></div>
-            </div>
-
-            <div className="loyalty-perforation" aria-hidden />
-
-            <div className="loyalty-progress-block">
-              <div className="loyalty-progress-top">
-                <span>Sellos de visita</span>
-                <strong>{stampsInCycle} / {loyaltyCycle}</strong>
-              </div>
-              <div className="loyalty-progress-bar">
-                <div className="loyalty-progress-fill" style={{ width: `${progressPct}%` }} />
-              </div>
-            </div>
-
-            <div className="loyalty-stamps">
-              {Array.from({ length: loyaltyCycle }).map((_, i) => {
-                const isStamped = i < stampsInCycle
-                return (
-                  <div key={i} className={`loyalty-stamp ${isStamped ? 'on' : ''}`}>
-                    {isStamped ? <img src="/icons/wok-mark.png" alt="" /> : i + 1}
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="loyalty-reward-box">
-              <div className="loyalty-reward-info">
-                <span className="loyalty-reward-label">Premios pendientes de entregar</span>
-                <span className="loyalty-reward-value">
-                  {customerRewards.available.length > 0
-                    ? <><Gift size={14} /> {customerRewards.available.length} premio(s) por canjear</>
-                    : `Faltan ${loyaltyCycle - stampsInCycle} visita(s) para el próximo premio`}
-                </span>
-              </div>
-              {customerRewards.available.map(reward => <div className="fidel-customer-reward-row" key={reward.id}><span><strong>{reward.reward_description}</strong><small>Tarjeta {reward.cycle_number} · {new Date(reward.unlocked_at).toLocaleDateString('es-VE')}</small></span><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></div>)}
-              {customerRewards.redeemed.length > 0 && <details className="fidel-customer-redeemed"><summary>Premios canjeados ({customerRewards.redeemed.length})</summary>{customerRewards.redeemed.map(reward => <div key={reward.id}><span>{reward.reward_description}</span><small>Tarjeta {reward.cycle_number} · {new Date(reward.redeemed_at ?? reward.unlocked_at).toLocaleDateString('es-VE')}</small></div>)}</details>}
-              <span className="loyalty-automatic-note"><CheckCircle2 size={14} /> Visitas automáticas al pagar una comanda con comida</span>
-            </div>
-          </div>
-
+          {selectedCustomerCard}
         </div>
       </div>}
+
+      {showMobileCustomerCard && !isWideLayout && activeSection === 'cards' && createPortal(
+        <div className={`fidel-customer-card-modal-overlay${closingMobileCustomerCard ? ' is-closing' : ''}`} onClick={closeMobileCustomerCard}>
+          <section className="fidel-customer-card-modal" role="dialog" aria-modal="true" aria-labelledby="fidel-customer-card-modal-title" onClick={event => event.stopPropagation()}>
+            <header className="fidel-customer-card-modal-header">
+              <div><CreditCard size={17} /><h2 id="fidel-customer-card-modal-title">Tarjeta de fidelidad</h2></div>
+              <button type="button" aria-label="Cerrar tarjeta de fidelidad" autoFocus onClick={closeMobileCustomerCard}><X size={19} /></button>
+            </header>
+            {selectedCustomerCard}
+          </section>
+        </div>,
+        document.body,
+      )}
 
       {activeSection === 'rewards' && <section className="fidel-pending-panel fidel-tab-panel" role="tabpanel" aria-labelledby="fidel-pending-title">
         <header><div><Gift size={19} /><div><h2 id="fidel-pending-title">Premios por entregar</h2><p>Confirma el canje cuando el cliente reciba su recompensa.</p></div></div><b>{pendingRewards.length}</b></header>
