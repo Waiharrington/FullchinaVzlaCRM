@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
+import { CalendarPicker } from '../components/CalendarPicker'
 import { useSearch } from '../context/search-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { DashboardQuickAccess, type DashboardShortcut } from '../components/DashboardQuickAccess'
@@ -30,7 +31,6 @@ import {
   CheckCheck,
   Trash2,
   ExternalLink,
-  CalendarDays,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -214,23 +214,10 @@ export function Inicio() {
   const bcvRateHelp = nextBcvRateLabel
     ?? `No hay una tasa futura publicada todavía. Última tasa disponible: ${formatRateDate(bcvUpdatedAt)}.`
   const [selectedDate, setSelectedDate] = useState(() => dateKeyInTimeZone())
-  const dashboardDateInputRef = useRef<HTMLInputElement>(null)
   const selectedDateRef = useRef(selectedDate)
   const changeSelectedDate = (date: string) => {
     selectedDateRef.current = date
     setSelectedDate(date)
-  }
-  const openDashboardCalendar = () => {
-    const input = dashboardDateInputRef.current
-    if (!input) return
-    try {
-      if (typeof input.showPicker === 'function') {
-        input.showPicker()
-        return
-      }
-    } catch { /* fallback para navegadores sin picker programático */ }
-    input.focus()
-    input.click()
   }
   const [selectedDayOrders, setSelectedDayOrders] = useState<FullOrder[]>([])
   const [selectedDayLoading, setSelectedDayLoading] = useState(true)
@@ -793,13 +780,14 @@ export function Inicio() {
             const label = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][index]
             return <button key={date} type="button" className={selectedDate === date ? 'is-active' : ''} aria-pressed={selectedDate === date} disabled={dayIsFuture} onClick={() => changeSelectedDate(date)} aria-label={`${label} ${formatDashboardDate(date)}`}>{label}</button>
           })}
-          <span className="db-date-calendar-wrap">
-          <button type="button" className="db-date-calendar" onClick={openDashboardCalendar} title={`Elegir otra fecha${selectedDate ? ` · ${formatDashboardDate(selectedDate)}` : ''}`}>
-            <CalendarDays size={15} aria-hidden="true" />
-            <span>Fecha</span>
-          </button>
-          <input ref={dashboardDateInputRef} className="db-date-input-hidden" type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
-          </span>
+          <CalendarPicker
+            value={selectedDate}
+            onChange={changeSelectedDate}
+            placeholder="Elegir fecha"
+            trigger="icon"
+            className="db-date-calendar"
+            disableFuture
+          />
         </div>
 
         <div className="db-header-tools">
