@@ -1384,6 +1384,8 @@
 .db-date-filter {
   display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
+  width: 100%;
   max-width: 100%;
   justify-self: start;
   gap: 0.2rem;
@@ -1538,7 +1540,12 @@
     align-items: center;
   }
 
-  .db-date-filter { grid-column: 2; grid-row: 1; }
+  .db-date-filter {
+    grid-column: 2;
+    grid-row: 1;
+    width: calc(100% + clamp(1.25rem, 3vw, 3.5rem));
+    margin-left: clamp(-3.5rem, -3vw, -1.25rem);
+  }
   .db-header-tools { grid-column: 3; grid-row: 1; }
 
   .db-header-tools {

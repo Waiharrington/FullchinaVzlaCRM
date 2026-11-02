@@ -788,16 +788,14 @@ export function Inicio() {
         </div>
 
         <div className="db-date-filter" role="group" aria-label="Consultar resumen por fecha">
-          <button type="button" className={selectedDate === selectedDateToday ? 'is-active' : ''} aria-pressed={selectedDate === selectedDateToday} onClick={() => changeSelectedDate(selectedDateToday)}>Hoy</button>
-          <button type="button" className={selectedDate === offsetDateKey(selectedDateToday, -1) ? 'is-active' : ''} aria-pressed={selectedDate === offsetDateKey(selectedDateToday, -1)} onClick={() => changeSelectedDate(offsetDateKey(selectedDateToday, -1))}>Ayer</button>
           {selectedWeekDates.map((date, index) => {
             const dayIsFuture = date > selectedDateToday
             const label = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][index]
             return <button key={date} type="button" className={selectedDate === date ? 'is-active' : ''} aria-pressed={selectedDate === date} disabled={dayIsFuture} onClick={() => changeSelectedDate(date)} aria-label={`${label} ${formatDashboardDate(date)}`}>{label}</button>
           })}
-          <button type="button" className={`db-date-calendar${selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? ' is-active' : ''}`} onClick={openDashboardCalendar}>
+          <button type="button" className="db-date-calendar" onClick={openDashboardCalendar} title={`Elegir otra fecha${selectedDate ? ` · ${formatDashboardDate(selectedDate)}` : ''}`}>
             <CalendarDays size={15} aria-hidden="true" />
-            <span>{selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? formatDashboardDate(selectedDate) : 'Fecha'}</span>
+            <span>Fecha</span>
           </button>
           <input ref={dashboardDateInputRef} className="db-date-input-hidden" type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
         </div>
