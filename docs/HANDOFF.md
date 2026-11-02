@@ -14,10 +14,24 @@ El VPS tiene `pg_net` 0.20.3. Se verificaron las tablas, las funciones y sus
 permisos: `authenticated` puede registrar/quitar su propia suscripción; solo
 `service_role` puede reclamar eventos; `anon` no tiene acceso. Un evento de
 prueba fue revertido y se confirmó que no dejó filas ni envió notificaciones.
-El dispatcher remoto quedó **desactivado** (`enabled=false`) hasta publicar el
-endpoint API y configurar las variables VAPID en Vercel. Por tanto, aplicar la
-migración no activa todavía envíos push. No se desplegó la aplicación ni se
-habilitó el dispatcher en esta operación.
+
+Antes de completar la activación se creó un segundo backup completo:
+`/root/fullchina-backups/fullchinavzla-pre-push-activate-20261102_045111.dump`
+(33.229.991 bytes, SHA-256
+`f7ec4bb602da32e1c57203813ee84a4313c43703fe3db69d1e458f2aa51f2771`; 8.570
+entradas de `pg_restore --list`, validado con la versión del contenedor de BD).
+Se completaron los triggers de actividad para las tablas que no tienen el
+trigger común de auditoría.
+
+El commit `fe71b48` se publicó en `master` y Vercel terminó el deployment de
+producción `READY`. Las variables VAPID quedaron guardadas en Vercel Production;
+las claves privadas no están en el repositorio. Se validó la ruta API con
+peticiones inválida (400) y UUID inexistente (200, sin reclamar evento). El
+dispatcher quedó **activado** (`enabled=true`); un evento técnico sin roles
+destinatarios recorrió `pg_net` y la API, y se completó una vez sin enviar aviso.
+Hay **0 dispositivos suscritos** al momento de la activación. Cada persona debe
+abrir Campana → Notificaciones en este dispositivo → Activar y aceptar el
+permiso del navegador para recibir avisos en ese dispositivo.
 
 ## Resumen
 

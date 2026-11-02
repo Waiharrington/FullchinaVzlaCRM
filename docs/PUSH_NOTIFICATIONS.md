@@ -26,7 +26,7 @@ Variable pública necesaria al compilar la PWA:
 
 La tabla `push_dispatch_settings` apunta por defecto a `https://fullchina-vzla-crm.vercel.app/api/push-dispatch`. Si cambia el dominio canónico, actualizar `endpoint_url` con un SQL administrativo.
 
-El dispatcher queda **desactivado por defecto** para que instalar el esquema antes de publicar/configurar el sender no genere avisos perdidos ni llene la bandeja de salida. Después de desplegar la ruta API y cargar todas las variables anteriores, habilitarlo explícitamente:
+El dispatcher queda **desactivado por defecto** para que instalar el esquema antes de publicar/configurar el sender no genere avisos perdidos ni llene la bandeja de salida. En producción se habilitó el 2026-11-02 después de desplegar la ruta API y guardar las variables anteriores. En nuevas instalaciones, habilitarlo explícitamente solo después de completar esos pasos:
 
 ```sql
 UPDATE fullchinavzla.push_dispatch_settings SET enabled = true WHERE id;
@@ -37,7 +37,7 @@ UPDATE fullchinavzla.push_dispatch_settings SET enabled = true WHERE id;
 1. Guardar las variables VAPID en Vercel y configurar `VITE_WEB_PUSH_PUBLIC_KEY` para el build de producción.
 2. Confirmar que `pg_net` esté disponible y activo en PostgreSQL self-hosted. La migración falla explícitamente si falta.
 3. Crear y validar un backup completo antes de aplicar `20261102020000_push_notifications.sql` al esquema `fullchinavzla`.
-4. Publicar el frontend/API en Vercel y probar primero con un dispositivo de Dueña, uno de Gerente y uno de Caja.
+4. Publicar el frontend/API en Vercel y activar desde la campana cada dispositivo de Dueña, Gerente y Caja. La aplicación pide permiso a cada navegador al pulsar **Activar**.
 5. En iPhone/iPad, abrir el sitio en Safari, añadirlo a la pantalla de inicio y activar las notificaciones desde la PWA instalada; la disponibilidad de Push depende del navegador/plataforma.
 
 La migración solo guarda el endpoint/cifrado de cada suscripción y el payload mínimo del aviso. El endpoint se autentica por el UUID aleatorio del evento; la solicitud de `pg_net` no contiene claves privadas ni la service role key.
