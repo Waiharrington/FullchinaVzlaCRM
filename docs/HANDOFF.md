@@ -309,3 +309,13 @@ docker exec supabase-db psql -U supabase_admin -d postgres -X -v ON_ERROR_STOP=1
 
 Para probar persistencia real debe usarse una sesión autenticada con PIN y la
 configuración local autorizada, sin copiar secretos a la documentación.
+
+## Corrección de sincronización de alertas del dashboard (2026-11-02)
+
+Se aplicó al VPS la migración `20261102010000_fix_dashboard_alert_key_ambiguity.sql` en el esquema `fullchinavzla`, después de crear y validar el backup completo:
+`/root/fullchina-backups/fullchinavzla-pre-dashboard-alert-fix-20261102_051321.dump`.
+
+El backup tiene 6.656.649 bytes, formato custom y su lista de restauración fue validada con `pg_restore` del contenedor PostgreSQL (1.613 entradas). SHA-256:
+`9f920f8e53842a64b2d1af750a2fdcfa1835e9cfdbb114473dc961cebb170b8b`.
+
+Verificación posterior: la función `fn_sync_dashboard_alerts(jsonb,jsonb)` contiene la directiva `#variable_conflict use_column`; una llamada autenticada con arreglos vacíos completó y se revirtió en una transacción, sin insertar ni resolver alertas. `authenticated` conserva EXECUTE y `anon` no tiene EXECUTE.
