@@ -657,8 +657,8 @@
     justify-content: center;
     gap: 0.4rem;
   }
-  .db-chart-heading-group > div { min-width: 0; }
-  .db-chart-heading-group h3 { white-space: nowrap; }
+  .db-chart-heading-group > div { width: 100%; min-width: 0; text-align: left; }
+  .db-chart-heading-group h3 { white-space: nowrap; text-align: left; }
   .db-chart-heading-group .db-period-control { align-self: flex-start; max-width: 100%; }
   .db-page { gap: 1rem; }
 
@@ -2570,7 +2570,7 @@
     overflow: hidden !important;
     padding: 0.18rem !important;
     z-index: 1;
-    margin-top: 0.4rem !important;
+    margin-top: 0.8rem !important;
   }
 
   .db-date-filter > button {
