@@ -260,6 +260,7 @@ DECLARE
   v_module TEXT := COALESCE(NULLIF(NEW.module, ''), 'Sistema');
   v_label TEXT := NULLIF(NEW.entity_label, '');
 BEGIN
+  IF NEW.action = 'INSERT' AND NEW.entity_table = 'web_order_requests' THEN RETURN NEW; END IF;
   PERFORM fullchinavzla.fn_enqueue_push_event(
     'admin_activity', ARRAY['owner', 'manager'],
     jsonb_build_object(
