@@ -575,24 +575,41 @@ export function PublicMenu() {
   // Regla global de overlays: mientras exista una ventana abierta, el
   // documento que queda detrás no puede desplazarse. El scroll pertenece
   // exclusivamente al modal o drawer activo.
+  const hasBlockingOverlay = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras || showStoreClosedNotice)
   useEffect(() => {
-    const overlayOpen = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras || showStoreClosedNotice)
     const root = document.documentElement
     const body = document.body
 
-    if (!overlayOpen) return
+    if (!hasBlockingOverlay) return
 
     const previousRootOverflow = root.style.overflow
     const previousRootOverscroll = root.style.overscrollBehavior
     const previousBodyOverflow = body.style.overflow
     const previousBodyOverscroll = body.style.overscrollBehavior
     const previousBodyPaddingRight = body.style.paddingRight
+    const previousBodyPosition = body.style.position
+    const previousBodyTop = body.style.top
+    const previousBodyLeft = body.style.left
+    const previousBodyRight = body.style.right
+    const previousBodyWidth = body.style.width
+    const scrollX = window.scrollX
+    const scrollY = window.scrollY
     const scrollbarWidth = window.innerWidth - root.clientWidth
+    // Fijar todo el body evita saltos de scroll en navegadores móviles, pero
+    // en escritorio rompe el contexto que usa position: sticky en el carrito.
+    const pinBodyToViewport = window.matchMedia('(max-width: 767px)').matches
 
     root.style.overflow = 'hidden'
     root.style.overscrollBehavior = 'none'
     body.style.overflow = 'hidden'
     body.style.overscrollBehavior = 'none'
+    if (pinBodyToViewport) {
+      body.style.position = 'fixed'
+      body.style.top = `${-scrollY}px`
+      body.style.left = `${-scrollX}px`
+      body.style.right = '0'
+      body.style.width = '100%'
+    }
     if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`
 
     return () => {
@@ -601,8 +618,14 @@ export function PublicMenu() {
       body.style.overflow = previousBodyOverflow
       body.style.overscrollBehavior = previousBodyOverscroll
       body.style.paddingRight = previousBodyPaddingRight
+      body.style.position = previousBodyPosition
+      body.style.top = previousBodyTop
+      body.style.left = previousBodyLeft
+      body.style.right = previousBodyRight
+      body.style.width = previousBodyWidth
+      window.scrollTo(scrollX, scrollY)
     }
-  }, [cartOpen, quickVariantGroup, selectedGroup, showAllExtras, showStoreClosedNotice])
+  }, [hasBlockingOverlay])
 
   useEffect(() => {
     if (!showStoreClosedNotice) return

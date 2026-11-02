@@ -8154,6 +8154,65 @@ button.mobile-only {
   min-height: 56px;
   animation: public-footer-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
 }
+
+/* La ficha de producto en computadora aprovecha el viewport sin cambiar la
+   experiencia compacta de teléfono: más alto para las opciones y más ancho
+   para que sus nombres, precios y controles respiren. */
+@media (min-width: 1280px) {
+  .public-modal-backdrop {
+    padding: clamp(24px, 4vh, 40px) !important;
+  }
+
+  .public-product-detail-modal {
+    width: min(1120px, calc(100vw - 80px)) !important;
+    max-width: 1120px !important;
+    height: min(780px, calc(100dvh - 80px)) !important;
+    max-height: calc(100dvh - 80px) !important;
+    grid-template-columns: minmax(360px, 42%) minmax(0, 58%) !important;
+  }
+
+  .public-product-detail-modal .ppdm-content {
+    padding: 28px 36px 18px !important;
+  }
+
+  .public-product-detail-modal .ppdm-footer {
+    padding: 16px 36px 24px !important;
+  }
+
+  .public-product-detail-modal .ppdm-catalog-extra-list {
+    gap: 8px !important;
+  }
+
+  .public-product-detail-modal .ppdm-catalog-extra {
+    display: grid !important;
+    grid-template-columns: 76px minmax(0, 1fr) auto !important;
+    justify-content: initial !important;
+    gap: 14px !important;
+    min-height: 82px !important;
+    padding: 8px 12px 8px 8px !important;
+  }
+
+  .public-product-detail-modal .ppdm-catalog-extra-image {
+    width: 76px !important;
+    height: 66px !important;
+    flex: none !important;
+  }
+
+  .public-product-detail-modal .ppdm-catalog-extra > div:first-child {
+    flex: initial !important;
+    gap: 3px !important;
+  }
+
+  .public-product-detail-modal .ppdm-catalog-extra strong {
+    font-size: 13px !important;
+    line-height: 1.22 !important;
+  }
+
+  .public-product-detail-modal .ppdm-catalog-extra-price strong {
+    font-size: 13px !important;
+  }
+}
+
 @keyframes public-footer-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .ppdm-qty {
   display: flex;
