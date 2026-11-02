@@ -8372,6 +8372,7 @@ button.mobile-only {
   height: auto;
   padding-bottom: 0;
 }
+
 @keyframes tabSlideIn {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -15487,3 +15488,81 @@ body:has(.public-menu-page) .public-drawer-backdrop .public-cart-drawer *::-webk
 .public-address-coverage-actions button:last-child { border-color: #f3233b; background: #e91b33; color: #fff; }
 .public-address-summary.is-unavailable strong { color: #ff9ba5; }
 .public-address-continue:disabled { opacity: .48; filter: saturate(.55); cursor: not-allowed; box-shadow: none !important; }
+
+/* El onboarding de fidelidad es una escena de una sola pantalla: bloquea el
+   scroll mientras está activo y deja que el destello pase sobre el menú. */
+html:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-intro),
+body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-intro) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+.public-menu-page.public-profile-tab-active:has(.customer-profile-welcome-intro) {
+  box-sizing: border-box;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
+}
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-menu-page.public-profile-tab-active:has(.customer-profile-welcome-intro) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .public-menu-page.public-profile-tab-active:has(.customer-profile-welcome-intro) > .public-top-bar {
+    flex: 0 0 76px;
+    box-sizing: border-box;
+    margin-bottom: 10px !important;
+  }
+
+  .public-menu-page.public-profile-tab-active:has(.customer-profile-welcome-intro) > .public-desktop-layout.is-contact-view {
+    flex: 1 1 auto;
+    height: calc(100dvh - 86px);
+    min-height: 0;
+    align-items: stretch !important;
+    overflow: visible;
+  }
+
+  .public-menu-page.public-profile-tab-active:has(.customer-profile-welcome-intro) .public-desktop-main {
+    height: 100%;
+    min-height: 0;
+    gap: 0 !important;
+  }
+
+  .public-profile-tab-active .customer-profile-welcome-intro {
+    position: relative;
+    z-index: 101;
+    left: auto;
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 1279px) {
+  .public-profile-tab-active .public-mobile-profile-tab-content:has(.customer-profile-welcome-intro) {
+    z-index: 101;
+    overflow: visible !important;
+    overscroll-behavior: none;
+  }
+
+  .public-profile-tab-active .customer-profile-welcome-intro {
+    position: relative;
+    z-index: 2;
+    left: auto;
+    width: 100%;
+    max-width: none;
+    height: calc(100dvh - 96px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    min-height: 0;
+    margin: 0;
+    overflow: visible;
+  }
+}
