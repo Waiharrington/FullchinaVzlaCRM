@@ -3,22 +3,26 @@ import { Loader2, MapPin, Plus, Save, Trash2, Bike } from 'lucide-react'
 import Toast from './Toast'
 import NumberStepper from './NumberStepper'
 import {
-  getDeliverySettings, updateDeliveryConfig, createDeliveryZone, updateDeliveryZone, deleteDeliveryZone,
+  getDeliverySettings, updateDeliveryConfig, updateDeliveryEmployeePercent, createDeliveryZone, updateDeliveryZone, deleteDeliveryZone,
   type DeliveryConfigRow, type DeliveryZoneRow,
 } from '../lib/dataService'
 import { estimateDelivery } from '../lib/delivery'
 import { PageSkeleton } from './PageSkeleton'
 import { confirmDialog } from './ConfirmDialog'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
+import { useAuth } from '../context/auth-context'
 
 /** Configuración administrable del delivery por distancia (origen + zonas). */
 export function DeliverySettings() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  const [config, setConfig] = useState<DeliveryConfigRow>({ originLat: null, originLng: null, roadFactor: 1.3, enabled: true })
+  const [config, setConfig] = useState<DeliveryConfigRow>({ originLat: null, originLng: null, roadFactor: 1.3, enabled: true, employeePercent: 70 })
+  const [employeePercent, setEmployeePercent] = useState('70')
+  const [savingPercent, setSavingPercent] = useState(false)
   const [lat, setLat] = useState('')
   const [lng, setLng] = useState('')
   const [factor, setFactor] = useState('1.3')
@@ -36,6 +40,7 @@ export function DeliverySettings() {
       setLat(cfg.originLat == null ? '' : String(cfg.originLat))
       setLng(cfg.originLng == null ? '' : String(cfg.originLng))
       setFactor(String(cfg.roadFactor))
+      setEmployeePercent(String(cfg.employeePercent))
       setZones(zs)
     } catch (e) { setError(e instanceof Error ? e.message : 'Error cargando la configuración de delivery') }
     finally { if (!silent) setLoading(false) }
@@ -61,6 +66,21 @@ export function DeliverySettings() {
     const next = !config.enabled
     setConfig((c) => ({ ...c, enabled: next }))
     try { await updateDeliveryConfig({ enabled: next }) } catch { setConfig((c) => ({ ...c, enabled: !next })) }
+  }
+
+  const saveEmployeePercent = async () => {
+    const value = Number(employeePercent.replace(',', '.'))
+    if (!employeePercent.trim() || !Number.isFinite(value) || value < 0 || value > 100 || Math.abs(value * 100 - Math.round(value * 100)) > 1e-8) {
+      setError('Indica un porcentaje entre 0 y 100, con hasta dos decimales.')
+      return
+    }
+    setSavingPercent(true); setError('')
+    try {
+      await updateDeliveryEmployeePercent(value)
+      setConfig(current => ({ ...current, employeePercent: value }))
+      flash('Porcentaje de delivery guardado')
+    } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo guardar el porcentaje') }
+    finally { setSavingPercent(false) }
   }
 
   const patchZone = (id: string, patch: Partial<DeliveryZoneRow>) =>
@@ -119,6 +139,13 @@ export function DeliverySettings() {
 
       {error && <Toast type="error" message={error} onClose={() => setError('')} />}
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
+
+      {(user?.role === 'owner' || user?.role === 'manager') && <div className="ds-section">
+        <h3 className="ds-h3">Comisión del repartidor</h3>
+        <p className="ds-hint">Porcentaje del cargo de delivery que se asigna a nómina en nuevas comandas pagadas. Las comisiones anteriores conservan su porcentaje.</p>
+        <div className="ds-grid"><div className="ds-field"><label htmlFor="delivery-employee-percent">Porcentaje para el repartidor (%)</label><input id="delivery-employee-percent" type="number" min="0" max="100" step="0.01" value={employeePercent} onChange={event => setEmployeePercent(event.target.value)} /></div></div>
+        <button type="button" className="ds-btn-primary" onClick={saveEmployeePercent} disabled={savingPercent}>{savingPercent ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar porcentaje</button>
+      </div>}
 
       <div className="ds-section">
         <h3 className="ds-h3"><MapPin size={15} style={{ verticalAlign: -2, marginRight: 5 }} />Ubicación de Full China (origen)</h3>

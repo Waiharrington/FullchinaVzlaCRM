@@ -521,6 +521,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     tableNumber: order.orderType === 'dine-in' ? order.tableNumber : null,
     employeeName: order.employeeName || user?.fullName || 'Usuario del sistema',
     customerName: order.customerName || 'Cliente general',
+    notes: orderNotes || null,
     items: order.items.map(item => {
       const modifiers = (item.selectedModifiers ?? []).map(modifier => ({
         name: modifier.optionName,

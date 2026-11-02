@@ -29,7 +29,8 @@ import {
   X,
   CheckCheck,
   Trash2,
-  ExternalLink
+  ExternalLink,
+  CalendarDays,
 } from 'lucide-react'
 import Toast from '../components/Toast'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -42,7 +43,6 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 // se refrescan en segundo plano.
 type DashboardCache = {
   stats: TodayStats | null
-  todayOrders: FullOrder[]
   dailySales: DailySales[]
   productRanking: ProductRanking[]
   credits: Credit[]
@@ -148,6 +148,50 @@ function paymentMethodsFromOrders(orders: FullOrder[]): PaymentMethodSales[] {
     .sort((a, b) => b.total - a.total)
 }
 
+function offsetDateKey(dateKey: string, offset: number) {
+  const [year, month, day] = dateKey.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day + offset)).toISOString().slice(0, 10)
+}
+
+function weekStartDateKey(dateKey: string) {
+  const date = new Date(`${dateKey}T12:00:00`)
+  const daysSinceMonday = (date.getDay() + 6) % 7
+  return offsetDateKey(dateKey, -daysSinceMonday)
+}
+
+function chartEndDateKey(selectedDate: string, days: number) {
+  return days === 7 ? offsetDateKey(weekStartDateKey(selectedDate), 6) : selectedDate
+}
+
+function formatDashboardDate(dateKey: string) {
+  return new Date(`${dateKey}T12:00:00`).toLocaleDateString('es-VE', {
+    day: 'numeric', month: 'long', year: 'numeric',
+  })
+}
+
+function dashboardDayName(dateKey: string, todayKey: string) {
+  if (dateKey === todayKey) return 'hoy'
+  if (dateKey === offsetDateKey(todayKey, -1)) return 'ayer'
+  return formatDashboardDate(dateKey)
+}
+
+function rankProductsForOrders(orders: FullOrder[], imageRanking: ProductRanking[]): ProductRanking[] {
+  const imagesByName = new Map(imageRanking.map(item => [item.name, item.imageUrl]))
+  const totals = new Map<string, ProductRanking>()
+  for (const order of orders) {
+    if (order.status !== 'paid' || isPersonalAccountOrder(order)) continue
+    for (const item of order.items ?? []) {
+      const current = totals.get(item.productName) ?? {
+        name: item.productName, emoji: item.emoji, imageUrl: imagesByName.get(item.productName) ?? null, count: 0, revenue: 0,
+      }
+      current.count += item.quantity
+      current.revenue += item.quantity * item.unitPrice
+      totals.set(item.productName, current)
+    }
+  }
+  return [...totals.values()].sort((a, b) => b.revenue - a.revenue)
+}
+
 function optimizedDashboardProductImage(imageUrl: string | null) {
   if (!imageUrl) return null
   const match = imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
@@ -169,8 +213,15 @@ export function Inicio() {
     : null
   const bcvRateHelp = nextBcvRateLabel
     ?? `No hay una tasa futura publicada todavía. Última tasa disponible: ${formatRateDate(bcvUpdatedAt)}.`
-  const [stats, setStats] = useState<TodayStats | null>(initialCache?.stats ?? null)
-  const [todayOrders, setTodayOrders] = useState<FullOrder[]>(initialCache?.todayOrders ?? [])
+  const [selectedDate, setSelectedDate] = useState(() => dateKeyInTimeZone())
+  const selectedDateRef = useRef(selectedDate)
+  const changeSelectedDate = (date: string) => {
+    selectedDateRef.current = date
+    setSelectedDate(date)
+  }
+  const [selectedDayOrders, setSelectedDayOrders] = useState<FullOrder[]>([])
+  const [selectedDayLoading, setSelectedDayLoading] = useState(true)
+  const [selectedDayError, setSelectedDayError] = useState('')
   const [dailySales, setDailySales] = useState<DailySales[]>(initialCache?.dailySales ?? [])
   const [productRanking, setProductRanking] = useState<ProductRanking[]>(initialCache?.productRanking ?? [])
   const [credits, setCredits] = useState<Credit[]>(initialCache?.credits ?? [])
@@ -184,6 +235,15 @@ export function Inicio() {
   const [inventorySectionError, setInventorySectionError] = useState(false)
   const [chartLoading, setChartLoading] = useState(false)
   const [salesRange, setSalesRange] = useState(7)
+  const selectedDateToday = dateKeyInTimeZone()
+  const selectedDayLabel = dashboardDayName(selectedDate, selectedDateToday)
+  const selectedDayDisplay = selectedDate === selectedDateToday || selectedDate === offsetDateKey(selectedDateToday, -1)
+    ? `${selectedDayLabel[0].toUpperCase()}${selectedDayLabel.slice(1)}`
+    : formatDashboardDate(selectedDate)
+  const selectedWeekStart = weekStartDateKey(selectedDate)
+  const selectedWeekEnd = offsetDateKey(selectedWeekStart, 6)
+  const selectedWeekLabel = `${formatDashboardDate(selectedWeekStart)} al ${formatDashboardDate(selectedWeekEnd)}`
+  const isSelectedToday = selectedDate === selectedDateToday
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
   const [dashboardError, setDashboardError] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
@@ -222,7 +282,7 @@ export function Inicio() {
   }, [])
 
   const fetchData = useCallback(async (days: number = 7, silent = false) => {
-    inicioCache ??= { stats: null, todayOrders: [], dailySales: [], productRanking: [], credits: [], paymentMethods: [], ingredients: [], personalAccounts: [], recentProductionBatches: [] }
+    inicioCache ??= { stats: null, dailySales: [], productRanking: [], credits: [], paymentMethods: [], ingredients: [], personalAccounts: [], recentProductionBatches: [] }
     if (!silent) {
       setLoading(true)
       setSectionLoading(previous => ({ ...previous, sales: true, payments: true, inventory: true, credits: true }))
@@ -239,7 +299,7 @@ export function Inicio() {
       // initial screen. Start the rest at the same time, but let them hydrate
       // their own sections once the headline figures are ready.
       const loadSection = <T,>(promise: Promise<T>, section: 'sales' | 'payments' | 'inventory' | 'credits') => promise.then(value => {
-        if (section === 'sales') setDailySales(value as DailySales[])
+        if (section === 'sales' && selectedDateRef.current === dateKeyInTimeZone()) setDailySales(value as DailySales[])
         if (section === 'credits') setCredits(value as Credit[])
         if (section === 'inventory') {
           setIngredients(value as Ingredient[])
@@ -268,12 +328,8 @@ export function Inicio() {
         getOrdersWithItems(dayStart.toISOString(), dayEnd.toISOString(), true),
       ])
 
-      if (statsResult.status === 'fulfilled') setStats(statsResult.value)
-      if (ordersResult.status === 'fulfilled') setTodayOrders(ordersResult.value)
-
       inicioCache = {
         stats: statsResult.status === 'fulfilled' ? statsResult.value : inicioCache?.stats ?? null,
-        todayOrders: ordersResult.status === 'fulfilled' ? ordersResult.value : inicioCache?.todayOrders ?? [],
         dailySales: inicioCache?.dailySales ?? [],
         productRanking: inicioCache?.productRanking ?? [],
         credits: inicioCache?.credits ?? [],
@@ -298,14 +354,14 @@ export function Inicio() {
       // Si el resumen (RPC) sí encontró ventas de hoy pero el gráfico las
       // presenta en cero, recompón la serie desde pagos de órdenes; así no
       // dependemos de una función SQL remota posiblemente desactualizada.
-      if (statsResult.status === 'fulfilled' && statsResult.value.totalSales > 0 && Math.abs(todaySalesInChart - statsResult.value.totalSales) > 0.01) {
+      if (selectedDateRef.current === todayKey && statsResult.status === 'fulfilled' && statsResult.value.totalSales > 0 && Math.abs(todaySalesInChart - statsResult.value.totalSales) > 0.01) {
         try {
           resolvedDailySales = await getDailySalesFromOrders(days)
         } catch (fallbackError) {
           console.error('No se pudo recomponer la serie diaria desde las órdenes:', fallbackError)
         }
       }
-      if (salesResult.status === 'fulfilled' || resolvedDailySales !== inicioCache!.dailySales) setDailySales(resolvedDailySales)
+      if (selectedDateRef.current === todayKey && (salesResult.status === 'fulfilled' || resolvedDailySales !== inicioCache!.dailySales)) setDailySales(resolvedDailySales)
       if (creditsResult.status === 'fulfilled') setCredits(creditsResult.value)
       const orderPaymentMethods = ordersResult.status === 'fulfilled' ? paymentMethodsFromOrders(ordersResult.value) : []
       const rpcPayments = paymentResult.status === 'fulfilled' ? paymentResult.value : []
@@ -421,7 +477,9 @@ export function Inicio() {
     setChartLoading(true)
     setDashboardError('')
     try {
-      const salesData = await getDailySales(days)
+      const salesData = selectedDate === selectedDateToday
+        ? await getDailySales(days)
+        : await getDailySalesFromOrders(days, chartEndDateKey(selectedDate, days))
       setDailySales(salesData)
       if (days === 7 && inicioCache) {
         inicioCache = { ...inicioCache, dailySales: salesData }
@@ -433,12 +491,37 @@ export function Inicio() {
     } finally {
       setChartLoading(false)
     }
-  }, [user?.id])
+  }, [selectedDate, selectedDateToday, user?.id])
 
   useEffect(() => {
     fetchData()
   }, [fetchData])
   useLiveDataRefresh('dashboard', () => fetchData(salesRange, true))
+
+  useEffect(() => {
+    let cancelled = false
+    setSelectedDayLoading(true)
+    setSelectedDayError('')
+    setChartLoading(true)
+    const start = new Date(`${selectedDate}T00:00:00-04:00`)
+    const end = new Date(`${offsetDateKey(selectedDate, 1)}T00:00:00-04:00`)
+    void Promise.allSettled([
+      getOrdersWithItems(start.toISOString(), end.toISOString(), true),
+      getDailySalesFromOrders(salesRange, chartEndDateKey(selectedDate, salesRange)),
+    ]).then(([ordersResult, salesResult]) => {
+      if (cancelled) return
+      if (ordersResult.status === 'fulfilled') setSelectedDayOrders(ordersResult.value)
+      else {
+        setSelectedDayOrders([])
+        setSelectedDayError('No se pudieron cargar las comandas de esa fecha. Intenta actualizar.')
+      }
+      if (salesResult.status === 'fulfilled') setDailySales(salesResult.value)
+      else setSelectedDayError(current => current || 'No se pudo cargar el gráfico para esa fecha.')
+      setSelectedDayLoading(false)
+      setChartLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [selectedDate, salesRange])
 
   // Secciones que aparecen más abajo no bloquean el primer render del tablero.
   useEffect(() => {
@@ -469,29 +552,32 @@ export function Inicio() {
     return () => { cancelled = true }
   }, [user?.id])
 
-  const totalSales = stats?.totalSales ?? 0
-  const ordersCount = todayOrders.length
-  const ordersToday = useMemo(() =>
-    todayOrders.filter(o => dateKeyInTimeZone(new Date(o.createdAt)) === dateKeyInTimeZone()),
-    [todayOrders]
+  const ordersOnSelectedDay = useMemo(() =>
+    selectedDayOrders.filter(order => dateKeyInTimeZone(new Date(order.createdAt)) === selectedDate),
+    [selectedDate, selectedDayOrders]
   )
-  const paidOrdersToday = useMemo(() => ordersToday.filter(order => order.status === 'paid' && !isPersonalAccountOrder(order)), [ordersToday])
-  const creditOrdersToday = useMemo(() => ordersToday.filter(order => isCreditAuthorizedOrder(order) && !isPersonalAccountOrder(order)), [ordersToday])
+  const paidOrdersOnSelectedDay = useMemo(() => ordersOnSelectedDay.filter(order => order.status === 'paid' && !isPersonalAccountOrder(order)), [ordersOnSelectedDay])
+  const creditOrdersOnSelectedDay = useMemo(() => ordersOnSelectedDay.filter(order => isCreditAuthorizedOrder(order) && !isPersonalAccountOrder(order)), [ordersOnSelectedDay])
+  const totalSales = useMemo(() => paidOrdersOnSelectedDay.reduce((sum, order) => sum + order.payments.reduce((paymentSum, payment) => paymentSum + (payment.method === 'personal_account' ? 0 : payment.amount), 0), 0), [paidOrdersOnSelectedDay])
+  const ordersCount = ordersOnSelectedDay.length
+  const averageTicket = paidOrdersOnSelectedDay.length > 0 ? totalSales / paidOrdersOnSelectedDay.length : 0
+  const selectedPaymentMethods = useMemo(() => paymentMethodsFromOrders(ordersOnSelectedDay), [ordersOnSelectedDay])
+  const selectedProductRanking = useMemo(() => rankProductsForOrders(ordersOnSelectedDay, productRanking), [ordersOnSelectedDay, productRanking])
   const pendingCredits = useMemo(
     () => credits.filter(c => c.status !== 'paid').sort((a, b) => b.balancePending - a.balancePending),
     [credits]
   )
   const totalPendingCredits = pendingCredits.reduce((s, c) => s + c.balancePending, 0)
   const todayReceivableCredits = useMemo(() => {
-    const todayCreditOrderIds = new Set(creditOrdersToday.map(order => order.id))
+    const todayCreditOrderIds = new Set(creditOrdersOnSelectedDay.map(order => order.id))
     return pendingCredits.filter(credit => credit.balancePending > 0 && credit.orderId && todayCreditOrderIds.has(credit.orderId))
-  }, [creditOrdersToday, pendingCredits])
+  }, [creditOrdersOnSelectedDay, pendingCredits])
   const todayReceivables = todayReceivableCredits.reduce((sum, credit) => sum + credit.balancePending, 0)
   const todayReceivableOrderCount = new Set(todayReceivableCredits.map(credit => credit.orderId)).size
   const personalAccountTotals = useMemo(() => {
     const accountNames = new Map(personalAccounts.map(account => [account.id, account.name]))
     const totals = new Map<string, { name: string; total: number }>()
-    for (const order of ordersToday) {
+    for (const order of ordersOnSelectedDay) {
       for (const payment of order.payments) {
         if (payment.method !== 'personal_account') continue
         const id = payment.personalAccountId ?? 'unassigned'
@@ -503,9 +589,12 @@ export function Inicio() {
       }
     }
     return [...totals.entries()].map(([id, account]) => ({ id, ...account })).filter(account => account.total > 0)
-  }, [ordersToday, personalAccounts])
+  }, [ordersOnSelectedDay, personalAccounts])
   const lowStockItems = useMemo(() => [...ingredients].sort((a, b) => a.currentStock - b.currentStock).slice(0, 5), [ingredients])
-  const paymentTotal = useMemo(() => paymentMethods.reduce((s, m) => s + m.total, 0), [paymentMethods])
+  const dashboardPaymentMethods = selectedDate === selectedDateToday && paymentMethods.length > 0
+    ? paymentMethods
+    : selectedPaymentMethods
+  const paymentTotal = useMemo(() => dashboardPaymentMethods.reduce((s, m) => s + m.total, 0), [dashboardPaymentMethods])
   const hasAccess = useCallback((path: string) => canAccessModule(path, user?.role, user?.allowedModules), [user?.role, user?.allowedModules])
   const closeQuickAccess = useCallback(() => setActiveQuickAccess(null), [])
   const currentNotifications = useMemo(() => {
@@ -577,10 +666,10 @@ export function Inicio() {
 
   const paymentMethodDetails = useMemo(() => {
     if (!selectedPaymentMethod) return []
-    return paidOrdersToday.flatMap(order => order.payments
+    return paidOrdersOnSelectedDay.flatMap(order => order.payments
       .filter(payment => payment.method === selectedPaymentMethod)
       .map(payment => ({ order, payment })))
-  }, [paidOrdersToday, selectedPaymentMethod])
+  }, [paidOrdersOnSelectedDay, selectedPaymentMethod])
 
   useEffect(() => {
     const modalOpen = Boolean(selectedPaymentMethod || todayOrdersOpen)
@@ -601,8 +690,8 @@ export function Inicio() {
   }, [selectedPaymentMethod, todayOrdersOpen])
 
   const recentOrders = useMemo(() => {
-    return paidOrdersToday.slice(0, 5)
-  }, [paidOrdersToday])
+    return paidOrdersOnSelectedDay.slice(0, 5)
+  }, [paidOrdersOnSelectedDay])
 
   const chartData = useMemo(() => {
     const labels = dailySales.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
@@ -624,14 +713,14 @@ export function Inicio() {
         borderWidth: 2.5,
         fill: true,
         tension: 0.4,
-        pointRadius: 3,
-        pointBackgroundColor: '#ef4444',
+        pointRadius: dailySales.map(day => day.date === selectedDate ? 5 : 3),
+        pointBackgroundColor: dailySales.map(day => day.date === selectedDate ? '#fbbf24' : '#ef4444'),
         pointBorderColor: '#18181b',
         pointBorderWidth: 2,
         pointHoverRadius: 6,
       }]
     }
-  }, [dailySales])
+  }, [dailySales, selectedDate])
 
   const chartOptions = {
     responsive: true,
@@ -667,10 +756,10 @@ export function Inicio() {
 
   const paymentData = useMemo(() => {
     return {
-      labels: paymentMethods.map(item => paymentMethodLabel(item.method)),
-      datasets: [{ data: paymentMethods.map(item => item.total), backgroundColor: PAYMENT_COLORS, borderWidth: 0 }]
+      labels: dashboardPaymentMethods.map(item => paymentMethodLabel(item.method)),
+      datasets: [{ data: dashboardPaymentMethods.map(item => item.total), backgroundColor: PAYMENT_COLORS, borderWidth: 0 }]
     }
-  }, [paymentMethods])
+  }, [dashboardPaymentMethods])
 
   const paymentDoughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: '72%' }
 
@@ -682,6 +771,16 @@ export function Inicio() {
         <div className="db-header-copy">
           <h1 className="page-title"><Flame size={22} className="page-title-icon" /> ¡Buen día, Chef!</h1>
           <p className="db-greeting-sub">Así marcha Full China hoy.</p>
+        </div>
+
+        <div className="db-date-filter" role="group" aria-label="Consultar resumen por fecha">
+          <button type="button" className={selectedDate === selectedDateToday ? 'is-active' : ''} aria-pressed={selectedDate === selectedDateToday} onClick={() => changeSelectedDate(selectedDateToday)}>Hoy</button>
+          <button type="button" className={selectedDate === offsetDateKey(selectedDateToday, -1) ? 'is-active' : ''} aria-pressed={selectedDate === offsetDateKey(selectedDateToday, -1)} onClick={() => changeSelectedDate(offsetDateKey(selectedDateToday, -1))}>Ayer</button>
+          <label className={`db-date-calendar${selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? ' is-active' : ''}`}>
+            <CalendarDays size={15} aria-hidden="true" />
+            <span>{selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? formatDashboardDate(selectedDate) : 'Fecha'}</span>
+            <input type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
+          </label>
         </div>
 
         <div className="db-header-tools">
@@ -759,22 +858,24 @@ export function Inicio() {
         />
       )}
 
+      {selectedDayError && <div className="db-date-error" role="alert">{selectedDayError}</div>}
+
       {activeQuickAccess ? <DashboardQuickAccess shortcut={activeQuickAccess} onClose={closeQuickAccess} /> : null}
 
       <div className="kpi-banner">
         <div className="kpi-banner-content">
           <div className="db-section-label">
-            <span>Resumen del día</span>
+            <span>Resumen del día</span><span aria-label={`Fecha seleccionada: ${selectedDayDisplay}`}> · {selectedDayDisplay}</span>
           </div>
           <div className="kpi-row">
             <div className="kpi-card red">
               <div className="kpi-icon-circle red"><DollarSign size={20} /></div>
               <div className="kpi-data">
-                <span className="kpi-label">VENTAS DE HOY</span>
+                <span className="kpi-label">VENTAS · {selectedDayDisplay.toLocaleUpperCase('es-VE')}</span>
                 <MoneyWithBcv usd={totalSales} className="kpi-value" align="start" />
               </div>
             </div>
-            <button className="kpi-card red kpi-card-button" type="button" onClick={() => setTodayOrdersOpen(true)} aria-label={`Ver ${ordersCount} comandas de hoy`}>
+            <button className="kpi-card red kpi-card-button" type="button" onClick={() => setTodayOrdersOpen(true)} aria-label={`Ver ${ordersCount} comandas de ${selectedDayLabel}`}>
               <div className="kpi-icon-circle red"><ClipboardList size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label">COMANDAS</span>
@@ -785,7 +886,7 @@ export function Inicio() {
               <div className="kpi-icon-circle green"><TrendingUp size={20} /></div>
               <div className="kpi-data">
                 <span className="kpi-label"><span className="kpi-lbl-full">TICKET PROMEDIO</span><span className="kpi-lbl-short">TICKET PROM.</span></span>
-                <MoneyWithBcv usd={stats?.avgTicket ?? 0} className="kpi-value" align="start" />
+                <MoneyWithBcv usd={averageTicket} className="kpi-value" align="start" />
               </div>
             </div>
             <button className="kpi-card red kpi-card-button" type="button" onClick={() => hasAccess('/clientes') && navigate('/clientes')} aria-label={`Abrir cuentas por cobrar por ${totalPendingCredits.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}; saldo pendiente de créditos registrados`} title="Saldo pendiente de créditos autorizados y créditos manuales. Una comanda sin cobrar solo cuenta como deuda al autorizarla con el método Crédito." disabled={!hasAccess('/clientes')}>
@@ -807,52 +908,52 @@ export function Inicio() {
         <div className="db-card">
           <div className="db-card-head">
             <div className="db-chart-heading-group">
-              <h3>Resumen de ventas</h3>
+              <div><h3>Resumen de ventas</h3>{salesRange === 7 ? <span className="db-card-support">Semana: {selectedWeekLabel}</span> : null}</div>
               <label className="db-period-control">
                 <span className="sr-only">Período de ventas</span>
                 <StyledSelect menuClassName="db-period-options-menu" aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>
-                  <option value={7}>Últimos 7 días</option>
+                  <option value={7}>Semana del día (lun–dom)</option>
                   <option value={14}>Últimos 14 días</option>
                   <option value={30}>Últimos 30 días</option>
                 </StyledSelect>
                 {chartLoading ? <RefreshCw size={12} className="is-spinning" /> : null}
               </label>
             </div>
-            <button className="db-link-btn" type="button" onClick={() => void fetchData(salesRange)} disabled={loading || chartLoading} aria-label="Actualizar datos de hoy" title="Actualizar datos de hoy">
+            <button className="db-link-btn" type="button" onClick={() => void handleSalesRangeChange(salesRange)} disabled={loading || chartLoading} aria-label={selectedDate === selectedDateToday ? 'Actualizar datos de hoy' : 'Actualizar resumen de ventas'} title={selectedDate === selectedDateToday ? 'Actualizar datos de hoy' : 'Actualizar resumen de ventas'}>
               <RefreshCw size={14} className={loading ? 'is-spinning' : ''} />
             </button>
           </div>
-          {sectionLoading.sales ? <div className="db-section-skeleton db-chart-skeleton" role="status" aria-label="Cargando resumen de ventas"><i /><i /><i /><i /><i /></div> : <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>}
+          {sectionLoading.sales || chartLoading ? <div className="db-section-skeleton db-chart-skeleton" role="status" aria-label="Cargando resumen de ventas"><i /><i /><i /><i /><i /></div> : <div className="db-chart-box"><Line data={chartData} options={chartOptions} /></div>}
         </div>
 
         <div className="db-card db-payment-card">
           <div className="db-card-head db-payment-head">
             <div>
               <h3>Método de pago</h3>
-                <span className="db-card-support">Cobros recibidos hoy · consumos internos y pendientes aparte</span>
+                <span className="db-card-support">Cobros del {selectedDayLabel} · consumos internos y pendientes aparte</span>
             </div>
-            <span className="db-payment-count">{sectionLoading.payments ? 'Cargando…' : `${paymentMethods.length} medio${paymentMethods.length === 1 ? '' : 's'}`}</span>
+            <span className="db-payment-count">{selectedDayLoading ? 'Cargando…' : `${dashboardPaymentMethods.length} medio${dashboardPaymentMethods.length === 1 ? '' : 's'}`}</span>
           </div>
-          {sectionLoading.payments ? <div className="db-section-skeleton db-payment-skeleton" role="status" aria-label="Cargando métodos de pago"><i /><i /><i /></div> : <div className={`db-pago-layout${paymentMethods.length === 0 ? ' is-empty' : ''}`}>
-            {paymentMethods.length > 0 && (
-              <div className="db-pago-chart" aria-label={`Total cobrado hoy: ${paymentTotal.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}`}>
+          {selectedDayLoading ? <div className="db-section-skeleton db-payment-skeleton" role="status" aria-label="Cargando métodos de pago"><i /><i /><i /></div> : <div className={`db-pago-layout${dashboardPaymentMethods.length === 0 ? ' is-empty' : ''}`}>
+            {dashboardPaymentMethods.length > 0 && (
+              <div className="db-pago-chart" aria-label={`Total cobrado el ${selectedDayLabel}: ${paymentTotal.toLocaleString('es-VE', { style: 'currency', currency: 'USD' })}`}>
                 <div className="db-donut-wrap">
                   <Doughnut data={paymentData} options={paymentDoughnutOptions} />
                   <div className="db-donut-center" aria-hidden="true">
                     <strong>${paymentTotal.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
-                    <span>cobrado hoy</span>
+                    <span>cobrado ese día</span>
                   </div>
                 </div>
               </div>
             )}
             <div className="db-pago-legend">
-              {paymentMethods.length === 0 ? (
+              {dashboardPaymentMethods.length === 0 ? (
                 <div className="db-pago-empty" role="status">
                   <CreditCard size={22} />
-                  <span>Aún no hay cobros hoy</span>
+                  <span>{isSelectedToday ? 'Aún no hay cobros hoy' : 'No hay cobros ese día'}</span>
                   <small>El desglose aparecerá al registrar el primer pago.</small>
                 </div>
-              ) : paymentMethods.map((m, i) => {
+              ) : dashboardPaymentMethods.map((m, i) => {
                 const share = paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0
                 const color = PAYMENT_COLORS[i % PAYMENT_COLORS.length]
                 return (
@@ -870,7 +971,7 @@ export function Inicio() {
                 )
               })}
               {personalAccountTotals.length > 0 && (
-                <div className="db-payment-special-group" aria-label="Consumos de cuentas personales de hoy">
+              <div className="db-payment-special-group" aria-label={`Consumos de cuentas personales del ${selectedDayLabel}`}>
                   <span className="db-payment-special-title">Cuentas personales · consumo interno</span>
                   {personalAccountTotals.map(account => (
                     <div className="db-payment-special-row" key={account.id}>
@@ -881,8 +982,8 @@ export function Inicio() {
                   ))}
                 </div>
               )}
-              <div className="db-payment-special-group" aria-label="Comandas con crédito pendiente de hoy">
-                <span className="db-payment-special-title">Crédito · comandas autorizadas de hoy</span>
+              <div className="db-payment-special-group" aria-label={`Comandas con crédito pendiente del ${selectedDayLabel}`}>
+                <span className="db-payment-special-title">Crédito · comandas autorizadas del día</span>
                 <button type="button" className="db-payment-special-row db-payment-receivables" onClick={() => hasAccess('/comandas') && navigate('/comandas')} disabled={!hasAccess('/comandas')} title="Saldo restante de comandas autorizadas hoy con el método Crédito">
                   <span className="pago-method"><span className="pago-dot" style={{ background: '#ef4444' }} /><span className="pago-name">Saldo a crédito</span></span>
                   <span className="db-payment-special-note">{todayReceivableOrderCount} comanda{todayReceivableOrderCount === 1 ? '' : 's'}</span>
@@ -895,12 +996,12 @@ export function Inicio() {
 
         <div className="db-card db-orders-card">
           <div className="db-card-head">
-            <h3>Últimas comandas</h3>
+            <div><h3>Últimas comandas</h3><span className="db-card-support">Del {selectedDayLabel}</span></div>
             {hasAccess('/comandas') ? <button className="db-link-btn" onClick={() => navigate('/comandas')}>Ver todas</button> : null}
           </div>
           <div className="db-orders-list">
-            {recentOrders.length === 0 ? (
-              <div className="db-empty-state"><ClipboardList size={20} /><span>Sin comandas pagadas hoy</span></div>
+            {selectedDayLoading ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando comandas"><i /><i /><i /></div> : recentOrders.length === 0 ? (
+              <div className="db-empty-state"><ClipboardList size={20} /><span>Sin comandas pagadas ese día</span></div>
             ) : recentOrders.map((o) => (
               <div key={o.id} className="db-order-row">
                 <span className="ord-time">{new Date(o.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -914,9 +1015,9 @@ export function Inicio() {
 
         <div className="db-card">
           <div className="db-card-head">
-            <h3>Platos más vendidos</h3>
+            <h3><span>Platos más vendidos</span><span aria-label={` · ${selectedDayLabel}`}> · {selectedDayLabel}</span></h3>
           </div>
-          {sectionLoading.ranking ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando platos más vendidos"><i /><i /><i /><i /></div> : productRanking.length === 0 ? (
+          {selectedDayLoading ? <div className="db-section-skeleton db-list-skeleton" role="status" aria-label="Cargando platos más vendidos"><i /><i /><i /><i /></div> : selectedProductRanking.length === 0 ? (
             <div className="db-empty-state"><UtensilsCrossed size={20} /><span>Aún no hay platos vendidos</span></div>
           ) : (
             <div className="db-sellers-table">
@@ -926,7 +1027,7 @@ export function Inicio() {
                 <span>Uds</span>
                 <span>Total</span>
               </div>
-              {productRanking.slice(0, 5).map((d, i) => (
+              {selectedProductRanking.slice(0, 5).map((d, i) => (
                 <div key={d.name} className="st-row">
                   <span className={`st-idx${i < 3 ? ' top' : ''}`}>{i + 1}</span>
                   <span className="st-product-cell">
@@ -1059,7 +1160,7 @@ export function Inicio() {
           <section className="db-modal db-payment-detail-modal" role="dialog" aria-modal="true" aria-labelledby="payment-detail-title" onClick={event => event.stopPropagation()}>
             <header className="db-modal-header">
               <div>
-                <span className="db-modal-eyebrow">Cobros de hoy</span>
+                <span className="db-modal-eyebrow">Cobros del día</span>
                 <h2 id="payment-detail-title">{paymentMethodLabel(selectedPaymentMethod)}</h2>
                 <p>Comandas cobradas con este método de pago.</p>
               </div>
@@ -1070,7 +1171,7 @@ export function Inicio() {
               <div><span>Movimientos</span><strong>{paymentMethodDetails.length}</strong></div>
             </div>
             <div className="db-modal-list">
-              {paymentMethodDetails.length === 0 ? <div className="db-modal-empty"><CreditCard size={24} /><span>No hay cobros registrados con este método hoy.</span></div> : paymentMethodDetails.map(({ order, payment }) => (
+              {paymentMethodDetails.length === 0 ? <div className="db-modal-empty"><CreditCard size={24} /><span>No hay cobros registrados con este método ese día.</span></div> : paymentMethodDetails.map(({ order, payment }) => (
                 <button className={`db-payment-detail-row ${expandedPaymentOrderId === order.id ? 'is-expanded' : ''}`} type="button" key={payment.id} onClick={() => setExpandedPaymentOrderId(current => current === order.id ? null : order.id)} aria-expanded={expandedPaymentOrderId === order.id}>
                   <div><strong>Comanda #{String(order.orderNumber).padStart(4, '0')}</strong><small>{new Date(payment.createdAt || order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small>{expandedPaymentOrderId === order.id && <div className="db-order-items-detail"><span className="db-order-items-title">Detalle de la orden</span>{order.items.map(item => <span key={item.id}>{item.quantity} × {formatProductTitle(item.productName)}</span>)}</div>}</div>
                   <MoneyWithBcv usd={payment.amount} className="db-payment-detail-amount" compact />
@@ -1086,14 +1187,14 @@ export function Inicio() {
           <section className="db-modal db-orders-detail-modal" role="dialog" aria-modal="true" aria-labelledby="today-orders-title" onClick={event => event.stopPropagation()}>
             <header className="db-modal-header">
               <div>
-                <span className="db-modal-eyebrow">Resumen del día</span>
-                <h2 id="today-orders-title">Comandas de hoy</h2>
-                <p>{ordersToday.length} comandas registradas hoy · desglose por orden.</p>
+                <span className="db-modal-eyebrow">Resumen · {selectedDayDisplay}</span>
+                <h2 id="today-orders-title">{isSelectedToday ? 'Comandas de hoy' : 'Comandas del día'}</h2>
+                <p>{ordersOnSelectedDay.length} comandas registradas · desglose por orden.</p>
               </div>
               <button type="button" className="db-modal-close" aria-label="Cerrar comandas de hoy" onClick={() => setTodayOrdersOpen(false)}><X size={18} /></button>
             </header>
             <div className="db-modal-list db-orders-detail-list">
-              {ordersToday.length === 0 ? <div className="db-modal-empty"><ClipboardList size={24} /><span>No hay comandas registradas hoy.</span></div> : ordersToday.map(order => (
+              {ordersOnSelectedDay.length === 0 ? <div className="db-modal-empty"><ClipboardList size={24} /><span>No hay comandas registradas ese día.</span></div> : ordersOnSelectedDay.map(order => (
                 <button
                   type="button"
                   className="db-order-detail-row"

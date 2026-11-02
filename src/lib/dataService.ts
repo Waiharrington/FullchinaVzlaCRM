@@ -918,16 +918,18 @@ export async function deleteMenuCategory(id: string): Promise<void> {
 
 // --- Delivery por distancia ---------------------------------------------------
 
-export interface DeliveryConfigRow { originLat: number | null; originLng: number | null; roadFactor: number; enabled: boolean }
+export interface DeliveryConfigRow { originLat: number | null; originLng: number | null; roadFactor: number; enabled: boolean; employeePercent: number }
 export interface DeliveryZoneRow { id: string; minKm: number; maxKm: number | null; price: number; sortOrder: number; isActive: boolean }
 
 export async function getDeliverySettings(): Promise<{ config: DeliveryConfigRow; zones: DeliveryZoneRow[] }> {
-  const [configRes, zonesRes] = await Promise.all([
+  const [configRes, zonesRes, payrollConfigRes] = await Promise.all([
     client().from('delivery_config').select('origin_lat,origin_lng,road_factor,is_enabled').eq('id', 1).maybeSingle(),
     client().from('delivery_zones').select('id,min_km,max_km,price,sort_order,is_active').order('sort_order', { ascending: true }),
+    client().from('delivery_payroll_config').select('employee_percent').eq('id', 1).maybeSingle(),
   ])
   if (configRes.error) throw configRes.error
   if (zonesRes.error) throw zonesRes.error
+  if (payrollConfigRes.error) throw payrollConfigRes.error
   const c = configRes.data
   return {
     config: {
@@ -935,6 +937,7 @@ export async function getDeliverySettings(): Promise<{ config: DeliveryConfigRow
       originLng: c?.origin_lng == null ? null : Number(c.origin_lng),
       roadFactor: c?.road_factor == null ? 1.3 : Number(c.road_factor),
       enabled: c?.is_enabled ?? true,
+      employeePercent: Number(payrollConfigRes.data?.employee_percent ?? 70),
     },
     zones: (zonesRes.data ?? []).map((z) => ({
       id: z.id as string, minKm: Number(z.min_km), maxKm: z.max_km == null ? null : Number(z.max_km),
@@ -952,6 +955,12 @@ export async function updateDeliveryConfig(updates: Partial<{ originLat: number 
   if (Object.keys(payload).length === 0) return
   const { error } = await client().from('delivery_config').update(payload).eq('id', 1)
   if (error) throw error
+}
+
+export async function updateDeliveryEmployeePercent(employeePercent: number): Promise<void> {
+  const { data, error } = await client().from('delivery_payroll_config').update({ employee_percent: employeePercent }).eq('id', 1).select('id').maybeSingle()
+  if (error) throw error
+  if (!data) throw new Error('No tienes permiso para modificar la comisión de delivery.')
 }
 
 export async function createDeliveryZone(input: { minKm: number; maxKm: number | null; price: number; sortOrder: number }): Promise<string> {
@@ -1976,18 +1985,17 @@ export async function getDailySales(days: number = 30): Promise<DailySales[]> {
 }
 
 /**
- * Consulta compacta de respaldo para el gráfico: algunas instalaciones pueden
- * tener una versión atrasada de fn_get_daily_sales que devuelve ceros aunque
- * el resumen de hoy ya tenga pagos. Solo se invoca desde el dashboard si se
- * detecta esa contradicción.
+ * Consulta compacta de respaldo para el gráfico y para fechas seleccionadas:
+ * agrega los pagos de órdenes por día de Caracas sin depender de un RPC que
+ * solo devuelve rangos terminados en la fecha actual.
  */
-export async function getDailySalesFromOrders(days: number = 30): Promise<DailySales[]> {
+export async function getDailySalesFromOrders(days: number = 30, throughDate = dateKeyInTimeZone()): Promise<DailySales[]> {
   const count = Math.max(1, Math.floor(days))
-  const today = dateKeyInTimeZone()
-  const [year, month, day] = today.split('-').map(Number)
+  const [year, month, day] = throughDate.split('-').map(Number)
   const firstDay = new Date(Date.UTC(year, month - 1, day - count + 1)).toISOString().slice(0, 10)
-  const { end } = dayRangeInTimeZone()
+  const endDate = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10)
   const start = `${firstDay}T00:00:00-04:00`
+  const end = `${endDate}T00:00:00-04:00`
   const byDate = new Map<string, { total: number; orderIds: Set<string> }>()
   let offset = 0
 
@@ -2004,11 +2012,11 @@ export async function getDailySalesFromOrders(days: number = 30): Promise<DailyS
     if (error) throw error
     const rows = (data ?? []) as Array<{ id: string; created_at: string; payments?: Array<{ method: string; amount: number }> }>
     for (const order of rows) {
+      if (order.payments?.some(payment => payment.method === 'personal_account')) continue
       const date = dateKeyInTimeZone(new Date(order.created_at))
       const daySales = byDate.get(date) ?? { total: 0, orderIds: new Set<string>() }
       let orderHasSale = false
       for (const payment of order.payments ?? []) {
-        if (payment.method === 'personal_account') continue
         daySales.total += Number(payment.amount) || 0
         orderHasSale = true
       }
@@ -3367,11 +3375,17 @@ export async function getAllEmployees(): Promise<Employee[]> {
 }
 
 export async function getDeliveryAssignments(): Promise<DeliveryAssignment[]> {
-  const { data, error } = await client().from('delivery_assignments')
-    .select('id,order_id,employee_id,delivery_fee,employee_percent,employee_amount,company_amount,status,assigned_at,payroll_period_id,employees(full_name)')
-    .order('assigned_at', { ascending: false })
-  if (error) throw error
-  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+  const rows: Record<string, unknown>[] = []
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await client().from('delivery_assignments')
+      .select('id,order_id,employee_id,delivery_fee,employee_percent,employee_amount,company_amount,status,assigned_at,payroll_period_id,employees(full_name)')
+      .order('assigned_at', { ascending: false }).order('id', { ascending: false }).range(offset, offset + 499)
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (batch.length < 500) break
+  }
+  return rows.map((row) => ({
     id: String(row.id), orderId: String(row.order_id), employeeId: String(row.employee_id),
     employeeName: Array.isArray(row.employees) ? String((row.employees[0] as Record<string, unknown>)?.full_name ?? '') : '',
     deliveryFee: Number(row.delivery_fee), employeePercent: Number(row.employee_percent),

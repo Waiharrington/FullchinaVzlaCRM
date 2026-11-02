@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
   getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation,
-  getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder,
-  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type PersonalAccount,
+  getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments,
+  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type PersonalAccount, type DeliveryAssignment,
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
 import { buildPaymentBreakdown, type PaymentBreakdownEntry } from '../lib/paymentBreakdown'
+import { deliveryCommissionCost } from '../lib/deliveryCommission'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { PageSkeleton } from '../components/PageSkeleton'
@@ -40,7 +41,6 @@ function parseFinancialAmount(value: string): number {
 const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
-const DELIVERY_EMPLOYEE_RATE = 0.70
 const isDeliveryItem = (item: FullOrder['items'][number]) => item.productName.trim().toLowerCase() === 'delivery'
 
 type FinanceTab = 'overview' | 'daily' | 'closing' | 'history'
@@ -87,6 +87,7 @@ export function Finanzas() {
   const { bcvRate } = useRates()
   const { user } = useAuth()
   const [orders, setOrders] = useState<FullOrder[]>([])
+  const [deliveryAssignments, setDeliveryAssignments] = useState<DeliveryAssignment[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
@@ -221,16 +222,16 @@ export function Finanzas() {
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
-      const [ords, exps, purchaseData, recipes, pay, ops, accts, personalAccts] = await Promise.all([
+      const [ords, exps, purchaseData, recipes, pay, ops, accts, personalAccts, deliveries] = await Promise.all([
         getOrdersWithItems(undefined, undefined, true),
         getExpenses(undefined, undefined, true),
         getPurchases(true).catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
         getFinancialOperations(undefined, undefined, true).catch(() => []),
-        getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []),
+        getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []), getDeliveryAssignments(),
       ])
-      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts); setPersonalAccounts(personalAccts)
+      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
@@ -241,14 +242,16 @@ export function Finanzas() {
     const sIso = isoDate(start), eIso = isoDate(end)
     const paid = orders.filter((o) => { const t = new Date(o.createdAt).getTime(); return o.status === 'paid' && !isPersonalAccountOrder(o) && t >= s && t <= e })
     const grossSales = paid.reduce((sum, o) => sum + o.totalAmount, 0)
+    const deliveryByOrder = new Map(deliveryAssignments.map(assignment => [assignment.orderId, assignment]))
     let cogs = 0
     for (const o of paid) {
+      const deliveryFee = o.items.filter(isDeliveryItem).reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+      if (deliveryFee > 0) {
+        const assignment = deliveryByOrder.get(o.id)
+        cogs += deliveryCommissionCost(deliveryFee, assignment)
+      }
       for (const it of o.items) {
-        // Delivery no usa receta: el repartidor recibe el 70% del cargo
-        // cobrado al cliente y el 30% restante queda como margen del negocio.
-        cogs += isDeliveryItem(it)
-          ? it.quantity * it.unitPrice * DELIVERY_EMPLOYEE_RATE
-          : it.quantity * (recipeCost.get(it.sellableProductId)?.recipeCost ?? 0)
+        if (!isDeliveryItem(it)) cogs += it.quantity * (recipeCost.get(it.sellableProductId)?.recipeCost ?? 0)
       }
     }
     const payments = buildPaymentBreakdown(paid, accounts, bcvRate)
@@ -262,7 +265,7 @@ export function Finanzas() {
       margin: grossSales > 0 ? (netProfit / grossSales) * 100 : 0,
       ordersCount: paid.length, avgTicket: paid.length > 0 ? grossSales / paid.length : 0, payments,
     }
-  }, [orders, expenses, recipeCost, payroll, accounts, bcvRate])
+  }, [orders, expenses, recipeCost, payroll, accounts, bcvRate, deliveryAssignments])
 
   const ranges = useMemo(() => {
     const now = new Date()
@@ -1179,7 +1182,7 @@ export function Finanzas() {
         else if (kpiDetail === 'cogs') body = <>
           <div className="fin-kd-stats"><div className="fin-kd-stat"><span>Costo de insumos</span><strong>{formatUsd(cur.cogs)}</strong></div><div className="fin-kd-stat"><span>% de ventas</span><strong>{(cur.grossSales > 0 ? (cur.cogs / cur.grossSales) * 100 : 0).toFixed(1)}%</strong></div><div className="fin-kd-stat"><span>Ganancia bruta</span><strong className="fin-kd-pos">{formatUsd(cur.grossProfit)}</strong></div></div>
           <div className="fin-kd-rows"><div className="fin-kd-row"><span>Ventas brutas</span><strong>{formatUsd(cur.grossSales)}</strong></div><div className="fin-kd-row fin-kd-neg"><span>− Costo de insumos</span><strong>-{formatUsd(cur.cogs)}</strong></div><div className="fin-kd-row fin-kd-total"><span>= Ganancia bruta</span><strong>{formatUsd(cur.grossProfit)}</strong></div></div>
-          <p className="fin-kd-hint">Costo de receta de cada producto vendido. En delivery cuenta el 70% del cargo que recibe el repartidor; el resto es margen del negocio.</p>
+          <p className="fin-kd-hint">Costo de receta de cada producto vendido. En delivery se usa la comisión registrada para cada comanda.</p>
         </>
         else if (kpiDetail === 'expenses') body = <>
           <div className="fin-kd-stats"><div className="fin-kd-stat"><span>Gastos operativos</span><strong>{formatUsd(cur.opex)}</strong></div><div className="fin-kd-stat"><span>Nómina</span><strong>{formatUsd(cur.payroll)}</strong></div><div className="fin-kd-stat"><span>Total</span><strong>{formatUsd(cur.opex + cur.payroll)}</strong></div></div>

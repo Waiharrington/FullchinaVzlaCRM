@@ -77,6 +77,8 @@ final class ReceiptPrinter {
         page.text("Orden " + type);
         page.text("Empleado: " + fallback(data.optString("employeeName"), "Usuario del sistema"));
         page.text("Nombre y Apellido: " + fallback(data.optString("customerName"), "Cliente general"));
+        String notes = data.optString("notes", "").trim();
+        if (!notes.isEmpty() && !"null".equals(notes)) page.text("Notas del pedido: " + notes);
         page.separator();
 
         JSONArray items = data.getJSONArray("items");

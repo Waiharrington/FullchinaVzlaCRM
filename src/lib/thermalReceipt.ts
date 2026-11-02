@@ -42,6 +42,7 @@ export interface ThermalReceiptData {
   tableNumber?: number | null
   employeeName: string
   customerName: string
+  notes?: string | null
   items: ThermalReceiptItem[]
   totalUsd: number
   deliveryFeeUsd?: number
@@ -143,6 +144,7 @@ export function buildThermalReceiptHtml(data: ThermalReceiptData): string {
     <div class="meta">Nombre y Apellido: ${escapeHtml(data.customerName || 'Cliente general')}</div>
     <div class="separator"></div>
     ${lines}${delivery}
+    ${data.notes?.trim() ? `<div class="separator"></div><div class="meta"><strong>Notas del pedido:</strong> ${escapeHtml(data.notes.trim()).replace(/\r?\n/g, '<br>')}</div>` : ''}
     <div class="separator"></div>
     <div class="summary"><span>Subtotal:</span><span>${escapeHtml(formatUsd(subtotalUsd))}</span></div>
     ${vesSubtotal ? `<div class="summary"><span>Subtotal:</span><span>${escapeHtml(vesSubtotal)}</span></div>` : ''}

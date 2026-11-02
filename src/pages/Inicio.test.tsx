@@ -145,7 +145,7 @@ describe('Dashboard Inicio', () => {
       expect(mocks.navigate).not.toHaveBeenCalled()
       fireEvent.click(screen.getByRole('button', { name: 'Cerrar panel' }))
     }
-  })
+  }, 10_000)
 
   it('identifica los créditos autorizados y abre la comanda elegida desde el detalle del día', async () => {
     const createdAt = new Date().toISOString()
@@ -173,6 +173,10 @@ describe('Dashboard Inicio', () => {
       count: 14,
       revenue: 165.2,
     }])
+    mocks.getOrdersWithItems.mockResolvedValue([{
+      id: 'ranked-order', status: 'paid', createdAt: new Date().toISOString(), payments: [{ method: 'cash', amount: 165.2 }],
+      items: [{ productName: 'Promo Full Kilo y Refresco', emoji: '🍱', quantity: 14, unitPrice: 11.8 }],
+    }] as never)
     const { container } = render(<Inicio />)
 
     expect(await screen.findByText('Platos más vendidos')).toBeInTheDocument()

@@ -20,6 +20,12 @@ const sample = {
 }
 
 describe('ticket térmico Full China', () => {
+  it('imprime notas con saltos de línea y escapa su contenido', () => {
+    const html = buildThermalReceiptHtml({ ...sample, notes: 'Solo salsa roja\n<sin picante>' })
+    expect(html).toContain('Notas del pedido:')
+    expect(html).toContain('Solo salsa roja<br>&lt;sin picante&gt;')
+    expect(buildThermalReceiptHtml({ ...sample, notes: '  ' })).not.toContain('Notas del pedido:')
+  })
   it('genera una precuenta con cliente, empleado y extras cobrados por separado', () => {
     const html = buildThermalReceiptHtml({ ...sample, kind: 'precuenta', payments: [] })
 

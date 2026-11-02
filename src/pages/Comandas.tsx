@@ -235,6 +235,7 @@ function thermalReceiptForComanda(order: ComandaOrder): ThermalReceiptData {
     tableNumber: table ? Number(table) : null,
     employeeName: order.attendedBy || 'Usuario del sistema',
     customerName: order.customerName || 'Cliente general',
+    notes: order.notes,
     items: order.items.map(item => ({
       name: item.name,
       quantity: item.quantity,

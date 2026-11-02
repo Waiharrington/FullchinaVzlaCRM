@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getFinancialOperations: vi.fn(),
   getFinancialAccounts: vi.fn(),
   getPersonalAccounts: vi.fn(),
+  getDeliveryAssignments: vi.fn(),
   isPersonalAccountOrder: vi.fn(),
 }))
 
@@ -33,6 +34,7 @@ describe('Finanzas', () => {
     mocks.getPayrollSummary.mockResolvedValue({ periods: [], bonuses: [] })
     mocks.getFinancialOperations.mockResolvedValue([])
     mocks.getPersonalAccounts.mockResolvedValue([])
+    mocks.getDeliveryAssignments.mockResolvedValue([])
     mocks.isPersonalAccountOrder.mockReturnValue(false)
     mocks.getFinancialAccounts.mockResolvedValue([{
       id: 'cash-usd', name: 'Caja Full China', accountType: 'cash', currency: 'USD',
