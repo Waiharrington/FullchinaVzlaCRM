@@ -95,6 +95,36 @@
   font-family: 'DM Sans', sans-serif;
   padding-bottom: 110px;
 }
+.public-credits-footer {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 28px auto 0;
+  padding: 18px 20px 22px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  color: #92949c;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+.public-credits-footer a {
+  color: #ff777f;
+  font-weight: 700;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.public-credits-footer a:hover,
+.public-credits-footer a:focus-visible {
+  color: #ffd04a;
+  text-decoration: underline;
+}
+.public-credits-footer a:focus-visible {
+  outline: 2px solid #ffd04a;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
 .public-menu-page::before,
 .public-menu-page::after {
   content: '';

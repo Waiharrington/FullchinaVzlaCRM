@@ -3683,6 +3683,13 @@ export function PublicMenu() {
         </aside>
       </div>
 
+      <footer className="public-credits-footer">
+        <span>Diseñado y desarrollado por</span>{' '}
+        <a href="https://www.instagram.com/somosdostudio?vrfl=YmV5N2ZrY3FrM2th" aria-label="Abrir el perfil de SomosDos Studio en Instagram">
+          SomosDos Studio
+        </a>
+      </footer>
+
       {/* Floating Cart FAB for Mobile */}
       {itemCount > 0 && !cartOpen && currentTab !== 'contacto' && currentTab !== 'perfil' && (
         <div className="public-cart-fab-wrap">
