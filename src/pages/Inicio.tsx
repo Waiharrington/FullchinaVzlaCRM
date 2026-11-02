@@ -793,11 +793,13 @@ export function Inicio() {
             const label = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][index]
             return <button key={date} type="button" className={selectedDate === date ? 'is-active' : ''} aria-pressed={selectedDate === date} disabled={dayIsFuture} onClick={() => changeSelectedDate(date)} aria-label={`${label} ${formatDashboardDate(date)}`}>{label}</button>
           })}
+          <span className="db-date-calendar-wrap">
           <button type="button" className="db-date-calendar" onClick={openDashboardCalendar} title={`Elegir otra fecha${selectedDate ? ` · ${formatDashboardDate(selectedDate)}` : ''}`}>
             <CalendarDays size={15} aria-hidden="true" />
             <span>Fecha</span>
           </button>
           <input ref={dashboardDateInputRef} className="db-date-input-hidden" type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
+          </span>
         </div>
 
         <div className="db-header-tools">
