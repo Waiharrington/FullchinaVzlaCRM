@@ -1528,17 +1528,19 @@
 
 @media (min-width: 1440px) {
   .db-header {
-    grid-template-columns: minmax(250px, 0.8fr) minmax(450px, 1fr) minmax(520px, 1.35fr);
+    grid-template-columns: minmax(200px, 0.8fr) minmax(340px, 1.1fr) minmax(390px, 1fr);
     align-items: center;
+    gap: clamp(0.5rem, 1vw, 1rem);
   }
 
   .db-date-filter {
     grid-column: 2;
     grid-row: 1;
     width: 100%;
+    min-width: 0;
     margin-left: 0;
   }
-  .db-header-tools { grid-column: 3; grid-row: 1; }
+  .db-header-tools { grid-column: 3; grid-row: 1; min-width: 0; }
 
   .db-header-tools {
     display: flex;
@@ -1549,10 +1551,30 @@
 
   .db-header-search-row { display: flex; }
 
+  .db-date-filter { overflow: hidden; }
+  .db-date-filter > button,
+  .db-date-filter .db-date-calendar {
+    min-width: 0;
+    padding-inline: clamp(0.25rem, 0.55vw, 0.65rem);
+    flex: 1 1 0;
+  }
+
+  .db-header-tools { gap: clamp(0.35rem, 0.65vw, 0.55rem); }
+  .db-header-search-row { flex: 0 0 auto; gap: 0.4rem; }
+
   .db-header-meta-row {
     order: 2;
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     width: auto;
+  }
+
+  .db-header .db-greeting-rates {
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .db-header-icon-btn {
