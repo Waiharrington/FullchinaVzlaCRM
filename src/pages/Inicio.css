@@ -1384,8 +1384,11 @@
 .db-date-filter {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   justify-self: start;
   gap: 0.2rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
   padding: 0.22rem;
   border: 1px solid #29292e;
   border-radius: 11px;
@@ -1410,21 +1413,24 @@
   font-size: 0.76rem;
   font-weight: 650;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .db-date-filter > button { cursor: pointer; }
+.db-date-filter > button:disabled { cursor: not-allowed; opacity: .38; }
 .db-date-filter > button:hover,
 .db-date-calendar:hover { color: #fff; background: rgba(255, 255, 255, 0.045); }
 .db-date-filter > button.is-active,
 .db-date-calendar.is-active { background: rgba(239, 68, 68, 0.14); color: #ff675c; }
 .db-date-calendar { cursor: pointer; }
-.db-date-calendar input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+.db-date-input-hidden {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
   opacity: 0;
-  cursor: pointer;
+  pointer-events: none;
 }
 .db-date-error {
   border: 1px solid rgba(248, 113, 113, 0.28);
@@ -1647,7 +1653,7 @@
   }
 
   .db-header-tools { justify-content: flex-end; }
-  .db-date-filter { grid-column: 1; grid-row: 2; justify-self: start; max-width: 100%; }
+  .db-date-filter { grid-column: 1; grid-row: 2; justify-self: start; width: 100%; max-width: 100%; }
   .db-header-meta-row { justify-content: flex-start; }
   .db-header-pill,
   .db-greeting-rates { display: inline-flex; }

@@ -220,6 +220,18 @@ export function Inicio() {
     selectedDateRef.current = date
     setSelectedDate(date)
   }
+  const openDashboardCalendar = () => {
+    const input = dashboardDateInputRef.current
+    if (!input) return
+    try {
+      if (typeof input.showPicker === 'function') {
+        input.showPicker()
+        return
+      }
+    } catch { /* fallback para navegadores sin picker programático */ }
+    input.focus()
+    input.click()
+  }
   const [selectedDayOrders, setSelectedDayOrders] = useState<FullOrder[]>([])
   const [selectedDayLoading, setSelectedDayLoading] = useState(true)
   const [selectedDayError, setSelectedDayError] = useState('')
@@ -243,6 +255,7 @@ export function Inicio() {
     : formatDashboardDate(selectedDate)
   const selectedWeekStart = weekStartDateKey(selectedDate)
   const selectedWeekEnd = offsetDateKey(selectedWeekStart, 6)
+  const selectedWeekDates = Array.from({ length: 7 }, (_, index) => offsetDateKey(selectedWeekStart, index))
   const selectedWeekLabel = `${formatDashboardDate(selectedWeekStart)} al ${formatDashboardDate(selectedWeekEnd)}`
   const isSelectedToday = selectedDate === selectedDateToday
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
@@ -695,16 +708,8 @@ export function Inicio() {
   }, [paidOrdersOnSelectedDay])
 
   const chartData = useMemo(() => {
-    const isWeekView = salesRange === 7
-    const weekDayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
-    const chartDays = isWeekView
-      ? Array.from({ length: 7 }, (_, index) => offsetDateKey(weekStartDateKey(selectedDate), index))
-      : dailySales.map(day => day.date)
-    const salesByDate = new Map(dailySales.map(day => [day.date, day.total]))
-    const labels = isWeekView
-      ? weekDayLabels
-      : chartDays.map(date => new Date(date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
-    const data = chartDays.map(date => salesByDate.get(date) ?? 0)
+    const labels = dailySales.map(day => new Date(day.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
+    const data = dailySales.map(day => day.total)
 
     return {
       labels,
@@ -722,14 +727,14 @@ export function Inicio() {
         borderWidth: 2.5,
         fill: true,
         tension: 0.4,
-        pointRadius: chartDays.map(date => date === selectedDate ? 5 : 3),
-        pointBackgroundColor: chartDays.map(date => date === selectedDate ? '#fbbf24' : '#ef4444'),
+        pointRadius: dailySales.map(day => day.date === selectedDate ? 5 : 3),
+        pointBackgroundColor: dailySales.map(day => day.date === selectedDate ? '#fbbf24' : '#ef4444'),
         pointBorderColor: '#18181b',
         pointBorderWidth: 2,
         pointHoverRadius: 6,
       }]
     }
-  }, [dailySales, selectedDate, salesRange])
+  }, [dailySales, selectedDate])
 
   const chartOptions = {
     responsive: true,
@@ -785,11 +790,16 @@ export function Inicio() {
         <div className="db-date-filter" role="group" aria-label="Consultar resumen por fecha">
           <button type="button" className={selectedDate === selectedDateToday ? 'is-active' : ''} aria-pressed={selectedDate === selectedDateToday} onClick={() => changeSelectedDate(selectedDateToday)}>Hoy</button>
           <button type="button" className={selectedDate === offsetDateKey(selectedDateToday, -1) ? 'is-active' : ''} aria-pressed={selectedDate === offsetDateKey(selectedDateToday, -1)} onClick={() => changeSelectedDate(offsetDateKey(selectedDateToday, -1))}>Ayer</button>
-          <label className={`db-date-calendar${selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? ' is-active' : ''}`} onClick={event => { if (event.target !== dashboardDateInputRef.current) dashboardDateInputRef.current?.showPicker() }}>
+          {selectedWeekDates.map((date, index) => {
+            const dayIsFuture = date > selectedDateToday
+            const label = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][index]
+            return <button key={date} type="button" className={selectedDate === date ? 'is-active' : ''} aria-pressed={selectedDate === date} disabled={dayIsFuture} onClick={() => changeSelectedDate(date)} aria-label={`${label} ${formatDashboardDate(date)}`}>{label}</button>
+          })}
+          <button type="button" className={`db-date-calendar${selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? ' is-active' : ''}`} onClick={openDashboardCalendar}>
             <CalendarDays size={15} aria-hidden="true" />
             <span>{selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? formatDashboardDate(selectedDate) : 'Fecha'}</span>
-            <input ref={dashboardDateInputRef} type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
-          </label>
+          </button>
+          <input ref={dashboardDateInputRef} className="db-date-input-hidden" type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
         </div>
 
         <div className="db-header-tools">
