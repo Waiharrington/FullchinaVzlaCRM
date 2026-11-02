@@ -2,6 +2,23 @@
 
 Última actualización: 2026-10-18.
 
+## Notificaciones push (2026-11-02)
+
+Se aplicó al VPS `20261102020000_push_notifications.sql` en el esquema
+`fullchinavzla`, después de crear y validar el backup completo
+`/root/fullchina-backups/fullchinavzla-pre-push-notifications-20261102_054028.dump`
+(6.656.937 bytes; `pg_restore --list` verificado). SHA-256:
+`70184ea0fc4ce662afad0c3b9c208acc6fad6b9346e1c7fdf1dc6b3522b1d47c`.
+
+El VPS tiene `pg_net` 0.20.3. Se verificaron las tablas, las funciones y sus
+permisos: `authenticated` puede registrar/quitar su propia suscripción; solo
+`service_role` puede reclamar eventos; `anon` no tiene acceso. Un evento de
+prueba fue revertido y se confirmó que no dejó filas ni envió notificaciones.
+El dispatcher remoto quedó **desactivado** (`enabled=false`) hasta publicar el
+endpoint API y configurar las variables VAPID en Vercel. Por tanto, aplicar la
+migración no activa todavía envíos push. No se desplegó la aplicación ni se
+habilitó el dispatcher en esta operación.
+
 ## Resumen
 
 FullChinaVzla es una PWA React/Vite con Supabase self-hosted. El acuerdo inicial

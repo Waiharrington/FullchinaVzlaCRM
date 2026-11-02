@@ -99,6 +99,9 @@ export default defineConfig({
       manifest: false,
       includeAssets: ['favicon.ico', 'icons/*.png', 'manifest-cliente.webmanifest', 'manifest-admin.webmanifest'],
       workbox: {
+        // Push events must be handled by the same generated worker that owns
+        // the PWA scope; this small script only renders notifications/clicks.
+        importScripts: ['/push-service-worker.js'],
         // Las fotos de productos NO van al precache (pesan ~5.5 MB); se cachean
         // en tiempo de ejecución la primera vez que se muestran.
         globIgnores: [

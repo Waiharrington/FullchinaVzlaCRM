@@ -1,0 +1,20 @@
+.db-push-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  background: linear-gradient(110deg, rgba(227, 27, 43, .09), rgba(255, 255, 255, .025));
+}
+.db-push-settings-copy { display: flex; align-items: flex-start; gap: 9px; min-width: 0; color: #ff706a; }
+.db-push-settings-copy > svg { flex: 0 0 auto; margin-top: 2px; }
+.db-push-settings-copy span { display: grid; gap: 3px; min-width: 0; }
+.db-push-settings-copy strong { color: #f1f1f4; font-size: 11px; }
+.db-push-settings-copy small { color: #9999a3; font-size: 10px; line-height: 1.35; }
+.db-push-settings > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; padding: 0 10px; border: 1px solid rgba(255, 77, 61, .28); border-radius: 9px; background: rgba(227, 27, 43, .12); color: #ff8a82; font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; }
+.db-push-settings > button:hover:not(:disabled) { background: rgba(227, 27, 43, .2); color: #fff; }
+.db-push-settings > button:disabled { opacity: .55; cursor: wait; }
+.db-push-settings > p { grid-column: 1 / -1; margin: 0; color: #fca5a5; font-size: 10px; line-height: 1.4; }

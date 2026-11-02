@@ -24,6 +24,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.5.2",
+    "web-push": "^3.6.7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
@@ -32,6 +33,7 @@
     "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "@types/web-push": "^3.6.4",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.22.0",
     "eslint-plugin-react-hooks": "^5.2.0",

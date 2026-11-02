@@ -5,6 +5,7 @@ import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { CalendarPicker } from '../components/CalendarPicker'
+import { DashboardPushSettings } from '../components/DashboardPushSettings'
 import { useSearch } from '../context/search-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { DashboardQuickAccess, type DashboardShortcut } from '../components/DashboardQuickAccess'
@@ -825,6 +826,7 @@ export function Inicio() {
                   ) : null}
                 </div>
               </div>
+              {user ? <DashboardPushSettings role={user.role} /> : null}
               {visibleNotifications.length === 0 ? (
                 <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas para mostrar</span></div>
               ) : visibleNotifications.map(notification => {
