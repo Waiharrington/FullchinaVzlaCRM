@@ -44,12 +44,26 @@ destinatarios recorrió `pg_net` y la API, y se completó una vez sin enviar avi
 Hay **0 dispositivos suscritos** al momento de la activación. Cada persona debe
 abrir Campana → Notificaciones en este dispositivo → Activar y aceptar el
 permiso del navegador para recibir avisos en ese dispositivo.
-
 ## Resumen
 
 FullChinaVzla es una PWA React/Vite con Supabase self-hosted. El acuerdo inicial
 de USD 450 fue aceptado y el contrato está listo; el alcance completo se
 entregará por fases y superará USD 1000.
+
+## Favoritos de clientes autenticados (2026-10-29)
+
+Se aplicó al VPS `20261029000000_customer_favorites.sql` en `fullchinavzla`.
+Antes se creó el backup completo `/root/fullchina-backups/fullchinavzla-pre-customer-favorites-20261029-145532Z.dump`
+(31.953.217 bytes; formato custom; `pg_restore --list` verificado). SHA-256:
+`95c8d7fc1dfaec4bc1f90d0b7f66d46c8698622a24f46a9346c70c02bf6dba20`.
+
+Verificación posterior: tabla `customer_favorites` con RLS habilitado y sin
+privilegios directos para `anon` ni `authenticated`; `fn_get_customer_favorites()`
+y `fn_sync_customer_favorites(TEXT[])` son `SECURITY DEFINER`, ejecutables solo
+por `authenticated`; PostgREST recibió `NOTIFY pgrst, 'reload schema'`. La
+interfaz de `/pedir` fusiona favoritos locales y de cuenta, y el perfil muestra
+separadamente `Platos favoritos` y `Pedidos recientes`. El frontend está
+modificado localmente; no se hizo commit, push ni deploy.
 
 ## Migración de celebraciones de fidelidad (2026-10-18)
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Award, ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Gift, History, LoaderCircle, LogOut, RotateCw, Tag, Utensils } from 'lucide-react'
+import { Award, ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Gift, Heart, History, LoaderCircle, LogOut, RotateCw, Tag, Trash2, Utensils } from 'lucide-react'
 import { customerSupabase } from '../lib/supabase'
 import { customerAuthErrorMessage } from '../lib/customerAuthErrors'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
@@ -9,6 +9,7 @@ import CustomerRewardJourney from './CustomerRewardJourney'
 import CustomerVisitHistory from './CustomerVisitHistory'
 import { PublicMenuSkeleton } from './PublicMenuSkeleton'
 import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
+import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import './CustomerLoyaltyProfile.css'
 
 type Visit = { order_id: string; order_number: string; visited_at: string; reward_description?: string | null }
@@ -54,9 +55,34 @@ function getStampCelebrationTitle(stamp: number) {
 
 type CustomerLoyaltyProfileProps = {
   onRepeatOrder?: (order: CustomerRepeatOrder) => Promise<void>
+  favoriteIds?: string[]
+  onToggleFavorite?: (favoriteKey: string) => void
   presentation?: 'profile' | 'promotion' | 'recommended'
   onJoin?: () => void
   interactivePromotionCard?: boolean
+}
+
+function CustomerSavedFavorites({ favoriteIds, onToggleFavorite }: { favoriteIds: string[]; onToggleFavorite?: (favoriteKey: string) => void }) {
+  const [groups, setGroups] = useState<MenuProductGroup[]>([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    let active = true
+    void getPublicCatalog().then(products => {
+      if (active) setGroups(groupMenuProducts(products))
+    }).catch(() => undefined).finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [])
+  const favorites = groups.filter(group => favoriteIds.includes(group.key))
+  const unavailableCount = Math.max(0, favoriteIds.length - favorites.length)
+  return <section className="customer-saved-favorites" aria-labelledby="customer-saved-favorites-title">
+    <header><div><span><Heart size={15} fill="currentColor" /> GUARDADOS DEL MENÚ</span><h2 id="customer-saved-favorites-title">Platos favoritos</h2><p>Los platos que marcaste con el corazón.</p></div><b>{favoriteIds.length}</b></header>
+    {loading ? <div className="customer-saved-favorites-status">Cargando tus favoritos…</div> : favorites.length ? <div className="customer-saved-favorites-grid">{favorites.map(group => <article key={group.key}>
+      <img src={customerProductImage(group.variants[0]?.product.imageUrl || '')} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true }} />
+      <div><strong>{group.name}</strong><small>{group.category}</small></div>
+      {onToggleFavorite && <button type="button" aria-label={`Quitar ${group.name} de favoritos`} onClick={() => onToggleFavorite(group.key)}><Trash2 size={16} /></button>}
+    </article>)}</div> : <div className="customer-saved-favorites-status">Aún no tienes platos favoritos.</div>}
+    {unavailableCount > 0 && <p className="customer-saved-favorites-unavailable">{unavailableCount} {unavailableCount === 1 ? 'favorito no está disponible' : 'favoritos no están disponibles'} actualmente en el menú.</p>}
+  </section>
 }
 
 function customerProductImage(imageUrl: string) {
@@ -119,7 +145,7 @@ function CustomerRecentOrders({ visits, onRepeatOrder }: { visits: Visit[]; onRe
   }
 
   return <section ref={section} className="customer-recent-orders" aria-labelledby="customer-recent-orders-title" aria-busy={loading}>
-    <header className="customer-recent-orders-heading"><div><span>PARA VOLVER A DISFRUTAR</span><h2 id="customer-recent-orders-title">Tus favoritos</h2><p>Tus últimos pedidos, listos para repetir.</p></div><div className="customer-recent-orders-actions"><div className="customer-recent-orders-controls"><button type="button" aria-label="Pedidos anteriores" onClick={() => rail.current?.scrollBy({ left: -300, behavior: 'smooth' })}><ArrowLeft size={17} /></button><button type="button" aria-label="Más pedidos" onClick={() => rail.current?.scrollBy({ left: 300, behavior: 'smooth' })}><ArrowRight size={17} /></button></div></div></header>
+    <header className="customer-recent-orders-heading"><div><span>PARA VOLVER A DISFRUTAR</span><h2 id="customer-recent-orders-title">Pedidos recientes</h2><p>Tus últimos pedidos, listos para repetir.</p></div><div className="customer-recent-orders-actions"><div className="customer-recent-orders-controls"><button type="button" aria-label="Pedidos anteriores" onClick={() => rail.current?.scrollBy({ left: -300, behavior: 'smooth' })}><ArrowLeft size={17} /></button><button type="button" aria-label="Más pedidos" onClick={() => rail.current?.scrollBy({ left: 300, behavior: 'smooth' })}><ArrowRight size={17} /></button></div></div></header>
     {loading ? <div className="customer-recent-orders-skeletons" aria-label="Cargando tus últimos pedidos">{Array.from({ length: 2 }, (_, index) => <div className="customer-recent-order-skeleton" key={index}><span /><div><i /><i /><i /></div></div>)}</div> : orders.length ? <div className="customer-recent-orders-rail" ref={rail}>
       {orders.map((order, index) => {
         const leadItem = order.items[0]
@@ -224,7 +250,7 @@ function getInitialAuthMode(): 'login' | 'register' {
   }
 }
 
-export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile', onJoin, interactivePromotionCard = false }: CustomerLoyaltyProfileProps) {
+export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onToggleFavorite, presentation = 'profile', onJoin, interactivePromotionCard = false }: CustomerLoyaltyProfileProps) {
   const [profile, setProfile] = useState<LoyaltyProfile | null>(null)
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
   const [identifier, setIdentifier] = useState('')
@@ -708,6 +734,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, presentation = 'profile'
       <div className="customer-redeemed-empty-head"><span><Gift size={17} /> Premios canjeados</span><b>0</b></div>
       <div className="customer-redeemed-empty-content"><span><History size={17} /></span><p><strong id="customer-redeemed-empty-title">Aún no has canjeado premios</strong><small>Cuando entregues tu recompensa, aparecerá aquí.</small></p></div>
     </section>}
+    <CustomerSavedFavorites favoriteIds={favoriteIds} onToggleFavorite={onToggleFavorite} />
     <CustomerRecentOrders visits={recentVisits} onRepeatOrder={onRepeatOrder} />
     <aside className="customer-profile-tools desktop-only" aria-label="Historial de visitas"><CustomerDesktopVisitHistory visits={profile.visits ?? []} onRepeatOrder={onRepeatOrder} /></aside>
     <button className="customer-profile-history-button" onClick={() => { setCelebration(null); setShowHistory(true) }}><History size={18} /> <span><strong>{showHistory ? 'Ocultar historial' : 'Historial de visitas'}</strong><small>Revisa todas tus visitas y avances.</small></span><ChevronRight className={showHistory ? 'rotated' : ''} size={17} /></button>

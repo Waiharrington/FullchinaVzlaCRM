@@ -938,14 +938,33 @@
 .customer-loyalty-personal-details b{color:#e5dadd;font-weight:700}
 
 @media(min-width:1100px){
-  .customer-profile-member .customer-profile-dashboard{grid-template-columns:minmax(0,.92fr) minmax(0,.98fr) minmax(0,1.1fr);grid-template-areas:"welcome welcome welcome" "card favorites tools" "card redeemed tools";grid-template-rows:auto auto 1fr;column-gap:20px;width:min(100%,1480px);max-width:1480px}
+  .customer-profile-member .customer-profile-dashboard{grid-template-columns:minmax(0,.92fr) minmax(0,.98fr) minmax(0,1.1fr);grid-template-areas:"welcome welcome welcome" "card favorites tools" "card recent tools" "card redeemed tools";grid-template-rows:auto auto auto 1fr;column-gap:20px;width:min(100%,1480px);max-width:1480px}
   .customer-profile-member .customer-profile-welcome{grid-column:1/-1;grid-row:1}
-  .customer-profile-member .customer-profile-dashboard>.customer-loyalty-card{grid-column:1;grid-row:2/span 2}
-  .customer-profile-member .customer-profile-dashboard>.customer-recent-orders{grid-column:2;grid-row:2}
-  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history{grid-column:2;grid-row:3}
-  .customer-profile-member .customer-profile-tools{grid-column:3;grid-row:2/span 2;align-self:stretch}
+  .customer-profile-member .customer-profile-dashboard>.customer-loyalty-card{grid-column:1;grid-row:2/span 3}
+  .customer-profile-member .customer-profile-dashboard>.customer-saved-favorites{grid-column:2;grid-row:2}
+  .customer-profile-member .customer-profile-dashboard>.customer-recent-orders{grid-column:2;grid-row:3}
+  .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history{grid-column:2;grid-row:4}
+  .customer-profile-member .customer-profile-tools{grid-column:3;grid-row:2/span 3;align-self:stretch}
   .customer-profile-member .customer-profile-tools .customer-desktop-history{height:100%;min-height:560px}
 }
+
+.customer-saved-favorites{min-width:0;padding:20px;border:1px solid rgba(255,255,255,.09);border-radius:20px;background:linear-gradient(145deg,rgba(35,23,26,.94),rgba(18,18,22,.98));box-shadow:0 16px 36px #0002}
+.customer-saved-favorites>header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:16px}
+.customer-saved-favorites>header>div>span{display:flex;align-items:center;gap:7px;color:#ff7771;font-size:10px;font-weight:850;letter-spacing:.1em}
+.customer-saved-favorites>header h2{margin:7px 0 3px;color:#fff;font-size:20px;line-height:1.2}
+.customer-saved-favorites>header p{margin:0;color:#aaa4aa;font-size:12px}
+.customer-saved-favorites>header>b{display:grid;place-items:center;min-width:32px;height:32px;padding:0 8px;border:1px solid #ff4a5033;border-radius:11px;background:#f12d3815;color:#ff7771;font-size:13px}
+.customer-saved-favorites-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:9px}
+.customer-saved-favorites-grid article{display:flex;align-items:center;gap:11px;min-width:0;padding:9px;border:1px solid #ffffff10;border-radius:14px;background:#ffffff05}
+.customer-saved-favorites-grid img{flex:none;width:52px;height:52px;border-radius:11px;object-fit:cover;background:#292326}
+.customer-saved-favorites-grid article>div{display:grid;gap:4px;min-width:0;flex:1}
+.customer-saved-favorites-grid strong{overflow:hidden;color:#f8f5f5;font-size:13px;text-overflow:ellipsis;white-space:nowrap}
+.customer-saved-favorites-grid small{color:#a9a2a8;font-size:11px}
+.customer-saved-favorites-grid button{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid #ff5b5535;border-radius:10px;background:#ff35300d;color:#ff7771;cursor:pointer}
+.customer-saved-favorites-grid button:hover{background:#ff353025}
+.customer-saved-favorites-status{padding:16px;border:1px dashed #ffffff20;border-radius:13px;color:#aaa4aa;font-size:clamp(10px,2.8vw,13px);text-align:center;white-space:nowrap}
+.customer-saved-favorites-unavailable{margin:12px 0 0;color:#aaa4aa;font-size:11px;line-height:1.45}
+@media(max-width:600px){.customer-saved-favorites{padding:16px;border-radius:17px}.customer-saved-favorites-grid{grid-template-columns:1fr}}
 
 /* Give the member-card flip a single, weighty turn with a gentle settle. */
 .customer-profile-member .customer-member-mini-card{transition:transform .28s cubic-bezier(.2,.8,.2,1)}

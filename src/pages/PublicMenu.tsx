@@ -6,7 +6,7 @@ import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type CustomerRepeatOrder, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, hasInvalidModifierSelection, isIncludedProteinGroup, replaceIncludedProteinPortion, type PublicModifierSelection } from '../lib/publicOrderRules'
+import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, replaceIncludedProteinPortion, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -14,6 +14,7 @@ import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
+import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
 import { customerSupabase } from '../lib/supabase'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
@@ -50,6 +51,28 @@ const CATEGORY_ACCENT_CYCLE = ['227, 27, 43', '255, 200, 61', '234, 88, 12']
 const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
   promociones: 'Promos',
   ejecutivos: 'Ejecutivo',
+}
+
+const STORE_TIME_ZONE = 'America/Caracas'
+const STORE_OPEN_HOUR = 11
+const STORE_CLOSE_HOUR = 22
+
+function getStoreClock() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: STORE_TIME_ZONE,
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date())
+  const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0)
+  const previewClosed = import.meta.env.DEV
+    && new URLSearchParams(window.location.search).get('previewStoreClosed') === '1'
+  const isOpen = !previewClosed && hour >= STORE_OPEN_HOUR && hour < STORE_CLOSE_HOUR
+  return {
+    isOpen,
+    reopeningMessage: previewClosed
+      ? 'Volvemos mañana a las 11:00 a. m.'
+      : hour < STORE_OPEN_HOUR ? 'Abrimos hoy a las 11:00 a. m.' : 'Volvemos mañana a las 11:00 a. m.',
+  }
 }
 
 const INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
@@ -366,10 +389,14 @@ function optimizedProductImage(imageUrl: string | null | undefined) {
 }
 
 function proteinOptionImage(products: Product[], optionName: string) {
-  const normalizedOption = normalizeForSearch(optionName).replace(/^extras? de /, '')
+  const normalizedOption = normalizeForSearch(optionName).replace(/^extras? de /, '').trim()
   const match = products.find(product => {
     let normalizedProduct = normalizeForSearch(product.name)
-    normalizedProduct = normalizedProduct.replace(/^extras? de proteinas? /, '').replace(/^extras? de /, '')
+    normalizedProduct = normalizedProduct
+      .replace(/^extras? de proteinas?\s*[-—–:]?\s*/, '')
+      .replace(/^extras? de\s+/, '')
+      .replace(/^[-—–:]\s*/, '')
+      .trim()
     return normalizedProduct === normalizedOption
   })
   return optimizedProductImage(match?.imageUrl)
@@ -459,6 +486,13 @@ export function PublicMenu() {
   const [cart, setCart] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(CART_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
+  const cartRef = useRef(cart)
+  useEffect(() => { cartRef.current = cart }, [cart])
+  const commitCart = (update: WebOrderCartItem[] | ((current: WebOrderCartItem[]) => WebOrderCartItem[])) => {
+    const next = typeof update === 'function' ? update(cartRef.current) : update
+    cartRef.current = next
+    setCart(next)
+  }
   const [selectedGroup, setSelectedGroup] = useState<MenuProductGroup | null>(null)
   const [closingDetail, setClosingDetail] = useState(false)
   const [detailOrigin, setDetailOrigin] = useState<{ x: number; y: number } | null>(null)
@@ -471,6 +505,7 @@ export function PublicMenu() {
   const [closingQuickVariant, setClosingQuickVariant] = useState(false)
   const [detailQuantity, setDetailQuantity] = useState(1)
   const [detailNotes, setDetailNotes] = useState('')
+  const detailNotesRef = useRef<HTMLTextAreaElement>(null)
   const [detailModifierGroups, setDetailModifierGroups] = useState<ProductModifierGroup[]>([])
   const [loadingModifiers, setLoadingModifiers] = useState(false)
   const [modifierLoadError, setModifierLoadError] = useState(false)
@@ -479,6 +514,27 @@ export function PublicMenu() {
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
   const [selectedCatalogExtras, setSelectedCatalogExtras] = useState<Record<string, number>>({})
   const [proteinSwapSourceId, setProteinSwapSourceId] = useState<string | null>(null)
+  const [closingProteinSwap, setClosingProteinSwap] = useState(false)
+  useEffect(() => {
+    const textarea = detailNotesRef.current
+    if (!textarea) return
+    textarea.style.height = 'auto'
+    textarea.style.height = `${Math.max(textarea.scrollHeight, 58)}px`
+  }, [detailNotes, selectedGroup])
+  useEffect(() => {
+    if (!proteinSwapSourceId) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.stopPropagation()
+      setClosingProteinSwap(true)
+      window.setTimeout(() => {
+        setProteinSwapSourceId(null)
+        setClosingProteinSwap(false)
+      }, 180)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [proteinSwapSourceId])
   const requiredModifierRef = useRef<HTMLDivElement>(null)
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [scrollCategory, setScrollCategory] = useState<string | null>(null)
@@ -486,8 +542,19 @@ export function PublicMenu() {
   const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]') as string[] } catch { return [] }
   })
+  const favoriteIdsRef = useRef(favoriteIds)
+  const [favoriteAccountId, setFavoriteAccountId] = useState<string | null>(null)
+  const [favoriteStorageMode, setFavoriteStorageMode] = useState<'loading' | 'guest' | 'account'>(customerSupabase ? 'loading' : 'guest')
+  const [favoriteSyncReady, setFavoriteSyncReady] = useState(false)
+  const favoriteSyncSequence = useRef(0)
   const [showFavorites, setShowFavorites] = useState(false)
   const [showAllExtras, setShowAllExtras] = useState(false)
+  const [showStoreClosedNotice, setShowStoreClosedNotice] = useState(() => {
+    const showPreviewNotice = import.meta.env.DEV
+      && new URLSearchParams(window.location.search).get('showClosedNotice') === '1'
+    return !getStoreClock().isOpen || showPreviewNotice
+  })
+  const storeClosedNoticeButtonRef = useRef<HTMLButtonElement>(null)
   const [closingAllExtras, setClosingAllExtras] = useState(false)
   const closeAllExtras = () => {
     setClosingAllExtras(true)
@@ -509,7 +576,7 @@ export function PublicMenu() {
   // documento que queda detrás no puede desplazarse. El scroll pertenece
   // exclusivamente al modal o drawer activo.
   useEffect(() => {
-    const overlayOpen = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras)
+    const overlayOpen = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras || showStoreClosedNotice)
     const root = document.documentElement
     const body = document.body
 
@@ -535,7 +602,17 @@ export function PublicMenu() {
       body.style.overscrollBehavior = previousBodyOverscroll
       body.style.paddingRight = previousBodyPaddingRight
     }
-  }, [cartOpen, quickVariantGroup, selectedGroup, showAllExtras])
+  }, [cartOpen, quickVariantGroup, selectedGroup, showAllExtras, showStoreClosedNotice])
+
+  useEffect(() => {
+    if (!showStoreClosedNotice) return
+    storeClosedNoticeButtonRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowStoreClosedNotice(false)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showStoreClosedNotice])
 
   const previousStepRef = useRef(step)
   const [name, setName] = useState('')
@@ -557,21 +634,38 @@ export function PublicMenu() {
   const [searchingAddress, setSearchingAddress] = useState(false)
   const [geoCoords, setGeoCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState('')
   const [addressMethod, setAddressMethod] = useState<'gps' | 'map' | 'search' | null>(null)
   const [addressFieldError, setAddressFieldError] = useState<'' | 'address' | 'geo' | 'reference'>('')
   const addressRef = useRef<HTMLInputElement>(null)
+  const locationErrorRef = useRef<HTMLDivElement>(null)
   const referenceRef = useRef<HTMLInputElement>(null)
   const addressSelectedRef = useRef<HTMLDivElement>(null)
   const addressSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addressActionRef = useRef(0)
+  useEffect(() => {
+    if (!locationError) return
+    const timeout = window.setTimeout(() => {
+      if (typeof locationErrorRef.current?.scrollIntoView === 'function') {
+        locationErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [locationError])
   const [notes, setNotes] = useState('')
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null)
+  const [deliverySettingsStatus, setDeliverySettingsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [deliverySettingsRetryVersion, setDeliverySettingsRetryVersion] = useState(0)
   const [serverDeliveryFeeOverride, setServerDeliveryFeeOverride] = useState<{ lat: number; lng: number; fee: number } | null>(null)
   const deliveryEstimate = useMemo(() => {
     if (orderType !== 'delivery' || !geoCoords || !deliverySettings?.enabled) return null
     return estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng)
   }, [orderType, geoCoords, deliverySettings])
+  const deliveryCoverageUnavailable = orderType === 'delivery'
+    && Boolean(geoCoords)
+    && deliverySettingsStatus === 'ready'
+    && (!deliverySettings?.enabled || deliveryEstimate?.fee == null)
   const [loading, setLoading] = useState(() => !initialCatalog)
   const [catalogRetryVersion, setCatalogRetryVersion] = useState(0)
   const retryPublicCatalog = () => {
@@ -615,6 +709,7 @@ export function PublicMenu() {
   const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string; productId: string; status: 'checking' | 'added' } | null>(null)
   const [addFeedbackClosing, setAddFeedbackClosing] = useState(false)
   const [pendingQuickAdds, setPendingQuickAdds] = useState<Set<string>>(() => new Set())
+  const [addingSelectedProduct, setAddingSelectedProduct] = useState(false)
   const [cartPulse, setCartPulse] = useState(false)
   const sidebarCardRef = useRef<HTMLDivElement>(null)
   const [sidebarHasOverflow, setSidebarHasOverflow] = useState(false)
@@ -643,6 +738,7 @@ export function PublicMenu() {
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addFeedbackExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingQuickAddsRef = useRef(new Set<string>())
+  const addingSelectedProductRef = useRef(false)
   const quickVariantConfirmRef = useRef(false)
   const [confirmingQuickVariant, setConfirmingQuickVariant] = useState(false)
   const cartPulseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -863,13 +959,6 @@ export function PublicMenu() {
   }, [currentTab])
 
   useEffect(() => {
-    if (showSearch) {
-      const t = setTimeout(() => heroSearchRef.current?.focus(), 50)
-      return () => clearTimeout(t)
-    }
-  }, [showSearch])
-
-  useEffect(() => {
     let active = true
     let secondaryTimer: number | null = null
 
@@ -951,11 +1040,12 @@ export function PublicMenu() {
   useEffect(() => {
     if (orderType !== 'delivery' || deliverySettings) return
     let active = true
+    setDeliverySettingsStatus('loading')
     getPublicDeliverySettings()
-      .then(settings => { if (active) setDeliverySettings(settings) })
-      .catch(() => { if (active) setDeliverySettings(null) })
+      .then(settings => { if (active) { setDeliverySettings(settings); setDeliverySettingsStatus('ready') } })
+      .catch(() => { if (active) { setDeliverySettings(null); setDeliverySettingsStatus('error') } })
     return () => { active = false }
-  }, [orderType, deliverySettings])
+  }, [orderType, deliverySettings, deliverySettingsRetryVersion])
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
@@ -1351,10 +1441,17 @@ export function PublicMenu() {
   }, [])
 
   const recommendedGroup = currentRecommendedSlide?.kind === 'product' ? currentRecommendedSlide.group : null
-  const isStoreOpen = (() => {
-    const hour = new Date().getHours()
-    return hour >= 11 && hour < 22
-  })()
+  const [storeClock, setStoreClock] = useState(getStoreClock)
+  useEffect(() => {
+    const timer = window.setInterval(() => setStoreClock(getStoreClock()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+  const isStoreOpen = storeClock.isOpen
+  const blockClosedStoreAdd = () => {
+    if (isStoreOpen) return false
+    setShowStoreClosedNotice(true)
+    return true
+  }
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const deliveryFee = orderType === 'delivery' && deliveryEstimate?.fee != null
@@ -1472,7 +1569,90 @@ export function PublicMenu() {
     return () => window.removeEventListener('pageshow', restoreSentState)
   }, [cart.length])
   useEffect(() => { localStorage.setItem(CART_KEY, JSON.stringify(cart)) }, [cart])
-  useEffect(() => { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds)) }, [favoriteIds])
+  useEffect(() => { favoriteIdsRef.current = favoriteIds }, [favoriteIds])
+  useEffect(() => {
+    if (favoriteStorageMode === 'guest') {
+      try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteIds)) } catch { /* el menú sigue funcionando sin almacenamiento */ }
+      return
+    }
+    if (favoriteStorageMode !== 'account' || !favoriteAccountId) return
+    const accountKey = `${FAVORITES_KEY}:${favoriteAccountId}`
+    try { localStorage.setItem(accountKey, JSON.stringify(favoriteIds)) } catch { /* la cuenta sigue sincronizando en línea */ }
+    if (!favoriteSyncReady) return
+    void syncCustomerFavorites(favoriteIds).catch(() => undefined)
+  }, [favoriteAccountId, favoriteIds, favoriteStorageMode, favoriteSyncReady])
+  useEffect(() => {
+    if (!customerSupabase) return
+    const customerClient = customerSupabase
+    let active = true
+    const localKeys = (key: string) => {
+      try {
+        const value: unknown = JSON.parse(localStorage.getItem(key) || '[]')
+        return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
+      } catch { return [] }
+    }
+    const applySession = async (userId: string | null) => {
+      const sequence = ++favoriteSyncSequence.current
+      setFavoriteSyncReady(false)
+      if (!userId) {
+        if (!active || sequence !== favoriteSyncSequence.current) return
+        const guestFavorites = localKeys(FAVORITES_KEY)
+        setFavoriteAccountId(null)
+        setFavoriteIds(guestFavorites)
+        setFavoriteStorageMode('guest')
+        return
+      }
+      const accountKey = `${FAVORITES_KEY}:${userId}`
+      const importedGuestKey = `${FAVORITES_KEY}:imported:${userId}`
+      const guestFavorites = localKeys(FAVORITES_KEY)
+      const cachedAccountFavorites = localKeys(accountKey)
+      const importedGuestFavorites = localKeys(importedGuestKey)
+      let hasImportedGuestFavorites = false
+      try { hasImportedGuestFavorites = localStorage.getItem(importedGuestKey) !== null } catch { /* continúa con favoritos en memoria */ }
+      const newGuestFavorites = guestFavorites.filter(key => !importedGuestFavorites.includes(key))
+      const removedGuestFavorites = importedGuestFavorites.filter(key => !guestFavorites.includes(key))
+      let mergedFavorites = hasImportedGuestFavorites
+        ? [...new Set([...favoriteIdsRef.current, ...newGuestFavorites])]
+        : [...new Set([...cachedAccountFavorites, ...guestFavorites, ...favoriteIdsRef.current])]
+      try {
+        const serverFavorites = await getCustomerFavorites()
+        if (!active || sequence !== favoriteSyncSequence.current) return
+        mergedFavorites = hasImportedGuestFavorites
+          ? [...new Set([...serverFavorites, ...newGuestFavorites])].filter(key => !removedGuestFavorites.includes(key))
+          : [...new Set([...serverFavorites, ...mergedFavorites])]
+        const syncedFavorites = await syncCustomerFavorites(mergedFavorites)
+        if (!active || sequence !== favoriteSyncSequence.current) return
+        mergedFavorites = syncedFavorites
+        try { localStorage.setItem(importedGuestKey, JSON.stringify(guestFavorites)) } catch { /* la sincronización remota ya quedó guardada */ }
+        setFavoriteSyncReady(true)
+      } catch {
+        if (!active || sequence !== favoriteSyncSequence.current) return
+        // Mantiene visibles los favoritos del dispositivo y los de esta cuenta;
+        // el efecto de persistencia vuelve a intentar la sincronización.
+      }
+      setFavoriteAccountId(userId)
+      setFavoriteIds(mergedFavorites)
+      setFavoriteStorageMode('account')
+    }
+    const { data } = customerClient.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => { void applySession(session?.user.id ?? null) }, 0)
+    })
+    const refreshFavorites = () => {
+      if (document.visibilityState === 'hidden') return
+      void customerClient.auth.getSession().then(({ data: sessionData }) => applySession(sessionData.session?.user.id ?? null)).catch(() => undefined)
+    }
+    void customerClient.auth.getSession().then(({ data: sessionData }) => applySession(sessionData.session?.user.id ?? null)).catch(() => applySession(null))
+    window.addEventListener('focus', refreshFavorites)
+    window.addEventListener('pageshow', refreshFavorites)
+    document.addEventListener('visibilitychange', refreshFavorites)
+    return () => {
+      active = false
+      data.subscription.unsubscribe()
+      window.removeEventListener('focus', refreshFavorites)
+      window.removeEventListener('pageshow', refreshFavorites)
+      document.removeEventListener('visibilitychange', refreshFavorites)
+    }
+  }, [])
   useEffect(() => {
     if (restoringFlow.current) return
     localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
@@ -1482,7 +1662,7 @@ export function PublicMenu() {
   const startNewOrder = () => {
     addressActionRef.current += 1
     setLocating(false)
-    setCart([])
+    commitCart([])
     setName('')
     setPhone('')
     setIdentification('')
@@ -1515,11 +1695,16 @@ export function PublicMenu() {
     const activeProducts = new Map(catalog.filter(product => product.active).map(product => [product.id, product]))
     const nextCart: WebOrderCartItem[] = []
     const unavailable: string[] = []
+    let cartLimitViolation: PublicCartLimitViolation | null = null
 
     for (const historicalItem of previousOrder.items) {
       const product = activeProducts.get(historicalItem.productId)
-      if (!historicalItem.available || !product || !Number.isInteger(historicalItem.quantity) || historicalItem.quantity < 1 || historicalItem.quantity > 30) {
+      if (!historicalItem.available || !product || !Number.isInteger(historicalItem.quantity) || historicalItem.quantity < 1) {
         unavailable.push(historicalItem.productName || 'Un producto del pedido')
+        continue
+      }
+      if (historicalItem.quantity > PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION) {
+        cartLimitViolation = 'presentation-quantity'
         continue
       }
 
@@ -1543,18 +1728,21 @@ export function PublicMenu() {
       }
       const existingLine = nextCart.find(item => cartLineKey(item) === cartLineKey(restoredItem))
       if (existingLine) {
-        if (existingLine.quantity + restoredItem.quantity > 30) {
-          unavailable.push(historicalItem.productName || product.name)
-          continue
-        }
         existingLine.quantity += restoredItem.quantity
-      } else if (nextCart.length < 40) nextCart.push(restoredItem)
-      else unavailable.push(historicalItem.productName || product.name)
+      } else if (nextCart.length < PUBLIC_ORDER_MAX_DISTINCT_LINES + 1) nextCart.push(restoredItem)
+      const violation = getPublicCartLimitViolation(nextCart)
+      if (violation) cartLimitViolation = violation
+    }
+
+    if (cartLimitViolation) {
+      throw new Error(cartLimitViolation === 'presentation-quantity'
+        ? 'Ese pedido supera el límite de 30 unidades de una misma presentación. No cambiamos tu carrito actual; ajusta la cantidad antes de volver a intentarlo.'
+        : 'Ese pedido supera el límite de 40 productos distintos. No cambiamos tu carrito actual; repítelo en pedidos separados desde el menú.')
     }
 
     if (!nextCart.length) throw new Error('Los productos de ese pedido ya no están disponibles con las mismas opciones. Puedes volver a agregarlos desde el menú.')
 
-    setCart(nextCart)
+    commitCart(nextCart)
     setProducts(catalog.filter(product => !product.categories.includes('extras')))
     setExtrasProducts(catalog.filter(product => product.categories.includes('extras')))
     customerDetailsTouched.current = true
@@ -1606,6 +1794,13 @@ export function PublicMenu() {
     }, 360)
   }
   const requireCart = () => {
+    const cartLimitViolation = getPublicCartLimitViolation(cart)
+    if (cartLimitViolation) {
+      setError(cartLimitViolation === 'presentation-quantity'
+        ? 'Tu carrito supera las 30 unidades de una misma presentación. Reduce la cantidad; no se ha eliminado ningún producto.'
+        : 'Tu carrito supera los 40 productos distintos. Quita productos para continuar; no se ha eliminado ningún producto.')
+      return false
+    }
     if (cart.length > 0) return true
     setCartGuardMessage('Agrega un producto para continuar.')
     setCartGuardClosing(false)
@@ -1639,32 +1834,36 @@ export function PublicMenu() {
     }, 1800)
   }
 
-  const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0, modifiers: WebOrderCartItem['modifiers'] = []) => {
+  const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0, modifiers: WebOrderCartItem['modifiers'] = [], closeDetailAfterAdd = true) => {
+    if (blockClosedStoreAdd()) return false
     const imageUrl = optimizedProductImage(product.imageUrl) || undefined
     const linePrice = product.price + extrasPrice
     const prospectiveLine = { productId: product.id, notes, modifiers }
     const prospectiveKey = cartLineKey(prospectiveLine)
-    const existingLine = cart.find(item => cartLineKey(item) === prospectiveKey)
-    if (!existingLine && cart.length >= 40) {
-      setError('Tu pedido llegó al máximo de 40 productos distintos. Quita uno para agregar otro.')
-      return false
-    }
-    if ((existingLine?.quantity ?? 0) + quantity > 30) {
-      setError('Puedes pedir hasta 30 unidades de una misma presentación.')
+    const currentCart = cartRef.current
+    const existingLine = currentCart.find(item => cartLineKey(item) === prospectiveKey)
+    const candidateCart = existingLine
+      ? currentCart.map(item => cartLineKey(item) === prospectiveKey ? { ...item, quantity: item.quantity + quantity } : item)
+      : [...currentCart, { productId: product.id, productName: formatProductTitle(product.name), price: linePrice, quantity, imageUrl, notes: notes || undefined, modifiers }]
+    const cartLimitViolation = getPublicCartLimitViolation(candidateCart)
+    if (cartLimitViolation) {
+      setError(cartLimitViolation === 'presentation-quantity'
+        ? 'Puedes pedir hasta 30 unidades de una misma presentación. Reduce la cantidad para continuar; tu pedido se conserva.'
+        : 'Tu pedido ya tiene 40 productos distintos. Quita un producto para hacer espacio; lo que ya agregaste se conserva.')
       return false
     }
     showAddedFeedback(product, imageUrl)
     setCartPulse(true)
     if (cartPulseTimer.current) window.clearTimeout(cartPulseTimer.current)
     cartPulseTimer.current = setTimeout(() => setCartPulse(false), 520)
-    setCart(current => {
+    commitCart(current => {
       const key = prospectiveKey
       const existing = current.find(item => cartLineKey(item) === key)
       return existing
         ? current.map(item => cartLineKey(item) === key ? { ...item, quantity: item.quantity + quantity } : item)
         : [...current, { productId: product.id, productName: formatProductTitle(product.name), price: linePrice, quantity, imageUrl, notes: notes || undefined, modifiers }]
     })
-    closeProductDetail()
+    if (closeDetailAfterAdd) closeProductDetail()
     return true
   }
 
@@ -1680,6 +1879,7 @@ export function PublicMenu() {
   }
 
   const requestQuickAdd = async (group: MenuProductGroup, quantity = 1) => {
+    if (blockClosedStoreAdd()) return
     if (group.variants.length <= 1) {
       const product = group.variants[0]?.product
       if (product) {
@@ -1728,6 +1928,7 @@ export function PublicMenu() {
   }
 
   const confirmQuickVariant = async () => {
+    if (blockClosedStoreAdd()) return
     const variant = quickVariantGroup?.variants.find(({ product }) => product.id === quickVariantId)
     if (!variant || !quickVariantGroup || quickVariantConfirmRef.current) return
     quickVariantConfirmRef.current = true
@@ -1772,24 +1973,28 @@ export function PublicMenu() {
 
   const [deletingKeys, setDeletingKeys] = useState<string[]>([])
   const updateQuantity = (itemKey: string, delta: number, legacyNotes?: string) => {
-    const target = cart.find(item => cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || '')))
-    if (target && target.quantity + delta > 30) {
-      setError('Puedes pedir hasta 30 unidades de una misma presentación.')
+    const target = cartRef.current.find(item => cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || '')))
+    const candidateCart = cartRef.current
+      .map(item => (cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || ''))) ? { ...item, quantity: item.quantity + delta } : item)
+      .filter(item => item.quantity > 0)
+    const cartLimitViolation = getPublicCartLimitViolation(candidateCart)
+    if (delta > 0 && cartLimitViolation) {
+      setError(cartLimitViolation === 'presentation-quantity'
+        ? 'Puedes pedir hasta 30 unidades de una misma presentación. Reduce la cantidad para continuar; tu pedido se conserva.'
+        : 'Tu pedido ya tiene 40 productos distintos. Quita un producto para hacer espacio; lo que ya agregaste se conserva.')
       return
     }
     if (target && cart.length === 1 && target.quantity + delta <= 0 && cartOpen && step === 'cart') {
       const targetKey = cartLineKey(target)
       setClosingCart(true)
       window.setTimeout(() => {
-        setCart(current => current.filter(item => cartLineKey(item) !== targetKey))
+        commitCart(current => current.filter(item => cartLineKey(item) !== targetKey))
         setCartOpen(false)
         setClosingCart(false)
       }, 360)
       return
     }
-    setCart(current => current
-      .map(item => (cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || ''))) ? { ...item, quantity: item.quantity + delta } : item)
-      .filter(item => item.quantity > 0))
+    commitCart(candidateCart)
   }
 
   const handleRemoveSidebarItem = (itemKey: string, qty: number) => {
@@ -1935,13 +2140,28 @@ export function PublicMenu() {
   const selectedCatalogExtrasTotal = catalogAddOnProducts.reduce((sum, product) => sum + product.price * (selectedCatalogExtras[product.id] ?? 0), 0)
   const invalidModifierSelection = hasInvalidModifierSelection(detailModifierGroups, selectedExtras)
   const modifierSelectionError = getModifierSelectionError(detailModifierGroups, selectedExtras)
+  const proteinSwapGroup = proteinSwapSourceId
+    ? detailModifierGroups.find(group => isIncludedProteinGroup(group) && group.options.some(option => option.id === proteinSwapSourceId && (selectedExtras[option.id] ?? 0) > 0))
+    : undefined
+  const proteinSwapSource = proteinSwapGroup?.options.find(option => option.id === proteinSwapSourceId)
+  const proteinSwapChoices = proteinSwapGroup?.options.filter(option => option.id !== proteinSwapSourceId) ?? []
+  const dismissProteinSwap = () => {
+    if (closingProteinSwap) return
+    setClosingProteinSwap(true)
+    window.setTimeout(() => {
+      setProteinSwapSourceId(null)
+      setClosingProteinSwap(false)
+    }, 180)
+  }
   const completeProteinSwap = (currentOptionId: string, replacementOptionId: string) => {
     setSelectedExtras(current => replaceIncludedProteinPortion(current, currentOptionId, replacementOptionId))
-    setProteinSwapSourceId(null)
     setModifierValidationError('')
+    dismissProteinSwap()
   }
 
   const addSelectedProduct = () => {
+    if (addingSelectedProductRef.current) return
+    if (!editingCartLineKey && blockClosedStoreAdd()) return
     if (selectedProduct) {
       if (loadingModifiers) return
       if (modifierLoadError) {
@@ -1949,7 +2169,9 @@ export function PublicMenu() {
         return
       }
       if (modifierSelectionError) {
-        setModifierValidationError('')
+        setModifierValidationError(modifierSelectionError.options.length
+          ? `Falta una opción obligatoria en “${formatSpanishText(modifierSelectionError.name)}”. Elígela arriba para agregar este plato.`
+          : `“${formatSpanishText(modifierSelectionError.name)}” no tiene opciones disponibles. Elige otro producto o contacta al local.`)
         requiredModifierRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
         requiredModifierRef.current?.querySelector<HTMLButtonElement>('.ppdm-chip:not(:disabled)')?.focus({ preventScroll: true })
         return
@@ -1958,6 +2180,11 @@ export function PublicMenu() {
         setModifierValidationError('Algunas opciones guardadas ya no están disponibles. Límpialas o vuelve al carrito y agrega este producto nuevamente.')
         return
       }
+      const isAddingNewProduct = !editingCartLineKey
+      if (isAddingNewProduct) {
+        addingSelectedProductRef.current = true
+        setAddingSelectedProduct(true)
+      }
       const chosen = detailModifierGroups.flatMap(group => group.options.filter(option => (selectedExtras[option.id] ?? 0) > 0).map(option => ({ option, quantity: selectedExtras[option.id] })))
       const extrasPrice = chosen.reduce((sum, item) => sum + item.option.price * item.quantity, 0)
       const extras = chosen.map(({ option, quantity }) => `${option.name}${quantity > 1 ? ` ×${quantity}` : ''}${option.price > 0 ? ` (+${money(option.price * quantity)})` : ''}`)
@@ -1965,20 +2192,31 @@ export function PublicMenu() {
       const modifiers = chosen.map(({ option, quantity }) => ({ optionId: option.id, quantity: quantity ?? 1 }))
       if (!editingCartLineKey) {
         const mainKey = cartLineKey({ productId: selectedProduct.id, notes: lineNotes, modifiers })
-        const mainExisting = cart.find(item => cartLineKey(item) === mainKey)
+        const currentCart = cartRef.current
+        const mainExisting = currentCart.find(item => cartLineKey(item) === mainKey)
         const picked = catalogAddOnProducts.filter(product => (selectedCatalogExtras[product.id] ?? 0) > 0)
         const extraRows = picked.map(product => {
           const notes = `Acompañamiento de ${formatProductTitle(selectedProduct.name)}`
           const key = cartLineKey({ productId: product.id, notes, modifiers: [] })
-          return { key, quantity: detailQuantity * (selectedCatalogExtras[product.id] ?? 0), existing: cart.find(item => cartLineKey(item) === key) }
+          const samePresentationQuantity = currentCart
+            .filter(item => item.productId === product.id)
+            .reduce((sum, item) => sum + item.quantity, 0)
+          return { key, quantity: detailQuantity * (selectedCatalogExtras[product.id] ?? 0), samePresentationQuantity, existing: currentCart.find(item => cartLineKey(item) === key) }
         })
-        if ((mainExisting?.quantity ?? 0) + detailQuantity > 30 || extraRows.some(row => (row.existing?.quantity ?? 0) + row.quantity > 30)) {
-          setModifierValidationError('La cantidad de algún producto superaría el máximo de 30 unidades por línea.')
+        const mainPresentationQuantity = currentCart
+          .filter(item => item.productId === selectedProduct.id)
+          .reduce((sum, item) => sum + item.quantity, 0)
+        if (mainPresentationQuantity + detailQuantity > PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION || extraRows.some(row => row.samePresentationQuantity + row.quantity > PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION)) {
+          setModifierValidationError('Puedes pedir hasta 30 unidades por presentación. Reduce la cantidad o los extras para guardar; tu carrito no cambiará.')
+          addingSelectedProductRef.current = false
+          setAddingSelectedProduct(false)
           return
         }
         const newRows = Number(!mainExisting) + extraRows.filter(row => !row.existing).length
-        if (cart.length + newRows > 40) {
-          setModifierValidationError('Tu pedido llegó al máximo de 40 productos distintos. Quita uno para agregar estos extras.')
+        if (currentCart.length + newRows > PUBLIC_ORDER_MAX_DISTINCT_LINES) {
+          setModifierValidationError('Tu pedido ya tiene 40 productos distintos. Quita uno desde el carrito para hacer espacio; no perderás lo agregado.')
+          addingSelectedProductRef.current = false
+          setAddingSelectedProduct(false)
           return
         }
       }
@@ -1986,40 +2224,62 @@ export function PublicMenu() {
         const imageUrl = optimizedProductImage(selectedProduct.imageUrl) || undefined
         const editedLine = { productId: selectedProduct.id, productName: formatProductTitle(selectedProduct.name), price: selectedProduct.price + extrasPrice, quantity: detailQuantity, imageUrl, notes: lineNotes || undefined, modifiers }
         const pickedCatalogExtras = catalogAddOnProducts.filter(product => (selectedCatalogExtras[product.id] ?? 0) > 0)
-        setCart(current => {
-          const editedProductName = formatProductTitle(selectedProduct.name)
-          const originalLine = current.find(item => cartLineKey(item) === editingCartLineKey)
-          const previousAccompanimentPrefix = originalLine ? `Acompañamiento de ${formatProductTitle(originalLine.productName)}` : ''
-          const accompanimentPrefix = `Acompañamiento de ${editedProductName}`
-          const withoutPreviousLineAndExtras = current.filter(item =>
-            cartLineKey(item) !== editingCartLineKey &&
-            !(item.notes === previousAccompanimentPrefix)
-          )
-          const next = [...withoutPreviousLineAndExtras, editedLine]
-          for (const product of pickedCatalogExtras) {
-            const notes = accompanimentPrefix
-            const quantity = detailQuantity * (selectedCatalogExtras[product.id] ?? 0)
-            const key = cartLineKey({ productId: product.id, notes, modifiers: [] })
-            const existing = next.find(item => cartLineKey(item) === key)
-            if (existing) {
-              const updated = { ...existing, quantity: existing.quantity + quantity }
-              next.splice(next.indexOf(existing), 1, updated)
-            } else {
-              next.push({ productId: product.id, productName: formatProductTitle(product.name), price: product.price, quantity, imageUrl: optimizedProductImage(product.imageUrl) || undefined, notes, modifiers: [] })
-            }
+        const currentCart = cartRef.current
+        const originalLine = currentCart.find(item => cartLineKey(item) === editingCartLineKey)
+        if (!originalLine) {
+          setModifierValidationError('No encontramos ese producto en tu carrito. No se guardó ningún cambio.')
+          return
+        }
+        const previousAccompanimentPrefix = `Acompañamiento de ${formatProductTitle(originalLine.productName)}`
+        const accompanimentPrefix = `Acompañamiento de ${formatProductTitle(selectedProduct.name)}`
+        const nextCart = [
+          ...currentCart.filter(item => cartLineKey(item) !== editingCartLineKey && item.notes !== previousAccompanimentPrefix),
+          editedLine,
+        ]
+        for (const product of pickedCatalogExtras) {
+          const notes = accompanimentPrefix
+          const quantity = detailQuantity * (selectedCatalogExtras[product.id] ?? 0)
+          const key = cartLineKey({ productId: product.id, notes, modifiers: [] })
+          const existingIndex = nextCart.findIndex(item => cartLineKey(item) === key)
+          if (existingIndex >= 0) {
+            nextCart[existingIndex] = { ...nextCart[existingIndex], quantity: nextCart[existingIndex].quantity + quantity }
+          } else {
+            nextCart.push({ productId: product.id, productName: formatProductTitle(product.name), price: product.price, quantity, imageUrl: optimizedProductImage(product.imageUrl) || undefined, notes, modifiers: [] })
           }
-          return next
-        })
+        }
+        const cartLimitViolation = getPublicCartLimitViolation(nextCart)
+        if (cartLimitViolation) {
+          setModifierValidationError(cartLimitViolation === 'presentation-quantity'
+            ? 'Puedes pedir hasta 30 unidades por presentación. Reduce la cantidad o los extras para guardar; tu carrito no cambiará.'
+            : 'Tu pedido permite hasta 40 productos distintos. Quita uno desde el carrito antes de guardar; tus productos actuales se conservarán.')
+          return
+        }
+        commitCart(nextCart)
         setEditingCartLineKey(null)
         closeProductDetail()
-        setReturnToConfirmAfterEdit(true)
-        setCartOpen(true)
-        setStep('confirm')
+        const returnToReviewAfterEdit = returnToConfirmAfterEdit
+        setReturnToConfirmAfterEdit(false)
+        // Deja que termine la salida del editor antes de volver a montar el
+        // contenido del carrito/recibo. Si se cambia el paso durante esos 220ms,
+        // ambas vistas y sus animaciones se pisan en escritorio.
+        window.setTimeout(() => {
+          setClosingCart(false)
+          setStep(returnToReviewAfterEdit ? 'confirm' : 'cart')
+          const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+          // En escritorio el carrito normal ya vive en la página; abrir encima
+          // otro drawer duplica visualmente filas y recomendaciones al regresar.
+          setCartOpen(!isDesktop || returnToReviewAfterEdit)
+        }, 240)
       } else {
-        addProduct(selectedProduct, detailQuantity, lineNotes, extrasPrice, modifiers)
+        const added = addProduct(selectedProduct, detailQuantity, lineNotes, extrasPrice, modifiers, false)
+        if (!added) {
+          addingSelectedProductRef.current = false
+          setAddingSelectedProduct(false)
+          return
+        }
         const pickedCatalogExtras = catalogAddOnProducts.filter(product => (selectedCatalogExtras[product.id] ?? 0) > 0)
         if (pickedCatalogExtras.length) {
-          setCart(current => {
+          commitCart(current => {
             let next = [...current]
             for (const product of pickedCatalogExtras) {
               const notes = `Acompañamiento de ${formatProductTitle(selectedProduct.name)}`
@@ -2032,6 +2292,10 @@ export function PublicMenu() {
             return next
           })
         }
+        window.setTimeout(() => {
+          addingSelectedProductRef.current = false
+          setAddingSelectedProduct(false)
+        }, 450)
       }
     }
   }
@@ -2039,9 +2303,10 @@ export function PublicMenu() {
   const editCartItem = (item: WebOrderCartItem) => {
     const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId))
     if (!group) return
+    const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
     setEditingCartLineKey(cartLineKey(item))
-    setReturnToConfirmAfterEdit(true)
-    setCartOpen(true)
+    setReturnToConfirmAfterEdit(step === 'confirm')
+    setCartOpen(!isDesktop)
     setStep('cart')
     const savedModifiers = item.modifiers?.length
       ? Object.fromEntries(item.modifiers.map(modifier => [modifier.optionId, modifier.quantity]))
@@ -2066,8 +2331,12 @@ export function PublicMenu() {
   }
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) return setError('Tu navegador no soporta geolocalización.')
+    if (!navigator.geolocation) {
+      setLocationError('Este navegador no permite obtener tu ubicación automáticamente. Puedes buscar tu dirección o elegir el punto en el mapa.')
+      return
+    }
     setError('')
+    setLocationError('')
     const requestId = ++addressActionRef.current
     if (addressSearchTimer.current) clearTimeout(addressSearchTimer.current)
     setLocating(true)
@@ -2077,6 +2346,7 @@ export function PublicMenu() {
         const { latitude: lat, longitude: lng } = pos.coords
         setGeoCoords({ lat, lng })
         setAddressMethod('gps')
+        setLocationError('')
         setAddressFieldError('')
         try {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
@@ -2091,13 +2361,23 @@ export function PublicMenu() {
         } catch { /* silently keep coordinates */ }
         if (addressActionRef.current === requestId) setLocating(false)
       },
-      () => { if (addressActionRef.current === requestId) { setLocating(false); setError('No pudimos ubicarte automáticamente. Puedes buscar tu dirección o elegirla directamente en el mapa.') } },
+      (positionError) => {
+        if (addressActionRef.current !== requestId) return
+        setLocating(false)
+        const message = positionError.code === positionError.PERMISSION_DENIED
+          ? 'No diste permiso para compartir tu ubicación. Puedes buscar tu dirección o elegir el punto en el mapa.'
+          : positionError.code === positionError.POSITION_UNAVAILABLE
+            ? 'El dispositivo no pudo determinar tu ubicación. Puedes buscar tu dirección o elegir el punto en el mapa.'
+            : 'La ubicación tardó demasiado en responder. Puedes buscar tu dirección o elegir el punto en el mapa.'
+        setLocationError(message)
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }
 
   const searchAddress = (query: string) => {
     setError('')
+    setLocationError('')
     const requestId = ++addressActionRef.current
     setLocating(false)
     setAddress(query)
@@ -2135,6 +2415,7 @@ export function PublicMenu() {
 
   const selectSuggestion = (s: { display_name: string; lat: string; lon: string }) => {
     setError('')
+    setLocationError('')
     addressActionRef.current += 1
     setLocating(false)
     setAddress(s.display_name.length > 120 ? s.display_name.substring(0, 120) + '…' : s.display_name)
@@ -2147,6 +2428,7 @@ export function PublicMenu() {
 
   const selectMapLocation = async (coordinates: MapCoordinates) => {
     setError('')
+    setLocationError('')
     const requestId = ++addressActionRef.current
     setLocating(false)
     setGeoCoords(coordinates)
@@ -2168,6 +2450,7 @@ export function PublicMenu() {
     if (address.trim().length < 8) return setAddressFieldError('address')
     if (!geoCoords) return setAddressFieldError('geo')
     if (orderType === 'delivery' && !addressReference.trim()) return setAddressFieldError('reference')
+    if (orderType === 'delivery' && (deliverySettingsStatus !== 'ready' || deliveryCoverageUnavailable)) return
     setAddressFieldError('')
     setStep('details')
   }
@@ -2286,7 +2569,7 @@ export function PublicMenu() {
           const current = result.items?.find(line => line.lineNumber === index + 1 && line.productId === item.productId)
           return current ? { ...item, price: current.unitPrice } : item
         })
-        setCart(repricedCart)
+        commitCart(repricedCart)
         if (orderType === 'delivery' && result.deliveryFee != null && geoCoords) {
           setServerDeliveryFeeOverride({ lat: geoCoords.lat, lng: geoCoords.lng, fee: result.deliveryFee })
         }
@@ -2302,7 +2585,7 @@ export function PublicMenu() {
       })
       const serverSubtotal = result.subtotal ?? pricedCart.reduce((sum, item) => sum + item.price * item.quantity, 0)
       const serverDeliveryFee = result.deliveryFee ?? Math.max(0, result.total - serverSubtotal)
-      setCart(pricedCart)
+      commitCart(pricedCart)
       try { localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(pricedCart)) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
       checkoutAttemptRef.current = null
       try { sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY) } catch { /* storage unavailable */ }
@@ -2556,9 +2839,9 @@ export function PublicMenu() {
             {/* Desktop Right Status Badges */}
             <div className="public-top-bar-right desktop-only">
               <div className="public-nav-status-badges">
-                <div className="public-nav-status-pill">
+                <div className={`public-nav-status-pill${isStoreOpen ? '' : ' is-closed'}`}>
                   <span className="public-nav-status-dot" />
-                  <span>Abierto hoy</span>
+                  <span>{isStoreOpen ? 'Abierto hoy · hasta las 10:00 p. m.' : `Cerrado · ${storeClock.reopeningMessage.toLowerCase()}`}</span>
                 </div>
                 {bcvRate && (
                   <div className="public-nav-bcv-pill" title="Tasa oficial del Banco Central de Venezuela">
@@ -2591,25 +2874,21 @@ export function PublicMenu() {
             )}
           </div>
           <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
-            <i /> <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>{isStoreOpen ? ' hasta las 10:00 PM' : ' · abre a las 11:00 AM'}
+            <i /> <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>{isStoreOpen ? ' · hasta las 10:00 p. m.' : ` · ${storeClock.reopeningMessage.toLowerCase()}`}
           </span>
-          <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) setShowSearch(true) }}>
+          <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) { heroSearchRef.current?.focus(); setShowSearch(true) } }}>
             <Search size={16} />
-            {showSearch ? (
-              <>
-                <input
-                  ref={heroSearchRef}
-                  placeholder="Busca Arroz, combos, pollo..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  onClick={e => e.stopPropagation()}
-                />
-                {search && <button className="public-search-pill-clear" onClick={() => setSearch('')}><X size={14}/></button>}
-                <button className="public-search-pill-cancel" onClick={closeSearch}>Cancelar</button>
-              </>
-            ) : (
-              <span>Busca Arroz, combos, pollo...</span>
-            )}
+            <span className="public-hero-search-placeholder" aria-hidden={showSearch}>Busca Arroz, combos, pollo...</span>
+            <input
+              ref={heroSearchRef}
+              aria-label="Buscar en el menú"
+              tabIndex={showSearch ? 0 : -1}
+              placeholder={showSearch ? 'Busca Arroz, combos, pollo...' : ''}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {showSearch && search && <button type="button" className="public-search-pill-clear" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14}/></button>}
+            {showSearch && <button type="button" className="public-search-pill-cancel" onClick={closeSearch}>Cancelar</button>}
           </div>
         </div>
 
@@ -2721,7 +3000,7 @@ export function PublicMenu() {
             </div>
           </div>
 
-          {error && products.length > 0 && <Toast type="error" message={error} onClose={() => setError('')} />}
+          {error && products.length > 0 && !cartOpen && <Toast type="error" message={error} onClose={() => setError('')} />}
           {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
             <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
               {visibleGroups.length === 0 ? (
@@ -2893,7 +3172,7 @@ export function PublicMenu() {
           </div>
         )}
 
-        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} /></div>}
+        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></div>}
 
         {/* Bottom Tab Bar */}
         <nav className="public-mobile-tab-bar">
@@ -3471,7 +3750,7 @@ export function PublicMenu() {
             </section>
           )}
 
-          {currentTab === 'perfil' && <CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} />}
+          {currentTab === 'perfil' && <CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} />}
 
         </div>
 
@@ -3535,23 +3814,28 @@ export function PublicMenu() {
                         <div className="public-sidebar-item-info">
                           <strong>{cartProductName(item.productName)}</strong>
                           <span className="public-sidebar-item-price">{money(item.price * item.quantity)}</span>
-                          <div className="public-sidebar-stepper">
-                            <button 
-                              type="button" 
-                              onClick={() => {
-                                if (item.quantity === 1) {
-                                  handleRemoveSidebarItem(lineKey, 1)
-                                } else {
-                                  updateQuantity(lineKey, -1)
-                                }
-                              }} 
-                              aria-label="Disminuir"
-                            >
-                              {item.quantity === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
-                            </button>
-                            <span key={item.quantity} className="public-stepper-num">{item.quantity}</span>
-                            <button type="button" onClick={() => updateQuantity(lineKey, 1)} aria-label="Aumentar">
-                              <Plus size={12} />
+                          <div className="public-sidebar-item-actions">
+                            <div className="public-sidebar-stepper">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (item.quantity === 1) {
+                                    handleRemoveSidebarItem(lineKey, 1)
+                                  } else {
+                                    updateQuantity(lineKey, -1)
+                                  }
+                                }}
+                                aria-label="Disminuir"
+                              >
+                                {item.quantity === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
+                              </button>
+                              <span key={item.quantity} className="public-stepper-num">{item.quantity}</span>
+                              <button type="button" onClick={() => updateQuantity(lineKey, 1)} aria-label="Aumentar">
+                                <Plus size={12} />
+                              </button>
+                            </div>
+                            <button type="button" className="public-sidebar-edit" onClick={() => editCartItem(item)} aria-label={`Editar ${cartProductName(item.productName)}`}>
+                              <Pencil size={12} /> <span>Editar</span>
                             </button>
                           </div>
                         </div>
@@ -3887,7 +4171,7 @@ export function PublicMenu() {
                     const includedPortions = group.maxSelections ?? group.minSelections
                     const requiredGroup = !proteinGroup && group.minSelections > 0
                     const groupError = requiredGroup && modifierSelectionError?.modifierId === group.modifierId
-                    return <div ref={requiredGroup ? requiredModifierRef : undefined} className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}${requiredGroup ? ' ppdm-modifier-group--required' : ''}${groupError ? ' has-selection-error' : ''}`} key={group.modifierId}>
+                    return <div ref={requiredGroup ? requiredModifierRef : undefined} className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}${requiredGroup ? ' ppdm-modifier-group--required' : ''}${groupError ? ' has-selection-error' : ''}${groupError && modifierValidationError ? ' has-selection-alert' : ''}`} key={group.modifierId}>
                       {proteinGroup ? <>
                         <div className="ppdm-section-header">
                           <h3>Proteínas incluidas</h3>
@@ -3908,21 +4192,6 @@ export function PublicMenu() {
                             </button>}
                           </div>
                         })}</div>
-                        {proteinSwapSourceId && group.options.some(option => option.id === proteinSwapSourceId && (selectedExtras[option.id] ?? 0) > 0) && (() => {
-                          const sourceOption = group.options.find(option => option.id === proteinSwapSourceId)!
-                          return <div className="ppdm-protein-swap" role="group" aria-label={`Cambiar una porción de ${sourceOption.name}`}>
-                            <div className="ppdm-protein-swap-heading"><strong>Reemplaza 1 porción de {sourceOption.name}</strong><span>Elige otra proteína</span></div>
-                            <div className="ppdm-protein-swap-options">{group.options.filter(option => option.id !== sourceOption.id).map(option => {
-                              const imageUrl = proteinOptionImage(extrasProducts, option.name)
-                              return <button type="button" key={option.id} onClick={() => completeProteinSwap(sourceOption.id, option.id)}>
-                                {imageUrl ? <img src={imageUrl} alt="" loading="lazy" decoding="async" /> : <span className="ppdm-protein-swap-image-fallback">🥢</span>}
-                                <span className="ppdm-protein-swap-option-copy"><strong>{formatSpanishText(option.name)}</strong>{option.price > 0 && <small>+{money(option.price)} por porción</small>}</span>
-                                <span className="ppdm-protein-swap-select">Elegir</span>
-                              </button>
-                            })}</div>
-                            <button type="button" className="ppdm-protein-swap-cancel" onClick={() => setProteinSwapSourceId(null)}>Cancelar</button>
-                          </div>
-                        })()}
                       </> : <>
                         <div className="ppdm-section-header"><h3>{formatSpanishText(group.name)} <small>{group.minSelections > 0 ? `· Elige ${group.minSelections === 1 ? '1 opción' : `al menos ${group.minSelections}`}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{group.minSelections > 0 ? 'Obligatorio · ' : ''}{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
                         {groupError && <p className="ppdm-required-group-error" role="alert">Elige una opción de {formatSpanishText(group.name)} para continuar.</p>}
@@ -3931,7 +4200,7 @@ export function PublicMenu() {
                           const active = selectedCount > 0
                           const countReached = group.maxSelections !== null && count >= group.maxSelections
                           return <button type="button" className={`ppdm-chip ${active ? 'active' : ''}`} key={option.id} aria-pressed={active}
-                            disabled={!active && (countReached || (group.allowRepeat && selectedCount >= 30))}
+                            disabled={!active && (countReached || (group.allowRepeat && selectedCount >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION))}
                             onClick={() => {
                               setModifierValidationError('')
                               setSelectedExtras(current => {
@@ -3967,7 +4236,7 @@ export function PublicMenu() {
                         <div><strong>{extraTitleDetail ? <><span>{formatProductTitle(extraTitleLead)}</span><span>— {formatProductTitle(extraTitleDetail)}</span></> : formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong><small>por unidad</small></span></div>
                         {quantity === 0
                           ? <button type="button" className="ppdm-catalog-extra-add" onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}>Agregar <Plus size={14} /></button>
-                          : <div className="ppdm-catalog-extra-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= 30} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(30, quantity + 1) }))}><Plus size={14} /></button></div>}
+                          : <div className="ppdm-catalog-extra-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, quantity + 1) }))}><Plus size={14} /></button></div>}
                       </div>
                     })}
                   </div>
@@ -3985,7 +4254,7 @@ export function PublicMenu() {
                         <div className="ppdm-complementary-copy"><strong>{formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong></span></div>
                         {quantity === 0
                           ? <button type="button" className="ppdm-complementary-add" aria-label={`Agregar ${product.name} al pedido`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}><Plus size={16} /> Agregar</button>
-                          : <div className="ppdm-complementary-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= 30} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(30, quantity + 1) }))}><Plus size={14} /></button></div>}
+                          : <div className="ppdm-complementary-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, quantity + 1) }))}><Plus size={14} /></button></div>}
                       </div>
                     })}
                   </div>
@@ -3994,17 +4263,42 @@ export function PublicMenu() {
               {modifierSelectionError?.options.length === 0 && <p className="ppdm-modifier-error" role="alert"><span className="ppdm-error-group-name">“{formatSpanishText(modifierSelectionError.name)}”</span> no tiene opciones disponibles. Elige otro producto o contacta al local.</p>}
               {invalidModifierSelection && <p className="ppdm-modifier-error" role="alert">Algunas opciones guardadas ya no están disponibles. <button type="button" onClick={() => { setSelectedExtras({}); setModifierValidationError('') }}>Limpiar opciones anteriores</button></p>}
               {modifierLoadError && <p className="ppdm-modifier-error" role="alert">No pudimos cargar las opciones de este producto. Inténtalo de nuevo.</p>}
-              {modifierValidationError && <p className="ppdm-modifier-error" role="alert">{modifierValidationError}</p>}
-              <label className="ppdm-instructions-field">Indicaciones <small>(opcional)</small><textarea value={detailNotes} maxLength={160} onChange={event => setDetailNotes(event.target.value)} placeholder="Ej. Sin cebollín, por favor…" /><span>{detailNotes.length}/160</span></label>
+              <label className="ppdm-instructions-field">Indicaciones <small>(opcional)</small><textarea ref={detailNotesRef} value={detailNotes} maxLength={160} onChange={event => setDetailNotes(event.target.value)} placeholder="Ej. Sin cebollín, por favor…" aria-label="Indicaciones para este plato (máximo 160 caracteres)" />{detailNotes.length === 160 && <span className="ppdm-instructions-limit-notice" role="status" aria-live="polite">Llegaste al límite de 160 caracteres; ya no puedes escribir más.</span>}<span className={detailNotes.length === 160 ? 'is-at-limit' : ''}>{detailNotes.length}/160</span></label>
             </div>
             <footer className="ppdm-footer">
+              {modifierValidationError && <p className="ppdm-footer-feedback" id="ppdm-add-feedback" role="alert" aria-live="assertive"><CircleAlert size={17} aria-hidden="true" /><span>{modifierValidationError}</span></p>}
               <div className="ppdm-qty">
                 <button type="button" onClick={() => setDetailQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus /></button>
                 <span>{detailQuantity}</span>
                 <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
               </div>
-              <button type="button" className="ppdm-add-btn" disabled={loadingModifiers || Boolean(modifierLoadError) || Boolean(modifierSelectionError) || invalidModifierSelection} onClick={addSelectedProduct}>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)}</span></button>
+              <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)}</span></>}</button>
             </footer>
+          </section>
+        </div>,
+        document.body
+      )}
+
+      {proteinSwapSource && selectedProduct && createPortal(
+        <div className={`ppdm-protein-swap-screen${closingProteinSwap ? ' closing' : ''}`} onClick={dismissProteinSwap}>
+          <section className="ppdm-protein-swap-dialog" role="dialog" aria-modal="true" aria-labelledby="ppdm-protein-swap-title" onClick={event => event.stopPropagation()}>
+            <header className="ppdm-protein-swap-header">
+              <button type="button" className="ppdm-protein-swap-back" onClick={dismissProteinSwap} aria-label="Volver al producto" disabled={closingProteinSwap}><ChevronRight size={20} /></button>
+              <div><h2 id="ppdm-protein-swap-title">Cambia tu proteína</h2><p><b><small>CAMBIANDO</small>1 porción de {formatSpanishText(proteinSwapSource.name)}</b><span>La cantidad de porciones no cambia</span></p></div>
+            </header>
+            <div className="ppdm-protein-swap-body">
+              <div className="ppdm-protein-swap-intro"><strong>Elige tu reemplazo</strong><span>Toca la proteína que prefieres.</span></div>
+              <div className="ppdm-protein-swap-options">
+                {proteinSwapChoices.map(option => {
+                  const imageUrl = proteinOptionImage(extrasProducts, option.name)
+                  return <button type="button" className="ppdm-protein-swap-option" key={option.id} onClick={() => completeProteinSwap(proteinSwapSource.id, option.id)} disabled={closingProteinSwap}>
+                    <img src={imageUrl || productImage('extras')} alt={formatSpanishText(option.name)} decoding="async" />
+                    <span className="ppdm-protein-swap-option-copy"><strong>{formatSpanishText(option.name)}</strong><small>{option.price > 0 ? `+${money(option.price)} por porción` : 'Porción incluida'}</small></span>
+                    <span className="ppdm-protein-swap-select"><ChevronRight size={18} aria-hidden="true" /></span>
+                  </button>
+                })}
+              </div>
+            </div>
           </section>
         </div>,
         document.body
@@ -4042,9 +4336,36 @@ export function PublicMenu() {
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
         <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'delivery'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address') { setStep('delivery'); } else if (step === 'delivery') { if (isDesktop) closeCart(); else setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Selecciona la forma de entrega de tu pedido.' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Necesitamos esta información para preparar tu pedido.' : step === 'confirm' ? 'Confirma que todo esté correcto antes de enviarlo.' : step === 'preparing' ? 'Estamos creando tu solicitud segura.' : 'Revisa tu pedido.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
+        {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
         {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-cart-item-controls"><div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { editCartItem(item) }, 380) }}>Editar</button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
-        {step === 'delivery' && <div className="public-delivery-step"><div className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`} onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true) }}><img src="/optimized/fondos/pickup-card.webp" alt="Retirar en Full China" /><div><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></div><span className="public-choice-radio" /></div><div className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`} onClick={() => { setOrderType('delivery'); setDeliveryChosen(true) }}><img src="/optimized/fondos/delivery-card.webp" alt="Delivery" /><div><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></div><span className="public-choice-radio" /></div><p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p><button className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button></div>}
-        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div><button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button><label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Casa / edificio / referencia</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. Torre B, Piso 4, Apt. 4B" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className="public-address-summary"><div><small>Entrega estimada</small><strong>35–50 min</strong></div><span>{geoCoords ? 'Ubicación confirmada' : 'Selecciona una ubicación'}</span></div><button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button></div>}
+        {step === 'delivery' && <div className="public-delivery-step" role="radiogroup" aria-label="Forma de entrega">
+          <label className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`}>
+            <input className="public-delivery-choice-input" type="radio" name="public-order-type" value="takeaway" checked={orderType === 'takeaway'} onChange={() => { setOrderType('takeaway'); setDeliveryChosen(true) }} />
+            <img src="/optimized/fondos/pickup-card.webp" alt="" aria-hidden="true" />
+            <span className="public-delivery-choice-copy"><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></span>
+            <span className="public-choice-radio" aria-hidden="true" />
+          </label>
+          <label className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`}>
+            <input className="public-delivery-choice-input" type="radio" name="public-order-type" value="delivery" checked={orderType === 'delivery'} onChange={() => { setOrderType('delivery'); setDeliveryChosen(true) }} />
+            <img src="/optimized/fondos/delivery-card.webp" alt="" aria-hidden="true" />
+            <span className="public-delivery-choice-copy"><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></span>
+            <span className="public-choice-radio" aria-hidden="true" />
+          </label>
+          <p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p>
+          <button type="button" className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'details') }}>Continuar <ChevronRight /></button>
+        </div>}
+        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <div className="public-suggestion-status"><span className="public-search-spinner" />Buscando direcciones…</div> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div>{deliveryCoverageUnavailable && <div className="public-address-coverage-alert" role="alert"><div><strong>Esta dirección está fuera de la cobertura disponible.</strong><p>No podemos cotizar el delivery para este punto. Elige otra ubicación o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => addressRef.current?.focus()}>Cambiar ubicación</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}<button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating}><Navigation /><strong>{locating ? 'Obteniendo ubicación…' : 'Usar mi ubicación actual'}</strong><ChevronRight /></button>{locationError && (
+  <div className="public-location-feedback" role="alert" ref={locationErrorRef}>
+    <p>{locationError}</p>
+    <div>
+      <button type="button" onClick={() => { addressRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); addressRef.current?.focus() }}>Buscar dirección</button>
+      <button type="button" onClick={() => document.querySelector<HTMLElement>('.public-address-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Elegir en el mapa</button>
+    </div>
+  </div>
+)}<label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Casa / edificio / referencia</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. Torre B, Piso 4, Apt. 4B" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className={`public-address-summary${deliveryCoverageUnavailable ? ' is-unavailable' : ''}`}><div><small>Tarifa de delivery</small><strong>{deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Calculando cobertura…' : deliverySettingsStatus === 'error' ? 'No disponible' : !geoCoords ? 'Elige un punto' : deliveryCoverageUnavailable ? 'Fuera de cobertura' : money(deliveryFee)}</strong></div>{!deliveryCoverageUnavailable && <span>{!geoCoords ? 'Selecciona una ubicación' : deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Consultando zona' : deliverySettingsStatus === 'error' ? 'No se pudo consultar la zona' : 'Ubicación confirmada'}</span>}</div>
+
+{deliverySettingsStatus === 'error' && <div className="public-address-coverage-alert" role="alert"><div><strong>No pudimos consultar la cobertura.</strong><p>Inténtalo de nuevo o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => setDeliverySettingsRetryVersion(version => version + 1)}>Reintentar</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}
+{deliverySettingsStatus === 'ready' && !deliveryCoverageUnavailable && <button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button>}</div>}
         {step === 'details' && (
           <div className="public-checkout">
             <div className="public-data-intro">
@@ -4082,7 +4403,7 @@ export function PublicMenu() {
           </div>
         )}
         {step === 'confirm' && <div className="public-confirm-page"><div className="public-receipt"><div className="public-receipt-head"><img src="/optimized/root/logo.webp" alt="Full China" /><div><span>Solicitud</span><strong>{orderCode || draftOrderCode || 'WEB-PENDIENTE'}</strong><small>Ahora · pedido web</small></div></div>
-          <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div><div className="public-confirm-item-name-row"><strong>{cartProductName(item.productName)}</strong><button type="button" aria-label={`Editar ${item.productName}`} onClick={() => { setReturnToConfirmAfterEdit(true); setStep('cart'); closeCart() }}><Pencil aria-hidden="true" /><span>Editar</span></button></div><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b></div>)}</div>
+          <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div><div className="public-confirm-item-name-row"><strong>{cartProductName(item.productName)}</strong><button type="button" aria-label={`Editar ${item.productName}`} onClick={() => { closeCart(); window.setTimeout(() => editCartItem(item), 380) }}><Pencil aria-hidden="true" /><span>Editar</span></button></div><span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b></div>)}</div>
           <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><div className="public-delivery-total-label">{orderType === 'delivery' ? 'Delivery' : 'Retiro'}</div><div className={`public-delivery-total-value ${orderType === 'takeaway' ? 'is-pickup' : ''}`}>{orderType === 'delivery' ? deliveryFeeText : 'En el local'}</div><b>Total del pedido <em>{money(orderTotal)}{priceBs(orderTotal) && <small className="public-total-bs">{priceBs(orderTotal)}</small>}</em></b></div>
           <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'delivery')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button></div>{error && <Toast type="error" message={error} onClose={() => setError('')} />}</div>
           <button className="public-primary whatsapp public-whatsapp-cta" disabled={submitting} onClick={submitOrder}><span className="public-confirm-check" aria-hidden="true"><Check /></span><span className="public-whatsapp-copy"><strong>{submitting ? 'Preparando pedido…' : 'Confirmar pedido'}</strong></span></button><p className="public-order-security">⌕ &nbsp; Tu pedido será confirmado directamente por Full China</p>
@@ -4091,6 +4412,43 @@ export function PublicMenu() {
         {step === 'sent' && <div className="public-success"><span><Check /></span><h3>¡Solicitud registrada!</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>La solicitud quedó guardada. En WhatsApp debes revisar el mensaje y pulsar <b>Enviar</b>; no podemos verificarlo desde esta página.</p><div className="public-status-timeline"><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido quedó registrado correctamente.</small></div><time>Ahora</time></div><div className="pending"><i>2</i><div><strong>Enviar por WhatsApp</strong><small>Confirma el envío en la aplicación para que Full China reciba tu pedido.</small></div><time>◷</time></div><div className="pending"><i>3</i><div><strong>Esperando confirmación</strong><small>Full China te confirmará el pedido por WhatsApp.</small></div><time>◷</time></div></div><div className="public-success-actions">{whatsappUrl && <button type="button" className="public-secondary" onClick={openWhatsApp}>Abrir WhatsApp si todavía no enviaste</button>}<button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div>}
         {showAllExtras && step === 'cart' && <div className={`public-cart-all-extras ${closingAllExtras ? 'closing' : ''}`}><div className="public-cart-all-extras-head"><div><span>CATÁLOGO RÁPIDO</span><h3>Agrega algo más</h3></div><button type="button" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; closeAllExtras(); if (isDesktop) closeCart() }} aria-label="Cerrar">×</button></div><label className="public-cart-extras-search"><Search size={16} /><input value={extrasSearch} onChange={event => setExtrasSearch(event.target.value)} placeholder="Buscar un plato, bebida o extra" /><button type="button" onClick={() => setExtrasSearch('')} aria-label="Limpiar búsqueda">×</button></label><div className="public-cart-extra-sections">{extrasSections.length === 0 ? <p className="public-cart-extras-empty">No encontramos ese producto. Prueba con otro nombre.</p> : extrasSections.map(([category, categoryGroups]) => <section key={category}><div className="public-cart-extra-section-head"><h4>{categoryLabel(category)}</h4><span>{categoryGroups.length}</span></div><div className="public-cart-all-extras-grid">{categoryGroups.map(group => <article key={group.key}><button type="button" className="public-cart-all-extras-open" aria-label={`Ver detalles de ${group.name}`} onClick={() => openGroup(group)}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" loading="lazy" decoding="async" /><span><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></span></button><button type="button" aria-label={`Agregar ${group.name} al pedido`} onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>)}</div></div>}
       </aside></div>,
+        document.body
+      )}
+
+      {showStoreClosedNotice && createPortal(
+        <div className="public-store-closed-backdrop" onClick={() => setShowStoreClosedNotice(false)}>
+          <section className="public-store-closed-dialog" role="alertdialog" aria-modal="true" aria-labelledby="public-store-closed-title" aria-describedby="public-store-closed-copy" onClick={event => event.stopPropagation()}>
+            <div className="public-store-closed-scene" aria-hidden="true">
+              <span className="public-store-closed-scene-glow" />
+              <span className="public-store-closed-spark public-store-closed-spark-one">✦</span>
+              <span className="public-store-closed-spark public-store-closed-spark-two">✦</span>
+              <div className="public-store-closed-truck">
+                <div className="public-store-closed-truck-roof" />
+                <div className="public-store-closed-truck-body">
+                  <div className="public-store-closed-truck-window" />
+                  <div className="public-store-closed-truck-service-window"><i /><i /><i /></div>
+                  <div className="public-store-closed-truck-logo"><img src="/optimized/root/logo.webp" alt="" /></div>
+                  <span className="public-store-closed-truck-bumper" />
+                </div>
+                <span className="public-store-closed-wheel public-store-closed-wheel-back" />
+                <span className="public-store-closed-wheel public-store-closed-wheel-front" />
+                <span className="public-store-closed-sign">CERRADO</span>
+              </div>
+              <span className="public-store-closed-scene-road" />
+            </div>
+            <div className="public-store-closed-content">
+              <div className="public-store-closed-brand"><img src="/optimized/root/logo.webp" alt="Full China" /><span>FULL CHINA <i>•</i> PEDIDOS</span></div>
+              <h2 id="public-store-closed-title">El wok descansa por ahora</h2>
+              <p id="public-store-closed-copy">Puedes recorrer el menú y elegir tus favoritos. Te esperamos cuando abramos para preparar tu pedido.</p>
+              <div className="public-store-closed-hours">
+                <span><Clock size={15} /> HORARIO DEL LOCAL</span>
+                <strong>11:00 a. m. <i>—</i> 10:00 p. m.</strong>
+                <small>{storeClock.reopeningMessage}</small>
+              </div>
+              <button ref={storeClosedNoticeButtonRef} type="button" className="public-store-closed-confirm" onClick={() => setShowStoreClosedNotice(false)}>Seguir viendo el menú <ChevronRight size={17} /></button>
+            </div>
+          </section>
+        </div>,
         document.body
       )}
     </main>

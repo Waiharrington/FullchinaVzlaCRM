@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, hasInvalidModifierSelection, isIncludedProteinGroup, replaceIncludedProteinPortion } from './publicOrderRules'
+import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, replaceIncludedProteinPortion } from './publicOrderRules'
 import type { ProductModifierGroup } from './dataService'
 
 const groups: ProductModifierGroup[] = [
@@ -96,5 +96,26 @@ describe('reglas de opciones del pedido público', () => {
     expect(result).toHaveLength(500)
     expect(result).toContain(map)
     expect(result.endsWith(payment)).toBe(true)
+  })
+})
+
+describe('límites del carrito del pedido público', () => {
+  it('acepta exactamente 30 unidades y rechaza la unidad 31 aunque esté en otra línea', () => {
+    expect(PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION).toBe(30)
+    expect(getPublicCartLimitViolation([{ productId: 'rice', quantity: 30 }])).toBeNull()
+    expect(getPublicCartLimitViolation([
+      { productId: 'rice', quantity: 18 },
+      { productId: 'rice', quantity: 12 },
+    ])).toBeNull()
+    expect(getPublicCartLimitViolation([
+      { productId: 'rice', quantity: 30 },
+      { productId: 'rice', quantity: 1 },
+    ])).toBe('presentation-quantity')
+  })
+
+  it('acepta 40 líneas distintas y rechaza la número 41', () => {
+    const fortyLines = Array.from({ length: PUBLIC_ORDER_MAX_DISTINCT_LINES }, (_, index) => ({ productId: `product-${index}`, quantity: 1 }))
+    expect(getPublicCartLimitViolation(fortyLines)).toBeNull()
+    expect(getPublicCartLimitViolation([...fortyLines, { productId: 'product-40', quantity: 1 }])).toBe('distinct-lines')
   })
 })

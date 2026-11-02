@@ -8,14 +8,22 @@ const AdminApp = lazy(() => import('./AdminApp'))
 function AppContent() {
   const location = useLocation()
   const isPublicMenu = /^\/pedir\/?$/i.test(location.pathname)
-  const [updateAvailable, setUpdateAvailable] = useState(() =>
-    Boolean((window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable),
+  const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | 'failed' | null>(() =>
+    (window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable ? 'available' : null,
   )
 
   useEffect(() => {
-    const showUpdate = () => setUpdateAvailable(true)
+    const showUpdate = () => setUpdateStatus(current => current === 'applying' ? current : 'available')
+    const markApplying = () => setUpdateStatus('applying')
+    const markFailed = () => setUpdateStatus('failed')
     window.addEventListener('fullchina:pwa-update-available', showUpdate)
-    return () => window.removeEventListener('fullchina:pwa-update-available', showUpdate)
+    window.addEventListener('fullchina:pwa-update-applying', markApplying)
+    window.addEventListener('fullchina:pwa-update-apply-failed', markFailed)
+    return () => {
+      window.removeEventListener('fullchina:pwa-update-available', showUpdate)
+      window.removeEventListener('fullchina:pwa-update-applying', markApplying)
+      window.removeEventListener('fullchina:pwa-update-apply-failed', markFailed)
+    }
   }, [])
 
   useLayoutEffect(() => {
@@ -29,7 +37,7 @@ function AppContent() {
     if (link.getAttribute('href') !== href) link.setAttribute('href', href)
   }, [isPublicMenu])
 
-  const updateNotice = updateAvailable && (
+  const updateNotice = updateStatus && (
     <aside
       role="status"
       style={{
@@ -50,9 +58,17 @@ function AppContent() {
         font: '500 14px/1.35 Inter, system-ui, sans-serif',
       }}
     >
-      <span>Hay una actualización lista.</span>
+      <span role={updateStatus === 'failed' ? 'alert' : 'status'} aria-live="polite">
+        {updateStatus === 'applying'
+          ? 'Aplicando la actualización…'
+          : updateStatus === 'failed'
+            ? 'No se pudo aplicar. Revisa tu conexión e intenta otra vez.'
+            : 'Hay una actualización lista.'}
+      </span>
       <button
         type="button"
+        disabled={updateStatus === 'applying'}
+        aria-busy={updateStatus === 'applying'}
         onClick={() => window.dispatchEvent(new Event('fullchina:pwa-apply-update'))}
         style={{
           flexShrink: 0,
@@ -63,14 +79,16 @@ function AppContent() {
           color: '#fff',
           font: '700 13px Inter, system-ui, sans-serif',
           cursor: 'pointer',
+          opacity: updateStatus === 'applying' ? .7 : 1,
         }}
       >
-        Actualizar
+        {updateStatus === 'applying' ? 'Aplicando…' : updateStatus === 'failed' ? 'Reintentar' : 'Actualizar'}
       </button>
       <button
         type="button"
         aria-label="Cerrar aviso de actualización"
-        onClick={() => setUpdateAvailable(false)}
+        disabled={updateStatus === 'applying'}
+        onClick={() => setUpdateStatus(null)}
         style={{ border: 0, background: 'transparent', color: '#aaa', fontSize: 18, cursor: 'pointer' }}
       >
         ×

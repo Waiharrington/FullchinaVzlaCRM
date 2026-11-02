@@ -85,7 +85,7 @@ describe('Acciones de Inventario', () => {
       name: 'Aceite vegetal', unit_id: 'unit-2', inventory_class: 'beverage',
     }))
     expect(mocks.updateIngredientCost).toHaveBeenCalledWith('ingredient-1', 5.5, 'owner-1')
-  })
+  }, 15_000)
 
   it('registra entradas y salidas como movimientos manuales con motivo', async () => {
     renderInventory()

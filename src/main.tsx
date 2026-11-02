@@ -42,6 +42,9 @@ const updateServiceWorker = registerSW({
   },
 })
 
+let updateApplyTimeout: number | undefined
+let updateControllerChangeHandler: (() => void) | undefined
+
 // Revisa actualizaciones cuando el usuario vuelve a la app, recupera internet
 // o mantiene una pestaña abierta durante mucho tiempo (incluye WebView Android).
 window.addEventListener('online', checkForAppUpdate)
@@ -50,7 +53,53 @@ document.addEventListener('visibilitychange', checkForAppUpdate)
 window.setInterval(checkForAppUpdate, 30 * 60 * 1000)
 
 window.addEventListener('fullchina:pwa-apply-update', () => {
-  void updateServiceWorker(true)
+  if (updateApplyTimeout) window.clearTimeout(updateApplyTimeout)
+  if (updateControllerChangeHandler) {
+    navigator.serviceWorker.removeEventListener('controllerchange', updateControllerChangeHandler)
+    updateControllerChangeHandler = undefined
+  }
+
+  window.dispatchEvent(new Event('fullchina:pwa-update-applying'))
+  void (async () => {
+    const registration = appServiceWorkerRegistration
+    if (!registration) {
+      window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+      return
+    }
+
+    try {
+      if (!registration.waiting) await registration.update()
+      if (!registration.waiting) {
+        window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+        return
+      }
+
+      updateControllerChangeHandler = () => {
+        if (updateApplyTimeout) window.clearTimeout(updateApplyTimeout)
+        updateApplyTimeout = undefined
+        updateControllerChangeHandler = undefined
+      }
+      navigator.serviceWorker.addEventListener('controllerchange', updateControllerChangeHandler, { once: true })
+      updateApplyTimeout = window.setTimeout(() => {
+        if (updateControllerChangeHandler) {
+          navigator.serviceWorker.removeEventListener('controllerchange', updateControllerChangeHandler)
+          updateControllerChangeHandler = undefined
+          window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+        }
+        updateApplyTimeout = undefined
+      }, 20000)
+
+      await updateServiceWorker(true)
+    } catch {
+      if (updateApplyTimeout) window.clearTimeout(updateApplyTimeout)
+      updateApplyTimeout = undefined
+      if (updateControllerChangeHandler) {
+        navigator.serviceWorker.removeEventListener('controllerchange', updateControllerChangeHandler)
+        updateControllerChangeHandler = undefined
+      }
+      window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+    }
+  })()
 })
 
 createRoot(document.getElementById('root')!).render(

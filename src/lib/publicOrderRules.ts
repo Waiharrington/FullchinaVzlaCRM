@@ -3,6 +3,21 @@ import { normalizeForSearch } from './textFormat'
 
 export type PublicModifierSelection = Record<string, number>
 
+export const PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION = 30
+export const PUBLIC_ORDER_MAX_DISTINCT_LINES = 40
+
+export type PublicCartLimitViolation = 'presentation-quantity' | 'distinct-lines'
+
+/** Shared limits for cart additions, edits, and restored orders. */
+export function getPublicCartLimitViolation(items: readonly { productId: string; quantity: number }[]): PublicCartLimitViolation | null {
+  if (items.length > PUBLIC_ORDER_MAX_DISTINCT_LINES) return 'distinct-lines'
+  const quantitiesByProduct = new Map<string, number>()
+  for (const item of items) quantitiesByProduct.set(item.productId, (quantitiesByProduct.get(item.productId) ?? 0) + item.quantity)
+  return [...quantitiesByProduct.values()].some(quantity => quantity > PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION)
+    ? 'presentation-quantity'
+    : null
+}
+
 /** Fixed included-protein recipes start with one serving of each protein. */
 export function isIncludedProteinGroup(group: ProductModifierGroup): boolean {
   const totalIncluded = group.maxSelections

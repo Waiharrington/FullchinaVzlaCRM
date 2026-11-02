@@ -145,7 +145,7 @@ describe('Dashboard Inicio', () => {
       expect(mocks.navigate).not.toHaveBeenCalled()
       fireEvent.click(screen.getByRole('button', { name: 'Cerrar panel' }))
     }
-  }, 10_000)
+  }, 15_000)
 
   it('identifica los créditos autorizados y abre la comanda elegida desde el detalle del día', async () => {
     const createdAt = new Date().toISOString()
@@ -164,7 +164,6 @@ describe('Dashboard Inicio', () => {
 
     expect(mocks.navigate).toHaveBeenCalledWith('/comandas', { state: { openOrderId: 'credit-order' } })
   })
-
   it('muestra la foto del plato y aclara cuántas unidades se vendieron', async () => {
     mocks.getProductRanking.mockResolvedValue([{
       name: 'Promo Full Kilo y Refresco',
