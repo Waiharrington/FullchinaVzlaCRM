@@ -311,6 +311,18 @@ export function Finanzas() {
   const nextMobileWeekDay = dailyRows.find(row => row.date > (weekRows[weekRows.length - 1]?.date ?? ''))
   const weekTotals = useMemo(() => sumFinancialRows(weekRows), [weekRows])
   const selectedDay = dailyRows.find(row => row.date === selectedDailyDate) ?? dailyRows[0]
+  const paidOrdersByDay = useMemo(() => {
+    const result = new Map<string, FullOrder[]>()
+    for (const order of orders) {
+      if (order.status !== 'paid' || isPersonalAccountOrder(order)) continue
+      const date = isoDate(new Date(order.createdAt))
+      const dayOrders = result.get(date) ?? []
+      dayOrders.push(order)
+      result.set(date, dayOrders)
+    }
+    for (const dayOrders of result.values()) dayOrders.sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    return result
+  }, [orders])
   const accountActivity = useMemo(() => {
     const start = isoDate(ranges[period][0])
     const end = isoDate(ranges[period][1])
@@ -920,6 +932,16 @@ export function Finanzas() {
               <details className="fin-daily-mobile-breakdown">
                 <summary>Desglose de egresos</summary>
                 <dl><div><dt>Compras</dt><dd>{formatUsd(row.purchases)}</dd></div><div><dt>Gastos fijos</dt><dd>{formatUsd(row.fixedExpenses)}</dd></div><div><dt>Gastos variables</dt><dd>{formatUsd(row.variableExpenses)}</dd></div><div><dt>Otros</dt><dd>{formatUsd(row.otherExpenses)}</dd></div></dl>
+              </details>
+              <details className="fin-daily-mobile-breakdown fin-daily-income-breakdown">
+                <summary>Desglose de ingresos · {paidOrdersByDay.get(row.date)?.length ?? 0} comandas</summary>
+                {(paidOrdersByDay.get(row.date)?.length ?? 0) > 0 ? <ul>
+                  {paidOrdersByDay.get(row.date)!.map(order => <li key={order.id}>
+                    <span><strong>#{String(order.orderNumber).padStart(6, '0')}</strong><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName || 'Cliente general'}</small></span>
+                    <b>{formatUsd(order.totalAmount)}</b>
+                  </li>)}
+                </ul> : <p className="fin-daily-income-empty">No hay comandas pagadas este día.</p>}
+                <div className="fin-daily-income-total"><span>Total de comandas</span><b>{formatUsd(row.sales)}</b></div>
               </details>
             </article>)}
           </div>

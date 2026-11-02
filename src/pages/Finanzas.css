@@ -593,6 +593,14 @@
   .fin-daily-mobile-breakdown dl > div { display: flex; justify-content: space-between; gap: 5px; min-width: 0; padding: 7px; border-radius: 7px; background: rgba(255,255,255,.035); }
   .fin-daily-mobile-breakdown dt { color: #a1a1aa; font-size: 10px; }
   .fin-daily-mobile-breakdown dd { margin: 0; color: #f4f4f5; font-size: 10px; font-weight: 650; white-space: nowrap; }
+  .fin-daily-income-breakdown ul { display: grid; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+  .fin-daily-income-breakdown li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px; border-radius: 7px; background: rgba(255,255,255,.035); }
+  .fin-daily-income-breakdown li span { display: grid; gap: 3px; min-width: 0; }
+  .fin-daily-income-breakdown li strong { color: #f4f4f5; font-size: 10px; }
+  .fin-daily-income-breakdown li small { overflow: hidden; color: #a1a1aa; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+  .fin-daily-income-breakdown li > b, .fin-daily-income-total b { color: #54d6a2; font-size: 11px; white-space: nowrap; }
+  .fin-daily-income-empty { margin: 8px 0 0; color: #a1a1aa; font-size: 11px; }
+  .fin-daily-income-total { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 8px; border-top: 1px solid rgba(255,255,255,.08); color: #d4d4d8; font-size: 10px; font-weight: 650; }
 }
 
 @media (min-width: 641px) and (max-width: 1050px) {

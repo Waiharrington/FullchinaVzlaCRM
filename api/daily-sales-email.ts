@@ -150,7 +150,7 @@ async function sendReport(request: Request): Promise<Response> {
   })
   const fetchOrders = (from: string, to: string) => rows(() => supabase.from('v_orders_with_credit_status').select('*')
     .gte('created_at', utcStart(from)).lt('created_at', utcStart(to)).order('created_at', { ascending: true }))
-  const fetchPayments = (from: string, to: string) => rows(() => supabase.from('payments').select('method,amount,created_at')
+  const fetchPayments = (from: string, to: string) => rows(() => supabase.from('payments').select('order_id,method,amount,account_id,received_amount,received_currency,change_amount,change_currency,change_account_id,created_at')
     .gte('created_at', utcStart(from)).lt('created_at', utcStart(to)).order('created_at', { ascending: true }))
   const fetchCredits = (from: string, to: string) => rows(() => supabase.from('v_credit_balances').select('*')
     .gte('created_at', utcStart(from)).lt('created_at', utcStart(to)).order('created_at', { ascending: true }))
@@ -175,7 +175,38 @@ async function sendReport(request: Request): Promise<Response> {
     creditCollectionsMonth = monthPayments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0)
   }
 
-  const dayPayments = dayPaymentRows.map(row => ({ method: row.method as PaymentMethod, amount: Number(row.amount ?? 0) }))
+  const paymentAccountIds = [...new Set([...dayPaymentRows, ...monthPaymentRows]
+    .flatMap(row => [row.account_id, row.change_account_id])
+    .filter((id): id is string => typeof id === 'string' && Boolean(id)))]
+  const [paymentAccountRows, paymentOrderRows] = await Promise.all([
+    paymentAccountIds.length
+      ? rows(() => supabase.from('financial_accounts').select('id,currency,account_type').in('id', paymentAccountIds))
+      : Promise.resolve([] as DbRow[]),
+    (() => {
+      const orderIds = [...new Set(dayPaymentRows.map(row => row.order_id).filter((id): id is string => typeof id === 'string' && Boolean(id)))]
+      return orderIds.length
+        ? rows(() => supabase.from('orders').select('id,bcv_rate').in('id', orderIds))
+        : Promise.resolve([] as DbRow[])
+    })(),
+  ])
+  const accountsById = new Map(paymentAccountRows.map(row => [String(row.id), row]))
+  const orderRateById = new Map(paymentOrderRows.map(row => [String(row.id), Number(row.bcv_rate ?? 0)]))
+  const dayPayments = dayPaymentRows.map(row => {
+    const account = accountsById.get(String(row.account_id ?? ''))
+    const changeAccount = accountsById.get(String(row.change_account_id ?? ''))
+    const accountCurrency = account?.currency === 'VES' ? 'VES' : account?.currency === 'USD' ? 'USD' : null
+    const changeAccountCurrency = changeAccount?.currency === 'VES' ? 'VES' : changeAccount?.currency === 'USD' ? 'USD' : null
+    return {
+      method: row.method as PaymentMethod, amount: Number(row.amount ?? 0), accountId: row.account_id ?? null,
+      accountCurrency, accountType: account?.account_type ?? null,
+      receivedAmount: row.received_amount == null ? null : Number(row.received_amount),
+      receivedCurrency: row.received_currency === 'VES' || row.received_currency === 'USD' ? row.received_currency : null,
+      changeAmount: Number(row.change_amount ?? 0),
+      changeCurrency: row.change_currency === 'VES' || row.change_currency === 'USD' ? row.change_currency : null,
+      changeAccountId: row.change_account_id ?? null, changeAccountCurrency, changeAccountType: changeAccount?.account_type ?? null,
+      exchangeRate: orderRateById.get(String(row.order_id ?? '')) ?? null,
+    }
+  })
   const monthPayments = monthPaymentRows.map(row => ({ method: row.method as PaymentMethod, amount: Number(row.amount ?? 0) }))
   const personalConsumptionToday = dayPayments.filter(payment => payment.method === 'personal_account').reduce((sum, payment) => sum + payment.amount, 0)
   const dayCredits = dayCreditRows.map(creditRecord)

@@ -12,6 +12,7 @@ export interface DailySalesRow {
   label: string
   count?: number | null
   total: number | null
+  currency?: 'USD' | 'VES'
   detail?: string | null
   imageUrl?: string | null
   productId?: string | null
@@ -51,7 +52,7 @@ export interface DailySalesEmailSource {
   previousWeekdayOrders?: FullOrder[]
   monthOrders?: FullOrder[]
   /** Pagos recibidos dentro del día y del mes, según su propia fecha de registro. */
-  dayPayments?: Array<{ method: PaymentMethod; amount: number }>
+  dayPayments?: DailySalesPayment[]
   monthPayments?: Array<{ method: PaymentMethod; amount: number }>
   /** Créditos creados durante el día y saldos actuales al generar el correo. */
   dayCredits?: Credit[]
@@ -62,6 +63,22 @@ export interface DailySalesEmailSource {
   personalConsumptionToday?: number
   businessName?: string
   logoUrl?: string | null
+}
+
+export interface DailySalesPayment {
+  method: PaymentMethod
+  amount: number
+  accountId?: string | null
+  accountCurrency?: 'USD' | 'VES' | null
+  accountType?: string | null
+  receivedAmount?: number | null
+  receivedCurrency?: 'USD' | 'VES' | null
+  changeAmount?: number | null
+  changeCurrency?: 'USD' | 'VES' | null
+  changeAccountId?: string | null
+  changeAccountCurrency?: 'USD' | 'VES' | null
+  changeAccountType?: string | null
+  exchangeRate?: number | null
 }
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -102,7 +119,7 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
   const salesPriorWeek = orderTotal(prior)
   const salesMonth = orderTotal(month)
   const customers = countIdentifiedCustomers(day)
-  const payments = new Map<PaymentMethod, { count: number; total: number }>()
+  const payments = new Map<string, { method: PaymentMethod; currency: 'USD' | 'VES'; count: number | null; total: number }>()
   const itemTotals = new Map<string, { count: number; total: number; productId: string }>()
   let collectedFromOrdersToday = 0
   let personalConsumptionToday = source.personalConsumptionToday ?? 0
@@ -121,11 +138,31 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
       if (source.personalConsumptionToday == null) personalConsumptionToday += payment.amount
       continue
     }
-    const current = payments.get(payment.method) ?? { count: 0, total: 0 }
-    current.count += 1
-    current.total += payment.amount
+    if (payment.method === 'cash') {
+      const currency = payment.receivedCurrency ?? payment.accountCurrency ?? 'USD'
+      const received = payment.receivedAmount ?? (currency === 'VES' ? payment.amount * (payment.exchangeRate ?? source.bcvRate ?? 0) : payment.amount)
+      const key = `cash:${currency}`
+      const current = payments.get(key) ?? { method: 'cash', currency, count: 0, total: 0 }
+      current.count = (current.count ?? 0) + 1
+      current.total += received
+      payments.set(key, current)
+      if ((payment.changeAmount ?? 0) > 0 && payment.changeAccountType === 'cash') {
+        const changeCurrency = payment.changeCurrency ?? payment.changeAccountCurrency ?? currency
+        const changeKey = `cash:${changeCurrency}`
+        const change = payments.get(changeKey) ?? { method: 'cash', currency: changeCurrency, count: null, total: 0 }
+        change.total -= payment.changeAmount!
+        payments.set(changeKey, change)
+      }
+      collectedFromOrdersToday += payment.amount
+      continue
+    }
+    const currency = payment.accountCurrency ?? 'USD'
+    const key = `${payment.method}:${currency}`
+    const current = payments.get(key) ?? { method: payment.method, currency, count: 0, total: 0 }
+    current.count = (current.count ?? 0) + 1
+    current.total += currency === 'VES' ? payment.amount * (payment.exchangeRate ?? source.bcvRate ?? 0) : payment.amount
     collectedFromOrdersToday += payment.amount
-    payments.set(payment.method, current)
+    payments.set(key, current)
   }
 
   const date = new Date(`${source.reportDate}T12:00:00`)
@@ -179,8 +216,8 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
       { label: 'Saldo pendiente de esos créditos', value: source.dayCredits ? newCreditBalance : null },
       { label: 'Saldo pendiente de todos los créditos', value: source.openCredits ? outstandingCreditBalance : null, detail: 'Saldo vigente al momento de generar el reporte.' },
     ],
-    paymentMethods: [...payments.entries()]
-      .map(([method, value]) => ({ label: PAYMENT_LABELS[method], count: value.count, total: value.total }))
+    paymentMethods: [...payments.values()]
+      .map(value => ({ label: value.method === 'cash' ? `Efectivo ${value.currency === 'VES' ? 'Bs.' : 'USD'} · neto de vuelto` : `${PAYMENT_LABELS[value.method]} (${value.currency === 'VES' ? 'Bs.' : 'USD'})`, count: value.count, total: value.total, currency: value.currency }))
       .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)),
     personalConsumption: [
       { label: 'Consumos cargados a cuentas personales', value: personalConsumptionToday, detail: 'Se muestran aparte porque no son dinero recibido en caja.' },
@@ -284,11 +321,11 @@ function salesSummary(rows: DailySalesMetric[], currency: string, bcvRate: numbe
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed;border-collapse:collapse;background:#a90016;border-radius:10px;color:#fff"><tr><td class="sales-hero-cell" width="50%" valign="middle" style="width:50%;padding:18px 14px"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td valign="middle" style="padding-right:12px">${cashIcon}</td><td valign="middle"><div style="font-size:10px;line-height:14px;letter-spacing:1px;color:#fff;font-weight:800">VENTAS DEL DÍA</div><div class="sales-hero-value" style="font-size:29px;line-height:34px;color:#fff;font-weight:800;margin-top:3px;white-space:nowrap">USD ${escapeHtml(salesAmount)}</div></td></tr></table></td><td class="sales-hero-cell sales-hero-ves" width="50%" valign="middle" style="width:50%;padding:18px 14px;border-left:1px solid #efb7a9"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td valign="middle" style="padding-right:12px">${bolivarIcon}</td><td valign="middle"><div style="font-size:10px;line-height:14px;letter-spacing:.7px;color:#fff;font-weight:800">EQUIVALENTE EN BOLÍVARES</div><div class="sales-hero-value" style="font-size:27px;line-height:34px;color:#fff;font-weight:800;margin-top:5px;white-space:nowrap">${bolivarAmount}</div></td></tr></table></td></tr></table><div style="padding:8px 2px 5px;font-size:11px;line-height:16px;color:#687386">${salesDetail}</div>`
 }
 
-function rowsTable(rows: DailySalesRow[], currency: string, countLabel: string, bcvRate: number | null): string {
+function rowsTable(rows: DailySalesRow[], currency: string, countLabel: string): string {
   const header = `<tr style="background:#8f1020"><th align="left" style="padding:10px;color:#fff;border-bottom:2px solid #f0c84a;font-size:11px;text-transform:uppercase;letter-spacing:.7px">Detalle</th><th align="right" style="padding:10px;color:#fff;border-bottom:2px solid #f0c84a;font-size:11px;text-transform:uppercase;letter-spacing:.7px">Total</th></tr>`
   const body = rows.length ? rows.map((row, index) => `<tr style="background:${index % 2 === 0 ? '#fffaf0' : '#ffffff'}">
     <td width="64%" style="width:64%;padding:11px 8px;border-bottom:1px solid #eadfca;color:#354052;font-size:12px;word-break:break-word">${escapeHtml(row.label)}${row.count == null ? '' : `<div style="font-size:10px;color:#78632b;margin-top:3px">${escapeHtml(countLabel)}: ${escapeHtml(row.count)}</div>`}${row.detail ? `<div style="font-size:10px;color:#8993a3;margin-top:3px">${escapeHtml(row.detail)}</div>` : ''}</td>
-    <td width="36%" style="width:36%;padding:11px 8px;border-bottom:1px solid #eadfca;color:#172033;font-size:12px;text-align:right;font-weight:700;white-space:nowrap;word-break:keep-all;overflow-wrap:normal">${escapeHtml(display(row.total, currency))}${typeof row.total === 'number' && currency === 'USD' && Number.isFinite(row.total) && (bcvRate ?? 0) > 0 ? `<div style="font-size:11px;line-height:14px;color:${MUTED};font-weight:500;margin-top:3px;white-space:nowrap">${escapeHtml(displayVesReference(row.total, bcvRate!))}</div>` : ''}</td>
+    <td width="36%" style="width:36%;padding:11px 8px;border-bottom:1px solid #eadfca;color:#172033;font-size:12px;text-align:right;font-weight:700;white-space:nowrap;word-break:keep-all;overflow-wrap:normal">${row.currency === 'VES' && typeof row.total === 'number' ? `Bs. ${escapeHtml(new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(row.total))}` : escapeHtml(display(row.total, row.currency ?? currency))}</td>
   </tr>`).join('') : `<tr><td colspan="2" style="padding:12px;color:${MUTED};font-size:12px">Sin registros para este día.</td></tr>`
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="table-layout:fixed;border-collapse:collapse;background:${PANEL};border-top:1px solid #e4e8ee">${header}${body}</table>`
 }
@@ -324,7 +361,7 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
     `<tr><td class="email-pad" style="padding:0 28px 18px">${sectionContent('Clientes y consumo promedio', summaryStats(data, currency))}</td></tr>`,
     pairedSections({ title: 'Comparación semanal', content: metricsTable(data.weekComparison, currency, bcvRate) }, { title: 'Estimación de cierre mensual', content: metricsTable(data.monthlyProjection, currency, bcvRate) }),
     pairedSections({ title: 'Dinero recibido', content: metricsTable(data.collections, currency, bcvRate) }, { title: 'Ventas del mes', content: metricsTable(data.monthlySales, currency, bcvRate) }),
-    pairedSections({ title: 'Créditos', content: metricsTable(data.dailyCredits, currency, bcvRate) }, { title: 'Cobros por método de pago', content: rowsTable(data.paymentMethods, currency, 'Pagos', bcvRate) }),
+    pairedSections({ title: 'Créditos', content: metricsTable(data.dailyCredits, currency, bcvRate) }, { title: 'Cobros por método de pago', content: rowsTable(data.paymentMethods, currency, 'Pagos') }),
     section('Consumos de cuentas personales', metricsTable(data.personalConsumption, currency, bcvRate), 0),
     section('10 productos más vendidos', topProducts(data.topItems, currency), 0),
   ].filter(Boolean).join('')

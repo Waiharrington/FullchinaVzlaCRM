@@ -214,6 +214,7 @@ export function Inicio() {
   const bcvRateHelp = nextBcvRateLabel
     ?? `No hay una tasa futura publicada todavía. Última tasa disponible: ${formatRateDate(bcvUpdatedAt)}.`
   const [selectedDate, setSelectedDate] = useState(() => dateKeyInTimeZone())
+  const dashboardDateInputRef = useRef<HTMLInputElement>(null)
   const selectedDateRef = useRef(selectedDate)
   const changeSelectedDate = (date: string) => {
     selectedDateRef.current = date
@@ -694,8 +695,16 @@ export function Inicio() {
   }, [paidOrdersOnSelectedDay])
 
   const chartData = useMemo(() => {
-    const labels = dailySales.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
-    const data = dailySales.map(d => d.total)
+    const isWeekView = salesRange === 7
+    const weekDayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+    const chartDays = isWeekView
+      ? Array.from({ length: 7 }, (_, index) => offsetDateKey(weekStartDateKey(selectedDate), index))
+      : dailySales.map(day => day.date)
+    const salesByDate = new Map(dailySales.map(day => [day.date, day.total]))
+    const labels = isWeekView
+      ? weekDayLabels
+      : chartDays.map(date => new Date(date + 'T12:00:00').toLocaleDateString('es', { day: 'numeric', month: 'short' }))
+    const data = chartDays.map(date => salesByDate.get(date) ?? 0)
 
     return {
       labels,
@@ -713,14 +722,14 @@ export function Inicio() {
         borderWidth: 2.5,
         fill: true,
         tension: 0.4,
-        pointRadius: dailySales.map(day => day.date === selectedDate ? 5 : 3),
-        pointBackgroundColor: dailySales.map(day => day.date === selectedDate ? '#fbbf24' : '#ef4444'),
+        pointRadius: chartDays.map(date => date === selectedDate ? 5 : 3),
+        pointBackgroundColor: chartDays.map(date => date === selectedDate ? '#fbbf24' : '#ef4444'),
         pointBorderColor: '#18181b',
         pointBorderWidth: 2,
         pointHoverRadius: 6,
       }]
     }
-  }, [dailySales, selectedDate])
+  }, [dailySales, selectedDate, salesRange])
 
   const chartOptions = {
     responsive: true,
@@ -776,10 +785,10 @@ export function Inicio() {
         <div className="db-date-filter" role="group" aria-label="Consultar resumen por fecha">
           <button type="button" className={selectedDate === selectedDateToday ? 'is-active' : ''} aria-pressed={selectedDate === selectedDateToday} onClick={() => changeSelectedDate(selectedDateToday)}>Hoy</button>
           <button type="button" className={selectedDate === offsetDateKey(selectedDateToday, -1) ? 'is-active' : ''} aria-pressed={selectedDate === offsetDateKey(selectedDateToday, -1)} onClick={() => changeSelectedDate(offsetDateKey(selectedDateToday, -1))}>Ayer</button>
-          <label className={`db-date-calendar${selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? ' is-active' : ''}`}>
+          <label className={`db-date-calendar${selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? ' is-active' : ''}`} onClick={event => { if (event.target !== dashboardDateInputRef.current) dashboardDateInputRef.current?.showPicker() }}>
             <CalendarDays size={15} aria-hidden="true" />
             <span>{selectedDate !== selectedDateToday && selectedDate !== offsetDateKey(selectedDateToday, -1) ? formatDashboardDate(selectedDate) : 'Fecha'}</span>
-            <input type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
+            <input ref={dashboardDateInputRef} type="date" aria-label="Elegir fecha del resumen" max={selectedDateToday} value={selectedDate} onChange={event => { if (event.target.value) changeSelectedDate(event.target.value) }} />
           </label>
         </div>
 
