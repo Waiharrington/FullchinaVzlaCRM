@@ -184,7 +184,6 @@ DECLARE
   v_kind TEXT := CASE NEW.order_type WHEN 'delivery' THEN 'Delivery' ELSE 'Para llevar' END;
   v_name TEXT := left(btrim(COALESCE(NEW.customer_name, 'Cliente')), 100);
 BEGIN
-  IF NEW.entity_table IN ('orders', 'web_order_requests') THEN RETURN NEW; END IF;
   PERFORM fullchinavzla.fn_enqueue_push_event(
     'web_order_new', ARRAY['owner', 'manager', 'cashier'],
     jsonb_build_object(
@@ -375,4 +374,3 @@ GRANT EXECUTE ON FUNCTION fullchinavzla.fn_finish_push_event(UUID, TEXT) TO serv
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;
-
