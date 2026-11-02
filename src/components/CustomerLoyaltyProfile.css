@@ -979,3 +979,10 @@
   100%{transform:perspective(600px) rotateX(4deg) rotateY(369deg) rotateZ(7deg) translateY(0) scale(1)}
 }
 @media(prefers-reduced-motion:reduce){.customer-profile-member .customer-member-mini-card.is-spinning{animation:none!important}}
+
+@media (max-width: 679px), (min-width: 680px) and (orientation: portrait) {
+  .customer-profile-auth .customer-profile-mobile-description {
+    text-shadow: 0 2px 5px rgba(0, 0, 0, .95), 0 0 14px rgba(0, 0, 0, .84);
+    -webkit-text-stroke: .12px rgba(0, 0, 0, .48);
+  }
+}
