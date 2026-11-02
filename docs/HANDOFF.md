@@ -2,6 +2,12 @@
 
 Última actualización: 2026-11-02.
 
+## Detalle de notificaciones de comandas internas (2026-11-02)
+
+Se aplicó `20261102050000_detailed_internal_order_push.sql` después de validar `/root/fullchina-backups/fullchinavzla-pre-detailed-internal-order-push-20261102_122301.dump` (33.246.659 bytes; SHA-256 `6d92ff623a6d6a172bd89c03043a6dccd848c6b4246e1bbdf6d08fd653d653f7`; 8.569 entradas de `pg_restore --list`).
+
+El aviso de nueva comanda ahora se genera al terminar la transacción que guarda sus productos, con nombre, cantidades, importes por producto y total USD. El aviso de pago se difiere hasta el commit para incluir método(s) y llegar después del aviso de creación. Se verificaron ambos disparadores diferidos y los estados de fulfillment.
+
 ## Filtro de notificaciones operativas (2026-11-02)
 
 Se aplicó `20261102040000_business_push_notifications_only.sql` al VPS después de validar el respaldo completo `/root/fullchina-backups/fullchinavzla-pre-business-push-filter-20261102_121332.dump` (33.248.757 bytes; SHA-256 `e9de613ce4996765509ed2eaa68857b3cb958f0eaa9c76c3fa789cb57debc3f8`; 8.581 entradas de `pg_restore --list`).
