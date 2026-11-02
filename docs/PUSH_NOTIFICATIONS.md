@@ -3,10 +3,10 @@
 ## Comportamiento
 
 - Al iniciar sesión en el área operativa de la PWA, si el dispositivo aún no está suscrito, aparece una invitación Full China. El botón **Activar** solicita el permiso nativo del navegador tras el clic; **Ahora no** lo pospone hasta la próxima sesión. También se puede activar desde **Campana → Notificaciones en este dispositivo → Activar**. Al guardar la suscripción, ese dispositivo muestra **Notificaciones activadas** como confirmación.
-- `owner` y `manager` reciben pedidos web nuevos, comandas creadas/cobradas/entregadas y cambios operativos. `cashier` recibe únicamente pedidos web nuevos.
-- Los pedidos web se notifican al entrar al buzón de solicitudes, antes de que Caja los confirme. El aviso incluye código web, modalidad y nombre del cliente, sin teléfono, dirección ni notas.
+- `owner` y `manager` reciben pedidos web nuevos, comandas nuevas, cobros con sus métodos de pago y cada avance operativo (preparación, lista y entrega). `cashier` recibe únicamente pedidos web nuevos. No se envían avisos genéricos de auditoría por crear, editar o eliminar registros.
+- Los pedidos web se notifican cuando la solicitud ya está guardada completa y antes de que Caja la confirme. El aviso incluye código web, modalidad, nombre, total en USD, productos, cantidades, modificadores y subtotal por renglón; el costo de Delivery aparece aparte. No incluye teléfono, dirección ni notas del cliente. El detalle se limita para que quepa en el payload de Web Push.
 - Los eventos se escriben en una bandeja de salida transaccional. PostgreSQL usa `pg_net` para llamar al endpoint Vercel después del commit; el endpoint reclama un UUID aleatorio, aplica los filtros de rol, entrega Web Push y elimina suscripciones expiradas.
-- Al tocar una notificación se abre Comandas o Auditoría dentro de la PWA.
+- Al tocar una notificación se abre Comandas dentro de la PWA.
 
 ## Variables de entorno
 

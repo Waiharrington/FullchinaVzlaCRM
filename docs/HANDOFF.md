@@ -1,6 +1,12 @@
 # Estado y continuidad de FullChinaVzla
 
-Última actualización: 2026-10-18.
+Última actualización: 2026-11-02.
+
+## Filtro de notificaciones operativas (2026-11-02)
+
+Se aplicó `20261102040000_business_push_notifications_only.sql` al VPS después de validar el respaldo completo `/root/fullchina-backups/fullchinavzla-pre-business-push-filter-20261102_121332.dump` (33.248.757 bytes; SHA-256 `e9de613ce4996765509ed2eaa68857b3cb958f0eaa9c76c3fa789cb57debc3f8`; 8.581 entradas de `pg_restore --list`).
+
+Se desactivaron las notificaciones genéricas de auditoría por crear, editar o eliminar registros. Se conservaron las notificaciones específicas de pedidos web y comandas; el cobro ahora detalla los métodos y montos, y los cambios de etapa notifican preparación, pedido listo y entrega. Se verificó que ya no existan los triggers genéricos y que la función de comanda soporte `order_fulfillment`.
 
 ## Notificaciones push (2026-11-02)
 
