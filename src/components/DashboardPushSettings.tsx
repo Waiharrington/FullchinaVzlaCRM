@@ -83,6 +83,18 @@ export function DashboardPushSettings({ role }: Props) {
       })
       await persistSubscription(subscription)
       setEnabled(true)
+      try {
+        await registration.showNotification('Notificaciones activadas', {
+          body: 'Listo. Este dispositivo recibirá avisos de Full China.',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
+          tag: 'push-activation-confirmation',
+          data: { url: '/inicio' },
+        })
+      } catch {
+        // The subscription is already saved; a blocked system notification
+        // should not make activation appear to have failed.
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No pudimos cambiar la configuración de notificaciones.')
     } finally {

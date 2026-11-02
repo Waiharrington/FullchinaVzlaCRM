@@ -2,7 +2,7 @@
 
 ## Comportamiento
 
-- Cada navegador/teléfono se suscribe desde **Campana → Notificaciones en este dispositivo → Activar**. El permiso del navegador se solicita después de pulsar Activar.
+- Cada navegador/teléfono se suscribe desde **Campana → Notificaciones en este dispositivo → Activar**. El permiso del navegador se solicita después de pulsar Activar y, al guardar la suscripción, ese dispositivo muestra **Notificaciones activadas** como confirmación.
 - `owner` y `manager` reciben pedidos web nuevos, comandas creadas/cobradas/entregadas y cambios operativos. `cashier` recibe únicamente pedidos web nuevos.
 - Los pedidos web se notifican al entrar al buzón de solicitudes, antes de que Caja los confirme. El aviso incluye código web, modalidad y nombre del cliente, sin teléfono, dirección ni notas.
 - Los eventos se escriben en una bandeja de salida transaccional. PostgreSQL usa `pg_net` para llamar al endpoint Vercel después del commit; el endpoint reclama un UUID aleatorio, aplica los filtros de rol, entrega Web Push y elimina suscripciones expiradas.
