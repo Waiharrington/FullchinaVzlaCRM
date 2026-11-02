@@ -648,6 +648,10 @@
 
 /* Mobile large (≤ 767px) */
 @media (max-width: 767px) {
+  .db-chart-heading-group > div .db-card-support { display: none; }
+  .db-chart-heading-group { flex: 1 1 auto; justify-content: space-between; gap: 0.4rem; }
+  .db-chart-heading-group > div { min-width: 0; }
+  .db-chart-heading-group h3 { white-space: nowrap; }
   .db-page { gap: 1rem; }
 
   /* Header: en teléfono la campanita queda pegada al título (misma

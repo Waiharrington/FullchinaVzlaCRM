@@ -58,6 +58,7 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = fullchinavzla, pg_temp
 AS $$
+#variable_conflict use_column
 DECLARE
   v_alert JSONB;
   v_key TEXT;
