@@ -35,7 +35,7 @@ import { CalendarPicker } from '../components/CalendarPicker'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
-import { subscribeToDataChanges, supabase } from '../lib/supabase'
+import { publishDataChange, subscribeToDataChanges, supabase } from '../lib/supabase'
 import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
@@ -1013,6 +1013,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
 
   const handleDeleteOrder = async () => {
     if (!selectedOrder) return
+    const deletedOrder = selectedOrder
     setDeleting(true)
     setDeleteError('')
     try {
@@ -1022,14 +1023,20 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         setDeleting(false)
         return
       }
-      if (selectedOrder.source === 'web' && selectedOrder.webRequestId) {
-        await deleteWebOrder(selectedOrder.webRequestId)
+      if (deletedOrder.source === 'web' && deletedOrder.webRequestId) {
+        await deleteWebOrder(deletedOrder.webRequestId)
       } else {
-        await deleteOrder(selectedOrder.id)
+        await deleteOrder(deletedOrder.id)
       }
+      const matchesDeletedOrder = (order: ComandaOrder) =>
+        order.id !== deletedOrder.id &&
+        (!deletedOrder.webRequestId || order.webRequestId !== deletedOrder.webRequestId)
+      setComandas(previous => previous.filter(matchesDeletedOrder))
+      setHistoryOrders(previous => previous.filter(matchesDeletedOrder))
+      publishDataChange('orders')
+      publishDataChange('web_order_requests')
       closeDeleteModal()
       closeSelectedOrder()
-      setReloadToken((value) => value + 1)
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la comanda')
     } finally {
