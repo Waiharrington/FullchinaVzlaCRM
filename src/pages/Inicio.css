@@ -1528,15 +1528,15 @@
 
 @media (min-width: 1440px) {
   .db-header {
-    grid-template-columns: minmax(250px, 0.8fr) minmax(230px, auto) minmax(520px, 1.35fr);
+    grid-template-columns: minmax(250px, 0.8fr) minmax(450px, 1fr) minmax(520px, 1.35fr);
     align-items: center;
   }
 
   .db-date-filter {
     grid-column: 2;
     grid-row: 1;
-    width: calc(100% + clamp(1.25rem, 3vw, 3.5rem));
-    margin-left: clamp(-3.5rem, -3vw, -1.25rem);
+    width: 100%;
+    margin-left: 0;
   }
   .db-header-tools { grid-column: 3; grid-row: 1; }
 
@@ -2533,9 +2533,10 @@
     display: flex !important;
     min-width: 0 !important;
     gap: 0.12rem !important;
-    overflow: visible !important;
+    overflow: hidden !important;
     padding: 0.18rem !important;
     z-index: 1;
+    margin-top: 0.4rem !important;
   }
 
   .db-date-filter > button {
