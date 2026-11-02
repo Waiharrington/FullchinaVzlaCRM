@@ -310,7 +310,7 @@ BEGIN
     'admin_activity', ARRAY['owner', 'manager'],
     jsonb_build_object(
       'title', v_module || ' · actividad',
-      'body', v_action || ' ' || lower(replace(TG_TABLE_NAME, '_', ' ')) || CASE WHEN v_label IS NULL THEN '' ELSE ': ' || left(v_label, 80) END,
+      'body', v_action || CASE WHEN v_module = 'Sistema' THEN ' un registro del sistema' ELSE ' un registro de ' || lower(v_module) END || CASE WHEN v_label IS NULL THEN '' ELSE ': ' || left(v_label, 80) END,
       'url', '/auditoria',
       'tag', 'activity-' || gen_random_uuid()::TEXT
     )
@@ -375,3 +375,4 @@ GRANT EXECUTE ON FUNCTION fullchinavzla.fn_finish_push_event(UUID, TEXT) TO serv
 
 NOTIFY pgrst, 'reload schema';
 COMMIT;
+
