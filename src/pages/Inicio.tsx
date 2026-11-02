@@ -826,7 +826,7 @@ export function Inicio() {
                   ) : null}
                 </div>
               </div>
-              {user ? <DashboardPushSettings role={user.role} /> : null}
+              {user ? <DashboardPushSettings role={user.role} isDrawerOpen /> : null}
               {visibleNotifications.length === 0 ? (
                 <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas para mostrar</span></div>
               ) : visibleNotifications.map(notification => {

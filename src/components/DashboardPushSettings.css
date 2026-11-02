@@ -18,3 +18,21 @@
 .db-push-settings > button:hover:not(:disabled) { background: rgba(227, 27, 43, .2); color: #fff; }
 .db-push-settings > button:disabled { opacity: .55; cursor: wait; }
 .db-push-settings > p { grid-column: 1 / -1; margin: 0; color: #fca5a5; font-size: 10px; line-height: 1.4; }
+.db-push-entry-backdrop { z-index: 1450; }
+.db-push-entry-dialog { width: min(430px, 100%); }
+.db-push-entry-header { align-items: center; }
+.db-push-entry-heading { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.db-push-entry-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border: 1px solid rgba(255, 77, 61, .3); border-radius: 13px; background: rgba(227, 27, 43, .14); color: #ff655b; }
+.db-push-entry-header h2 { margin-top: 5px; }
+.db-push-entry-content { padding: 20px 24px 4px; }
+.db-push-entry-content > p { margin: 0; color: #c4c4cc; font-size: .82rem; line-height: 1.55; }
+.db-push-entry-content > .db-push-entry-error { margin-top: 12px; color: #fca5a5; }
+.db-push-entry-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 17px 24px 22px; }
+.db-push-entry-primary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 13px; border: 1px solid #ff4d3d; border-radius: 9px; background: linear-gradient(135deg, #ed2637, #c5152a); color: #fff; font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; }
+.db-push-entry-primary:hover:not(:disabled) { filter: brightness(1.12); }
+.db-push-entry-primary:disabled { opacity: .6; cursor: wait; }
+@media (max-width: 480px) {
+  .db-push-entry-header { padding: 18px 16px 15px; }
+  .db-push-entry-content { padding: 17px 16px 3px; }
+  .db-push-entry-actions { padding: 15px 16px 17px; }
+}

@@ -8,6 +8,7 @@ import { ModuleLoader } from './components/ModuleLoader'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { canAccessModule, type Role } from './components/navItems'
+import { DashboardPushSettings } from './components/DashboardPushSettings'
 import './styles/managementWorkspace.css'
 import './styles/controlSizing.css'
 import './styles/financeWorkspace.css'
@@ -79,38 +80,41 @@ function AdminRoutes() {
   const { user, loading, splashDone } = useAuth()
   return (
     <Suspense fallback={splashDone ? <ModuleLoader /> : null}>
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login authInitializing={loading} />} />
-        <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/" element={forModule('/', <Inicio />)} />
-          <Route path="/caja" element={forModule('/caja', <Caja />)} />
-          <Route path="/mesas" element={forModule('/mesas', <Mesas />)} />
-          <Route path="/caja-operativa" element={forModule('/caja-operativa', <CajaOperativa />)} />
-          <Route path="/comandas" element={forModule('/comandas', <Comandas />)} />
-          <Route path="/cocina" element={forModule('/cocina', <Cocina />, ['owner', 'manager'])} />
-          <Route path="/clientes" element={forModule('/clientes', <Clientes />)} />
-          <Route path="/proveedores" element={forModule('/proveedores', <Proveedores />, ['owner', 'manager'])} />
-          <Route path="/almacen" element={forModule('/almacen', <Almacen />)} />
-          <Route path="/inventario" element={forModule('/inventario', <Inventario />)} />
-          <Route path="/produccion" element={forModule('/produccion', <Produccion />)} />
-          <Route path="/recetas" element={forModule('/recetas', <Recetas />)} />
-          <Route path="/menu" element={forModule('/menu', <Menu />)} />
-          <Route path="/menu-semanal" element={forModule('/menu-semanal', <MenuSemanal />)} />
-          <Route path="/compras" element={forModule('/compras', <Compras />)} />
-          <Route path="/gastos" element={forModule('/gastos', <Gastos />)} />
-          <Route path="/finanzas" element={forModule('/finanzas', <Finanzas />)} />
-          <Route path="/equipo" element={forModule('/equipo', <Equipo />)} />
-          <Route path="/fidelizacion" element={forModule('/fidelizacion', <Fidelizacion />)} />
-          <Route path="/marketing" element={forModule('/marketing', <MarketingWhatsApp />)} />
-          <Route path="/nomina" element={forModule('/nomina', <Nomina />)} />
-          <Route path="/creditos" element={forModule('/creditos', <Mas />)} />
-          <Route path="/auditoria" element={forModule('/auditoria', <Auditoria />, ['owner'])} />
-          <Route path="/mas" element={forModule('/mas', <Mas />)} />
-          <Route path="/promociones" element={forModule('/promociones', <Promociones />)} />
-          <Route path="/reportes" element={forModule('/reportes', <Reportes />)} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <>
+        <Routes>
+          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login authInitializing={loading} />} />
+          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route path="/" element={forModule('/', <Inicio />)} />
+            <Route path="/caja" element={forModule('/caja', <Caja />)} />
+            <Route path="/mesas" element={forModule('/mesas', <Mesas />)} />
+            <Route path="/caja-operativa" element={forModule('/caja-operativa', <CajaOperativa />)} />
+            <Route path="/comandas" element={forModule('/comandas', <Comandas />)} />
+            <Route path="/cocina" element={forModule('/cocina', <Cocina />, ['owner', 'manager'])} />
+            <Route path="/clientes" element={forModule('/clientes', <Clientes />)} />
+            <Route path="/proveedores" element={forModule('/proveedores', <Proveedores />, ['owner', 'manager'])} />
+            <Route path="/almacen" element={forModule('/almacen', <Almacen />)} />
+            <Route path="/inventario" element={forModule('/inventario', <Inventario />)} />
+            <Route path="/produccion" element={forModule('/produccion', <Produccion />)} />
+            <Route path="/recetas" element={forModule('/recetas', <Recetas />)} />
+            <Route path="/menu" element={forModule('/menu', <Menu />)} />
+            <Route path="/menu-semanal" element={forModule('/menu-semanal', <MenuSemanal />)} />
+            <Route path="/compras" element={forModule('/compras', <Compras />)} />
+            <Route path="/gastos" element={forModule('/gastos', <Gastos />)} />
+            <Route path="/finanzas" element={forModule('/finanzas', <Finanzas />)} />
+            <Route path="/equipo" element={forModule('/equipo', <Equipo />)} />
+            <Route path="/fidelizacion" element={forModule('/fidelizacion', <Fidelizacion />)} />
+            <Route path="/marketing" element={forModule('/marketing', <MarketingWhatsApp />)} />
+            <Route path="/nomina" element={forModule('/nomina', <Nomina />)} />
+            <Route path="/creditos" element={forModule('/creditos', <Mas />)} />
+            <Route path="/auditoria" element={forModule('/auditoria', <Auditoria />, ['owner'])} />
+            <Route path="/mas" element={forModule('/mas', <Mas />)} />
+            <Route path="/promociones" element={forModule('/promociones', <Promociones />)} />
+            <Route path="/reportes" element={forModule('/reportes', <Reportes />)} />
+          </Route>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+        {user && splashDone ? <DashboardPushSettings role={user.role} isDrawerOpen={false} promptOnEntry /> : null}
+      </>
     </Suspense>
   )
 }
