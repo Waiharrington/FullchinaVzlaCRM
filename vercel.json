@@ -7,6 +7,32 @@
   ],
   "rewrites": [
     {
+      "source": "/pedir",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "(?i).*(whatsapp|facebook|twitter|slack|discord|telegram|linkedin|pinterest|skypeuripreview|vkshare|redditbot|line|applebot|googlebot|bingbot|yandexbot|duckduckbot).*"
+          }
+        }
+      ],
+      "destination": "/pedir-social-preview.html"
+    },
+    {
+      "source": "/pedir/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "(?i).*(whatsapp|facebook|twitter|slack|discord|telegram|linkedin|pinterest|skypeuripreview|vkshare|redditbot|line|applebot|googlebot|bingbot|yandexbot|duckduckbot).*"
+          }
+        }
+      ],
+      "destination": "/pedir-social-preview.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

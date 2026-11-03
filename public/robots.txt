@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /pedir
+
+Sitemap: https://fullchinavzla.vercel.app/sitemap.xml

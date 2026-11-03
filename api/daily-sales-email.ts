@@ -194,8 +194,8 @@ async function sendReport(request: Request): Promise<Response> {
   const dayPayments = dayPaymentRows.map(row => {
     const account = accountsById.get(String(row.account_id ?? ''))
     const changeAccount = accountsById.get(String(row.change_account_id ?? ''))
-    const accountCurrency = account?.currency === 'VES' ? 'VES' : account?.currency === 'USD' ? 'USD' : null
-    const changeAccountCurrency = changeAccount?.currency === 'VES' ? 'VES' : changeAccount?.currency === 'USD' ? 'USD' : null
+    const accountCurrency: 'USD' | 'VES' | null = account?.currency === 'VES' ? 'VES' : account?.currency === 'USD' ? 'USD' : null
+    const changeAccountCurrency: 'USD' | 'VES' | null = changeAccount?.currency === 'VES' ? 'VES' : changeAccount?.currency === 'USD' ? 'USD' : null
     return {
       method: row.method as PaymentMethod, amount: Number(row.amount ?? 0), accountId: row.account_id ?? null,
       accountCurrency, accountType: account?.account_type ?? null,
