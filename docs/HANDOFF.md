@@ -1,6 +1,10 @@
 # Estado y continuidad de FullChinaVzla
 
-Última actualización: 2026-11-02.
+Última actualización: 2026-11-03.
+
+## Corrección del cobro y aviso de pago (2026-11-03)
+
+La migración `20261102050000_detailed_internal_order_push.sql` tenía un alias SQL incorrecto en el disparador diferido del aviso de cobro: `rows.order_id` no existe en esa consulta. PostgreSQL lanzaba `42P01` al confirmar la transacción y revertía el pago. Se aplicó `20261103010000_fix_paid_order_push_payment_alias.sql` al VPS después de validar el backup `/root/fullchina-backups/fullchinavzla-pre-payment-push-fix-20261103.dump` (6.712.282 bytes, formato custom, 1.659 entradas; SHA-256 `38108ce2eea57fa7bc49045269718fa87bef21315ef00d4846e1e7c61d48f0c8`). Se confirmó el alias corregido, el permiso de ejecución de `service_role` y el trigger `push_order_paid_after_payment` habilitado. El flujo real de pago queda pendiente de confirmación en la operación normal.
 
 ## Detalle de notificaciones de comandas internas (2026-11-02)
 
