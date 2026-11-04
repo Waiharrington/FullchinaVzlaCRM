@@ -17,7 +17,7 @@
           }
         }
       ],
-      "destination": "/pedir-social-preview.html"
+      "destination": "/api/pedir-seo"
     },
     {
       "source": "/pedir/",
@@ -30,10 +30,14 @@
           }
         }
       ],
-      "destination": "/pedir-social-preview.html"
+      "destination": "/api/pedir-seo"
     },
     {
-      "source": "/(.*)",
+      "source": "/sitemap-images.xml",
+      "destination": "/api/pedir-seo?format=images"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

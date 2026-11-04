@@ -2,3 +2,4 @@ User-agent: *
 Allow: /pedir
 
 Sitemap: https://fullchinavzla.vercel.app/sitemap.xml
+Sitemap: https://fullchinavzla.vercel.app/sitemap-images.xml

@@ -3276,7 +3276,7 @@ export function PublicMenu() {
                                     openGroup(group, event)
                                   }}
                                 >
-                                  <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" />
+                                  <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt={productTitle(group.name)} />
                                   <span>
                                     <strong>{productTitle(group.name)}</strong>
                                     <small>{categoryLabel(group.category)}</small>
@@ -3887,7 +3887,7 @@ export function PublicMenu() {
                         <button type="button" onClick={() => { setReturnToConfirmAfterEdit(false); setStep('cart'); setCartOpen(true); setShowAllExtras(true) }}>Ver todos <ChevronRight size={13} /></button>
                       </div>
                       <div className="public-sidebar-reco-card" key={activeReco.key}>
-                        <img src={optimizedProductImage(activeReco.variants[0]?.product.imageUrl) || productImage(activeReco.category)} alt="" />
+                        <img src={optimizedProductImage(activeReco.variants[0]?.product.imageUrl) || productImage(activeReco.category)} alt={productTitle(activeReco.name)} />
                         <div>
                           <strong>{productTitle(activeReco.name)}</strong>
                           <b>{money(activeReco.minPrice)}{priceBs(activeReco.minPrice) && <small className="public-reco-bs">{priceBs(activeReco.minPrice)}</small>}</b>
@@ -4255,7 +4255,7 @@ export function PublicMenu() {
                       const quantity = selectedCatalogExtras[product.id] ?? 0
                       const [extraTitleLead, extraTitleDetail] = product.name.split('—', 2)
                       return <div className="ppdm-catalog-extra" key={product.id}>
-                        <img className="ppdm-catalog-extra-image" src={optimizedProductImage(product.imageUrl) || productImage('extras')} alt="" loading="lazy" decoding="async" />
+                        <img className="ppdm-catalog-extra-image" src={optimizedProductImage(product.imageUrl) || productImage('extras')} alt={formatProductTitle(product.name)} loading="lazy" decoding="async" />
                         <div><strong>{extraTitleDetail ? <><span>{formatProductTitle(extraTitleLead)}</span><span>— {formatProductTitle(extraTitleDetail)}</span></> : formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong><small>por unidad</small></span></div>
                         {quantity === 0
                           ? <button type="button" className="ppdm-catalog-extra-add" onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}>Agregar <Plus size={14} /></button>
@@ -4273,7 +4273,7 @@ export function PublicMenu() {
                     {complementaryProducts.map(product => {
                       const quantity = selectedCatalogExtras[product.id] ?? 0
                       return <div className="ppdm-catalog-extra" key={product.id}>
-                        <img className="ppdm-complementary-image" src={optimizedProductImage(product.imageUrl) || productImage(product.category)} alt="" loading="lazy" decoding="async" />
+                        <img className="ppdm-complementary-image" src={optimizedProductImage(product.imageUrl) || productImage(product.category)} alt={formatProductTitle(product.name)} loading="lazy" decoding="async" />
                         <div className="ppdm-complementary-copy"><strong>{formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong></span></div>
                         {quantity === 0
                           ? <button type="button" className="ppdm-complementary-add" aria-label={`Agregar ${product.name} al pedido`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}><Plus size={16} /> Agregar</button>
