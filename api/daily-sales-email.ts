@@ -212,37 +212,6 @@ async function sendReport(request: Request): Promise<Response> {
   const dayCredits = dayCreditRows.map(creditRecord)
   const bcvReference = await getReportBcvRate(reportDate, [...dayOrderRows, ...monthOrderRows, ...priorOrderRows])
   const publicSiteOrigin = getPublicSiteOrigin()
-  const inlineImageAttachments: Array<{ content: string; filename: string; content_type: string; content_id: string }> = []
-  const inlineAsset = async (path: string, contentId: string) => {
-    try {
-      const response = await fetch(`${publicSiteOrigin}${path}`)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const contentType = response.headers.get('content-type')?.split(';')[0] ?? ''
-      if (!contentType.startsWith('image/')) throw new Error(`Unexpected content type: ${contentType || 'missing'}`)
-      const bytes = new Uint8Array(await response.arrayBuffer())
-      let binary = ''
-      for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000))
-      }
-      inlineImageAttachments.push({
-        content: btoa(binary),
-        filename: path.split('/').pop() ?? 'report-image',
-        content_type: contentType,
-        content_id: contentId,
-      })
-      return `cid:${contentId}`
-    } catch (error) {
-      console.error(`No se pudo incrustar recurso del reporte ${path}:`, error instanceof Error ? error.message : 'unknown error')
-      return `${publicSiteOrigin}${path}`
-    }
-  }
-  const staticImageAssets = await Promise.all([
-    inlineAsset('/daily-sales-report-banner.jpg', 'fullchina-report-header@fullchina'),
-    inlineAsset('/daily-sales-metrics/orders.png', 'fullchina-metric-orders@fullchina'),
-    inlineAsset('/daily-sales-metrics/order-average.png', 'fullchina-metric-order-average@fullchina'),
-    inlineAsset('/daily-sales-metrics/customers.png', 'fullchina-metric-customers@fullchina'),
-    inlineAsset('/daily-sales-metrics/customer-average.png', 'fullchina-metric-customer-average@fullchina'),
-  ])
   const data = buildDailySalesEmailData({
     reportDate, dayOrders: dayOrderRows.map(orderRecord), monthOrders: monthOrderRows.map(orderRecord),
     previousWeekdayOrders: priorOrderRows.map(orderRecord), dayPayments, monthPayments,
@@ -250,13 +219,14 @@ async function sendReport(request: Request): Promise<Response> {
     personalConsumptionToday, businessName: 'Full China',
     bcvRate: bcvReference.rate, bcvRateDate: bcvReference.date, bcvRateSource: bcvReference.source,
   })
-  data.headerImageUrl = staticImageAssets[0]
+  const imageUrl = (path: string) => `${publicSiteOrigin}${path}`
+  data.headerImageUrl = imageUrl('/daily-sales-report-banner.jpg')
   data.bcvBackgroundUrl = `${publicSiteOrigin}/daily-sales-bcv-bg.png`
   data.metricIcons = {
-    'orders.png': staticImageAssets[1],
-    'order-average.png': staticImageAssets[2],
-    'customers.png': staticImageAssets[3],
-    'customer-average.png': staticImageAssets[4],
+    'orders.png': imageUrl('/daily-sales-metrics/orders.png'),
+    'order-average.png': imageUrl('/daily-sales-metrics/order-average.png'),
+    'customers.png': imageUrl('/daily-sales-metrics/customers.png'),
+    'customer-average.png': imageUrl('/daily-sales-metrics/customer-average.png'),
   }
   const productIds = [...new Set(data.topItems.map(item => item.productId).filter((id): id is string => Boolean(id)))]
   if (productIds.length) {
@@ -266,21 +236,13 @@ async function sendReport(request: Request): Promise<Response> {
     else {
       const imageById = new Map((productRows ?? []).map(product => {
         const imagePath = typeof product.image_url === 'string' ? product.image_url : null
-        const dataImage = imagePath?.match(/^data:(image\/(?:png|jpe?g|webp|gif|avif));base64,([a-z0-9+/=\s]+)$/i)
-        if (dataImage) {
-          const mimeType = dataImage[1].toLowerCase().replace('jpg', 'jpeg')
-          const contentId = `top-product-${String(product.id).replace(/[^a-z0-9-]/gi, '')}@fullchina`
-          const extension = mimeType.split('/')[1].replace('jpeg', 'jpg')
-          inlineImageAttachments.push({
-            content: dataImage[2].replace(/\s+/g, ''),
-            filename: `${contentId}.${extension}`,
-            content_type: mimeType,
-            content_id: contentId,
-          })
-          return [String(product.id), `cid:${contentId}`]
-        }
+        const isDataImage = /^data:image\//i.test(imagePath ?? '')
+        const productId = String(product.id)
+        const hasPublicOptimizedImage = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(productId)
         const match = imagePath?.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
-        const optimized = match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imagePath
+        const optimized = isDataImage
+          ? hasPublicOptimizedImage ? `/optimized/productos/${productId}.webp` : null
+          : match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imagePath
         return [String(product.id), optimized ? (/^https?:\/\//i.test(optimized) ? optimized : `${publicSiteOrigin}${optimized.startsWith('/') ? '' : '/'}${optimized}`) : null]
       }))
       data.topItems = data.topItems.map(item => ({ ...item, imageUrl: item.productId ? imageById.get(item.productId) ?? null : null }))
@@ -294,7 +256,7 @@ async function sendReport(request: Request): Promise<Response> {
       Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json',
       ...(sample ? {} : { 'Idempotency-Key': `fullchina-daily-report-${reportDate}` }),
     },
-    body: JSON.stringify({ from: sender, to: [sendTo], subject, html, ...(inlineImageAttachments.length ? { attachments: inlineImageAttachments } : {}) }),
+    body: JSON.stringify({ from: sender, to: [sendTo], subject, html }),
   })
   const resendBody = await resendResponse.json().catch(() => ({})) as DbRow
   if (!resendResponse.ok) {
