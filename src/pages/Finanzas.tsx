@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation,
+  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccountCreditPayments, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation,
   getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments,
-  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type PersonalAccount, type DeliveryAssignment,
+  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type FinancialAccountCreditPayment, type PersonalAccount, type DeliveryAssignment,
 } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
@@ -69,6 +69,11 @@ interface AccountDayMovement {
   occurredAt: string | null
 }
 
+interface AccountHistoryMovement extends AccountDayMovement {
+  date: string
+  balanceAfter: number
+}
+
 const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
   cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
   mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#facc15', sub: 'Verificado con referencia' },
@@ -103,6 +108,7 @@ export function Finanzas() {
   const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
   const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
   const [operations, setOperations] = useState<FinancialOperation[]>([])
+  const [creditAccountPayments, setCreditAccountPayments] = useState<FinancialAccountCreditPayment[]>([])
   const [accounts, setAccounts] = useState<FinancialAccount[]>([])
   const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>([])
   const [selectedPersonalAccount, setSelectedPersonalAccount] = useState<PersonalAccount | null>(null)
@@ -235,16 +241,17 @@ export function Finanzas() {
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true)
-      const [ords, exps, purchaseData, recipes, pay, ops, accts, personalAccts, deliveries] = await Promise.all([
+      const [ords, exps, purchaseData, recipes, pay, ops, creditPayments, accts, personalAccts, deliveries] = await Promise.all([
         getOrdersWithItems(undefined, undefined, true),
         getExpenses(undefined, undefined, true),
         getPurchases(true).catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
         getPayrollSummary().catch(() => ({ periods: [], bonuses: [] })),
         getFinancialOperations(undefined, undefined, true).catch(() => []),
+        getFinancialAccountCreditPayments(true).catch((error) => { console.error('No se pudieron cargar los abonos de cuentas por cobrar:', error); return [] }),
         getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []), getDeliveryAssignments(),
       ])
-      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries)
+      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setCreditAccountPayments(creditPayments); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
@@ -512,18 +519,17 @@ export function Finanzas() {
   const periodLabel = period === 'hoy' ? 'Hoy' : period === 'ayer' ? 'Ayer' : period === 'semana' ? 'Esta semana' : period === 'mes' ? 'Este mes' : `${rangeStart} al ${rangeEnd}`
   const salesUsd = paymentRows.filter(payment => payment.currency === 'USD').reduce((sum, payment) => sum + payment.amountUsd, 0)
   const salesVesUsd = paymentRows.filter(payment => payment.currency === 'VES').reduce((sum, payment) => sum + payment.amountUsd, 0)
-  const buildAccountDay = (account: FinancialAccount) => {
+  const buildAccountDay = (account: FinancialAccount, day = selectedSummaryDate, calculateClosing = true) => {
     const amountFor = (usd: number, rate: number | null) => account.currency === 'VES' ? usd * (rate || bcvRate || 0) : usd
     const operationAmount = (op: FinancialOperation) => account.currency === op.originalCurrency
       ? op.originalAmount
       : account.currency === 'USD' ? op.amountUsd : op.amountUsd * (op.exchangeRate || bcvRate || 0)
-    const day = selectedSummaryDate
     const movements: AccountDayMovement[] = []
     const addMovement = (movement: AccountDayMovement) => {
       if (movement.amount > 0) movements.push(movement)
     }
-    const accountPayments = orders.filter(order => order.status === 'paid' && isoDate(new Date(order.createdAt)) === day)
-      .flatMap(order => order.payments.map(payment => ({ order, payment, rate: order.bcvRate })))
+    const accountPayments = orders.flatMap(order => order.payments.map(payment => ({ order, payment, rate: order.bcvRate })))
+      .filter(row => isoDate(new Date(row.payment.createdAt || row.order.createdAt)) === day)
     const sales = accountPayments.filter(row => row.payment.accountId === account.id)
       .reduce((sum, row) => {
         const payment = row.payment
@@ -543,7 +549,7 @@ export function Finanzas() {
         })
         return sum + received
       }, 0)
-    const cashChange = accountPayments.filter(row => row.payment.changeAccountId === account.id && row.payment.changeAmount != null)
+    let cashChange = accountPayments.filter(row => row.payment.changeAccountId === account.id && row.payment.changeAmount != null)
       .reduce((sum, row) => {
         const payment = row.payment
         let change = payment.changeAmount ?? 0
@@ -559,11 +565,38 @@ export function Finanzas() {
         })
         return sum + change
       }, 0)
-    const expensesDay = expenses.filter(row => row.expenseDate === day)
+    let collections = 0; let transfers = 0; let others = 0
+    const unlinkedCreditPayments = creditAccountPayments.filter(payment => !payment.creditOrderId && isoDate(new Date(payment.createdAt)) === day)
+    for (const payment of unlinkedCreditPayments) {
+      if (payment.accountId === account.id) {
+        const rate = payment.receivedExchangeRate || payment.exchangeRate || bcvRate || 0
+        const amount = payment.method === 'cash' && payment.receivedAmount != null && payment.receivedCurrency
+          ? payment.receivedCurrency === account.currency ? payment.receivedAmount
+            : payment.receivedCurrency === 'VES' ? payment.receivedAmount / rate : payment.receivedAmount * rate
+          : amountFor(payment.amount, payment.exchangeRate)
+        collections += amount
+        addMovement({
+          id: `credit-payment-${payment.id}`, direction: 'in', category: 'Cobro de cuenta',
+          concept: payment.customerName, detail: [PAY_META[payment.method ?? 'other']?.label ?? 'Abono', payment.referenceNumber ? `Ref. ${payment.referenceNumber}` : ''].filter(Boolean).join(' · '),
+          amount, occurredAt: payment.createdAt,
+        })
+      }
+      if (payment.changeAccountId === account.id && payment.changeAmount > 0 && payment.changeCurrency) {
+        const rate = payment.changeExchangeRate || payment.exchangeRate || bcvRate || 0
+        const change = payment.changeCurrency === account.currency ? payment.changeAmount
+          : payment.changeCurrency === 'VES' ? payment.changeAmount / rate : payment.changeAmount * rate
+        cashChange += change
+        addMovement({
+          id: `credit-change-${payment.id}`, direction: 'out', category: 'Vuelto de abono',
+          concept: payment.customerName, detail: 'Vuelto entregado por abono a cuenta', amount: change, occurredAt: payment.createdAt,
+        })
+      }
+    }
+    const expensesDay = expenses.filter(row => !row.purchaseExpenseItemId && row.expenseDate === day)
       .reduce((sum, row) => sum + (row.payments.length
         ? row.payments.filter(payment => payment.accountId === account.id).reduce((total, payment) => total + payment.amount, 0)
         : row.accountId === account.id ? amountFor(row.amount, row.exchangeRate) : 0), 0)
-    for (const expense of expenses.filter(row => row.expenseDate === day)) {
+    for (const expense of expenses.filter(row => !row.purchaseExpenseItemId && row.expenseDate === day)) {
       const paymentRows = expense.payments.length ? expense.payments.filter(payment => payment.accountId === account.id).map(payment => ({
         id: payment.id, amount: payment.amount, method: payment.method, reference: payment.reference,
       })) : expense.accountId === account.id ? [{ id: expense.id, amount: amountFor(expense.amount, expense.exchangeRate), method: null, reference: null }] : []
@@ -588,7 +621,6 @@ export function Finanzas() {
         amount: payment.amount, occurredAt: purchase.createdAt,
       })
     }
-    let collections = 0; let transfers = 0; let others = 0
     for (const op of operations.filter(row => row.operationDate === day)) {
       const signed = op.toAccountId === account.id ? operationAmount(op) : op.fromAccountId === account.id ? -operationAmount(op) : 0
       if (!signed) continue
@@ -610,16 +642,35 @@ export function Finanzas() {
     const dayNet = sales - cashChange - expensesDay - purchasesDay + collections + transfers + others
     const tomorrow = isoDate(addDays(new Date(`${day}T12:00:00`), 1))
     const afterStart = day < isoDate(new Date()) ? tomorrow : '9999-12-31'
-    const afterActivity = buildFinancialAccountActivity(accounts, orders, expenses, purchases, afterStart, '9999-12-31').get(account.id)?.net ?? 0
-    const afterOperations = operations.filter(op => op.operationDate > day).reduce((sum, op) => {
+    const afterActivity = calculateClosing ? buildFinancialAccountActivity(accounts, orders, expenses, purchases, afterStart, '9999-12-31').get(account.id)?.net ?? 0 : 0
+    const afterOperations = calculateClosing ? operations.filter(op => op.operationDate > day).reduce((sum, op) => {
       const value = operationAmount(op)
       return sum + (op.toAccountId === account.id ? value : op.fromAccountId === account.id ? -value : 0)
-    }, 0)
-    const closing = account.currentBalance - afterActivity - afterOperations
+    }, 0) : 0
+    const closing = calculateClosing ? account.currentBalance - afterActivity - afterOperations : dayNet
     const inflows = movements.filter(movement => movement.direction === 'in').reduce((sum, movement) => sum + movement.amount, 0)
     const outflows = movements.filter(movement => movement.direction === 'out').reduce((sum, movement) => sum + movement.amount, 0)
     movements.sort((a, b) => (b.occurredAt ?? `${day}T12:00:00`).localeCompare(a.occurredAt ?? `${day}T12:00:00`) || b.id.localeCompare(a.id))
     return { opening: closing - dayNet, sales, cashChange, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing, inflows, outflows, movements }
+  }
+  const buildAccountHistory = (account: FinancialAccount) => {
+    const dates = new Set<string>()
+    for (const order of orders) for (const payment of order.payments) {
+      if (payment.accountId === account.id || payment.changeAccountId === account.id) dates.add(isoDate(new Date(payment.createdAt || order.createdAt)))
+    }
+    for (const expense of expenses) if (!expense.purchaseExpenseItemId && (expense.accountId === account.id || expense.payments.some(payment => payment.accountId === account.id))) dates.add(expense.expenseDate)
+    for (const purchase of purchases) if (!purchase.isVoided && purchase.isPaid && (purchase.accountId === account.id || purchase.payments.some(payment => payment.accountId === account.id))) dates.add(purchase.purchaseDate)
+    for (const operation of operations) if (operation.fromAccountId === account.id || operation.toAccountId === account.id) dates.add(operation.operationDate)
+    for (const payment of creditAccountPayments) if (!payment.creditOrderId && (payment.accountId === account.id || payment.changeAccountId === account.id)) dates.add(isoDate(new Date(payment.createdAt)))
+
+    const movements = [...dates].sort().flatMap(date => buildAccountDay(account, date, false).movements.map(movement => ({ ...movement, date })))
+    movements.sort((a, b) => (a.occurredAt ?? `${a.date}T12:00:00`).localeCompare(b.occurredAt ?? `${b.date}T12:00:00`) || a.id.localeCompare(b.id))
+    let balance = account.openingBalance
+    const entries: AccountHistoryMovement[] = movements.map(movement => {
+      balance += movement.direction === 'in' ? movement.amount : -movement.amount
+      return { ...movement, balanceAfter: balance }
+    })
+    return { entries: entries.reverse(), opening: account.openingBalance, calculatedClosing: balance, actualClosing: account.currentBalance }
   }
   const saveOpeningBalance = async (account: FinancialAccount) => {
     const value = parseFinancialAmount(openingBalanceDraft)
@@ -1162,12 +1213,15 @@ export function Finanzas() {
       </section>
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
+        const accountHistory = buildAccountHistory(selectedAccount)
         const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)
-        const filteredMovements = ledger.movements.filter(movement => accountMovementFilter === 'all' || movement.direction === accountMovementFilter)
+        const filteredMovements = accountHistory.entries.filter(movement => accountMovementFilter === 'all' || movement.direction === accountMovementFilter)
         const pageCount = Math.max(1, Math.ceil(filteredMovements.length / accountMovementPageSize))
         const safePage = Math.min(accountMovementPage, pageCount)
         const pageMovements = filteredMovements.slice((safePage - 1) * accountMovementPageSize, safePage * accountMovementPageSize)
-        const movementCount = (direction: 'in' | 'out') => ledger.movements.filter(movement => movement.direction === direction).length
+        const movementCount = (direction: 'in' | 'out') => accountHistory.entries.filter(movement => movement.direction === direction).length
+        const dayMovementCount = (direction: 'in' | 'out') => ledger.movements.filter(movement => movement.direction === direction).length
+        const balanceDifference = accountHistory.actualClosing - accountHistory.calculatedClosing
         return createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingAccount ? 'closing' : ''}`} role="presentation" onClick={() => closeAccount()}><section className="modal-card fin-dialog fin-account-modal" role="dialog" aria-modal="true" aria-labelledby="fin-account-dialog-title" onClick={event => event.stopPropagation()}>
           <header className="fin-dialog-header">
             <span className="fin-dialog-icon"><Building2 size={20}/></span>
@@ -1178,8 +1232,8 @@ export function Finanzas() {
             <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
             <div className="fin-account-flow-summary" aria-label="Resumen de entradas y salidas">
               <div><span>Saldo al iniciar el día</span><strong>{money(ledger.opening)}</strong></div>
-              <div className="in"><span>Entradas · {movementCount('in')}</span><strong>+ {money(ledger.inflows)}</strong></div>
-              <div className="out"><span>Salidas · {movementCount('out')}</span><strong>- {money(ledger.outflows)}</strong></div>
+              <div className="in"><span>Entradas · {dayMovementCount('in')}</span><strong>+ {money(ledger.inflows)}</strong></div>
+              <div className="out"><span>Salidas · {dayMovementCount('out')}</span><strong>- {money(ledger.outflows)}</strong></div>
               <div className="closing"><span>Saldo al cierre</span><strong>{money(ledger.closing)}</strong></div>
             </div>
             <div className="fin-account-table-wrap"><table className="fin-account-ledger"><tbody>
@@ -1194,16 +1248,18 @@ export function Finanzas() {
               <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
             </tbody></table></div>
             <section className="fin-account-movements" aria-labelledby="fin-account-movements-title">
-              <header className="fin-account-movements-head"><div><h3 id="fin-account-movements-title">Movimientos del día</h3><p>Detalle de cada entrada y salida que forma este saldo.</p></div><div className="fin-account-page-size"><label htmlFor="fin-account-page-size">Mostrar</label><select id="fin-account-page-size" value={accountMovementPageSize} onChange={event => { setAccountMovementPageSize(Number(event.target.value) as 10 | 20); setAccountMovementPage(1) }}><option value={10}>10</option><option value={20}>20</option></select></div></header>
+              <header className="fin-account-movements-head"><div><h3 id="fin-account-movements-title">Historial de la cuenta</h3><p>Ingresos, egresos y saldo acumulado desde el saldo inicial.</p></div><div className="fin-account-page-size"><label htmlFor="fin-account-page-size">Mostrar</label><select id="fin-account-page-size" value={accountMovementPageSize} onChange={event => { setAccountMovementPageSize(Number(event.target.value) as 10 | 20); setAccountMovementPage(1) }}><option value={10}>10</option><option value={20}>20</option></select></div></header>
+              <div className="fin-account-history-opening"><span>Saldo inicial registrado</span><strong>{money(accountHistory.opening)}</strong></div>
+              {Math.abs(balanceDifference) >= 0.01 && <div className="fin-account-history-warning"><CircleAlert size={15}/><span>El historial suma {money(accountHistory.calculatedClosing)} y el saldo actual es {money(accountHistory.actualClosing)}. Diferencia por identificar: <strong>{balanceDifference > 0 ? '+' : '−'} {money(Math.abs(balanceDifference))}</strong>.</span></div>}
               <div className="fin-account-movement-filters" role="group" aria-label="Filtrar movimientos">
-                <button type="button" className={accountMovementFilter === 'all' ? 'active' : ''} onClick={() => { setAccountMovementFilter('all'); setAccountMovementPage(1) }}>Todos <span>{ledger.movements.length}</span></button>
+                <button type="button" className={accountMovementFilter === 'all' ? 'active' : ''} onClick={() => { setAccountMovementFilter('all'); setAccountMovementPage(1) }}>Todos <span>{accountHistory.entries.length}</span></button>
                 <button type="button" className={accountMovementFilter === 'in' ? 'active' : ''} onClick={() => { setAccountMovementFilter('in'); setAccountMovementPage(1) }}>Entradas <span>{movementCount('in')}</span></button>
                 <button type="button" className={accountMovementFilter === 'out' ? 'active' : ''} onClick={() => { setAccountMovementFilter('out'); setAccountMovementPage(1) }}>Salidas <span>{movementCount('out')}</span></button>
               </div>
               {pageMovements.length ? <div className="fin-account-movement-list">{pageMovements.map(movement => <article className={`fin-account-movement ${movement.direction}`} key={movement.id}>
                 <span className="fin-account-movement-icon" aria-hidden="true">{movement.direction === 'in' ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}</span>
-                <div className="fin-account-movement-copy"><strong>{movement.concept}</strong><span>{movement.category}{movement.detail ? ` · ${movement.detail}` : ''}</span>{movement.occurredAt && <small>{new Date(movement.occurredAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</small>}</div>
-                <b>{movement.direction === 'in' ? '+' : '-'} {money(movement.amount)}</b>
+                <div className="fin-account-movement-copy"><strong>{movement.concept}</strong><span>{movement.category}{movement.detail ? ` · ${movement.detail}` : ''}</span><small>{new Date(`${movement.date}T12:00:00`).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}{movement.occurredAt ? ` · ${new Date(movement.occurredAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}` : ''}</small></div>
+                <div className="fin-account-movement-amount"><b>{movement.direction === 'in' ? '+' : '−'} {money(movement.amount)}</b><small>Saldo: {money(movement.balanceAfter)}</small></div>
               </article>)}</div> : <EmptyState compact title="Sin movimientos para este filtro" description="Prueba con otra opción o revisa otra fecha."/>}
               {filteredMovements.length > accountMovementPageSize && <div className="fin-account-movement-pagination"><span>Mostrando {(safePage - 1) * accountMovementPageSize + 1}–{Math.min(safePage * accountMovementPageSize, filteredMovements.length)} de {filteredMovements.length}</span><div><button type="button" onClick={() => setAccountMovementPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="Página anterior"><ChevronLeft size={16}/></button><strong>{safePage} / {pageCount}</strong><button type="button" onClick={() => setAccountMovementPage(Math.min(pageCount, safePage + 1))} disabled={safePage >= pageCount} aria-label="Página siguiente"><ChevronRight size={16}/></button></div></div>}
             </section>

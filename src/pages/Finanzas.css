@@ -401,6 +401,12 @@
 .fin-account-flow-summary .out strong{color:#fb7185}
 .fin-account-flow-summary .closing{border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.045)}
 .fin-account-movements{display:grid;gap:12px;margin-top:18px}
+.fin-account-history-opening{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.025)}
+.fin-account-history-opening span{color:#a1a1aa;font-size:11px}
+.fin-account-history-opening strong{color:#f4f4f5;font-size:13px;font-variant-numeric:tabular-nums}
+.fin-account-history-warning{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border:1px solid rgba(250,204,21,.25);border-radius:10px;background:rgba(250,204,21,.07);color:#fde68a;font-size:11px;line-height:1.45}
+.fin-account-history-warning svg{flex:0 0 auto;margin-top:1px}
+.fin-account-history-warning strong{color:#fff}
 .fin-account-movements-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .fin-account-movements-head h3{margin:0;color:#f4f4f5;font-size:15px}
 .fin-account-movements-head p{margin:4px 0 0;color:#92929c;font-size:11px;line-height:1.4}
@@ -420,12 +426,16 @@
 .fin-account-movement-copy span,.fin-account-movement-copy small{color:#93939d;font-size:10px;line-height:1.4;overflow-wrap:anywhere}
 .fin-account-movement>b{color:#4ade80;font-size:12px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .fin-account-movement.out>b{color:#fb7185}
+.fin-account-movement-amount{display:grid;justify-items:end;gap:4px;text-align:right}
+.fin-account-movement-amount b{color:#4ade80;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fin-account-movement.out .fin-account-movement-amount b{color:#fb7185}
+.fin-account-movement-amount small{color:#9a9aa4;font-size:9px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .fin-account-movement-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:2px;color:#9a9aa4;font-size:11px}
 .fin-account-movement-pagination>div{display:flex;align-items:center;gap:9px}
 .fin-account-movement-pagination button{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(255,255,255,.11);border-radius:9px;background:rgba(255,255,255,.035);color:#f4f4f5;cursor:pointer}
 .fin-account-movement-pagination button:disabled{opacity:.4;cursor:not-allowed}
 .fin-account-movement-pagination strong{color:#dddde2;font-variant-numeric:tabular-nums}
-@media(max-width:560px){.fin-account-flow-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fin-account-flow-summary>div{padding:10px}.fin-account-flow-summary strong{font-size:12px}.fin-account-movements{gap:10px;margin-top:15px}.fin-account-movements-head h3{font-size:14px}.fin-account-movement{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;padding:9px}.fin-account-movement-icon{width:29px;height:29px}.fin-account-movement-copy strong{font-size:11px}.fin-account-movement-copy span,.fin-account-movement-copy small{font-size:9px}.fin-account-movement>b{font-size:10px}.fin-account-movement-pagination{font-size:10px}}
+@media(max-width:560px){.fin-account-flow-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fin-account-flow-summary>div{padding:10px}.fin-account-flow-summary strong{font-size:12px}.fin-account-movements{gap:10px;margin-top:15px}.fin-account-movements-head h3{font-size:14px}.fin-account-movement{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;padding:9px}.fin-account-movement-icon{width:29px;height:29px}.fin-account-movement-copy strong{font-size:11px}.fin-account-movement-copy span,.fin-account-movement-copy small{font-size:9px}.fin-account-movement-amount b{font-size:10px}.fin-account-movement-amount small{font-size:8px}.fin-account-movement-pagination{font-size:10px}}
 .fin-date-range { display: flex; align-items: center; gap: 6px; }
 .fin-date-range input { color-scheme: dark; background: #18181d; color: #fff; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 9px; }
 .fin-date-range > .fc-date-field-shell { width: auto; flex: 1 1 0; }

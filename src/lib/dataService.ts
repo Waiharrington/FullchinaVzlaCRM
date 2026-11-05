@@ -178,6 +178,26 @@ export interface CreditPayment {
   changeAccountId?: string | null
 }
 
+export interface FinancialAccountCreditPayment {
+  id: string
+  creditId: string
+  creditOrderId: string | null
+  customerName: string
+  amount: number
+  accountId: string | null
+  method: PaymentMethod | null
+  referenceNumber: string | null
+  exchangeRate: number | null
+  receivedAmount: number | null
+  receivedCurrency: 'USD' | 'VES' | null
+  receivedExchangeRate: number | null
+  changeAmount: number
+  changeCurrency: 'USD' | 'VES' | null
+  changeAccountId: string | null
+  changeExchangeRate: number | null
+  createdAt: string
+}
+
 export interface DailyClose {
   id: string
   closeDate: string
@@ -1937,6 +1957,49 @@ export async function getCreditPayments(creditId: string): Promise<CreditPayment
     changeCurrency: (p.change_currency as 'USD' | 'VES') ?? null,
     changeAccountId: (p.change_account_id as string) ?? null,
   }))
+}
+
+export async function getFinancialAccountCreditPayments(allPages = false): Promise<FinancialAccountCreditPayment[]> {
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  for (;;) {
+    let query = client().from('credit_payments').select(`
+      id,credit_id,amount,account_id,method,reference_number,exchange_rate,received_amount,received_currency,
+      received_exchange_rate,change_amount,change_currency,change_account_id,change_exchange_rate,created_at,
+      credit:credits(customer_name,order_id)
+    `).order('created_at', { ascending: true }).order('id', { ascending: true })
+    if (allPages) query = query.range(offset, offset + 499)
+    const { data, error } = await query
+    if (error) throw error
+    const batch = (data ?? []) as Record<string, unknown>[]
+    rows.push(...batch)
+    if (!allPages || batch.length < 500) break
+    offset += 500
+  }
+  const relationRow = (value: unknown) => {
+    const row = Array.isArray(value) ? value[0] : value
+    return row && typeof row === 'object' ? row as Record<string, unknown> : {}
+  }
+  return rows.map(row => {
+    const credit = relationRow(row.credit)
+    return {
+      id: String(row.id), creditId: String(row.credit_id),
+      creditOrderId: credit.order_id == null ? null : String(credit.order_id),
+      customerName: String(credit.customer_name ?? 'Cliente sin nombre'), amount: Number(row.amount),
+      accountId: row.account_id == null ? null : String(row.account_id),
+      method: row.method == null ? null : row.method as PaymentMethod,
+      referenceNumber: row.reference_number == null ? null : String(row.reference_number),
+      exchangeRate: row.exchange_rate == null ? null : Number(row.exchange_rate),
+      receivedAmount: row.received_amount == null ? null : Number(row.received_amount),
+      receivedCurrency: row.received_currency == null ? null : row.received_currency as 'USD' | 'VES',
+      receivedExchangeRate: row.received_exchange_rate == null ? null : Number(row.received_exchange_rate),
+      changeAmount: Number(row.change_amount ?? 0),
+      changeCurrency: row.change_currency == null ? null : row.change_currency as 'USD' | 'VES',
+      changeAccountId: row.change_account_id == null ? null : String(row.change_account_id),
+      changeExchangeRate: row.change_exchange_rate == null ? null : Number(row.change_exchange_rate),
+      createdAt: String(row.created_at),
+    }
+  })
 }
 
 // --- Estadísticas de hoy (RPC) -----------------------------------------------

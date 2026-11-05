@@ -4,6 +4,7 @@ export interface AccountActivityInput {
 }
 
 interface PaymentInput {
+  createdAt?: string
   amount: number
   accountId?: string | null
   method?: string | null
@@ -41,8 +42,8 @@ export function buildFinancialAccountActivity(
   const currencies = new Map(accounts.map(account => [account.id, account.currency]))
 
   for (const order of orders) {
-    if (order.status !== 'paid' || !inRange(isoDate(new Date(order.createdAt)), start, end)) continue
     for (const payment of order.payments) {
+      if (!inRange(isoDate(new Date(payment.createdAt || order.createdAt)), start, end)) continue
       if (payment.accountId && result.has(payment.accountId)) {
         const currency = currencies.get(payment.accountId)!
         const row = result.get(payment.accountId)!
