@@ -1,6 +1,10 @@
 # Estado y continuidad de FullChinaVzla
 
-Última actualización: 2026-11-03.
+Última actualización: 2026-11-04.
+
+## Historial detallado por cuenta y ajuste del correo diario (2026-11-04)
+
+Las ventanas de cuenta en Finanzas ahora incluyen entradas y salidas detalladas del día, con filtros y paginación de 10 o 20 movimientos. El resumen conserva los subtotales por tipo de operación y el saldo inicial/final, facilitando rastrear conceptos como adelantos, comisiones o ajustes. También se integraron desde `master` los cambios `7b93bf8` y `37d2bf9`: el correo diario apila sus secciones para lectura móvil, usa imágenes públicas y ajusta el encabezado/resumen para clientes de correo estrechos. Build y lint pasan; pendiente revisar la ventana con una sesión autenticada.
 
 ## Corrección del cobro y aviso de pago (2026-11-03)
 

@@ -393,6 +393,39 @@
 .fin-ledger-mobile-account dl>.expense dd{color:#fb7185}
 @media(max-width:560px){.fin-currency-summary .fin-card{min-height:112px}.fin-modal-overlay{align-items:flex-end;padding:6px}.fin-dialog{max-height:calc(100dvh - 6px);border-radius:20px 20px 10px 10px}.fin-dialog-header{padding:16px}.fin-dialog-icon{width:38px;height:38px;flex-basis:38px}.fin-dialog-copy h2{font-size:19px}.fin-dialog-body{padding:18px 16px}.fin-dialog-actions{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.25fr);padding:14px 16px}.fin-dialog-actions button{width:100%;padding-inline:10px}.fin-account-modal-balance{margin-bottom:14px}.fin-account-modal-balance strong{font-size:21px}.fin-account-ledger th,.fin-account-ledger td{padding:10px 9px;font-size:11px}.fin-ledger-body{padding:0;overflow-y:auto}.fin-ledger-scroll{display:none}.fin-ledger-mobile-list{display:grid;gap:9px;padding:11px}.fin-ledger-mobile-account{padding:11px}.fin-ledger-mobile-account>header>strong{font-size:13px}.fin-ledger-mobile-account>header b{font-size:13px}.fin-ledger-mobile-account dl>div{padding:7px 0}.fin-transfer-body{gap:14px}}
 @media(max-width:560px){.fin-ledger-subtitle-desktop{display:none}.fin-ledger-subtitle-mobile{display:inline;white-space:nowrap;font-size:11px}.fin-ledger-modal .fin-dialog-copy{min-width:0}.fin-ledger-modal .fin-dialog-copy p{white-space:nowrap;line-height:1.2}}
+.fin-account-flow-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 14px}
+.fin-account-flow-summary>div{display:grid;gap:7px;min-width:0;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.025)}
+.fin-account-flow-summary span{color:#a1a1aa;font-size:11px;line-height:1.3}
+.fin-account-flow-summary strong{color:#f4f4f5;font-size:13px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.fin-account-flow-summary .in strong{color:#4ade80}
+.fin-account-flow-summary .out strong{color:#fb7185}
+.fin-account-flow-summary .closing{border-color:rgba(34,197,94,.2);background:rgba(34,197,94,.045)}
+.fin-account-movements{display:grid;gap:12px;margin-top:18px}
+.fin-account-movements-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fin-account-movements-head h3{margin:0;color:#f4f4f5;font-size:15px}
+.fin-account-movements-head p{margin:4px 0 0;color:#92929c;font-size:11px;line-height:1.4}
+.fin-account-page-size{display:flex;align-items:center;gap:7px;color:#a1a1aa;font-size:11px;white-space:nowrap}
+.fin-account-page-size select{height:34px;padding:0 8px;border:1px solid rgba(255,255,255,.11);border-radius:8px;background:#17171b;color:#f4f4f5}
+.fin-account-movement-filters{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px}
+.fin-account-movement-filters button{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 11px;border:1px solid rgba(255,255,255,.1);border-radius:999px;background:rgba(255,255,255,.025);color:#b5b5be;font-size:11px;font-weight:700;white-space:nowrap;cursor:pointer}
+.fin-account-movement-filters button.active{border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.12);color:#fff}
+.fin-account-movement-filters button span{color:#92929c;font-size:10px}
+.fin-account-movement-list{display:grid;gap:7px}
+.fin-account-movement{display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:10px;min-width:0;padding:11px;border:1px solid rgba(255,255,255,.075);border-radius:11px;background:rgba(255,255,255,.022)}
+.fin-account-movement-icon{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:rgba(255,255,255,.06);color:#b6bbc5}
+.fin-account-movement.in .fin-account-movement-icon{background:rgba(34,197,94,.11);color:#4ade80}
+.fin-account-movement.out .fin-account-movement-icon{background:rgba(239,68,68,.11);color:#fb7185}
+.fin-account-movement-copy{display:grid;gap:3px;min-width:0}
+.fin-account-movement-copy strong{color:#f4f4f5;font-size:12px;line-height:1.35;overflow-wrap:anywhere}
+.fin-account-movement-copy span,.fin-account-movement-copy small{color:#93939d;font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+.fin-account-movement>b{color:#4ade80;font-size:12px;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.fin-account-movement.out>b{color:#fb7185}
+.fin-account-movement-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:2px;color:#9a9aa4;font-size:11px}
+.fin-account-movement-pagination>div{display:flex;align-items:center;gap:9px}
+.fin-account-movement-pagination button{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(255,255,255,.11);border-radius:9px;background:rgba(255,255,255,.035);color:#f4f4f5;cursor:pointer}
+.fin-account-movement-pagination button:disabled{opacity:.4;cursor:not-allowed}
+.fin-account-movement-pagination strong{color:#dddde2;font-variant-numeric:tabular-nums}
+@media(max-width:560px){.fin-account-flow-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fin-account-flow-summary>div{padding:10px}.fin-account-flow-summary strong{font-size:12px}.fin-account-movements{gap:10px;margin-top:15px}.fin-account-movements-head h3{font-size:14px}.fin-account-movement{grid-template-columns:30px minmax(0,1fr) auto;gap:8px;padding:9px}.fin-account-movement-icon{width:29px;height:29px}.fin-account-movement-copy strong{font-size:11px}.fin-account-movement-copy span,.fin-account-movement-copy small{font-size:9px}.fin-account-movement>b{font-size:10px}.fin-account-movement-pagination{font-size:10px}}
 .fin-date-range { display: flex; align-items: center; gap: 6px; }
 .fin-date-range input { color-scheme: dark; background: #18181d; color: #fff; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; padding: 9px; }
 .fin-date-range > .fc-date-field-shell { width: auto; flex: 1 1 0; }

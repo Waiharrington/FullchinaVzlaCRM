@@ -59,6 +59,16 @@ interface FinancialHistoryEntry {
   currency: 'USD' | 'VES'
 }
 
+interface AccountDayMovement {
+  id: string
+  direction: 'in' | 'out'
+  category: string
+  concept: string
+  detail: string
+  amount: number
+  occurredAt: string | null
+}
+
 const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
   cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
   mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#facc15', sub: 'Verificado con referencia' },
@@ -115,6 +125,9 @@ export function Finanzas() {
   const [showTransfer, setShowTransfer] = useState(false)
   const [closingTransfer, setClosingTransfer] = useState(false)
   const [selectedAccount, setSelectedAccount] = useState<FinancialAccount | null>(null)
+  const [accountMovementFilter, setAccountMovementFilter] = useState<'all' | 'in' | 'out'>('all')
+  const [accountMovementPage, setAccountMovementPage] = useState(1)
+  const [accountMovementPageSize, setAccountMovementPageSize] = useState<10 | 20>(10)
   const [selectedLedgerCurrency, setSelectedLedgerCurrency] = useState<'USD' | 'VES' | null>(null)
   const [closingAccount, setClosingAccount] = useState(false)
   const [closingLedger, setClosingLedger] = useState(false)
@@ -505,40 +518,94 @@ export function Finanzas() {
       ? op.originalAmount
       : account.currency === 'USD' ? op.amountUsd : op.amountUsd * (op.exchangeRate || bcvRate || 0)
     const day = selectedSummaryDate
+    const movements: AccountDayMovement[] = []
+    const addMovement = (movement: AccountDayMovement) => {
+      if (movement.amount > 0) movements.push(movement)
+    }
     const accountPayments = orders.filter(order => order.status === 'paid' && isoDate(new Date(order.createdAt)) === day)
-      .flatMap(order => order.payments.map(payment => ({ payment, rate: order.bcvRate })))
+      .flatMap(order => order.payments.map(payment => ({ order, payment, rate: order.bcvRate })))
     const sales = accountPayments.filter(row => row.payment.accountId === account.id)
       .reduce((sum, row) => {
         const payment = row.payment
+        let received = amountFor(payment.amount, row.rate)
         if (payment.method === 'cash' && payment.receivedAmount != null && payment.receivedCurrency) {
-          if (payment.receivedCurrency === account.currency) return sum + payment.receivedAmount
-          const rate = payment.receivedExchangeRate || row.rate || 0
-          return sum + (payment.receivedCurrency === 'VES' ? payment.receivedAmount / rate : payment.receivedAmount * rate)
+          if (payment.receivedCurrency === account.currency) received = payment.receivedAmount
+          else {
+            const rate = payment.receivedExchangeRate || row.rate || 0
+            received = payment.receivedCurrency === 'VES' ? payment.receivedAmount / rate : payment.receivedAmount * rate
+          }
         }
-        return sum + amountFor(payment.amount, row.rate)
+        addMovement({
+          id: `sale-${payment.id}`, direction: 'in', category: 'Venta',
+          concept: `Comanda #${String(row.order.orderNumber).padStart(6, '0')}`,
+          detail: [row.order.customerName || 'Cliente general', PAY_META[payment.method]?.label ?? 'Otro método', payment.referenceNumber ? `Ref. ${payment.referenceNumber}` : ''].filter(Boolean).join(' · '),
+          amount: received, occurredAt: payment.createdAt || row.order.createdAt,
+        })
+        return sum + received
       }, 0)
     const cashChange = accountPayments.filter(row => row.payment.changeAccountId === account.id && row.payment.changeAmount != null)
       .reduce((sum, row) => {
         const payment = row.payment
-        if (payment.changeCurrency === account.currency) return sum + (payment.changeAmount ?? 0)
-        const rate = payment.changeExchangeRate || row.rate || 0
-        return sum + (payment.changeCurrency === 'VES' ? (payment.changeAmount ?? 0) / rate : (payment.changeAmount ?? 0) * rate)
+        let change = payment.changeAmount ?? 0
+        if (payment.changeCurrency !== account.currency) {
+          const rate = payment.changeExchangeRate || row.rate || 0
+          change = payment.changeCurrency === 'VES' ? change / rate : change * rate
+        }
+        addMovement({
+          id: `change-${payment.id}`, direction: 'out', category: 'Vuelto entregado',
+          concept: `Comanda #${String(row.order.orderNumber).padStart(6, '0')}`,
+          detail: `${row.order.customerName || 'Cliente general'} · Vuelto de venta`,
+          amount: change, occurredAt: payment.createdAt || row.order.createdAt,
+        })
+        return sum + change
       }, 0)
     const expensesDay = expenses.filter(row => row.expenseDate === day)
       .reduce((sum, row) => sum + (row.payments.length
         ? row.payments.filter(payment => payment.accountId === account.id).reduce((total, payment) => total + payment.amount, 0)
         : row.accountId === account.id ? amountFor(row.amount, row.exchangeRate) : 0), 0)
+    for (const expense of expenses.filter(row => row.expenseDate === day)) {
+      const paymentRows = expense.payments.length ? expense.payments.filter(payment => payment.accountId === account.id).map(payment => ({
+        id: payment.id, amount: payment.amount, method: payment.method, reference: payment.reference,
+      })) : expense.accountId === account.id ? [{ id: expense.id, amount: amountFor(expense.amount, expense.exchangeRate), method: null, reference: null }] : []
+      for (const payment of paymentRows) addMovement({
+        id: `expense-${payment.id}`, direction: 'out', category: 'Gasto', concept: expense.concept,
+        detail: [expense.category === 'fixed' ? 'Fijo' : expense.category === 'variable' ? 'Variable' : 'Otro', payment.method, payment.reference ? `Ref. ${payment.reference}` : ''].filter(Boolean).join(' · '),
+        amount: payment.amount, occurredAt: expense.createdAt,
+      })
+    }
     const purchasesDay = purchases.filter(row => !row.isVoided && row.isPaid && row.purchaseDate === day)
       .reduce((sum, row) => sum + (row.payments.length
         ? row.payments.filter(payment => payment.accountId === account.id).reduce((total, payment) => total + payment.amount, 0)
         : row.accountId === account.id ? amountFor(row.totalAmount, row.exchangeRate) : 0), 0)
+    for (const purchase of purchases.filter(row => !row.isVoided && row.isPaid && row.purchaseDate === day)) {
+      const paymentRows = purchase.payments.length ? purchase.payments.filter(payment => payment.accountId === account.id).map(payment => ({
+        id: payment.id, amount: payment.amount, method: payment.method, reference: payment.reference,
+      })) : purchase.accountId === account.id ? [{ id: purchase.id, amount: amountFor(purchase.totalAmount, purchase.exchangeRate), method: purchase.paymentMethod, reference: purchase.paymentReference }] : []
+      for (const payment of paymentRows) addMovement({
+        id: `purchase-${payment.id}`, direction: 'out', category: 'Compra pagada',
+        concept: purchase.supplierName || 'Compra a proveedor',
+        detail: [purchase.invoiceNumber ? `Factura ${purchase.invoiceNumber}` : 'Compra de inventario', payment.method, payment.reference ? `Ref. ${payment.reference}` : ''].filter(Boolean).join(' · '),
+        amount: payment.amount, occurredAt: purchase.createdAt,
+      })
+    }
     let collections = 0; let transfers = 0; let others = 0
     for (const op of operations.filter(row => row.operationDate === day)) {
-      const signed = op.toAccount === account.name ? operationAmount(op) : op.fromAccount === account.name ? -operationAmount(op) : 0
+      const signed = op.toAccountId === account.id ? operationAmount(op) : op.fromAccountId === account.id ? -operationAmount(op) : 0
       if (!signed) continue
       if (op.type === 'receivable_collection') collections += signed
       else if (op.type === 'transfer') transfers += signed
       else others += signed
+      const direction = signed > 0 ? 'in' : 'out'
+      const operationCategory = op.type === 'transfer'
+        ? 'Transferencia entre cuentas'
+        : op.type === 'receivable_collection'
+          ? 'Cobro de cuenta'
+          : OP_META[op.type]?.label ?? 'Otro movimiento'
+      addMovement({
+        id: `operation-${op.id}`, direction, category: operationCategory, concept: op.concept,
+        detail: [op.fromAccount && op.toAccount ? `${op.fromAccount} → ${op.toAccount}` : op.fromAccount || op.toAccount, op.counterparty, op.referenceNumber ? `Ref. ${op.referenceNumber}` : ''].filter(Boolean).join(' · ') || (op.affectsProfit ? 'Afecta el resultado' : 'Movimiento administrativo'),
+        amount: Math.abs(signed), occurredAt: null,
+      })
     }
     const dayNet = sales - cashChange - expensesDay - purchasesDay + collections + transfers + others
     const tomorrow = isoDate(addDays(new Date(`${day}T12:00:00`), 1))
@@ -546,10 +613,13 @@ export function Finanzas() {
     const afterActivity = buildFinancialAccountActivity(accounts, orders, expenses, purchases, afterStart, '9999-12-31').get(account.id)?.net ?? 0
     const afterOperations = operations.filter(op => op.operationDate > day).reduce((sum, op) => {
       const value = operationAmount(op)
-      return sum + (op.toAccount === account.name ? value : op.fromAccount === account.name ? -value : 0)
+      return sum + (op.toAccountId === account.id ? value : op.fromAccountId === account.id ? -value : 0)
     }, 0)
     const closing = account.currentBalance - afterActivity - afterOperations
-    return { opening: closing - dayNet, sales, cashChange, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing }
+    const inflows = movements.filter(movement => movement.direction === 'in').reduce((sum, movement) => sum + movement.amount, 0)
+    const outflows = movements.filter(movement => movement.direction === 'out').reduce((sum, movement) => sum + movement.amount, 0)
+    movements.sort((a, b) => (b.occurredAt ?? `${day}T12:00:00`).localeCompare(a.occurredAt ?? `${day}T12:00:00`) || b.id.localeCompare(a.id))
+    return { opening: closing - dayNet, sales, cashChange, expenses: expensesDay, purchases: purchasesDay, collections, transfers, others, closing, inflows, outflows, movements }
   }
   const saveOpeningBalance = async (account: FinancialAccount) => {
     const value = parseFinancialAmount(openingBalanceDraft)
@@ -652,8 +722,13 @@ export function Finanzas() {
         : `≈ ${formatVes(account.currentBalance * bcvRate)} al BCV de hoy`
       : null
     const isTop = account.id === mostActiveAccountId
+    const openDetails = () => {
+      setAccountMovementFilter('all')
+      setAccountMovementPage(1)
+      setSelectedAccount(account)
+    }
     return (
-      <div className={`fin-account-box ${account.currency === 'USD' ? 'usd' : 'ves'}${isTop ? ' top' : ''}`} key={account.id} role="button" tabIndex={0} onClick={() => setSelectedAccount(account)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelectedAccount(account) }}>
+      <div className={`fin-account-box ${account.currency === 'USD' ? 'usd' : 'ves'}${isTop ? ' top' : ''}`} key={account.id} role="button" tabIndex={0} onClick={openDetails} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') openDetails() }}>
         {isTop && <span className="fin-account-top-badge">Más movimiento</span>}
         <span>{account.name}</span><strong>{account.currency === 'VES' ? formatVes(account.currentBalance) : formatUsd(account.currentBalance)}</strong>
         <small>{account.currency} · saldo actual</small>{reference && <small className="fin-account-reference">{reference}</small>}
@@ -1088,6 +1163,11 @@ export function Finanzas() {
       {selectedAccount && (() => {
         const ledger = buildAccountDay(selectedAccount)
         const money = (value: number) => selectedAccount.currency === 'VES' ? formatVes(value) : formatUsd(value)
+        const filteredMovements = ledger.movements.filter(movement => accountMovementFilter === 'all' || movement.direction === accountMovementFilter)
+        const pageCount = Math.max(1, Math.ceil(filteredMovements.length / accountMovementPageSize))
+        const safePage = Math.min(accountMovementPage, pageCount)
+        const pageMovements = filteredMovements.slice((safePage - 1) * accountMovementPageSize, safePage * accountMovementPageSize)
+        const movementCount = (direction: 'in' | 'out') => ledger.movements.filter(movement => movement.direction === direction).length
         return createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingAccount ? 'closing' : ''}`} role="presentation" onClick={() => closeAccount()}><section className="modal-card fin-dialog fin-account-modal" role="dialog" aria-modal="true" aria-labelledby="fin-account-dialog-title" onClick={event => event.stopPropagation()}>
           <header className="fin-dialog-header">
             <span className="fin-dialog-icon"><Building2 size={20}/></span>
@@ -1096,6 +1176,12 @@ export function Finanzas() {
           </header>
           <div className="fin-dialog-body">
             <div className="fin-account-modal-balance"><span>Saldo actual</span><strong>{money(ledger.closing)}</strong>{bcvRate ? <small>{selectedAccount.currency === 'VES' ? `≈ ${formatUsd(ledger.closing / bcvRate)}` : `≈ ${formatVes(ledger.closing * bcvRate)}`}</small> : null}</div>
+            <div className="fin-account-flow-summary" aria-label="Resumen de entradas y salidas">
+              <div><span>Saldo al iniciar el día</span><strong>{money(ledger.opening)}</strong></div>
+              <div className="in"><span>Entradas · {movementCount('in')}</span><strong>+ {money(ledger.inflows)}</strong></div>
+              <div className="out"><span>Salidas · {movementCount('out')}</span><strong>- {money(ledger.outflows)}</strong></div>
+              <div className="closing"><span>Saldo al cierre</span><strong>{money(ledger.closing)}</strong></div>
+            </div>
             <div className="fin-account-table-wrap"><table className="fin-account-ledger"><tbody>
               <tr><th>Saldo anterior</th><td>{money(ledger.opening)}</td></tr>
               <tr className="income"><th>Ventas del día</th><td>+ {money(ledger.sales)}</td></tr>
@@ -1107,6 +1193,20 @@ export function Finanzas() {
               <tr><th>Otros movimientos</th><td>{ledger.others >= 0 ? '+' : '-'} {money(Math.abs(ledger.others))}</td></tr>
               <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
             </tbody></table></div>
+            <section className="fin-account-movements" aria-labelledby="fin-account-movements-title">
+              <header className="fin-account-movements-head"><div><h3 id="fin-account-movements-title">Movimientos del día</h3><p>Detalle de cada entrada y salida que forma este saldo.</p></div><div className="fin-account-page-size"><label htmlFor="fin-account-page-size">Mostrar</label><select id="fin-account-page-size" value={accountMovementPageSize} onChange={event => { setAccountMovementPageSize(Number(event.target.value) as 10 | 20); setAccountMovementPage(1) }}><option value={10}>10</option><option value={20}>20</option></select></div></header>
+              <div className="fin-account-movement-filters" role="group" aria-label="Filtrar movimientos">
+                <button type="button" className={accountMovementFilter === 'all' ? 'active' : ''} onClick={() => { setAccountMovementFilter('all'); setAccountMovementPage(1) }}>Todos <span>{ledger.movements.length}</span></button>
+                <button type="button" className={accountMovementFilter === 'in' ? 'active' : ''} onClick={() => { setAccountMovementFilter('in'); setAccountMovementPage(1) }}>Entradas <span>{movementCount('in')}</span></button>
+                <button type="button" className={accountMovementFilter === 'out' ? 'active' : ''} onClick={() => { setAccountMovementFilter('out'); setAccountMovementPage(1) }}>Salidas <span>{movementCount('out')}</span></button>
+              </div>
+              {pageMovements.length ? <div className="fin-account-movement-list">{pageMovements.map(movement => <article className={`fin-account-movement ${movement.direction}`} key={movement.id}>
+                <span className="fin-account-movement-icon" aria-hidden="true">{movement.direction === 'in' ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}</span>
+                <div className="fin-account-movement-copy"><strong>{movement.concept}</strong><span>{movement.category}{movement.detail ? ` · ${movement.detail}` : ''}</span>{movement.occurredAt && <small>{new Date(movement.occurredAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</small>}</div>
+                <b>{movement.direction === 'in' ? '+' : '-'} {money(movement.amount)}</b>
+              </article>)}</div> : <EmptyState compact title="Sin movimientos para este filtro" description="Prueba con otra opción o revisa otra fecha."/>}
+              {filteredMovements.length > accountMovementPageSize && <div className="fin-account-movement-pagination"><span>Mostrando {(safePage - 1) * accountMovementPageSize + 1}–{Math.min(safePage * accountMovementPageSize, filteredMovements.length)} de {filteredMovements.length}</span><div><button type="button" onClick={() => setAccountMovementPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="Página anterior"><ChevronLeft size={16}/></button><strong>{safePage} / {pageCount}</strong><button type="button" onClick={() => setAccountMovementPage(Math.min(pageCount, safePage + 1))} disabled={safePage >= pageCount} aria-label="Página siguiente"><ChevronRight size={16}/></button></div></div>}
+            </section>
           </div>
           <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
