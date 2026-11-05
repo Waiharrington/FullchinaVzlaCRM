@@ -125,8 +125,11 @@ async function sendReport(request: Request): Promise<Response> {
   const resendKey = environment.RESEND_API_KEY
   const cronSecret = environment.CRON_SECRET
   const recipient = environment.DAILY_SALES_REPORT_TO
+  const additionalRecipients = (environment.DAILY_SALES_REPORT_ADDITIONAL_TO ?? '')
+    .split(',').map(address => address.trim()).filter(Boolean)
+  const recipients = [...new Set([recipient?.trim(), ...additionalRecipients].filter((address): address is string => Boolean(address)))]
   const sender = environment.DAILY_SALES_REPORT_FROM ?? 'Full China <fullchinareportes@somosdostudio.com>'
-  if (!supabaseUrl || !serviceKey || !resendKey || !cronSecret || !recipient) {
+  if (!supabaseUrl || !serviceKey || !resendKey || !cronSecret || recipients.length === 0) {
     return Response.json({ error: 'Faltan variables de configuración del reporte.' }, { status: 500 })
   }
   if (request.headers.get('authorization') !== `Bearer ${cronSecret}`) {
@@ -135,11 +138,12 @@ async function sendReport(request: Request): Promise<Response> {
 
   const url = new URL(request.url)
   const sample = url.searchParams.get('sample') === '1'
-  const requestedRecipient = sample ? url.searchParams.get('to')?.trim() : null
+  const manualResend = url.searchParams.get('resend') === '1'
+  const requestedRecipient = sample || manualResend ? url.searchParams.get('to')?.trim() : null
   if (requestedRecipient && (requestedRecipient.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requestedRecipient))) {
     return Response.json({ error: 'El destinatario de prueba no es válido.' }, { status: 400 })
   }
-  const sendTo = requestedRecipient || recipient
+  const sendTo = requestedRecipient ? [requestedRecipient] : recipients
   const override = url.searchParams.get('date')
   const reportDate = override && /^\d{4}-\d{2}-\d{2}$/.test(override) ? override : shiftDate(dateKey(new Date()), -1)
   const dayAfter = shiftDate(reportDate, 1)
@@ -254,16 +258,16 @@ async function sendReport(request: Request): Promise<Response> {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json',
-      ...(sample ? {} : { 'Idempotency-Key': `fullchina-daily-report-${reportDate}` }),
+      ...(sample || manualResend ? {} : { 'Idempotency-Key': `fullchina-daily-report-${reportDate}` }),
     },
-    body: JSON.stringify({ from: sender, to: [sendTo], subject, html }),
+    body: JSON.stringify({ from: sender, to: sendTo, subject, html }),
   })
   const resendBody = await resendResponse.json().catch(() => ({})) as DbRow
   if (!resendResponse.ok) {
     console.error('No se pudo enviar reporte diario:', resendResponse.status, resendBody.name ?? resendBody.message ?? 'Resend error')
     return Response.json({ error: 'No se pudo enviar el reporte por correo.', providerStatus: resendResponse.status }, { status: 502 })
   }
-  return Response.json({ sent: true, reportDate, recipient: sendTo, emailId: resendBody.id ?? null, mode: sample ? 'sample' : 'scheduled' })
+  return Response.json({ sent: true, reportDate, recipients: sendTo, emailId: resendBody.id ?? null, mode: sample ? 'sample' : manualResend ? 'manual' : 'scheduled' })
 }
 
 export async function GET(request: Request): Promise<Response> {
