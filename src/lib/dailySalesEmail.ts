@@ -246,7 +246,8 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
       { label: 'Ventas registradas en el mes', value: month.length ? salesMonth : null },
       { label: 'Dinero recibido en el mes · USD', value: source.monthPayments ? (orderReceiptsMonth.get('USD') ?? 0) + (creditReceiptsMonth.get('USD') ?? 0) : null, currency: 'USD', showCurrencyReference: false },
       { label: 'Dinero recibido en el mes · bolívares', value: source.monthPayments ? (orderReceiptsMonth.get('VES') ?? 0) + (creditReceiptsMonth.get('VES') ?? 0) : null, currency: 'VES', showCurrencyReference: false },
-      { label: 'Cobros de créditos recibidos en el mes', value: source.creditCollectionsMonth ?? null, detail: 'Abonos cobrados este mes; no se vuelven a sumar como ventas.' },
+      { label: 'Abonos de créditos recibidos en el mes · USD', value: source.monthPayments ? creditReceiptsMonth.get('USD') ?? 0 : null, currency: 'USD', showCurrencyReference: false, detail: 'Ya están incluidos en el dinero recibido del mes.' },
+      { label: 'Abonos de créditos recibidos en el mes · bolívares', value: source.monthPayments ? creditReceiptsMonth.get('VES') ?? 0 : null, currency: 'VES', showCurrencyReference: false, detail: 'Ya están incluidos en el dinero recibido del mes.' },
     ],
     monthlyProjection: [
       { label: 'Promedio diario de ventas este mes', value: averageDailySales },
