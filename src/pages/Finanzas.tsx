@@ -1264,7 +1264,7 @@ export function Finanzas() {
               {filteredMovements.length > accountMovementPageSize && <div className="fin-account-movement-pagination"><span>Mostrando {(safePage - 1) * accountMovementPageSize + 1}–{Math.min(safePage * accountMovementPageSize, filteredMovements.length)} de {filteredMovements.length}</span><div><button type="button" onClick={() => setAccountMovementPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="Página anterior"><ChevronLeft size={16}/></button><strong>{safePage} / {pageCount}</strong><button type="button" onClick={() => setAccountMovementPage(Math.min(pageCount, safePage + 1))} disabled={safePage >= pageCount} aria-label="Página siguiente"><ChevronRight size={16}/></button></div></div>}
             </section>
           </div>
-          <footer className="fin-dialog-actions"><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
+          <footer className="fin-dialog-actions fin-account-actions"><button type="button" className="fin-dialog-secondary" onClick={() => closeAccount()}>Cerrar</button><button type="button" className="fin-dialog-primary" onClick={() => closeAccount(() => openTransfer('transfer'))}><ArrowRightLeft size={16}/> Registrar movimiento</button></footer>
         </section></div>, document.body)
       })()}
       {selectedPersonalAccount && (() => {
