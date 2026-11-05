@@ -5,6 +5,8 @@ export interface DailySalesMetric {
   label: string
   value: string | number | null
   format?: 'money' | 'number'
+  currency?: 'USD' | 'VES'
+  showCurrencyReference?: boolean
   detail?: string | null
 }
 
@@ -53,14 +55,17 @@ export interface DailySalesEmailSource {
   monthOrders?: FullOrder[]
   /** Pagos recibidos dentro del día y del mes, según su propia fecha de registro. */
   dayPayments?: DailySalesPayment[]
-  monthPayments?: Array<{ method: PaymentMethod; amount: number }>
+  monthPayments?: DailySalesPayment[]
   /** Créditos creados durante el día y saldos actuales al generar el correo. */
   dayCredits?: Credit[]
   openCredits?: Credit[]
   /** Abonos a créditos recibidos hoy y en el mes, excluidos de las ventas. */
   creditCollectionsToday?: number
   creditCollectionsMonth?: number
+  creditCollectionPaymentsToday?: DailySalesPayment[]
+  creditCollectionPaymentsMonth?: DailySalesPayment[]
   personalConsumptionToday?: number
+  personalAccountConsumptionsToday?: Array<{ name: string; amount: number }>
   businessName?: string
   logoUrl?: string | null
 }
@@ -79,6 +84,8 @@ export interface DailySalesPayment {
   changeAccountCurrency?: 'USD' | 'VES' | null
   changeAccountType?: string | null
   exchangeRate?: number | null
+  personalAccountId?: string | null
+  personalAccountName?: string | null
 }
 
 const PAYMENT_LABELS: Record<PaymentMethod, string> = {
@@ -95,6 +102,25 @@ function saleOrders(orders: FullOrder[] | undefined): FullOrder[] {
 
 function orderTotal(orders: FullOrder[]): number {
   return orders.reduce((sum, order) => sum + order.totalAmount, 0)
+}
+
+function receivedByCurrency(payments: DailySalesPayment[] | undefined, bcvRate?: number | null): Map<'USD' | 'VES', number> {
+  const totals = new Map<'USD' | 'VES', number>([['USD', 0], ['VES', 0]])
+  for (const payment of payments ?? []) {
+    if (payment.method === 'personal_account') continue
+    const receivedCurrency = payment.method === 'cash'
+      ? payment.receivedCurrency ?? payment.accountCurrency ?? 'USD'
+      : payment.accountCurrency ?? 'USD'
+    const receivedAmount = payment.method === 'cash' && payment.receivedAmount != null
+      ? payment.receivedAmount
+      : receivedCurrency === 'VES' ? payment.amount * (payment.exchangeRate ?? bcvRate ?? 0) : payment.amount
+    totals.set(receivedCurrency, (totals.get(receivedCurrency) ?? 0) + receivedAmount)
+    if (payment.changeAmount && payment.changeAmount > 0) {
+      const changeCurrency = payment.changeCurrency ?? payment.changeAccountCurrency ?? receivedCurrency
+      totals.set(changeCurrency, (totals.get(changeCurrency) ?? 0) - payment.changeAmount)
+    }
+  }
+  return totals
 }
 
 function countIdentifiedCustomers(orders: FullOrder[]): number {
@@ -121,8 +147,8 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
   const customers = countIdentifiedCustomers(day)
   const payments = new Map<string, { method: PaymentMethod; currency: 'USD' | 'VES'; count: number | null; total: number }>()
   const itemTotals = new Map<string, { count: number; total: number; productId: string }>()
-  let collectedFromOrdersToday = 0
   let personalConsumptionToday = source.personalConsumptionToday ?? 0
+  const personalByAccount = new Map<string, number>()
 
   for (const order of day) {
     for (const item of order.items) {
@@ -136,6 +162,8 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
   for (const payment of source.dayPayments ?? []) {
     if (payment.method === 'personal_account') {
       if (source.personalConsumptionToday == null) personalConsumptionToday += payment.amount
+      const accountName = payment.personalAccountName?.trim() || 'Cuenta personal sin identificar'
+      personalByAccount.set(accountName, (personalByAccount.get(accountName) ?? 0) + payment.amount)
       continue
     }
     if (payment.method === 'cash') {
@@ -153,7 +181,6 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
         change.total -= payment.changeAmount!
         payments.set(changeKey, change)
       }
-      collectedFromOrdersToday += payment.amount
       continue
     }
     const currency = payment.accountCurrency ?? 'USD'
@@ -161,9 +188,22 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
     const current = payments.get(key) ?? { method: payment.method, currency, count: 0, total: 0 }
     current.count = (current.count ?? 0) + 1
     current.total += currency === 'VES' ? payment.amount * (payment.exchangeRate ?? source.bcvRate ?? 0) : payment.amount
-    collectedFromOrdersToday += payment.amount
     payments.set(key, current)
   }
+
+  const orderReceiptsToday = receivedByCurrency(source.dayPayments, source.bcvRate)
+  const creditReceiptsToday = source.creditCollectionPaymentsToday
+    ? receivedByCurrency(source.creditCollectionPaymentsToday, source.bcvRate)
+    : new Map<'USD' | 'VES', number>([['USD', source.creditCollectionsToday ?? 0], ['VES', 0]])
+  const totalUsdToday = (orderReceiptsToday.get('USD') ?? 0) + (creditReceiptsToday.get('USD') ?? 0)
+  const totalVesToday = (orderReceiptsToday.get('VES') ?? 0) + (creditReceiptsToday.get('VES') ?? 0)
+  const orderReceiptsMonth = receivedByCurrency(source.monthPayments, source.bcvRate)
+  const creditReceiptsMonth = source.creditCollectionPaymentsMonth
+    ? receivedByCurrency(source.creditCollectionPaymentsMonth, source.bcvRate)
+    : new Map<'USD' | 'VES', number>([['USD', source.creditCollectionsMonth ?? 0], ['VES', 0]])
+  const personalConsumptionRows = source.personalAccountConsumptionsToday?.length
+    ? source.personalAccountConsumptionsToday
+    : [...personalByAccount.entries()].map(([name, amount]) => ({ name, amount }))
 
   const date = new Date(`${source.reportDate}T12:00:00`)
   const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
@@ -173,8 +213,6 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
   const outstandingCreditBalance = (source.openCredits ?? [])
     .filter(credit => credit.status !== 'paid' && credit.status !== 'cancelled')
     .reduce((sum, credit) => sum + Math.max(0, credit.balancePending), 0)
-  const creditCollectionsToday = source.creditCollectionsToday
-  const collectedToday = creditCollectionsToday == null ? null : collectedFromOrdersToday + creditCollectionsToday
 
   return {
     businessName: source.businessName,
@@ -197,13 +235,17 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
       { label: 'Variación frente a esa fecha', value: prior.length ? salesToday - salesPriorWeek : null, detail: 'Diferencia en ventas registradas.' },
     ],
     collections: [
-      { label: 'Total de dinero recibido', value: collectedToday, detail: creditCollectionsToday == null ? 'Falta conectar el historial de abonos a créditos para completar este total.' : 'Pagos registrados más abonos a créditos recibidos hoy.' },
-      { label: 'Cobros aplicados a comandas', value: collectedFromOrdersToday },
-      { label: 'Abonos de créditos recibidos hoy', value: creditCollectionsToday ?? null },
+      { label: 'Cobros de comandas · USD', value: orderReceiptsToday.get('USD') ?? 0, currency: 'USD', showCurrencyReference: false },
+      { label: 'Cobros de comandas · bolívares', value: orderReceiptsToday.get('VES') ?? 0, currency: 'VES', showCurrencyReference: false },
+      { label: 'Abonos de créditos · USD', value: creditReceiptsToday.get('USD') ?? 0, currency: 'USD', showCurrencyReference: false },
+      { label: 'Abonos de créditos · bolívares', value: creditReceiptsToday.get('VES') ?? 0, currency: 'VES', showCurrencyReference: false },
+      { label: 'Total recibido · USD', value: totalUsdToday, currency: 'USD', showCurrencyReference: false },
+      { label: 'Total recibido · bolívares', value: totalVesToday, currency: 'VES', showCurrencyReference: false },
     ],
     monthlySales: [
       { label: 'Ventas registradas en el mes', value: month.length ? salesMonth : null },
-      { label: 'Dinero recibido en el mes', value: source.monthPayments ? source.monthPayments.filter(payment => payment.method !== 'personal_account').reduce((sum, payment) => sum + payment.amount, 0) + (source.creditCollectionsMonth ?? 0) : null, detail: 'Pagos registrados por fecha de recepción más abonos a créditos; no equivale a las ventas del mes.' },
+      { label: 'Dinero recibido en el mes · USD', value: source.monthPayments ? (orderReceiptsMonth.get('USD') ?? 0) + (creditReceiptsMonth.get('USD') ?? 0) : null, currency: 'USD', showCurrencyReference: false },
+      { label: 'Dinero recibido en el mes · bolívares', value: source.monthPayments ? (orderReceiptsMonth.get('VES') ?? 0) + (creditReceiptsMonth.get('VES') ?? 0) : null, currency: 'VES', showCurrencyReference: false },
       { label: 'Cobros de créditos recibidos en el mes', value: source.creditCollectionsMonth ?? null, detail: 'Abonos cobrados este mes; no se vuelven a sumar como ventas.' },
     ],
     monthlyProjection: [
@@ -220,7 +262,8 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
       .map(value => ({ label: value.method === 'cash' ? `Efectivo ${value.currency === 'VES' ? 'Bs.' : 'USD'} · neto de vuelto` : `${PAYMENT_LABELS[value.method]} (${value.currency === 'VES' ? 'Bs.' : 'USD'})`, count: value.count, total: value.total, currency: value.currency }))
       .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)),
     personalConsumption: [
-      { label: 'Consumos cargados a cuentas personales', value: personalConsumptionToday, detail: 'Se muestran aparte porque no son dinero recibido en caja.' },
+      ...personalConsumptionRows.sort((a, b) => a.name.localeCompare(b.name, 'es')).map(account => ({ label: account.name, value: account.amount, currency: 'USD' as const })),
+      { label: 'Total consumido en cuentas personales', value: personalConsumptionToday, currency: 'USD', detail: 'Consumo cargado a las cuentas personales durante el día; no es dinero recibido en caja.' },
     ],
     topItems: [...itemTotals.entries()]
       .map(([label, value]) => ({ label, count: value.count, total: value.total, productId: value.productId }))
@@ -306,7 +349,7 @@ function summaryStats(data: DailySalesEmailData, currency: string): string {
 function metricsTable(rows: DailySalesMetric[], currency: string, bcvRate: number | null): string {
   const body = rows.map((row, index) => `<tr style="background:${index % 2 === 0 ? '#fffaf0' : '#ffffff'}">
     <td width="60%" style="width:60%;padding:10px 7px;border-bottom:1px solid #eadfca;color:#465164;font-size:13px;overflow-wrap:anywhere">${escapeHtml(row.label)}${row.detail ? `<div style="font-size:11px;line-height:16px;color:#8993a3;margin-top:4px;overflow-wrap:anywhere">${escapeHtml(row.detail)}</div>` : ''}</td>
-    <td width="40%" style="width:40%;padding:10px 7px;border-bottom:1px solid #eadfca;color:#172033;font-size:13px;text-align:right;font-weight:700;white-space:nowrap;word-break:keep-all;overflow-wrap:normal">${escapeHtml(display(row.value, currency, row.format))}${typeof row.value === 'number' && row.format !== 'number' && currency === 'USD' && Number.isFinite(row.value) && (bcvRate ?? 0) > 0 ? `<div style="font-size:10px;line-height:14px;color:${MUTED};font-weight:500;margin-top:3px;white-space:nowrap">${escapeHtml(displayVesReference(row.value, bcvRate!))}</div>` : ''}</td>
+    <td width="40%" style="width:40%;padding:10px 7px;border-bottom:1px solid #eadfca;color:#172033;font-size:13px;text-align:right;font-weight:700;white-space:nowrap;word-break:keep-all;overflow-wrap:normal">${escapeHtml(display(row.value, row.currency ?? currency, row.format))}${row.showCurrencyReference !== false && typeof row.value === 'number' && row.format !== 'number' && (row.currency ?? currency) === 'USD' && Number.isFinite(row.value) && (bcvRate ?? 0) > 0 ? `<div style="font-size:10px;line-height:14px;color:${MUTED};font-weight:500;margin-top:3px;white-space:nowrap">${escapeHtml(displayVesReference(row.value, bcvRate!))}</div>` : ''}</td>
   </tr>`).join('')
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;table-layout:fixed;border-collapse:collapse;background:${PANEL};border-top:1px solid #e4e8ee">${body}</table>`
 }
