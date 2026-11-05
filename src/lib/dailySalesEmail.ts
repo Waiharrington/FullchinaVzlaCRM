@@ -423,7 +423,7 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
     section('10 productos más vendidos', topProducts(data.topItems, currency), 0),
   ].filter(Boolean).join('')
 
-  return `<!doctype html>
+  const html = `<!doctype html>
 <html lang="es" style="color-scheme:light only"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>Reporte diario | ${escapeHtml(name)}</title><style>:root{color-scheme:light only;supported-color-schemes:light}body,table,td,th,div{font-family:'Trebuchet MS',Arial,sans-serif!important}.email-display{font-family:'Palatino Linotype','Book Antiqua',Georgia,serif!important}.email-meta{font-family:'Trebuchet MS',Arial,sans-serif!important}.email-subtitle-short{display:none}.email-bcv{background-size:auto 100%!important;background-position:right center!important}.products-mobile-row{display:none}@media(prefers-color-scheme:dark){html,body{background-color:${BG}!important;color:#202939!important}.email-shell,.email-light-surface{background-color:#fff!important;color:#202939!important}.email-light-row{background-color:#fffaf0!important}.email-light-row-alt{background-color:#fff!important}}@media screen and (max-width:520px){.email-shell{width:100%!important;border-radius:0!important}.email-pad{padding-left:16px!important;padding-right:16px!important}.email-title{font-size:20px!important}.email-report-title{font-family:'Palatino Linotype','Book Antiqua',Georgia,serif!important;font-size:18px!important;line-height:23px!important;white-space:normal!important}.email-date-row,.email-date-row>td{display:block!important;width:100%!important;text-align:left!important}.email-date-row>td:last-child{padding:4px 0 0!important;border-top:0!important}.email-report-date{margin-left:63px!important;margin-right:0!important}.email-bcv{background-size:auto 100%!important;background-position:right center!important}.email-bcv{background-size:auto 100%!important;background-position:right center!important}.email-subtitle-full{display:none!important}.email-subtitle-short{display:inline!important}.email-col{display:block!important;width:100%!important;max-width:100%!important;box-sizing:border-box!important;padding-left:0!important;padding-right:0!important}.email-col-right{padding-top:18px!important}.summary-stats-desktop{display:none!important}.summary-stats-mobile{display:table!important}.summary-stat{display:block!important;width:100%!important;box-sizing:border-box!important;border-right:0!important;border-bottom:1px solid #eadfca!important;padding:8px 12px!important}.summary-stat-label{height:auto!important}.sales-hero-cell{display:block!important;width:100%!important;box-sizing:border-box!important;padding:14px 12px!important}.sales-hero-ves{border-left:0!important;border-top:1px solid #efb7a9!important}.sales-hero-value{font-size:25px!important;white-space:normal!important;overflow-wrap:anywhere!important}.products-desktop-row{display:none!important}.products-mobile-row{display:table-row!important}}</style></head>
 <body class="body" bgcolor="${BG}" style="margin:0;padding:28px 10px;background-color:${BG};font-family:'Trebuchet MS',Arial,sans-serif;color:#202939;color-scheme:light only">
   <table class="email-shell" role="presentation" align="center" width="100%" cellspacing="0" cellpadding="0" bgcolor="#ffffff" style="width:100%;max-width:700px;margin:0 auto;border:1px solid #e3e7ed;border-radius:16px;overflow:hidden;background-color:#fff;color:#202939">
@@ -436,4 +436,29 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
     <tr><td class="email-pad" style="padding:16px;border-top:3px solid #f0c84a;color:#f4e6b8;font-size:10px;text-align:center;background:#202124">Reporte generado automáticamente para uso interno · ${escapeHtml(name)}</td></tr>
   </table>
 </body></html>`
+  return preserveEmailColorsInGmailDarkMode(html)
+}
+
+/**
+ * Gmail iOS rewrites HTML email colors in dark mode and ignores color-scheme
+ * metadata. Solid-color gradients are kept by Gmail's renderer; pair them
+ * with explicit WebKit text fill so the report remains readable and light.
+ */
+function preserveEmailColorsInGmailDarkMode(html: string): string {
+  return html.replace(/style="([^"]*)"/g, (_match, rawStyle: string) => {
+    let style = rawStyle
+    const colors = new Set<string>()
+    style.replace(/(?:^|;)\s*(?:background-color|background)\s*:\s*(#[\da-f]{3,8}|rgba?\([^)]*\)|transparent)(?=\s*(?:;|$))/gi, (_declaration, color: string) => {
+      if (color.toLowerCase() !== 'transparent') colors.add(color)
+      return _declaration
+    })
+    const gradient = [...colors].map(color => `background-image:linear-gradient(${color},${color})`).join(';')
+    if (gradient) style += `;${gradient}`
+    const textColors = [...style.matchAll(/(?:^|;)\s*color\s*:\s*(#[\da-f]{3,8}|rgba?\([^)]*\))/gi)]
+    const textColor = textColors.at(-1)?.[1]
+    if (textColor && !/webkit-text-fill-color\s*:/i.test(style)) {
+      style += `; -webkit-text-fill-color:${textColor}`
+    }
+    return `style="${style}"`
+  })
 }
