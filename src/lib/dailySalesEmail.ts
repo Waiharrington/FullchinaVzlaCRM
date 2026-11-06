@@ -445,7 +445,7 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
  * with explicit WebKit text fill so the report remains readable and light.
  */
 function preserveEmailColorsInGmailDarkMode(html: string): string {
-  return html.replace(/style="([^"]*)"/g, (_match, rawStyle: string) => {
+  const backgrounds = html.replace(/style="([^"]*)"/g, (_match, rawStyle: string) => {
     let style = rawStyle
     const colors = new Set<string>()
     style.replace(/(?:^|;)\s*(?:background-color|background)\s*:\s*(#[\da-f]{3,8}|rgba?\([^)]*\)|transparent)(?=\s*(?:;|$))/gi, (_declaration, color: string) => {
@@ -454,11 +454,32 @@ function preserveEmailColorsInGmailDarkMode(html: string): string {
     })
     const gradient = [...colors].map(color => `background-image:linear-gradient(${color},${color})`).join(';')
     if (gradient) style += `;${gradient}`
-    const textColors = [...style.matchAll(/(?:^|;)\s*color\s*:\s*(#[\da-f]{3,8}|rgba?\([^)]*\))/gi)]
-    const textColor = textColors.at(-1)?.[1]
-    if (textColor && !/webkit-text-fill-color\s*:/i.test(style)) {
-      style += `; -webkit-text-fill-color:${textColor}`
-    }
     return `style="${style}"`
+  })
+  const stack: Array<{ tag: string; color: string }> = []
+  const voidTags = new Set(['area', 'br', 'col', 'hr', 'img', 'input', 'link', 'meta', 'source', 'wbr'])
+  return backgrounds.replace(/<[^>]*>|[^<]+/g, token => {
+    if (token.startsWith('<')) {
+      const closing = token.match(/^<\/\s*([a-z][\w:-]*)/i)
+      if (closing) {
+        let index = -1
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (stack[i].tag === closing[1].toLowerCase()) { index = i; break }
+        }
+        if (index >= 0) stack.length = index
+        return token
+      }
+      const opening = token.match(/^<\s*([a-z][\w:-]*)/i)
+      if (!opening) return token
+      const tag = opening[1].toLowerCase()
+      const inherited = stack[stack.length - 1]?.color ?? '#202939'
+      const inlineStyle = token.match(/\bstyle="([^"]*)"/i)?.[1] ?? ''
+      const color = [...inlineStyle.matchAll(/(?:^|;)\s*color\s*:\s*(#[\da-f]{3,8})/gi)].pop()?.[1] ?? inherited
+      if (!voidTags.has(tag) && !token.endsWith('/>')) stack.push({ tag, color })
+      return token
+    }
+    if (stack.some(entry => ['head', 'style', 'title'].includes(entry.tag)) || !token.trim() || token.trim() === '&nbsp;') return token
+    const color = stack[stack.length - 1]?.color ?? '#202939'
+    return `<span style="color:transparent!important;background-image:linear-gradient(${color},${color})!important;background-clip:text!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important">${token}</span>`
   })
 }
