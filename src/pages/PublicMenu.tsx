@@ -1,12 +1,12 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pause, Pencil, Play, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
+import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pause, Pencil, Play, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type CustomerRepeatOrder, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, replaceIncludedProteinPortion, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
+import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
@@ -388,20 +388,6 @@ function optimizedProductImage(imageUrl: string | null | undefined) {
   return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imageUrl
 }
 
-function proteinOptionImage(products: Product[], optionName: string) {
-  const normalizedOption = normalizeForSearch(optionName).replace(/^extras? de /, '').trim()
-  const match = products.find(product => {
-    let normalizedProduct = normalizeForSearch(product.name)
-    normalizedProduct = normalizedProduct
-      .replace(/^extras? de proteinas?\s*[-—–:]?\s*/, '')
-      .replace(/^extras? de\s+/, '')
-      .replace(/^[-—–:]\s*/, '')
-      .trim()
-    return normalizedProduct === normalizedOption
-  })
-  return optimizedProductImage(match?.imageUrl)
-}
-
 function isProteinCatalogExtra(product: Product) {
   const name = normalizeForSearch(product.name)
   return /\b(extra|adicional)\b/.test(name)
@@ -411,6 +397,7 @@ function isProteinCatalogExtra(product: Product) {
 function filterProteinExtraGroups(groups: ProductModifierGroup[], enabled: boolean) {
   if (enabled) return groups
   return groups.filter(group => {
+    if (isIncludedProteinGroup(group)) return true
     const name = normalizeForSearch(group.name)
     const proteinGroup = name.includes('proteina')
     const optionalExtra = name.includes('extra') || group.minSelections === 0
@@ -513,28 +500,12 @@ export function PublicMenu() {
   const [showModifierGuidance, setShowModifierGuidance] = useState(true)
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({})
   const [selectedCatalogExtras, setSelectedCatalogExtras] = useState<Record<string, number>>({})
-  const [proteinSwapSourceId, setProteinSwapSourceId] = useState<string | null>(null)
-  const [closingProteinSwap, setClosingProteinSwap] = useState(false)
   useEffect(() => {
     const textarea = detailNotesRef.current
     if (!textarea) return
     textarea.style.height = 'auto'
     textarea.style.height = `${Math.max(textarea.scrollHeight, 58)}px`
   }, [detailNotes, selectedGroup])
-  useEffect(() => {
-    if (!proteinSwapSourceId) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      event.stopPropagation()
-      setClosingProteinSwap(true)
-      window.setTimeout(() => {
-        setProteinSwapSourceId(null)
-        setClosingProteinSwap(false)
-      }, 180)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [proteinSwapSourceId])
   const requiredModifierRef = useRef<HTMLDivElement>(null)
   const [activeCategory, setActiveCategory] = useState('Todos')
   const [scrollCategory, setScrollCategory] = useState<string | null>(null)
@@ -1925,7 +1896,7 @@ export function PublicMenu() {
               return
             }
           }
-          if (modifierGroups.some(modifier => modifier.minSelections > 0)) {
+          if (modifierGroups.some(modifier => modifier.minSelections > 0 || isIncludedProteinGroup(modifier))) {
             setAddFeedback(current => current?.productId === product.id && current.status === 'checking' ? null : current)
             openGroup(group, undefined, product.id)
             return
@@ -1962,7 +1933,7 @@ export function PublicMenu() {
         modifierGroups = await getPublicProductModifiers(variant.product.id)
         PUBLIC_MODIFIER_CACHE.set(variant.product.id, modifierGroups)
       }
-      if (modifierGroups.some(group => group.minSelections > 0)) {
+      if (modifierGroups.some(group => group.minSelections > 0 || isIncludedProteinGroup(group))) {
         personalizeQuickVariant()
         return
       }
@@ -2032,7 +2003,6 @@ export function PublicMenu() {
   const closeProductDetail = () => {
     if (!selectedGroup || closingDetail) return
     modifierRequestRef.current += 1
-    setProteinSwapSourceId(null)
     setClosingDetail(true)
     window.setTimeout(() => {
       setSelectedGroup(null)
@@ -2056,7 +2026,6 @@ export function PublicMenu() {
     setClosingDetail(false)
     setSelectedGroup(group)
     setSelectedVariantId(initialVariant?.product.id ?? null)
-    setProteinSwapSourceId(null)
     setDetailQuantity(1)
     setDetailNotes('')
     setSelectedExtras(initialModifiers ?? {})
@@ -2129,7 +2098,7 @@ export function PublicMenu() {
     const applyModifierSummary = (groups: ProductModifierGroup[]) => {
       const availableGroups = filterProteinExtraGroups(groups, quickSelectedVariant.product.allowProteinExtras !== false)
       setQuickVariantHasModifiers(availableGroups.some(group => group.options.length > 0))
-      setQuickVariantOptionsLabel(availableGroups.some(group => normalizeForSearch(group.name).includes('proteina')) ? 'Cambiar proteínas' : 'Ver opciones')
+      setQuickVariantOptionsLabel('Ver opciones')
     }
     const cached = PUBLIC_MODIFIER_CACHE.get(productId)
     if (cached) {
@@ -2163,23 +2132,13 @@ export function PublicMenu() {
   const selectedCatalogExtrasTotal = catalogAddOnProducts.reduce((sum, product) => sum + product.price * (selectedCatalogExtras[product.id] ?? 0), 0)
   const invalidModifierSelection = hasInvalidModifierSelection(detailModifierGroups, selectedExtras)
   const modifierSelectionError = getModifierSelectionError(detailModifierGroups, selectedExtras)
-  const proteinSwapGroup = proteinSwapSourceId
-    ? detailModifierGroups.find(group => isIncludedProteinGroup(group) && group.options.some(option => option.id === proteinSwapSourceId && (selectedExtras[option.id] ?? 0) > 0))
-    : undefined
-  const proteinSwapSource = proteinSwapGroup?.options.find(option => option.id === proteinSwapSourceId)
-  const proteinSwapChoices = proteinSwapGroup?.options.filter(option => option.id !== proteinSwapSourceId) ?? []
-  const dismissProteinSwap = () => {
-    if (closingProteinSwap) return
-    setClosingProteinSwap(true)
-    window.setTimeout(() => {
-      setProteinSwapSourceId(null)
-      setClosingProteinSwap(false)
-    }, 180)
-  }
-  const completeProteinSwap = (currentOptionId: string, replacementOptionId: string) => {
-    setSelectedExtras(current => replaceIncludedProteinPortion(current, currentOptionId, replacementOptionId))
-    setModifierValidationError('')
-    dismissProteinSwap()
+  const toggleProteinExclusion = (optionId: string) => {
+    setSelectedExtras(current => {
+      const next = { ...current }
+      if (next[optionId]) delete next[optionId]
+      else next[optionId] = 1
+      return next
+    })
   }
 
   const addSelectedProduct = () => {
@@ -2210,8 +2169,12 @@ export function PublicMenu() {
       }
       const chosen = detailModifierGroups.flatMap(group => group.options.filter(option => (selectedExtras[option.id] ?? 0) > 0).map(option => ({ option, quantity: selectedExtras[option.id] })))
       const extrasPrice = chosen.reduce((sum, item) => sum + item.option.price * item.quantity, 0)
-      const extras = chosen.map(({ option, quantity }) => `${option.name}${quantity > 1 ? ` ×${quantity}` : ''}${option.price > 0 ? ` (+${money(option.price * quantity)})` : ''}`)
-      const lineNotes = [extras.length ? `Extras: ${extras.join(', ')}` : '', detailNotes.trim()].filter(Boolean).join(' · ')
+      const extras = detailModifierGroups.filter(group => !isIncludedProteinGroup(group))
+        .flatMap(group => group.options.filter(option => (selectedExtras[option.id] ?? 0) > 0)
+          .map(option => `${option.name}${(selectedExtras[option.id] ?? 0) > 1 ? ` ×${selectedExtras[option.id]}` : ''}${option.price > 0 ? ` (+${money(option.price * (selectedExtras[option.id] ?? 0))})` : ''}`))
+      const removedProteins = detailModifierGroups.filter(isIncludedProteinGroup)
+        .flatMap(group => group.options.filter(option => !(selectedExtras[option.id] ?? 0)).map(option => formatSpanishText(option.name)))
+      const lineNotes = [removedProteins.length ? `Sin: ${removedProteins.join(', ')}` : '', extras.length ? `Extras: ${extras.join(', ')}` : '', detailNotes.trim()].filter(Boolean).join(' · ')
       const modifiers = chosen.map(({ option, quantity }) => ({ optionId: option.id, quantity: quantity ?? 1 }))
       if (!editingCartLineKey) {
         const mainKey = cartLineKey({ productId: selectedProduct.id, notes: lineNotes, modifiers })
@@ -2331,7 +2294,7 @@ export function PublicMenu() {
     setReturnToConfirmAfterEdit(step === 'confirm')
     setCartOpen(!isDesktop)
     setStep('cart')
-    const savedModifiers = item.modifiers?.length
+    const savedModifiers = item.modifiers
       ? Object.fromEntries(item.modifiers.map(modifier => [modifier.optionId, modifier.quantity]))
       : undefined
     openGroup(group, undefined, item.productId, savedModifiers)
@@ -2347,9 +2310,7 @@ export function PublicMenu() {
     )
     setSelectedCatalogExtras(savedCatalogExtras)
     const savedNotes = item.notes || ''
-    const userNotes = item.modifiers?.length
-      ? savedNotes.replace(/^Extras: .*?(?: · |$)/, '')
-      : savedNotes
+    const userNotes = savedNotes.replace(/^Sin: [^·]+(?: · |$)/, '').replace(/^Extras: .*?(?: · |$)/, '')
     setDetailNotes(userNotes)
   }
 
@@ -4079,7 +4040,7 @@ export function PublicMenu() {
                   <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
                 </div>
                 <div className="public-variant-actions">
-                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}>{quickVariantOptionsLabel === 'Cambiar proteínas' ? <Drumstick size={16} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}{quickVariantOptionsLabel}</button>}
+                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}><ChevronRight size={15} aria-hidden="true" />{quickVariantOptionsLabel}</button>}
                   <button type="button" className="public-variant-add" onClick={confirmQuickVariant} disabled={confirmingQuickVariant} aria-busy={confirmingQuickVariant}>
                     {confirmingQuickVariant ? <LoaderCircle className="public-add-spinner" size={16} /> : <ShoppingCart size={16} />}
                     <span>{confirmingQuickVariant ? 'Revisando opciones…' : `Agregar · ${money(quickSelectedVariant.product.price * quickVariantQuantity)}`}</span>
@@ -4134,7 +4095,6 @@ export function PublicMenu() {
                         onClick={() => {
                           if (product.id === selectedVariantId) return
                           setSelectedVariantId(product.id)
-                          setProteinSwapSourceId(null)
                           setSelectedExtras({})
                           setModifierValidationError('')
                           setModifierLoadError(false)
@@ -4191,28 +4151,26 @@ export function PublicMenu() {
                   {detailModifierGroups.map(group => {
                     const count = countModifierSelections(group, selectedExtras)
                     const proteinGroup = isIncludedProteinGroup(group)
-                    const includedPortions = group.maxSelections ?? group.minSelections
                     const requiredGroup = !proteinGroup && group.minSelections > 0
                     const groupError = requiredGroup && modifierSelectionError?.modifierId === group.modifierId
                     return <div ref={requiredGroup ? requiredModifierRef : undefined} className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}${requiredGroup ? ' ppdm-modifier-group--required' : ''}${groupError ? ' has-selection-error' : ''}${groupError && modifierValidationError ? ' has-selection-alert' : ''}`} key={group.modifierId}>
                       {proteinGroup ? <>
                         <div className="ppdm-section-header">
-                          <h3>Proteínas incluidas</h3>
-                          <span>{count} de {includedPortions} porciones</span>
+                          <h3>Proteínas del plato</h3>
                         </div>
-                        <p className="ppdm-protein-hint">Las proteínas ya vienen seleccionadas; puedes tocar “Cambiar” para sustituir alguna sin alterar las {includedPortions} porciones.</p>
+                        <p className="ppdm-protein-hint">Si no quieres alguna proteína, indícalo aquí para que cocina la quite. No se sustituye por otra.</p>
                         <div className="ppdm-protein-options">{group.options.map(option => {
                           const quantity = selectedExtras[option.id] ?? 0
                           const optionName = formatSpanishText(option.name)
                           return <div className="ppdm-protein-option" key={option.id}>
                             <span className="ppdm-protein-option-name">{optionName}</span>
                             <span className={`ppdm-protein-option-quantity${quantity === 0 ? ' is-unselected' : ''}`}>
-                              {quantity === 0 ? 'No incluida' : `${quantity} ${quantity === 1 ? 'porción' : 'porciones'}`}
+                              {quantity === 0 ? 'Se quitará' : `${quantity} ${quantity === 1 ? 'porción' : 'porciones'}`}
                               {option.price > 0 && quantity > 0 && <small>+{money(option.price)} por porción</small>}
                             </span>
-                            {quantity > 0 && <button type="button" className="ppdm-protein-change" onClick={() => setProteinSwapSourceId(current => current === option.id ? null : option.id)} aria-label={`Cambiar una porción de ${optionName}`}>
-                              Cambiar{quantity > 1 && <small>una porción</small>}
-                            </button>}
+                            <button type="button" className="ppdm-protein-change" onClick={() => toggleProteinExclusion(option.id)} aria-pressed={quantity === 0} aria-label={quantity === 0 ? `Volver a incluir ${optionName}` : `Pedir sin ${optionName}`}>
+                              {quantity === 0 ? 'Volver a incluir' : 'Quitar'}
+                            </button>
                           </div>
                         })}</div>
                       </> : <>
@@ -4297,31 +4255,6 @@ export function PublicMenu() {
               </div>
               <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)}</span></>}</button>
             </footer>
-          </section>
-        </div>,
-        document.body
-      )}
-
-      {proteinSwapSource && selectedProduct && createPortal(
-        <div className={`ppdm-protein-swap-screen${closingProteinSwap ? ' closing' : ''}`} onClick={dismissProteinSwap}>
-          <section className="ppdm-protein-swap-dialog" role="dialog" aria-modal="true" aria-labelledby="ppdm-protein-swap-title" onClick={event => event.stopPropagation()}>
-            <header className="ppdm-protein-swap-header">
-              <button type="button" className="ppdm-protein-swap-back" onClick={dismissProteinSwap} aria-label="Volver al producto" disabled={closingProteinSwap}><ChevronRight size={20} /></button>
-              <div><h2 id="ppdm-protein-swap-title">Cambia tu proteína</h2><p><b><small>CAMBIANDO</small>1 porción de {formatSpanishText(proteinSwapSource.name)}</b><span>La cantidad de porciones no cambia</span></p></div>
-            </header>
-            <div className="ppdm-protein-swap-body">
-              <div className="ppdm-protein-swap-intro"><strong>Elige tu reemplazo</strong><span>Toca la proteína que prefieres.</span></div>
-              <div className="ppdm-protein-swap-options">
-                {proteinSwapChoices.map(option => {
-                  const imageUrl = proteinOptionImage(extrasProducts, option.name)
-                  return <button type="button" className="ppdm-protein-swap-option" key={option.id} onClick={() => completeProteinSwap(proteinSwapSource.id, option.id)} disabled={closingProteinSwap}>
-                    <img src={imageUrl || productImage('extras')} alt={formatSpanishText(option.name)} decoding="async" />
-                    <span className="ppdm-protein-swap-option-copy"><strong>{formatSpanishText(option.name)}</strong><small>{option.price > 0 ? `+${money(option.price)} por porción` : 'Porción incluida'}</small></span>
-                    <span className="ppdm-protein-swap-select"><ChevronRight size={18} aria-hidden="true" /></span>
-                  </button>
-                })}
-              </div>
-            </div>
           </section>
         </div>,
         document.body

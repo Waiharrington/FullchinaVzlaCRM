@@ -1,5 +1,9 @@
 # Estado y continuidad de FullChinaVzla
 
+## Proteínas opcionales en el pedido web (2026-11-07)
+
+Se aplicó `20261107000000_allow_removing_included_proteins.sql` al VPS tras validar el respaldo completo `/root/fullchina-backups/fullchinavzla-pre-remove-proteins-20261107.dump` (34.830.717 bytes; SHA-256 `0d58e6c0fd7baeaa615c79a5b4b3426568e179771fbcd7991f9e9fbecdd8b22b`). El grupo **Proteínas incluidas · Full Kilo** quedó con mínimo 0 y máximo 4, y se verificó activo `trg_reconcile_web_order_protein_stock`. En la página pública se muestran todas incluidas por defecto; el cliente puede quitar una sin sustituirla. Al confirmar el pedido web, un ajuste de inventario en la misma transacción compensa la proteína quitada de la receta fija. Pendiente: comprobar un pedido real elegido por la clienta de punta a punta.
+
 Última actualización: 2026-11-04.
 
 ## Historial detallado por cuenta y ajuste del correo diario (2026-11-04)

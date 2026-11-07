@@ -21,10 +21,10 @@ export function getPublicCartLimitViolation(items: readonly { productId: string;
 /** Fixed included-protein recipes start with one serving of each protein. */
 export function isIncludedProteinGroup(group: ProductModifierGroup): boolean {
   const totalIncluded = group.maxSelections
-  return normalizeForSearch(group.name).includes('proteina')
+  return normalizeForSearch(group.name).startsWith('proteinas incluidas')
     && totalIncluded !== null
     && totalIncluded > 0
-    && group.minSelections === totalIncluded
+    && (group.minSelections === totalIncluded || group.minSelections === 0)
     && group.allowRepeat
     && group.options.length === totalIncluded
 }
@@ -36,21 +36,6 @@ export function getDefaultModifierSelection(groups: ProductModifierGroup[]): Pub
     group.options.forEach(option => { selection[option.id] = 1 })
   }
   return selection
-}
-
-export function replaceIncludedProteinPortion(
-  selection: PublicModifierSelection,
-  currentOptionId: string,
-  replacementOptionId: string,
-): PublicModifierSelection {
-  const currentQuantity = selection[currentOptionId] ?? 0
-  if (currentQuantity < 1 || currentOptionId === replacementOptionId) return selection
-
-  const next = { ...selection }
-  if (currentQuantity === 1) delete next[currentOptionId]
-  else next[currentOptionId] = currentQuantity - 1
-  next[replacementOptionId] = (next[replacementOptionId] ?? 0) + 1
-  return next
 }
 
 export function countModifierSelections(group: ProductModifierGroup, selection: PublicModifierSelection): number {

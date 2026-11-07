@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, replaceIncludedProteinPortion } from './publicOrderRules'
+import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION } from './publicOrderRules'
 import type { ProductModifierGroup } from './dataService'
 
 const groups: ProductModifierGroup[] = [
@@ -46,21 +46,19 @@ describe('reglas de opciones del pedido público', () => {
     expect(getModifierSelectionError([proteins], defaults)).toBeNull()
   })
 
-  it('reemplaza una proteína por otra sin cambiar el total de porciones', () => {
+  it('permite quitar proteínas incluidas sin sustituirlas tras bajar el mínimo del grupo', () => {
     const proteins: ProductModifierGroup = {
-      modifierId: 'proteins', name: 'Proteínas incluidas', minSelections: 4,
+      modifierId: 'proteins', name: 'Proteínas incluidas · Full Kilo', minSelections: 0,
       maxSelections: 4, allowRepeat: true, options: [
-        { id: 'pollo', name: 'Pollo', price: 0 },
+        { id: 'chicken', name: 'Pollo', price: 0 },
         { id: 'shrimp', name: 'Camarón', price: 0 },
         { id: 'ham', name: 'Jamón', price: 0 },
         { id: 'pork', name: 'Cerdo', price: 0 },
       ],
     }
-    const selection = { pollo: 1, shrimp: 1, ham: 1, pork: 1 }
-    const swapped = replaceIncludedProteinPortion(selection, 'pork', 'pollo')
-    expect(swapped).toEqual({ pollo: 2, shrimp: 1, ham: 1 })
-    expect(Object.values(swapped).reduce((total, quantity) => total + quantity, 0)).toBe(4)
-    expect(getModifierSelectionError([proteins], swapped)).toBeNull()
+    expect(getDefaultModifierSelection([proteins])).toEqual({ chicken: 1, shrimp: 1, ham: 1, pork: 1 })
+    expect(getModifierSelectionError([proteins], { chicken: 1, ham: 1, pork: 1 })).toBeNull()
+    expect(getModifierSelectionError([proteins], {})).toBeNull()
   })
 
   it('no aplica valores predeterminados a grupos que no sean proteínas incluidas', () => {
