@@ -33,6 +33,18 @@
       "destination": "/api/pedir-seo"
     },
     {
+      "source": "/",
+      "destination": "/pedir.html"
+    },
+    {
+      "source": "/pedir",
+      "destination": "/pedir.html"
+    },
+    {
+      "source": "/pedir/",
+      "destination": "/pedir.html"
+    },
+    {
       "source": "/sitemap-images.xml",
       "destination": "/api/pedir-seo?format=images"
     },

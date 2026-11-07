@@ -94,8 +94,9 @@ export default defineConfig({
       // La app mostrará una acción explícita para aplicar la actualización.
       registerType: 'prompt',
       injectRegister: null,
-      // Usamos dos manifests propios (cliente/admin) enlazados dinámicamente en
-      // index.html, así que desactivamos el manifest que genera el plugin.
+      // Usamos manifests propios. La ruta de pedidos tiene un HTML de entrada
+      // independiente con el manifiesto cliente fijado antes de ejecutar JS;
+      // el panel conserva el manifiesto de administración.
       manifest: false,
       includeAssets: ['favicon.ico', 'icons/*.png', 'manifest-cliente.webmanifest', 'manifest-admin.webmanifest'],
       workbox: {
@@ -152,6 +153,10 @@ export default defineConfig({
   ],
   build: {
     rollupOptions: {
+      input: {
+        app: 'index.html',
+        pedir: 'pedir.html',
+      },
       output: {
         manualChunks(id) {
           // Mantén el helper de imports dinámicos en un chunk diminuto. Si
