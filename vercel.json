@@ -5,6 +5,13 @@
       "schedule": "0 5 * * *"
     }
   ],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/pedir",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/pedir",
@@ -31,10 +38,6 @@
         }
       ],
       "destination": "/api/pedir-seo"
-    },
-    {
-      "source": "/",
-      "destination": "/pedir.html"
     },
     {
       "source": "/pedir",

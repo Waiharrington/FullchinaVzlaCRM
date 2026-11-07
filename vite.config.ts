@@ -100,6 +100,10 @@ export default defineConfig({
       manifest: false,
       includeAssets: ['favicon.ico', 'icons/*.png', 'manifest-cliente.webmanifest', 'manifest-admin.webmanifest'],
       workbox: {
+        // La ruta pública tiene un HTML de entrada y manifiesto propios. Si
+        // una navegación a /pedir usa el fallback index.html del SW, podría
+        // instalar el manifiesto administrativo en vez del de clientes.
+        navigateFallbackDenylist: [/^\/pedir(?:\/.*)?(?:\?.*)?$/],
         // Push events must be handled by the same generated worker that owns
         // the PWA scope; this small script only renders notifications/clicks.
         importScripts: ['/push-service-worker.js'],
