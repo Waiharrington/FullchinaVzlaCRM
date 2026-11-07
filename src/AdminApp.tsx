@@ -82,9 +82,9 @@ function AdminRoutes() {
     <Suspense fallback={splashDone ? <ModuleLoader /> : null}>
       <>
         <Routes>
-          <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login authInitializing={loading} />} />
+          <Route path="/login" element={user ? <Navigate to="/inicio" replace /> : <Login authInitializing={loading} />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route path="/" element={forModule('/', <Inicio />)} />
+            <Route path="/inicio" element={forModule('/', <Inicio />)} />
             <Route path="/caja" element={forModule('/caja', <Caja />)} />
             <Route path="/mesas" element={forModule('/mesas', <Mesas />)} />
             <Route path="/caja-operativa" element={forModule('/caja-operativa', <CajaOperativa />)} />
@@ -111,7 +111,8 @@ function AdminRoutes() {
             <Route path="/promociones" element={forModule('/promociones', <Promociones />)} />
             <Route path="/reportes" element={forModule('/reportes', <Reportes />)} />
           </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/" element={<Navigate to="/pedir" replace />} />
+          <Route path="*" element={<Navigate to="/inicio" replace />} />
         </Routes>
         {user && splashDone ? <DashboardPushSettings role={user.role} isDrawerOpen={false} promptOnEntry /> : null}
       </>

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
-import { BrowserRouter, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, useLocation } from 'react-router-dom'
 import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
+import { PwaInstallPrompt } from './components/PwaInstallPrompt'
 
 const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
 const AdminApp = lazy(() => import('./AdminApp'))
@@ -8,6 +9,7 @@ const AdminApp = lazy(() => import('./AdminApp'))
 function AppContent() {
   const location = useLocation()
   const isPublicMenu = /^\/pedir\/?$/i.test(location.pathname)
+  const isPublicEntry = location.pathname === '/'
   const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | 'failed' | null>(() =>
     (window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable ? 'available' : null,
   )
@@ -33,9 +35,9 @@ function AppContent() {
   useEffect(() => {
     const link = document.getElementById('pwa-manifest')
     if (!link) return
-    const href = isPublicMenu ? '/manifest-cliente.webmanifest' : '/manifest-admin.webmanifest'
+    const href = isPublicMenu || isPublicEntry ? '/manifest-cliente.webmanifest' : '/manifest-admin.webmanifest'
     if (link.getAttribute('href') !== href) link.setAttribute('href', href)
-  }, [isPublicMenu])
+  }, [isPublicMenu, isPublicEntry])
 
   const updateNotice = updateStatus && (
     <aside
@@ -44,7 +46,7 @@ function AppContent() {
         position: 'fixed',
         zIndex: 2000,
         right: 20,
-        bottom: isPublicMenu ? 96 : 20,
+        bottom: isPublicMenu ? 170 : 20,
         display: 'flex',
         alignItems: 'center',
         gap: 14,
@@ -96,7 +98,8 @@ function AppContent() {
     </aside>
   )
 
-  if (isPublicMenu) return <>{updateNotice}<Suspense fallback={<PublicMenuSkeleton />}><PublicMenu /></Suspense></>
+  if (isPublicEntry) return <Navigate to="/pedir" replace />
+  if (isPublicMenu) return <>{updateNotice}<PwaInstallPrompt /><Suspense fallback={<PublicMenuSkeleton />}><PublicMenu /></Suspense></>
   // El bundle de AdminApp (login + dashboard + AuthProvider, que es quien
   // controla el splash real con barra de progreso) se descarga aquí. Antes
   // de que exista ese AuthProvider no hay forma de mostrar el splash real,

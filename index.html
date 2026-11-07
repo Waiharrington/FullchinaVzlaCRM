@@ -21,7 +21,8 @@
       // instala la app "Full China"; el resto instala "Full China Admin".
       (function () {
         var link = document.getElementById('pwa-manifest');
-        if (link && location.pathname.toLowerCase().indexOf('/pedir') === 0) {
+        var path = location.pathname.toLowerCase();
+        if (link && (path === '/' || path.indexOf('/pedir') === 0)) {
           link.setAttribute('href', '/manifest-cliente.webmanifest');
         }
       })();

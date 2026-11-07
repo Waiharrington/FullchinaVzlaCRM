@@ -34,7 +34,7 @@ export interface NavItem {
 }
 
 export const allNavItems: NavItem[] = [
-  { path: '/', label: 'Dashboard', icon: Home, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/inicio', label: 'Dashboard', icon: Home, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/menu', label: 'Menú', icon: UtensilsCrossed, roles: ['owner', 'manager'], group: 'Operación' },
