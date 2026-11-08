@@ -32,6 +32,15 @@ function AppContent() {
     window.scrollTo(0, 0)
   }, [location.key])
 
+  useLayoutEffect(() => {
+    // If the public route was reached through an SPA transition, the browser
+    // still has the admin HTML document and may bind installation to its
+    // manifest. Reload once through Vercel's dedicated customer HTML entry.
+    if (isPublicMenu && document.documentElement.dataset.pwaEntry !== 'cliente') {
+      window.location.replace('/pedir')
+    }
+  }, [isPublicMenu])
+
   useEffect(() => {
     const link = document.getElementById('pwa-manifest')
     if (!link) return
