@@ -51,6 +51,18 @@ export function PwaInstallPrompt() {
   }
 
   const installOrShowInstructions = async () => {
+    const entry = document.documentElement.dataset.pwaEntry
+    const manifest = document.getElementById('pwa-manifest') as HTMLLinkElement | null
+    const manifestPath = manifest ? new URL(manifest.href, window.location.href).pathname : ''
+
+    // On SPA navigation, changing the manifest link is not enough: browsers
+    // may keep the install prompt bound to the manifest from the first HTML.
+    // Reload through the dedicated customer HTML before asking to install.
+    if (entry !== 'cliente' || manifestPath !== '/manifest-cliente.webmanifest') {
+      window.location.assign('/pedir')
+      return
+    }
+
     if (!installPrompt) {
       setShowInstructions(value => !value)
       return
