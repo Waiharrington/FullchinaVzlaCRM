@@ -119,13 +119,18 @@ export function PaginaPedir() {
     </header>
     <div className="pedir-summary">
       <article><Eye size={19} /><span>Productos visibles<strong>{visibleCount}</strong></span></article>
-      <article><Flame size={19} /><span>En el carrusel<strong>{carouselCount} / 8</strong></span></article>
+      <article><Flame size={19} /><span>Elegidos manualmente<strong>{carouselCount} / 8</strong></span></article>
       <article><Sparkles size={19} /><span>Con etiqueta<strong>{products.filter(product => product.menuLabel).length}</strong></span></article>
     </div>
+    <p className="pedir-carousel-note">
+      {carouselCount === 0
+        ? 'El carrusel público sí tiene productos: muestra recomendaciones automáticas hasta que elijas productos aquí.'
+        : 'El carrusel público muestra esta selección manual. Si la quitas por completo, vuelve a las recomendaciones automáticas.'}
+    </p>
     <section className="pedir-controls">
       <label className="pedir-search"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar un producto" /></label>
       <select aria-label="Filtrar por categoría" value={category} onChange={event => setCategory(event.target.value)}>{categories.map(item => <option value={item} key={item}>{item === 'Todas' ? item : categoryLabel(item)}</option>)}</select>
-      <div className="pedir-filter-tabs">{([['all', 'Todos'], ['visible', 'En la página'], ['carousel', 'En el carrusel']] as const).map(([value, label]) => <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>)}</div>
+      <div className="pedir-filter-tabs">{([['all', 'Todos'], ['visible', 'En la página'], ['carousel', 'Elegidos para carrusel']] as const).map(([value, label]) => <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>)}</div>
     </section>
     <section className="pedir-cover-settings" aria-labelledby="pedir-cover-title">
       <div className="pedir-cover-heading"><div><span className="pedir-admin-kicker">PORTADA DE LA TIENDA</span><h2 id="pedir-cover-title">Encabezado y banner</h2><p>Personaliza los textos y la imagen que reciben a tus clientes. El estado del local y el carrusel de platos se mantienen automáticos.</p></div><button type="button" className="pedir-save-button" onClick={() => void savePageSettings()} disabled={settingsSaving || settingsLoading}>{settingsSaving ? 'Guardando…' : 'Guardar portada'}</button></div>
