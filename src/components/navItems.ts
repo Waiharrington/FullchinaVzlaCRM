@@ -20,7 +20,8 @@ import {
   CreditCard,
   BadgeDollarSign,
   Tag,
-  LayoutGrid
+  LayoutGrid,
+  ShoppingBag
 } from 'lucide-react'
 
 export type Role = 'owner' | 'manager' | 'cashier'
@@ -38,6 +39,7 @@ export const allNavItems: NavItem[] = [
   { path: '/comandas', label: 'Comandas', icon: ClipboardList, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/caja', label: 'Ventas', icon: Wallet, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/menu', label: 'Menú', icon: UtensilsCrossed, roles: ['owner', 'manager'], group: 'Operación' },
+  { path: '/pagina-pedir', label: 'Página de pedir', icon: ShoppingBag, roles: ['owner', 'manager'], group: 'Operación' },
   { path: '/mesas', label: 'Mesas', icon: LayoutGrid, roles: ['owner', 'manager', 'cashier'], group: 'Operación' },
   { path: '/clientes', label: 'Clientes', icon: Users, roles: ['owner', 'manager'], group: 'Gestión' },
   { path: '/proveedores', label: 'Proveedores', icon: Building2, roles: ['owner', 'manager'], group: 'Gestión' },

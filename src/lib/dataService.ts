@@ -14,6 +14,9 @@ export interface Product {
   imageUrl: string | null
   allowProteinExtras?: boolean
   menuLabel?: 'top_sales' | 'new' | 'recommended' | 'free_drink' | null
+  publicVisible?: boolean
+  publicCarousel?: boolean
+  publicCarouselOrder?: number
 }
 
 export interface SelectedModifier {
@@ -453,6 +456,9 @@ export interface SellableProduct {
   isDelivery: boolean
   allowProteinExtras: boolean
   menuLabel: 'top_sales' | 'new' | 'recommended' | 'free_drink' | null
+  publicVisible?: boolean
+  publicCarousel?: boolean
+  publicCarouselOrder?: number
 }
 
 export interface RecipeSummary {
@@ -768,6 +774,7 @@ type SellableProductRow = {
   id: string; name: string; description: string | null; price: number; cost: number | null
   category: string; emoji: string; is_active: boolean; image_url: string | null
   is_delivery?: boolean; menu_label: Product['menuLabel']; allow_protein_extras?: boolean | null
+  public_visible?: boolean; public_carousel?: boolean; public_carousel_order?: number | null
 }
 
 type SellableProductsResult = { data: SellableProductRow[] | null; error: { code?: string; message?: string } | null }
@@ -813,18 +820,15 @@ export async function getProducts(): Promise<Product[]> {
 
 /** Todos los productos vendibles (activos e inactivos) para el módulo Menú. */
 export async function getAllSellableProducts(): Promise<SellableProduct[]> {
-    const queryProducts = async (withProteinExtras: boolean): Promise<SellableProductsResult> => await (client()
+    const queryProducts = async (): Promise<SellableProductsResult> => await (client()
       .from('sellable_products')
-      .select(withProteinExtras
-        ? 'id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label,allow_protein_extras'
-        : 'id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label')
+      .select('id,name,description,price,cost,category,emoji,is_active,image_url,is_delivery,menu_label,allow_protein_extras,public_visible,public_carousel,public_carousel_order')
       .order('name', { ascending: true }) as unknown as Promise<SellableProductsResult>)
-  const [initialProducts, extraMap] = await Promise.all([
-    queryProducts(true),
+  const [productResult, extraMap] = await Promise.all([
+    queryProducts(),
     getProductExtraCategoriesMap().catch(() => new Map<string, string[]>()),
   ])
-  let { data, error } = initialProducts
-  if (isMissingProteinExtrasColumn(error)) ({ data, error } = await queryProducts(false))
+  const { data, error } = productResult
   if (error) throw error
   return (data ?? []).map((r) => ({
     id: r.id as string, name: r.name as string, description: (r.description as string) ?? null,
@@ -834,6 +838,9 @@ export async function getAllSellableProducts(): Promise<SellableProduct[]> {
     imageUrl: (r.image_url as string) ?? null, isDelivery: (r.is_delivery as boolean) ?? false,
     allowProteinExtras: r.allow_protein_extras == null ? (r.category as string) !== 'bebidas' : Boolean(r.allow_protein_extras),
     menuLabel: (r.menu_label as SellableProduct['menuLabel']) ?? null,
+    publicVisible: r.public_visible == null ? true : Boolean(r.public_visible),
+    publicCarousel: Boolean(r.public_carousel),
+    publicCarouselOrder: Number(r.public_carousel_order ?? 0),
   }))
 }
 
@@ -854,6 +861,7 @@ export async function createProduct(p: {
 export async function updateProduct(id: string, updates: Partial<{
   name: string; description: string | null; price: number; cost: number | null
   category: string; emoji: string; imageUrl: string | null; isActive: boolean; allowProteinExtras: boolean; menuLabel: SellableProduct['menuLabel']
+  publicVisible: boolean; publicCarousel: boolean; publicCarouselOrder: number
 }>): Promise<void> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (updates.name !== undefined) payload.name = updates.name
@@ -866,6 +874,9 @@ export async function updateProduct(id: string, updates: Partial<{
   if (updates.isActive !== undefined) payload.is_active = updates.isActive
   if (updates.allowProteinExtras !== undefined) payload.allow_protein_extras = updates.allowProteinExtras
   if (updates.menuLabel !== undefined) payload.menu_label = updates.menuLabel
+  if (updates.publicVisible !== undefined) payload.public_visible = updates.publicVisible
+  if (updates.publicCarousel !== undefined) payload.public_carousel = updates.publicCarousel
+  if (updates.publicCarouselOrder !== undefined) payload.public_carousel_order = updates.publicCarouselOrder
   const { error } = await client().from('sellable_products').update(payload).eq('id', id)
   if (error) throw error
 }

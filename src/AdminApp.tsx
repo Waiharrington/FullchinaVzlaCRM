@@ -37,6 +37,7 @@ const MarketingWhatsApp = lazy(() => import('./pages/MarketingWhatsApp').then(mo
 const Fidelizacion = lazy(() => import('./pages/Fidelizacion').then(module => ({ default: module.Fidelizacion })))
 const MenuSemanal = lazy(() => import('./pages/MenuSemanal').then(module => ({ default: module.MenuSemanal })))
 const Menu = lazy(() => import('./pages/Menu').then(module => ({ default: module.Menu })))
+const PaginaPedir = lazy(() => import('./pages/PaginaPedir').then(module => ({ default: module.PaginaPedir })))
 const Gastos = lazy(() => import('./pages/Gastos').then(module => ({ default: module.Gastos })))
 const Equipo = lazy(() => import('./pages/Equipo').then(module => ({ default: module.Equipo })))
 const Promociones = lazy(() => import('./pages/Promociones').then(module => ({ default: module.Promociones })))
@@ -97,6 +98,7 @@ function AdminRoutes() {
             <Route path="/produccion" element={forModule('/produccion', <Produccion />)} />
             <Route path="/recetas" element={forModule('/recetas', <Recetas />)} />
             <Route path="/menu" element={forModule('/menu', <Menu />)} />
+            <Route path="/pagina-pedir" element={forModule('/pagina-pedir', <PaginaPedir />)} />
             <Route path="/menu-semanal" element={forModule('/menu-semanal', <MenuSemanal />)} />
             <Route path="/compras" element={forModule('/compras', <Compras />)} />
             <Route path="/gastos" element={forModule('/gastos', <Gastos />)} />

@@ -25,6 +25,7 @@ import {
   Activity,
   Settings,
   Utensils,
+  ShoppingBag,
   X,
   ArrowRight,
 } from 'lucide-react'
@@ -70,6 +71,7 @@ const MODULE_ICONS: Record<string, typeof Home> = {
   '/inventario': Package,
   '/produccion': Beef,
   '/menu': UtensilsCrossed,
+  '/pagina-pedir': ShoppingBag,
   '/recetas': BookOpen,
   '/menu-semanal': Utensils,
   '/compras': ShoppingCart,

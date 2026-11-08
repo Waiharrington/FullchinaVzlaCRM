@@ -1287,16 +1287,25 @@ export function PublicMenu() {
   const accentRgb = accentIndex === -1 ? CATEGORY_ACCENT_CYCLE[0] : CATEGORY_ACCENT_CYCLE[accentIndex % CATEGORY_ACCENT_CYCLE.length]
 
   const recommendedPool = useMemo(() => {
+    const visibleGroups = groups
+      .map(group => ({ ...group, variants: group.variants.filter(variant => variant.product.publicVisible !== false) }))
+      .filter(group => group.variants.length > 0)
+    const carouselGroups = visibleGroups.map(group => ({
+      ...group,
+      variants: group.variants.filter(variant => variant.product.publicCarousel),
+    })).filter(group => group.variants.length > 0)
+      .sort((a, b) => (a.variants[0].product.publicCarouselOrder ?? 0) - (b.variants[0].product.publicCarouselOrder ?? 0))
+    const categoryGroups = carouselGroups.length ? carouselGroups : visibleGroups
     const source = activeCategory === 'Todos'
-      ? groups
-      : groups.filter(group => group.variants.some(v => v.product.categories.includes(activeCategory)))
+      ? categoryGroups
+      : categoryGroups.filter(group => group.variants.some(v => v.product.categories.includes(activeCategory)))
     // El pool debe ser estable durante el montaje. Un shuffle con Math.random
     // aquí cambia de recomendación cada vez que llegan los productos, y en
     // desarrollo StrictMode puede hacer que se vean varias tarjetas entrando
     // fugazmente al recargar la página.
-    return [...(source.length > 0 ? source : groups)]
-      .sort((a, b) => a.key.localeCompare(b.key))
-      .slice(0, 8)
+    const stableGroups = source.length > 0 ? [...source] : [...groups]
+    if (!carouselGroups.length) stableGroups.sort((a, b) => a.key.localeCompare(b.key))
+    return stableGroups.slice(0, 8)
   }, [groups, activeCategory])
   const recommendedSlides = useMemo(() => {
     const slides: Array<{ kind: 'product'; group: typeof recommendedPool[number] } | { kind: 'loyalty' }> = []
@@ -1435,6 +1444,13 @@ export function PublicMenu() {
   }, [])
 
   const recommendedGroup = currentRecommendedSlide?.kind === 'product' ? currentRecommendedSlide.group : null
+  const recommendedVariant = recommendedGroup?.variants.find(variant => variant.product.publicCarousel) ?? recommendedGroup?.variants.find(variant => {
+    const groupName = normalizeForSearch(recommendedGroup.name)
+    const variantName = normalizeForSearch(variant.product.name)
+    if (groupName === 'costillas') return !variantName.includes('1 unidad') && !variantName.includes('1/2')
+    if (groupName === 'lumpias') return variantName.includes('sencilla')
+    return false
+  }) ?? null
   const [storeClock, setStoreClock] = useState(getStoreClock)
   useEffect(() => {
     const timer = window.setInterval(() => setStoreClock(getStoreClock()), 60_000)
@@ -2885,7 +2901,7 @@ export function PublicMenu() {
               return
             }
             if ((event.target as HTMLElement).closest('button, .public-recommended-dots-overlay')) return
-            if (!isLoyaltyRecommended && recommendedGroup) openGroup(recommendedGroup)
+            if (!isLoyaltyRecommended && recommendedGroup) openGroup(recommendedGroup, undefined, recommendedVariant?.product.id)
           }}
           onPointerDown={(event) => {
             // Los botones (CTA e indicadores) conservan su interacción normal;
@@ -2923,12 +2939,12 @@ export function PublicMenu() {
             <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
               <small>RECOMENDADO <Flame size={12} /></small>
               <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
-              <p>{recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
-              {recommendedGroup && <span className="public-recommended-price">{money(recommendedGroup.minPrice)}</span>}
-              {recommendedGroup && priceBs(recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedGroup.minPrice)}</span>}
+              <p>{recommendedVariant?.product.description || recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
+              {recommendedGroup && <span className="public-recommended-price">{money(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</span>}
+              {recommendedGroup && priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</span>}
               <button
                 className="public-recommended-btn"
-                onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup) }}
+                onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup, undefined, recommendedVariant?.product.id) }}
                 aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
               >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
             </div>

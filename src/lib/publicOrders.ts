@@ -151,6 +151,9 @@ export async function getPublicCatalog(): Promise<Product[]> {
         ? !(categories.includes('bebidas') || ['bebida', 'drink', 'drinks', 'agua', 'aguas'].includes(category.toLowerCase()))
         : Boolean(row.allow_protein_extras),
       menuLabel: (row.menu_label as Product['menuLabel']) ?? null,
+      publicVisible: row.public_visible == null ? true : Boolean(row.public_visible),
+      publicCarousel: Boolean(row.public_carousel),
+      publicCarouselOrder: Number(row.public_carousel_order ?? 0),
     }
   })
 }
