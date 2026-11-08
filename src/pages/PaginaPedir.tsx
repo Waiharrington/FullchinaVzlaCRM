@@ -4,6 +4,7 @@ import { getAllSellableProducts, updateProduct, type SellableProduct } from '../
 import { formatUsd } from '../lib/money'
 import { categoryLabel } from '../lib/menuCategories'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
+import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderPageSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
 import { PageSkeleton } from '../components/PageSkeleton'
 import Toast from '../components/Toast'
 import './PaginaPedir.css'
@@ -26,6 +27,16 @@ export function PaginaPedir() {
   const [filter, setFilter] = useState<'all' | 'visible' | 'carousel'>('all')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
+  const [settingsSaving, setSettingsSaving] = useState(false)
+  const [settingsLoading, setSettingsLoading] = useState(true)
+  const [settingsError, setSettingsError] = useState('')
+
+  const loadPageSettings = useCallback(async () => {
+    try { setPageSettings(await getPublicOrderPageSettings()); setSettingsError('') }
+    catch (cause) { setSettingsError(cause instanceof Error ? cause.message : 'No se pudo cargar la portada') }
+    finally { setSettingsLoading(false) }
+  }, [])
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -38,7 +49,8 @@ export function PaginaPedir() {
     } finally { setLoading(false) }
   }, [])
   useEffect(() => { void load() }, [load])
-  useLiveDataRefresh('pagina-pedir', () => { void load(true) })
+  useEffect(() => { void loadPageSettings() }, [loadPageSettings])
+  useLiveDataRefresh('pagina-pedir', () => { void load(true); void loadPageSettings() })
 
   const categories = useMemo(() => ['Todas', ...Array.from(new Set(products.flatMap(product => product.categories))).sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)))], [products])
   const filtered = useMemo(() => products.filter(product => {
@@ -83,6 +95,22 @@ export function PaginaPedir() {
     finally { setSavingId('') }
   }
 
+  const savePageSettings = async () => {
+    setSettingsSaving(true)
+    setSettingsError('')
+    try {
+      await updatePublicOrderPageSettings(pageSettings)
+      setNotice('Portada guardada. Los cambios ya están disponibles en la página pública.')
+      window.setTimeout(() => setNotice(''), 3000)
+    } catch (cause) {
+      setSettingsError(cause instanceof Error ? cause.message : 'No se pudo guardar la portada')
+    } finally { setSettingsSaving(false) }
+  }
+
+  const updateSetting = <K extends keyof PublicOrderPageSettings>(key: K, value: PublicOrderPageSettings[K]) => {
+    setPageSettings(current => ({ ...current, [key]: value }))
+  }
+
   if (loading) return <PageSkeleton cards={4} rows={7} hasTable={false} />
   return <main className="pedir-admin page animate-fade-in">
     <header className="pedir-admin-head">
@@ -98,6 +126,28 @@ export function PaginaPedir() {
       <label className="pedir-search"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar un producto" /></label>
       <select aria-label="Filtrar por categoría" value={category} onChange={event => setCategory(event.target.value)}>{categories.map(item => <option value={item} key={item}>{item === 'Todas' ? item : categoryLabel(item)}</option>)}</select>
       <div className="pedir-filter-tabs">{([['all', 'Todos'], ['visible', 'En la página'], ['carousel', 'En el carrusel']] as const).map(([value, label]) => <button key={value} type="button" className={filter === value ? 'active' : ''} onClick={() => setFilter(value)}>{label}</button>)}</div>
+    </section>
+    <section className="pedir-cover-settings" aria-labelledby="pedir-cover-title">
+      <div className="pedir-cover-heading"><div><span className="pedir-admin-kicker">PORTADA DE LA TIENDA</span><h2 id="pedir-cover-title">Encabezado y banner</h2><p>Personaliza los textos y la imagen que reciben a tus clientes. El estado del local y el carrusel de platos se mantienen automáticos.</p></div><button type="button" className="pedir-save-button" onClick={() => void savePageSettings()} disabled={settingsSaving || settingsLoading}>{settingsSaving ? 'Guardando…' : 'Guardar portada'}</button></div>
+      <div className="pedir-cover-layout">
+        <div className="pedir-cover-fields">
+          <label><span>Título para teléfono</span><input maxLength={70} value={pageSettings.mobileHeading} onChange={event => updateSetting('mobileHeading', event.target.value)} placeholder="¿Qué provoca hoy?" /></label>
+          <label><span>Texto de búsqueda</span><input maxLength={90} value={pageSettings.searchPlaceholder} onChange={event => updateSetting('searchPlaceholder', event.target.value)} placeholder="Busca Arroz, combos, pollo..." /></label>
+          <label><span>Frase pequeña en computadora</span><input maxLength={70} value={pageSettings.desktopEyebrow} onChange={event => updateSetting('desktopEyebrow', event.target.value)} /></label>
+          <div className="pedir-cover-title-fields"><label><span>Título · primera línea</span><input maxLength={50} value={pageSettings.desktopTitlePrefix} onChange={event => updateSetting('desktopTitlePrefix', event.target.value)} /></label><label><span>Título · resaltado</span><input maxLength={50} value={pageSettings.desktopTitleAccent} onChange={event => updateSetting('desktopTitleAccent', event.target.value)} /></label></div>
+          <label><span>Descripción en computadora</span><textarea maxLength={240} rows={3} value={pageSettings.desktopDescription} onChange={event => updateSetting('desktopDescription', event.target.value)} /></label>
+          <label><span>Imagen de portada en computadora</span><select value={pageSettings.desktopBannerImage} onChange={event => updateSetting('desktopBannerImage', event.target.value)}>{PUBLIC_ORDER_BANNER_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select><small>Usamos imágenes que ya están dentro de Full China.</small></label>
+        </div>
+        <div className="pedir-cover-preview-stack">
+          <div className="pedir-cover-preview" style={{ backgroundImage: `linear-gradient(90deg, rgba(8, 6, 8, .92), rgba(8, 6, 8, .28)), url("${pageSettings.desktopBannerImage}")` }}>
+            <span>{pageSettings.desktopEyebrow || 'Tu frase pequeña'}</span><strong>{pageSettings.desktopTitlePrefix || 'Primera línea'}<em>{pageSettings.desktopTitleAccent || 'Texto resaltado'}</em></strong><p>{pageSettings.desktopDescription || 'La descripción se verá aquí.'}</p><small>Vista previa de la portada en computadora</small>
+          </div>
+          <div className="pedir-cover-mobile-preview">
+            <span>VISTA PREVIA DE TELÉFONO</span><strong>{pageSettings.mobileHeading || 'Tu título'} <Flame size={15} /></strong><small><i /> Abierto · hasta las 10:00 p. m.</small><div><Search size={14} />{pageSettings.searchPlaceholder || 'Texto de búsqueda'}</div>
+          </div>
+        </div>
+      </div>
+      {settingsError && <div className="pedir-error pedir-cover-error" role="alert">{settingsError}<button type="button" onClick={() => void loadPageSettings()}>Reintentar</button></div>}
     </section>
     {error && <div className="pedir-error" role="alert">{error}<button type="button" onClick={() => void load()}>Reintentar</button></div>}
     <section className="pedir-product-list" aria-label="Productos de la página pública">

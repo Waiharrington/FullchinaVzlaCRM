@@ -15,6 +15,8 @@ import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
 import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
+import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderPageSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { customerSupabase } from '../lib/supabase'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
@@ -712,6 +714,12 @@ export function PublicMenu() {
   const [desktopHeroPaused, setDesktopHeroPaused] = useState(false)
   const [requestedRecommendedIndex, setRequestedRecommendedIndex] = useState<number | null>(null)
   const [recommendedImageSrc, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
+  const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
+  const refreshPublicPageSettings = useCallback(async () => {
+    setPageSettings(await getPublicOrderPageSettings())
+  }, [])
+  useEffect(() => { void refreshPublicPageSettings().catch(() => undefined) }, [refreshPublicPageSettings])
+  useLiveDataRefresh('pagina-pedir', () => refreshPublicPageSettings())
   const loadedRecommendedImageKey = useRef<string | null>(null)
   const [recommendedPaused, setRecommendedPaused] = useState(false)
   const recommendedTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -2865,7 +2873,7 @@ export function PublicMenu() {
         {/* 2. Hero Status */}
         <div className="public-hero-header">
           <div className="public-hero-title-row">
-            <h1>¿Qué provoca hoy? <Flame size={22} className="fire-icon-pulse" /></h1>
+            <h1>{pageSettings.mobileHeading} <Flame size={22} className="fire-icon-pulse" /></h1>
             {bcvRate && (
               <span className="public-rate-badge" title="Tasa oficial del Banco Central de Venezuela">
                 <span className="public-rate-badge-label">Dólar BCV</span>
@@ -2878,12 +2886,12 @@ export function PublicMenu() {
           </span>
           <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) { heroSearchRef.current?.focus(); setShowSearch(true) } }}>
             <Search size={16} />
-            <span className="public-hero-search-placeholder" aria-hidden={showSearch}>Busca Arroz, combos, pollo...</span>
+            <span className="public-hero-search-placeholder" aria-hidden={showSearch}>{pageSettings.searchPlaceholder}</span>
             <input
               ref={heroSearchRef}
               aria-label="Buscar en el menú"
               tabIndex={showSearch ? 0 : -1}
-              placeholder={showSearch ? 'Busca Arroz, combos, pollo...' : ''}
+              placeholder={showSearch ? pageSettings.searchPlaceholder : ''}
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
@@ -3210,13 +3218,13 @@ export function PublicMenu() {
                 <div className="public-hero-left">
                   <span className="public-hero-tag">
                     <Flame size={14} className="fire-icon-pulse" />
-                    AUTÉNTICO SABOR AL WOK
+                    {pageSettings.desktopEyebrow}
                   </span>
                   <h1 className="public-hero-main-title">
-                    HOY TOCA <br /><span className="public-hero-gold">FULL CHINA</span>
+                    {pageSettings.desktopTitlePrefix}<br /><span className="public-hero-gold">{pageSettings.desktopTitleAccent}</span>
                   </h1>
                   <p className="public-hero-desc">
-                    Sabor real, recién salido del wok.<span className="public-hero-desc-extra"> Arroces, tallarines y más, con tradición y porciones generosas.</span>
+                    {pageSettings.desktopDescription}
                   </p>
 
                   <div className="public-hero-search-row">
@@ -3224,7 +3232,7 @@ export function PublicMenu() {
                       <div className="public-hero-search-box">
                         <Search size={18} />
                         <input
-                          placeholder="Buscar platos, combos o bebidas..."
+                          placeholder={pageSettings.searchPlaceholder}
                           value={search}
                           onChange={event => setSearch(event.target.value)}
                           onKeyDown={event => {
@@ -3292,8 +3300,8 @@ export function PublicMenu() {
                 <div className="public-hero-right">
                   <span className="public-hero-glow-aura" aria-hidden="true" />
                   <img 
-                    src="/optimized/fondos/hero-banner-food.webp"
-                    alt="Full China Wok y Arroz Chaufa" 
+                    src={pageSettings.desktopBannerImage}
+                    alt="Portada de Full China"
                     className="public-hero-dish-img" 
                     loading={isDesktopViewport ? 'eager' : 'lazy'}
                     fetchPriority={isDesktopViewport ? 'high' : 'low'}

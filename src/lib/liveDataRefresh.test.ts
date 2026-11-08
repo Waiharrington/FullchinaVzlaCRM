@@ -16,6 +16,7 @@ describe('module change subscriptions', () => {
     ]
     expect(Object.keys(MODULE_TABLES).sort()).toEqual(expectedModules.sort())
     expect(Object.values(MODULE_TABLES).every(tables => tables.length > 0)).toBe(true)
+    expect(moduleUsesTable('pagina-pedir', 'public_order_page_settings')).toBe(true)
   })
 
   it('refreshes a matching module but ignores unrelated data changes', () => {

@@ -4,7 +4,7 @@ import { subscribeToDataChanges } from './supabase'
 export const MODULE_TABLES: Record<string, readonly string[]> = {
   dashboard: ['orders', 'order_items', 'payments', 'customers', 'credits', 'credit_payments', 'preparation_batches', 'preparation_batch_items', 'preparation_batch_costs', 'production_bonuses', 'stock_movements', 'ingredients', 'ingredient_costs', 'sellable_products'],
   caja: ['sellable_products', 'sellable_product_categories', 'menu_categories', 'sellable_product_modifiers', 'customers', 'promotions', 'floor_tables', 'delivery_config', 'delivery_zones', 'ingredients', 'orders', 'order_items', 'payments', 'cash_sessions', 'cash_movements', 'financial_accounts'],
-  'pagina-pedir': ['sellable_products', 'sellable_product_categories', 'menu_categories'],
+  'pagina-pedir': ['sellable_products', 'sellable_product_categories', 'menu_categories', 'public_order_page_settings'],
   'delivery-settings': ['delivery_config', 'delivery_zones', 'delivery_payroll_config'],
   'caja-operativa': ['cash_sessions', 'cash_movements', 'daily_closes', 'daily_close_financials', 'payments', 'orders'],
   comandas: ['orders', 'order_items', 'payments', 'web_order_requests', 'order_event_logs', 'profiles', 'cash_sessions', 'cash_movements'],
