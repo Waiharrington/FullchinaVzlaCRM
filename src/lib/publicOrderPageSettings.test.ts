@@ -23,4 +23,9 @@ describe('public order page settings', () => {
     expect(normalized.desktopBannerImage).toBe(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.desktopBannerImage)
     expect(PUBLIC_ORDER_BANNER_OPTIONS.every(option => option.value.startsWith('/optimized/fondos/'))).toBe(true)
   })
+
+  it('preserves whether the carousel has an explicit selection, including an intentional empty selection', () => {
+    expect(normalizePublicOrderPageSettings({ carouselSelectionConfigured: true }).carouselSelectionConfigured).toBe(true)
+    expect(normalizePublicOrderPageSettings({ carouselSelectionConfigured: false }).carouselSelectionConfigured).toBe(false)
+  })
 })

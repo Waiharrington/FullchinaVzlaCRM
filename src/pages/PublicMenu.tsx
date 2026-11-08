@@ -16,6 +16,7 @@ import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
 import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
 import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderPageSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
+import { preserveEmptyPublicCarousel, selectPublicCarouselGroups } from '../lib/publicOrderCarousel'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { customerSupabase } from '../lib/supabase'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
@@ -1303,7 +1304,7 @@ export function PublicMenu() {
       variants: group.variants.filter(variant => variant.product.publicCarousel),
     })).filter(group => group.variants.length > 0)
       .sort((a, b) => (a.variants[0].product.publicCarouselOrder ?? 0) - (b.variants[0].product.publicCarouselOrder ?? 0))
-    const categoryGroups = carouselGroups.length ? carouselGroups : visibleGroups
+    const categoryGroups = selectPublicCarouselGroups(carouselGroups, visibleGroups, pageSettings.carouselSelectionConfigured)
     const source = activeCategory === 'Todos'
       ? categoryGroups
       : categoryGroups.filter(group => group.variants.some(v => v.product.categories.includes(activeCategory)))
@@ -1311,10 +1312,10 @@ export function PublicMenu() {
     // aquí cambia de recomendación cada vez que llegan los productos, y en
     // desarrollo StrictMode puede hacer que se vean varias tarjetas entrando
     // fugazmente al recargar la página.
-    const stableGroups = source.length > 0 ? [...source] : [...groups]
-    if (!carouselGroups.length) stableGroups.sort((a, b) => a.key.localeCompare(b.key))
+    const stableGroups = preserveEmptyPublicCarousel(source, groups, pageSettings.carouselSelectionConfigured && carouselGroups.length === 0)
+    if (!carouselGroups.length && !pageSettings.carouselSelectionConfigured) stableGroups.sort((a, b) => a.key.localeCompare(b.key))
     return stableGroups.slice(0, 8)
-  }, [groups, activeCategory])
+  }, [groups, activeCategory, pageSettings.carouselSelectionConfigured])
   const recommendedSlides = useMemo(() => {
     const slides: Array<{ kind: 'product'; group: typeof recommendedPool[number] } | { kind: 'loyalty' }> = []
     slides.push({ kind: 'loyalty' })

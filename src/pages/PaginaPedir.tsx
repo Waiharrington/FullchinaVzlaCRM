@@ -4,7 +4,8 @@ import { getAllSellableProducts, updateProduct, type SellableProduct } from '../
 import { formatUsd } from '../lib/money'
 import { categoryLabel } from '../lib/menuCategories'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
-import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderPageSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
+import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderCarouselSelection, updatePublicOrderPageSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
+import { getAutomaticPublicCarouselProductIds } from '../lib/publicOrderCarousel'
 import { PageSkeleton } from '../components/PageSkeleton'
 import Toast from '../components/Toast'
 import './PaginaPedir.css'
@@ -52,15 +53,28 @@ export function PaginaPedir() {
   useEffect(() => { void loadPageSettings() }, [loadPageSettings])
   useLiveDataRefresh('pagina-pedir', () => { void load(true); void loadPageSettings() })
 
+  const carouselProductIds = useMemo(() => {
+    const hasSavedProducts = products.some(product => product.publicCarousel && product.isActive && product.publicVisible !== false && !product.isDelivery && product.salePrice >= 0.5)
+    if (pageSettings.carouselSelectionConfigured || hasSavedProducts) {
+      return products.filter(product => product.publicCarousel && product.isActive && product.publicVisible !== false && !product.isDelivery && product.salePrice >= 0.5).sort((a, b) => (a.publicCarouselOrder ?? 0) - (b.publicCarouselOrder ?? 0)).map(product => product.id)
+    }
+    return getAutomaticPublicCarouselProductIds(products)
+  }, [products, pageSettings.carouselSelectionConfigured])
+  const carouselProductSet = useMemo(() => new Set(carouselProductIds), [carouselProductIds])
+  const carouselProducts = useMemo(() => carouselProductIds.flatMap(id => {
+    const product = products.find(row => row.id === id)
+    return product ? [product] : []
+  }), [products, carouselProductIds])
+
   const categories = useMemo(() => ['Todas', ...Array.from(new Set(products.flatMap(product => product.categories))).sort((a, b) => categoryLabel(a).localeCompare(categoryLabel(b)))], [products])
   const filtered = useMemo(() => products.filter(product => {
     const matchesSearch = `${product.name} ${product.description ?? ''}`.toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es'))
     const matchesCategory = category === 'Todas' || product.categories.includes(category)
-    const matchesFilter = filter === 'all' || (filter === 'visible' ? product.publicVisible !== false : product.publicCarousel)
+    const matchesFilter = filter === 'all' || (filter === 'visible' ? product.publicVisible !== false : carouselProductSet.has(product.id))
     return matchesSearch && matchesCategory && matchesFilter
-  }), [products, search, category, filter])
+  }), [products, search, category, filter, carouselProductSet])
   const visibleCount = products.filter(product => product.isActive && product.publicVisible !== false).length
-  const carouselCount = products.filter(product => product.isActive && product.publicVisible !== false && product.publicCarousel).length
+  const carouselCount = carouselProductIds.length
 
   const save = async (product: SellableProduct, changes: Partial<SellableProduct>, message: string) => {
     setSavingId(product.id)
@@ -75,24 +89,36 @@ export function PaginaPedir() {
     } finally { setSavingId('') }
   }
 
-  const moveCarousel = async (product: SellableProduct, direction: -1 | 1) => {
-    const ordered = products.filter(item => item.isActive && item.publicVisible !== false && item.publicCarousel)
-      .sort((a, b) => (a.publicCarouselOrder ?? 0) - (b.publicCarouselOrder ?? 0))
-    const index = ordered.findIndex(item => item.id === product.id)
-    const next = ordered[index + direction]
-    if (!next) return
+  const saveCarouselSelection = async (product: SellableProduct, nextIds: string[]) => {
     setSavingId(product.id)
     setError('')
     try {
-      await Promise.all([
-        updateProduct(product.id, { publicCarouselOrder: next.publicCarouselOrder ?? index + direction }),
-        updateProduct(next.id, { publicCarouselOrder: product.publicCarouselOrder ?? index }),
-      ])
-      await load(true)
-      setNotice('Orden del carrusel actualizado')
+      await updatePublicOrderCarouselSelection(nextIds)
+      setProducts(current => current.map(row => {
+        const order = nextIds.indexOf(row.id)
+        return { ...row, publicCarousel: order >= 0, publicCarouselOrder: order >= 0 ? order + 1 : 0 }
+      }))
+      setPageSettings(current => ({ ...current, carouselSelectionConfigured: true }))
+      setNotice('Carrusel actualizado')
       window.setTimeout(() => setNotice(''), 2400)
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudo cambiar el orden') }
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'No se pudo guardar el carrusel') }
     finally { setSavingId('') }
+  }
+
+  const toggleCarouselProduct = (product: SellableProduct) => {
+    const nextIds = carouselProductSet.has(product.id)
+      ? carouselProductIds.filter(id => id !== product.id)
+      : [...carouselProductIds, product.id]
+    void saveCarouselSelection(product, nextIds)
+  }
+
+  const moveCarousel = (product: SellableProduct, direction: -1 | 1) => {
+    const index = carouselProductIds.indexOf(product.id)
+    const nextIndex = index + direction
+    if (index < 0 || nextIndex < 0 || nextIndex >= carouselProductIds.length) return
+    const nextIds = [...carouselProductIds]
+    ;[nextIds[index], nextIds[nextIndex]] = [nextIds[nextIndex], nextIds[index]]
+    void saveCarouselSelection(product, nextIds)
   }
 
   const savePageSettings = async () => {
@@ -119,13 +145,13 @@ export function PaginaPedir() {
     </header>
     <div className="pedir-summary">
       <article><Eye size={19} /><span>Productos visibles<strong>{visibleCount}</strong></span></article>
-      <article><Flame size={19} /><span>Elegidos manualmente<strong>{carouselCount} / 8</strong></span></article>
+      <article><Flame size={19} /><span>En el carrusel ahora<strong>{carouselCount} / 8</strong></span></article>
       <article><Sparkles size={19} /><span>Con etiqueta<strong>{products.filter(product => product.menuLabel).length}</strong></span></article>
     </div>
     <p className="pedir-carousel-note">
-      {carouselCount === 0
-        ? 'El carrusel público sí tiene productos: muestra recomendaciones automáticas hasta que elijas productos aquí.'
-        : 'El carrusel público muestra esta selección manual. Si la quitas por completo, vuelve a las recomendaciones automáticas.'}
+      {pageSettings.carouselSelectionConfigured
+        ? 'Estos son los productos que aparecen ahora. Puedes quitarlos, añadir otros y cambiar el orden.'
+        : 'Estos son los productos que aparecen actualmente por recomendación automática. Al guardar un cambio, la selección quedará fija.'}
     </p>
     <section className="pedir-controls">
       <label className="pedir-search"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar un producto" /></label>
@@ -158,9 +184,8 @@ export function PaginaPedir() {
     <section className="pedir-product-list" aria-label="Productos de la página pública">
       {filtered.map(product => {
         const visible = product.publicVisible !== false
-        const inCarousel = Boolean(product.publicCarousel)
-        const carouselRows = products.filter(item => item.isActive && item.publicVisible !== false && item.publicCarousel).sort((a,b)=>(a.publicCarouselOrder??0)-(b.publicCarouselOrder??0))
-        const carouselIndex = carouselRows.findIndex(item => item.id === product.id)
+        const inCarousel = carouselProductSet.has(product.id)
+        const carouselIndex = carouselProductIds.indexOf(product.id)
         const busy = savingId === product.id
         return <article className={`pedir-product-row${!product.isActive ? ' is-inactive' : ''}`} key={product.id}>
           <div className="pedir-product-image">{product.imageUrl ? <img src={product.imageUrl} alt="" loading="lazy" /> : <span>{product.emoji || '🥡'}</span>}</div>
@@ -169,8 +194,8 @@ export function PaginaPedir() {
           </div>
           <div className="pedir-product-actions">
             <button type="button" className={`pedir-toggle${visible ? ' selected' : ''}`} disabled={busy || !product.isActive} onClick={() => void save(product, { publicVisible: !visible, ...(visible ? { publicCarousel: false } : {}) }, visible ? 'Producto oculto de la página' : 'Producto visible en la página')}><span>{visible ? <Eye size={16} /> : <EyeOff size={16} />}{visible ? 'Visible' : 'Oculto'}</span><i /></button>
-            <button type="button" className={`pedir-toggle${inCarousel ? ' selected' : ''}`} disabled={busy || !product.isActive || !visible || (!inCarousel && carouselCount >= 8)} onClick={() => void save(product, { publicCarousel: !inCarousel, publicCarouselOrder: inCarousel ? product.publicCarouselOrder : Math.max(0, ...products.map(item => item.publicCarouselOrder ?? 0)) + 1 }, inCarousel ? 'Quitado del carrusel' : 'Añadido al carrusel')}><span><Flame size={16} />{inCarousel ? `Carrusel · ${carouselIndex + 1}` : 'Añadir al carrusel'}</span><i /></button>
-            {inCarousel && <div className="pedir-order"><button type="button" aria-label={`Subir ${product.name}`} disabled={busy || carouselIndex <= 0} onClick={() => void moveCarousel(product,-1)}><ArrowUp size={15}/></button><button type="button" aria-label={`Bajar ${product.name}`} disabled={busy || carouselIndex < 0 || carouselIndex >= carouselRows.length-1} onClick={() => void moveCarousel(product,1)}><ArrowDown size={15}/></button></div>}
+            <button type="button" className={`pedir-toggle${inCarousel ? ' selected' : ''}`} disabled={busy || settingsLoading || !product.isActive || !visible || (!inCarousel && carouselCount >= 8)} onClick={() => toggleCarouselProduct(product)}><span><Flame size={16} />{inCarousel ? `Carrusel · ${carouselIndex + 1}` : 'Añadir al carrusel'}</span><i /></button>
+            {inCarousel && <div className="pedir-order"><button type="button" aria-label={`Subir ${product.name}`} disabled={busy || carouselIndex <= 0} onClick={() => moveCarousel(product,-1)}><ArrowUp size={15}/></button><button type="button" aria-label={`Bajar ${product.name}`} disabled={busy || carouselIndex < 0 || carouselIndex >= carouselProducts.length-1} onClick={() => moveCarousel(product,1)}><ArrowDown size={15}/></button></div>}
             {!product.isActive && <small className="pedir-inactive">Inactivo en Menú</small>}
           </div>
           {busy && <span className="pedir-saving"><Check size={15} /> Guardando…</span>}

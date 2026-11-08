@@ -8,6 +8,7 @@ export interface PublicOrderPageSettings {
   desktopTitleAccent: string
   desktopDescription: string
   desktopBannerImage: string
+  carouselSelectionConfigured: boolean
 }
 
 export const DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS: PublicOrderPageSettings = {
@@ -18,6 +19,7 @@ export const DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS: PublicOrderPageSettings = {
   desktopTitleAccent: 'FULL CHINA',
   desktopDescription: 'Sabor real, recién salido del wok. Arroces, tallarines y más, con tradición y porciones generosas.',
   desktopBannerImage: '/optimized/fondos/hero-banner-food.webp',
+  carouselSelectionConfigured: false,
 }
 
 export const PUBLIC_ORDER_BANNER_OPTIONS = [
@@ -48,6 +50,7 @@ export function normalizePublicOrderPageSettings(value: unknown): PublicOrderPag
     desktopTitleAccent: text(row.desktopTitleAccent, DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.desktopTitleAccent, 50),
     desktopDescription: text(row.desktopDescription, DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.desktopDescription, 240),
     desktopBannerImage: banner,
+    carouselSelectionConfigured: row.carouselSelectionConfigured === true,
   }
 }
 
@@ -68,6 +71,15 @@ export async function updatePublicOrderPageSettings(settings: PublicOrderPageSet
     p_desktop_title_accent: settings.desktopTitleAccent.trim(),
     p_desktop_description: settings.desktopDescription.trim(),
     p_desktop_banner_image: settings.desktopBannerImage,
+  })
+  if (error) throw error
+  publishDataChange('public_order_page_settings')
+}
+
+export async function updatePublicOrderCarouselSelection(productIds: string[]): Promise<void> {
+  if (!supabase) throw new Error('No hay conexión con el catálogo público')
+  const { error } = await supabase.rpc('fn_admin_set_public_order_carousel', {
+    p_product_ids: productIds,
   })
   if (error) throw error
   publishDataChange('public_order_page_settings')
