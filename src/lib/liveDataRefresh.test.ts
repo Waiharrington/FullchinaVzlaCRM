@@ -12,6 +12,7 @@ describe('module change subscriptions', () => {
       'proveedores', 'almacen', 'inventario', 'produccion', 'recetas', 'menu', 'menu-semanal',
       'compras', 'gastos', 'finanzas', 'equipo', 'fidelizacion', 'marketing', 'nomina',
       'creditos', 'auditoria', 'mas', 'promociones', 'reportes', 'delivery-settings',
+      'pagina-pedir',
     ]
     expect(Object.keys(MODULE_TABLES).sort()).toEqual(expectedModules.sort())
     expect(Object.values(MODULE_TABLES).every(tables => tables.length > 0)).toBe(true)
