@@ -345,21 +345,30 @@ button.mobile-only {
   white-space: nowrap;
 }
 .public-status {
-  display: flex;
+  display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
-  font-size: 14px;
+  gap: 7px;
+  max-width: 100%;
+  padding: 7px 11px;
+  border: 1px solid rgba(35, 178, 109, 0.22);
+  border-radius: 999px;
+  background: rgba(16, 55, 36, 0.4);
+  font-size: 12px;
   color: #E5E7EB;
 }
 .public-status.is-open {
   color: #23B26D;
 }
 .public-status.is-closed {
-  color: #EF3340;
+  border-color: rgba(239, 51, 64, 0.26);
+  background: linear-gradient(110deg, rgba(95, 15, 25, 0.55), rgba(30, 14, 18, 0.88));
+  color: #ff727c;
 }
 .public-status i {
-  width: 10px;
-  height: 10px;
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
   background: #23B26D;
   border-radius: 50%;
   box-shadow: 0 0 8px rgba(35, 178, 109, 0.4);
@@ -370,10 +379,30 @@ button.mobile-only {
 }
 .public-status strong {
   color: #23B26D;
-  font-weight: 600;
+  font-weight: 800;
 }
 .public-status.is-closed strong {
-  color: #EF3340;
+  color: #ff6570;
+}
+.public-status-hours {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #e8d6ad;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.public-status-hours svg {
+  flex: 0 0 auto;
+  color: #ffc83d;
+}
+.public-status.is-open .public-status-hours { color: #b7e7cb; }
+.public-status.is-open .public-status-hours svg { color: #45ce86; }
+.public-status.is-closed .public-status-hours { color: #e9d6ad; }
+@media (max-width: 520px) {
+  .public-status { gap: 5px 7px; padding: 6px 9px; font-size: 11px; }
+  .public-status-hours { font-size: 10px; }
 }
 
 .public-search-active-overlay {
@@ -2803,9 +2832,10 @@ button.mobile-only {
     display: inline-flex !important;
     align-items: center !important;
     gap: 7px !important;
-    background: transparent !important;
-    border: none !important;
-    padding: 0 6px !important;
+    background: rgba(16, 55, 36, 0.38) !important;
+    border: 1px solid rgba(35, 178, 109, 0.22) !important;
+    border-radius: 999px !important;
+    padding: 6px 10px !important;
     font-size: 12.5px !important;
     font-weight: 550 !important;
     color: #E5E7EB !important;
@@ -2822,11 +2852,16 @@ button.mobile-only {
   }
 
   .public-nav-status-pill.is-closed { color: #FF777E !important; }
+  .public-nav-status-pill.is-open { color: #61d99a !important; }
   .public-nav-status-pill.is-closed .public-nav-status-dot {
     background: #EF3340 !important;
     box-shadow: 0 0 8px rgba(239, 51, 64, 0.55) !important;
     animation: none !important;
   }
+  .public-nav-status-pill.is-closed { background: linear-gradient(110deg,rgba(95,15,25,.55),rgba(30,14,18,.88)) !important; border-color:rgba(239,51,64,.28) !important; }
+  .public-nav-status-pill > strong { color:inherit !important; font-size:12px !important; font-weight:850 !important; }
+  .public-nav-status-hours { display:inline-flex !important; align-items:center !important; gap:5px !important; color:#e8d6ad !important; font-size:10.5px !important; font-weight:650 !important; white-space:nowrap !important; }
+  .public-nav-status-hours svg { flex:0 0 auto !important; color:#ffc83d !important; }
 
   @keyframes statusPulse {
     0%, 100% { opacity: 1; transform: scale(1); }
@@ -6350,6 +6385,43 @@ button.mobile-only {
   }
 }
 
+/* Product labels use Full China's pill treatment. The illustrated free drink
+   sticker remains unchanged. */
+.public-menu-label {
+  display:inline-flex !important;
+  width:max-content !important;
+  min-width:0 !important;
+  max-width:calc(100% - 16px) !important;
+  height:27px !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:5px !important;
+  padding:0 10px !important;
+  border:1px solid rgba(255,255,255,.22) !important;
+  border-radius:999px !important;
+  clip-path:none !important;
+  color:#fff !important;
+  font-size:9px !important;
+  line-height:1 !important;
+  letter-spacing:.055em !important;
+  text-align:center !important;
+  text-transform:uppercase !important;
+  font-weight:850 !important;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.45)) !important;
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  transform:none !important;
+  animation:none !important;
+}
+.public-menu-label.top-sales { color:#2a1800 !important; border-color:rgba(255,226,145,.8) !important; background:linear-gradient(135deg,#ffd767,#f4a72e 70%,#e98020) !important; }
+.public-menu-label.new { border-color:rgba(255,167,156,.72) !important; background:linear-gradient(135deg,#fa4a43,#dc1f31 72%,#a81028) !important; }
+.public-menu-label.recommended { border-color:rgba(255,214,105,.8) !important; background:linear-gradient(135deg,#a8212c,#e3422c 62%,#f07827) !important; }
+.public-menu-label > svg { flex:0 0 auto; color:#fff4cc !important; fill:none !important; stroke:#fff4cc !important; filter:drop-shadow(0 1px 2px rgba(48,8,12,.85)); }
+.public-menu-label.top-sales > svg { color:#542c00 !important; stroke:#542c00 !important; filter:none; }
+.public-menu-label.new > svg { color:#ffe7a3 !important; stroke:#ffe7a3 !important; }
+.public-menu-label.recommended > svg { color:#fff4cc !important; fill:#ffd23f !important; stroke:#fff4cc !important; }
+.public-menu-label.free-drink > svg { color:#e8fbff !important; stroke:#e8fbff !important; }
+
 /* Portada de escritorio: el hero y el club comparten el mismo carrusel. */
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .public-home-hero-carousel {
@@ -7680,6 +7752,21 @@ button.mobile-only {
   .ppdm-image .ppdm-free-drink-sticker { animation: none; }
 }
 .ppdm-close:active { transform: scale(0.9); }
+
+/* La ficha ocupa toda la pantalla en móvil. Mantiene el cierre por debajo
+   de la barra de estado/Dynamic Island y ofrece un objetivo cómodo al tacto. */
+@media (max-width: 899px) and (orientation: landscape), (max-width: 1279px) and (orientation: portrait) {
+  .ppdm-close {
+    top: calc(env(safe-area-inset-top, 0px) + 14px);
+    left: calc(env(safe-area-inset-left, 0px) + 14px);
+    width: 44px;
+    height: 44px;
+    z-index: 20;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
 .ppdm-image-gradient {
   position: absolute;
   left: 0;
@@ -8312,7 +8399,7 @@ button.mobile-only {
   border-top: 1px solid rgba(255,255,255,0.06);
   box-sizing: border-box;
   height: calc(72px + env(safe-area-inset-bottom, 0px));
-  padding: env(safe-area-inset-top, 0px) 16px env(safe-area-inset-bottom, 0px);
+  padding: 0 16px env(safe-area-inset-bottom, 0px);
   box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
 }
 .public-mobile-tab {
@@ -8331,11 +8418,13 @@ button.mobile-only {
   cursor: pointer;
   transition: color 0.3s;
   position: relative;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 .public-mobile-tab::after {
   content: '';
   position: absolute;
-  top: -4px;
+  top: 0;
   left: 50%;
   width: 0;
   height: 2px;
@@ -8345,12 +8434,50 @@ button.mobile-only {
 }
 .public-mobile-tab.active { color: #FFF; }
 .public-mobile-tab.active::after { width: 28px; left: calc(50% - 14px); }
-.public-mobile-tab svg { transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.public-mobile-tab svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: currentColor;
+  stroke: currentColor;
+  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
 .public-mobile-tab.active svg { transform: scale(1.15) translateY(-1px); filter: drop-shadow(0 2px 6px rgba(227,27,43,0.4)); }
+.public-menu-page .public-mobile-tab {
+  transition: color 180ms ease !important;
+  -webkit-tap-highlight-color: transparent;
+}
+.public-menu-page .public-mobile-tab:active {
+  background: transparent;
+  color: #ffd15c;
+}
+.public-menu-page .public-mobile-tab:active svg {
+  transform: scale(.88);
+  filter: drop-shadow(0 0 8px rgba(227,27,43,.8));
+}
+@media (hover: hover) and (pointer: fine) {
+  .public-menu-page .public-mobile-tab:not(.active):hover {
+    background: rgba(255,255,255,.035);
+    color: #fff;
+  }
+}
+
+/* En la PWA instalada de iOS el documento se extiende bajo la barra de
+   estado. Aparta el catálogo y contacto del Dynamic Island y de la muesca. */
+@media (max-width: 899px) and (orientation: landscape), (max-width: 1279px) and (orientation: portrait) {
+  .public-menu-page:not(.public-profile-tab-active) > .public-top-bar {
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 8px;
+  }
+
+  .public-menu-page:not(.public-profile-tab-active) .public-hero-header {
+    padding-top: 20px;
+  }
+}
 
 /* Tab content animation */
 .public-mobile-tab-content {
-  animation: tabSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: tabSlideIn 0.16s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .public-mobile-tab-content[hidden] { display: none !important; }
 .public-mobile-tab-content.is-retained,
@@ -8742,7 +8869,6 @@ button.mobile-only {
 .public-contact-status-row > span svg { color: #ff3d32; }
 .public-contact-status-row strong { color: #fff; font-size: 12px; text-transform: uppercase; }
 .public-contact-status-row small { color: #ffc83d; font-size: 10px; font-weight: 800; text-align: right; }
-
 .public-contact-payment-block {
   display: grid;
   gap: 10px;

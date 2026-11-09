@@ -4,45 +4,81 @@
   left: 50%;
   bottom: calc(78px + env(safe-area-inset-bottom, 0px));
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto 28px;
+  grid-template-columns: 46px minmax(0, 1fr) auto 30px;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   width: min(520px, calc(100vw - 24px));
-  padding: 12px;
-  border: 1px solid rgba(227, 27, 43, .42);
-  border-radius: 16px;
-  background: rgba(18, 19, 23, .97);
+  padding: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 91, 94, .42);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(227, 27, 43, .2), transparent 55%),
+    linear-gradient(135deg, rgba(25, 23, 28, .98), rgba(13, 14, 18, .98) 72%);
   color: #fff;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, .42);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, .52), 0 0 24px rgba(227, 27, 43, .12);
   transform: translateX(-50%);
   font: 500 13px/1.4 Inter, system-ui, sans-serif;
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  animation: pwa-install-card-in 380ms cubic-bezier(.22,1,.36,1) both;
+  transition: box-shadow 360ms ease, border-color 360ms ease;
+}
+
+.pwa-install-prompt::before {
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 46px;
+  height: 3px;
+  border-radius: 0 0 4px 4px;
+  background: linear-gradient(90deg, #ffcc57, #ed253a);
+  content: '';
+}
+
+@keyframes pwa-install-card-in {
+  from { opacity: 0; translate: 0 10px; scale: .98; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
 }
 
 .pwa-install-prompt__icon {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 46px;
+  height: 46px;
   place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #f04444, #b80e1d);
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #ff4a50, #c81226 74%);
   color: #fff;
+  box-shadow: 0 7px 18px rgba(227, 27, 43, .28), inset 0 1px 0 rgba(255,255,255,.25);
 }
 
 .pwa-install-prompt__content {
   display: grid;
   min-width: 0;
-  gap: 2px;
+  gap: 3px;
+  animation: pwa-copy-enter 360ms cubic-bezier(.22,1,.36,1) both;
+}
+
+.pwa-install-prompt__eyebrow {
+  color: #ffd15c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  line-height: 1.2;
 }
 
 .pwa-install-prompt__content strong {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.2;
 }
 
 .pwa-install-prompt__content > span {
-  color: #b4b4bd;
+  color: #c1c1ca;
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .pwa-install-prompt__install,
@@ -51,39 +87,345 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 38px;
+  min-height: 42px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
-  font: 700 12px/1 Inter, system-ui, sans-serif;
+  font: 750 12px/1 Inter, system-ui, sans-serif;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 220ms cubic-bezier(.22,1,.36,1), background 220ms ease, color 220ms ease, box-shadow 220ms ease;
 }
 
 .pwa-install-prompt__install {
-  padding: 0 11px;
-  background: #e31b2b;
+  padding: 0 12px;
+  background: linear-gradient(135deg, #f02b3b, #cc1027);
   color: #fff;
   white-space: nowrap;
+  box-shadow: 0 5px 14px rgba(227, 27, 43, .28), inset 0 1px 0 rgba(255,255,255,.2);
+  animation: pwa-choice-enter 380ms cubic-bezier(.22,1,.36,1) both;
 }
 
-.pwa-install-prompt__install:hover { background: #f02a3b; }
+.pwa-install-prompt__install:hover { background: linear-gradient(135deg, #ff3c4c, #e11931); }
+.pwa-install-prompt__install:active { transform: scale(.96); }
+.pwa-install-prompt__install:focus-visible,
+.pwa-install-prompt__close:focus-visible,
+.pwa-install-shortcut:focus-visible { outline: 2px solid #ffd15c; outline-offset: 3px; }
 
 .pwa-install-prompt__close {
-  width: 28px;
-  min-height: 32px;
+  width: 30px;
+  min-height: 36px;
   background: transparent;
-  color: #96969f;
+  color: #a6a6af;
 }
 
-.pwa-install-prompt__close:hover { color: #fff; }
+.pwa-install-prompt__close:hover { color: #fff; background: rgba(255,255,255,.08); }
+.pwa-install-prompt__close:active { transform: scale(.9); }
 
-.pwa-install-prompt__instructions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin: 7px 0 0;
-  color: #dedee3;
+.pwa-install-prompt.has-install-flow { grid-template-rows: auto auto auto; }
+.pwa-install-prompt.is-demo { width: min(820px, calc(100vw - 32px)); }
+.pwa-install-prompt.has-install-flow > .pwa-install-prompt__icon { grid-column: 1; grid-row: 1; }
+.pwa-install-prompt.has-install-flow > .pwa-install-prompt__content { grid-column: 2; grid-row: 1; }
+.pwa-install-prompt.has-install-flow > .pwa-install-prompt__install { grid-column: 3; grid-row: 3; }
+.pwa-install-prompt.has-install-flow > .pwa-install-prompt__close { grid-column: 4; grid-row: 1; }
+
+.pwa-install-prompt__flow {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  padding-top: 11px;
+  border-top: 1px solid rgba(255,255,255,.1);
+  animation: pwa-flow-enter 460ms cubic-bezier(.22,1,.36,1) both;
+}
+.pwa-install-prompt.is-demo .pwa-install-prompt__flow { display: flex; flex-direction: column; min-height: 0; }
+.pwa-install-prompt.is-demo .pwa-install-prompt__demo-layout { flex: 1 1 auto; align-content: center; }
+
+.pwa-install-prompt__choice-label {
+  margin: 0 0 9px;
+  color: #ffd15c;
   font-size: 12px;
+  font-weight: 800;
+}
+
+.pwa-install-prompt__device-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.pwa-install-prompt__device-options > button {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 62px;
+  padding: 8px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 13px;
+  background: rgba(255,255,255,.045);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+  animation: pwa-choice-enter 420ms cubic-bezier(.22,1,.36,1) both;
+}
+
+.pwa-install-prompt__device-options > button:nth-child(2) { animation-delay: 70ms; }
+
+.pwa-install-prompt__device-options > button:hover,
+.pwa-install-prompt__device-options > button:focus-visible { border-color: rgba(255,209,92,.6); background: rgba(255,209,92,.08); }
+.pwa-install-prompt__device-options > button:active { transform: scale(.98); }
+.pwa-install-prompt__device-options > button > span:nth-child(2) { display: grid; min-width: 0; gap: 3px; }
+.pwa-install-prompt__device-options strong { font-size: 12px; font-weight: 800; }
+.pwa-install-prompt__device-options small { overflow: hidden; color: #aeb0b9; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-install-prompt__device-options > button > svg { color: #858894; }
+
+.pwa-install-prompt__device-icon {
+  display: grid;
+  width: 36px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 10px;
+  background: rgba(255,255,255,.07);
+  color: #ffd15c;
+}
+
+.pwa-install-prompt__device-icon.is-safari img { width: 27px; height: 27px; object-fit: contain; }
+.pwa-install-prompt__device-icon.is-chrome img { width: 27px; height: 27px; object-fit: contain; }
+.pwa-install-prompt__brand-attribution { margin: 7px 0 0; color: #8f929c; font-size: 8px; text-align: right; }
+.pwa-install-prompt__brand-attribution a { color: #b9bbc3; text-underline-offset: 2px; }
+
+.pwa-install-prompt__demo-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; animation: pwa-copy-enter 360ms cubic-bezier(.22,1,.36,1) both; }
+.pwa-install-prompt__demo-heading > div { display: grid; gap: 3px; }
+.pwa-install-prompt__demo-heading > div > strong { color: #ffd15c; font-size: 12px; }
+.pwa-install-prompt__demo-heading > div > span { color: #c0c2ca; font-size: 11px; font-weight: 750; letter-spacing: .04em; }
+.pwa-install-prompt__demo-heading > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 7px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 8px;
+  background: rgba(255,255,255,.045);
+  color: #c3c4cb;
+  font: 650 10px/1 Inter,system-ui,sans-serif;
+  cursor: pointer;
+}
+
+.pwa-install-prompt__demo-layout { display: grid; grid-template-columns: minmax(180px,.75fr) minmax(270px,1.25fr); align-items: center; gap: 22px; animation: pwa-flow-enter 420ms cubic-bezier(.22,1,.36,1) both; }
+.pwa-install-prompt__phone {
+  position: relative;
+  width: min(100%, 190px);
+  aspect-ratio: 9 / 19.5;
+  justify-self: center;
+  padding: 5px;
+  border: 2px solid #7d7e83;
+  border-radius: 24px;
+  background: linear-gradient(145deg,#35363b,#090a0d 28%,#202126);
+  box-shadow: 0 10px 25px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.12);
+}
+
+.pwa-install-prompt__phone-screen { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 18px; background: #171014; animation: pwa-screen-enter 480ms cubic-bezier(.22,1,.36,1) both; }
+
+.pwa-install-prompt__app-screen { position: absolute; inset: 0; overflow: hidden; background: #17080d; }
+.pwa-install-prompt__real-app { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
+.pwa-install-prompt__browser-tools { position: absolute; z-index: 2; display: flex; align-items: center; gap: 6px; height: 23px; padding: 0 6px; border: 1px solid rgba(255,255,255,.13); border-radius: 8px; background: rgba(22,23,28,.96); color: #e6e6eb; font-size: 8px; box-shadow: 0 3px 10px rgba(0,0,0,.42); }
+.pwa-install-prompt__app-screen.is-safari .pwa-install-prompt__real-app { bottom: 31px; height: calc(100% - 31px); }
+.pwa-install-prompt__app-screen.is-chrome.is-iphone .pwa-install-prompt__real-app { top: 32px; height: calc(100% - 32px); }
+.pwa-install-prompt__app-screen.is-chrome.is-android .pwa-install-prompt__real-app { top: 28px; height: calc(100% - 28px); }
+.pwa-install-prompt__browser-tools.is-safari { right: 5px; bottom: 6px; left: 5px; height: 25px; justify-content: space-around; border-radius: 9px; }
+.pwa-install-prompt__browser-tools.is-chrome.is-iphone { top: 4px; right: -5px; left: -5px; height: 25px; gap: 4px; padding: 0 4px; border: 0; border-radius: 0; background: #fff; color: #555b63; box-shadow: 0 2px 5px rgba(0,0,0,.18); }
+.pwa-install-prompt__chrome-back,.pwa-install-prompt__chrome-more { display: grid; width: 15px; flex: 0 0 auto; place-items: center; color: #73777e; font-size: 17px; }
+.pwa-install-prompt__browser-address.is-chrome-iphone { display: flex; align-items: center; justify-content: center; gap: 3px; height: 19px; padding: 0 4px; border-radius: 999px; background: #eef0f3; color: #252930; font-size: 6px; }
+.pwa-install-prompt__browser-address > small { color: #323840; font-size: 7px; }
+.pwa-install-prompt__chrome-share { display: grid; width: 17px; height: 17px; flex: 0 0 auto; place-items: center; border-radius: 5px; color: #73777e; }
+.pwa-install-prompt__chrome-share.is-highlighted { background: #fff0bd; color: #b65c00; box-shadow: 0 0 0 2px rgba(255,209,92,.9), 0 0 12px rgba(255,209,92,.8); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+.pwa-install-prompt__browser-tools.is-chrome.is-android { top: 4px; right: 5px; left: 5px; }
+.pwa-install-prompt__safari-menu-button { display: grid; width: 20px; height: 20px; flex: 0 0 auto; place-items: center; border-radius: 5px; }
+.pwa-install-prompt__safari-menu-button.is-highlighted { background: #f4f4f7; color: #17171a; box-shadow: 0 0 0 2px rgba(255,209,92,.9), 0 0 14px rgba(255,209,92,.8); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+.pwa-install-prompt__browser-address { flex: 1 1 auto; overflow: hidden; padding: 3px 6px; border-radius: 5px; background: rgba(255,255,255,.09); color: #d7d8de; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-install-prompt__browser-lock { color: #9da2ad; }
+.pwa-install-prompt__tap-target { position: relative; display: grid; width: 24px; height: 24px; place-items: center; border-radius: 8px; color: #fff; }
+.pwa-install-prompt__tap-target.is-highlighted { background: rgba(255,209,92,.2); color: #ffd15c; box-shadow: 0 0 0 2px rgba(255,209,92,.65), 0 0 16px rgba(255,209,92,.45); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+.pwa-install-prompt__system-menu { position: absolute; z-index: 3; display: grid; gap: 5px; padding: 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 11px; background: #27282e; color: #e5e5ea; font-size: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.5); animation: pwa-menu-appear 340ms cubic-bezier(.22,1,.36,1) both; }
+.pwa-install-prompt__system-menu.is-safari { right: 5px; bottom: 5px; left: 5px; }
+.pwa-install-prompt__system-menu.is-chrome { top: 25px; right: 5px; width: 104px; }
+.pwa-install-prompt__system-menu.is-safari-browser { bottom: 37px; left: 8px; width: 116px; padding: 9px; border-radius: 12px; background: rgba(245,244,246,.97); color: #202024; font-size: 8px; }
+.pwa-install-prompt__system-menu.is-safari-browser > span { padding: 5px 4px; border-top: 1px solid rgba(0,0,0,.08); }
+.pwa-install-prompt__system-menu.is-safari-browser > b { background: #fff0c2; color: #202024; }
+.pwa-install-prompt__system-menu.is-safari-browser > b svg { color: #202024; }
+.pwa-install-prompt__system-menu > small { color: #b6b8c1; font-size: 7px; }
+.pwa-install-prompt__system-menu > span { padding: 3px 4px; }
+.pwa-install-prompt__system-menu > b { display: flex; align-items: center; gap: 4px; padding: 6px 4px; border-radius: 6px; background: rgba(227,27,43,.26); color: #fff; font-size: 8px; line-height: 1.2; }
+.pwa-install-prompt__system-menu > b svg { flex: 0 0 auto; color: #ffd15c; }
+.pwa-install-prompt__system-menu.is-chrome > b { background: rgba(255,255,255,.08); }
+.pwa-install-prompt__system-menu.is-chrome > b.is-highlighted { background: #ffe59b; color: #202127; box-shadow: 0 0 0 2px rgba(255,176,40,.65); }
+
+.pwa-install-prompt__share-sheet,
+.pwa-install-prompt__add-home-sheet { position: absolute; z-index: 4; inset: 5px 0 0; overflow: hidden; border-radius: 17px 17px 0 0; background: #f7f6fa; color: #19191d; box-shadow: 0 -6px 20px rgba(0,0,0,.25); animation: pwa-menu-appear 380ms cubic-bezier(.22,1,.36,1) both; }
+.pwa-install-prompt__share-sheet { display: grid; grid-template-rows: auto 20px auto auto auto; align-content: start; gap: 8px; padding: 12px 8px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share { inset: 16% 0 4px; box-sizing: border-box; grid-template-rows: auto 12px auto max-content; gap: 3px; padding: 8px 7px 10px; border-radius: 17px; background: rgba(244,243,247,.98); box-shadow: 0 7px 20px rgba(0,0,0,.38); }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-preview { gap: 6px; padding-bottom: 5px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-preview img { width: 22px; height: 22px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-people i { width: 12px; height: 12px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-apps span { padding: 3px 0; font-size: 5px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-actions { align-content: start; gap: 2px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-actions > span,
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-actions > b { min-height: 16px; padding: 2px 4px; font-size: 5.5px; }
+.pwa-install-prompt__share-sheet.is-chrome-iphone-share .pwa-install-prompt__share-actions svg { flex: 0 0 auto; }
+.pwa-install-prompt__chrome-action-list { display: grid; align-content: start; gap: 2px; padding: 2px 4px; }
+.pwa-install-prompt__chrome-action-list > span,
+.pwa-install-prompt__chrome-action-list > b { display: flex; align-items: center; gap: 5px; min-height: 22px; padding: 3px 6px; border-radius: 6px; color: #25252a; font-size: 7px; }
+.pwa-install-prompt__chrome-action-list > b { background: #ffe59b; }
+.pwa-install-prompt__chrome-action-list > b.is-highlighted { box-shadow: 0 0 0 2px rgba(255,176,40,.65), 0 0 12px rgba(255,176,40,.3); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+.pwa-install-prompt__share-preview, .pwa-install-prompt__add-home-preview { display: flex; align-items: center; gap: 8px; min-width: 0; padding-bottom: 8px; border-bottom: 1px solid #dddde1; }
+.pwa-install-prompt__share-preview img, .pwa-install-prompt__add-home-preview img { width: 27px; height: 27px; flex: 0 0 auto; border-radius: 7px; }
+.pwa-install-prompt__share-preview span, .pwa-install-prompt__add-home-preview span { display: grid; min-width: 0; gap: 2px; font-size: 8px; }
+.pwa-install-prompt__share-preview small, .pwa-install-prompt__add-home-preview small { overflow: hidden; color: #77777e; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-install-prompt__share-people, .pwa-install-prompt__share-apps { display: flex; justify-content: space-around; align-items: center; border-bottom: 1px solid #dddde1; }
+.pwa-install-prompt__share-people i { width: 17px; height: 17px; border-radius: 50%; background: #cddff4; }
+.pwa-install-prompt__share-apps span { padding: 8px 0; color: #393940; font-size: 6px; }
+.pwa-install-prompt__share-actions { display: grid; gap: 4px; }
+.pwa-install-prompt__share-actions > span, .pwa-install-prompt__share-actions > b { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 7px; font-size: 7px; }
+.pwa-install-prompt__share-actions > b { background: #ffe59b; }
+.pwa-install-prompt__share-actions > b.is-highlighted { box-shadow: 0 0 0 2px rgba(255,176,40,.65), 0 0 12px rgba(255,176,40,.3); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+.pwa-install-prompt__sheet-scroll { justify-self: center; color: #6e6e76; font-size: 6px; animation: pwa-scroll-hint 1.4s ease-in-out infinite; }
+.pwa-install-prompt__add-home-sheet { inset: 0; border-radius: 14px; }
+.pwa-install-prompt__add-home-header { display: flex; align-items: center; justify-content: space-between; height: 36px; padding: 0 7px; border-bottom: 1px solid #dedee4; background: #f1f0f6; font-size: 7px; }
+.pwa-install-prompt__add-home-header > span { display: grid; width: 19px; height: 19px; place-items: center; border: 1px solid #d4d4da; border-radius: 50%; font-size: 12px; }
+.pwa-install-prompt__add-home-header > strong { padding: 5px 8px; border-radius: 15px; background: #087af5; color: #fff; }
+.pwa-install-prompt__add-home-header > strong.is-highlighted { box-shadow: 0 0 0 2px rgba(255,209,92,.9), 0 0 14px rgba(255,209,92,.8); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+.pwa-install-prompt__add-home-preview { margin: 15px 8px; padding-bottom: 10px; }
+.pwa-install-prompt__web-app-option { display: flex; align-items: center; justify-content: space-between; padding: 10px 8px; border-block: 1px solid #dedee4; font-size: 7px; }
+.pwa-install-prompt__web-app-option i { width: 27px; height: 15px; border-radius: 20px; background: #35c76c; }
+.pwa-install-prompt__tap-target.is-add-highlight { right: 7px; bottom: 7px; display: flex; width: auto; height: 23px; padding: 0 7px; background: #087af5; color: #fff; font-size: 7px; }
+.pwa-install-prompt__android-install-dialog { position: absolute; z-index: 5; top: 50%; right: 7px; left: 7px; display: grid; gap: 9px; padding: 11px; border: 1px solid rgba(255,255,255,.7); border-radius: 16px; background: #f7f5fa; color: #202127; box-shadow: 0 12px 32px rgba(0,0,0,.42); animation: pwa-dialog-enter 380ms cubic-bezier(.22,1,.36,1) both; }
+.pwa-install-prompt__android-install-title { display: flex; align-items: center; gap: 7px; }
+.pwa-install-prompt__android-install-title img { width: 26px; height: 26px; border-radius: 7px; }
+.pwa-install-prompt__android-install-title > span { display: grid; gap: 2px; min-width: 0; }
+.pwa-install-prompt__android-install-title b { font-size: 8px; }
+.pwa-install-prompt__android-install-title small { overflow: hidden; color: #696b73; font-size: 6px; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-install-prompt__android-install-dialog > p { margin: 0; color: #555861; font-size: 7px; line-height: 1.35; }
+.pwa-install-prompt__android-install-dialog > div:last-child { display: flex; justify-content: flex-end; align-items: center; gap: 12px; color: #535c70; font-size: 7px; }
+.pwa-install-prompt__android-install-dialog > div:last-child b { padding: 5px 9px; border-radius: 15px; background: #d8e2fa; color: #263e74; }
+.pwa-install-prompt__android-install-dialog > div:last-child b.is-highlighted { box-shadow: 0 0 0 2px rgba(255,177,40,.85), 0 0 12px rgba(255,177,40,.4); animation: pwa-tap-glow 1s ease-in-out infinite alternate; }
+
+@keyframes pwa-scroll-hint { 0%,100% { transform: translateY(0); opacity: .7; } 50% { transform: translateY(3px); opacity: 1; } }
+
+.pwa-install-prompt__home-screen { position: absolute; inset: 0; overflow: hidden; padding: 10px 7px 22px; background: radial-gradient(ellipse at 78% 8%,rgba(255,132,157,.72),transparent 35%),radial-gradient(ellipse at 18% 36%,rgba(255,71,107,.52),transparent 42%),radial-gradient(ellipse at 80% 72%,rgba(104,30,91,.72),transparent 43%),linear-gradient(155deg,#263e83 0%,#35204a 36%,#ac263b 71%,#e75b54 100%); color: #fff; animation: pwa-home-appear 380ms ease-out both; }
+.pwa-install-prompt__home-screen::before { position: absolute; inset: 0; content: ''; background: linear-gradient(120deg,transparent 10%,rgba(255,255,255,.07) 44%,transparent 64%); filter: blur(16px); }
+.pwa-install-prompt__ios-status { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; height: 12px; padding: 0 5px; font-size: 7px; text-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.pwa-install-prompt__ios-status > span { display: flex; align-items: center; gap: 2px; }
+.pwa-install-prompt__ios-app-grid { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); align-content: start; justify-items: center; gap: 16px 10px; margin-top: 15px; }
+.pwa-install-prompt__ios-app { display: grid; width: 100%; min-width: 0; justify-items: center; gap: 3px; color: #fff; font-size: 5.4px; line-height: 1.1; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.pwa-install-prompt__ios-app > span { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-install-prompt__ios-app.is-fullchina > span { white-space: normal; }
+.pwa-install-prompt__ios-app > i,.pwa-install-prompt__ios-app > img { display: grid; width: 20px; height: 20px; place-items: center; overflow: hidden; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,.28); font-size: 12px; font-style: normal; }
+.pwa-install-prompt__ios-app > img { object-fit: cover; }
+.pwa-install-prompt__ios-app > i.is-calendar { background: linear-gradient(#fff 0 33%,#f5f5f7 33%); color: #ed3343; }
+.pwa-install-prompt__ios-app > i.is-photos { background: #fff; color: #f2537c; }
+.pwa-install-prompt__ios-app > i.is-camera { background: linear-gradient(145deg,#a9b1bb,#39404a); color: #fff; }
+.pwa-install-prompt__ios-app > i.is-maps { background: linear-gradient(135deg,#80d3a4,#fff 45%,#72b4fa); color: #2473de; }
+.pwa-install-prompt__ios-app > i.is-clock { background: #17191f; color: #fff; }
+.pwa-install-prompt__ios-app > i.is-notes { background: linear-gradient(#fff 0 25%,#ffd84e 25% 34%,#fff 34%); color: #62656e; }
+.pwa-install-prompt__ios-app > i.is-settings { background: linear-gradient(145deg,#9299a1,#515760); color: #fff; }
+.pwa-install-prompt__ios-page-dots { position: absolute; right: 0; bottom: 38px; left: 0; display: flex; justify-content: center; gap: 4px; }
+.pwa-install-prompt__ios-page-dots i { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.55); }
+.pwa-install-prompt__ios-page-dots i.active { background: #fff; }
+.pwa-install-prompt__home-dock { position: absolute; right: 7px; bottom: 12px; left: 7px; display: flex; align-items: center; justify-content: center; gap: 7px; height: 35px; padding: 0 6px; border: 1px solid rgba(255,255,255,.23); border-radius: 12px; background: rgba(242,243,248,.35); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.pwa-install-prompt__home-dock i { display: grid; width: 19px; height: 19px; flex: 0 0 19px; place-items: center; border-radius: 6px; color: #fff; font-size: 12px; font-style: normal; }
+.pwa-install-prompt__home-dock i.is-phone { background: linear-gradient(#53d86a,#1bb84e); }
+.pwa-install-prompt__home-dock i.is-safari-dock { background: linear-gradient(145deg,#bde5ff,#258bf1); color: #fff; }
+.pwa-install-prompt__home-dock i.is-messages { background: linear-gradient(#74eb69,#25c73a); }
+.pwa-install-prompt__home-dock i.is-music { background: linear-gradient(145deg,#ff799c,#bd2459); }
+.pwa-install-prompt__ios-home-indicator { position: absolute; z-index: 2; bottom: 4px; left: 50%; width: 34px; height: 2px; border-radius: 99px; background: rgba(255,255,255,.9); transform: translateX(-50%); }
+
+.pwa-install-prompt__samsung-home-screen { position: absolute; inset: 0; overflow: hidden; padding: 8px 7px 19px; background: radial-gradient(ellipse at 83% 18%,rgba(106,170,235,.8),transparent 36%),radial-gradient(ellipse at 10% 66%,rgba(180,78,180,.62),transparent 46%),linear-gradient(155deg,#0c1a37,#273858 43%,#6d426e 78%,#a86570); color: #fff; animation: pwa-home-appear 380ms ease-out both; }
+.pwa-install-prompt__samsung-home-screen::before { position: absolute; inset: 0; content: ''; background: radial-gradient(ellipse at 48% 45%,rgba(255,255,255,.12),transparent 60%); filter: blur(14px); }
+.pwa-install-prompt__samsung-status { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: center; height: 12px; padding: 0 4px; font-size: 6px; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.pwa-install-prompt__samsung-status > span { display: flex; align-items: center; gap: 2px; }
+.pwa-install-prompt__samsung-clock { position: relative; z-index: 1; display: grid; justify-items: center; gap: 1px; margin: 15px 5px 18px; padding: 10px 4px; border: 1px solid rgba(255,255,255,.14); border-radius: 14px; background: rgba(255,255,255,.12); box-shadow: 0 8px 20px rgba(0,0,0,.12); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.pwa-install-prompt__samsung-clock > strong { font-size: 25px; font-weight: 350; letter-spacing: -.05em; line-height: 1; }
+.pwa-install-prompt__samsung-clock > span { font-size: 7px; }
+.pwa-install-prompt__samsung-clock > small { margin-top: 2px; color: rgba(255,255,255,.82); font-size: 6px; }
+.pwa-install-prompt__samsung-app-grid { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); justify-items: center; gap: 15px 3px; }
+.pwa-install-prompt__samsung-app { display: grid; width: 100%; min-width: 0; justify-items: center; gap: 3px; color: #fff; font-size: 5.3px; line-height: 1.1; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.pwa-install-prompt__samsung-app > span { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-install-prompt__samsung-app.is-fullchina > span { white-space: normal; }
+.pwa-install-prompt__samsung-app > i,.pwa-install-prompt__samsung-app > img { display: grid; width: 26px; height: 26px; place-items: center; overflow: hidden; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,.3); font-style: normal; }
+.pwa-install-prompt__samsung-app > img { object-fit: cover; }
+.pwa-install-prompt__samsung-app > i.is-gallery { background: conic-gradient(#f34d66,#ffa344,#73c6bd,#b978ec,#f34d66); color: #fff; }
+.pwa-install-prompt__samsung-app > i.is-playstore { background: #fff; color: #16b978; }
+.pwa-install-prompt__samsung-app > i.is-camera { background: linear-gradient(145deg,#b8c2d1,#35465c); color: #fff; }
+.pwa-install-prompt__samsung-app > i.is-calendar { background: linear-gradient(#fff 0 30%,#f3f4f6 30%); color: #4388eb; }
+.pwa-install-prompt__samsung-app > i.is-clock { background: #f4f4f6; color: #263245; }
+.pwa-install-prompt__samsung-app > i.is-settings { background: linear-gradient(145deg,#dde1e8,#8994a5); color: #394459; }
+.pwa-install-prompt__samsung-app > i.is-internet { background: linear-gradient(145deg,#d5eaff,#5c9de4); color: #fff; }
+.pwa-install-prompt__samsung-page-dots { position: absolute; right: 0; bottom: 38px; left: 0; display: flex; justify-content: center; gap: 4px; }
+.pwa-install-prompt__samsung-page-dots i { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,.5); }
+.pwa-install-prompt__samsung-page-dots i.active { background: #fff; }
+.pwa-install-prompt__samsung-dock { position: absolute; right: 7px; bottom: 12px; left: 7px; display: flex; align-items: center; justify-content: space-around; height: 34px; padding: 0 5px; border: 1px solid rgba(255,255,255,.15); border-radius: 15px; background: rgba(235,239,246,.2); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.pwa-install-prompt__samsung-dock > i { display: grid; width: 23px; height: 23px; place-items: center; border-radius: 8px; color: #fff; font-style: normal; }
+.pwa-install-prompt__samsung-dock > i.is-phone { background: #41b978; }
+.pwa-install-prompt__samsung-dock > i.is-messages { background: #4e9ee9; }
+.pwa-install-prompt__samsung-dock > i.is-chrome { background: #fff; }
+.pwa-install-prompt__samsung-dock > i.is-chrome img { width: 23px; height: 23px; }
+.pwa-install-prompt__samsung-dock > i.is-camera { background: #626c7a; }
+.pwa-install-prompt__samsung-nav { position: absolute; bottom: 4px; left: 50%; width: 28px; height: 2px; border-radius: 99px; background: rgba(255,255,255,.82); transform: translateX(-50%); }
+
+.pwa-install-prompt__demo-copy { display: grid; align-content: center; gap: 10px; min-width: 0; animation: pwa-copy-enter 380ms cubic-bezier(.22,1,.36,1) both; }
+.pwa-install-prompt__demo-copy > span { color: #ffd15c; font-size: 12px; font-weight: 850; letter-spacing: .06em; }
+.pwa-install-prompt__demo-copy > strong { color: #fff; font-size: 22px; line-height: 1.22; text-wrap: balance; }
+.pwa-install-prompt__demo-copy > p { max-width: 38ch; margin: 0; color: #e1e1e6; font-size: 16px; line-height: 1.45; }
+.pwa-install-prompt__android-choice-actions { display: grid; gap: 8px; margin-top: 2px; }
+.pwa-install-prompt__android-choice-actions > button { display: flex; align-items: center; justify-content: flex-start; gap: 9px; min-height: 46px; padding: 9px 12px; border: 1px solid rgba(255,209,92,.68); border-radius: 12px; background: #ffe59b; color: #231b06; font: inherit; font-size: 15px; font-weight: 800; cursor: pointer; touch-action: manipulation; transition: background-color 180ms ease, transform 180ms ease; }
+.pwa-install-prompt__android-choice-actions > button:active { transform: scale(.97); background: rgba(255,209,92,.25); }
+.pwa-install-prompt__step-progress { height: 7px; overflow: hidden; border-radius: 99px; background: rgba(255,255,255,.16); }
+.pwa-install-prompt__step-progress > span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#ffd15c,#ed253a); transition: width 360ms cubic-bezier(.22,1,.36,1); }
+.pwa-install-prompt__step-navigation { display: flex; justify-content: space-between; gap: 12px; margin-top: 2px; }
+.pwa-install-prompt__step-navigation > button { display: inline-flex; min-width: 110px; min-height: 46px; align-items: center; justify-content: center; gap: 7px; padding: 9px 13px; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; background: #292a31; color: #fff; font: 750 15px/1.2 Inter,system-ui,sans-serif; cursor: pointer; touch-action: manipulation; transition: transform 180ms ease, background-color 180ms ease, opacity 180ms ease; }
+.pwa-install-prompt__step-navigation > button:last-child { border-color: #f22b40; background: #e51c32; }
+.pwa-install-prompt__step-navigation > button:active:not(:disabled) { transform: scale(.97); }
+.pwa-install-prompt__step-navigation > button:disabled { opacity: .48; cursor: not-allowed; }
+
+@keyframes pwa-tap-glow { from { transform: scale(.94); opacity: .78; } to { transform: scale(1.06); opacity: 1; } }
+@keyframes pwa-menu-appear { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pwa-home-appear { from { opacity: 0; transform: scale(1.025); filter: blur(3px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
+@keyframes pwa-copy-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pwa-flow-enter { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pwa-choice-enter { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pwa-screen-enter { from { opacity: .3; transform: scale(.97); filter: blur(2px); } to { opacity: 1; transform: scale(1); filter: blur(0); } }
+@keyframes pwa-dialog-enter { from { opacity: 0; transform: translateY(calc(-50% + 8px)) scale(.98); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
+
+.pwa-install-shortcut {
+  position: fixed;
+  z-index: 1900;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: max(14px, env(safe-area-inset-right, 0px));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid rgba(255, 105, 107, .55);
+  border-radius: 999px;
+  background: rgba(20, 17, 21, .94);
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  font: 750 13px/1 Inter, system-ui, sans-serif;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  animation: pwa-shortcut-in 180ms ease-out both;
+}
+
+.pwa-install-shortcut svg { color: #ffd15c; }
+.pwa-install-shortcut:active { transform: scale(.96); }
+
+@keyframes pwa-shortcut-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (min-width: 768px) {
@@ -93,16 +435,107 @@
     bottom: 24px;
     transform: none;
   }
+
+  .pwa-install-prompt.is-demo { max-height: calc(100vh - 48px); overflow-y: auto; }
+
 }
 
 @media (max-width: 390px) {
   .pwa-install-prompt {
-    grid-template-columns: 36px minmax(0, 1fr) auto 24px;
-    gap: 7px;
-    padding: 10px;
+    grid-template-columns: 40px minmax(0, 1fr) auto 26px;
+    gap: 8px;
+    padding: 12px 10px;
   }
-  .pwa-install-prompt__icon { width: 36px; height: 36px; }
+  .pwa-install-prompt__icon { width: 40px; height: 40px; border-radius: 13px; }
+  .pwa-install-prompt__content strong { font-size: 14px; }
   .pwa-install-prompt__content > span { font-size: 11px; }
-  .pwa-install-prompt__install { gap: 4px; padding: 0 8px; font-size: 11px; }
-  .pwa-install-prompt__close { width: 24px; }
+  .pwa-install-prompt__install { gap: 4px; min-height: 40px; padding: 0 9px; font-size: 11px; }
+  .pwa-install-prompt__close { width: 26px; }
+}
+
+@media (max-width: 560px) {
+  .pwa-install-prompt {
+    grid-template-columns: 42px minmax(0, 1fr) 28px;
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 10px 11px;
+  }
+
+  .pwa-install-prompt__icon {
+    grid-column: 1;
+    grid-row: 1;
+    width: 42px;
+    height: 42px;
+  }
+
+  .pwa-install-prompt__content {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .pwa-install-prompt__close {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  .pwa-install-prompt__install {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-height: 42px;
+  }
+
+  .pwa-install-prompt.has-install-flow {
+    grid-template-rows: auto auto auto;
+  }
+
+  .pwa-install-prompt.has-install-flow > .pwa-install-prompt__close { grid-column: 3; grid-row: 1; }
+  .pwa-install-prompt.has-install-flow > .pwa-install-prompt__flow { grid-column: 1 / -1; grid-row: 2; }
+  .pwa-install-prompt.has-install-flow > .pwa-install-prompt__install { grid-column: 1 / -1; grid-row: 3; }
+
+  .pwa-install-prompt.is-demo {
+    top: max(8px, env(safe-area-inset-top, 0px));
+    right: 8px;
+    bottom: calc(78px + env(safe-area-inset-bottom, 0px));
+    left: 8px;
+    width: auto;
+    max-height: calc(100dvh - 98px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    align-content: start;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: none;
+  }
+
+  .pwa-install-prompt.is-demo.has-install-flow { grid-template-rows: auto minmax(min-content,1fr) auto; align-content: stretch; }
+
+  .pwa-install-prompt__demo-layout {
+    grid-template-columns: minmax(112px,.88fr) minmax(0,1.12fr);
+    align-items: center;
+    gap: 13px;
+  }
+
+  .pwa-install-prompt__demo-copy { gap: 9px; }
+  .pwa-install-prompt__demo-copy > span { font-size: 11px; }
+  .pwa-install-prompt__demo-copy > strong { font-size: 20px; }
+  .pwa-install-prompt__demo-copy > p { font-size: 15px; line-height: 1.4; }
+  .pwa-install-prompt__phone { width: min(100%, 138px); }
+  .pwa-install-prompt__step-navigation { gap: 8px; }
+  .pwa-install-prompt__step-navigation > button { min-width: 0; flex: 1; min-height: 44px; gap: 4px; padding-inline: 6px; font-size: 13px; }
+  .pwa-install-prompt__step-navigation > button svg { width: 15px; height: 15px; flex: 0 0 15px; }
+  .pwa-install-prompt__android-choice-actions > button { min-height: 44px; padding: 8px 9px; font-size: 13px; }
+  .pwa-install-prompt__device-options { gap: 7px; }
+  .pwa-install-prompt__device-options > button { grid-template-columns: 34px minmax(0,1fr) 12px; gap: 5px; min-height: 68px; padding: 7px; }
+  .pwa-install-prompt__device-icon { width: 33px; height: 39px; }
+  .pwa-install-prompt__device-icon.is-safari img,
+  .pwa-install-prompt__device-icon.is-chrome img { width: 25px; height: 25px; }
+  .pwa-install-prompt__device-options strong { font-size: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install-prompt,
+  .pwa-install-shortcut,
+  .pwa-install-prompt *,
+  .pwa-install-prompt *::before,
+  .pwa-install-prompt *::after { animation: none !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }

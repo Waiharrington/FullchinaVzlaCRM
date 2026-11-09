@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { getAllSellableProducts, createProduct, updateProduct, deleteProduct, setProductExtraCategories, getMenuCategories, createMenuCategory, updateMenuCategory, deleteMenuCategory, getIngredients, getUnits, getRecipeComponents, createRecipeComponent, updateRecipeComponent, deleteRecipeComponent, type SellableProduct, type MenuCategoryRow, type Ingredient, type RecipeComponent } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import {
@@ -56,6 +57,10 @@ interface RecipeDraft { key: string; id?: string; ingredientId: string | null; q
 const emptyForm: Form = { name: '', description: '', categories: ['otros'], emoji: '', price: '', cost: '', imageUrl: null, isActive: true, allowProteinExtras: true, menuLabel: null }
 
 export function Menu() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const pendingProductEditRef = useRef<string | null>(null)
+  const requestedProductEditId = (location.state as { editProductId?: unknown } | null)?.editProductId
   const [products, setProducts] = useState<SellableProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -236,6 +241,22 @@ export function Menu() {
       setError(e instanceof Error ? e.message : 'No se pudo cargar la receta del producto')
     } finally { setRecipeLoading(false) }
   }
+  const openEditRef = useRef(openEdit)
+  openEditRef.current = openEdit
+
+  useEffect(() => {
+    if (loading || typeof requestedProductEditId !== 'string' || !requestedProductEditId || pendingProductEditRef.current === requestedProductEditId) return
+    const product = products.find(item => item.id === requestedProductEditId)
+    if (!product) return
+    pendingProductEditRef.current = requestedProductEditId
+    setSearch(product.name)
+    setCatFilter('all')
+    setStatusFilter('all')
+    setSelectMode(false)
+    setSelectedIds(new Set())
+    void openEditRef.current(product)
+    navigate('/menu', { replace: true, state: null })
+  }, [loading, navigate, products, requestedProductEditId])
 
   const selectedPrimaryCategory = useMemo(() => {
     const chosen = form.categories.length ? form.categories : ['otros']

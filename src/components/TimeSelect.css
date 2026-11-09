@@ -1,0 +1,42 @@
+.fc-time-picker { width:100%; min-width:0; }
+.fc-time-picker-entry {
+  box-sizing:border-box; display:flex; width:100%; min-width:0; min-height:44px; align-items:center; gap:6px; margin:0; padding:0 7px 0 10px;
+  border:1px solid rgba(227,27,43,.3); border-radius:13px; color:#fff; background:linear-gradient(135deg,rgba(97,15,24,.42),#17171a 54%,#111113);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.035),0 5px 14px rgba(0,0,0,.17); transition:border-color .16s ease,box-shadow .16s ease;
+}
+.fc-time-picker-entry:focus-within { border-color:#ffc83d; box-shadow:0 0 0 3px rgba(255,200,61,.11),0 7px 18px rgba(0,0,0,.2); }
+.fc-time-picker-icon { flex:0 0 auto; width:14px; height:14px; color:#ff5a63; }
+.fc-time-picker-input,.pedir-contact-hours .fc-time-picker-entry .fc-time-picker-input {
+  box-sizing:border-box; flex:1 1 auto; width:0; min-width:0; min-height:40px; height:40px; margin:0; padding:0;
+  border:0; border-radius:0; outline:0; color:#fff; background:transparent; box-shadow:none;
+  font:750 12px var(--font-sans,'Inter',sans-serif); letter-spacing:-.025em; caret-color:#ffc83d;
+}
+.fc-time-picker-input:focus,.pedir-contact-hours .fc-time-picker-entry .fc-time-picker-input:focus { border:0; outline:0; background:transparent; box-shadow:none; }
+.fc-time-picker-input::placeholder { color:#85858e; font-weight:550; }
+.fc-time-picker-entry>button { display:grid; flex:0 0 27px !important; width:27px !important; min-width:27px !important; max-width:27px !important; height:28px !important; min-height:28px !important; place-items:center; padding:0 !important; border:1px solid rgba(255,200,61,.4); border-radius:8px; color:#191113; background:linear-gradient(120deg,#ffd65a,#ffbd2f); cursor:pointer; transition:filter .15s ease,transform .15s ease; }
+.fc-time-picker-entry>button:hover { filter:brightness(1.08); transform:translateY(-1px); }
+.fc-time-picker-entry>button.fc-time-picker-open { border-color:rgba(227,27,43,.4); color:#ff6972; background:rgba(227,27,43,.12); }
+.fc-time-picker-popover { position:absolute; z-index:60; top:calc(100% + 7px); left:0; display:grid; width:min(280px,calc(100vw - 36px)); gap:10px; padding:12px; border:1px solid rgba(255,200,61,.28); border-radius:15px; color:#f4f4f5; background:radial-gradient(ellipse at 100% 0,rgba(227,27,43,.18),transparent 52%),linear-gradient(145deg,#20191b,#121214 78%); box-shadow:0 18px 40px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.04); animation:fc-time-picker-in .14s ease-out both; }
+.fc-time-picker-popover.is-fixed { position:fixed; top:auto; left:auto; }
+.fc-time-picker-popover.is-above { top:auto; bottom:calc(100% + 7px); }
+.pedir-contact-hours>label:last-child .fc-time-picker-popover { right:0; left:auto; }
+.fc-time-picker-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+.fc-time-picker-heading>svg { flex:0 0 auto; color:#ff5a63; }
+.fc-time-picker-heading>strong { flex:1; min-width:0; color:#fff; font-size:12px; }
+.fc-time-picker-heading>span { color:#ffc83d; font-size:12px; font-weight:850; white-space:nowrap; }
+.fc-time-picker-quick-row { display:grid; grid-template-columns:minmax(70px,1fr) minmax(70px,1fr) minmax(0,1.1fr); gap:7px; align-items:end; }
+.fc-time-picker-wheel-column { display:grid; gap:5px; min-width:0; }
+.fc-time-picker-wheel-column>span { padding:0 4px; color:#a6a3a5; font-size:8px; font-weight:850; letter-spacing:.12em; }
+.fc-time-picker-wheel { position:relative; box-sizing:border-box; display:grid; align-content:start; height:108px; min-width:0; overflow-x:hidden; overflow-y:auto; padding:36px 5px; border:1px solid rgba(255,255,255,.1); border-radius:11px; background:linear-gradient(180deg,rgba(0,0,0,.34),rgba(255,255,255,.025) 50%,rgba(0,0,0,.34)); overscroll-behavior:contain; scrollbar-width:none; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch; }
+.fc-time-picker-wheel::-webkit-scrollbar { display:none; }
+.fc-time-picker-wheel>button { display:grid; flex:0 0 36px; width:100%; height:36px; min-height:36px; place-items:center; padding:0; border:1px solid transparent; border-radius:8px; color:#c5c5cc; background:transparent; font:750 13px var(--font-sans,'Inter',sans-serif); cursor:pointer; scroll-snap-align:center; }
+.fc-time-picker-wheel>button:hover { color:#fff; background:rgba(227,27,43,.16); }
+.fc-time-picker-wheel>button.selected { border-color:rgba(255,200,61,.48); color:#fff; background:linear-gradient(135deg,#b6192a,#e31b2b); box-shadow:0 3px 12px rgba(227,27,43,.24); }
+.fc-time-picker-period { display:grid; gap:6px; align-self:end; }
+.fc-time-picker-period>button { min-height:35px; border:1px solid rgba(255,255,255,.1); border-radius:9px; color:#c9c7ca; background:rgba(255,255,255,.04); font:750 11px var(--font-sans,'Inter',sans-serif); cursor:pointer; }
+.fc-time-picker-period>button.selected { border-color:rgba(255,200,61,.6); color:#201710; background:linear-gradient(120deg,#ffd65a,#ffbd2f); }
+.fc-time-picker-done { display:flex; min-height:34px; align-items:center; justify-content:center; gap:6px; border:1px solid rgba(255,200,61,.38); border-radius:9px; color:#211711; background:linear-gradient(120deg,#ffd65a,#ffbd2f); font:800 11px var(--font-sans,'Inter',sans-serif); cursor:pointer; }
+.fc-time-picker-done:hover { filter:brightness(1.07); }
+.fc-time-picker-error { display:block; margin:6px 2px 0; color:#ff8b90; font-size:10px; }
+@keyframes fc-time-picker-in { from { opacity:0; transform:translateY(-3px) scale(.99); } to { opacity:1; transform:translateY(0) scale(1); } }
+@media (prefers-reduced-motion:reduce) { .fc-time-picker-popover { animation:none; } }

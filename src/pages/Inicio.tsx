@@ -244,7 +244,9 @@ export function Inicio() {
   const selectedWeekStart = weekStartDateKey(selectedDate)
   const selectedWeekEnd = offsetDateKey(selectedWeekStart, 6)
   const selectedWeekDates = Array.from({ length: 7 }, (_, index) => offsetDateKey(selectedWeekStart, index))
-  const selectedWeekLabel = `${formatDashboardDate(selectedWeekStart)} al ${formatDashboardDate(selectedWeekEnd)}`
+  const selectedWeekStartDate = new Date(`${selectedWeekStart}T12:00:00`)
+  const selectedWeekEndDate = new Date(`${selectedWeekEnd}T12:00:00`)
+  const selectedWeekLabel = `Esta semana · ${selectedWeekStartDate.toLocaleDateString('es-VE', { day: 'numeric' })}–${selectedWeekEndDate.toLocaleDateString('es-VE', { day: 'numeric', month: 'short' }).replace('.', '')}`
   const isSelectedToday = selectedDate === selectedDateToday
   const [activeQuickAccess, setActiveQuickAccess] = useState<DashboardShortcut | null>(null)
   const [dashboardError, setDashboardError] = useState('')
@@ -917,7 +919,7 @@ export function Inicio() {
         <div className="db-card">
           <div className="db-card-head">
             <div className="db-chart-heading-group">
-              <div><h3>Resumen de ventas</h3>{salesRange === 7 ? <span className="db-card-support">Semana: {selectedWeekLabel}</span> : null}</div>
+              <div><h3>Resumen de ventas</h3>{salesRange === 7 ? <span className="db-card-support">{selectedWeekLabel}</span> : null}</div>
               <label className="db-period-control">
                 <span className="sr-only">Período de ventas</span>
                 <StyledSelect menuClassName="db-period-options-menu" aria-label="Período de ventas" value={salesRange} disabled={chartLoading} onChange={(event) => void handleSalesRangeChange(Number(event.target.value))}>

@@ -15,7 +15,7 @@ import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
 import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
-import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderPageSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
+import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, DEFAULT_PUBLIC_ORDER_REELS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, type PublicOrderPageSettings, type PublicOrderReel } from '../lib/publicOrderPageSettings'
 import { preserveEmptyPublicCarousel, selectPublicCarouselGroups } from '../lib/publicOrderCarousel'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { customerSupabase } from '../lib/supabase'
@@ -57,36 +57,61 @@ const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
 }
 
 const STORE_TIME_ZONE = 'America/Caracas'
-const STORE_OPEN_HOUR = 11
-const STORE_CLOSE_HOUR = 22
 
-function getStoreClock() {
+const SCHEDULE_DAY_SETS: Record<string, string[]> = {
+  'Martes a Domingo': ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  'Lunes a Domingo': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  'Lunes a Sábado': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  'Lunes a Viernes': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+}
+
+function formatStoreTime(value: string) {
+  const [hour = '0', minute = '00'] = value.split(':')
+  const numericHour = Number(hour)
+  const suffix = numericHour < 12 ? 'a. m.' : 'p. m.'
+  const displayHour = numericHour % 12 || 12
+  return `${displayHour}:${minute} ${suffix}`
+}
+
+function formatStoreSchedule(settings: PublicOrderPageSettings) {
+  const dayNames: Record<string, string> = {
+    'Martes a Domingo': 'Mar a dom',
+    'Lunes a Domingo': 'Lun a dom',
+    'Lunes a Sábado': 'Lun a sáb',
+    'Lunes a Viernes': 'Lun a vie',
+  }
+  return `${dayNames[settings.contactDays] ?? settings.contactDays} · ${formatStoreTime(settings.contactOpenTime)}–${formatStoreTime(settings.contactCloseTime)}`
+}
+
+function getStoreClock(settings: PublicOrderPageSettings = DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS) {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: STORE_TIME_ZONE,
     hour: '2-digit',
+    minute: '2-digit',
     hourCycle: 'h23',
+    weekday: 'short',
   }).formatToParts(new Date())
   const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0)
+  const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0)
+  const weekday = parts.find(part => part.type === 'weekday')?.value ?? ''
+  const [openHour = '0', openMinute = '0'] = settings.contactOpenTime.split(':')
+  const [closeHour = '0', closeMinute = '0'] = settings.contactCloseTime.split(':')
+  const now = hour * 60 + minute
+  const opens = Number(openHour) * 60 + Number(openMinute)
+  const closes = Number(closeHour) * 60 + Number(closeMinute)
+  const openDay = (SCHEDULE_DAY_SETS[settings.contactDays] ?? SCHEDULE_DAY_SETS['Martes a Domingo']).includes(weekday)
   const previewClosed = import.meta.env.DEV
     && new URLSearchParams(window.location.search).get('previewStoreClosed') === '1'
-  const isOpen = !previewClosed && hour >= STORE_OPEN_HOUR && hour < STORE_CLOSE_HOUR
+  const isOpen = !previewClosed && openDay && now >= opens && now < closes
   return {
     isOpen,
     reopeningMessage: previewClosed
-      ? 'Volvemos mañana a las 11:00 a. m.'
-      : hour < STORE_OPEN_HOUR ? 'Abrimos hoy a las 11:00 a. m.' : 'Volvemos mañana a las 11:00 a. m.',
+      ? 'Consulta nuestro horario de atención'
+      : `Horario: ${settings.contactDays}, ${formatStoreTime(settings.contactOpenTime)} a ${formatStoreTime(settings.contactCloseTime)}`,
   }
 }
 
-const INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
-const INSTAGRAM_REELS = [
-  { src: '/videos/instagram/reel-1.mp4?v=20261024-new', poster: '/optimized/instagram/reel-1.webp?v=20261024-new' },
-  { src: '/videos/instagram/reel-2.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-2.webp' },
-  { src: '/videos/instagram/reel-3.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-3.webp' },
-  { src: '/videos/instagram/reel-4.mp4?v=20261024-reel4', poster: '/optimized/instagram/reel-4.webp?v=20261024-reel4' },
-  { src: '/videos/instagram/reel-5.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-5.webp' },
-  { src: '/videos/instagram/reel-6.mp4?v=20260922-audio', poster: '/optimized/instagram/reel-6.webp' },
-] as const
+const DEFAULT_INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
 function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) {
   const userAgent = navigator.userAgent
   const isIOS = /iPad|iPhone|iPod/.test(userAgent)
@@ -95,18 +120,20 @@ function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) 
   if (!isIOS && !isAndroid) return
 
   event.preventDefault()
+  const profileUrl = event.currentTarget.href
+  const profilePath = new URL(profileUrl).pathname.split('/').filter(Boolean).pop() || 'fullchinavzla'
   const appUrl = isIOS
-    ? 'instagram://user?username=fullchinavzla'
-    : `intent://www.instagram.com/_u/fullchinavzla/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=${encodeURIComponent(INSTAGRAM_PROFILE_URL)};end`
+    ? `instagram://user?username=${encodeURIComponent(profilePath.replace(/^_u$/, 'fullchinavzla'))}`
+    : `intent://www.instagram.com/${profilePath}/#Intent;scheme=https;package=com.instagram.android;S.browser_fallback_url=${encodeURIComponent(profileUrl)};end`
   // No agregar un fallback temporizado aquí: iOS puede dejar Safari como
   // visible aunque ya haya abierto Instagram, y eso sacaría al cliente de la app.
   // Android ya lleva su fallback web dentro del intent si Instagram no existe.
   window.location.assign(appUrl)
 }
 
-function instagramReelOrder(activeIndex: number) {
-  return Array.from({ length: INSTAGRAM_REELS.length }, (_, position) => ({
-    reel: INSTAGRAM_REELS[(activeIndex - 2 + position + INSTAGRAM_REELS.length) % INSTAGRAM_REELS.length],
+function instagramReelOrder(reels: PublicOrderReel[], activeIndex: number) {
+  return Array.from({ length: reels.length }, (_, position) => ({
+    reel: reels[(activeIndex - 2 + position + reels.length) % reels.length],
     position,
   }))
 }
@@ -168,7 +195,7 @@ function warmPublicMenuImages(products: Product[]) {
     ...Object.values(CATEGORY_ICONS),
     ...previewSources,
     '/optimized/menu-product-placeholder.webp',
-    ...INSTAGRAM_REELS.map(reel => reel.poster),
+    ...DEFAULT_PUBLIC_ORDER_REELS.map(reel => reel.poster),
     `/optimized/customer-profile/login-${profileSuffix}.webp`,
     `/optimized/customer-profile/register-${profileSuffix}.webp`,
     '/optimized/customer-profile/profile-bg.webp',
@@ -716,6 +743,14 @@ export function PublicMenu() {
   const [requestedRecommendedIndex, setRequestedRecommendedIndex] = useState<number | null>(null)
   const [recommendedImageSrc, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
   const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
+  const currentInstagramReels = pageSettings.contactReels.length ? pageSettings.contactReels : DEFAULT_PUBLIC_ORDER_REELS
+  const publicWhatsappPhone = (pageSettings.contactWhatsapp || PUBLIC_WHATSAPP_PHONE).replace(/\D/g, '')
+  const publicInstagramUrl = pageSettings.contactInstagramUrl || DEFAULT_INSTAGRAM_PROFILE_URL
+  const publicFacebookUrl = pageSettings.contactFacebookUrl
+  const formattedOpenTime = formatStoreTime(pageSettings.contactOpenTime)
+  const formattedCloseTime = formatStoreTime(pageSettings.contactCloseTime)
+  const storeScheduleLabel = formatStoreSchedule(pageSettings)
+  const mapPreviewUrl = getPublicOrderMapEmbedUrl(pageSettings.contactDirectionsUrl, pageSettings.contactAddress)
   const refreshPublicPageSettings = useCallback(async () => {
     setPageSettings(await getPublicOrderPageSettings())
   }, [])
@@ -736,7 +771,7 @@ export function PublicMenu() {
   const [instagramPlaybackStarted, setInstagramPlaybackStarted] = useState(false)
   const [instagramDesktopPlaybackConfirmed, setInstagramDesktopPlaybackConfirmed] = useState(false)
   const [instagramPaused, setInstagramPaused] = useState(false)
-  const instagramReels = useMemo(() => instagramReelOrder(instagramActiveIndex), [instagramActiveIndex])
+  const instagramReels = useMemo(() => instagramReelOrder(currentInstagramReels, instagramActiveIndex), [currentInstagramReels, instagramActiveIndex])
   const sidebarRecoTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const addFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const addFeedbackExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -1460,11 +1495,12 @@ export function PublicMenu() {
     if (groupName === 'lumpias') return variantName.includes('sencilla')
     return false
   }) ?? null
-  const [storeClock, setStoreClock] = useState(getStoreClock)
+  const [storeClock, setStoreClock] = useState(() => getStoreClock(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS))
   useEffect(() => {
-    const timer = window.setInterval(() => setStoreClock(getStoreClock()), 60_000)
+    setStoreClock(getStoreClock(pageSettings))
+    const timer = window.setInterval(() => setStoreClock(getStoreClock(pageSettings)), 60_000)
     return () => window.clearInterval(timer)
-  }, [])
+  }, [pageSettings])
   const isStoreOpen = storeClock.isOpen
   const blockClosedStoreAdd = () => {
     if (isStoreOpen) return false
@@ -2522,7 +2558,7 @@ export function PublicMenu() {
     if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return setFieldError('phone') }
     if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return setAddressFieldError('address') }
     if (!cart.length) return setError('Tu carrito está vacío.')
-    if (PUBLIC_WHATSAPP_PHONE.length < 7) {
+    if (publicWhatsappPhone.length < 7) {
       setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
       return
     }
@@ -2568,7 +2604,7 @@ export function PublicMenu() {
       if (result.legacyReview) {
         setOrderCode(result.code)
         const reviewMessage = `Hola, tengo una solicitud anterior ${result.code} creada antes de la actualización del sistema. Por favor revisen sus productos y personalizaciones antes de confirmarla; no quiero duplicar el pedido.`
-        setWhatsappUrl(`https://wa.me/${PUBLIC_WHATSAPP_PHONE}?text=${encodeURIComponent(reviewMessage)}`)
+        setWhatsappUrl(`https://wa.me/${publicWhatsappPhone}?text=${encodeURIComponent(reviewMessage)}`)
         setError('Ya existe una solicitud anterior con ese código. La enviamos a revisión por WhatsApp para evitar duplicarla o confirmar datos incompletos.')
         setStep('whatsapp')
         return
@@ -2641,7 +2677,7 @@ export function PublicMenu() {
         separator,
         'Envía este mensaje para que podamos confirmar tu pedido.',
       ].join('\n')
-      const whatsappFallback = `https://wa.me/${PUBLIC_WHATSAPP_PHONE}?text=${encodeURIComponent(message)}`
+      const whatsappFallback = `https://wa.me/${publicWhatsappPhone}?text=${encodeURIComponent(message)}`
       setWhatsappUrl(whatsappFallback)
       setStep('whatsapp')
     } catch (cause) {
@@ -2848,9 +2884,10 @@ export function PublicMenu() {
             {/* Desktop Right Status Badges */}
             <div className="public-top-bar-right desktop-only">
               <div className="public-nav-status-badges">
-                <div className={`public-nav-status-pill${isStoreOpen ? '' : ' is-closed'}`}>
+                <div className={`public-nav-status-pill${isStoreOpen ? ' is-open' : ' is-closed'}`}>
                   <span className="public-nav-status-dot" />
-                  <span>{isStoreOpen ? 'Abierto hoy · hasta las 10:00 p. m.' : `Cerrado · ${storeClock.reopeningMessage.toLowerCase()}`}</span>
+                  <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>
+                  <span className="public-nav-status-hours"><Clock size={12} aria-hidden="true" />{isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
                 </div>
                 {bcvRate && (
                   <div className="public-nav-bcv-pill" title="Tasa oficial del Banco Central de Venezuela">
@@ -2883,7 +2920,7 @@ export function PublicMenu() {
             )}
           </div>
           <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
-            <i /> <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>{isStoreOpen ? ' · hasta las 10:00 p. m.' : ` · ${storeClock.reopeningMessage.toLowerCase()}`}
+            <i /> <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong><span className="public-status-hours"><Clock size={13} aria-hidden="true" />{isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
           </span>
           <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) { heroSearchRef.current?.focus(); setShowSearch(true) } }}>
             <Search size={16} />
@@ -3046,8 +3083,8 @@ export function PublicMenu() {
                 </h1>
                 <p className="public-hero-desc">Escríbenos, estamos para servirte.</p>
                 <div className="public-hero-search-row public-contact-hero-actions">
-                  {PUBLIC_WHATSAPP_PHONE && (
-                    <a href={`https://wa.me/${PUBLIC_WHATSAPP_PHONE}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
+                  {publicWhatsappPhone && (
+                    <a href={`https://wa.me/${publicWhatsappPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
                       Escríbenos ahora <ChevronRight size={16} />
                     </a>
                   )}
@@ -3064,8 +3101,8 @@ export function PublicMenu() {
                 </header>
                 <div className="public-contact-status-row">
                   <span><Clock size={14} /> Horario de atención</span>
-                  <strong>Martes a Domingo</strong>
-                  <small>Desde las 11:30 AM</small>
+                  <strong>{pageSettings.contactDays}</strong>
+                  <small>{formattedOpenTime} – {formattedCloseTime}</small>
                 </div>
                 <div className="public-contact-payment-block">
                   <span><Wallet size={17} /> Métodos de pago</span>
@@ -3101,7 +3138,7 @@ export function PublicMenu() {
                 </div>
                 <div className="public-instagram-reel-stage public-instagram-mobile-stage" aria-label="Reel destacado de Full China">
                   {instagramReels.map(({ reel, position }) => {
-                    const reelIndex = INSTAGRAM_REELS.indexOf(reel)
+                    const reelIndex = currentInstagramReels.indexOf(reel)
                     const isActive = reelIndex === instagramActiveIndex
                     return (
                     <div
@@ -3115,7 +3152,7 @@ export function PublicMenu() {
                         const video = event.currentTarget
                         const progress = video.duration > 0 ? video.currentTime / video.duration : 0
                         video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
-                      }} onEnded={() => { if (isActive) { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length) } }}>
+                      }} onEnded={() => { if (isActive) { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % currentInstagramReels.length) } }}>
                         <source data-src={reel.src} type="video/mp4" />
                       </video>
                       <span className="public-instagram-reel-shade" aria-hidden="true" />
@@ -3128,7 +3165,7 @@ export function PublicMenu() {
                   })}
                 </div>
                 <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
-                  {INSTAGRAM_REELS.map((reel, reelIndex) => (
+                  {currentInstagramReels.map((reel, reelIndex) => (
                     <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
                       <img src={reel.poster} alt="" loading="lazy" />
                       <span>{String(reelIndex + 1).padStart(2, '0')}</span>
@@ -3136,7 +3173,7 @@ export function PublicMenu() {
                   ))}
                 </div>
                 <a
-                  href={INSTAGRAM_PROFILE_URL}
+                  href={publicInstagramUrl}
                   onClick={handleInstagramProfileClick}
                   className="public-contact-footer-cta is-instagram"
                 >
@@ -3145,16 +3182,17 @@ export function PublicMenu() {
                     <circle cx="12" cy="12" r="4" />
                     <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
                   </svg>
-                  <span>Seguir a <strong>@fullchinavzla</strong></span>
+                  <span>Seguir en <strong>Instagram</strong></span>
                   <ChevronRight size={18} />
                 </a>
+                {publicFacebookUrl && <a href={publicFacebookUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-instagram"><MessageSquareText size={17} /><span>Visitar <strong>Facebook</strong></span><ChevronRight size={18} /></a>}
               </article>
 
               <article className="public-contact-panel public-contact-location">
                 <div className="public-contact-location-stage">
                   <iframe
                     title="Ubicación de Full China en Google Maps"
-                    src="https://maps.google.com/maps?ll=10.2547567,-67.5926267&z=17&output=embed"
+                    src={mapPreviewUrl}
                     loading="eager"
                     referrerPolicy="no-referrer-when-downgrade"
                     allowFullScreen
@@ -3165,10 +3203,10 @@ export function PublicMenu() {
                     <img src="/optimized/root/logo.webp" alt="" />
                   </span>
                   <div className="public-contact-location-overlay">
-                    <span>Maracay · Estado Aragua</span>
+                    <span>{pageSettings.contactAddress}</span>
                     <strong>Ven, come<br />y disfruta.</strong>
                     <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
-                    <a href="https://maps.app.goo.gl/sh8SDNhhdD6is87y8" target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-location">
+                    <a href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-location">
                       <Navigation size={16} />
                       <span>Cómo llegar</span>
                       <ChevronRight size={17} />
@@ -3591,8 +3629,8 @@ export function PublicMenu() {
                 <p className="public-hero-desc">¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.</p>
 
                   <div className="public-hero-search-row public-contact-hero-actions">
-                    {PUBLIC_WHATSAPP_PHONE ? (
-                      <a href={`https://wa.me/${PUBLIC_WHATSAPP_PHONE}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
+                  {publicWhatsappPhone ? (
+                    <a href={`https://wa.me/${publicWhatsappPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
                         Escríbenos ahora <ChevronRight size={16} />
                       </a>
                     ) : null}
@@ -3609,8 +3647,8 @@ export function PublicMenu() {
                   </header>
                   <div className="public-contact-status-row">
                     <span><Clock size={14} /> Horario de atención</span>
-                    <strong>Martes a Domingo</strong>
-                    <small>Desde las 11:30 AM</small>
+                    <strong>{pageSettings.contactDays}</strong>
+                    <small>{formattedOpenTime} – {formattedCloseTime}</small>
                   </div>
                   <div className="public-contact-payment-block">
                     <span><Wallet size={17} /> Métodos de pago</span>
@@ -3646,7 +3684,7 @@ export function PublicMenu() {
                   </div>
                   <div className="public-instagram-reel-stage public-instagram-desktop-stage" aria-label="Reel destacado de Full China">
                     {(() => {
-                      const reel = INSTAGRAM_REELS[instagramActiveIndex]
+                      const reel = currentInstagramReels[instagramActiveIndex % currentInstagramReels.length]
                       return (
                         <div
                           key={reel.src}
@@ -3657,11 +3695,11 @@ export function PublicMenu() {
                             const video = event.currentTarget
                             const progress = video.duration > 0 ? video.currentTime / video.duration : 0
                             video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
-                          }} onEnded={() => { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % INSTAGRAM_REELS.length) }}>
+                          }} onEnded={() => { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % currentInstagramReels.length) }}>
                             <source data-src={reel.src} type="video/mp4" />
                           </video>
                           <span className="public-instagram-reel-shade" aria-hidden="true" />
-                          <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(instagramActiveIndex + 1).padStart(2, '0')} / 06</b></span>
+                          <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(instagramActiveIndex + 1).padStart(2, '0')} / {String(currentInstagramReels.length).padStart(2, '0')}</b></span>
                           <span className="public-instagram-reel-progress" aria-hidden="true" />
                           <button type="button" className="public-instagram-play-toggle" aria-label="Pausar o reanudar video" title="Pausar o reanudar video" onClick={toggleInstagramPlayback}>{instagramPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} />}</button>
                         </div>
@@ -3701,7 +3739,7 @@ export function PublicMenu() {
                     )}
                   </div>
                   <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
-                    {INSTAGRAM_REELS.map((reel, reelIndex) => (
+                    {currentInstagramReels.map((reel, reelIndex) => (
                       <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
                         <img src={reel.poster} alt="" loading="lazy" />
                         <span>{String(reelIndex + 1).padStart(2, '0')}</span>
@@ -3709,7 +3747,7 @@ export function PublicMenu() {
                     ))}
                   </div>
                   <a
-                    href={INSTAGRAM_PROFILE_URL}
+                    href={publicInstagramUrl}
                     onClick={handleInstagramProfileClick}
                     className="public-contact-footer-cta is-instagram"
                   >
@@ -3718,16 +3756,17 @@ export function PublicMenu() {
                       <circle cx="12" cy="12" r="4" />
                       <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
                     </svg>
-                    <span>Seguir a <strong>@fullchinavzla</strong></span>
+                    <span>Seguir en <strong>Instagram</strong></span>
                     <ChevronRight size={18} />
                   </a>
+                  {publicFacebookUrl && <a href={publicFacebookUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-instagram"><MessageSquareText size={17} /><span>Visitar <strong>Facebook</strong></span><ChevronRight size={18} /></a>}
                 </article>
 
                 <article className="public-contact-panel public-contact-location">
                   <div className="public-contact-location-stage">
                     <iframe
                       title="Ubicación de Full China en Google Maps"
-                      src="https://maps.google.com/maps?ll=10.2547567,-67.5926267&z=17&output=embed"
+                      src={mapPreviewUrl}
                       loading="eager"
                       referrerPolicy="no-referrer-when-downgrade"
                       allowFullScreen
@@ -3738,11 +3777,11 @@ export function PublicMenu() {
                       <img src="/optimized/root/logo.webp" alt="" />
                     </span>
                     <div className="public-contact-location-overlay">
-                      <span>Maracay · Estado Aragua</span>
+                      <span>{pageSettings.contactAddress}</span>
                       <strong>Ven, come<br />y disfruta.</strong>
                       <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
                       <a
-                        href="https://maps.app.goo.gl/sh8SDNhhdD6is87y8"
+                        href={pageSettings.contactDirectionsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="public-contact-footer-cta is-location"
@@ -4423,7 +4462,7 @@ export function PublicMenu() {
               <p id="public-store-closed-copy">Puedes recorrer el menú y elegir tus favoritos. Te esperamos cuando abramos para preparar tu pedido.</p>
               <div className="public-store-closed-hours">
                 <span><Clock size={15} /> HORARIO DEL LOCAL</span>
-                <strong>11:00 a. m. <i>—</i> 10:00 p. m.</strong>
+                <strong>{formattedOpenTime} <i>—</i> {formattedCloseTime}</strong>
                 <small>{storeClock.reopeningMessage}</small>
               </div>
               <button ref={storeClosedNoticeButtonRef} type="button" className="public-store-closed-confirm" onClick={() => setShowStoreClosedNotice(false)}>Seguir viendo el menú <ChevronRight size={17} /></button>

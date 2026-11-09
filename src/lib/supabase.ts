@@ -22,6 +22,10 @@ const responseCache = createResponseCache({
   tableDependencies: TABLE_CACHE_DEPENDENCIES,
 })
 const dataChangeListeners = new Set<(table: string) => void>()
+const CROSS_TAB_CHANGE_CHANNEL = 'fullchina-data-change'
+const CROSS_TAB_CHANGE_STORAGE_KEY = 'fullchina:data-change'
+let crossTabChannel: BroadcastChannel | null = null
+let crossTabListenerAttached = false
 let realtimeChannel: ReturnType<NonNullable<typeof supabase>['channel']> | null = null
 let realtimeOwnerId: string | null = null
 let fallbackTimer: ReturnType<typeof setInterval> | null = null
@@ -61,9 +65,50 @@ function invalidateTable(table: string | null) {
   responseCache.invalidate(table)
 }
 
-export function publishDataChange(table: string) {
+function dispatchDataChange(table: string) {
   invalidateTable(table)
   for (const listener of dataChangeListeners) listener(table)
+}
+
+function receiveCrossTabChange(value: unknown) {
+  if (!value || typeof value !== 'object' || !('table' in value)) return
+  const table = (value as { table?: unknown }).table
+  if (typeof table !== 'string' || table.length === 0 || table.length > 100) return
+  dispatchDataChange(table)
+}
+
+function ensureCrossTabChangeFeed() {
+  if (crossTabListenerAttached || typeof window === 'undefined') return
+  crossTabListenerAttached = true
+
+  if (typeof BroadcastChannel !== 'undefined') {
+    try {
+      crossTabChannel = new BroadcastChannel(CROSS_TAB_CHANGE_CHANNEL)
+      crossTabChannel.addEventListener('message', event => receiveCrossTabChange(event.data))
+      return
+    } catch {
+      crossTabChannel = null
+    }
+  }
+
+  window.addEventListener('storage', event => {
+    if (event.key !== CROSS_TAB_CHANGE_STORAGE_KEY || !event.newValue) return
+    try { receiveCrossTabChange(JSON.parse(event.newValue)) } catch { /* Ignore malformed cross-tab notices. */ }
+  })
+}
+
+export function publishDataChange(table: string) {
+  ensureCrossTabChangeFeed()
+  dispatchDataChange(table)
+  if (crossTabChannel) {
+    try { crossTabChannel.postMessage({ table }) } catch { /* The local refresh still succeeds. */ }
+    return
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(CROSS_TAB_CHANGE_STORAGE_KEY, JSON.stringify({ table, at: Date.now() }))
+    } catch { /* Storage may be disabled; same-tab subscribers still refresh. */ }
+  }
 }
 
 function reportLocalRequest(details: ReturnType<typeof requestDetails>, status: number, durationMs: number) {
@@ -129,6 +174,7 @@ export const customerSupabase =
     : null
 
 export function subscribeToDataChanges(listener: (table: string) => void) {
+  ensureCrossTabChangeFeed()
   dataChangeListeners.add(listener)
   return () => dataChangeListeners.delete(listener)
 }

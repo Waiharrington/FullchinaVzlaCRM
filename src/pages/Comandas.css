@@ -2735,13 +2735,15 @@
 .cmd-history-search {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 4px 14px;
+  border-radius: 14px;
+  min-height: 46px;
+  padding: 8px 16px;
   flex: 1 1 220px;
   color: #999;
+  cursor: text;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 .cmd-history-search:focus-within {
@@ -2755,8 +2757,8 @@
   border-radius: 0;
   outline: none;
   color: #fff;
-  font-size: 12.5px;
-  height: 1.35em !important;
+  font-size: 14px;
+  height: 1.5em !important;
   min-width: 0;
   padding: 0;
   width: 100%;
@@ -3214,8 +3216,8 @@
   }
 
   .cmd-history-search {
-    min-height: 34px;
-    padding: 3px 10px;
+    min-height: 46px;
+    padding: 8px 13px;
     flex-basis: 100%;
   }
 
