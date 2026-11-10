@@ -319,15 +319,17 @@ export function PwaInstallPrompt() {
                 </div>}
               </div>
             </div>
-            <div className="pwa-install-prompt__step-progress" role="progressbar" aria-label="Progreso del tutorial" aria-valuemin={1} aria-valuemax={demoSteps.length} aria-valuenow={demoStep + 1}>
-              <span style={{ width: `${((demoStep + 1) / demoSteps.length) * 100}%` }} />
-            </div>
-            <div className="pwa-install-prompt__step-navigation">
-              <button type="button" onClick={() => goToDemoStep(demoStep - 1)} disabled={demoStep === 0}><ChevronLeft size={18} /> Atrás</button>
-              {demoStep === lastDemoStep
-                ? <button type="button" onClick={() => goToDemoStep(0)}><RotateCcw size={17} /> Ver de nuevo</button>
-                : <button type="button" onClick={() => goToDemoStep(demoStep + 1)} disabled={selectedBrowser === 'chrome' && selectedPlatform === 'android' && demoStep === 1}><span>Siguiente</span><ChevronRight size={18} />
-                </button>}
+            <div className="pwa-install-prompt__demo-controls">
+              <div className="pwa-install-prompt__step-progress" role="progressbar" aria-label="Progreso del tutorial" aria-valuemin={1} aria-valuemax={demoSteps.length} aria-valuenow={demoStep + 1}>
+                <span style={{ width: `${((demoStep + 1) / demoSteps.length) * 100}%` }} />
+              </div>
+              <div className="pwa-install-prompt__step-navigation">
+                <button type="button" onClick={() => goToDemoStep(demoStep - 1)} disabled={demoStep === 0}><ChevronLeft size={18} /> Atrás</button>
+                {demoStep === lastDemoStep
+                  ? <button type="button" onClick={() => goToDemoStep(0)}><RotateCcw size={17} /> Ver de nuevo</button>
+                  : <button type="button" onClick={() => goToDemoStep(demoStep + 1)} disabled={selectedBrowser === 'chrome' && selectedPlatform === 'android' && demoStep === 1}><span>Siguiente</span><ChevronRight size={18} />
+                  </button>}
+              </div>
             </div>
           </>}
         </section>
