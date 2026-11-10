@@ -213,8 +213,12 @@ html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:1
   .pedir-preview-eyebrow { font-size:7px; }
   .pedir-preview-hero-copy>strong { font-size:16px; }
   .pedir-preview-hero-copy>p { font-size:9px; }
-  .pedir-pagination>button { font-size:0; }
-  .pedir-pagination>button svg { width:17px; height:17px; }
+  .pedir-pagination { box-sizing:border-box; display:grid; width:100%; min-width:0; max-width:100%; grid-template-columns:38px minmax(0,1fr) 38px; align-items:center; gap:8px; overflow:hidden; }
+  .pedir-pagination>button { box-sizing:border-box; width:38px; min-width:38px; padding:0; font-size:0; }
+  .pedir-pagination>button svg { width:17px; height:17px; flex:0 0 auto; }
+  .pedir-pagination>div { min-width:0; justify-content:center; }
+  .pedir-pagination>div button:not(.active) { display:none; }
+  .pedir-pagination>div button.active { min-width:34px; }
 }
 
 .pedir-heading-copy { min-width:0; }

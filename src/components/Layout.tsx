@@ -17,6 +17,15 @@ export function Layout() {
   ))
 
   useEffect(() => {
+    if (!('scrollRestoration' in window.history)) return
+    const previousScrollRestoration = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    return () => {
+      window.history.scrollRestoration = previousScrollRestoration
+    }
+  }, [])
+
+  useEffect(() => {
     if (typeof window.matchMedia !== 'function') return
     const tabletQuery = window.matchMedia('(min-width: 768px) and (max-width: 1199px)')
     const syncSidebarWithViewport = (event: MediaQueryListEvent) => {
@@ -28,14 +37,30 @@ export function Layout() {
   }, [])
 
   useLayoutEffect(() => {
-    if (mainRef.current) {
-      mainRef.current.scrollTop = 0
-      mainRef.current.scrollLeft = 0
+    const resetPageScroll = () => {
+      if (mainRef.current) {
+        mainRef.current.scrollTop = 0
+        mainRef.current.scrollLeft = 0
+      }
+      document.documentElement.scrollTop = 0
+      document.documentElement.scrollLeft = 0
+      document.body.scrollTop = 0
+      document.body.scrollLeft = 0
+      window.scrollTo(0, 0)
     }
-    window.scrollTo(0, 0)
-    document.documentElement.scrollTop = 0
-    document.body.scrollTop = 0
-  }, [location.key])
+
+    resetPageScroll()
+    // En móvil, el navegador puede restaurar el scroll después del cambio
+    // de ruta. Reafirma el inicio al terminar los frames de navegación.
+    const frame = window.requestAnimationFrame(resetPageScroll)
+    const secondFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(resetPageScroll)
+    })
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.cancelAnimationFrame(secondFrame)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     const isModal = (element: Element) => {
