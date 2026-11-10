@@ -1,6 +1,6 @@
 .app-layout:has(.app-main > .pedir-admin) { height:100dvh; min-height:0; overflow:hidden; }
 .main-content-wrapper:has(.app-main > .pedir-admin) { height:100%; min-height:0; overflow:hidden; }
-.app-main:has(> .pedir-admin) { height:100%; min-height:0; overscroll-behavior:contain; }
+.app-main:has(> .pedir-admin) { height:100%; min-height:0; overflow-x:hidden; overscroll-behavior:contain; }
 html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:100%; overflow:hidden; }
 
 .pedir-admin { color: #f4f4f5; padding: 4px 0 32px; }
@@ -194,7 +194,9 @@ html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:1
 .pedir-pagination button:hover:not(:disabled) { color:#fff; border-color:#38383f; background:#222226; }
 .pedir-pagination button.active { color:#fff; border-color:#e31b2b; background:#4b1d22; }
 .pedir-pagination button:disabled { opacity:.36; cursor:not-allowed; }
+.pedir-pagination-mobile-pages { display:none; }
 @media (max-width:760px) {
+  .pedir-admin,.pedir-products-section,.pedir-product-list,.pedir-product-row,.pedir-pagination { min-width:0; max-width:100%; }
   .pedir-cover-preview { grid-template-columns:1fr .65fr; min-height:215px; padding:18px 0 18px 17px; }
   .pedir-preview-hero-copy>strong { font-size:clamp(17px,5vw,26px); }
   .pedir-preview-hero-copy>p { font-size:10px; }
@@ -205,20 +207,20 @@ html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:1
   .pedir-banner-upload-control>div { flex-basis:calc(100% - 105px); }
   .pedir-banner-upload-control>button { width:100%; }
   .pedir-category-tabs { margin-right:-4px; }
-  .pedir-pagination { gap:4px; padding:7px; }
-  .pedir-pagination button { min-width:31px; padding:0 7px; }
+  .pedir-pagination { box-sizing:border-box; display:grid; width:100%; grid-template-columns:34px minmax(0,1fr) 34px; align-items:center; gap:4px; overflow:hidden; padding:7px; }
+  .pedir-pagination>button { box-sizing:border-box; width:34px; min-width:34px; padding:0; font-size:0; }
+  .pedir-pagination>button span { display:none; }
+  .pedir-pagination>button svg { width:17px; height:17px; flex:0 0 auto; }
+  .pedir-pagination>div.pedir-pagination-all-pages { display:none; }
+  .pedir-pagination>div.pedir-pagination-mobile-pages { display:flex; min-width:0; align-items:center; justify-content:center; gap:2px; }
+  .pedir-pagination-mobile-pages button { box-sizing:border-box; width:30px; min-width:30px; min-height:34px; padding:0; }
+  .pedir-pagination-mobile-pages>span { display:inline-flex; width:10px; min-width:10px; align-items:center; justify-content:center; color:#85858e; font-size:11px; }
 }
 @media (max-width:420px) {
   .pedir-cover-preview { grid-template-columns:1fr .45fr; min-height:190px; padding-left:13px; }
   .pedir-preview-eyebrow { font-size:7px; }
   .pedir-preview-hero-copy>strong { font-size:16px; }
   .pedir-preview-hero-copy>p { font-size:9px; }
-  .pedir-pagination { box-sizing:border-box; display:grid; width:100%; min-width:0; max-width:100%; grid-template-columns:38px minmax(0,1fr) 38px; align-items:center; gap:8px; overflow:hidden; }
-  .pedir-pagination>button { box-sizing:border-box; width:38px; min-width:38px; padding:0; font-size:0; }
-  .pedir-pagination>button svg { width:17px; height:17px; flex:0 0 auto; }
-  .pedir-pagination>div { min-width:0; justify-content:center; }
-  .pedir-pagination>div button:not(.active) { display:none; }
-  .pedir-pagination>div button.active { min-width:34px; }
 }
 
 .pedir-heading-copy { min-width:0; }

@@ -252,6 +252,7 @@ export function Inicio() {
   const [dashboardError, setDashboardError] = useState('')
   const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [notificationsClosing, setNotificationsClosing] = useState(false)
+  const [mobileNotifications, setMobileNotifications] = useState(() => window.matchMedia('(max-width: 767px)').matches)
   const notificationsCloseTimer = useRef<number | null>(null)
   const [notificationEvents, setNotificationEvents] = useState<DashboardAlertEvent[] | null>(null)
   const [localNotificationDetectedAt, setLocalNotificationDetectedAt] = useState<Record<string, string>>({})
@@ -280,6 +281,32 @@ export function Inicio() {
       notificationsCloseTimer.current = null
     }, ALERTS_EXIT_ANIMATION_MS)
   }, [notificationsClosing, notificationsOpen])
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 767px)')
+    const syncViewport = (event: MediaQueryListEvent) => setMobileNotifications(event.matches)
+    setMobileNotifications(media.matches)
+    media.addEventListener('change', syncViewport)
+    return () => media.removeEventListener('change', syncViewport)
+  }, [])
+
+  useEffect(() => {
+    if (!notificationsOpen || !mobileNotifications) return
+    const main = document.querySelector<HTMLElement>('.app-main')
+    const previousMainOverflow = main?.style.overflowY ?? ''
+    const previousBodyOverflow = document.body.style.overflow
+    const previousRootOverflow = document.documentElement.style.overflow
+    if (main) main.style.overflowY = 'hidden'
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('db-alerts-open')
+    document.documentElement.style.overflow = 'hidden'
+    return () => {
+      if (main) main.style.overflowY = previousMainOverflow
+      document.body.style.overflow = previousBodyOverflow
+      document.body.classList.remove('db-alerts-open')
+      document.documentElement.style.overflow = previousRootOverflow
+    }
+  }, [mobileNotifications, notificationsOpen])
 
   useEffect(() => () => {
     if (notificationsCloseTimer.current !== null) window.clearTimeout(notificationsCloseTimer.current)
@@ -767,6 +794,49 @@ export function Inicio() {
 
   const paymentDoughnutOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: '72%' }
 
+  const notificationsPanel = notificationsOpen ? (
+    <div className={`db-notifications${notificationsClosing ? ' closing' : ''}`} id="dashboard-notifications" role="region" aria-label="Alertas operativas" aria-hidden={notificationsClosing}>
+      <div className="db-notifications-head">
+        <button className="db-notifications-back" type="button" onClick={closeNotifications} aria-label="Volver al inicio"><ArrowLeft size={20} /></button>
+        <strong>Alertas operativas</strong>
+        <div className="db-notifications-tools">
+          <span aria-label={`${unreadNotificationCount} sin leer`}>{unreadNotificationCount}</span>
+          {visibleNotifications.some(notification => !notification.resolvedAt && !readNotificationIds.has(notification.id)) ? (
+            <button type="button" onClick={markNotificationsAsRead} aria-label="Marcar todas como leídas" title="Marcar todas como leídas"><CheckCheck size={14} /></button>
+          ) : null}
+          {visibleNotifications.length > 0 ? (
+            <button type="button" onClick={dismissAllNotifications} aria-label="Borrar todas las notificaciones" title="Borrar todas"><Trash2 size={14} /></button>
+          ) : null}
+        </div>
+      </div>
+      {user ? <DashboardPushSettings role={user.role} isDrawerOpen /> : null}
+      {visibleNotifications.length === 0 ? (
+        <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas para mostrar</span></div>
+      ) : visibleNotifications.map(notification => {
+        const isRead = Boolean(notification.resolvedAt) || readNotificationIds.has(notification.id)
+        return (
+          <div key={notification.id} className="db-notification-row">
+            <button type="button" className={`db-notification-item ${notification.tone}${isRead ? ' is-read' : ''}`} aria-label={`Abrir alerta: ${notification.title}`} onClick={() => { if (!notification.resolvedAt) markNotificationAsRead(notification.id); setNotificationsOpen(false); navigate(notification.path) }}>
+              <span className="db-notification-dot" />
+              <span className="db-notification-copy">
+                <span className="db-notification-heading">
+                  <strong>{notification.title}</strong>
+                  {notification.resolvedAt && <em className="db-notification-status resolved">Resuelta</em>}
+                </span>
+                <span className="db-notification-meta">
+                  <small>{compactAlertDetail(notification)}</small>
+                  {notification.detectedAt && <time dateTime={notification.detectedAt}>{formatCompactAlertDateTime(notification.detectedAt)}</time>}
+                </span>
+                {notification.resolvedAt && <time className="db-notification-resolved-time" dateTime={notification.resolvedAt}>Cerrada {formatCompactAlertDateTime(notification.resolvedAt)}</time>}
+              </span>
+            </button>
+            <button type="button" className="db-notification-dismiss" onClick={() => dismissNotification(notification.id)} aria-label={`Borrar alerta: ${notification.title}`} title="Borrar alerta"><X size={14} /></button>
+          </div>
+        )
+      })}
+    </div>
+  ) : null
+
   if (loading && !initialCache) return <PageSkeleton cards={4} rows={4} hasTable={false} />
 
   return (
@@ -813,50 +883,10 @@ export function Inicio() {
               </button>
           </div>
 
-          {notificationsOpen ? (
-            <div className={`db-notifications${notificationsClosing ? ' closing' : ''}`} id="dashboard-notifications" role="region" aria-label="Alertas operativas" aria-hidden={notificationsClosing}>
-              <div className="db-notifications-head">
-                <button className="db-notifications-back" type="button" onClick={closeNotifications} aria-label="Volver al inicio"><ArrowLeft size={20} /></button>
-                <strong>Alertas operativas</strong>
-                <div className="db-notifications-tools">
-                  <span aria-label={`${unreadNotificationCount} sin leer`}>{unreadNotificationCount}</span>
-                  {visibleNotifications.some(notification => !notification.resolvedAt && !readNotificationIds.has(notification.id)) ? (
-                    <button type="button" onClick={markNotificationsAsRead} aria-label="Marcar todas como leídas" title="Marcar todas como leídas"><CheckCheck size={14} /></button>
-                  ) : null}
-                  {visibleNotifications.length > 0 ? (
-                    <button type="button" onClick={dismissAllNotifications} aria-label="Borrar todas las notificaciones" title="Borrar todas"><Trash2 size={14} /></button>
-                  ) : null}
-                </div>
-              </div>
-              {user ? <DashboardPushSettings role={user.role} isDrawerOpen /> : null}
-              {visibleNotifications.length === 0 ? (
-                <div className="db-notifications-empty"><Bell size={22} /><span>No hay alertas para mostrar</span></div>
-              ) : visibleNotifications.map(notification => {
-                const isRead = Boolean(notification.resolvedAt) || readNotificationIds.has(notification.id)
-                return (
-                  <div key={notification.id} className="db-notification-row">
-                    <button type="button" className={`db-notification-item ${notification.tone}${isRead ? ' is-read' : ''}`} aria-label={`Abrir alerta: ${notification.title}`} onClick={() => { if (!notification.resolvedAt) markNotificationAsRead(notification.id); setNotificationsOpen(false); navigate(notification.path) }}>
-                      <span className="db-notification-dot" />
-                      <span className="db-notification-copy">
-                        <span className="db-notification-heading">
-                        <strong>{notification.title}</strong>
-                        {notification.resolvedAt && <em className="db-notification-status resolved">Resuelta</em>}
-                        </span>
-                        <span className="db-notification-meta">
-                          <small>{compactAlertDetail(notification)}</small>
-                          {notification.detectedAt && <time dateTime={notification.detectedAt}>{formatCompactAlertDateTime(notification.detectedAt)}</time>}
-                        </span>
-                        {notification.resolvedAt && <time className="db-notification-resolved-time" dateTime={notification.resolvedAt}>Cerrada {formatCompactAlertDateTime(notification.resolvedAt)}</time>}
-                      </span>
-                    </button>
-                    <button type="button" className="db-notification-dismiss" onClick={() => dismissNotification(notification.id)} aria-label={`Borrar alerta: ${notification.title}`} title="Borrar alerta"><X size={14} /></button>
-                  </div>
-                )
-              })}
-            </div>
-          ) : null}
         </div>
       </header>
+
+      {mobileNotifications ? notificationsPanel && createPortal(notificationsPanel, document.body) : notificationsPanel}
 
       {dashboardError && (
         <Toast

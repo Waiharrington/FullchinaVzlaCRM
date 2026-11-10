@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Eye, EyeOff, Flame, Search, ShoppingBag, Tag, ExternalLink, Check, ChevronLeft, ChevronRight, Image, ImagePlus, PackageSearch, SlidersHorizontal, ArrowLeft, ArrowLeftRight, CirclePlus, CircleMinus, X, MapPin, Clock, MessageSquareText, Star, Zap, CupSoda, Navigation, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -65,6 +65,13 @@ function formatContactTime(value: string) {
   return `${hour24 % 12 || 12}:${minute} ${hour24 >= 12 ? 'p. m.' : 'a. m.'}`
 }
 
+function getMobilePaginationItems(currentPage: number, pageCount: number): Array<number | 'ellipsis-start' | 'ellipsis-end'> {
+  if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index + 1)
+  if (currentPage <= 3) return [1, 2, 3, 4, 'ellipsis-end', pageCount]
+  if (currentPage >= pageCount - 2) return [1, 'ellipsis-start', pageCount - 3, pageCount - 2, pageCount - 1, pageCount]
+  return [1, 'ellipsis-start', currentPage - 1, currentPage, currentPage + 1, 'ellipsis-end', pageCount]
+}
+
 function scaleBannerImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -114,6 +121,7 @@ export function PaginaPedir() {
   const bannerInputRef = useRef<HTMLInputElement>(null)
   const [bannerProcessing, setBannerProcessing] = useState(false)
   const scrollRestored = useRef(false)
+  const previousInnerView = useRef({ section, category, filter })
 
   const savePageMemory = useCallback((scrollTop?: number) => {
     try {
@@ -153,6 +161,24 @@ export function PaginaPedir() {
     })
     return () => window.cancelAnimationFrame(frame)
   }, [loading, settingsLoading, pageMemory.scrollTop, savePageMemory])
+
+  useLayoutEffect(() => {
+    const previous = previousInnerView.current
+    const viewChanged = previous.section !== section || previous.category !== category || previous.filter !== filter
+    previousInnerView.current = { section, category, filter }
+    if (!viewChanged) return
+
+    scrollRestored.current = true
+    const main = document.querySelector<HTMLElement>('.app-main')
+    if (main) {
+      main.scrollTop = 0
+      main.scrollLeft = 0
+    }
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+    window.scrollTo(0, 0)
+    savePageMemory(0)
+  }, [section, category, filter, savePageMemory])
 
   useEffect(() => {
     if (!replacementDialogOpen) return
@@ -346,7 +372,7 @@ export function PaginaPedir() {
   if (loading) return <PageSkeleton cards={4} rows={7} hasTable={false} />
   return <main className="pedir-admin page animate-fade-in">
     <header className="pedir-admin-head">
-      <div className="pedir-heading-copy">{section !== 'home' && <button type="button" className="pedir-back-button" onClick={() => setSection('home')}><ArrowLeft size={16} /> Volver a opciones</button>}<span className="pedir-admin-kicker">TIENDA PARA CLIENTES</span><h1 className="page-title"><ShoppingBag size={22} /> {section === 'cover' ? 'Portada de la tienda' : section === 'contact' ? 'Información del local' : section === 'products' ? 'Productos de la tienda' : 'Página de pedir'}</h1><p className="page-subtitle">{section === 'cover' ? 'Cambia la imagen y los textos que reciben a tus clientes.' : section === 'contact' ? 'Actualiza cómo te encuentran y cuándo pueden visitarte.' : section === 'products' ? 'Elige qué productos aparecen, cómo se destacan y en qué orden.' : '¿Qué quieres cambiar hoy? Elige una tarea y te llevamos al lugar indicado.'}</p></div>
+      <div className="pedir-heading-copy">{section !== 'home' && <button type="button" className="pedir-back-button" onClick={() => setSection('home')}><ArrowLeft size={16} /> Volver a opciones</button>}<span className="pedir-admin-kicker">TIENDA PARA CLIENTES</span><h1 className="page-title"><ShoppingBag size={22} /> {section === 'cover' ? 'Portada de la tienda' : section === 'contact' ? 'Información del local' : section === 'products' ? 'Productos de la tienda' : 'Página de pedir'}</h1><p className="page-subtitle">{section === 'cover' ? 'Cambia la imagen y los textos que reciben a tus clientes.' : section === 'contact' ? 'Actualiza cómo te encuentran y cuándo pueden visitarte.' : section === 'products' ? 'Elige qué productos mostrar y destacar.' : '¿Qué quieres cambiar hoy?'}</p></div>
       <a className="pedir-preview-link" href="/pedir" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Ver página pública</a>
     </header>
     {section === 'home' && <section className="pedir-welcome" aria-labelledby="pedir-welcome-title"><div className="pedir-welcome-intro"><span className="pedir-admin-kicker">ASISTENTE DE TIENDA</span><h2 id="pedir-welcome-title">Hola, ¿qué quieres actualizar hoy?</h2><p>Escoge una opción. Te mostraremos solo lo que necesitas para hacer ese cambio.</p></div><div className="pedir-task-grid"><button type="button" className="pedir-task-card" onClick={() => setSection('cover')}><span className="pedir-task-icon"><Image size={20} /></span><strong>La portada</strong><small>Cambiar el banner, la foto o los textos de bienvenida.</small><span className="pedir-task-action">Editar portada <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('contact')}><span className="pedir-task-icon"><MapPin size={20} /></span><strong>Información del local</strong><small>Teléfono, WhatsApp, dirección, horario y redes sociales.</small><span className="pedir-task-action">Editar contacto <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('products')}><span className="pedir-task-icon"><ShoppingBag size={20} /></span><strong>Los productos que se muestran</strong><small>Buscar por categoría, ocultar productos, poner etiquetas o elegir destacados.</small><span className="pedir-task-action">Organizar productos <ChevronRight size={15} /></span></button><Link className="pedir-task-card" to="/menu"><span className="pedir-task-icon"><SlidersHorizontal size={20} /></span><strong>El nombre, la foto o los extras de un producto</strong><small>Abre Menú para editar los datos del producto y las opciones que puede agregar el cliente.</small><span className="pedir-task-action">Ir a Menú <ChevronRight size={15} /></span></Link></div><p className="pedir-welcome-footnote"><PackageSearch size={15} /> Los cambios de la portada, contacto y visibilidad se reflejan en la página pública al guardarlos.</p></section>}
@@ -450,7 +476,14 @@ export function PaginaPedir() {
       })}
       {filtered.length === 0 && <div className="pedir-empty"><span className="pedir-empty-icon"><PackageSearch size={26} /></span><h3>{search ? 'No encontramos ese producto' : 'No hay productos en esta selección'}</h3><p>{search ? <>No hay resultados para <strong>“{search}”</strong>. Prueba otro nombre o limpia los filtros.</> : 'Prueba otra categoría o revisa los filtros seleccionados.'}</p><button type="button" onClick={() => { setSearch(''); setCategory('Todas'); setFilter('all'); setProductPage(1) }}>Ver todos los productos</button></div>}
     </section>
-    {filtered.length > PRODUCTS_PER_PAGE && <nav className="pedir-pagination" aria-label="Paginación de productos"><button type="button" disabled={currentProductPage <= 1} onClick={() => { setProductPage(page => Math.max(1, page - 1)); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><ChevronLeft size={16} /> Anterior</button><div>{Array.from({ length: pageCount }, (_, index) => index + 1).map(page => <button type="button" key={page} className={page === currentProductPage ? 'active' : ''} aria-current={page === currentProductPage ? 'page' : undefined} onClick={() => { setProductPage(page); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>{page}</button>)}</div><button type="button" disabled={currentProductPage >= pageCount} onClick={() => { setProductPage(page => Math.min(pageCount, page + 1)); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>Siguiente <ChevronRight size={16} /></button></nav>}
+    {filtered.length > PRODUCTS_PER_PAGE && <nav className="pedir-pagination" aria-label="Paginación de productos">
+      <button type="button" aria-label="Página anterior" disabled={currentProductPage <= 1} onClick={() => { setProductPage(page => Math.max(1, page - 1)); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><ChevronLeft size={16} /><span>Anterior</span></button>
+      <div className="pedir-pagination-all-pages">{Array.from({ length: pageCount }, (_, index) => index + 1).map(page => <button type="button" key={page} className={page === currentProductPage ? 'active' : ''} aria-current={page === currentProductPage ? 'page' : undefined} onClick={() => { setProductPage(page); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>{page}</button>)}</div>
+      <div className="pedir-pagination-mobile-pages">{getMobilePaginationItems(currentProductPage, pageCount).map(item => typeof item === 'number'
+        ? <button type="button" key={`page-${item}`} className={item === currentProductPage ? 'active' : ''} aria-current={item === currentProductPage ? 'page' : undefined} aria-label={`Página ${item}`} onClick={() => { setProductPage(item); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>{item}</button>
+        : <span key={item} aria-hidden="true">…</span>)}</div>
+      <button type="button" aria-label="Página siguiente" disabled={currentProductPage >= pageCount} onClick={() => { setProductPage(page => Math.min(pageCount, page + 1)); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><span>Siguiente</span><ChevronRight size={16} /></button>
+    </nav>}
     </section>}
     {replacementDialogOpen && featuredToReplace && createPortal(<div className="pedir-replace-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !savingId) { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) } }}><section className="pedir-replace-modal" role="dialog" aria-modal="true" aria-labelledby="pedir-replace-title"><header className="pedir-replace-modal-head"><div><span className="pedir-admin-kicker">CAMBIAR PRODUCTO DESTACADO</span><h2 id="pedir-replace-title">¿Cuál sale y cuál entra?</h2><p>El nuevo ocupará el mismo lugar que el producto que elijas.</p></div><button type="button" className="pedir-replace-close" aria-label="Cerrar" disabled={Boolean(savingId)} onClick={() => { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) }}><X size={19} /></button></header><div className="pedir-replace-comparison"><article className="pedir-replace-product is-out"><span className="pedir-replace-product-label">SALE · #{featuredToReplaceIndex + 1}</span><div className="pedir-replace-product-body"><div className="pedir-replace-product-image">{featuredToReplace.imageUrl ? <img src={featuredToReplace.imageUrl} alt="" /> : <span>{featuredToReplace.emoji || '🥡'}</span>}</div><div><strong>{featuredToReplace.name}</strong><small>{featuredToReplace.categories.map(item => categoryLabel(item)).join(' · ')}</small><b>{formatUsd(featuredToReplace.salePrice)}</b></div></div></article><div className="pedir-replace-swap-icon"><ArrowLeftRight size={21} /></div><article className={`pedir-replace-product is-in${replacementProduct ? '' : ' is-empty'}`}><span className="pedir-replace-product-label">ENTRA · NUEVO DESTACADO</span>{replacementProduct ? <div className="pedir-replace-product-body"><div className="pedir-replace-product-image">{replacementProduct.imageUrl ? <img src={replacementProduct.imageUrl} alt="" /> : <span>{replacementProduct.emoji || '🥡'}</span>}</div><div><strong>{replacementProduct.name}</strong><small>{replacementProduct.categories.map(item => categoryLabel(item)).join(' · ')}</small><b>{formatUsd(replacementProduct.salePrice)}</b></div></div> : <p>Selecciona el producto que quieres destacar.</p>}</article></div><div className="pedir-replace-choose"><div><h3>1. Elige cuál producto sale</h3><p>Toca uno de tus destacados actuales.</p></div><div className="pedir-replace-options">{carouselProductIds.map((id, index) => { const product = products.find(row => row.id === id); if (!product) return null; const isSelected = product.id === replacementFeaturedId; return <button type="button" key={id} className={`pedir-replace-option${isSelected ? ' selected' : ''}`} aria-pressed={isSelected} onClick={() => setReplacementFeaturedId(id)}><span className="pedir-replace-option-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.emoji || '🥡'}</span>}</span><span className="pedir-replace-option-copy"><small>Destacado · #{index + 1}</small><strong>{product.name}</strong></span>{isSelected && <Check size={17} />}</button> })}</div></div><div className="pedir-replace-choose"><div><h3>2. Elige cuál producto entra</h3><p>Busca y selecciona el producto que lo reemplazará.</p></div><label className="pedir-replace-search"><Search size={16} /><input value={replacementSearch} onChange={event => setReplacementSearch(event.target.value)} placeholder="Buscar producto para destacar" />{replacementSearch && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setReplacementSearch('')}><X size={15}/></button>}</label><div className="pedir-replace-options">{replacementCandidates.map(product => <button type="button" key={product.id} className={`pedir-replace-option${replacementProduct?.id === product.id ? ' selected' : ''}`} aria-pressed={replacementProduct?.id === product.id} onClick={() => setReplacementProduct(product)}><span className="pedir-replace-option-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.emoji || '🥡'}</span>}</span><span className="pedir-replace-option-copy"><small>{product.categories.map(item => categoryLabel(item)).join(' · ')} · {formatUsd(product.salePrice)}</small><strong>{product.name}</strong></span>{replacementProduct?.id === product.id && <Check size={17} />}</button>)}{replacementCandidates.length === 0 && <p className="pedir-replace-no-results">{replacementSearch ? 'No encontramos productos con ese nombre.' : 'No hay otros productos disponibles para destacar.'}</p>}</div></div><footer className="pedir-replace-modal-footer"><button type="button" className="pedir-replace-cancel" onClick={() => { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) }} disabled={Boolean(savingId)}>Cancelar</button><button type="button" className="pedir-replace-confirm" onClick={() => void confirmFeaturedReplacement()} disabled={!replacementFeaturedId || !replacementProduct || Boolean(savingId)}>{savingId ? 'Guardando…' : <><ArrowLeftRight size={16} /> Confirmar reemplazo</>}</button></footer></section></div>, document.body)}
     {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}

@@ -15,7 +15,8 @@ import './styles/financeWorkspace.css'
 import './styles/managementGroup.css'
 import './styles/mobileExperience.css'
 
-const Inicio = lazy(() => import('./pages/Inicio').then(module => ({ default: module.Inicio })))
+const loadInicioModule = () => import('./pages/Inicio').then(module => ({ default: module.Inicio }))
+const Inicio = lazy(loadInicioModule)
 const Caja = lazy(() => import('./pages/Caja').then(module => ({ default: module.Caja })))
 const CajaOperativa = lazy(() => import('./pages/CajaOperativa').then(module => ({ default: module.CajaOperativa })))
 const Comandas = lazy(() => import('./pages/Comandas').then(module => ({ default: module.Comandas })))
@@ -57,6 +58,33 @@ function InitialRouteContent({ children, onReady }: { children: React.ReactNode;
   return <>{children}</>
 }
 
+function LoginRoute() {
+  const { user, loading, splashDone, setSplashDone } = useAuth()
+  const [showInitialSplash, setShowInitialSplash] = useState(() => !splashDone)
+  const [initialRouteReady, setInitialRouteReady] = useState(false)
+  const handleInitialSplashDone = useCallback(() => {
+    setShowInitialSplash(false)
+    setSplashDone(true)
+  }, [setSplashDone])
+
+  useEffect(() => {
+    if (loading || !user) return
+    let active = true
+    void loadInicioModule().then(() => {
+      if (active) setInitialRouteReady(true)
+    }).catch(() => {
+      if (active) setInitialRouteReady(true)
+    })
+    return () => { active = false }
+  }, [loading, user])
+
+  if (showInitialSplash) {
+    return <SplashScreen onDone={handleInitialSplashDone} minDuration={1200} ready={!loading && (!user || initialRouteReady)} />
+  }
+
+  return user ? <Navigate to="/inicio" replace /> : <Login />
+}
+
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
   const [initialRouteReady, setInitialRouteReady] = useState(false)
@@ -78,12 +106,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AdminRoutes() {
-  const { user, loading, splashDone } = useAuth()
+  const { user, splashDone } = useAuth()
   return (
     <Suspense fallback={splashDone ? <ModuleLoader /> : null}>
       <>
         <Routes>
-          <Route path="/login" element={user ? <Navigate to="/inicio" replace /> : <Login authInitializing={loading} />} />
+          <Route path="/login" element={<LoginRoute />} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/inicio" element={forModule('/', <Inicio />)} />
             <Route path="/caja" element={forModule('/caja', <Caja />)} />

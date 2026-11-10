@@ -63,6 +63,28 @@ export function Layout() {
   }, [location.pathname])
 
   useEffect(() => {
+    const main = mainRef.current
+    if (!main) return
+
+    const resetAfterTabChange = (event: MouseEvent) => {
+      if (!window.matchMedia('(max-width: 767px)').matches) return
+      if (!(event.target instanceof Element)) return
+      const tab = event.target.closest('[role="tab"]')
+      if (!tab || !main.contains(tab)) return
+
+      window.requestAnimationFrame(() => {
+        if (!main.isConnected) return
+        main.scrollTop = 0
+        main.scrollLeft = 0
+        window.scrollTo(0, 0)
+      })
+    }
+
+    main.addEventListener('click', resetAfterTabChange, true)
+    return () => main.removeEventListener('click', resetAfterTabChange, true)
+  }, [])
+
+  useEffect(() => {
     const isModal = (element: Element) => {
       if (element.matches('[role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]')) return true
       return /(?:modal|dialog|drawer)-(?:overlay|backdrop)|(?:overlay|backdrop)-(?:modal|dialog)/.test(element.className?.toString() ?? '')
