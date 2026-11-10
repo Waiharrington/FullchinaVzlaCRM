@@ -12120,6 +12120,24 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   pointer-events: none !important;
 }
 
+/* Al abrir una ficha de producto en escritorio, el overlay pertenece al área
+   del menú. La columna fija del carrito queda fuera de la capa y sigue visible
+   e interactiva, sin desaparecer detrás del fondo del modal. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  .public-modal-backdrop {
+    inset: 0 max(24px, calc((100vw - 1360px) / 2 + 378px)) 0 0 !important;
+    box-sizing: border-box !important;
+    padding: 24px 24px 24px max(24px, calc((100vw - 1360px) / 2)) !important;
+    background: rgba(5, 6, 8, .76) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  .public-product-detail-modal {
+    width: min(1120px, 100%) !important;
+    max-width: 1120px !important;
+  }
+}
+
 /* Checkout comparte el mismo marco del carrito lateral en escritorio
    intermedio: un solo panel, con igual ancho, posición y altura. */
 @media (min-width: 900px) and (max-width: 1279px) and (orientation: landscape) {

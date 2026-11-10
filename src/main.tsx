@@ -42,8 +42,58 @@ const updateServiceWorker = registerSW({
   },
 })
 
-let updateApplyTimeout: number | undefined
-let updateControllerChangeHandler: (() => void) | undefined
+const waitForWaitingWorker = (registration: ServiceWorkerRegistration, timeoutMs = 15000) => {
+  if (registration.waiting) return Promise.resolve(registration.waiting)
+
+  return new Promise<ServiceWorker | null>(resolve => {
+    let settled = false
+    let installingWorker: ServiceWorker | null = null
+    const finish = (worker: ServiceWorker | null) => {
+      if (settled) return
+      settled = true
+      window.clearTimeout(timeout)
+      registration.removeEventListener('updatefound', onUpdateFound)
+      installingWorker?.removeEventListener('statechange', onStateChange)
+      resolve(worker)
+    }
+    const onStateChange = () => {
+      if (registration.waiting) finish(registration.waiting)
+      else if (installingWorker?.state === 'redundant') finish(null)
+    }
+    const watchInstallingWorker = () => {
+      installingWorker?.removeEventListener('statechange', onStateChange)
+      installingWorker = registration.installing
+      installingWorker?.addEventListener('statechange', onStateChange)
+      onStateChange()
+    }
+    const onUpdateFound = () => watchInstallingWorker()
+    const timeout = window.setTimeout(() => finish(registration.waiting), timeoutMs)
+
+    registration.addEventListener('updatefound', onUpdateFound)
+    watchInstallingWorker()
+    // También cubre el caso en que el navegador terminó la instalación entre
+    // la primera comprobación y el registro de los listeners.
+    if (registration.waiting) finish(registration.waiting)
+  })
+}
+
+const waitForWorkerActivation = (worker: ServiceWorker, timeoutMs = 20000) => new Promise<boolean>(resolve => {
+  let settled = false
+  const finish = (activated: boolean) => {
+    if (settled) return
+    settled = true
+    window.clearTimeout(timeout)
+    worker.removeEventListener('statechange', onStateChange)
+    resolve(activated)
+  }
+  const onStateChange = () => {
+    if (worker.state === 'activated') finish(true)
+    else if (worker.state === 'redundant') finish(false)
+  }
+  const timeout = window.setTimeout(() => finish(worker.state === 'activated'), timeoutMs)
+  worker.addEventListener('statechange', onStateChange)
+  onStateChange()
+})
 
 // Revisa actualizaciones cuando el usuario vuelve a la app, recupera internet
 // o mantiene una pestaña abierta durante mucho tiempo (incluye WebView Android).
@@ -53,12 +103,6 @@ document.addEventListener('visibilitychange', checkForAppUpdate)
 window.setInterval(checkForAppUpdate, 30 * 60 * 1000)
 
 window.addEventListener('fullchina:pwa-apply-update', () => {
-  if (updateApplyTimeout) window.clearTimeout(updateApplyTimeout)
-  if (updateControllerChangeHandler) {
-    navigator.serviceWorker.removeEventListener('controllerchange', updateControllerChangeHandler)
-    updateControllerChangeHandler = undefined
-  }
-
   window.dispatchEvent(new Event('fullchina:pwa-update-applying'))
   void (async () => {
     const registration = appServiceWorkerRegistration
@@ -68,35 +112,33 @@ window.addEventListener('fullchina:pwa-apply-update', () => {
     }
 
     try {
-      if (!registration.waiting) await registration.update()
-      if (!registration.waiting) {
+      let waitingWorker = registration.waiting
+      if (!waitingWorker) {
+        const workerReady = waitForWaitingWorker(registration)
+        await registration.update()
+        waitingWorker = await workerReady
+      }
+      if (!waitingWorker || registration.waiting !== waitingWorker) {
+        waitingWorker = registration.waiting
+      }
+      if (!waitingWorker) {
         window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
         return
       }
 
-      updateControllerChangeHandler = () => {
-        if (updateApplyTimeout) window.clearTimeout(updateApplyTimeout)
-        updateApplyTimeout = undefined
-        updateControllerChangeHandler = undefined
-      }
-      navigator.serviceWorker.addEventListener('controllerchange', updateControllerChangeHandler, { once: true })
-      updateApplyTimeout = window.setTimeout(() => {
-        if (updateControllerChangeHandler) {
-          navigator.serviceWorker.removeEventListener('controllerchange', updateControllerChangeHandler)
-          updateControllerChangeHandler = undefined
-          window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
-        }
-        updateApplyTimeout = undefined
-      }, 20000)
-
+      // El SW actual no usa clientsClaim, por lo que controllerchange puede no
+      // llegar aunque el nuevo worker sí se active. Espera su activación y
+      // recarga explícitamente para que la pestaña pase a usar la versión nueva.
+      const activation = waitForWorkerActivation(waitingWorker)
       await updateServiceWorker(true)
-    } catch {
-      if (updateApplyTimeout) window.clearTimeout(updateApplyTimeout)
-      updateApplyTimeout = undefined
-      if (updateControllerChangeHandler) {
-        navigator.serviceWorker.removeEventListener('controllerchange', updateControllerChangeHandler)
-        updateControllerChangeHandler = undefined
+      if (!await activation) {
+        window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+        return
       }
+
+      ;(window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable = false
+      window.location.reload()
+    } catch {
       window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
     }
   })()

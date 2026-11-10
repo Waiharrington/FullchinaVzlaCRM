@@ -10,14 +10,16 @@ function AppContent() {
   const location = useLocation()
   const isPublicMenu = /^\/pedir\/?$/i.test(location.pathname)
   const isPublicEntry = location.pathname === '/'
-  const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | 'failed' | null>(() =>
+  const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | null>(() =>
     (window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable ? 'available' : null,
   )
 
   useEffect(() => {
     const showUpdate = () => setUpdateStatus(current => current === 'applying' ? current : 'available')
     const markApplying = () => setUpdateStatus('applying')
-    const markFailed = () => setUpdateStatus('failed')
+    // No dejar un aviso de error persistente ni ofrecer un reintento que no
+    // haya podido completar. La app puede volver a anunciar otra actualización.
+    const markFailed = () => setUpdateStatus(null)
     window.addEventListener('fullchina:pwa-update-available', showUpdate)
     window.addEventListener('fullchina:pwa-update-applying', markApplying)
     window.addEventListener('fullchina:pwa-update-apply-failed', markFailed)
@@ -69,12 +71,8 @@ function AppContent() {
         font: '500 14px/1.35 Inter, system-ui, sans-serif',
       }}
     >
-      <span role={updateStatus === 'failed' ? 'alert' : 'status'} aria-live="polite">
-        {updateStatus === 'applying'
-          ? 'Aplicando la actualización…'
-          : updateStatus === 'failed'
-            ? 'No se pudo aplicar. Revisa tu conexión e intenta otra vez.'
-            : 'Hay una actualización lista.'}
+      <span role="status" aria-live="polite">
+        {updateStatus === 'applying' ? 'Aplicando la actualización…' : 'Hay una actualización lista.'}
       </span>
       <button
         type="button"
@@ -93,7 +91,7 @@ function AppContent() {
           opacity: updateStatus === 'applying' ? .7 : 1,
         }}
       >
-        {updateStatus === 'applying' ? 'Aplicando…' : updateStatus === 'failed' ? 'Reintentar' : 'Actualizar'}
+        {updateStatus === 'applying' ? 'Aplicando…' : 'Actualizar'}
       </button>
       <button
         type="button"

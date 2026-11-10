@@ -60,6 +60,7 @@ function uploadResumable(
   onProgress: (progress: number) => void,
 ) {
   return new Promise<void>((resolve, reject) => {
+    const uploaderRef: { current: Upload | null } = { current: null }
     const uploader = new Upload(file, {
       endpoint: `${SUPABASE_URL}/storage/v1/upload/resumable`,
       chunkSize: CHUNK_SIZE,
@@ -68,6 +69,25 @@ function uploadResumable(
       // Each replacement gets a new object path. Resuming an old fingerprint
       // can point to an expired Supabase/TUS upload URL and fail on its HEAD.
       storeFingerprintForResuming: false,
+      // Some self-hosted Storage proxies return an internal Location such as
+      // http://localhost:8000. The browser cannot reach that address in prod;
+      // keep the upload path but route retries through the configured Supabase
+      // origin instead.
+      onUploadUrlAvailable() {
+        const activeUploader = uploaderRef.current
+        if (!activeUploader?.url || !SUPABASE_URL) return
+        try {
+          const uploadUrl = new URL(activeUploader.url)
+          const endpointUrl = new URL(SUPABASE_URL)
+          if (['localhost', '127.0.0.1', '::1'].includes(uploadUrl.hostname)) {
+            uploadUrl.protocol = endpointUrl.protocol
+            uploadUrl.host = endpointUrl.host
+            activeUploader.url = uploadUrl.toString()
+          }
+        } catch {
+          // Let tus-js-client report malformed URLs through its normal error path.
+        }
+      },
       headers: {
         authorization: `Bearer ${accessToken}`,
         apikey: SUPABASE_ANON_KEY,
@@ -85,6 +105,7 @@ function uploadResumable(
       onSuccess: () => resolve(),
     })
 
+    uploaderRef.current = uploader
     uploader.start()
   })
 }

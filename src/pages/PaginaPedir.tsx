@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Eye, EyeOff, Flame, Search, ShoppingBag, Tag, ExternalLink, Check, ChevronLeft, ChevronRight, Image, ImagePlus, PackageSearch, SlidersHorizontal, ArrowLeft, ArrowLeftRight, CirclePlus, CircleMinus, X, MapPin, Clock, MessageSquareText, Star, Zap, CupSoda, Video, Upload, Camera, Navigation, Wallet, RotateCcw } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { Eye, EyeOff, Flame, Search, ShoppingBag, Tag, ExternalLink, Check, ChevronLeft, ChevronRight, Image, ImagePlus, PackageSearch, SlidersHorizontal, ArrowLeft, ArrowLeftRight, CirclePlus, CircleMinus, X, MapPin, Clock, MessageSquareText, Star, Zap, CupSoda, Navigation, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { StyledSelect } from '../components/StyledSelect'
 import { TimeSelect } from '../components/TimeSelect'
@@ -7,8 +8,7 @@ import { getAllSellableProducts, updateProduct, type SellableProduct } from '../
 import { formatUsd } from '../lib/money'
 import { categoryLabel } from '../lib/menuCategories'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
-import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, DEFAULT_PUBLIC_ORDER_REELS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderCarouselSelection, updatePublicOrderPageSettings, updatePublicOrderContactSettings, updatePublicOrderReels, type PublicOrderPageSettings, type PublicOrderReel } from '../lib/publicOrderPageSettings'
-import { removePublicOrderReelFiles, uploadPublicOrderReel, type UploadedPublicReel } from '../lib/publicOrderReelUpload'
+import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderCarouselSelection, updatePublicOrderPageSettings, updatePublicOrderContactSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
 import { getAutomaticPublicCarouselProductIds } from '../lib/publicOrderCarousel'
 import { PageSkeleton } from '../components/PageSkeleton'
 import Toast from '../components/Toast'
@@ -16,8 +16,16 @@ import './PaginaPedir.css'
 
 type Label = NonNullable<SellableProduct['menuLabel']>
 const PRODUCTS_PER_PAGE = 12
-const REEL_HISTORY_STORAGE_KEY = 'fullchina:public-order-reel-history:v1'
-type AdminSection = 'home' | 'cover' | 'contact' | 'videos' | 'products'
+const PAGE_MEMORY_STORAGE_KEY = 'fullchina:pagina-pedir:session:v1'
+type AdminSection = 'home' | 'cover' | 'contact' | 'products'
+type PageMemory = {
+  section: AdminSection
+  search: string
+  category: string
+  filter: 'all' | 'labeled' | 'carousel'
+  productPage: number
+  scrollTop: number
+}
 const labels: Array<{ value: Label | null; name: string }> = [
   { value: null, name: 'Sin etiqueta' },
   { value: 'top_sales', name: 'Más vendido' },
@@ -32,30 +40,22 @@ const labelPreviewMeta = {
   free_drink: { name: 'Refresco gratis', Icon: CupSoda, className: 'free-drink' },
 } as const
 
-function readReelHistory(): Record<number, PublicOrderReel> {
-  if (typeof window === 'undefined') return {}
+function readPageMemory(): PageMemory {
+  const fallback: PageMemory = { section: 'home', search: '', category: 'Todas', filter: 'all', productPage: 1, scrollTop: 0 }
+  if (typeof window === 'undefined') return fallback
   try {
-    const parsed: unknown = JSON.parse(window.localStorage.getItem(REEL_HISTORY_STORAGE_KEY) || '{}')
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    return Object.fromEntries(Object.entries(parsed).flatMap(([slot, value]) => {
-      const index = Number(slot)
-      if (!Number.isInteger(index) || index < 0 || index >= 6 || !value || typeof value !== 'object') return []
-      const reel = value as Partial<PublicOrderReel>
-      const isLibraryVideo = DEFAULT_PUBLIC_ORDER_REELS.some(item => item.src === reel.src && item.poster === reel.poster)
-      const isUploadedVideo = typeof reel.videoPath === 'string'
-        && typeof reel.posterPath === 'string'
-        && /^instagram\/[1-6]\/[0-9a-f-]{36}\.mp4$/i.test(reel.videoPath)
-        && /^instagram\/[1-6]\/[0-9a-f-]{36}\.jpg$/i.test(reel.posterPath)
-        && reel.videoPath.replace(/\.mp4$/i, '') === reel.posterPath.replace(/\.jpg$/i, '')
-        && typeof reel.src === 'string' && typeof reel.poster === 'string'
-      return isLibraryVideo || isUploadedVideo ? [[index, reel as PublicOrderReel]] : []
-    }))
-  } catch { return {} }
-}
-
-function saveReelHistory(history: Record<number, PublicOrderReel>) {
-  try { window.localStorage.setItem(REEL_HISTORY_STORAGE_KEY, JSON.stringify(history)) }
-  catch { /* La restauración sigue disponible durante esta sesión aunque localStorage esté lleno. */ }
+    const saved: unknown = JSON.parse(window.sessionStorage.getItem(PAGE_MEMORY_STORAGE_KEY) || 'null')
+    if (!saved || typeof saved !== 'object') return fallback
+    const value = saved as Partial<PageMemory>
+    return {
+      section: ['home', 'cover', 'contact', 'products'].includes(String(value.section)) ? value.section as AdminSection : fallback.section,
+      search: typeof value.search === 'string' ? value.search.slice(0, 160) : fallback.search,
+      category: typeof value.category === 'string' ? value.category.slice(0, 100) : fallback.category,
+      filter: value.filter === 'labeled' || value.filter === 'carousel' ? value.filter : 'all',
+      productPage: Number.isInteger(value.productPage) && Number(value.productPage) > 0 ? Number(value.productPage) : fallback.productPage,
+      scrollTop: typeof value.scrollTop === 'number' && Number.isFinite(value.scrollTop) && value.scrollTop > 0 ? value.scrollTop : fallback.scrollTop,
+    }
+  } catch { return fallback }
 }
 
 function formatContactTime(value: string) {
@@ -91,14 +91,15 @@ function scaleBannerImage(file: File): Promise<string> {
 }
 
 export function PaginaPedir() {
-  const [section, setSection] = useState<AdminSection>('home')
+  const [pageMemory] = useState(readPageMemory)
+  const [section, setSection] = useState<AdminSection>(pageMemory.section)
   const [products, setProducts] = useState<SellableProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState('')
-  const [search, setSearch] = useState('')
-  const [category, setCategory] = useState('Todas')
-  const [filter, setFilter] = useState<'all' | 'labeled' | 'carousel'>('all')
-  const [productPage, setProductPage] = useState(1)
+  const [search, setSearch] = useState(pageMemory.search)
+  const [category, setCategory] = useState(pageMemory.category)
+  const [filter, setFilter] = useState<'all' | 'labeled' | 'carousel'>(pageMemory.filter)
+  const [productPage, setProductPage] = useState(pageMemory.productPage)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
@@ -106,17 +107,70 @@ export function PaginaPedir() {
   const [contactSaving, setContactSaving] = useState(false)
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsError, setSettingsError] = useState('')
-  const [reelError, setReelError] = useState('')
-  const [reelBusyIndex, setReelBusyIndex] = useState<number | null>(null)
-  const [reelUploadProgress, setReelUploadProgress] = useState(0)
-  const [previousReels, setPreviousReels] = useState<Record<number, PublicOrderReel>>(readReelHistory)
   const [replacementProduct, setReplacementProduct] = useState<SellableProduct | null>(null)
   const [replacementFeaturedId, setReplacementFeaturedId] = useState('')
   const [replacementDialogOpen, setReplacementDialogOpen] = useState(false)
   const [replacementSearch, setReplacementSearch] = useState('')
   const bannerInputRef = useRef<HTMLInputElement>(null)
-  const reelFileInputRefs = useRef<Array<HTMLInputElement | null>>([])
   const [bannerProcessing, setBannerProcessing] = useState(false)
+  const scrollRestored = useRef(false)
+
+  const savePageMemory = useCallback((scrollTop?: number) => {
+    try {
+      const main = document.querySelector<HTMLElement>('.app-main')
+      window.sessionStorage.setItem(PAGE_MEMORY_STORAGE_KEY, JSON.stringify({
+        section, search, category, filter, productPage,
+        scrollTop: scrollTop ?? main?.scrollTop ?? 0,
+      } satisfies PageMemory))
+    } catch { /* La página sigue funcionando aunque el navegador bloquee sessionStorage. */ }
+  }, [section, search, category, filter, productPage])
+
+  useEffect(() => { savePageMemory(scrollRestored.current ? undefined : pageMemory.scrollTop) }, [savePageMemory, pageMemory.scrollTop])
+
+  useEffect(() => {
+    const main = document.querySelector<HTMLElement>('.app-main')
+    if (!main) return
+    let timer = 0
+    const rememberScroll = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => savePageMemory(main.scrollTop), 120)
+    }
+    main.addEventListener('scroll', rememberScroll, { passive: true })
+    return () => {
+      window.clearTimeout(timer)
+      main.removeEventListener('scroll', rememberScroll)
+    }
+  }, [savePageMemory])
+
+  useEffect(() => {
+    if (loading || settingsLoading || scrollRestored.current) return
+    const main = document.querySelector<HTMLElement>('.app-main')
+    if (!main) return
+    scrollRestored.current = true
+    const frame = window.requestAnimationFrame(() => {
+      main.scrollTop = pageMemory.scrollTop
+      savePageMemory(main.scrollTop)
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [loading, settingsLoading, pageMemory.scrollTop, savePageMemory])
+
+  useEffect(() => {
+    if (!replacementDialogOpen) return
+    const main = document.querySelector<HTMLElement>('.app-main')
+    const previous = {
+      html: document.documentElement.style.overflow,
+      body: document.body.style.overflow,
+      main: main?.style.overflow ?? '',
+    }
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+    if (main) main.style.overflow = 'hidden'
+    return () => {
+      document.documentElement.style.overflow = previous.html
+      document.body.style.overflow = previous.body
+      if (main) main.style.overflow = previous.main
+    }
+  }, [replacementDialogOpen])
 
   const loadPageSettings = useCallback(async () => {
     try { setPageSettings(await getPublicOrderPageSettings()); setSettingsError('') }
@@ -268,74 +322,6 @@ export function PaginaPedir() {
     } finally { setContactSaving(false) }
   }
 
-  const persistReelSelection = async (slot: number, nextReel: PublicOrderReel) => {
-    const nextReels = [...pageSettings.contactReels]
-    const previousReel = nextReels[slot]
-    const previousHistory = previousReels[slot]
-    nextReels[slot] = nextReel
-    await updatePublicOrderReels(nextReels)
-    setPageSettings(current => ({ ...current, contactReels: nextReels }))
-    const nextHistory = { ...previousReels, [slot]: previousReel }
-    setPreviousReels(nextHistory)
-    saveReelHistory(nextHistory)
-    if (previousHistory && (previousHistory.videoPath || previousHistory.posterPath)) {
-      await removePublicOrderReelFiles([previousHistory.videoPath, previousHistory.posterPath].filter((path): path is string => Boolean(path))).catch(() => undefined)
-    }
-    setNotice('Video actualizado en la página de pedir.')
-    window.setTimeout(() => setNotice(''), 2800)
-  }
-
-  const restorePreviousReel = async (slot: number) => {
-    const previousReel = previousReels[slot]
-    const currentReel = pageSettings.contactReels[slot]
-    if (!previousReel || !currentReel || reelBusyIndex !== null) return
-    setReelBusyIndex(slot)
-    setReelError('')
-    try {
-      const nextReels = [...pageSettings.contactReels]
-      nextReels[slot] = previousReel
-      await updatePublicOrderReels(nextReels)
-      setPageSettings(current => ({ ...current, contactReels: nextReels }))
-      const nextHistory = { ...previousReels, [slot]: currentReel }
-      setPreviousReels(nextHistory)
-      saveReelHistory(nextHistory)
-      setNotice('Video anterior restaurado. Puedes volver a alternar entre ambos videos.')
-      window.setTimeout(() => setNotice(''), 3200)
-    } catch (cause) {
-      setReelError(cause instanceof Error ? cause.message : 'No se pudo restaurar el video anterior')
-    } finally { setReelBusyIndex(null) }
-  }
-
-  const replaceReelWithFile = async (slot: number, file?: File) => {
-    if (!file) return
-    setReelBusyIndex(slot)
-    setReelUploadProgress(0)
-    setReelError('')
-    let uploaded: UploadedPublicReel | null = null
-    try {
-      uploaded = await uploadPublicOrderReel(slot + 1, file, setReelUploadProgress)
-      await persistReelSelection(slot, uploaded)
-    } catch (cause) {
-      if (uploaded) {
-        await removePublicOrderReelFiles([uploaded.videoPath, uploaded.posterPath]).catch(() => undefined)
-      }
-      setReelError(cause instanceof Error ? cause.message : 'No se pudo guardar el video')
-    } finally {
-      setReelBusyIndex(null)
-      setReelUploadProgress(0)
-    }
-  }
-
-  const selectProjectReel = async (slot: number, src: string) => {
-    const projectReel = DEFAULT_PUBLIC_ORDER_REELS.find(reel => reel.src === src)
-    if (!projectReel || reelBusyIndex !== null) return
-    setReelBusyIndex(slot)
-    setReelError('')
-    try { await persistReelSelection(slot, projectReel) }
-    catch (cause) { setReelError(cause instanceof Error ? cause.message : 'No se pudo cambiar el video') }
-    finally { setReelBusyIndex(null) }
-  }
-
   const updateSetting = <K extends keyof PublicOrderPageSettings>(key: K, value: PublicOrderPageSettings[K]) => {
     setPageSettings(current => ({ ...current, [key]: value }))
   }
@@ -360,10 +346,10 @@ export function PaginaPedir() {
   if (loading) return <PageSkeleton cards={4} rows={7} hasTable={false} />
   return <main className="pedir-admin page animate-fade-in">
     <header className="pedir-admin-head">
-      <div className="pedir-heading-copy">{section !== 'home' && <button type="button" className="pedir-back-button" onClick={() => setSection('home')}><ArrowLeft size={16} /> Volver a opciones</button>}<span className="pedir-admin-kicker">TIENDA PARA CLIENTES</span><h1 className="page-title"><ShoppingBag size={22} /> {section === 'cover' ? 'Portada de la tienda' : section === 'contact' ? 'Información del local' : section === 'videos' ? 'Videos de Instagram' : section === 'products' ? 'Productos de la tienda' : 'Página de pedir'}</h1><p className="page-subtitle">{section === 'cover' ? 'Cambia la imagen y los textos que reciben a tus clientes.' : section === 'contact' ? 'Actualiza cómo te encuentran y cuándo pueden visitarte.' : section === 'videos' ? 'Elige un video que ya está en Full China o sube uno desde tu computadora.' : section === 'products' ? 'Elige qué productos aparecen, cómo se destacan y en qué orden.' : '¿Qué quieres cambiar hoy? Elige una tarea y te llevamos al lugar indicado.'}</p></div>
+      <div className="pedir-heading-copy">{section !== 'home' && <button type="button" className="pedir-back-button" onClick={() => setSection('home')}><ArrowLeft size={16} /> Volver a opciones</button>}<span className="pedir-admin-kicker">TIENDA PARA CLIENTES</span><h1 className="page-title"><ShoppingBag size={22} /> {section === 'cover' ? 'Portada de la tienda' : section === 'contact' ? 'Información del local' : section === 'products' ? 'Productos de la tienda' : 'Página de pedir'}</h1><p className="page-subtitle">{section === 'cover' ? 'Cambia la imagen y los textos que reciben a tus clientes.' : section === 'contact' ? 'Actualiza cómo te encuentran y cuándo pueden visitarte.' : section === 'products' ? 'Elige qué productos aparecen, cómo se destacan y en qué orden.' : '¿Qué quieres cambiar hoy? Elige una tarea y te llevamos al lugar indicado.'}</p></div>
       <a className="pedir-preview-link" href="/pedir" target="_blank" rel="noreferrer"><ExternalLink size={16} /> Ver página pública</a>
     </header>
-    {section === 'home' && <section className="pedir-welcome" aria-labelledby="pedir-welcome-title"><div className="pedir-welcome-intro"><span className="pedir-admin-kicker">ASISTENTE DE TIENDA</span><h2 id="pedir-welcome-title">Hola, ¿qué quieres actualizar hoy?</h2><p>Escoge una opción. Te mostraremos solo lo que necesitas para hacer ese cambio.</p></div><div className="pedir-task-grid"><button type="button" className="pedir-task-card" onClick={() => setSection('cover')}><span className="pedir-task-icon"><Image size={20} /></span><strong>La portada</strong><small>Cambiar el banner, la foto o los textos de bienvenida.</small><span className="pedir-task-action">Editar portada <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('contact')}><span className="pedir-task-icon"><MapPin size={20} /></span><strong>Información del local</strong><small>Teléfono, WhatsApp, dirección, horario y redes sociales.</small><span className="pedir-task-action">Editar contacto <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('videos')}><span className="pedir-task-icon"><Video size={20} /></span><strong>Videos de Instagram</strong><small>Escoger uno de los videos actuales o reemplazarlo por un archivo MP4.</small><span className="pedir-task-action">Cambiar videos <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('products')}><span className="pedir-task-icon"><ShoppingBag size={20} /></span><strong>Los productos que se muestran</strong><small>Buscar por categoría, ocultar productos, poner etiquetas o elegir destacados.</small><span className="pedir-task-action">Organizar productos <ChevronRight size={15} /></span></button><Link className="pedir-task-card" to="/menu"><span className="pedir-task-icon"><SlidersHorizontal size={20} /></span><strong>El nombre, la foto o los extras de un producto</strong><small>Abre Menú para editar los datos del producto y las opciones que puede agregar el cliente.</small><span className="pedir-task-action">Ir a Menú <ChevronRight size={15} /></span></Link></div><p className="pedir-welcome-footnote"><PackageSearch size={15} /> Los cambios de la portada, contacto, videos y visibilidad se reflejan en la página pública al guardarlos.</p></section>}
+    {section === 'home' && <section className="pedir-welcome" aria-labelledby="pedir-welcome-title"><div className="pedir-welcome-intro"><span className="pedir-admin-kicker">ASISTENTE DE TIENDA</span><h2 id="pedir-welcome-title">Hola, ¿qué quieres actualizar hoy?</h2><p>Escoge una opción. Te mostraremos solo lo que necesitas para hacer ese cambio.</p></div><div className="pedir-task-grid"><button type="button" className="pedir-task-card" onClick={() => setSection('cover')}><span className="pedir-task-icon"><Image size={20} /></span><strong>La portada</strong><small>Cambiar el banner, la foto o los textos de bienvenida.</small><span className="pedir-task-action">Editar portada <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('contact')}><span className="pedir-task-icon"><MapPin size={20} /></span><strong>Información del local</strong><small>Teléfono, WhatsApp, dirección, horario y redes sociales.</small><span className="pedir-task-action">Editar contacto <ChevronRight size={15} /></span></button><button type="button" className="pedir-task-card" onClick={() => setSection('products')}><span className="pedir-task-icon"><ShoppingBag size={20} /></span><strong>Los productos que se muestran</strong><small>Buscar por categoría, ocultar productos, poner etiquetas o elegir destacados.</small><span className="pedir-task-action">Organizar productos <ChevronRight size={15} /></span></button><Link className="pedir-task-card" to="/menu"><span className="pedir-task-icon"><SlidersHorizontal size={20} /></span><strong>El nombre, la foto o los extras de un producto</strong><small>Abre Menú para editar los datos del producto y las opciones que puede agregar el cliente.</small><span className="pedir-task-action">Ir a Menú <ChevronRight size={15} /></span></Link></div><p className="pedir-welcome-footnote"><PackageSearch size={15} /> Los cambios de la portada, contacto y visibilidad se reflejan en la página pública al guardarlos.</p></section>}
     {section === 'cover' && <section className="pedir-cover-section">
     <section className="pedir-cover-settings" aria-labelledby="pedir-cover-title">
       <div className="pedir-cover-heading"><div><span className="pedir-admin-kicker">PORTADA DE LA TIENDA</span><h2 id="pedir-cover-title">Encabezado y banner</h2><p>Personaliza los textos y la imagen que reciben a tus clientes. Los productos destacados se configuran en su propia sección.</p></div><button type="button" className="pedir-save-button" onClick={() => void savePageSettings()} disabled={settingsSaving || settingsLoading || bannerProcessing}>{settingsSaving ? 'Guardando…' : 'Guardar portada'}</button></div>
@@ -422,32 +408,6 @@ export function PaginaPedir() {
         {settingsError && <div className="pedir-error pedir-cover-error" role="alert">{settingsError}<button type="button" onClick={() => void loadPageSettings()}>Reintentar</button></div>}
       </section>
     </section>}
-    {section === 'videos' && <section className="pedir-reels-section" aria-label="Administrar videos de Instagram">
-      <div className="pedir-reels-intro"><div><span className="pedir-admin-kicker">VIDEOS DE INSTAGRAM</span><h2>Elige qué videos aparecen en la tienda</h2><p>Cada espacio corresponde a un video de Instagram. Puedes escoger uno existente o reemplazarlo por un MP4 propio; el cambio se publica al guardarlo.</p></div><div className="pedir-reels-limit"><Video size={17} /><span>MP4 · máximo 25 MB por video</span></div></div>
-      <section className="pedir-reels-public-preview" aria-label="Vista previa de los videos en la página pública">
-        <div className="pedir-preview-label">VISTA PREVIA · ASÍ SE VERÁ EN CONTACTO</div>
-        <article className="pedir-contact-public-card pedir-contact-public-social">
-          <header><span><Camera size={14} /> Desde Instagram</span><h3>El wok en movimiento</h3></header>
-          <div className="pedir-contact-public-reels" aria-label="Videos de Full China">
-            {pageSettings.contactReels.slice(0, 3).map((reel, index) => <div key={`reel-preview-${index}`}><img src={reel.poster} alt={`Vista del video ${index + 1}`} /><span>{String(index + 1).padStart(2, '0')}</span></div>)}
-          </div>
-          {(pageSettings.contactInstagramUrl || DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.contactInstagramUrl) && <a className="pedir-contact-public-cta is-instagram" href={pageSettings.contactInstagramUrl || DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.contactInstagramUrl} target="_blank" rel="noreferrer"><Camera size={16} /><span>Seguir en <strong>Instagram</strong></span><ChevronRight size={17} /></a>}
-          {pageSettings.contactFacebookUrl && <a className="pedir-contact-public-cta is-facebook" href={pageSettings.contactFacebookUrl} target="_blank" rel="noreferrer"><MessageSquareText size={16} /><span>Visitar <strong>Facebook</strong></span><ChevronRight size={17} /></a>}
-        </article>
-      </section>
-      {reelError && <div className="pedir-error" role="alert">{reelError}<button type="button" onClick={() => setReelError('')}>Cerrar</button></div>}
-      <div className="pedir-reel-grid">{pageSettings.contactReels.map((reel, slot) => { const busy = reelBusyIndex === slot; const selectedProject = DEFAULT_PUBLIC_ORDER_REELS.find(item => item.src === reel.src); return <article className="pedir-reel-card" key={`reel-${slot + 1}`}>
-        <div className="pedir-reel-video-wrap"><video src={reel.src} poster={reel.poster} controls playsInline preload="metadata" aria-label={`Vista previa del video ${slot + 1}`} /><span className="pedir-reel-number">Video {slot + 1}</span></div>
-        <div className="pedir-reel-controls"><div className="pedir-reel-current"><strong>{reel.videoPath ? 'Video subido' : 'Video de Full China'}</strong><small>{reel.videoPath ? 'Guardado en el almacenamiento de Full China' : selectedProject ? `Video original ${DEFAULT_PUBLIC_ORDER_REELS.indexOf(selectedProject) + 1}` : 'Video seleccionado'}</small></div>
-          <label className="pedir-reel-picker"><span>Elegir video existente</span><StyledSelect value={selectedProject?.src ?? ''} disabled={busy || reelBusyIndex !== null} onChange={event => void selectProjectReel(slot, event.target.value)}><option value="" disabled>Selecciona un video de la biblioteca</option>{DEFAULT_PUBLIC_ORDER_REELS.map((item, index) => <option key={item.src} value={item.src}>Video original {index + 1}</option>)}</StyledSelect></label>
-          <input ref={node => { reelFileInputRefs.current[slot] = node }} className="pedir-reel-file-input" type="file" accept="video/mp4,.mp4" onChange={event => { void replaceReelWithFile(slot, event.target.files?.[0]); event.currentTarget.value = '' }} />
-          <button type="button" className="pedir-reel-upload-button" onClick={() => reelFileInputRefs.current[slot]?.click()} disabled={busy || reelBusyIndex !== null}><Upload size={16} />{busy ? 'Subiendo video…' : 'Cambiar video'}</button>
-          {previousReels[slot] && <button type="button" className="pedir-reel-restore-button" onClick={() => void restorePreviousReel(slot)} disabled={reelBusyIndex !== null} title="Restaura el video que estaba en este espacio antes del último cambio"><img src={previousReels[slot].poster} alt="" /><span><strong>{busy ? 'Restaurando…' : 'Volver al video anterior'}</strong><small>{DEFAULT_PUBLIC_ORDER_REELS.some(item => item.src === previousReels[slot].src) ? `Video original ${DEFAULT_PUBLIC_ORDER_REELS.findIndex(item => item.src === previousReels[slot].src) + 1}` : 'Video que estaba activo antes'}</small></span><RotateCcw size={15} /></button>}
-          {busy && <div className="pedir-reel-progress" role="status"><div><span>Subiendo y preparando miniatura</span><strong>{reelUploadProgress}%</strong></div><i><b style={{ width: `${reelUploadProgress}%` }} /></i></div>}
-        </div>
-      </article>})}</div>
-      {settingsError && <div className="pedir-error" role="alert">{settingsError}<button type="button" onClick={() => void loadPageSettings()}>Reintentar</button></div>}
-    </section>}
     {section === 'products' && <section className="pedir-products-section">
     <div className="pedir-summary">
       <article><Eye size={19} /><span>Productos visibles<strong>{visibleCount}</strong></span></article>
@@ -492,7 +452,7 @@ export function PaginaPedir() {
     </section>
     {filtered.length > PRODUCTS_PER_PAGE && <nav className="pedir-pagination" aria-label="Paginación de productos"><button type="button" disabled={currentProductPage <= 1} onClick={() => { setProductPage(page => Math.max(1, page - 1)); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}><ChevronLeft size={16} /> Anterior</button><div>{Array.from({ length: pageCount }, (_, index) => index + 1).map(page => <button type="button" key={page} className={page === currentProductPage ? 'active' : ''} aria-current={page === currentProductPage ? 'page' : undefined} onClick={() => { setProductPage(page); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>{page}</button>)}</div><button type="button" disabled={currentProductPage >= pageCount} onClick={() => { setProductPage(page => Math.min(pageCount, page + 1)); document.querySelector('.pedir-product-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}>Siguiente <ChevronRight size={16} /></button></nav>}
     </section>}
-    {replacementDialogOpen && featuredToReplace && <div className="pedir-replace-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !savingId) { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) } }}><section className="pedir-replace-modal" role="dialog" aria-modal="true" aria-labelledby="pedir-replace-title"><header className="pedir-replace-modal-head"><div><span className="pedir-admin-kicker">CAMBIAR PRODUCTO DESTACADO</span><h2 id="pedir-replace-title">¿Cuál sale y cuál entra?</h2><p>El nuevo ocupará el mismo lugar que el producto que elijas.</p></div><button type="button" className="pedir-replace-close" aria-label="Cerrar" disabled={Boolean(savingId)} onClick={() => { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) }}><X size={19} /></button></header><div className="pedir-replace-comparison"><article className="pedir-replace-product is-out"><span className="pedir-replace-product-label">SALE · #{featuredToReplaceIndex + 1}</span><div className="pedir-replace-product-body"><div className="pedir-replace-product-image">{featuredToReplace.imageUrl ? <img src={featuredToReplace.imageUrl} alt="" /> : <span>{featuredToReplace.emoji || '🥡'}</span>}</div><div><strong>{featuredToReplace.name}</strong><small>{featuredToReplace.categories.map(item => categoryLabel(item)).join(' · ')}</small><b>{formatUsd(featuredToReplace.salePrice)}</b></div></div></article><div className="pedir-replace-swap-icon"><ArrowLeftRight size={21} /></div><article className={`pedir-replace-product is-in${replacementProduct ? '' : ' is-empty'}`}><span className="pedir-replace-product-label">ENTRA · NUEVO DESTACADO</span>{replacementProduct ? <div className="pedir-replace-product-body"><div className="pedir-replace-product-image">{replacementProduct.imageUrl ? <img src={replacementProduct.imageUrl} alt="" /> : <span>{replacementProduct.emoji || '🥡'}</span>}</div><div><strong>{replacementProduct.name}</strong><small>{replacementProduct.categories.map(item => categoryLabel(item)).join(' · ')}</small><b>{formatUsd(replacementProduct.salePrice)}</b></div></div> : <p>Selecciona el producto que quieres destacar.</p>}</article></div><div className="pedir-replace-choose"><div><h3>1. Elige cuál producto sale</h3><p>Toca uno de tus destacados actuales.</p></div><div className="pedir-replace-options">{carouselProductIds.map((id, index) => { const product = products.find(row => row.id === id); if (!product) return null; const isSelected = product.id === replacementFeaturedId; return <button type="button" key={id} className={`pedir-replace-option${isSelected ? ' selected' : ''}`} aria-pressed={isSelected} onClick={() => setReplacementFeaturedId(id)}><span className="pedir-replace-option-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.emoji || '🥡'}</span>}</span><span className="pedir-replace-option-copy"><small>Destacado · #{index + 1}</small><strong>{product.name}</strong></span>{isSelected && <Check size={17} />}</button> })}</div></div><div className="pedir-replace-choose"><div><h3>2. Elige cuál producto entra</h3><p>Busca y selecciona el producto que lo reemplazará.</p></div><label className="pedir-replace-search"><Search size={16} /><input value={replacementSearch} onChange={event => setReplacementSearch(event.target.value)} placeholder="Buscar producto para destacar" />{replacementSearch && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setReplacementSearch('')}><X size={15}/></button>}</label><div className="pedir-replace-options">{replacementCandidates.map(product => <button type="button" key={product.id} className={`pedir-replace-option${replacementProduct?.id === product.id ? ' selected' : ''}`} aria-pressed={replacementProduct?.id === product.id} onClick={() => setReplacementProduct(product)}><span className="pedir-replace-option-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.emoji || '🥡'}</span>}</span><span className="pedir-replace-option-copy"><small>{product.categories.map(item => categoryLabel(item)).join(' · ')} · {formatUsd(product.salePrice)}</small><strong>{product.name}</strong></span>{replacementProduct?.id === product.id && <Check size={17} />}</button>)}{replacementCandidates.length === 0 && <p className="pedir-replace-no-results">{replacementSearch ? 'No encontramos productos con ese nombre.' : 'No hay otros productos disponibles para destacar.'}</p>}</div></div><footer className="pedir-replace-modal-footer"><button type="button" className="pedir-replace-cancel" onClick={() => { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) }} disabled={Boolean(savingId)}>Cancelar</button><button type="button" className="pedir-replace-confirm" onClick={() => void confirmFeaturedReplacement()} disabled={!replacementFeaturedId || !replacementProduct || Boolean(savingId)}>{savingId ? 'Guardando…' : <><ArrowLeftRight size={16} /> Confirmar reemplazo</>}</button></footer></section></div>}
+    {replacementDialogOpen && featuredToReplace && createPortal(<div className="pedir-replace-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget && !savingId) { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) } }}><section className="pedir-replace-modal" role="dialog" aria-modal="true" aria-labelledby="pedir-replace-title"><header className="pedir-replace-modal-head"><div><span className="pedir-admin-kicker">CAMBIAR PRODUCTO DESTACADO</span><h2 id="pedir-replace-title">¿Cuál sale y cuál entra?</h2><p>El nuevo ocupará el mismo lugar que el producto que elijas.</p></div><button type="button" className="pedir-replace-close" aria-label="Cerrar" disabled={Boolean(savingId)} onClick={() => { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) }}><X size={19} /></button></header><div className="pedir-replace-comparison"><article className="pedir-replace-product is-out"><span className="pedir-replace-product-label">SALE · #{featuredToReplaceIndex + 1}</span><div className="pedir-replace-product-body"><div className="pedir-replace-product-image">{featuredToReplace.imageUrl ? <img src={featuredToReplace.imageUrl} alt="" /> : <span>{featuredToReplace.emoji || '🥡'}</span>}</div><div><strong>{featuredToReplace.name}</strong><small>{featuredToReplace.categories.map(item => categoryLabel(item)).join(' · ')}</small><b>{formatUsd(featuredToReplace.salePrice)}</b></div></div></article><div className="pedir-replace-swap-icon"><ArrowLeftRight size={21} /></div><article className={`pedir-replace-product is-in${replacementProduct ? '' : ' is-empty'}`}><span className="pedir-replace-product-label">ENTRA · NUEVO DESTACADO</span>{replacementProduct ? <div className="pedir-replace-product-body"><div className="pedir-replace-product-image">{replacementProduct.imageUrl ? <img src={replacementProduct.imageUrl} alt="" /> : <span>{replacementProduct.emoji || '🥡'}</span>}</div><div><strong>{replacementProduct.name}</strong><small>{replacementProduct.categories.map(item => categoryLabel(item)).join(' · ')}</small><b>{formatUsd(replacementProduct.salePrice)}</b></div></div> : <p>Selecciona el producto que quieres destacar.</p>}</article></div><div className="pedir-replace-choose"><div><h3>1. Elige cuál producto sale</h3><p>Toca uno de tus destacados actuales.</p></div><div className="pedir-replace-options">{carouselProductIds.map((id, index) => { const product = products.find(row => row.id === id); if (!product) return null; const isSelected = product.id === replacementFeaturedId; return <button type="button" key={id} className={`pedir-replace-option${isSelected ? ' selected' : ''}`} aria-pressed={isSelected} onClick={() => setReplacementFeaturedId(id)}><span className="pedir-replace-option-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.emoji || '🥡'}</span>}</span><span className="pedir-replace-option-copy"><small>Destacado · #{index + 1}</small><strong>{product.name}</strong></span>{isSelected && <Check size={17} />}</button> })}</div></div><div className="pedir-replace-choose"><div><h3>2. Elige cuál producto entra</h3><p>Busca y selecciona el producto que lo reemplazará.</p></div><label className="pedir-replace-search"><Search size={16} /><input value={replacementSearch} onChange={event => setReplacementSearch(event.target.value)} placeholder="Buscar producto para destacar" />{replacementSearch && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setReplacementSearch('')}><X size={15}/></button>}</label><div className="pedir-replace-options">{replacementCandidates.map(product => <button type="button" key={product.id} className={`pedir-replace-option${replacementProduct?.id === product.id ? ' selected' : ''}`} aria-pressed={replacementProduct?.id === product.id} onClick={() => setReplacementProduct(product)}><span className="pedir-replace-option-image">{product.imageUrl ? <img src={product.imageUrl} alt="" /> : <span>{product.emoji || '🥡'}</span>}</span><span className="pedir-replace-option-copy"><small>{product.categories.map(item => categoryLabel(item)).join(' · ')} · {formatUsd(product.salePrice)}</small><strong>{product.name}</strong></span>{replacementProduct?.id === product.id && <Check size={17} />}</button>)}{replacementCandidates.length === 0 && <p className="pedir-replace-no-results">{replacementSearch ? 'No encontramos productos con ese nombre.' : 'No hay otros productos disponibles para destacar.'}</p>}</div></div><footer className="pedir-replace-modal-footer"><button type="button" className="pedir-replace-cancel" onClick={() => { setReplacementProduct(null); setReplacementFeaturedId(''); setReplacementDialogOpen(false) }} disabled={Boolean(savingId)}>Cancelar</button><button type="button" className="pedir-replace-confirm" onClick={() => void confirmFeaturedReplacement()} disabled={!replacementFeaturedId || !replacementProduct || Boolean(savingId)}>{savingId ? 'Guardando…' : <><ArrowLeftRight size={16} /> Confirmar reemplazo</>}</button></footer></section></div>, document.body)}
     {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
   </main>
 }
