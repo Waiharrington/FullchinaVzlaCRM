@@ -16,9 +16,28 @@
 
 .app-main {
   flex: 1;
+  min-height: 0;
   padding: calc(1rem + env(safe-area-inset-top, 0px)) 1rem 5rem 1rem;
   width: 100%;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Inventory is a long, touch-operated workspace. Keep its scrolling inside
+   the main panel so touch gestures on Windows laptops have a bounded surface. */
+.app-layout:has(.inv-page) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-layout:has(.inv-page) .main-content-wrapper {
+  min-height: 0;
+}
+
+.app-layout:has(.inv-page) .app-main {
+  min-height: 0;
+  touch-action: pan-y;
 }
 
 /* Keep the loading placeholder clean without disabling the main scroll area. */
