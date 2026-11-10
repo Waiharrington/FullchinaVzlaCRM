@@ -88,15 +88,19 @@ function LoginRoute() {
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading, splashDone, setSplashDone } = useAuth()
   const [initialRouteReady, setInitialRouteReady] = useState(false)
+  const [initialContentMounted, setInitialContentMounted] = useState(false)
   const handleSplashDone = useCallback(() => setSplashDone(true), [setSplashDone])
-  const handleInitialRouteReady = useCallback(() => setInitialRouteReady(true), [])
+  const handleInitialRouteReady = useCallback(() => {
+    setInitialRouteReady(true)
+    setInitialContentMounted(true)
+  }, [])
   const splashReady = !loading && (!user || initialRouteReady)
 
   return (
     <>
       {!splashDone ? <SplashScreen onDone={handleSplashDone} minDuration={1200} ready={splashReady} /> : null}
       {!loading && user ? (
-        <Suspense fallback={!splashDone ? null : <ModuleLoader />}>
+        <Suspense fallback={initialContentMounted ? <ModuleLoader /> : null}>
           <InitialRouteContent onReady={handleInitialRouteReady}>{children}</InitialRouteContent>
         </Suspense>
       ) : null}
@@ -108,7 +112,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AdminRoutes() {
   const { user, splashDone } = useAuth()
   return (
-    <Suspense fallback={splashDone ? <ModuleLoader /> : null}>
+    <Suspense fallback={null}>
       <>
         <Routes>
           <Route path="/login" element={<LoginRoute />} />
