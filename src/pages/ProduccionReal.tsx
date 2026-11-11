@@ -23,7 +23,7 @@ import {
 import './ProduccionReal.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
-type ProteinType = 'pollo' | 'cerdo' | 'camaron' | 'jamon' | 'otro'
+type ProteinType = 'pollo' | 'cerdo' | 'carne' | 'camaron' | 'jamon' | 'otro'
 type PeriodFilter = 'today' | '7d' | '30d' | 'all'
 
 export function ProduccionReal() {
@@ -163,22 +163,32 @@ export function ProduccionReal() {
     let searchKeyword = 'pollo'
     let defaultBatch = 'Porcionamiento de Pollo para Arroz'
     let defaultGrams = '125'
+    let portionSearchKeyword = searchKeyword
 
     if (type === 'cerdo') {
       searchKeyword = 'cerdo'
       defaultBatch = 'Porcionamiento de Cerdo / Chuleta'
       defaultGrams = '125'
+      portionSearchKeyword = searchKeyword
+    } else if (type === 'carne') {
+      searchKeyword = 'carne ganzo'
+      defaultBatch = 'Porcionamiento de Carne'
+      defaultGrams = '50'
+      portionSearchKeyword = 'carne'
     } else if (type === 'camaron') {
       searchKeyword = 'camaron'
       defaultBatch = 'Limpieza y Porcionamiento de Camarón'
       defaultGrams = '100'
+      portionSearchKeyword = searchKeyword
     } else if (type === 'jamon') {
       searchKeyword = 'jamon'
       defaultBatch = 'Picado de Jamón en Cubos'
       defaultGrams = '100'
+      portionSearchKeyword = searchKeyword
     } else if (type === 'otro') {
       defaultBatch = 'Lote de Producción'
       defaultGrams = '100'
+      portionSearchKeyword = ''
     }
 
     setBatchName(defaultBatch)
@@ -196,9 +206,9 @@ export function ProduccionReal() {
     }
 
     // Auto-match portion recipe if one exists
-    const portionMatch = portionRecipes.find(p =>
-      normalizeForSearch(p.name).includes(searchKeyword)
-    )
+    const portionMatch = portionSearchKeyword
+      ? portionRecipes.find(p => normalizeForSearch(p.name).includes(portionSearchKeyword))
+      : undefined
     if (portionMatch) {
       setSelectedPortionRecipeId(portionMatch.id)
       const grams = portionMatch.unitSymbol.toLowerCase() === 'kg'
@@ -218,7 +228,9 @@ export function ProduccionReal() {
         ? String(rec.quantity * 1000)
         : String(rec.quantity)
       setPortionGrams(grams)
-      if (rec.ingredientId) {
+      // Carne's portion recipe points to the sellable output in "und". The
+      // production input must remain the raw ingredient in kilograms.
+      if (rec.ingredientId && proteinType !== 'carne') {
         const found = rawIngredientsList.find(i => i.id === rec.ingredientId)
         if (found) {
           setRawIngredientId(found.id)
@@ -263,6 +275,9 @@ export function ProduccionReal() {
 
   const handleOpenNewBatch = () => {
     setError('')
+    // Every new lot starts from the warehouse. The operator can switch to the
+    // Food Truck explicitly, preventing a previous lot's origin from carrying over.
+    setOriginLocation('warehouse')
     setShowModal(true)
     handleSelectProtein('pollo')
     setRawQuantityUsed('10')
@@ -295,14 +310,21 @@ export function ProduccionReal() {
 
       const operatorObj = employees.find(e => e.id === operatorId)
       const opName = operatorObj ? operatorObj.fullName : (user?.email ? user.email.split('@')[0] : 'Operador')
-      const outputName = proteinType === 'cerdo' ? 'chuleta' : proteinType === 'pollo' ? 'pollo' : null
+      const outputName = proteinType === 'cerdo'
+        ? 'chuleta'
+        : proteinType === 'pollo'
+          ? 'pollo'
+          : proteinType === 'carne'
+            ? 'carne'
+            : null
+      const outputLabel = proteinType === 'cerdo' ? 'Chuleta' : proteinType === 'carne' ? 'Carne' : 'Pollo'
       const outputIngredient = outputName
         ? operationalIngredients.find(i =>
             normalizeForSearch(i.name) === outputName && normalizeForSearch(i.unitSymbol) === 'und'
           )
         : undefined
       if (outputName && !outputIngredient) {
-        setError(`No se encontró el ingrediente de salida "${proteinType === 'cerdo' ? 'Chuleta' : 'Pollo'}" con unidad und en el inventario del Food Truck.`)
+        setError(`No se encontró el ingrediente de salida "${outputLabel}" con unidad und en el inventario del Food Truck.`)
         return
       }
 
@@ -674,6 +696,14 @@ export function ProduccionReal() {
                 </button>
                 <button
                   type="button"
+                  className={`prod-protein-chip ${proteinType === 'carne' ? 'active' : ''}`}
+                  onClick={() => handleSelectProtein('carne')}
+                >
+                  <Beef className="prod-protein-chip-icon" aria-hidden="true" />
+                  <span>Carne</span>
+                </button>
+                <button
+                  type="button"
                   className={`prod-protein-chip ${proteinType === 'camaron' ? 'active' : ''}`}
                   onClick={() => handleSelectProtein('camaron')}
                 >
@@ -809,10 +839,10 @@ export function ProduccionReal() {
                   <span style={{ color: '#f87171', marginLeft: '6px' }}>(¡Atención: Stock insuficiente!)</span>
                 )}
               </div>
-              {(proteinType === 'pollo' || proteinType === 'cerdo') && (
+              {(proteinType === 'pollo' || proteinType === 'cerdo' || proteinType === 'carne') && (
                 <div className="prod-stock-available-badge">
                   <Package size={13} />
-                  <span>Las porciones producidas se sumarán al inventario del Food Truck como <strong>{proteinType === 'cerdo' ? 'Chuleta' : 'Pollo'}</strong>.</span>
+                  <span>Las porciones producidas se sumarán al inventario del Food Truck como <strong>{proteinType === 'cerdo' ? 'Chuleta' : proteinType === 'carne' ? 'Carne' : 'Pollo'}</strong>.</span>
                 </div>
               )}
             </div>
@@ -947,7 +977,7 @@ export function ProduccionReal() {
                 {saving ? (
                   <><Loader2 size={16} className="animate-spin" /><span className="prod-submit-copy"><strong>Guardando lote...</strong></span></>
                 ) : (
-                  <><CheckCircle2 size={17} /><span className="prod-submit-copy"><strong>Confirmar lote</strong><small>{quantityProduced || '0'} porciones</small></span></>
+                  <><CheckCircle2 size={17} /><span className="prod-submit-copy"><strong>Confirmar lote</strong><small>{quantityProduced || '0'} porciones · desde {originLocation === 'warehouse' ? 'Almacén' : 'Food Truck'}</small></span></>
                 )}
               </button>
             </div>
