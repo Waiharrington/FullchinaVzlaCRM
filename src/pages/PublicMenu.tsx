@@ -155,6 +155,7 @@ const AddressMap = lazy(() => import('../components/PublicAddressMap').then(modu
 
 const FAVORITES_KEY = 'fullchina_public_favorites'
 const CART_KEY = 'fullchina_public_cart'
+const WELCOME_DISMISSED_KEY = 'fullchina_public_welcome_dismissed_v1'
 const LAST_ORDER_KEY = 'fullchina_public_last_order'
 const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
@@ -555,6 +556,28 @@ export function PublicMenu() {
       && new URLSearchParams(window.location.search).get('showClosedNotice') === '1'
     return !getStoreClock().isOpen || showPreviewNotice
   })
+  const [showWelcomeNotice, setShowWelcomeNotice] = useState(() => {
+    try { return localStorage.getItem(WELCOME_DISMISSED_KEY) !== 'true' } catch { return true }
+  })
+  const [dontShowWelcomeAgain, setDontShowWelcomeAgain] = useState(false)
+  const [closingWelcomeNotice, setClosingWelcomeNotice] = useState(false)
+  const welcomeNoticeButtonRef = useRef<HTMLButtonElement>(null)
+  const welcomeCloseTimeoutRef = useRef<number | null>(null)
+  const dismissWelcomeNotice = useCallback(() => {
+    if (closingWelcomeNotice) return
+    if (dontShowWelcomeAgain) {
+      try { localStorage.setItem(WELCOME_DISMISSED_KEY, 'true') } catch { /* la bienvenida se cierra aunque el navegador bloquee el almacenamiento */ }
+    }
+    setClosingWelcomeNotice(true)
+    const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220
+    welcomeCloseTimeoutRef.current = window.setTimeout(() => {
+      setShowWelcomeNotice(false)
+      setClosingWelcomeNotice(false)
+      welcomeCloseTimeoutRef.current = null
+    }, duration)
+  }, [closingWelcomeNotice, dontShowWelcomeAgain])
+  const dismissWelcomeNoticeRef = useRef(dismissWelcomeNotice)
+  dismissWelcomeNoticeRef.current = dismissWelcomeNotice
   const storeClosedNoticeButtonRef = useRef<HTMLButtonElement>(null)
   const [closingAllExtras, setClosingAllExtras] = useState(false)
   const closeAllExtras = () => {
@@ -576,7 +599,7 @@ export function PublicMenu() {
   // Regla global de overlays: mientras exista una ventana abierta, el
   // documento que queda detrás no puede desplazarse. El scroll pertenece
   // exclusivamente al modal o drawer activo.
-  const hasBlockingOverlay = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras || showStoreClosedNotice)
+  const hasBlockingOverlay = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras || showStoreClosedNotice || showWelcomeNotice)
   useEffect(() => {
     const root = document.documentElement
     const body = document.body
@@ -629,14 +652,28 @@ export function PublicMenu() {
   }, [hasBlockingOverlay])
 
   useEffect(() => {
-    if (!showStoreClosedNotice) return
+    if (!showStoreClosedNotice || showWelcomeNotice) return
     storeClosedNoticeButtonRef.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setShowStoreClosedNotice(false)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [showStoreClosedNotice])
+  }, [showStoreClosedNotice, showWelcomeNotice])
+
+  useEffect(() => {
+    if (!showWelcomeNotice) return
+    welcomeNoticeButtonRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') dismissWelcomeNoticeRef.current()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [showWelcomeNotice])
+
+  useEffect(() => () => {
+    if (welcomeCloseTimeoutRef.current !== null) window.clearTimeout(welcomeCloseTimeoutRef.current)
+  }, [])
 
   const previousStepRef = useRef(step)
   const [name, setName] = useState('')
@@ -4467,6 +4504,44 @@ export function PublicMenu() {
               </div>
               <button ref={storeClosedNoticeButtonRef} type="button" className="public-store-closed-confirm" onClick={() => setShowStoreClosedNotice(false)}>Seguir viendo el menú <ChevronRight size={17} /></button>
             </div>
+          </section>
+        </div>,
+        document.body
+      )}
+
+      {showWelcomeNotice && createPortal(
+        <div className={`public-welcome-backdrop${closingWelcomeNotice ? ' is-closing' : ''}`}>
+          <section className="public-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="public-welcome-title" aria-describedby="public-welcome-copy">
+            <div className="public-welcome-brand">
+              <img src="/optimized/root/logo.webp" alt="Full China" />
+            </div>
+            <div className="public-welcome-menu-heading">
+              <span>BIENVENIDO A LA CASA</span>
+              <h2 id="public-welcome-title">La carta de Full China</h2>
+              <p id="public-welcome-copy">Arma tu pedido fácilmente. <strong>No tienes que hacer ningún pago en esta página.</strong> Al terminar, te conectamos por WhatsApp con Full China para confirmar tu compra y coordinar el pago.</p>
+            </div>
+            <div className="public-welcome-menu-list" aria-label="Pasos para hacer tu pedido">
+              <div className="public-welcome-menu-section-title">TU PEDIDO, PASO A PASO</div>
+              <div className="public-welcome-menu-item">
+                <span><b>01</b><strong>Elige tus platos</strong></span>
+                <small>Agrega tus favoritos al carrito.</small>
+              </div>
+              <div className="public-welcome-menu-item">
+                <span><b>02</b><strong>Completa tus datos</strong></span>
+                <small>Revisa el resumen de tu pedido.</small>
+              </div>
+              <div className="public-welcome-menu-item">
+                <span><b>03</b><strong>Confirma por WhatsApp</strong></span>
+                <small>Con Full China completas la compra y coordinas el pago.</small>
+              </div>
+            </div>
+            <label className="public-welcome-dismiss-choice">
+              <input type="checkbox" checked={dontShowWelcomeAgain} onChange={event => setDontShowWelcomeAgain(event.target.checked)} />
+              <span>No volver a mostrar este mensaje</span>
+            </label>
+            <button ref={welcomeNoticeButtonRef} type="button" className="public-welcome-confirm" onClick={dismissWelcomeNotice}>
+              Explorar la carta <ChevronRight size={19} />
+            </button>
           </section>
         </div>,
         document.body

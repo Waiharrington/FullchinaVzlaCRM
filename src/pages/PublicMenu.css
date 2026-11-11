@@ -15885,3 +15885,75 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     background-image: linear-gradient(90deg, rgba(5, 5, 8, .52) 0%, rgba(5, 5, 8, .34) 48%, rgba(5, 5, 8, .18) 100%), url('/optimized/customer-profile/register-desktop.webp') !important;
   }
 }
+
+.public-welcome-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10020;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top, 0px)) 18px max(18px, env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  background: rgba(4, 5, 8, .82);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  animation: public-store-closed-fade 220ms ease both;
+}
+.public-welcome-backdrop.is-closing { pointer-events: none; animation: public-welcome-exit 220ms ease-in both; }
+.public-welcome-backdrop.is-closing .public-welcome-dialog { animation: public-welcome-dialog-exit 220ms cubic-bezier(.4,0,1,1) both; }
+@keyframes public-welcome-exit { to { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); } }
+@keyframes public-welcome-dialog-exit { to { opacity: 0; transform: translateY(14px) scale(.975); filter: blur(2px); } }
+.public-welcome-dialog {
+  width: min(100%, 510px);
+  max-height: calc(100dvh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+  padding: clamp(24px, 5vw, 38px);
+  border: 1px solid rgba(255, 200, 61, .46);
+  border-radius: 26px;
+  color: #f8f7f5;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(227, 27, 43, .18), transparent 55%),
+    linear-gradient(160deg, #171418, #0d0e12 75%);
+  box-shadow: 0 32px 110px rgba(0,0,0,.72), 0 0 55px rgba(190,12,29,.16);
+  animation: public-store-closed-pop 320ms cubic-bezier(.2,.8,.2,1) both;
+}
+.public-welcome-brand { display: grid; justify-items: center; gap: 7px; margin-bottom: 18px; }
+.public-welcome-brand img { width: 112px; height: 52px; object-fit: contain; }
+.public-welcome-menu-heading { margin: 0 0 20px; padding: 4px 0 18px; border-bottom: 1px solid rgba(255,200,61,.45); text-align: center; }
+.public-welcome-menu-heading > span { display: block; margin-bottom: 8px; color: #ffc83d; font-size: 10px; font-weight: 900; letter-spacing: .2em; }
+.public-welcome-menu-heading h2 { margin: 0; color: #fff; font-size: clamp(24px, 5vw, 31px); line-height: 1.15; letter-spacing: -.04em; text-align: center; }
+.public-welcome-menu-heading p { max-width: 410px; margin: 11px auto 0; color: #c4c4cc; font-size: 15px; line-height: 1.5; }
+.public-welcome-menu-heading p strong { color: #fff; }
+.public-welcome-menu-heading::after { content: '✦  ✦  ✦'; display: block; margin: 14px auto -1px; color: #ffc83d; font-size: 10px; letter-spacing: .22em; }
+.public-welcome-menu-list { display: grid; padding: 2px 0; border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1); }
+.public-welcome-menu-section-title { padding: 10px 3px 8px; color: #ffc83d; font-size: 9px; font-weight: 900; letter-spacing: .17em; }
+.public-welcome-menu-item { padding: 13px 3px; }
+.public-welcome-menu-item + .public-welcome-menu-item { border-top: 1px dotted rgba(255,200,61,.35); }
+.public-welcome-menu-item > span { display: flex; align-items: baseline; gap: 10px; }
+.public-welcome-menu-item b { flex: 0 0 auto; color: #ed2638; font-size: 11px; font-weight: 950; letter-spacing: .08em; }
+.public-welcome-menu-item strong { color: #f8f6f3; font-size: 15px; font-weight: 800; }
+.public-welcome-menu-item small { display: block; margin: 4px 0 0 29px; color: #bdbbc2; font-size: 13px; line-height: 1.45; }
+.public-welcome-dismiss-choice { display: flex; align-items: center; justify-content: center; gap: 11px; min-height: 52px; margin: 16px 0 13px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; color: #dedde2; background: rgba(255,255,255,.045); font-size: 14px; font-weight: 650; line-height: 1.35; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.public-welcome-dismiss-choice input { flex: 0 0 22px; width: 22px; height: 22px; margin: 0; accent-color: #e31b2b; cursor: pointer; }
+.public-welcome-confirm { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 12px 16px; border: 1px solid rgba(255,95,99,.65); border-radius: 15px; color: #fff; background: linear-gradient(105deg,#f21c32,#ce1025); box-shadow: 0 8px 22px rgba(205,16,37,.23); font: inherit; font-size: 15px; font-weight: 850; cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
+.public-welcome-confirm:hover { transform: translateY(-1px); box-shadow: 0 10px 27px rgba(205,16,37,.35); }
+.public-welcome-confirm:focus-visible { outline: 3px solid #ffc83d; outline-offset: 3px; }
+@media (max-width: 560px) {
+  .public-welcome-backdrop { padding-right: 14px; padding-left: 14px; }
+  .public-welcome-dialog { padding: 24px 20px 20px; border-radius: 23px; }
+  .public-welcome-brand { margin-bottom: 14px; }
+  .public-welcome-brand img { width: 96px; height: 44px; }
+  .public-welcome-menu-heading { margin-bottom: 16px; padding-bottom: 15px; }
+  .public-welcome-menu-heading p { margin-top: 9px; font-size: 13px; line-height: 1.5; }
+  .public-welcome-menu-section-title { padding-top: 8px; font-size: 8px; }
+  .public-welcome-menu-item { padding: 10px 2px; }
+  .public-welcome-menu-item strong { font-size: 13px; }
+  .public-welcome-menu-item small { font-size: 11px; }
+  .public-welcome-dismiss-choice { justify-content: flex-start; min-height: 56px; margin: 14px 0 11px; padding: 12px 14px; font-size: 14px; }
+  .public-welcome-confirm { min-height: 49px; font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-welcome-backdrop, .public-welcome-dialog { animation: none; }
+  .public-welcome-backdrop.is-closing, .public-welcome-backdrop.is-closing .public-welcome-dialog { animation: none; }
+  .public-welcome-confirm { transition: none; }
+}

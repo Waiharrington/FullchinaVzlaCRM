@@ -7,8 +7,6 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>
 }
 
-const DISMISSED_KEY = 'fullchina-client-pwa-install-dismissed'
-
 type InstallBrowser = 'safari' | 'chrome'
 type InstallPlatform = 'iphone' | 'android'
 type AndroidInstallChoice = 'install' | 'shortcut'
@@ -26,11 +24,9 @@ function isPhoneViewport() {
 export function PwaInstallPrompt() {
   const [isPhone, setIsPhone] = useState(isPhoneViewport)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [isVisible, setIsVisible] = useState(() =>
-    !isStandaloneApp() && sessionStorage.getItem(DISMISSED_KEY) !== 'true',
-  )
+  const [isVisible, setIsVisible] = useState(false)
   const [showInstallShortcut, setShowInstallShortcut] = useState(() =>
-    !isStandaloneApp() && sessionStorage.getItem(DISMISSED_KEY) === 'true',
+    !isStandaloneApp(),
   )
   const [installStage, setInstallStage] = useState<InstallStage>('intro')
   const [selectedBrowser, setSelectedBrowser] = useState<InstallBrowser | null>(null)
@@ -96,14 +92,11 @@ export function PwaInstallPrompt() {
   }, [])
 
   const closePrompt = () => {
-    sessionStorage.setItem(DISMISSED_KEY, 'true')
     setIsVisible(false)
-    setShowInstallShortcut(true)
   }
 
   const openInstallShortcut = () => {
     setIsVisible(true)
-    setShowInstallShortcut(false)
     setInstallStage('choose')
   }
 
