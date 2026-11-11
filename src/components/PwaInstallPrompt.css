@@ -397,14 +397,12 @@
 @keyframes pwa-dialog-enter { from { opacity: 0; transform: translateY(calc(-50% + 8px)) scale(.98); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
 
 .pwa-install-shortcut {
-  position: fixed;
-  z-index: 1900;
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
-  right: max(14px, env(safe-area-inset-right, 0px));
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   gap: 7px;
+  margin-left: auto;
   min-height: 42px;
   padding: 0 15px;
   border: 1px solid rgba(255, 105, 107, .55);

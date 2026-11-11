@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { BatteryFull, CalendarDays, Camera, ChevronDown, ChevronLeft, ChevronRight, Clock3, Compass, Copy, Download, Images, MapPinned, Menu, MessageCircle, MoreVertical, Music2, Phone, Play, Plus, RotateCcw, Settings, Share, Smartphone, Signal, Wifi, X } from 'lucide-react'
 import './PwaInstallPrompt.css'
 
@@ -25,6 +26,7 @@ export function PwaInstallPrompt() {
   const [isPhone, setIsPhone] = useState(isPhoneViewport)
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isVisible, setIsVisible] = useState(false)
+  const [installTarget, setInstallTarget] = useState<HTMLElement | null>(null)
   const [showInstallShortcut, setShowInstallShortcut] = useState(() =>
     !isStandaloneApp(),
   )
@@ -60,6 +62,27 @@ export function PwaInstallPrompt() {
     phoneViewport.addEventListener('change', updateDeviceType)
     return () => phoneViewport.removeEventListener('change', updateDeviceType)
   }, [])
+
+  useEffect(() => {
+    if (!isPhone) {
+      setInstallTarget(null)
+      return
+    }
+
+    const findInstallTarget = () => {
+      const header = document.querySelector<HTMLElement>('.public-top-bar')
+      if (!header) return false
+      setInstallTarget(header)
+      return true
+    }
+
+    if (findInstallTarget()) return
+    const observer = new MutationObserver(() => {
+      if (findInstallTarget()) observer.disconnect()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [isPhone])
 
   useEffect(() => {
     const hideWhenInstalled = () => {
@@ -161,11 +184,13 @@ export function PwaInstallPrompt() {
   if (!isPhone) return null
 
   if (!isVisible && showInstallShortcut) {
-    return (
+    if (!installTarget) return null
+    return createPortal(
       <button className="pwa-install-shortcut" type="button" onClick={openInstallShortcut} aria-label="Ver cómo instalar Full China" title="Instalar Full China">
         <Download size={16} aria-hidden="true" />
         <span>Instalar</span>
-      </button>
+      </button>,
+      installTarget,
     )
   }
 
