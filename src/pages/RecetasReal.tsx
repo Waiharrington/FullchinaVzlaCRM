@@ -331,7 +331,10 @@ export function RecetasReal() {
       const itemsPayload = activeItems.map((i) => ({
         ingredientId: i.ingredientId,
         unitId: i.unitId,
-        quantity: i.overrideQuantity / consumeServings,
+        // La RPC manual recibe la cantidad total a descontar. El campo editable
+        // ya está multiplicado por persona × raciones; dividir aquí hacía que
+        // se descontara solo una ración aunque se registraran varias personas.
+        quantity: i.overrideQuantity,
       }))
 
       await registerStaffMealConsumption({
