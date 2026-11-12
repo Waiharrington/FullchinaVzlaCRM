@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Flame, Heart, LoaderCircle, Pause, Pencil, Play, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
+import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pause, Pencil, Play, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
@@ -161,6 +161,8 @@ const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
 const PUBLIC_WHATSAPP_PHONE = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
+const LOCAL_ORDER_TEST_MODE = import.meta.env.DEV
+  && new URLSearchParams(window.location.search).get('modoPrueba') === '1'
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
 // v2 intentionally drops caches created while the public RPC still returned
@@ -519,6 +521,10 @@ export function PublicMenu() {
   const [quickVariantId, setQuickVariantId] = useState<string | null>(null)
   const [quickVariantHasModifiers, setQuickVariantHasModifiers] = useState(false)
   const [quickVariantOptionsLabel, setQuickVariantOptionsLabel] = useState('Ver opciones')
+  const [quickVariantProteinGroup, setQuickVariantProteinGroup] = useState<ProductModifierGroup | null>(null)
+  const [quickVariantProteinSelection, setQuickVariantProteinSelection] = useState<Record<string, number>>({})
+  const [quickVariantProteinDraft, setQuickVariantProteinDraft] = useState<Record<string, number>>({})
+  const [quickProteinDialogOpen, setQuickProteinDialogOpen] = useState(false)
   const [quickVariantQuantity, setQuickVariantQuantity] = useState(1)
   const [closingQuickVariant, setClosingQuickVariant] = useState(false)
   const [detailQuantity, setDetailQuantity] = useState(1)
@@ -554,7 +560,7 @@ export function PublicMenu() {
   const [showStoreClosedNotice, setShowStoreClosedNotice] = useState(() => {
     const showPreviewNotice = import.meta.env.DEV
       && new URLSearchParams(window.location.search).get('showClosedNotice') === '1'
-    return !getStoreClock().isOpen || showPreviewNotice
+    return showPreviewNotice || (!LOCAL_ORDER_TEST_MODE && !getStoreClock().isOpen)
   })
   const [showWelcomeNotice, setShowWelcomeNotice] = useState(() => {
     try { return localStorage.getItem(WELCOME_DISMISSED_KEY) !== 'true' } catch { return true }
@@ -1538,7 +1544,7 @@ export function PublicMenu() {
     const timer = window.setInterval(() => setStoreClock(getStoreClock(pageSettings)), 60_000)
     return () => window.clearInterval(timer)
   }, [pageSettings])
-  const isStoreOpen = storeClock.isOpen
+  const isStoreOpen = LOCAL_ORDER_TEST_MODE || storeClock.isOpen
   const blockClosedStoreAdd = () => {
     if (isStoreOpen) return false
     setShowStoreClosedNotice(true)
@@ -1966,8 +1972,27 @@ export function PublicMenu() {
       setQuickVariantGroup(null)
       setQuickVariantId(null)
       setQuickVariantQuantity(1)
+      setQuickVariantProteinGroup(null)
+      setQuickVariantProteinSelection({})
+      setQuickVariantProteinDraft({})
+      setQuickProteinDialogOpen(false)
       setClosingQuickVariant(false)
     }, 200)
+  }
+
+  const openQuickProteinDialog = () => {
+    if (!quickVariantProteinGroup) return
+    setQuickVariantProteinDraft(quickVariantProteinSelection)
+    setQuickProteinDialogOpen(true)
+  }
+
+  const toggleQuickProteinDraft = (optionId: string) => {
+    setQuickVariantProteinDraft(current => ({ ...current, [optionId]: current[optionId] ? 0 : 1 }))
+  }
+
+  const applyQuickProteinDraft = () => {
+    setQuickVariantProteinSelection(quickVariantProteinDraft)
+    setQuickProteinDialogOpen(false)
   }
 
   const requestQuickAdd = async (group: MenuProductGroup, quantity = 1) => {
@@ -2031,11 +2056,27 @@ export function PublicMenu() {
         modifierGroups = await getPublicProductModifiers(variant.product.id)
         PUBLIC_MODIFIER_CACHE.set(variant.product.id, modifierGroups)
       }
-      if (modifierGroups.some(group => group.minSelections > 0 || isIncludedProteinGroup(group))) {
+      if (modifierGroups.some(group => group.minSelections > 0 && !isIncludedProteinGroup(group))) {
         personalizeQuickVariant()
         return
       }
-      if (addProduct(variant.product, quickVariantQuantity)) {
+      const includedProteinGroup = modifierGroups.find(isIncludedProteinGroup)
+      const selectedProteinGroup = includedProteinGroup && quickVariantProteinGroup?.modifierId === includedProteinGroup.modifierId
+        ? quickVariantProteinGroup
+        : includedProteinGroup
+      const proteinSelection = selectedProteinGroup && quickVariantProteinGroup?.modifierId === selectedProteinGroup.modifierId
+        ? quickVariantProteinSelection
+        : selectedProteinGroup ? getDefaultModifierSelection([selectedProteinGroup]) : {}
+      const proteinModifiers: WebOrderCartItem['modifiers'] = selectedProteinGroup
+        ? selectedProteinGroup.options.flatMap(option => proteinSelection[option.id] > 0
+          ? [{ optionId: option.id, quantity: proteinSelection[option.id] }]
+          : [])
+        : []
+      const removedProteins = selectedProteinGroup?.options
+        .filter(option => !(proteinSelection[option.id] ?? 0))
+        .map(option => formatSpanishText(option.name)) ?? []
+      const proteinNotes = removedProteins.length ? `Sin: ${removedProteins.join(', ')}` : ''
+      if (addProduct(variant.product, quickVariantQuantity, proteinNotes, 0, proteinModifiers)) {
         setCardQtys(prev => ({ ...prev, [quickVariantGroup.key]: 1 }))
         closeQuickVariant()
       }
@@ -2058,7 +2099,7 @@ export function PublicMenu() {
       setQuickVariantId(null)
       setQuickVariantQuantity(1)
       setClosingQuickVariant(false)
-      openGroup(group, undefined, variant.product.id)
+      openGroup(group, undefined, variant.product.id, quickVariantProteinGroup ? quickVariantProteinSelection : undefined)
       setDetailQuantity(quantity)
     }, 200)
   }
@@ -2191,12 +2232,22 @@ export function PublicMenu() {
     let cancelled = false
     setQuickVariantHasModifiers(false)
     setQuickVariantOptionsLabel('Ver opciones')
+    setQuickVariantProteinGroup(null)
+    setQuickVariantProteinSelection({})
+    setQuickVariantProteinDraft({})
+    setQuickProteinDialogOpen(false)
     if (!quickSelectedVariant) return () => { cancelled = true }
     const productId = quickSelectedVariant.product.id
     const applyModifierSummary = (groups: ProductModifierGroup[]) => {
       const availableGroups = filterProteinExtraGroups(groups, quickSelectedVariant.product.allowProteinExtras !== false)
-      setQuickVariantHasModifiers(availableGroups.some(group => group.options.length > 0))
-      setQuickVariantOptionsLabel('Ver opciones')
+      const includedProteinGroup = availableGroups.find(group => group.options.length > 0 && isIncludedProteinGroup(group)) ?? null
+      const hasOptions = availableGroups.some(group => group.options.length > 0)
+      const defaultProteinSelection = includedProteinGroup ? getDefaultModifierSelection([includedProteinGroup]) : {}
+      setQuickVariantProteinGroup(includedProteinGroup)
+      setQuickVariantProteinSelection(defaultProteinSelection)
+      setQuickVariantProteinDraft(defaultProteinSelection)
+      setQuickVariantHasModifiers(hasOptions)
+      setQuickVariantOptionsLabel(includedProteinGroup ? 'Quitar alguna proteína' : 'Ver opciones')
     }
     const cached = PUBLIC_MODIFIER_CACHE.get(productId)
     if (cached) {
@@ -2210,6 +2261,9 @@ export function PublicMenu() {
       if (!cancelled) {
         setQuickVariantHasModifiers(false)
         setQuickVariantOptionsLabel('Ver opciones')
+        setQuickVariantProteinGroup(null)
+        setQuickVariantProteinSelection({})
+        setQuickVariantProteinDraft({})
       }
     })
     return () => { cancelled = true }
@@ -2595,13 +2649,22 @@ export function PublicMenu() {
     if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return setFieldError('phone') }
     if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return setAddressFieldError('address') }
     if (!cart.length) return setError('Tu carrito está vacío.')
-    if (publicWhatsappPhone.length < 7) {
+    if (!LOCAL_ORDER_TEST_MODE && publicWhatsappPhone.length < 7) {
       setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
       return
     }
     if (orderType === 'delivery' && (!deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
       setStep('address')
       setError('No podemos confirmar el costo de entrega para esa ubicación. Revisa el punto en el mapa o elige retiro en el local.')
+      return
+    }
+
+    if (LOCAL_ORDER_TEST_MODE) {
+      setOrderCode(`PRUEBA-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
+      setWhatsappUrl('')
+      setSubmitting(false)
+      submitLockRef.current = false
+      setStep('whatsapp')
       return
     }
 
@@ -2740,7 +2803,7 @@ export function PublicMenu() {
     const isQuickAddPending = pendingQuickAdds.has(group.key)
     return (
       <article className="public-prod-card" key={group.key}>
-        {group.variants.find(v => v.product.menuLabel)?.product.menuLabel === 'free_drink' && (
+        {group.variants.length > 0 && group.variants.every(v => v.product.menuLabel === 'free_drink') && (
           <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="public-free-drink-sticker" />
         )}
         <div className="public-prod-img-wrap" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
@@ -2923,8 +2986,8 @@ export function PublicMenu() {
               <div className="public-nav-status-badges">
                 <div className={`public-nav-status-pill${isStoreOpen ? ' is-open' : ' is-closed'}`}>
                   <span className="public-nav-status-dot" />
-                  <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>
-                  <span className="public-nav-status-hours"><Clock size={12} aria-hidden="true" />{isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
+                  <strong>{LOCAL_ORDER_TEST_MODE ? 'Modo de prueba' : isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>
+                  <span className="public-nav-status-hours"><Clock size={12} aria-hidden="true" />{LOCAL_ORDER_TEST_MODE ? 'No envía pedidos' : isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
                 </div>
                 {bcvRate && (
                   <div className="public-nav-bcv-pill" title="Tasa oficial del Banco Central de Venezuela">
@@ -2957,7 +3020,7 @@ export function PublicMenu() {
             )}
           </div>
           <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
-            <i /> <strong>{isStoreOpen ? 'Abierto' : 'Cerrado'}</strong><span className="public-status-hours"><Clock size={13} aria-hidden="true" />{isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
+            <i /> <strong>{LOCAL_ORDER_TEST_MODE ? 'Modo de prueba' : isStoreOpen ? 'Abierto' : 'Cerrado'}</strong><span className="public-status-hours"><Clock size={13} aria-hidden="true" />{LOCAL_ORDER_TEST_MODE ? 'No envía pedidos' : isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
           </span>
           <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) { heroSearchRef.current?.focus(); setShowSearch(true) } }}>
             <Search size={16} />
@@ -4117,6 +4180,7 @@ export function PublicMenu() {
                     <span className="public-variant-option-media">
                       <img src={inheritedImage} alt="" />
                       {selected && <span className="public-variant-option-badge">Elegido</span>}
+                      {product.menuLabel === 'free_drink' && <img src="/icons/free-drink-badge.png" alt="Incluye refresco gratis" className="public-variant-free-drink-badge" />}
                       <span className="public-variant-option-check"><Check size={16} /></span>
                     </span>
                     <span className="public-variant-option-copy">
@@ -4141,7 +4205,7 @@ export function PublicMenu() {
                   <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
                 </div>
                 <div className="public-variant-actions">
-                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={personalizeQuickVariant}><ChevronRight size={15} aria-hidden="true" />{quickVariantOptionsLabel}</button>}
+                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={quickVariantProteinGroup ? openQuickProteinDialog : personalizeQuickVariant}>{quickVariantOptionsLabel === 'Quitar alguna proteína' ? <Drumstick size={15} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}<span>{quickVariantOptionsLabel}</span>{quickVariantProteinGroup && <small>Opcional</small>}</button>}
                   <button type="button" className="public-variant-add" onClick={confirmQuickVariant} disabled={confirmingQuickVariant} aria-busy={confirmingQuickVariant}>
                     {confirmingQuickVariant ? <LoaderCircle className="public-add-spinner" size={16} /> : <ShoppingCart size={16} />}
                     <span>{confirmingQuickVariant ? 'Revisando opciones…' : `Agregar · ${money(quickSelectedVariant.product.price * quickVariantQuantity)}`}</span>
@@ -4154,6 +4218,48 @@ export function PublicMenu() {
         document.body
       )}
 
+      {quickProteinDialogOpen && quickVariantProteinGroup && quickSelectedVariant && createPortal(
+        <div className="public-protein-removal-backdrop" onClick={() => setQuickProteinDialogOpen(false)}>
+          <section className="public-protein-removal-dialog" role="dialog" aria-modal="true" aria-labelledby="public-protein-removal-title" onClick={event => event.stopPropagation()}>
+            <header className="public-protein-removal-header">
+              <span className="public-protein-removal-icon"><Drumstick size={20} aria-hidden="true" /></span>
+              <div>
+                <small>PERSONALIZA TU PLATO</small>
+                <h2 id="public-protein-removal-title">¿Qué proteína quieres quitar?</h2>
+                <p>{productTitle(quickVariantGroup?.name ?? quickSelectedVariant.product.name)} · {money(quickSelectedVariant.product.price)}</p>
+              </div>
+              <button type="button" className="public-protein-removal-close" onClick={() => setQuickProteinDialogOpen(false)} aria-label="Cerrar"><X size={18} /></button>
+            </header>
+            <div className="public-protein-removal-body">
+              <p>Desmarca las que no quieras. No se sustituyen y el precio no cambia.</p>
+              <div className="public-protein-removal-list">
+                {quickVariantProteinGroup.options.map(option => {
+                  const staysInDish = (quickVariantProteinDraft[option.id] ?? 0) > 0
+                  return (
+                    <button
+                      type="button"
+                      className={`public-protein-removal-option${staysInDish ? ' is-kept' : ' is-removed'}`}
+                      key={option.id}
+                      aria-pressed={staysInDish}
+                      onClick={() => toggleQuickProteinDraft(option.id)}
+                    >
+                      <span className="public-protein-removal-check" aria-hidden="true">{staysInDish ? <Check size={16} /> : <Minus size={16} />}</span>
+                      <strong>{formatSpanishText(option.name)}</strong>
+                      <small>{staysInDish ? 'Se queda' : 'Se quitará'}</small>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <footer className="public-protein-removal-footer">
+              <button type="button" className="public-protein-removal-cancel" onClick={() => setQuickProteinDialogOpen(false)}>Cancelar</button>
+              <button type="button" className="public-protein-removal-apply" onClick={applyQuickProteinDraft}>Aplicar cambios</button>
+            </footer>
+          </section>
+        </div>,
+        document.body,
+      )}
+
       {selectedGroup && selectedProduct && createPortal(
         <div className={`public-modal-backdrop ${closingDetail ? 'closing' : ''}`} onClick={closeProductDetail}>
           <section
@@ -4163,7 +4269,7 @@ export function PublicMenu() {
           >
             <div className="ppdm-image">
               <img src={optimizedProductImage(selectedProduct.imageUrl) || productImage(selectedGroup.category)} alt={selectedProduct.name} decoding="async" />
-              {selectedGroup.variants.find(variant => variant.product.menuLabel)?.product.menuLabel === 'free_drink' && (
+              {selectedProduct.menuLabel === 'free_drink' && (
                 <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="ppdm-free-drink-sticker" />
               )}
               <button className="ppdm-close" onClick={closeProductDetail} aria-label="Cerrar detalle"><X /></button>
@@ -4230,6 +4336,7 @@ export function PublicMenu() {
                         <span className="ppdm-option-name">
                           <span>{variantCopy.name}</span>
                           {variantCopy.count && <small className="ppdm-option-count">×{variantCopy.count}</small>}
+                          {product.menuLabel === 'free_drink' && <small className="ppdm-option-free-drink"><CupSoda size={12} aria-hidden="true" /> Refresco gratis</small>}
                         </span>
                         <span className="ppdm-option-price">{money(product.price)}</span>
                       </button>
@@ -4369,21 +4476,23 @@ export function PublicMenu() {
             <div className="public-whatsapp-ready-content">
               <div className="public-whatsapp-ready-hero">
               <span className="public-whatsapp-ready-icon" aria-hidden="true"><span className="public-whatsapp-mark"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span></span>
-              <h1 id="whatsapp-ready-title">¡Pedido registrado!</h1>
+              <h1 id="whatsapp-ready-title">{LOCAL_ORDER_TEST_MODE ? 'Vista previa del pedido' : '¡Pedido registrado!'}</h1>
               <strong>#{orderCode || 'WEB-PENDIENTE'}</strong>
               {submitting && <span className="public-whatsapp-ready-loading" role="status" aria-live="polite"><span className="public-loading-dots" aria-hidden="true"><i /><i /><i /></span>Preparando tu enlace de WhatsApp…</span>}
               </div>
               <section className="public-whatsapp-ready-card">
-              <span className="public-whatsapp-ready-kicker">Muy importante:</span>
-              <h2>Como último paso, envía tu pedido por WhatsApp a Full China para coordinar los detalles finales.</h2>
-              <p>Presiona ahora el botón de “Enviar pedido por WhatsApp” y se abrirá una conversación donde debes enviar el mensaje que hemos preparado para ti.</p>
+              <span className="public-whatsapp-ready-kicker">{LOCAL_ORDER_TEST_MODE ? 'MODO DE PRUEBA' : 'Muy importante:'}</span>
+              <h2>{LOCAL_ORDER_TEST_MODE ? 'El pedido no se registró ni se envió.' : 'Como último paso, envía tu pedido por WhatsApp a Full China para coordinar los detalles finales.'}</h2>
+              <p>{LOCAL_ORDER_TEST_MODE ? 'Esta vista previa te permite probar el recorrido. Puedes volver al pedido y hacer cambios.' : 'Presiona ahora el botón de “Enviar pedido por WhatsApp” y se abrirá una conversación donde debes enviar el mensaje que hemos preparado para ti.'}</p>
+              {!LOCAL_ORDER_TEST_MODE && <>
               <span className="public-whatsapp-ready-arrow" aria-hidden="true">↓</span>
               <button type="button" className="public-whatsapp-ready-btn" onClick={openWhatsApp} disabled={!whatsappUrl}>
                 <span className="public-whatsapp-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3-.7-3.1Z" /></svg></span>
                 <span>Enviar pedido por WhatsApp</span><ChevronRight aria-hidden="true" />
               </button>
-              <button type="button" className="public-whatsapp-review-link" onClick={returnToOrderReview} disabled={submitting}>← Revisar mi pedido</button>
-              <small className="public-whatsapp-ready-footnote">Full China recibirá tu solicitud por esta conversación.</small>
+              </>}
+              <button type="button" className="public-whatsapp-review-link" onClick={returnToOrderReview} disabled={submitting}>{LOCAL_ORDER_TEST_MODE ? '← Volver a revisar el pedido' : '← Revisar mi pedido'}</button>
+              <small className="public-whatsapp-ready-footnote">{LOCAL_ORDER_TEST_MODE ? 'La prueba no crea pedidos reales.' : 'Full China recibirá tu solicitud por esta conversación.'}</small>
               </section>
             </div>
           </section>
@@ -4518,21 +4627,21 @@ export function PublicMenu() {
             <div className="public-welcome-menu-heading">
               <span>BIENVENIDO A LA CASA</span>
               <h2 id="public-welcome-title">La carta de Full China</h2>
-              <p id="public-welcome-copy">Arma tu pedido fácilmente. <strong>No tienes que hacer ningún pago en esta página.</strong> Al terminar, te conectamos por WhatsApp con Full China para confirmar tu compra y coordinar el pago.</p>
+              <p id="public-welcome-copy">Arma tu pedido aquí. <strong>No pagas en esta página.</strong> Al finalizar, confirmas la compra y coordinas el pago por WhatsApp con Full China.</p>
             </div>
             <div className="public-welcome-menu-list" aria-label="Pasos para hacer tu pedido">
               <div className="public-welcome-menu-section-title">TU PEDIDO, PASO A PASO</div>
               <div className="public-welcome-menu-item">
                 <span><b>01</b><strong>Elige tus platos</strong></span>
-                <small>Agrega tus favoritos al carrito.</small>
+                <small>Agrégalos al carrito.</small>
               </div>
               <div className="public-welcome-menu-item">
                 <span><b>02</b><strong>Completa tus datos</strong></span>
-                <small>Revisa el resumen de tu pedido.</small>
+                <small>Revisa tu pedido.</small>
               </div>
               <div className="public-welcome-menu-item">
                 <span><b>03</b><strong>Confirma por WhatsApp</strong></span>
-                <small>Con Full China completas la compra y coordinas el pago.</small>
+                <small>Allí confirmas la compra y coordinas el pago.</small>
               </div>
             </div>
             <label className="public-welcome-dismiss-choice">
