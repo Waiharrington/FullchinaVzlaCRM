@@ -38,6 +38,7 @@
     <title>Full China</title>
     <style>
       html, body { margin: 0; min-height: 100%; background: #0a0b0e; }
+      html:has(#public-welcome-static) { overflow: hidden; }
       #root { min-height: 100dvh; background: #0a0b0e; }
       html[data-skip-public-welcome] #public-welcome-static { display: none !important; }
     </style>

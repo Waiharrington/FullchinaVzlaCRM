@@ -8,8 +8,11 @@ const checkbox = document.getElementById('public-welcome-dismiss') as HTMLInputE
 const status = document.getElementById('public-welcome-status')
 
 let appLoad: Promise<unknown> | null = null
+let needsVersionRefresh = false
 
-window.addEventListener('fullchina:public-menu-ready', () => staticWelcome?.remove(), { once: true })
+window.addEventListener('fullchina:public-menu-ready', () => {
+  staticWelcome?.remove()
+}, { once: true })
 
 function loadMenuFonts() {
   const fonts = document.createElement('link')
@@ -20,25 +23,63 @@ function loadMenuFonts() {
   document.head.append(fonts)
 }
 
-function loadCustomerApp() {
-  if (appLoad) return appLoad
+async function refreshCustomerVersion() {
   if (button) {
     button.disabled = true
-    button.setAttribute('aria-busy', 'true')
-    button.textContent = 'Abriendo la carta…'
+    button.textContent = 'Actualizando…'
   }
-  if (status) status.textContent = 'Cargando el menú. Esto solo toma un momento.'
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration()
+    await registration?.update()
+    const waitingWorker = registration?.waiting
+    if (waitingWorker) {
+      await new Promise<void>(resolve => {
+        const timeout = window.setTimeout(resolve, 8000)
+        waitingWorker.addEventListener('statechange', () => {
+          if (waitingWorker.state === 'activated') {
+            window.clearTimeout(timeout)
+            resolve()
+          }
+        })
+        waitingWorker.postMessage({ type: 'SKIP_WAITING' })
+      })
+    }
+  } catch (error) {
+    console.warn('No se pudo consultar la actualización del service worker:', error)
+  }
+  try {
+    // Vacía únicamente el shell y los JS/CSS cacheados de la app. Se conservan
+    // las imágenes del menú y los datos locales del cliente.
+    if ('caches' in window) {
+      const appCaches = await caches.keys()
+      await Promise.all(appCaches
+        .filter(name => name === 'app-assets' || name.startsWith('workbox-precache-'))
+        .map(name => caches.delete(name)))
+    }
+  } catch (error) {
+    console.warn('No se pudo limpiar por completo la caché de navegación:', error)
+  }
+  const url = new URL('/pedir', window.location.origin)
+  url.searchParams.set('actualizar', String(Date.now()))
+  window.location.replace(url)
+}
+
+function loadCustomerApp() {
+  if (appLoad) return appLoad
   loadMenuFonts()
 
   appLoad = import('./main').catch(error => {
     appLoad = null
+    document.documentElement.removeAttribute('data-skip-public-welcome')
     try { sessionStorage.removeItem(PENDING_DISMISS_KEY) } catch { /* acceso a almacenamiento opcional */ }
+    if (staticWelcome && !staticWelcome.isConnected) document.body.prepend(staticWelcome)
+    needsVersionRefresh = true
     if (button) {
       button.disabled = false
       button.removeAttribute('aria-busy')
-      button.textContent = 'Reintentar abrir la carta'
+      button.textContent = 'Actualizar menú'
     }
-    if (status) status.textContent = 'No se pudo cargar el menú. Revisa tu conexión e inténtalo de nuevo.'
+    if (status) status.textContent = 'Hay una nueva versión del menú. Actualiza para ver la carta más reciente.'
     console.error('No se pudo abrir la carta de Full China:', error)
     return undefined
   })
@@ -56,6 +97,10 @@ if (skipWelcome || !root || !button || !checkbox) {
   void loadCustomerApp()
 } else {
   button.addEventListener('click', () => {
+    if (needsVersionRefresh) {
+      void refreshCustomerVersion()
+      return
+    }
     try {
       if (checkbox.checked) {
         localStorage.setItem(DISMISSED_KEY, 'true')
@@ -64,6 +109,9 @@ if (skipWelcome || !root || !button || !checkbox) {
         sessionStorage.setItem(PENDING_DISMISS_KEY, 'true')
       }
     } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
+    // Quita la bienvenida en el mismo gesto. La carta se monta detrás y muestra
+    // sus avisos reales (por ejemplo, el estado de abierto/cerrado) al terminar.
+    staticWelcome?.remove()
     void loadCustomerApp()
   })
 }
