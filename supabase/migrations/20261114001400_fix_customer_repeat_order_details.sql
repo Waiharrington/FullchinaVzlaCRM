@@ -1,5 +1,5 @@
--- Allow viewing a customer's own loyalty-visit orders after their fulfillment status changes.
--- This function intentionally exposes no payment records and never creates an order.
+-- Expose the request notes to the customer order history/repeat RPC and keep
+-- order details restricted to paid orders linked to the authenticated account.
 BEGIN;
 
 CREATE OR REPLACE FUNCTION fullchinavzla.fn_get_customer_order_for_repeat(p_order_id UUID)
@@ -57,13 +57,15 @@ BEGIN
    AND account.status = 'active'
   JOIN fullchinavzla.customers a_customer ON a_customer.id = account.customer_id
   LEFT JOIN LATERAL (
-    SELECT r.customer_phone, r.customer_identification, r.delivery_address, r.delivery_lat, r.delivery_lng
+    SELECT r.customer_phone, r.customer_identification, r.notes, r.delivery_address,
+           r.delivery_lat, r.delivery_lng
     FROM fullchinavzla.web_order_requests r
     WHERE r.converted_order_id = o.id
     ORDER BY r.created_at DESC, r.id DESC
     LIMIT 1
   ) request ON TRUE
   WHERE o.id = p_order_id
+    AND o.status = 'paid'
     AND EXISTS (
       SELECT 1 FROM fullchinavzla.customer_loyalty_visits visit
       WHERE visit.order_id = o.id AND visit.customer_id = account.customer_id
