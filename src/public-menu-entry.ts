@@ -9,18 +9,32 @@ const status = document.getElementById('public-welcome-status')
 
 let appLoad: Promise<unknown> | null = null
 let needsVersionRefresh = false
+let menuFontsRequested = false
 
 window.addEventListener('fullchina:public-menu-ready', () => {
   staticWelcome?.remove()
 }, { once: true })
 
 function loadMenuFonts() {
+  if (menuFontsRequested) return
+  menuFontsRequested = true
   const fonts = document.createElement('link')
   fonts.rel = 'stylesheet'
   fonts.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Graduate&family=Outfit:wght@300;400;500;600;700;800;900&display=swap'
   fonts.media = 'print'
   fonts.onload = () => { fonts.media = 'all' }
   document.head.append(fonts)
+}
+
+function warmCustomerMenu() {
+  // Descarga en paralelo los módulos y el catálogo al abrir la carta. La
+  // bienvenida permanece visible hasta que la vista real esté montada.
+  loadMenuFonts()
+  void import('./App').catch(() => undefined)
+  void import('./pages/PublicMenu').catch(() => undefined)
+  void import('./lib/publicOrders')
+    .then(({ getPublicCatalog }) => getPublicCatalog())
+    .catch(() => undefined)
 }
 
 async function refreshCustomerVersion() {
@@ -99,6 +113,7 @@ try {
 
 if (skipWelcome || !root || !button || !checkbox) {
   staticWelcome?.remove()
+  warmCustomerMenu()
   void loadCustomerApp()
 } else {
   button.addEventListener('click', () => {
@@ -114,6 +129,7 @@ if (skipWelcome || !root || !button || !checkbox) {
         sessionStorage.setItem(PENDING_DISMISS_KEY, 'true')
       }
     } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
+    warmCustomerMenu()
     // Mantén la bienvenida como superficie visible mientras se descargan y
     // montan los módulos. `fullchina:public-menu-ready` la retira al primer
     // render del menú para evitar un destello negro entre ambas vistas.
