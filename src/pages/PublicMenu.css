@@ -1189,6 +1189,43 @@ button.mobile-only {
 .public-empty-menu p { margin: 0 auto 18px; max-width: 260px; font-size: 14px; line-height: 1.45; }
 .public-empty-menu button { border: 0; border-radius: 10px; padding: 11px 16px; background: #E31B2B; color: #FFF; font: 700 13px 'DM Sans'; cursor: pointer; }
 
+.public-catalog-skeleton {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+.public-catalog-skeleton-card {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 75, 75, .15);
+  border-radius: 18px;
+  background: rgba(20, 22, 28, .6);
+}
+.public-catalog-skeleton-image,
+.public-catalog-skeleton-line {
+  display: block;
+  background: linear-gradient(100deg, rgba(255,255,255,.045) 20%, rgba(255,255,255,.105) 38%, rgba(255,255,255,.045) 58%);
+  background-size: 220% 100%;
+  animation: public-catalog-shimmer 1.5s ease-in-out infinite;
+}
+.public-catalog-skeleton-image { aspect-ratio: 1.15; border-radius: 12px; }
+.public-catalog-skeleton-line { height: 11px; border-radius: 99px; }
+.public-catalog-skeleton-line-title { width: 78%; height: 14px; }
+.public-catalog-skeleton-line-copy { width: 58%; }
+.public-catalog-skeleton-line-price { width: 36%; margin-top: 3px; }
+@keyframes public-catalog-shimmer { to { background-position-x: -220%; } }
+@media (min-width: 768px) {
+  .public-catalog-skeleton { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-catalog-skeleton-image,
+  .public-catalog-skeleton-line { animation: none; }
+}
+
 /* Cart FAB */
 .public-cart-fab-wrap {
   position: fixed;
@@ -15946,7 +15983,9 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   place-items: center;
   padding: max(18px, env(safe-area-inset-top, 0px)) 18px max(18px, env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
-  background: rgba(4, 5, 8, .82);
+  /* Igual que el fallback HTML: Safari no mezcla el fondo del body bajo
+     el área segura inferior al cambiar el control a React. */
+  background: #050507;
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   animation: public-store-closed-fade 220ms ease both;
@@ -16116,11 +16155,62 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   background: transparent;
 }
 
-/* In the installed iOS PWA, keep the checkout logo below the Dynamic Island
-   without moving the cart heading or reducing the space available to the cart. */
-@media (display-mode: standalone) and (max-width: 767px) {
+/* Keep the complete mobile checkout header inside iOS's safe area, following
+   the same top inset used by the main mobile menu header. */
+@media (max-width: 767px) {
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: end !important;
+    justify-items: stretch !important;
+    column-gap: 8px !important;
+    min-height: 0 !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px !important;
+    overflow: visible !important;
+  }
+
   .public-drawer-backdrop .public-cart-drawer > .public-review-header > img {
-    top: calc(env(safe-area-inset-top, 0px) + 6px) !important;
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    grid-column: 1 / -1 !important;
     width: clamp(88px, 26vw, 104px) !important;
+    margin: 0 auto 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading {
+    position: static !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transform: none !important;
+    text-align: center !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-header .public-review-heading {
+    grid-column: 1 !important;
+    text-align: left !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-header .public-estimate-card {
+    grid-column: 2 !important;
+    align-self: end !important;
+    margin-bottom: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-back {
+    top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+    left: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm > .public-review-header {
+    padding-bottom: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-confirm > .public-review-header .public-review-heading {
+    top: auto !important;
+    left: auto !important;
+    max-width: 100% !important;
   }
 }

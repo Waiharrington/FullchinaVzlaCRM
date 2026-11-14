@@ -6,7 +6,9 @@
   place-items: center;
   padding: max(18px, env(safe-area-inset-top, 0px)) 18px max(18px, env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
-  background: rgba(4, 5, 8, .82);
+  /* El fondo sólido evita que Safari mezcle el color del body en la zona
+     segura inferior antes de que React termine de montar el menú. */
+  background: #050507;
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   animation: public-store-closed-fade 220ms ease both;
@@ -58,7 +60,8 @@
 .public-welcome-confirm:hover { transform: translateY(-1px); box-shadow: 0 10px 27px rgba(205,16,37,.35); }
 .public-welcome-confirm:focus-visible { outline: 3px solid #ffc83d; outline-offset: 3px; }
 @media (max-width: 560px) {
-  .public-welcome-backdrop { padding: max(10px, env(safe-area-inset-top, 0px)) 22px max(10px, env(safe-area-inset-bottom, 0px)); }
+  /* Igualar los márgenes móviles de la bienvenida estática y la de React. */
+  .public-welcome-backdrop { padding: max(10px, env(safe-area-inset-top, 0px)) 12px max(10px, env(safe-area-inset-bottom, 0px)); }
   .public-welcome-dialog { max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: hidden; padding: 15px 16px 14px; border-radius: 21px; }
   .public-welcome-brand { gap: 4px; margin-bottom: 8px; }
   .public-welcome-brand img { width: 82px; height: 38px; }

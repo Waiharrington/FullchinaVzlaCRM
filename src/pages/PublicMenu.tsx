@@ -308,6 +308,21 @@ function warmProfileBackgroundImages(prioritizeAuth = false) {
 
 type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 
+function PublicCatalogLoadingSkeleton() {
+  return (
+    <div className="public-catalog-skeleton" role="status" aria-label="Cargando platos del menú">
+      {Array.from({ length: 4 }, (_, index) => (
+        <article className="public-catalog-skeleton-card" key={index} aria-hidden="true">
+          <span className="public-catalog-skeleton-image" />
+          <span className="public-catalog-skeleton-line public-catalog-skeleton-line-title" />
+          <span className="public-catalog-skeleton-line public-catalog-skeleton-line-copy" />
+          <span className="public-catalog-skeleton-line public-catalog-skeleton-line-price" />
+        </article>
+      ))}
+    </div>
+  )
+}
+
 const readDesktopTab = (): DesktopTab => {
   if (typeof window === 'undefined') return 'inicio'
   try {
@@ -3151,7 +3166,7 @@ export function PublicMenu() {
           {error && products.length > 0 && !cartOpen && <Toast type="error" message={error} onClose={() => setError('')} />}
           {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
             <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
-              {visibleGroups.length === 0 ? (
+              {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                 <div className="public-empty-menu">
                   <span><Utensils size={42} /></span>
                   <h3>{showFavorites ? 'Todavía no tienes favoritos' : 'No encontramos ese plato'}</h3>
@@ -3677,7 +3692,7 @@ export function PublicMenu() {
 
                 {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
                   <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
-                    {visibleGroups.length === 0 ? (
+                    {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                       <div className="public-empty-menu">
                         <span className="public-empty-menu-wok" aria-hidden="true">
                           <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
