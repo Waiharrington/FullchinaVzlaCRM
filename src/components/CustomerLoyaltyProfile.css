@@ -737,6 +737,17 @@
 .customer-history-unavailable strong{font-size:16px;color:#fff}
 .customer-history-unavailable p{font-size:12px;margin:10px 0}
 .customer-history-unavailable small{font-size:11px;color:#a89b98;max-width:260px;line-height:1.5}
+.customer-order-items-list{display:grid;gap:0;padding:4px 12px}
+.customer-order-items-list article{display:flex;align-items:center;gap:12px;min-width:0;padding:10px 2px;border-bottom:1px solid #ffffff12}
+.customer-order-items-list article:last-child{border-bottom:0}
+.customer-order-items-list img,.customer-order-item-placeholder{flex:none;width:54px;height:54px;border-radius:12px;object-fit:cover;background:#211719}
+.customer-order-item-placeholder{display:grid;place-items:center;color:#d9ab69}
+.customer-order-items-list article>div{display:grid;gap:4px;min-width:0}
+.customer-order-items-list strong{color:#fff;font-size:13px}
+.customer-order-items-list small{color:#b8abad;font-size:11px;line-height:1.4}
+.customer-order-items-status{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;padding:20px;color:#b8abad;text-align:center;font-size:12px}
+.customer-order-items-status strong{color:#fff}
+.customer-order-items-status>svg{color:#d9ab69}
 .customer-history-confirmed{display:flex;align-items:center;gap:9px;border:1px solid #a78a5435;border-radius:13px;margin-top:14px;padding:13px 12px;background:#09070899;font-size:11px;color:#c7bfb1}
 .customer-history-confirmed svg{color:#ebc568;flex:none}
 .customer-history-pagination{display:flex;justify-content:center;align-items:center;gap:18px;margin-top:20px;color:#c7b9b8;font-size:12px}

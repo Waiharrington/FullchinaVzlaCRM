@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { ChevronLeft, ChevronRight, Check, ShoppingBag, ReceiptText, ArrowRight, LoaderCircle, RotateCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Check, ShoppingBag, ArrowRight, LoaderCircle, RotateCw } from 'lucide-react'
 import { getCustomerOrderForRepeat, type CustomerRepeatOrder } from '../lib/publicOrders'
+import CustomerOrderItems from './CustomerOrderItems'
 
 type Visit = { order_id: string; order_number: string; visited_at: string }
 type Props = { visits: Visit[]; page: number; hasMore: boolean; onPage: (page: number) => void; onBack: () => void; onRepeatOrder?: (order: CustomerRepeatOrder) => Promise<void> }
@@ -56,7 +57,7 @@ export default function CustomerVisitHistory({ visits, page, hasMore, onPage, on
         })}</nav>
         {selected && date && <article className="customer-history-detail" key={selected.order_id}>
           <header className="customer-history-visit-heading"><div className="customer-history-seal"><img src="/icons/wok-mark.png" alt="" /></div><div><h2>{date.toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long' })}</h2><p>Visita registrada <span>+1 sello</span></p></div><div className="customer-history-order"><time dateTime={selected.visited_at}>{date.toLocaleTimeString('es-VE', { hour: 'numeric', minute: '2-digit' })}</time><span>#{selected.order_number}</span></div></header>
-          <section className="customer-history-order-panel"><h3><ShoppingBag size={22} /> Tu pedido</h3><div className="customer-history-unavailable"><ReceiptText size={32} /><strong>Comanda {selected.order_number}</strong><p>Puedes intentar volver a pedir esta comanda.</p><small>Revisaremos los productos, las opciones y los precios actuales antes de cargar el carrito.</small></div></section>
+          <section className="customer-history-order-panel"><h3><ShoppingBag size={22} /> Tu pedido</h3><CustomerOrderItems orderId={selected.order_id} orderNumber={selected.order_number} /></section>
           <div className="customer-history-confirmed"><Check size={17} /><span>Esta visita sumó un sello a tu progreso.</span></div>
           <div className="customer-history-repeat-order"><button type="button" className="customer-repeat-order-button" disabled={!onRepeatOrder || repeatingOrderId !== null} onClick={() => void repeatOrder(selected.order_id)}>{repeatingOrderId === selected.order_id ? <LoaderCircle size={17} className="customer-repeat-order-spinner" /> : <RotateCw size={17} />}<span>{repeatingOrderId === selected.order_id ? 'Preparando pedido…' : 'Volver a pedir'}</span></button>{repeatOrderError && <p className="customer-repeat-order-error" role="alert">{repeatOrderError}</p>}</div>
         </article>}
