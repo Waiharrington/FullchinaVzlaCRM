@@ -9,6 +9,8 @@ interface PublicMenuWelcomeModalProps {
   onContinue: () => void
   buttonRef?: Ref<HTMLButtonElement>
   closing?: boolean
+  loading?: boolean
+  showDismissChoice?: boolean
 }
 
 export function PublicMenuWelcomeModal({
@@ -17,6 +19,8 @@ export function PublicMenuWelcomeModal({
   onContinue,
   buttonRef,
   closing = false,
+  loading = false,
+  showDismissChoice = true,
 }: PublicMenuWelcomeModalProps) {
   return (
     <div className={`public-welcome-backdrop${closing ? ' is-closing' : ''}`}>
@@ -44,12 +48,12 @@ export function PublicMenuWelcomeModal({
             <small>Allí confirmas la compra y coordinas el pago.</small>
           </div>
         </div>
-        <label className="public-welcome-dismiss-choice">
+        {showDismissChoice && <label className="public-welcome-dismiss-choice">
           <input type="checkbox" checked={dontShowAgain} onChange={event => onDontShowAgainChange(event.target.checked)} />
           <span>No volver a mostrar este mensaje</span>
-        </label>
-        <button ref={buttonRef} type="button" className="public-welcome-confirm" onClick={onContinue}>
-          Explorar la carta <ChevronRight size={19} />
+        </label>}
+        <button ref={buttonRef} type="button" className="public-welcome-confirm" onClick={onContinue} disabled={loading} aria-busy={loading}>
+          {loading ? 'Abriendo la carta…' : <>Explorar la carta <ChevronRight size={19} /></>}
         </button>
       </section>
     </div>
@@ -57,15 +61,21 @@ export function PublicMenuWelcomeModal({
 }
 
 /** Muestra la bienvenida útil mientras carga el módulo de la carta. */
-export function PublicMenuWelcomeFallback() {
+export function PublicMenuWelcomeFallback({ onContinue, loading = false }: { onContinue?: (dontShowAgain: boolean) => void; loading?: boolean }) {
   const [dontShowAgain, setDontShowAgain] = useState(false)
-  if (!shouldShowPublicMenuWelcome()) return null
+  if (!loading && !shouldShowPublicMenuWelcome()) return null
 
   return (
     <PublicMenuWelcomeModal
       dontShowAgain={dontShowAgain}
       onDontShowAgainChange={setDontShowAgain}
-      onContinue={() => markPublicMenuWelcomeDismissedForCurrentLoad(dontShowAgain)}
+      onContinue={() => {
+        if (loading) return
+        markPublicMenuWelcomeDismissedForCurrentLoad(dontShowAgain)
+        onContinue?.(dontShowAgain)
+      }}
+      loading={loading}
+      showDismissChoice={!loading}
     />
   )
 }

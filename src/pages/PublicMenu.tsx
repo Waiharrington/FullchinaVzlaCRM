@@ -3089,7 +3089,7 @@ export function PublicMenu() {
               <button
                 className="public-recommended-btn"
                 onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup, undefined, recommendedVariant?.product.id) }}
-                aria-label={`Ver ${productTitle(recommendedGroup?.name ?? 'producto')}`}
+                aria-label={`Ver producto: ${productTitle(recommendedGroup?.name ?? 'producto')}`}
               >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
             </div>
             <img src={recommendedImageSrc} onError={event => {
