@@ -1,5 +1,6 @@
 export const PUBLIC_MENU_WELCOME_DISMISSED_KEY = 'fullchina_public_welcome_dismissed_v1'
 const PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY = 'fullchina_public_welcome_pending_dismiss'
+let dismissalConsumedForCurrentLoad = false
 
 export function shouldShowPublicMenuWelcome() {
   try {
@@ -11,10 +12,13 @@ export function shouldShowPublicMenuWelcome() {
 }
 
 export function consumePublicMenuWelcomeDismissal() {
+  if (dismissalConsumedForCurrentLoad) return true
   try {
     const dismissedForCurrentLoad = sessionStorage.getItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY) === 'true'
-    sessionStorage.removeItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY)
-    return dismissedForCurrentLoad || localStorage.getItem(PUBLIC_MENU_WELCOME_DISMISSED_KEY) === 'true'
+    const dismissedPermanently = localStorage.getItem(PUBLIC_MENU_WELCOME_DISMISSED_KEY) === 'true'
+    if (dismissedForCurrentLoad) sessionStorage.removeItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY)
+    dismissalConsumedForCurrentLoad = dismissedForCurrentLoad || dismissedPermanently
+    return dismissalConsumedForCurrentLoad
   } catch {
     return false
   }

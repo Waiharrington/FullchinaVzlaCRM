@@ -1,19 +1,14 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import { BrowserRouter, Navigate, useLocation } from 'react-router-dom'
-import { PublicMenuWelcomeFallback } from './components/PublicMenuWelcomeModal'
-import { shouldShowPublicMenuWelcome } from './lib/publicMenuWelcome'
-import { PwaInstallPrompt } from './components/PwaInstallPrompt'
 
 const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
+const PwaInstallPrompt = lazy(() => import('./components/PwaInstallPrompt').then(module => ({ default: module.PwaInstallPrompt })))
 const AdminApp = lazy(() => import('./AdminApp'))
 
 function AppContent() {
   const location = useLocation()
   const isPublicMenu = /^\/pedir\/?$/i.test(location.pathname)
   const isPublicEntry = location.pathname === '/'
-  const [publicMenuLoadState, setPublicMenuLoadState] = useState<'welcome' | 'loading' | 'ready'>(() =>
-    shouldShowPublicMenuWelcome() ? 'welcome' : 'ready',
-  )
   const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | null>(() =>
     (window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable ? 'available' : null,
   )
@@ -111,12 +106,9 @@ function AppContent() {
 
   if (isPublicEntry) return <Navigate to="/pedir" replace />
   if (isPublicMenu) return <>
-    {updateNotice}<PwaInstallPrompt />
-    {publicMenuLoadState === 'welcome' ? (
-      <PublicMenuWelcomeFallback onContinue={() => setPublicMenuLoadState('loading')} />
-    ) : (
-      <Suspense fallback={<PublicMenuWelcomeFallback loading />}><PublicMenu /></Suspense>
-    )}
+    {updateNotice}
+    <Suspense fallback={<div style={{ backgroundColor: '#0a0b0e', width: '100vw', height: '100dvh' }} />}><PublicMenu /></Suspense>
+    <Suspense fallback={null}><PwaInstallPrompt /></Suspense>
   </>
   // El bundle de AdminApp (login + dashboard + AuthProvider, que es quien
   // controla el splash real con barra de progreso) se descarga aquí. Antes

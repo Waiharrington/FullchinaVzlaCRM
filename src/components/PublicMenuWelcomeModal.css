@@ -23,10 +23,13 @@
   border: 1px solid rgba(255, 200, 61, .46);
   border-radius: 26px;
   color: #f8f7f5;
+  font-family: Inter, "DM Sans", system-ui, sans-serif;
   background: radial-gradient(ellipse at 50% 0%, rgba(227, 27, 43, .18), transparent 55%), linear-gradient(160deg, #171418, #0d0e12 75%);
   box-shadow: 0 32px 110px rgba(0,0,0,.72), 0 0 55px rgba(190,12,29,.16);
   animation: public-store-closed-pop 320ms cubic-bezier(.2,.8,.2,1) both;
 }
+.public-welcome-loading-status { min-height: 0; margin: 0; color: #bdbbc2; font-size: 12px; line-height: 1.4; text-align: center; }
+.public-welcome-loading-status:empty { display: none; }
 .public-welcome-brand { display: grid; justify-items: center; gap: 7px; margin-bottom: 18px; }
 .public-welcome-brand img { width: 112px; height: 52px; object-fit: contain; }
 .public-welcome-menu-heading { margin: 0 0 20px; padding: 4px 0 18px; border-bottom: 1px solid rgba(255,200,61,.45); text-align: center; }

@@ -26,7 +26,7 @@ export function PublicMenuWelcomeModal({
     <div className={`public-welcome-backdrop${closing ? ' is-closing' : ''}`}>
       <section className="public-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="public-welcome-title" aria-describedby="public-welcome-copy">
         <div className="public-welcome-brand">
-          <img src="/optimized/root/logo.webp" alt="Full China" />
+          <img src="/optimized/root/logo-welcome.webp" alt="Full China" width="192" height="84" />
         </div>
         <div className="public-welcome-menu-heading">
           <span>BIENVENIDO A LA CASA</span>

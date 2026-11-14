@@ -490,6 +490,10 @@ function readCheckoutAttempt(): { signature: string; key: string } | null {
 }
 
 export function PublicMenu() {
+  useEffect(() => {
+    window.dispatchEvent(new Event('fullchina:public-menu-ready'))
+  }, [])
+
   const pageRef = useRef<HTMLElement>(null)
   const imageWarmupObserverRef = useRef<IntersectionObserver | null>(null)
   const fullImageRequestsRef = useRef(new WeakMap<HTMLImageElement, string>())
