@@ -127,53 +127,35 @@ export async function getCustomerOrderForRepeat(orderId: string): Promise<Custom
   }
 }
 
-let publicCatalogRequest: Promise<Product[]> | null = null
-let publicCatalogMemoryCache: { products: Product[]; cachedAt: number } | null = null
-
-export function getPublicCatalog(): Promise<Product[]> {
-  if (publicCatalogMemoryCache && Date.now() - publicCatalogMemoryCache.cachedAt < 15_000) {
-    const products = publicCatalogMemoryCache.products
-    publicCatalogMemoryCache = null
-    return Promise.resolve(products)
-  }
-  if (publicCatalogRequest) return publicCatalogRequest
-
-  publicCatalogRequest = (async () => {
-    const { data, error } = await db().rpc('fn_get_public_catalog')
-    if (error) throw error
-    const rows = Array.isArray(data) ? data : []
-    const products = rows.map((row: Record<string, unknown>) => {
-      const category = String(row.category || 'plato')
-      const categories = Array.isArray(row.categories) && row.categories.length
-        ? Array.from(new Set((row.categories as unknown[]).map((c) => String(c))))
-        : [category]
-      return {
-        id: String(row.id),
-        name: String(row.name),
-        description: row.description ? String(row.description) : null,
-        price: Number(row.price),
-        cost: null,
-        category,
-        categories,
-        emoji: String(row.emoji || '🥡'), /* DB default: emoji */
-        active: true,
-        imageUrl: row.image_url ? String(row.image_url) : null,
-        allowProteinExtras: row.allow_protein_extras == null
-          ? !(categories.includes('bebidas') || ['bebida', 'drink', 'drinks', 'agua', 'aguas'].includes(category.toLowerCase()))
-          : Boolean(row.allow_protein_extras),
-        menuLabel: (row.menu_label as Product['menuLabel']) ?? null,
-        publicVisible: row.public_visible == null ? true : Boolean(row.public_visible),
-        publicCarousel: Boolean(row.public_carousel),
-        publicCarouselOrder: Number(row.public_carousel_order ?? 0),
-      }
-    })
-    publicCatalogMemoryCache = { products, cachedAt: Date.now() }
-    return products
-  })().finally(() => {
-    publicCatalogRequest = null
+export async function getPublicCatalog(): Promise<Product[]> {
+  const { data, error } = await db().rpc('fn_get_public_catalog')
+  if (error) throw error
+  const rows = Array.isArray(data) ? data : []
+  return rows.map((row: Record<string, unknown>) => {
+    const category = String(row.category || 'plato')
+    const categories = Array.isArray(row.categories) && row.categories.length
+      ? Array.from(new Set((row.categories as unknown[]).map((c) => String(c))))
+      : [category]
+    return {
+      id: String(row.id),
+      name: String(row.name),
+      description: row.description ? String(row.description) : null,
+      price: Number(row.price),
+      cost: null,
+      category,
+      categories,
+      emoji: String(row.emoji || '🥡'), /* DB default: emoji */
+      active: true,
+      imageUrl: row.image_url ? String(row.image_url) : null,
+      allowProteinExtras: row.allow_protein_extras == null
+        ? !(categories.includes('bebidas') || ['bebida', 'drink', 'drinks', 'agua', 'aguas'].includes(category.toLowerCase()))
+        : Boolean(row.allow_protein_extras),
+      menuLabel: (row.menu_label as Product['menuLabel']) ?? null,
+      publicVisible: row.public_visible == null ? true : Boolean(row.public_visible),
+      publicCarousel: Boolean(row.public_carousel),
+      publicCarouselOrder: Number(row.public_carousel_order ?? 0),
+    }
   })
-
-  return publicCatalogRequest
 }
 
 export async function getPublicMenuCategories(): Promise<{ key: string; label: string; sortOrder: number }[]> {
