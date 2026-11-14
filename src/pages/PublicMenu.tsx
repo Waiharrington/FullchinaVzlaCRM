@@ -10,9 +10,10 @@ import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelec
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
-import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
+import { PublicMenuWelcomeModal } from '../components/PublicMenuWelcomeModal'
+import { consumePublicMenuWelcomeDismissal, PUBLIC_MENU_WELCOME_DISMISSED_KEY } from '../lib/publicMenuWelcome'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
 import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
 import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, DEFAULT_PUBLIC_ORDER_REELS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, type PublicOrderPageSettings, type PublicOrderReel } from '../lib/publicOrderPageSettings'
@@ -155,7 +156,6 @@ const AddressMap = lazy(() => import('../components/PublicAddressMap').then(modu
 
 const FAVORITES_KEY = 'fullchina_public_favorites'
 const CART_KEY = 'fullchina_public_cart'
-const WELCOME_DISMISSED_KEY = 'fullchina_public_welcome_dismissed_v1'
 const LAST_ORDER_KEY = 'fullchina_public_last_order'
 const FLOW_STATE_KEY = 'fullchina_public_flow_state'
 const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
@@ -563,7 +563,7 @@ export function PublicMenu() {
     return showPreviewNotice || (!LOCAL_ORDER_TEST_MODE && !getStoreClock().isOpen)
   })
   const [showWelcomeNotice, setShowWelcomeNotice] = useState(() => {
-    try { return localStorage.getItem(WELCOME_DISMISSED_KEY) !== 'true' } catch { return true }
+    return !consumePublicMenuWelcomeDismissal()
   })
   const [dontShowWelcomeAgain, setDontShowWelcomeAgain] = useState(false)
   const [closingWelcomeNotice, setClosingWelcomeNotice] = useState(false)
@@ -572,7 +572,7 @@ export function PublicMenu() {
   const dismissWelcomeNotice = useCallback(() => {
     if (closingWelcomeNotice) return
     if (dontShowWelcomeAgain) {
-      try { localStorage.setItem(WELCOME_DISMISSED_KEY, 'true') } catch { /* la bienvenida se cierra aunque el navegador bloquee el almacenamiento */ }
+      try { localStorage.setItem(PUBLIC_MENU_WELCOME_DISMISSED_KEY, 'true') } catch { /* la bienvenida se cierra aunque el navegador bloquee el almacenamiento */ }
     }
     setClosingWelcomeNotice(true)
     const duration = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 220
@@ -2789,8 +2789,6 @@ export function PublicMenu() {
     }
   }
 
-  if (loading) return <PublicMenuSkeleton />
-
   // Monto en Bs (referencia) calculado con la tasa BCV actual. null si no hay tasa.
   const priceBs = (usd: number) =>
     bcvRate ? `Bs. ${BS_FORMATTER.format(usd * bcvRate)}` : null
@@ -4619,40 +4617,13 @@ export function PublicMenu() {
       )}
 
       {showWelcomeNotice && createPortal(
-        <div className={`public-welcome-backdrop${closingWelcomeNotice ? ' is-closing' : ''}`}>
-          <section className="public-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="public-welcome-title" aria-describedby="public-welcome-copy">
-            <div className="public-welcome-brand">
-              <img src="/optimized/root/logo.webp" alt="Full China" />
-            </div>
-            <div className="public-welcome-menu-heading">
-              <span>BIENVENIDO A LA CASA</span>
-              <h2 id="public-welcome-title">La carta de Full China</h2>
-              <p id="public-welcome-copy">Arma tu pedido aquí. <strong>No pagas en esta página.</strong> Al finalizar, confirmas la compra y coordinas el pago por WhatsApp con Full China.</p>
-            </div>
-            <div className="public-welcome-menu-list" aria-label="Pasos para hacer tu pedido">
-              <div className="public-welcome-menu-section-title">TU PEDIDO, PASO A PASO</div>
-              <div className="public-welcome-menu-item">
-                <span><b>01</b><strong>Elige tus platos</strong></span>
-                <small>Agrégalos al carrito.</small>
-              </div>
-              <div className="public-welcome-menu-item">
-                <span><b>02</b><strong>Completa tus datos</strong></span>
-                <small>Revisa tu pedido.</small>
-              </div>
-              <div className="public-welcome-menu-item">
-                <span><b>03</b><strong>Confirma por WhatsApp</strong></span>
-                <small>Allí confirmas la compra y coordinas el pago.</small>
-              </div>
-            </div>
-            <label className="public-welcome-dismiss-choice">
-              <input type="checkbox" checked={dontShowWelcomeAgain} onChange={event => setDontShowWelcomeAgain(event.target.checked)} />
-              <span>No volver a mostrar este mensaje</span>
-            </label>
-            <button ref={welcomeNoticeButtonRef} type="button" className="public-welcome-confirm" onClick={dismissWelcomeNotice}>
-              Explorar la carta <ChevronRight size={19} />
-            </button>
-          </section>
-        </div>,
+        <PublicMenuWelcomeModal
+          dontShowAgain={dontShowWelcomeAgain}
+          onDontShowAgainChange={setDontShowWelcomeAgain}
+          onContinue={dismissWelcomeNotice}
+          buttonRef={welcomeNoticeButtonRef}
+          closing={closingWelcomeNotice}
+        />,
         document.body
       )}
     </main>

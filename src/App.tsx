@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import { BrowserRouter, Navigate, useLocation } from 'react-router-dom'
-import { PublicMenuSkeleton } from './components/PublicMenuSkeleton'
+import { PublicMenuWelcomeFallback } from './components/PublicMenuWelcomeModal'
 import { PwaInstallPrompt } from './components/PwaInstallPrompt'
 
 const PublicMenu = lazy(() => import('./pages/PublicMenu').then(module => ({ default: module.PublicMenu })))
@@ -106,7 +106,7 @@ function AppContent() {
   )
 
   if (isPublicEntry) return <Navigate to="/pedir" replace />
-  if (isPublicMenu) return <>{updateNotice}<PwaInstallPrompt /><Suspense fallback={<PublicMenuSkeleton />}><PublicMenu /></Suspense></>
+  if (isPublicMenu) return <>{updateNotice}<PwaInstallPrompt /><Suspense fallback={<PublicMenuWelcomeFallback />}><PublicMenu /></Suspense></>
   // El bundle de AdminApp (login + dashboard + AuthProvider, que es quien
   // controla el splash real con barra de progreso) se descarga aquí. Antes
   // de que exista ese AuthProvider no hay forma de mostrar el splash real,
