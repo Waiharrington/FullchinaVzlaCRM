@@ -251,6 +251,17 @@ function getInitialAuthMode(): 'login' | 'register' {
   }
 }
 
+function shouldUseLightAuthMotion() {
+  if (typeof navigator === 'undefined') return false
+  const device = navigator as Navigator & {
+    deviceMemory?: number
+    connection?: { saveData?: boolean }
+  }
+  return device.connection?.saveData === true
+    || (typeof device.deviceMemory === 'number' && device.deviceMemory <= 4)
+    || (typeof device.hardwareConcurrency === 'number' && device.hardwareConcurrency <= 4)
+}
+
 export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onToggleFavorite, presentation = 'profile', onJoin, interactivePromotionCard = false }: CustomerLoyaltyProfileProps) {
   const [profile, setProfile] = useState<LoyaltyProfile | null>(null)
   const [recentVisits, setRecentVisits] = useState<Visit[]>([])
@@ -263,6 +274,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [mode, setMode] = useState<'login' | 'register'>(getInitialAuthMode)
+  const [lightAuthMotion] = useState(shouldUseLightAuthMotion)
   const [switchingMode, setSwitchingMode] = useState(false)
   const [hasSwitchedMode, setHasSwitchedMode] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
@@ -603,7 +615,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
 
   if (presentation === 'profile' && !profile && sessionActive && profileLoading) return <PublicMenuSkeleton />
 
-  if (presentation === 'profile' && !profile && sessionActive && profileLoadError) return <main className="customer-profile-page customer-profile-auth customer-profile-auth-login">
+  if (presentation === 'profile' && !profile && sessionActive && profileLoadError) return <main className={`customer-profile-page customer-profile-auth customer-profile-auth-login${lightAuthMotion ? ' customer-profile-auth-light-motion' : ''}`}>
     <section className="customer-profile-shell">
       <header className="customer-profile-brand"><h1>No pudimos abrir tu perfil</h1><span>Tu sesión sigue activa. Prueba cargarlo otra vez.</span></header>
       <div className="customer-profile-form-wrap"><p className="customer-profile-message error" role="alert">{profileLoadError}</p><button type="button" className="customer-profile-submit" onClick={() => { void loadProfile().catch(() => failProfileLoad(true)) }}>Reintentar</button></div>
@@ -660,7 +672,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     </section>
   </main>
 
-  if (!profile) return <main className={`customer-profile-page customer-profile-auth customer-profile-auth-${mode} customer-profile-auth-transition${hasSwitchedMode ? ` customer-profile-mode-changed customer-profile-mode-changed-${mode}` : ''}`}>
+  if (!profile) return <main className={`customer-profile-page customer-profile-auth customer-profile-auth-${mode} customer-profile-auth-transition${lightAuthMotion ? ' customer-profile-auth-light-motion' : ''}${hasSwitchedMode ? ` customer-profile-mode-changed customer-profile-mode-changed-${mode}` : ''}`}>
     {error && <Toast type="error" title={mode === 'login' && /acceso|coinciden/i.test(error) ? 'No pudimos iniciar sesión' : undefined} message={mode === 'login' && /acceso|coinciden/i.test(error) ? 'Revisa tus datos e inténtalo de nuevo.' : error} onClose={() => setError('')} duration={4500} />}
     {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} duration={4500} />}
     <aside className="customer-profile-desktop-story">

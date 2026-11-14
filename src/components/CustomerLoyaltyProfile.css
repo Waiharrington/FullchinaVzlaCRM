@@ -49,11 +49,11 @@
   .customer-profile-mode-changed-login,.customer-profile-mode-changed-register{animation:none}
 }
 @keyframes customer-cta-breathe{
-  0%,72%,100%{transform:translateY(0) scale(1);filter:brightness(1)}
-  78%{transform:translateY(-2px) scale(1.012);filter:brightness(1.08)}
-  84%{transform:translateY(0) scale(1);filter:brightness(1)}
-  90%{transform:translateY(-1px) scale(1.006);filter:brightness(1.04)}
-  96%{transform:translateY(0) scale(1);filter:brightness(1)}
+  0%,72%,100%{transform:translateY(0) scale(1)}
+  78%{transform:translateY(-2px) scale(1.012)}
+  84%{transform:translateY(0) scale(1)}
+  90%{transform:translateY(-1px) scale(1.006)}
+  96%{transform:translateY(0) scale(1)}
 }
 @keyframes customer-cta-sheen{
   0%,68%{transform:translateX(0) skewX(-18deg);opacity:0}
@@ -66,10 +66,10 @@
   82%,90%{transform:translateX(3px)}
   86%,94%{transform:translateX(0)}
 }
-.customer-profile-submit-login:not(:disabled),.customer-profile-auth-register .customer-profile-submit:not(:disabled),.customer-profile-auth-register .customer-profile-existing:not(:disabled){animation:customer-cta-breathe 4.8s ease-in-out infinite}
+.customer-profile-submit-login:not(:disabled),.customer-profile-auth-register .customer-profile-submit:not(:disabled),.customer-profile-auth-register .customer-profile-existing:not(:disabled){animation:customer-cta-breathe 2.4s ease-in-out .45s 1 both}
 .customer-profile-auth-register .customer-profile-submit:not(:disabled){position:relative;overflow:hidden}
-.customer-profile-submit-login:not(:disabled)::after,.customer-profile-auth-register .customer-profile-submit:not(:disabled)::after,.customer-profile-auth-register .customer-profile-existing:not(:disabled)::after{position:absolute;inset:-25% auto -25% -14%;width:12%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);content:"";pointer-events:none;animation:customer-cta-sheen 4.8s ease-in-out infinite}
-.customer-profile-submit-login:not(:disabled) svg:last-child,.customer-profile-auth-register .customer-profile-submit:not(:disabled) svg:last-child{animation:customer-cta-arrow-nudge 4.8s ease-in-out infinite}
+.customer-profile-submit-login:not(:disabled)::after,.customer-profile-auth-register .customer-profile-submit:not(:disabled)::after,.customer-profile-auth-register .customer-profile-existing:not(:disabled)::after{position:absolute;inset:-25% auto -25% -14%;width:12%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent);content:"";pointer-events:none;animation:customer-cta-sheen 2.4s ease-in-out .45s 1 both}
+.customer-profile-submit-login:not(:disabled) svg:last-child,.customer-profile-auth-register .customer-profile-submit:not(:disabled) svg:last-child{animation:customer-cta-arrow-nudge 2.4s ease-in-out .45s 1 both}
 .customer-profile-auth-register .customer-profile-existing:not(:disabled){position:relative;overflow:hidden}
 .customer-profile-auth-register .customer-profile-existing:not(:disabled)::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent)}
 @media(prefers-reduced-motion:reduce){
@@ -742,6 +742,8 @@
 .customer-order-items-list article:last-child{border-bottom:0}
 .customer-order-items-list img,.customer-order-item-placeholder{flex:none;width:54px;height:54px;border-radius:12px;object-fit:cover;background:#211719}
 .customer-order-item-placeholder{display:grid;place-items:center;color:#d9ab69}
+.customer-order-item-placeholder.is-delivery{color:#ff6875;background:rgba(227,27,43,.13)}
+.customer-order-item-placeholder.is-pickup{color:#ffd071;background:rgba(255,200,61,.1)}
 .customer-order-items-list article>div{display:grid;gap:4px;min-width:0}
 .customer-order-items-list strong{color:#fff;font-size:13px}
 .customer-order-items-list small{color:#b8abad;font-size:11px;line-height:1.4}
@@ -848,7 +850,10 @@
   .customer-profile-member .customer-profile-dashboard>.customer-redeemed-history .customer-redeemed-list{gap:8px;padding:0 10px 10px}
   .customer-profile-member .customer-recent-orders-rail{gap:12px;scrollbar-width:none}
   .customer-profile-member .customer-recent-orders-rail::-webkit-scrollbar{display:none}
-  .customer-profile-member .customer-recent-order-card{flex-basis:calc(50% - 6px);min-height:158px}
+  .customer-profile-member .customer-recent-order-card{flex:0 0 min(100%,340px);min-height:158px}
+  .customer-profile-member .customer-recent-order-featured>div{flex:1;min-width:0}
+  .customer-profile-member .customer-recent-order-title{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere}
+  .customer-profile-member .customer-recent-order-featured p{display:block;overflow:visible;min-height:0;-webkit-line-clamp:unset;overflow-wrap:anywhere}
   .customer-profile-member .customer-profile-history-button{display:none}
   .customer-desktop-history{display:flex;flex-direction:column;min-height:430px;overflow:visible;border:1px solid #ff45376b;border-radius:22px;background:linear-gradient(145deg,#120b0beF,#090708f5);box-shadow:inset 0 1px 0 #ffffff10,0 22px 55px #000a;backdrop-filter:blur(14px)}
   .customer-desktop-history-heading{position:relative;z-index:5;isolation:isolate;display:grid;grid-template-columns:46px minmax(0,1fr);align-items:center;gap:12px;padding:17px 18px;border-bottom:1px solid #ffffff15;border-radius:21px 21px 0 0;background:transparent}
@@ -976,6 +981,33 @@
 .customer-saved-favorites-status{padding:16px;border:1px dashed #ffffff20;border-radius:13px;color:#aaa4aa;font-size:clamp(10px,2.8vw,13px);text-align:center;white-space:nowrap}
 .customer-saved-favorites-unavailable{margin:12px 0 0;color:#aaa4aa;font-size:11px;line-height:1.45}
 @media(max-width:600px){.customer-saved-favorites{padding:16px;border-radius:17px}.customer-saved-favorites-grid{grid-template-columns:1fr}}
+
+/* Keep the auth screens animated on modest phones without animating expensive blur/shadow layers. */
+@keyframes customer-auth-light-enter{from{opacity:.55;transform:translate3d(0,10px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes customer-auth-light-scene{from{opacity:.82}to{opacity:1}}
+.customer-profile-auth-light-motion.customer-profile-auth-transition .customer-profile-brand,
+.customer-profile-auth-light-motion.customer-profile-auth-transition .customer-profile-form-wrap,
+.customer-profile-auth-light-motion.customer-profile-auth-transition .customer-profile-mobile-logo,
+.customer-profile-auth-light-motion.customer-profile-auth-transition .customer-profile-mobile-heading,
+.customer-profile-auth-light-motion.customer-profile-auth-transition .customer-profile-desktop-story,
+.customer-profile-auth-light-motion.customer-profile-auth-transition .customer-profile-desktop-story>h1{animation:customer-auth-light-enter .3s ease-out both}
+.customer-profile-auth-light-motion.customer-profile-mode-changed-login,
+.customer-profile-auth-light-motion.customer-profile-mode-changed-register{animation:customer-auth-light-scene .18s ease-out both}
+.customer-profile-auth-light-motion.customer-profile-mode-changed .customer-profile-form>*,
+.customer-profile-auth-light-motion.customer-profile-mode-changed .customer-profile-brand h1,
+.customer-profile-auth-light-motion.customer-profile-mode-changed .customer-profile-brand .customer-profile-mobile-description,
+.customer-profile-auth-light-motion.customer-profile-mode-changed .customer-profile-desktop-story>*,
+.customer-profile-auth-light-motion.customer-profile-mode-changed .customer-profile-shell{animation:customer-auth-light-enter .22s ease-out both}
+@media(max-width:679px),(min-width:680px) and (orientation:portrait){
+  .customer-profile-auth-light-motion .customer-profile-form-wrap{background:rgba(8,8,10,.96)!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
+@media(min-width:680px) and (orientation:landscape){
+  .customer-profile-auth-light-motion .customer-profile-shell,.customer-profile-auth-light-motion .customer-profile-desktop-benefits{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .customer-profile-auth-light-motion .customer-profile-shell{background:rgba(7,7,9,.94)}
+}
+@media(prefers-reduced-motion:reduce){
+  .customer-profile-auth-light-motion *{animation:none!important;transition:none!important}
+}
 
 /* Give the member-card flip a single, weighty turn with a gentle settle. */
 .customer-profile-member .customer-member-mini-card{transition:transform .28s cubic-bezier(.2,.8,.2,1)}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { LoaderCircle, ReceiptText } from 'lucide-react'
+import { Bike, LoaderCircle, ReceiptText, Store } from 'lucide-react'
 import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
 
 function productImage(url: string) {
@@ -31,9 +31,15 @@ export default function CustomerOrderItems({ orderId, orderNumber }: { orderId: 
   if (loading) return <div className="customer-order-items-status" aria-live="polite"><LoaderCircle size={18} className="customer-repeat-order-spinner" />Cargando los productos…</div>
   if (unavailable || !order) return <div className="customer-order-items-status"><ReceiptText size={24} /><strong>Comanda {orderNumber}</strong><span>No pudimos mostrar el detalle de este pedido.</span></div>
   return <div className="customer-order-items-list">
-    {order.items.map((item, index) => <article key={`${item.productId}-${index}`}>
-      {images[item.productId] ? <img src={images[item.productId]} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true }} /> : <span className="customer-order-item-placeholder"><ReceiptText size={19} /></span>}
+    {order.items.map((item, index) => {
+      const itemName = item.productName.trim().toLocaleLowerCase('es-VE')
+      const isDelivery = /\b(delivery|domicilio)\b/.test(itemName)
+      const isPickup = /\b(pickup|takeaway|retiro|retirar|recoger)\b/.test(itemName)
+      const ModalityIcon = isDelivery ? Bike : Store
+      return <article key={`${item.productId}-${index}`}>
+      {images[item.productId] ? <img src={images[item.productId]} alt="" loading="lazy" decoding="async" onError={event => { event.currentTarget.hidden = true }} /> : <span className={`customer-order-item-placeholder${isDelivery ? ' is-delivery' : ''}${isPickup ? ' is-pickup' : ''}`}>{isDelivery || isPickup ? <ModalityIcon size={21} strokeWidth={1.8} aria-hidden="true" /> : <ReceiptText size={19} />}</span>}
       <div><strong>{item.productName}</strong><small>{item.quantity} × {item.productName}{item.notes ? ` · ${item.notes}` : ''}</small></div>
-    </article>)}
+    </article>
+    })}
   </div>
 }
