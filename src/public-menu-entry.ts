@@ -66,6 +66,11 @@ async function refreshCustomerVersion() {
 
 function loadCustomerApp() {
   if (appLoad) return appLoad
+  if (button) {
+    button.disabled = true
+    button.setAttribute('aria-busy', 'true')
+    button.textContent = 'Abriendo la carta…'
+  }
   loadMenuFonts()
 
   appLoad = import('./main').catch(error => {
@@ -109,9 +114,9 @@ if (skipWelcome || !root || !button || !checkbox) {
         sessionStorage.setItem(PENDING_DISMISS_KEY, 'true')
       }
     } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
-    // Quita la bienvenida en el mismo gesto. La carta se monta detrás y muestra
-    // sus avisos reales (por ejemplo, el estado de abierto/cerrado) al terminar.
-    staticWelcome?.remove()
+    // Mantén la bienvenida como superficie visible mientras se descargan y
+    // montan los módulos. `fullchina:public-menu-ready` la retira al primer
+    // render del menú para evitar un destello negro entre ambas vistas.
     void loadCustomerApp()
   })
 }
