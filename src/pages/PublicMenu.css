@@ -16115,3 +16115,12 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   object-fit: contain !important;
   background: transparent;
 }
+
+/* In the installed iOS PWA, keep the checkout logo below the Dynamic Island
+   without moving the cart heading or reducing the space available to the cart. */
+@media (display-mode: standalone) and (max-width: 767px) {
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header > img {
+    top: calc(env(safe-area-inset-top, 0px) + 6px) !important;
+    width: clamp(88px, 26vw, 104px) !important;
+  }
+}
