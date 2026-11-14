@@ -16,6 +16,8 @@
 @keyframes public-welcome-exit { to { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); } }
 @keyframes public-welcome-dialog-exit { to { opacity: 0; transform: translateY(14px) scale(.975); filter: blur(2px); } }
 .public-welcome-dialog {
+  /* The static welcome is rendered before the app-wide reset stylesheet loads. */
+  box-sizing: border-box;
   width: min(100%, 510px);
   max-height: calc(100dvh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   overflow: auto;
@@ -28,12 +30,16 @@
   box-shadow: 0 32px 110px rgba(0,0,0,.72), 0 0 55px rgba(190,12,29,.16);
   animation: public-store-closed-pop 320ms cubic-bezier(.2,.8,.2,1) both;
 }
+.public-welcome-dialog *,
+.public-welcome-dialog *::before,
+.public-welcome-dialog *::after { box-sizing: border-box; }
 .public-welcome-loading-status { min-height: 0; margin: 0; color: #bdbbc2; font-size: 12px; line-height: 1.4; text-align: center; }
 .public-welcome-loading-status:empty { display: none; }
 .public-welcome-brand { display: grid; justify-items: center; gap: 7px; margin-bottom: 18px; }
 .public-welcome-brand img { width: 112px; height: 52px; object-fit: contain; }
 .public-welcome-menu-heading { margin: 0 0 20px; padding: 4px 0 18px; border-bottom: 1px solid rgba(255,200,61,.45); text-align: center; }
 .public-welcome-menu-heading > span { display: block; margin-bottom: 8px; color: #ffc83d; font-size: 10px; font-weight: 900; letter-spacing: .2em; }
+.public-welcome-menu-heading h1,
 .public-welcome-menu-heading h2 { margin: 0; color: #fff; font-size: clamp(24px, 5vw, 31px); line-height: 1.15; letter-spacing: -.04em; text-align: center; }
 .public-welcome-menu-heading p { max-width: 410px; margin: 11px auto 0; color: #c4c4cc; font-size: 15px; line-height: 1.5; }
 .public-welcome-menu-heading p strong { color: #fff; }
@@ -58,6 +64,7 @@
   .public-welcome-brand img { width: 82px; height: 38px; }
   .public-welcome-menu-heading { margin-bottom: 8px; padding: 0 0 10px; }
   .public-welcome-menu-heading > span { margin-bottom: 5px; font-size: 9px; }
+  .public-welcome-menu-heading h1,
   .public-welcome-menu-heading h2 { font-size: 25px; }
   .public-welcome-menu-heading p { margin-top: 6px; font-size: 13px; line-height: 1.35; }
   .public-welcome-menu-heading::after { margin: 6px auto -1px; }
@@ -73,6 +80,7 @@
   .public-welcome-dialog { padding-top: 10px; padding-bottom: 10px; }
   .public-welcome-brand { margin-bottom: 5px; }
   .public-welcome-brand img { width: 70px; height: 32px; }
+  .public-welcome-menu-heading h1,
   .public-welcome-menu-heading h2 { font-size: 23px; }
   .public-welcome-menu-heading p { font-size: 12px; line-height: 1.3; }
   .public-welcome-menu-section-title { padding-top: 5px; }
@@ -85,6 +93,7 @@
   .public-welcome-brand img { width: 88px; height: 42px; }
   .public-welcome-menu-heading { margin-bottom: 10px; padding: 0 0 11px; }
   .public-welcome-menu-heading > span { margin-bottom: 5px; }
+  .public-welcome-menu-heading h1,
   .public-welcome-menu-heading h2 { font-size: 27px; }
   .public-welcome-menu-heading p { margin-top: 7px; font-size: 14px; line-height: 1.38; }
   .public-welcome-menu-heading::after { margin: 7px auto -1px; }
