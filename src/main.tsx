@@ -5,6 +5,7 @@ import './styles/motion.css'
 import './styles/modalBackdrop.css'
 import App from './App'
 import { registerSW } from 'virtual:pwa-register'
+import { clearLegacyPwaRuntimeCaches } from './lib/pwaRuntimeCache'
 
 // Auto-recuperación de chunks vencidos: tras un nuevo deploy, los archivos
 // JS/CSS de los módulos cambian de hash. Una pestaña abierta con el service
@@ -106,7 +107,7 @@ const waitForWorkerActivation = (worker: ServiceWorker, timeoutMs = 20000) => ne
 window.addEventListener('online', checkForAppUpdate)
 window.addEventListener('pageshow', checkForAppUpdate)
 document.addEventListener('visibilitychange', checkForAppUpdate)
-window.setInterval(checkForAppUpdate, 30 * 60 * 1000)
+window.setInterval(checkForAppUpdate, 5 * 60 * 1000)
 
 window.addEventListener('fullchina:pwa-apply-update', () => {
   window.dispatchEvent(new Event('fullchina:pwa-update-applying'))
@@ -142,6 +143,7 @@ window.addEventListener('fullchina:pwa-apply-update', () => {
         return
       }
 
+      await clearLegacyPwaRuntimeCaches()
       ;(window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable = false
       window.location.reload()
     } catch {

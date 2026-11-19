@@ -1,3 +1,5 @@
+import { clearLegacyPwaRuntimeCaches } from './lib/pwaRuntimeCache'
+
 const DISMISSED_KEY = 'fullchina_public_welcome_dismissed_v1'
 const PENDING_DISMISS_KEY = 'fullchina_public_welcome_pending_dismiss'
 
@@ -53,12 +55,13 @@ async function refreshCustomerVersion() {
     console.warn('No se pudo consultar la actualización del service worker:', error)
   }
   try {
-    // Vacía únicamente el shell y los JS/CSS cacheados de la app. Se conservan
-    // las imágenes del menú y los datos locales del cliente.
+    await clearLegacyPwaRuntimeCaches()
+    // Vacía también el shell precargado para que la siguiente navegación use
+    // los archivos de la versión publicada.
     if ('caches' in window) {
       const appCaches = await caches.keys()
       await Promise.all(appCaches
-        .filter(name => name === 'app-assets' || name.startsWith('workbox-precache-'))
+        .filter(name => name.startsWith('workbox-precache-'))
         .map(name => caches.delete(name)))
     }
   } catch (error) {

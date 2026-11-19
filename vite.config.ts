@@ -107,8 +107,10 @@ export default defineConfig({
         // Push events must be handled by the same generated worker that owns
         // the PWA scope; this small script only renders notifications/clicks.
         importScripts: ['/push-service-worker.js'],
-        // Las fotos de productos NO van al precache (pesan ~5.5 MB); se cachean
-        // en tiempo de ejecución la primera vez que se muestran.
+        // Las fotos de productos y los bundles de JS/CSS no se guardan en cachés
+        // runtime largos: los bundles deben venir de la versión publicada y las
+        // fotos se descargan cuando se necesitan. El shell pequeño conserva su
+        // precache versionado para que Workbox lo reemplace con cada deploy.
         globIgnores: [
           // Los módulos se guardan cuando realmente se usan. Precargar aquí
           // todo el panel administrativo hacía que el service worker bajara
@@ -121,36 +123,6 @@ export default defineConfig({
           '**/onboarding-slides/**',
           '**/cargando-pedido/**',
           '**/optimized/**',
-        ],
-        runtimeCaching: [
-          {
-            urlPattern: /\/assets\/.*\.(?:js|css)$/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'app-assets',
-              expiration: { maxEntries: 250, maxAgeSeconds: 60 * 60 * 24 * 60 },
-            },
-          },
-          {
-            urlPattern: /\/(?:optimized\/.*|productos\/.*)\.(?:png|jpg|jpeg|webp)$/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'optimized-images',
-              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 60 },
-            },
-          },
-          {
-            // Las fotos remotas del catálogo se reutilizan entre ventas. En
-            // datos móviles, servirlas desde el dispositivo evita descargarlas
-            // nuevamente en cada entrada a Caja.
-            urlPattern: /(?:^https:\/\/images\.unsplash\.com\/|\/storage\/v1\/(?:object|render\/image)\/public\/)/i,
-            handler: 'CacheFirst',
-            options: {
-              cacheName: 'remote-product-images',
-              cacheableResponse: { statuses: [0, 200] },
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-            },
-          },
         ],
       },
     })
