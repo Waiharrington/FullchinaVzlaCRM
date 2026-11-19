@@ -16228,3 +16228,87 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   margin-right: 0 !important;
   text-align: left !important;
 }
+.public-pickup-step {
+  display: grid;
+  gap: 16px;
+  padding: 4px 0 0;
+}
+.public-pickup-map {
+  position: relative;
+  min-height: 190px;
+  height: clamp(190px, 28vh, 260px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 200, 61, .2);
+  border-radius: 18px;
+  background: #161719;
+}
+.public-pickup-map iframe {
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  border: 0;
+  filter: saturate(.82) contrast(1.04);
+}
+.public-pickup-map .public-contact-location-tint {
+  background: linear-gradient(180deg, rgba(8, 9, 11, .12), transparent 45%, rgba(8, 9, 11, .22));
+}
+.public-pickup-map .public-contact-brand-pin {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.public-pickup-details {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .018));
+}
+.public-pickup-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  color: #ffc83d;
+}
+.public-pickup-info > svg { flex: 0 0 auto; margin-top: 2px; }
+.public-pickup-info > div { display: grid; gap: 3px; min-width: 0; }
+.public-pickup-info small { color: #9b9da4; font-size: 11px; }
+.public-pickup-info strong { color: #fff; font-size: 14px; line-height: 1.35; }
+.public-pickup-info span { color: #d6d7dc; font-size: 13px; }
+.public-pickup-directions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 2px;
+  border: 1px solid rgba(255, 200, 61, .28);
+  border-radius: 12px;
+  background: rgba(255, 200, 61, .08);
+  color: #ffd76c;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.public-pickup-directions svg:last-child { margin-left: auto; }
+.public-pickup-continue { width: 100%; }
+@media (max-width: 600px) {
+  .public-pickup-step { gap: 12px; }
+  .public-pickup-map { min-height: 170px; height: 21vh; max-height: 210px; border-radius: 15px; }
+  .public-pickup-details { gap: 12px; padding: 13px; }
+  .public-pickup-info strong { font-size: 13px; }
+}
+.public-drawer-backdrop .public-cart-drawer > .public-pickup-step {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 18px 28px;
+  box-sizing: border-box;
+}
+@media (max-width: 600px) {
+  .public-drawer-backdrop .public-cart-drawer > .public-pickup-step {
+    padding: 10px 16px calc(22px + env(safe-area-inset-bottom));
+  }
+}
