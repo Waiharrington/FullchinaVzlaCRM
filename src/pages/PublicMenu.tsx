@@ -6,6 +6,7 @@ import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicCartIncludedCopy, publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type CustomerRepeatOrder, type WebOrderCartItem } from '../lib/publicOrders'
 import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
+import { reverseGoogleAddress, searchGoogleAddresses } from '../lib/googleMaps'
 import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
@@ -2590,13 +2591,10 @@ export function PublicMenu() {
         setLocationError('')
         setAddressFieldError('')
         try {
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, {
-            headers: { 'Accept-Language': 'es' }
-          })
-          const data = await res.json()
+          const formattedAddress = await reverseGoogleAddress({ lat, lng })
           if (addressActionRef.current !== requestId) return
-          if (data.display_name) {
-            setAddress(data.display_name.length > 120 ? data.display_name.substring(0, 120) + '…' : data.display_name)
+          if (formattedAddress) {
+            setAddress(formattedAddress.length > 120 ? `${formattedAddress.substring(0, 120)}…` : formattedAddress)
             setShowSuggestions(false)
           } else setAddress(`Ubicación seleccionada (${lat.toFixed(5)}, ${lng.toFixed(5)})`)
         } catch { /* silently keep coordinates */ }
@@ -2632,22 +2630,17 @@ export function PublicMenu() {
       if (addressActionRef.current !== requestId) return
       setSearchingAddress(true)
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ve&limit=5`, {
-          headers: { 'Accept-Language': 'es' }
-        })
-        const data = await res.json()
-        if (addressActionRef.current !== requestId) return
-        if (Array.isArray(data) && data.length > 0) setAddressSuggestions(data)
-        else {
-          const fallback = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=5`)
-          const photon = await fallback.json() as { features?: Array<{ geometry: { coordinates: [number, number] }; properties: Record<string, string> }> }
-          if (addressActionRef.current !== requestId) return
-          setAddressSuggestions((photon.features || []).map(feature => ({
-            lat: String(feature.geometry.coordinates[1]), lon: String(feature.geometry.coordinates[0]),
-            display_name: [feature.properties.name, feature.properties.city, feature.properties.state].filter(Boolean).join(', ')
-          })))
+        const origin = deliverySettings?.originLat != null && deliverySettings.originLng != null
+          ? { lat: deliverySettings.originLat, lng: deliverySettings.originLng }
+          : undefined
+        const suggestions = await searchGoogleAddresses(query, origin)
+        if (addressActionRef.current === requestId) setAddressSuggestions(suggestions)
+      } catch (searchError) {
+        if (addressActionRef.current === requestId) {
+          setAddressSuggestions([])
+          setLocationError(searchError instanceof Error ? searchError.message : 'No se pudo buscar la dirección en Google Maps.')
         }
-      } catch { if (addressActionRef.current === requestId) setAddressSuggestions([]) }
+      }
       finally { if (addressActionRef.current === requestId) setSearchingAddress(false) }
     }, 350)
   }
@@ -2677,10 +2670,9 @@ export function PublicMenu() {
     setAddressFieldError(value => value === 'reference' ? value : '')
     setShowSuggestions(false)
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coordinates.lat}&lon=${coordinates.lng}&addressdetails=1`, { headers: { 'Accept-Language': 'es' } })
-      const data = await res.json() as { display_name?: string }
+      const formattedAddress = await reverseGoogleAddress(coordinates)
       if (addressActionRef.current !== requestId) return
-      if (data.display_name) setAddress(data.display_name.length > 120 ? `${data.display_name.substring(0, 120)}…` : data.display_name)
+      if (formattedAddress) setAddress(formattedAddress.length > 120 ? `${formattedAddress.substring(0, 120)}…` : formattedAddress)
     } catch {
       if (addressActionRef.current !== requestId) return
       setAddress(`Ubicación seleccionada (${coordinates.lat.toFixed(5)}, ${coordinates.lng.toFixed(5)})`)
@@ -4636,6 +4628,7 @@ export function PublicMenu() {
           <p className="public-delivery-hint">⌖ Podrás indicar la dirección en el siguiente paso.</p>
           <button type="button" className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'pickup') }}>Continuar <ChevronRight /></button>
         </div>}
+
         {step === 'pickup' && <section className="public-pickup-step" aria-label="Ubicación y horario para retirar">
           <div className="public-pickup-map public-contact-location-stage">
             <iframe title="Ubicación de Full China en Google Maps" src={mapPreviewUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
@@ -4650,7 +4643,7 @@ export function PublicMenu() {
           </div>
           <button type="button" className="public-primary public-pickup-continue" disabled={!cart.length} onClick={() => setStep('details')}>Continuar con mis datos <ChevronRight /></button>
         </section>}
-        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <LoadingSkeleton label="Buscando direcciones" count={3} /> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div>{deliveryCoverageUnavailable && <div className="public-address-coverage-alert" role="alert"><div><strong>Esta dirección está fuera de la cobertura disponible.</strong><p>No podemos cotizar el delivery para este punto. Elige otra ubicación o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => addressRef.current?.focus()}>Cambiar ubicación</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}<button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating} aria-label={locating ? 'Obteniendo ubicación' : 'Usar mi ubicación actual'}><Navigation />{locating ? <LoadingSkeleton label="Obteniendo ubicación" variant="inline" /> : <strong>Usar mi ubicación actual</strong>}<ChevronRight /></button>{locationError && (
+        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <LoadingSkeleton label="Buscando direcciones" count={3} /> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}{addressSuggestions.length > 0 && <div className="public-address-google-attribution" translate="no"><img src="/GoogleMaps_Logo_DarkGray.svg" alt="Google Maps" /></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} origin={deliverySettings?.originLat != null && deliverySettings.originLng != null ? { lat: deliverySettings.originLat, lng: deliverySettings.originLng } : null} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div>{deliveryCoverageUnavailable && <div className="public-address-coverage-alert" role="alert"><div><strong>Esta dirección está fuera de la cobertura disponible.</strong><p>No podemos cotizar el delivery para este punto. Elige otra ubicación o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => addressRef.current?.focus()}>Cambiar ubicación</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}<button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating} aria-label={locating ? 'Obteniendo ubicación' : 'Usar mi ubicación actual'}><Navigation />{locating ? <LoadingSkeleton label="Obteniendo ubicación" variant="inline" /> : <strong>Usar mi ubicación actual</strong>}<ChevronRight /></button>{locationError && (
   <div className="public-location-feedback" role="alert" ref={locationErrorRef}>
     <p>{locationError}</p>
     <div>
