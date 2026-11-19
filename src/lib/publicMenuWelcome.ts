@@ -3,6 +3,7 @@ const PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY = 'fullchina_public_welcome_pendin
 let dismissalConsumedForCurrentLoad = false
 
 export function shouldShowPublicMenuWelcome() {
+  if (window.__fullChinaSkipWelcomeForCurrentLoad) return false
   try {
     return localStorage.getItem(PUBLIC_MENU_WELCOME_DISMISSED_KEY) !== 'true'
       && sessionStorage.getItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY) !== 'true'
@@ -13,6 +14,11 @@ export function shouldShowPublicMenuWelcome() {
 
 export function consumePublicMenuWelcomeDismissal() {
   if (dismissalConsumedForCurrentLoad) return true
+  if (window.__fullChinaSkipWelcomeForCurrentLoad) {
+    window.__fullChinaSkipWelcomeForCurrentLoad = false
+    dismissalConsumedForCurrentLoad = true
+    return true
+  }
   try {
     const dismissedForCurrentLoad = sessionStorage.getItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY) === 'true'
     const dismissedPermanently = localStorage.getItem(PUBLIC_MENU_WELCOME_DISMISSED_KEY) === 'true'
@@ -30,7 +36,7 @@ export function markPublicMenuWelcomeDismissedForCurrentLoad(dontShowAgain: bool
       localStorage.setItem(PUBLIC_MENU_WELCOME_DISMISSED_KEY, 'true')
       sessionStorage.removeItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY)
     } else {
-      sessionStorage.setItem(PUBLIC_MENU_WELCOME_PENDING_DISMISS_KEY, 'true')
+      window.__fullChinaSkipWelcomeForCurrentLoad = true
     }
   } catch { /* la navegación continúa aunque el navegador limite el almacenamiento */ }
 }

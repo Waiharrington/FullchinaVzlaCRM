@@ -7,6 +7,12 @@ const button = document.getElementById('public-welcome-start') as HTMLButtonElem
 const checkbox = document.getElementById('public-welcome-dismiss') as HTMLInputElement | null
 const status = document.getElementById('public-welcome-status')
 
+declare global {
+  interface Window {
+    __fullChinaSkipWelcomeForCurrentLoad?: boolean
+  }
+}
+
 let appLoad: Promise<unknown> | null = null
 let needsVersionRefresh = false
 
@@ -25,8 +31,7 @@ function loadMenuFonts() {
 
 async function refreshCustomerVersion() {
   if (button) {
-    button.disabled = true
-    button.textContent = 'Actualizando…'
+    setButtonState('Actualizando…', true)
   }
   try {
     const registration = await navigator.serviceWorker?.getRegistration()
@@ -67,9 +72,7 @@ async function refreshCustomerVersion() {
 function loadCustomerApp() {
   if (appLoad) return appLoad
   if (button) {
-    button.disabled = true
-    button.setAttribute('aria-busy', 'true')
-    button.textContent = 'Abriendo la carta…'
+    setButtonState('Abriendo la carta…', true)
   }
   loadMenuFonts()
 
@@ -80,15 +83,24 @@ function loadCustomerApp() {
     if (staticWelcome && !staticWelcome.isConnected) document.body.prepend(staticWelcome)
     needsVersionRefresh = true
     if (button) {
-      button.disabled = false
-      button.removeAttribute('aria-busy')
-      button.textContent = 'Actualizar menú'
+      setButtonState('Actualizar menú', false)
     }
     if (status) status.textContent = 'Hay una nueva versión del menú. Actualiza para ver la carta más reciente.'
     console.error('No se pudo abrir la carta de Full China:', error)
     return undefined
   })
   return appLoad
+}
+
+function setButtonState(label: string, loading: boolean) {
+  if (!button) return
+  button.disabled = loading
+  button.classList.toggle('is-loading', loading)
+  if (loading) button.setAttribute('aria-busy', 'true')
+  else button.removeAttribute('aria-busy')
+  const labelNode = Array.from(button.childNodes).find(node => node.nodeType === Node.TEXT_NODE)
+  if (labelNode) labelNode.nodeValue = `${label} `
+  else button.prepend(document.createTextNode(`${label} `))
 }
 
 let skipWelcome = false
@@ -111,7 +123,8 @@ if (skipWelcome || !root || !button || !checkbox) {
         localStorage.setItem(DISMISSED_KEY, 'true')
         sessionStorage.removeItem(PENDING_DISMISS_KEY)
       } else {
-        sessionStorage.setItem(PENDING_DISMISS_KEY, 'true')
+        sessionStorage.removeItem(PENDING_DISMISS_KEY)
+        window.__fullChinaSkipWelcomeForCurrentLoad = true
       }
     } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
     // Mantén la bienvenida como superficie visible mientras se descargan y
