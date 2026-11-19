@@ -3,21 +3,27 @@ export type MapCoordinates = { lat: number; lng: number }
 type GoogleLatLng = { lat: () => number; lng: () => number }
 type GoogleMapClickEvent = { latLng: GoogleLatLng | null }
 type GoogleMapListener = { remove: () => void }
+type GoogleBounds = { north: number; south: number; east: number; west: number }
 export type GoogleMapInstance = {
   addListener: (eventName: 'click', handler: (event: GoogleMapClickEvent) => void) => GoogleMapListener
   getZoom: () => number | null
   setCenter: (coordinates: MapCoordinates) => void
   setZoom: (zoom: number) => void
+  fitBounds: (bounds: GoogleBounds, padding?: number) => void
 }
 export type GoogleMapMarker = {
   setMap: (map: GoogleMapInstance | null) => void
   setPosition: (coordinates: MapCoordinates) => void
 }
+export type GoogleMapCircle = { setMap: (map: GoogleMapInstance | null) => void }
+export type GoogleMapPolyline = { setMap: (map: GoogleMapInstance | null) => void }
 
 type GoogleMapIcon = { url: string; scaledSize: unknown; anchor: unknown }
 type GoogleMapsMapLibrary = {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMapInstance
   Marker: new (options: { map: GoogleMapInstance | null; position: MapCoordinates; title: string; icon: GoogleMapIcon }) => GoogleMapMarker
+  Circle: new (options: Record<string, unknown>) => GoogleMapCircle
+  Polyline: new (options: Record<string, unknown>) => GoogleMapPolyline
 }
 type GoogleMapsCoreLibrary = {
   ControlPosition: { RIGHT_BOTTOM: number }
@@ -36,13 +42,25 @@ type GoogleGeocoderResult = {
   formatted_address?: string
   geometry?: { location?: GoogleLatLng }
 }
+type GooglePlaceResult = {
+  displayName?: string | { text?: string }
+  formattedAddress?: string
+  location?: GoogleLatLng
+}
 type GoogleMapsGeocodingLibrary = {
   Geocoder: new () => {
     geocode: (request: GoogleGeocoderRequest) => Promise<{ results?: GoogleGeocoderResult[] }>
   }
 }
+type GoogleMapsPlacesLibrary = {
+  Place: {
+    searchByText: (request: Record<string, unknown>) => Promise<{ places?: GooglePlaceResult[] }>
+  }
+}
 type GoogleMapsGlobal = {
-  importLibrary?: (name: 'maps' | 'geocoding' | 'core') => Promise<unknown>
+  importLibrary?: (name: 'maps' | 'geocoding' | 'core' | 'places') => Promise<unknown>
+  Circle?: new (options: Record<string, unknown>) => GoogleMapCircle
+  Polyline?: new (options: Record<string, unknown>) => GoogleMapPolyline
 }
 
 declare global {
@@ -120,10 +138,11 @@ function loadMapsApi(): Promise<GoogleMapsGlobal> {
 export function importGoogleMapsLibrary(name: 'maps'): Promise<GoogleMapsMapLibrary>
 export function importGoogleMapsLibrary(name: 'geocoding'): Promise<GoogleMapsGeocodingLibrary>
 export function importGoogleMapsLibrary(name: 'core'): Promise<GoogleMapsCoreLibrary>
-export async function importGoogleMapsLibrary(name: 'maps' | 'geocoding' | 'core') {
+export function importGoogleMapsLibrary(name: 'places'): Promise<GoogleMapsPlacesLibrary>
+export async function importGoogleMapsLibrary(name: 'maps' | 'geocoding' | 'core' | 'places') {
   const maps = await loadMapsApi()
   if (!maps.importLibrary) throw new Error('Google Maps no terminó de inicializarse.')
-  return await maps.importLibrary(name) as GoogleMapsMapLibrary | GoogleMapsGeocodingLibrary | GoogleMapsCoreLibrary
+  return await maps.importLibrary(name) as GoogleMapsMapLibrary | GoogleMapsGeocodingLibrary | GoogleMapsCoreLibrary | GoogleMapsPlacesLibrary
 }
 
 function serviceBounds(origin?: MapCoordinates) {
@@ -137,27 +156,67 @@ function serviceBounds(origin?: MapCoordinates) {
 }
 
 export type GoogleAddressSuggestion = { display_name: string; lat: string; lon: string }
+const addressSuggestionCache = new Map<string, GoogleAddressSuggestion[]>()
+
+function normalizedSearchText(query: string) {
+  return query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+}
+
+function isBusinessLikeQuery(query: string) {
+  return !/\d/.test(query) && !/\b(calle|av(?:enida)?|carrera|transversal|callejon|sector|urbanizacion|urb\.?|km)\b/i.test(query)
+}
 
 export async function searchGoogleAddresses(query: string, origin?: MapCoordinates): Promise<GoogleAddressSuggestion[]> {
-  const { Geocoder } = await importGoogleMapsLibrary('geocoding')
-  const geocoder = new Geocoder()
-  const normalizedQuery = query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-  const address = /maracay|aragua|venezuela/.test(normalizedQuery)
+  const normalizedQuery = normalizedSearchText(query)
+  const cacheKey = `${normalizedQuery}:${origin?.lat ?? ''}:${origin?.lng ?? ''}`
+  const cached = addressSuggestionCache.get(cacheKey)
+  if (cached) return cached
+  const regionalQuery = /maracay|aragua|venezuela/.test(normalizedQuery)
     ? `${query}, Venezuela`
     : `${query}, Maracay, Aragua, Venezuela`
+
+  if (isBusinessLikeQuery(query)) {
+    try {
+      const { Place } = await importGoogleMapsLibrary('places')
+      const { places = [] } = await Place.searchByText({
+        textQuery: regionalQuery,
+        fields: ['displayName', 'formattedAddress', 'location'],
+        locationRestriction: serviceBounds(origin),
+        language: 'es',
+        region: 've',
+        maxResultCount: 5,
+      })
+      const placeResults = places.flatMap(place => {
+        const location = place.location
+        const name = typeof place.displayName === 'string' ? place.displayName : place.displayName?.text
+        const label = String(place.formattedAddress || name || '').trim()
+        if (!label || !location) return []
+        return [{ display_name: label.slice(0, 280), lat: String(location.lat()), lon: String(location.lng()) }]
+      }).slice(0, 5)
+      if (placeResults.length) {
+        addressSuggestionCache.set(cacheKey, placeResults)
+        return placeResults
+      }
+    } catch { /* La búsqueda de direcciones sigue disponible con Geocoding. */ }
+  }
+
+  const { Geocoder } = await importGoogleMapsLibrary('geocoding')
+  const geocoder = new Geocoder()
   const { results = [] } = await geocoder.geocode({
-    address,
+    address: regionalQuery,
     bounds: serviceBounds(origin),
     componentRestrictions: { country: 'VE' },
     region: 've',
     language: 'es',
   })
-  return results.flatMap(result => {
+  const suggestions = results.flatMap(result => {
     const location = result.geometry?.location
     const label = String(result.formatted_address || '').trim()
     if (!label || !location) return []
     return [{ display_name: label.slice(0, 280), lat: String(location.lat()), lon: String(location.lng()) }]
   }).slice(0, 5)
+  addressSuggestionCache.set(cacheKey, suggestions)
+  return suggestions
 }
 
 export async function reverseGoogleAddress(coordinates: MapCoordinates): Promise<string> {

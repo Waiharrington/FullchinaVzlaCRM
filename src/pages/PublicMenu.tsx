@@ -5,7 +5,7 @@ import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicCartIncludedCopy, publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
 import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type CustomerRepeatOrder, type WebOrderCartItem } from '../lib/publicOrders'
-import { estimateDelivery, type DeliverySettings } from '../lib/delivery'
+import { estimateDeliveryAsync, getDeliveryRoute, type DeliveryEstimate, type DeliveryRoute, type DeliverySettings } from '../lib/delivery'
 import { reverseGoogleAddress, searchGoogleAddresses } from '../lib/googleMaps'
 import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
@@ -165,6 +165,9 @@ const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
 const PUBLIC_WHATSAPP_PHONE = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
 const LOCAL_ORDER_TEST_MODE = isLocalOrderTestMode()
+// Temporal: dejar realizar pedidos fuera del horario mientras se valida el flujo público.
+// Volver a true cuando se solicite restaurar el bloqueo de horario.
+const ORDER_HOURS_BLOCK_ENABLED = false
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
 // v2 intentionally drops caches created while the public RPC still returned
@@ -586,7 +589,7 @@ export function PublicMenu() {
   const [showStoreClosedNotice, setShowStoreClosedNotice] = useState(() => {
     const showPreviewNotice = import.meta.env.DEV
       && new URLSearchParams(window.location.search).get('showClosedNotice') === '1'
-    return showPreviewNotice || (!LOCAL_ORDER_TEST_MODE && !getStoreClock().isOpen)
+    return showPreviewNotice || (ORDER_HOURS_BLOCK_ENABLED && !LOCAL_ORDER_TEST_MODE && !getStoreClock().isOpen)
   })
   const [showWelcomeNotice, setShowWelcomeNotice] = useState(() => {
     return !consumePublicMenuWelcomeDismissal()
@@ -750,14 +753,53 @@ export function PublicMenu() {
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null)
   const [deliverySettingsStatus, setDeliverySettingsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [deliverySettingsRetryVersion, setDeliverySettingsRetryVersion] = useState(0)
+  const [deliveryEstimate, setDeliveryEstimate] = useState<DeliveryEstimate | null>(null)
+  const [deliveryQuoteStatus, setDeliveryQuoteStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [deliveryRetryVersion, setDeliveryRetryVersion] = useState(0)
+  const [deliveryRoute, setDeliveryRoute] = useState<DeliveryRoute | null>(null)
+  const [deliveryRouteStatus, setDeliveryRouteStatus] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle')
   const [serverDeliveryFeeOverride, setServerDeliveryFeeOverride] = useState<{ lat: number; lng: number; fee: number } | null>(null)
-  const deliveryEstimate = useMemo(() => {
-    if (orderType !== 'delivery' || !geoCoords || !deliverySettings?.enabled) return null
-    return estimateDelivery(deliverySettings, geoCoords.lat, geoCoords.lng)
-  }, [orderType, geoCoords, deliverySettings])
+  const deliveryDestinationLat = geoCoords?.lat
+  const deliveryDestinationLng = geoCoords?.lng
+  useEffect(() => {
+    if (orderType !== 'delivery' || deliveryDestinationLat == null || deliveryDestinationLng == null || !deliverySettings) {
+      setDeliveryEstimate(null)
+      setDeliveryQuoteStatus('idle')
+      setDeliveryRoute(null)
+      setDeliveryRouteStatus('idle')
+      return
+    }
+    const destination = { lat: deliveryDestinationLat, lng: deliveryDestinationLng }
+    const origin = deliverySettings.originLat != null && deliverySettings.originLng != null
+      ? { lat: deliverySettings.originLat, lng: deliverySettings.originLng }
+      : null
+    let active = true
+    setDeliveryEstimate(null)
+    setDeliveryQuoteStatus('loading')
+    setDeliveryRoute(null)
+    setDeliveryRouteStatus(origin ? 'loading' : 'unavailable')
+    void estimateDeliveryAsync(deliverySettings, destination.lat, destination.lng)
+      .then(estimate => {
+        if (!active) return
+        setDeliveryEstimate(estimate)
+        setDeliveryQuoteStatus(estimate ? 'ready' : 'error')
+      })
+      .catch(() => { if (active) { setDeliveryEstimate(null); setDeliveryQuoteStatus('error') } })
+    if (origin) {
+      void getDeliveryRoute(origin, destination)
+        .then(route => {
+          if (!active) return
+          setDeliveryRoute(route)
+          setDeliveryRouteStatus(route ? 'ready' : 'unavailable')
+        })
+        .catch(() => { if (active) { setDeliveryRoute(null); setDeliveryRouteStatus('unavailable') } })
+    }
+    return () => { active = false }
+  }, [orderType, deliveryDestinationLat, deliveryDestinationLng, deliverySettings, deliveryRetryVersion])
   const deliveryCoverageUnavailable = orderType === 'delivery'
     && Boolean(geoCoords)
     && deliverySettingsStatus === 'ready'
+    && deliveryQuoteStatus === 'ready'
     && (!deliverySettings?.enabled || deliveryEstimate?.fee == null)
   const [loading, setLoading] = useState(() => !initialCatalog)
   const [catalogRetryVersion, setCatalogRetryVersion] = useState(0)
@@ -1624,7 +1666,7 @@ export function PublicMenu() {
   }, [pageSettings])
   const isStoreOpen = LOCAL_ORDER_TEST_MODE || storeClock.isOpen
   const blockClosedStoreAdd = () => {
-    if (isStoreOpen) return false
+    if (!ORDER_HOURS_BLOCK_ENABLED || isStoreOpen) return false
     setShowStoreClosedNotice(true)
     return true
   }
@@ -1638,7 +1680,13 @@ export function PublicMenu() {
   const orderTotal = total + deliveryFee
   const deliveryFeeText = orderType !== 'delivery'
     ? 'No aplica'
-    : deliveryEstimate && deliveryEstimate.fee != null
+    : deliveryQuoteStatus === 'loading' || deliverySettingsStatus === 'loading'
+      ? 'Calculando tarifa…'
+      : deliveryQuoteStatus === 'error' || deliverySettingsStatus === 'error'
+        ? 'No disponible'
+        : deliveryCoverageUnavailable
+          ? 'Fuera de cobertura'
+          : deliveryEstimate && deliveryEstimate.fee != null
       ? `$${deliveryFee.toFixed(2)}${serverDeliveryFeeOverride && serverDeliveryFeeOverride.lat === geoCoords?.lat && serverDeliveryFeeOverride.lng === geoCoords?.lng ? ' (actualizado)' : ''}`
       : 'Por confirmar'
   const cartProductIds = useMemo(() => new Set(cart.map(item => item.productId)), [cart])
@@ -2597,7 +2645,7 @@ export function PublicMenu() {
             setAddress(formattedAddress.length > 120 ? `${formattedAddress.substring(0, 120)}…` : formattedAddress)
             setShowSuggestions(false)
           } else setAddress(`Ubicación seleccionada (${lat.toFixed(5)}, ${lng.toFixed(5)})`)
-        } catch { /* silently keep coordinates */ }
+        } catch { if (addressActionRef.current === requestId) { setAddress(`Ubicación actual (${lat.toFixed(5)}, ${lng.toFixed(5)})`); setShowSuggestions(false) } }
         if (addressActionRef.current === requestId) setLocating(false)
       },
       (positionError) => {
@@ -2683,7 +2731,7 @@ export function PublicMenu() {
     if (address.trim().length < 8) return setAddressFieldError('address')
     if (!geoCoords) return setAddressFieldError('geo')
     if (orderType === 'delivery' && !addressReference.trim()) return setAddressFieldError('reference')
-    if (orderType === 'delivery' && (deliverySettingsStatus !== 'ready' || deliveryCoverageUnavailable)) return
+    if (orderType === 'delivery' && (deliverySettingsStatus !== 'ready' || deliveryQuoteStatus !== 'ready' || deliveryCoverageUnavailable)) return
     setAddressFieldError('')
     setStep('details')
   }
@@ -2700,7 +2748,7 @@ export function PublicMenu() {
       if (!geoCoords) return setAddressFieldError('geo')
       return setAddressFieldError('reference')
     }
-    if (orderType === 'delivery' && (!deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
+    if (orderType === 'delivery' && (deliveryQuoteStatus !== 'ready' || !deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
       setStep('address')
       setError('No podemos confirmar el costo de entrega para esa ubicación. Revisa el punto en el mapa o elige retiro en el local.')
       return
@@ -2750,7 +2798,7 @@ export function PublicMenu() {
       setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
       return
     }
-    if (orderType === 'delivery' && (!deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
+    if (orderType === 'delivery' && (deliveryQuoteStatus !== 'ready' || !deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
       setStep('address')
       setError('No podemos confirmar el costo de entrega para esa ubicación. Revisa el punto en el mapa o elige retiro en el local.')
       return
@@ -4643,7 +4691,7 @@ export function PublicMenu() {
           </div>
           <button type="button" className="public-primary public-pickup-continue" disabled={!cart.length} onClick={() => setStep('details')}>Continuar con mis datos <ChevronRight /></button>
         </section>}
-        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar dirección, urbanización o ciudad" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <LoadingSkeleton label="Buscando direcciones" count={3} /> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">No encontramos esa dirección.<small>Prueba con ciudad y urbanización.</small></div>}{addressSuggestions.length > 0 && <div className="public-address-google-attribution" translate="no"><img src="/GoogleMaps_Logo_DarkGray.svg" alt="Google Maps" /></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} origin={deliverySettings?.originLat != null && deliverySettings.originLng != null ? { lat: deliverySettings.originLat, lng: deliverySettings.originLng } : null} onPick={selectMapLocation} /></Suspense><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div>{deliveryCoverageUnavailable && <div className="public-address-coverage-alert" role="alert"><div><strong>Esta dirección está fuera de la cobertura disponible.</strong><p>No podemos cotizar el delivery para este punto. Elige otra ubicación o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => addressRef.current?.focus()}>Cambiar ubicación</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}<button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating} aria-label={locating ? 'Obteniendo ubicación' : 'Usar mi ubicación actual'}><Navigation />{locating ? <LoadingSkeleton label="Obteniendo ubicación" variant="inline" /> : <strong>Usar mi ubicación actual</strong>}<ChevronRight /></button>{locationError && (
+        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={address} onChange={event => searchAddress(event.target.value)} placeholder="Buscar negocio, dirección o urbanización" /></div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <LoadingSkeleton label="Buscando direcciones" count={3} /> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">Google no encontró ese lugar.<small>Prueba otra búsqueda o marca el punto exacto en el mapa.</small></div>}{addressSuggestions.length > 0 && <div className="public-address-google-attribution" translate="no"><img src="/GoogleMaps_Logo_DarkGray.svg" alt="Google Maps" /></div>}</div>}<Suspense fallback={<div className="public-address-map" aria-label="Cargando mapa" />}><AddressMap coordinates={geoCoords} origin={deliverySettings?.originLat != null && deliverySettings.originLng != null ? { lat: deliverySettings.originLat, lng: deliverySettings.originLng } : null} zones={deliverySettings?.zones ?? []} roadFactor={deliverySettings?.roadFactor ?? 1.3} route={deliveryRoute} onPick={selectMapLocation} /></Suspense><div className={`public-route-summary${deliveryRouteStatus === "loading" ? " is-loading" : ""}`} aria-live="polite"><Navigation size={15} /><span>{deliveryRouteStatus === "loading" ? "Calculando ruta por carretera…" : deliveryRouteStatus === "ready" && deliveryRoute ? `Ruta estimada: ${deliveryRoute.distanceKm.toFixed(1)} km · Datos de ruta © OpenStreetMap` : deliveryRouteStatus === "unavailable" ? "No pudimos dibujar la ruta; la cotización se calcula por separado." : "Elige un punto para consultar la ruta."}</span></div><div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{address || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación GPS confirmada' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div>{deliveryCoverageUnavailable && <div className="public-address-coverage-alert" role="alert"><div><strong>Esta dirección está fuera de la cobertura disponible.</strong><p>No podemos cotizar el delivery para este punto. Elige otra ubicación o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => addressRef.current?.focus()}>Cambiar ubicación</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}<button type="button" className="public-location-row" onClick={useMyLocation} disabled={locating} aria-label={locating ? 'Obteniendo ubicación' : 'Usar mi ubicación actual'}><Navigation />{locating ? <LoadingSkeleton label="Obteniendo ubicación" variant="inline" /> : <strong>Usar mi ubicación actual</strong>}<ChevronRight /></button>{locationError && (
   <div className="public-location-feedback" role="alert" ref={locationErrorRef}>
     <p>{locationError}</p>
     <div>
@@ -4651,10 +4699,11 @@ export function PublicMenu() {
       <button type="button" onClick={() => document.querySelector<HTMLElement>('.public-address-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Elegir en el mapa</button>
     </div>
   </div>
-)}<label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Casa / edificio / referencia</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. Torre B, Piso 4, Apt. 4B" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className={`public-address-summary${deliveryCoverageUnavailable ? ' is-unavailable' : ''}`}><div><small>Tarifa de delivery</small><strong>{deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Calculando cobertura…' : deliverySettingsStatus === 'error' ? 'No disponible' : !geoCoords ? 'Elige un punto' : deliveryCoverageUnavailable ? 'Fuera de cobertura' : money(deliveryFee)}</strong></div>{!deliveryCoverageUnavailable && <span>{!geoCoords ? 'Selecciona una ubicación' : deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Consultando zona' : deliverySettingsStatus === 'error' ? 'No se pudo consultar la zona' : 'Ubicación confirmada'}</span>}</div>
+)}<label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Casa / edificio / referencia</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. Torre B, Piso 4, Apt. 4B" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Indicaciones adicionales <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Timbre 04B, dejar con el conserje, etc." /></label><div className={`public-address-summary${deliveryCoverageUnavailable ? ' is-unavailable' : ''}`}><div><small>Tarifa de delivery</small><strong>{deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Consultando cobertura…' : deliverySettingsStatus === 'error' ? 'No disponible' : !geoCoords ? 'Elige un punto' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'No pudimos calcularla' : deliveryCoverageUnavailable ? 'Fuera de cobertura' : money(deliveryFee)}</strong></div>{!deliveryCoverageUnavailable && <span>{!geoCoords ? 'Selecciona una ubicación' : deliveryQuoteStatus === 'loading' ? 'Consultando cobertura y tarifa' : deliveryQuoteStatus === 'error' ? 'Reintenta o cambia a retiro' : deliveryEstimate ? `${deliveryEstimate.isApproximate ? "≈" : ""}${deliveryEstimate.distanceKm.toFixed(1)} km ${deliveryEstimate.isApproximate ? "aproximados" : "por carretera"}` : 'Ubicación confirmada'}</span>}
+{deliveryQuoteStatus === 'error' && <button type="button" className="public-address-quote-retry" onClick={() => setDeliveryRetryVersion(version => version + 1)}>Reintentar cotización</button>}</div>
 
 {deliverySettingsStatus === 'error' && <div className="public-address-coverage-alert" role="alert"><div><strong>No pudimos consultar la cobertura.</strong><p>Inténtalo de nuevo o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => setDeliverySettingsRetryVersion(version => version + 1)}>Reintentar</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}
-{deliverySettingsStatus === 'ready' && !deliveryCoverageUnavailable && <button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button>}</div>}
+{deliverySettingsStatus === 'ready' && deliveryQuoteStatus === 'ready' && !deliveryCoverageUnavailable && <button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button>}</div>}
         {step === 'details' && (
           <div className="public-checkout">
             <div className="public-data-intro">

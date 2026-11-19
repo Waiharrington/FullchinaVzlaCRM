@@ -24,6 +24,12 @@ export interface DeliveryEstimate {
   distanceKm: number
   zone: DeliveryZone | null
   fee: number | null // null = fuera de las zonas configuradas
+  isApproximate?: boolean
+}
+
+export interface DeliveryRoute {
+  distanceKm: number
+  coordinates: Array<{ lat: number; lng: number }>
 }
 
 const EARTH_RADIUS_KM = 6371
@@ -65,6 +71,28 @@ async function osrmRouteKm(aLat: number, aLng: number, bLat: number, bLng: numbe
   }
 }
 
+/** Ruta de carretera independiente para dibujarla en el mapa. */
+export async function getDeliveryRoute(origin: { lat: number; lng: number }, destination: { lat: number; lng: number }): Promise<DeliveryRoute | null> {
+  try {
+    const url = `https://router.project-osrm.org/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson&steps=false`
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const data = await response.json() as {
+      code?: string
+      routes?: Array<{ distance?: number; geometry?: { coordinates?: Array<[number, number]> } }>
+    }
+    const route = data.routes?.[0]
+    const points = route?.geometry?.coordinates
+    if (data.code !== 'Ok' || !route?.distance || !points?.length) return null
+    return {
+      distanceKm: route.distance / 1000,
+      coordinates: points.map(([lng, lat]) => ({ lat, lng })),
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * Estima el costo de delivery (síncrono, Haversine × roadFactor).
  * Usado como fallback y en el probador del admin.
@@ -74,7 +102,7 @@ export function estimateDelivery(settings: DeliverySettings, destLat: number, de
   const straight = haversineKm(settings.originLat, settings.originLng, destLat, destLng)
   const distanceKm = straight * (settings.roadFactor || 1)
   const zone = zoneForDistance(distanceKm, settings.zones)
-  return { distanceKm, zone, fee: zone ? zone.price : null }
+  return { distanceKm, zone, fee: zone ? zone.price : null, isApproximate: true }
 }
 
 /**
@@ -86,7 +114,7 @@ export async function estimateDeliveryAsync(settings: DeliverySettings, destLat:
   const routeKm = await osrmRouteKm(settings.originLat, settings.originLng, destLat, destLng)
   if (routeKm != null) {
     const zone = zoneForDistance(routeKm, settings.zones)
-    return { distanceKm: routeKm, zone, fee: zone ? zone.price : null }
+    return { distanceKm: routeKm, zone, fee: zone ? zone.price : null, isApproximate: false }
   }
   return estimateDelivery(settings, destLat, destLng)
 }
