@@ -1518,7 +1518,7 @@ button.mobile-only {
 .public-cart-drawer .public-review-heading h2 { margin: 0 0 8px; font: 800 clamp(22px, 5vw, 42px)/1.1 'DM Sans', sans-serif; color: #FFF; white-space: nowrap; letter-spacing: -.4px; }
 .public-review-heading h2::before { display: none; }
 .public-review-heading-icon { vertical-align: middle; }
-.public-review-heading p { margin: 0; color: #F3F4F6; font-size: clamp(15px, 2vw, 21px); }
+.public-review-heading p { margin: 0; color: #F3F4F6; font-size: clamp(15px, 2vw, 21px); text-wrap: pretty; }
 .public-step-confirm .public-review-header { position: relative; z-index: 3; min-height: 142px; box-sizing: border-box; padding-top: 42px; padding-bottom: 24px; overflow: visible; }
 .public-step-confirm .public-review-header > img { display: block; top: 0; }
 .public-step-confirm .public-review-heading { position: absolute; z-index: 4; top: 42px; left: 50%; width: min(calc(100% - 20px), 760px); margin: 0; transform: translateX(-50%); text-align: center !important; align-self: auto; justify-self: auto; }
