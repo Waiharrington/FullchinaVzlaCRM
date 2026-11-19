@@ -46,7 +46,7 @@ type MarkerKind = 'store' | 'delivery' | 'current-location'
 
 function markerSvg(kind: MarkerKind, logoDataUrl: string) {
   if (kind === 'current-location') {
-    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30"><circle cx="15" cy="15" r="12" fill="#4285f4" fill-opacity=".2"/><circle cx="15" cy="15" r="7" fill="#4285f4" stroke="#fff" stroke-width="3"/></svg>'
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" fill="#4285f4" fill-opacity=".2"/><circle cx="22" cy="22" r="11" fill="#4285f4" stroke="#fff" stroke-width="4"/></svg>'
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
   }
   const fill = kind === 'store' ? '#e31b2b' : '#ffc83d'
@@ -74,11 +74,12 @@ async function loadBrandLogoDataUrl() {
   }
 }
 
-function coverageRadii(zones: DeliveryZone[], roadFactor: number) {
+function maximumCoverageRadius(zones: DeliveryZone[], roadFactor: number) {
   const factor = Math.max(1, roadFactor || 1.3)
-  return [...new Set(zones
+  const radii = zones
     .filter(zone => zone.maxKm != null && Number.isFinite(zone.maxKm) && zone.maxKm > 0)
-    .map(zone => Math.round((zone.maxKm as number) / factor * 1000)))].sort((a, b) => a - b)
+    .map(zone => Math.round((zone.maxKm as number) / factor * 1000))
+  return radii.length ? Math.max(...radii) : null
 }
 
 function routeBounds(origin: MapCoordinates, destination: MapCoordinates | null, route: DeliveryRoute | null) {
@@ -120,6 +121,7 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
   const coordinateLng = coordinates?.lng
   const originLat = origin?.lat
   const originLng = origin?.lng
+  const hasCoverageLimit = zones.some(zone => zone.maxKm != null && Number.isFinite(zone.maxKm) && zone.maxKm > 0)
   coordinatesRef.current = coordinates
   isGpsLocationRef.current = isGpsLocation
   originRef.current = origin
@@ -147,9 +149,9 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
         brandLogoRef.current = brandLogo
         markerSizingRef.current = {
           size: new core.Size(56, 66),
-          dotSize: new core.Size(30, 30),
+          dotSize: new core.Size(44, 44),
           pinAnchor: new core.Point(28, 64),
-          dotAnchor: new core.Point(15, 15),
+          dotAnchor: new core.Point(22, 22),
         }
         const selectedPoint = coordinatesRef.current
         const store = originRef.current
@@ -172,7 +174,7 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
           position: selectedPoint || center,
           title: isGpsLocationRef.current ? 'Tu ubicación actual' : 'Ubicación de entrega seleccionada',
           icon: isGpsLocationRef.current
-            ? { url: markerSvg('current-location', brandLogo), scaledSize: new core.Size(30, 30), anchor: new core.Point(15, 15) }
+            ? { url: markerSvg('current-location', brandLogo), scaledSize: new core.Size(44, 44), anchor: new core.Point(22, 22) }
             : { url: markerSvg('delivery', brandLogo), scaledSize: new core.Size(56, 66), anchor: new core.Point(28, 64) },
         })
         const originMarker = new markerLibrary.Marker({
@@ -227,7 +229,7 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
     if (!mapReady || !map || !destinationMarker || !originMarker) return
     const store = originLat != null && originLng != null ? { lat: originLat, lng: originLng } : null
     const destination = coordinateLat != null && coordinateLng != null ? { lat: coordinateLat, lng: coordinateLng } : null
-    const radii = coverageRadii(zones, roadFactor)
+    const coverageRadius = maximumCoverageRadius(zones, roadFactor)
 
     if (destination) {
       destinationMarker.setPosition(destination)
@@ -250,20 +252,19 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
     coverageCirclesRef.current.forEach(circle => circle.setMap(null))
     coverageCirclesRef.current = []
     const CircleConstructor = window.google?.maps?.Circle
-    radii.forEach((radius, index) => {
-      if (!store || !CircleConstructor) return
+    if (store && CircleConstructor && coverageRadius) {
       coverageCirclesRef.current.push(new CircleConstructor({
         map,
         center: store,
-        radius,
-        strokeColor: index % 2 === 0 ? '#ffc83d' : '#e31b2b',
-        strokeOpacity: 0.8,
-        strokeWeight: 1.5,
-        fillColor: index % 2 === 0 ? '#ffc83d' : '#e31b2b',
-        fillOpacity: 0.035,
+        radius: coverageRadius,
+        strokeColor: '#ffc83d',
+        strokeOpacity: 0.9,
+        strokeWeight: 2,
+        fillColor: '#ffc83d',
+        fillOpacity: 0.045,
         clickable: false,
       }))
-    })
+    }
 
     routePolylineRef.current?.setMap(null)
     routeHaloPolylineRef.current?.setMap(null)
@@ -300,11 +301,17 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
   }, [mapReady, coordinateLat, coordinateLng, isGpsLocation, originLat, originLng, zones, roadFactor, route])
 
   return (
-    <div className="public-address-map public-address-map-brand">
-      <div ref={containerRef} className="public-address-map-canvas" role="application" aria-label="Google Maps interactivo. Toca para elegir tu ubicación" />
-      {mapError && <div className="public-address-map-error" role="status">{mapError}</div>}
-      {!mapError && mapLoading && <div className="public-address-map-loading" role="status">Cargando Google Maps…</div>}
-      <div className="public-address-map-legend"><span><i className="is-origin" /> Full China</span><span><i className={isGpsLocation ? 'is-current-location' : 'is-destination'} /> {isGpsLocation ? 'Tu ubicación' : 'Entrega'}</span><span><i className="is-coverage" /> Cobertura aprox.</span></div>
+    <div className="public-address-map-panel">
+      <div className="public-address-map-guide">
+        <strong>Ubica tu entrega</strong>
+        <span>Toca para elegir dónde entregar. El pin rojo marca Full China.</span>
+      </div>
+      <div className="public-address-map public-address-map-brand">
+        <div ref={containerRef} className="public-address-map-canvas" role="application" aria-label="Google Maps interactivo. Toca para elegir tu ubicación" />
+        {mapError && <div className="public-address-map-error" role="status">{mapError}</div>}
+        {!mapError && mapLoading && <div className="public-address-map-loading" role="status">Cargando Google Maps…</div>}
+      </div>
+      <div className="public-address-map-legend"><span><i className="is-origin" /> Full China · salida</span><span><i className={isGpsLocation ? 'is-current-location' : 'is-destination'} /> {isGpsLocation ? 'Tu ubicación' : 'Punto de entrega'}</span>{hasCoverageLimit && <span><i className="is-coverage" /> Límite aprox.</span>}</div>
     </div>
   )
 }
