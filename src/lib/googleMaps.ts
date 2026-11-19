@@ -14,6 +14,8 @@ export type GoogleMapInstance = {
 export type GoogleMapMarker = {
   setMap: (map: GoogleMapInstance | null) => void
   setPosition: (coordinates: MapCoordinates) => void
+  setIcon: (icon: GoogleMapIcon) => void
+  setTitle: (title: string) => void
 }
 export type GoogleMapCircle = { setMap: (map: GoogleMapInstance | null) => void }
 export type GoogleMapPolyline = { setMap: (map: GoogleMapInstance | null) => void }

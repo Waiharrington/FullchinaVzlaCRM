@@ -3770,6 +3770,21 @@ button.mobile-only {
   background: linear-gradient(135deg, rgba(91, 20, 25, .42), rgba(20, 17, 20, .92));
   color: #f5e8e8;
 }
+.public-location-pending {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 200, 61, .25);
+  border-radius: 12px;
+  background: rgba(255, 200, 61, .07);
+  color: #ffe18a;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.public-location-pending svg { flex: 0 0 auto; color: #ffc83d; animation: public-location-pending-pulse 1.15s ease-in-out infinite alternate; }
+@keyframes public-location-pending-pulse { to { opacity: .48; transform: scale(.88); } }
 
 .public-location-feedback p {
   margin: 0;
@@ -16270,27 +16285,20 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 .public-pickup-map .public-contact-brand-pin {
   top: 50% !important;
   left: 50% !important;
-  width: 60px !important;
-  height: 60px !important;
-  border-radius: 50% !important;
-  transform: translate(-50%, -50%) !important;
+  width: 58px !important;
+  height: 58px !important;
+  border: 3px solid #e31b2b !important;
+  border-radius: 50% 50% 50% 0 !important;
+  transform: translate(-50%, -65%) rotate(-45deg) !important;
+  box-shadow: 0 12px 24px rgba(0,0,0,.52), 0 0 18px rgba(227,27,43,.38) !important;
 }
 .public-pickup-map .public-contact-brand-pin::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  left: 50%;
-  bottom: -8px;
-  width: 13px;
-  height: 13px;
-  border-radius: 0 0 3px;
-  background: #e31b2b;
-  transform: translateX(-50%) rotate(45deg);
+  display: none;
 }
 .public-pickup-map .public-contact-brand-pin img {
-  width: 48px !important;
-  max-height: 36px !important;
-  transform: none !important;
+  width: 40px !important;
+  max-height: 28px !important;
+  transform: rotate(45deg) !important;
 }
 .public-pickup-details {
   display: grid;
@@ -16403,6 +16411,7 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 }
 .public-address-map-legend i.is-origin { background: #e31b2b; box-shadow: 0 0 0 2px rgba(227, 27, 43, .2); }
 .public-address-map-legend i.is-coverage { border: 1.5px solid #ffc83d; background: transparent; box-shadow: none; }
+.public-address-map-legend i.is-current-location { border: 2px solid #fff; background: #4285f4; box-shadow: 0 0 0 2px rgba(66,133,244,.3); }
 .public-route-summary {
   display: flex;
   align-items: flex-start;
