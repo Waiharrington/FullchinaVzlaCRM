@@ -3,6 +3,7 @@ import { PUBLIC_ORDER_REEL_BUCKET, PUBLIC_ORDER_REEL_MAX_BYTES } from './publicO
 import { supabase } from './supabase'
 
 const CHUNK_SIZE = 6 * 1024 * 1024
+const REEL_CACHE_SECONDS = 60 * 60 * 24 * 365
 const SUPABASE_URL = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
 const SUPABASE_ANON_KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '')
 
@@ -40,7 +41,7 @@ export async function uploadPublicOrderReel(
     await uploadResumable(file, videoPath, session.access_token, onProgress)
     const { error: posterError } = await supabase.storage
       .from(PUBLIC_ORDER_REEL_BUCKET)
-      .upload(posterPath, posterBlob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false })
+      .upload(posterPath, posterBlob, { contentType: 'image/jpeg', cacheControl: String(REEL_CACHE_SECONDS), upsert: false })
     if (posterError) throw posterError
 
     const src = supabase.storage.from(PUBLIC_ORDER_REEL_BUCKET).getPublicUrl(videoPath).data.publicUrl
@@ -96,7 +97,7 @@ function uploadResumable(
         bucketName: PUBLIC_ORDER_REEL_BUCKET,
         objectName: objectPath,
         contentType: 'video/mp4',
-        cacheControl: '3600',
+        cacheControl: String(REEL_CACHE_SECONDS),
       },
       onProgress(bytesSent, bytesTotal) {
         onProgress(Math.min(96, Math.round((bytesSent / bytesTotal) * 96)))

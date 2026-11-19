@@ -6922,6 +6922,7 @@ button.mobile-only {
   /* Sin deslizamientos horizontales: cada paso hace un fundido en su lugar */
   .public-drawer-backdrop:not(.closing) .public-step-cart,
   .public-drawer-backdrop:not(.closing) .public-step-delivery,
+  .public-drawer-backdrop:not(.closing) .public-step-pickup,
   .public-drawer-backdrop:not(.closing) .public-step-address,
   .public-drawer-backdrop:not(.closing) .public-step-details,
   .public-drawer-backdrop:not(.closing) .public-step-confirm,
@@ -7209,12 +7210,12 @@ button.mobile-only {
 
 /* Fundidos de la tarjeta que se transforma (fuera del media para reuso) */
 @keyframes public-card-fade-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.992); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 @keyframes public-card-fade-out {
-  from { opacity: 1; transform: translateY(0); }
-  to { opacity: 0; transform: translateY(6px); }
+  from { opacity: 1; }
+  to { opacity: 0; }
 }
 
 /* Product Detail Modal */

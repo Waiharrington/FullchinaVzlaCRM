@@ -32,6 +32,15 @@
       ]
     },
     {
+      "source": "/videos/instagram/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
       "source": "/(pedir|pedir.html|index.html|sw.js|manifest-cliente.webmanifest|manifest-admin.webmanifest)",
       "headers": [
         {

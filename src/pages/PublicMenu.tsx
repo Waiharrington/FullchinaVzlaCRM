@@ -147,6 +147,11 @@ function startInstagramVideo(video: HTMLVideoElement) {
     const source = video.dataset.src || video.querySelector('source')?.dataset.src
     if (!source) return
     video.src = source
+  }
+  // The selected reel is the only one allowed to buffer after the customer
+  // explicitly asks to watch it. Metadata is warmed separately on tab entry.
+  if (video.preload !== 'auto') {
+    video.preload = 'auto'
     video.load()
   }
   // Los videos ya visitados conservan src. Aun así deben reproducirse de
@@ -1342,8 +1347,9 @@ export function PublicMenu() {
     return () => observer.disconnect()
   }, [activeCategory, categorySections])
 
-  // Las previews se muestran de inmediato. Solo se activa el video que ocupa
-  // el centro; las demás tarjetas permanecen pausadas hasta su turno.
+  // Warm only the selected reel's metadata while Contact is visible. That
+  // resolves duration/container headers without autoplaying or downloading
+  // the other five videos; full buffering starts only after an explicit tap.
   useEffect(() => {
     if (currentTab !== 'contacto') return
     const timer = window.setTimeout(() => {
@@ -1352,7 +1358,17 @@ export function PublicMenu() {
         const playbackStarted = video.closest('.public-instagram-desktop-reel') ? instagramDesktopPlaybackConfirmed : instagramPlaybackStarted
         video.muted = !instagramAudioEnabled
         if (video.dataset.active === 'true' && video.offsetParent !== null && playbackStarted && !instagramPaused) startInstagramVideo(video)
-        else if (video.dataset.active === 'true') video.pause()
+        else if (video.dataset.active === 'true' && video.offsetParent !== null) {
+          video.pause()
+          video.preload = 'metadata'
+          if (!video.src) {
+            const source = video.dataset.src || video.querySelector('source')?.dataset.src
+            if (source) {
+              video.src = source
+              video.load()
+            }
+          }
+        }
         else { video.pause(); video.currentTime = 0 }
       })
     }, 180)
@@ -1414,8 +1430,11 @@ export function PublicMenu() {
       const source = video.dataset.src || video.querySelector('source')?.dataset.src
       if (source) {
         video.src = source
-        video.load()
       }
+    }
+    if (video.preload !== 'auto') {
+      video.preload = 'auto'
+      video.load()
     }
     const firstPlayback = !hasStarted || video.currentTime === 0
     if (firstPlayback) {
@@ -4674,7 +4693,7 @@ export function PublicMenu() {
       <button type="button" onClick={() => document.querySelector<HTMLElement>('.public-address-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Elegir en el mapa</button>
     </div>
   </div>
-)}<label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Referencia para encontrarte</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. casa azul, torre, local o esquina cercana" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Instrucciones para el repartidor <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. tocar timbre 04B o dejar con el conserje" /></label><div className={`public-address-summary${deliveryCoverageUnavailable ? ' is-unavailable' : ''}`}><div><small>Tarifa de delivery</small><strong>{deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Consultando cobertura…' : deliverySettingsStatus === 'error' ? 'No disponible' : !geoCoords ? 'Elige un punto' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'No pudimos calcularla' : deliveryCoverageUnavailable ? 'No disponible' : money(deliveryFee)}</strong></div>{deliveryEstimate && deliveryQuoteStatus === 'ready' ? <div className="public-address-distance"><strong>{`${deliveryEstimate.isApproximate ? "≈" : ""}${deliveryEstimate.distanceKm.toFixed(1)} km`}</strong><small>desde Full China · {deliveryEstimate.isApproximate ? "aprox." : "por carretera"}</small><small className="public-route-attribution">© OpenStreetMap</small><em className={deliveryCoverageUnavailable ? 'is-outside' : ''}>{deliveryCoverageUnavailable ? 'Fuera del área de delivery' : 'Dentro del área de delivery'}</em></div> : !deliveryCoverageUnavailable && <span>{!geoCoords ? 'Selecciona una ubicación' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'Reintenta o cambia a retiro' : 'Ubicación confirmada'}</span>}
+)}<label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Referencia para encontrarte</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. casa azul, torre, local o esquina cercana" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Instrucciones para el repartidor <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. tocar timbre 04B o dejar con el conserje" /></label><div className={`public-address-summary${deliveryCoverageUnavailable ? ' is-unavailable' : ''}`}><div><small>Tarifa de delivery</small><strong>{deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Consultando cobertura…' : deliverySettingsStatus === 'error' ? 'No disponible' : !geoCoords ? 'Elige un punto' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'No pudimos calcularla' : deliveryCoverageUnavailable ? 'No disponible' : money(deliveryFee)}</strong></div>{deliveryEstimate && deliveryQuoteStatus === 'ready' ? <div className="public-address-distance"><strong>{`${deliveryEstimate.isApproximate ? "≈" : ""}${deliveryEstimate.distanceKm.toFixed(1)} km`}</strong><small>desde Full China · {deliveryEstimate.isApproximate ? "aprox." : "por carretera"}</small><em className={deliveryCoverageUnavailable ? 'is-outside' : ''}>{deliveryCoverageUnavailable ? 'Fuera del área de delivery' : 'Dentro del área de delivery'}</em></div> : !deliveryCoverageUnavailable && <span>{!geoCoords ? 'Selecciona una ubicación' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'Reintenta o cambia a retiro' : 'Ubicación confirmada'}</span>}
 {deliveryQuoteStatus === 'error' && <button type="button" className="public-address-quote-retry" onClick={() => setDeliveryRetryVersion(version => version + 1)}>Reintentar cotización</button>}</div>
 
 {deliverySettingsStatus === 'error' && <div className="public-address-coverage-alert" role="alert"><div><strong>No pudimos consultar la cobertura.</strong><p>Inténtalo de nuevo o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => setDeliverySettingsRetryVersion(version => version + 1)}>Reintentar</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}
