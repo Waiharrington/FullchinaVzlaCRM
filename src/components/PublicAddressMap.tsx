@@ -13,23 +13,23 @@ import type { DeliveryRoute, DeliveryZone } from '../lib/delivery'
 
 const DEFAULT_CENTER: MapCoordinates = { lat: 10.2447, lng: -67.5958 }
 const FULL_CHINA_MAP_STYLES: Array<Record<string, unknown>> = [
-  { elementType: 'geometry', stylers: [{ color: '#1b1b1c' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#f4efe5' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#171718' }, { weight: 4 }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#493032' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#ffd04b' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#292624' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#302a25' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d8c99e' }] },
+  { elementType: 'geometry', stylers: [{ color: '#f4f1eb' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#514b45' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#fffdf9' }, { weight: 4 }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#e7c8c5' }] },
+  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#a82b35' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#e9eee4' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#fff8e8' }] },
+  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#766344' }] },
   { featureType: 'poi.business', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#26332b' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#393637' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#e7ddd0' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#514234' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#a52a32' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#e4a927' }] },
-  { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#806a38' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#202c32' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#e1ebdc' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#ffffff' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#625a53' }] },
+  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#fff0bd' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#e8a7a3' }] },
+  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#d9981b' }] },
+  { featureType: 'transit.line', elementType: 'geometry', stylers: [{ color: '#dfbd62' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#d9e8ed' }] },
 ]
 
 type Props = {
@@ -101,9 +101,10 @@ export function PublicAddressMap({ coordinates, origin, zones = [], roadFactor =
     const initializeMap = async () => {
       try {
         if (!isGoogleMapsConfigured()) throw new Error('Falta configurar VITE_GOOGLE_MAPS_API_KEY para mostrar Google Maps en esta versión local.')
-        const [maps, core] = await Promise.all([
+        const [maps, core, markerLibrary] = await Promise.all([
           importGoogleMapsLibrary('maps'),
           importGoogleMapsLibrary('core'),
+          importGoogleMapsLibrary('marker'),
         ])
         if (!live || !containerRef.current) return
         const selectedPoint = coordinatesRef.current
@@ -122,13 +123,13 @@ export function PublicAddressMap({ coordinates, origin, zones = [], roadFactor =
           zoomControl: true,
           zoomControlOptions: { position: core.ControlPosition.RIGHT_BOTTOM },
         })
-        const destinationMarker = new maps.Marker({
+        const destinationMarker = new markerLibrary.Marker({
           map: selectedPoint ? map : null,
           position: selectedPoint || center,
           title: 'Ubicación de entrega seleccionada',
           icon: { url: markerSvg(false), scaledSize: new core.Size(42, 52), anchor: new core.Point(21, 50) },
         })
-        const originMarker = new maps.Marker({
+        const originMarker = new markerLibrary.Marker({
           map: store ? map : null,
           position: store || center,
           title: 'Origen: Full China',

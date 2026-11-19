@@ -21,9 +21,11 @@ export type GoogleMapPolyline = { setMap: (map: GoogleMapInstance | null) => voi
 type GoogleMapIcon = { url: string; scaledSize: unknown; anchor: unknown }
 type GoogleMapsMapLibrary = {
   Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMapInstance
-  Marker: new (options: { map: GoogleMapInstance | null; position: MapCoordinates; title: string; icon: GoogleMapIcon }) => GoogleMapMarker
   Circle: new (options: Record<string, unknown>) => GoogleMapCircle
   Polyline: new (options: Record<string, unknown>) => GoogleMapPolyline
+}
+type GoogleMapsMarkerLibrary = {
+  Marker: new (options: { map: GoogleMapInstance | null; position: MapCoordinates; title: string; icon: GoogleMapIcon }) => GoogleMapMarker
 }
 type GoogleMapsCoreLibrary = {
   ControlPosition: { RIGHT_BOTTOM: number }
@@ -58,7 +60,7 @@ type GoogleMapsPlacesLibrary = {
   }
 }
 type GoogleMapsGlobal = {
-  importLibrary?: (name: 'maps' | 'geocoding' | 'core' | 'places') => Promise<unknown>
+  importLibrary?: (name: 'maps' | 'marker' | 'geocoding' | 'core' | 'places') => Promise<unknown>
   Circle?: new (options: Record<string, unknown>) => GoogleMapCircle
   Polyline?: new (options: Record<string, unknown>) => GoogleMapPolyline
 }
@@ -136,13 +138,14 @@ function loadMapsApi(): Promise<GoogleMapsGlobal> {
 }
 
 export function importGoogleMapsLibrary(name: 'maps'): Promise<GoogleMapsMapLibrary>
+export function importGoogleMapsLibrary(name: 'marker'): Promise<GoogleMapsMarkerLibrary>
 export function importGoogleMapsLibrary(name: 'geocoding'): Promise<GoogleMapsGeocodingLibrary>
 export function importGoogleMapsLibrary(name: 'core'): Promise<GoogleMapsCoreLibrary>
 export function importGoogleMapsLibrary(name: 'places'): Promise<GoogleMapsPlacesLibrary>
-export async function importGoogleMapsLibrary(name: 'maps' | 'geocoding' | 'core' | 'places') {
+export async function importGoogleMapsLibrary(name: 'maps' | 'marker' | 'geocoding' | 'core' | 'places'): Promise<GoogleMapsMapLibrary | GoogleMapsMarkerLibrary | GoogleMapsGeocodingLibrary | GoogleMapsCoreLibrary | GoogleMapsPlacesLibrary> {
   const maps = await loadMapsApi()
   if (!maps.importLibrary) throw new Error('Google Maps no terminó de inicializarse.')
-  return await maps.importLibrary(name) as GoogleMapsMapLibrary | GoogleMapsGeocodingLibrary | GoogleMapsCoreLibrary | GoogleMapsPlacesLibrary
+  return await maps.importLibrary(name) as GoogleMapsMapLibrary | GoogleMapsMarkerLibrary | GoogleMapsGeocodingLibrary | GoogleMapsCoreLibrary | GoogleMapsPlacesLibrary
 }
 
 function serviceBounds(origin?: MapCoordinates) {
