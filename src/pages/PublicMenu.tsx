@@ -181,8 +181,16 @@ const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orien
 
 // Se mantienen decodificados mientras el cliente cambia entre pestañas.
 const profileBackgroundImages = new Map<string, HTMLImageElement>()
-const contactBackgroundImageWarmups = new Map<string, HTMLImageElement>()
 const publicMenuImageWarmups = new Map<string, HTMLImageElement>()
+
+function getImageWarmupRootMargin() {
+  const connection = (navigator as Navigator & {
+    connection?: { effectiveType?: string; saveData?: boolean }
+  }).connection
+  const slowConnection = connection?.saveData
+    || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType || '')
+  return `${slowConnection ? 320 : 800}px 0px`
+}
 
 function warmPublicMenuImages(products: Product[]) {
   const productSources = products
@@ -191,26 +199,10 @@ function warmPublicMenuImages(products: Product[]) {
   const previewSources = productSources
     .map(source => previewImageSource(source))
     .filter((source): source is string => Boolean(source))
-  const desktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches
-  const contactSource = desktop
-    ? '/optimized/fondos/contacto-banner.webp'
-    : window.matchMedia('(max-width: 767px)').matches
-      ? '/optimized/fondos/contacto-banner-mobile-chatgpt.webp'
-      : '/optimized/fondos/contacto-banner-mobile.webp'
-  const profileSuffix = desktop ? 'desktop' : 'phone'
-  const sources = [...new Set([
-    contactSource,
-    ...Object.values(CATEGORY_ICONS),
-    ...previewSources,
-    '/optimized/menu-product-placeholder.webp',
-    ...DEFAULT_PUBLIC_ORDER_REELS.map(reel => reel.poster),
-    `/optimized/customer-profile/login-${profileSuffix}.webp`,
-    `/optimized/customer-profile/register-${profileSuffix}.webp`,
-    '/optimized/customer-profile/profile-bg.webp',
-    '/optimized/customer-profile/profile-desktop-quiet.webp',
-    '/optimized/customer-profile/loyalty-bg.webp',
-    '/optimized/customer-profile/welcome-card-bg.webp',
-  ])]
+  // Solo precarga las primeras seis miniaturas del catálogo. Calentar todos
+  // los productos, perfiles, reels y fondos al abrir Pedir competía con el
+  // contenido visible, sobre todo en 3G y conexiones con ahorro de datos.
+  const sources = [...new Set(previewSources.slice(0, 6))]
 
   // Las miniaturas caben en una descarga ligera y evitan tarjetas negras al
   // cambiar de pestaña o recorrer categorías. La versión completa se sigue
@@ -224,7 +216,7 @@ function warmPublicMenuImages(products: Product[]) {
       if (publicMenuImageWarmups.has(source)) continue
       const image = new Image()
       image.decoding = 'async'
-      image.fetchPriority = source === contactSource ? 'high' : 'low'
+      image.fetchPriority = 'low'
       publicMenuImageWarmups.set(source, image)
       active += 1
       let finished = false
@@ -244,26 +236,6 @@ function warmPublicMenuImages(products: Product[]) {
     }
   }
   loadNext()
-}
-
-function warmContactBackgroundImage() {
-  // El hero de Contacto es fondo CSS y no se solicita mientras esa pestaña
-  // está desmontada. Calienta solo la variante que usa este dispositivo;
-  // las 135 fotos del catálogo siguen la carga progresiva de sus tarjetas.
-  const desktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches
-  const source = desktop
-    ? '/optimized/fondos/contacto-banner.webp'
-    : window.matchMedia('(max-width: 767px)').matches
-      ? '/optimized/fondos/contacto-banner-mobile-chatgpt.webp'
-      : '/optimized/fondos/contacto-banner-mobile.webp'
-  if (contactBackgroundImageWarmups.has(source)) return
-
-  const image = new Image()
-  image.decoding = 'async'
-  image.fetchPriority = 'low'
-  contactBackgroundImageWarmups.set(source, image)
-  image.src = source
-  void image.decode().catch(() => contactBackgroundImageWarmups.delete(source))
 }
 
 async function getPublicCatalogWithRetry() {
@@ -1133,7 +1105,7 @@ export function PublicMenu() {
           const fullSource = image.dataset.fullSrc
           if (fullSource) startFullImageUpgrade(image, fullSource)
         })
-      }, { rootMargin: '1600px 0px' })
+      }, { rootMargin: getImageWarmupRootMargin() })
     imageWarmupObserverRef.current = warmupObserver
     prepareImagesInRef.current(root)
     const observer = new MutationObserver(records => {
@@ -1223,15 +1195,13 @@ export function PublicMenu() {
   }, [loading])
 
   useEffect(() => {
-    const contactImageTimer = window.setTimeout(warmContactBackgroundImage, 250)
     if (initialCatalog) {
       const menuImageTimer = window.setTimeout(() => warmPublicMenuImages(initialCatalog.products), 250)
       return () => {
-        window.clearTimeout(contactImageTimer)
         window.clearTimeout(menuImageTimer)
       }
     }
-    return () => window.clearTimeout(contactImageTimer)
+    return undefined
   }, [initialCatalog])
 
   // Delivery solo se necesita cuando el cliente escoge esa modalidad. No
