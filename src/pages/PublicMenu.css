@@ -16253,9 +16253,29 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   background: linear-gradient(180deg, rgba(8, 9, 11, .12), transparent 45%, rgba(8, 9, 11, .22));
 }
 .public-pickup-map .public-contact-brand-pin {
-  top: 50%;
+  top: 50% !important;
+  left: 50% !important;
+  width: 60px !important;
+  height: 60px !important;
+  border-radius: 50% !important;
+  transform: translate(-50%, -50%) !important;
+}
+.public-pickup-map .public-contact-brand-pin::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
   left: 50%;
-  transform: translate(-50%, -50%);
+  bottom: -8px;
+  width: 13px;
+  height: 13px;
+  border-radius: 0 0 3px;
+  background: #e31b2b;
+  transform: translateX(-50%) rotate(45deg);
+}
+.public-pickup-map .public-contact-brand-pin img {
+  width: 48px !important;
+  max-height: 36px !important;
+  transform: none !important;
 }
 .public-pickup-details {
   display: grid;
