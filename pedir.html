@@ -85,8 +85,6 @@
         var retryKey = 'fullchina_public_menu_version_retry_v1';
         var dismissedKey = 'fullchina_public_welcome_dismissed_v1';
         var pendingDismissKey = 'fullchina_public_welcome_pending_dismiss';
-        var staleVersion = false;
-
         function entrySignature(documentNode) {
           var entry = Array.from(documentNode.querySelectorAll('script[type="module"][src]'))
             .find(function (script) {
@@ -94,11 +92,7 @@
               return source.indexOf('public-menu-entry') >= 0 || source.indexOf('/assets/pedir-') >= 0;
             });
           if (!entry) return '';
-          var styles = Array.from(documentNode.querySelectorAll('link[rel="stylesheet"][href]'))
-            .map(function (link) { return link.getAttribute('href') || ''; })
-            .sort()
-            .join('|');
-          return (entry.getAttribute('src') || '') + '|' + styles;
+          return entry.getAttribute('src') || '';
         }
 
         async function checkLatestVersion() {
@@ -112,8 +106,10 @@
             if (!response.ok) return false;
             var latestDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
             var currentSignature = entrySignature(document);
-            staleVersion = Boolean(currentSignature && entrySignature(latestDocument) !== currentSignature);
-            return staleVersion;
+            var latestSignature = entrySignature(latestDocument);
+            // Si el servidor no devolvió el HTML esperado, no bloquear la carta:
+            // la navegación normal o el botón de reintento resolverán el fallo.
+            return Boolean(currentSignature && latestSignature && latestSignature !== currentSignature);
           } catch (_) {
             return false;
           } finally {
@@ -143,26 +139,42 @@
           if (label) label.nodeValue = 'Abriendo la carta… ';
         }
 
+        function setRetryState(message) {
+          queued = false;
+          window.__fullChinaPublicMenuOpenQueued = false;
+          try {
+            sessionStorage.removeItem(pendingOpenKey);
+            sessionStorage.removeItem(retryKey);
+          } catch (_) { /* la recarga manual aún puede volver a intentar */ }
+          try {
+            var currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.has('_fc_refresh')) {
+              currentUrl.searchParams.delete('_fc_refresh');
+              window.history.replaceState(window.history.state, '', currentUrl.pathname + currentUrl.search + currentUrl.hash);
+            }
+          } catch (_) { /* se conserva el mensaje aunque history no esté disponible */ }
+          lastVersionCheckAt = 0;
+          versionCheck = Promise.resolve(false);
+          if (status) status.textContent = message;
+          if (button) {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+            button.classList.remove('is-loading');
+            var label = Array.from(button.childNodes).find(function (node) { return node.nodeType === Node.TEXT_NODE; });
+            if (label) label.nodeValue = 'Reintentar menú ';
+          }
+        }
+
         function recoverFreshVersion() {
           if (!queued) return;
           if (!navigator.onLine) {
-            if (status) status.textContent = 'Sin conexión. Vuelve a intentarlo cuando tengas internet.';
-            if (button) {
-              button.disabled = false;
-              button.removeAttribute('aria-busy');
-              button.classList.remove('is-loading');
-            }
+            setRetryState('Sin conexión. Vuelve a intentarlo cuando tengas internet.');
             return;
           }
           try {
             var alreadyRefreshed = new URL(window.location.href).searchParams.has('_fc_refresh');
             if (alreadyRefreshed || sessionStorage.getItem(retryKey) === 'true') {
-              if (status) status.textContent = 'No se pudo abrir el menú. Toca para volver a intentarlo.';
-              if (button) {
-                button.disabled = false;
-                button.removeAttribute('aria-busy');
-                button.classList.remove('is-loading');
-              }
+              setRetryState('No se pudo abrir el menú. Toca para volver a intentarlo.');
               return;
             }
             sessionStorage.setItem(retryKey, 'true');

@@ -154,6 +154,7 @@ try {
   skipWelcome = localStorage.getItem(DISMISSED_KEY) === 'true'
     || sessionStorage.getItem(PENDING_DISMISS_KEY) === 'true'
   pendingOpen = sessionStorage.getItem(PENDING_OPEN_KEY) === 'true'
+  if (pendingOpen) sessionStorage.removeItem(PENDING_OPEN_KEY)
 } catch { /* sin almacenamiento se conserva la bienvenida */ }
 pendingOpen = pendingOpen || Boolean(window.__fullChinaPublicMenuOpenQueued)
 
