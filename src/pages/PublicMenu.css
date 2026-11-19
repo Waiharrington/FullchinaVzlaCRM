@@ -1616,6 +1616,8 @@ button.mobile-only {
 .public-address-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #FFF; font: 400 20px 'DM Sans'; }
 .public-address-search input:focus { border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; }
 .public-address-search input::placeholder { color: #E5E7EB; }
+.public-address-search-clear { display: grid; place-items: center; flex: 0 0 auto; width: 36px; height: 36px; padding: 0; border: 1px solid rgba(255,255,255,.2); border-radius: 50%; background: rgba(255,255,255,.08); color: #fff; cursor: pointer; }
+.public-address-search-clear svg { width: 18px !important; height: 18px !important; }
 .public-address-map { position: relative; height: 300px; min-height: 0; overflow: hidden; border: 1px solid rgba(255,255,255,.22); border-radius: 26px; background: #162832; z-index: 0; }
 .public-address-map-canvas { width: 100%; height: 100%; border-radius: inherit; }
 .public-address-map-error { position: absolute; inset: auto 12px 12px; z-index: 2; padding: 10px 12px; border: 1px solid rgba(227,27,43,.45); border-radius: 12px; background: rgba(15,15,17,.94); color: #fff; font-size: 13px; line-height: 1.4; }
@@ -1634,7 +1636,7 @@ button.mobile-only {
 .public-address-selected { display: flex; align-items: center; gap: 18px; padding: 20px 24px; }
 .public-address-selected > svg { width: 34px; height: 34px; color: #E31B2B; flex: 0 0 auto; }
 .public-address-selected > div { display: grid; gap: 5px; min-width: 0; flex: 1; }.public-address-selected small { color: #F3F4F6; font-size: 14px; }.public-address-selected strong { font-size: 20px; overflow-wrap: anywhere; }.public-address-selected > div span { color: #51d88a; font-size: 10px; }.public-address-selected button { border: 0; background: transparent; color: #E31B2B; font: 700 16px 'DM Sans'; cursor: pointer; }
-.public-address-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 14px 16px; border: 1px solid rgba(237,27,47,.3); border-radius: 16px; background: linear-gradient(110deg, rgba(237,27,47,.12), rgba(255,255,255,.03)); }.public-address-summary div { display: grid; gap: 3px; }.public-address-summary small { color: #a7aab2; font-size: 10px; }.public-address-summary strong { color: #ffd666; font-size: 17px; }.public-address-summary > span { color: #51d88a; font-size: 11px; font-weight: 700; }.public-address-error { margin: 10px 2px 0; color: #ff9da6; font-size: 11px; line-height: 1.35; }
+.public-address-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding: 14px 16px; border: 1px solid rgba(237,27,47,.3); border-radius: 16px; background: linear-gradient(110deg, rgba(237,27,47,.12), rgba(255,255,255,.03)); }.public-address-summary div { display: grid; gap: 3px; }.public-address-summary small { color: #a7aab2; font-size: 12px; }.public-address-summary strong { color: #ffd666; font-size: 17px; }.public-address-summary > span { color: #51d88a; font-size: 12px; font-weight: 700; }.public-address-distance { margin-left: auto; text-align: right; }.public-address-summary .public-address-distance > strong { color: #fff; font-size: 16px; }.public-address-distance > small { color: #c8c4bc; font-size: 11px; }.public-address-summary .public-address-distance > em { color: #79dfa0; font-size: 12px; font-style: normal; font-weight: 700; }.public-address-summary .public-address-distance > em.is-outside { color: #ff929c; }.public-address-error { margin: 10px 2px 0; color: #ff9da6; font-size: 11px; line-height: 1.35; }
 .public-address-extra { display: grid; gap: 9px; padding: 18px 24px; }.public-address-extra > span { color: #F3F4F6; font-size: 15px; }.public-address-extra small { color: #E5E7EB; }.public-address-extra input, .public-address-extra textarea { width: 100%; box-sizing: border-box; border: 0; outline: 0; resize: vertical; background: transparent; color: #FFF; font: 600 18px 'DM Sans'; }.public-address-extra input:focus, .public-address-extra textarea:focus { border: 0 !important; outline: 0 !important; background: transparent !important; box-shadow: none !important; }.public-address-extra input::placeholder, .public-address-extra textarea::placeholder { color: #E5E7EB; font-weight: 400; }
 .public-location-row { display: flex; align-items: center; gap: 16px; padding: 20px 24px; color: #FFF; cursor: pointer; }.public-location-row svg:first-child { color: #E31B2B; }.public-location-row strong { flex: 1; text-align: left; font-size: 18px; }.public-address-continue { min-height: 68px; margin-top: 10px; font-size: 20px; }.public-address-step-suggestions { position: absolute; top: 76px; left: 0; right: 0; }
 .public-data-drawer .public-review-heading { margin-top: 34px; }
@@ -7073,7 +7075,7 @@ button.mobile-only {
   .public-drawer-backdrop .public-cart-drawer .public-delivery-continue { min-height: 46px !important; font-size: 15px !important; margin-top: 4px !important; }
 
   /* Paso "Dirección de entrega": contenido compacto */
-  .public-drawer-backdrop .public-cart-drawer .public-address-step { gap: 12px !important; padding-top: 4px !important; }
+  .public-drawer-backdrop .public-cart-drawer .public-address-step { gap: 12px !important; padding-top: 4px !important; padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important; }
   .public-drawer-backdrop .public-cart-drawer .public-address-search { min-height: 44px !important; gap: 10px !important; padding: 0 14px !important; border-radius: 14px !important; }
   .public-drawer-backdrop .public-cart-drawer .public-address-search svg { width: 20px !important; height: 20px !important; }
   .public-drawer-backdrop .public-cart-drawer .public-address-search input { font-size: 14px !important; }
@@ -16361,9 +16363,6 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   box-shadow: inset 0 0 0 1px rgba(227, 27, 43, .12), 0 12px 30px rgba(0, 0, 0, .28);
 }
 .public-address-map-panel { display: grid; gap: 8px; min-width: 0; }
-.public-address-map-guide { display: grid; gap: 3px; color: #f6f1e8; }
-.public-address-map-guide strong { font-size: 14px; line-height: 1.3; }
-.public-address-map-guide span { color: #c8c4bc; font-size: 12px; line-height: 1.4; }
 .public-address-map-brand .public-address-map-canvas,
 .public-address-map-brand .gm-style { font-family: 'DM Sans', sans-serif; }
 .public-address-map-brand .public-address-map-loading {
@@ -16409,35 +16408,11 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   box-shadow: 0 0 0 2px rgba(255, 200, 61, .16);
 }
 .public-address-map-legend i.is-origin { background: #e31b2b; box-shadow: 0 0 0 2px rgba(227, 27, 43, .2); }
-.public-address-map-legend i.is-coverage { border: 1.5px solid #ffc83d; background: transparent; box-shadow: none; }
 .public-address-map-legend i.is-current-location { border: 2px solid #fff; background: #4285f4; box-shadow: 0 0 0 2px rgba(66,133,244,.3); }
-.public-route-summary {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  margin: 0 1px;
-  padding: 12px 14px;
-  border: 1px solid rgba(255, 200, 61, .3);
-  border-radius: 14px;
-  background: linear-gradient(100deg, rgba(227, 27, 43, .13), rgba(255, 200, 61, .09));
-  color: #f2eee7;
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.45;
-}
-.public-route-summary svg { flex: 0 0 auto; margin-top: 1px; color: #ffc83d; width: 19px; height: 19px; }
-.public-route-copy { display: grid; gap: 3px; min-width: 0; }
-.public-route-summary strong { color: #fff; font-size: 1.7em; line-height: 1.1; white-space: nowrap; }
-.public-route-summary small { display: block; color: #c8c4bc; font-size: 12px; font-weight: 500; }
-.public-route-summary .public-route-label { color: #f2eee7; font-size: 13px; font-weight: 700; }
-.public-route-summary.is-loading { color: #ffd86f; }
 .public-map-location-action { min-height: 48px; margin: 0; padding: 11px 14px; border-color: rgba(255, 200, 61, .28); background: rgba(255, 200, 61, .06); }
 .public-map-location-action svg:first-child { color: #ffc83d; width: 20px; height: 20px; }
 .public-map-location-action strong { font-size: 14px; }
-.public-coverage-status { display: flex; align-items: center; gap: 9px; min-height: 42px; padding: 8px 13px; border: 1px solid rgba(81, 216, 138, .32); border-radius: 12px; background: rgba(81, 216, 138, .08); color: #8ce5ad; font-size: 14px; font-weight: 800; }
-.public-coverage-status > span { display: grid; width: 22px; height: 22px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #51d88a; color: #102016; font-size: 14px; }
-.public-coverage-status.is-outside { border-color: rgba(227, 27, 43, .4); background: rgba(227, 27, 43, .1); color: #ff929c; }
-.public-coverage-status.is-outside > span { background: #e31b2b; color: #fff; }
+.public-address-distance .public-route-attribution { color: #969ba3; font-size: 10px; }
 .public-address-summary { flex-wrap: wrap; }
 .public-address-quote-retry {
   flex: 0 0 auto;
@@ -16484,10 +16459,7 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   font-weight: 900;
 }
 @media (max-width: 600px) {
-  .public-address-map-guide strong { font-size: 15px; }
-  .public-address-map-guide span { font-size: 12px; }
   .public-address-map-legend { gap: 6px; }
   .public-address-map-legend > span { min-height: 28px; padding: 0 9px; font-size: 10px; }
-  .public-route-summary { padding: 12px; font-size: 14px; }
   .public-address-quote-retry { margin-left: 0; }
 }

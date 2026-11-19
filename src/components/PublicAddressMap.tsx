@@ -3,13 +3,12 @@ import {
   googleMapsAuthFailureEvent,
   importGoogleMapsLibrary,
   isGoogleMapsConfigured,
-  type GoogleMapCircle,
   type GoogleMapInstance,
   type GoogleMapMarker,
   type GoogleMapPolyline,
   type MapCoordinates,
 } from '../lib/googleMaps'
-import type { DeliveryRoute, DeliveryZone } from '../lib/delivery'
+import type { DeliveryRoute } from '../lib/delivery'
 
 const DEFAULT_CENTER: MapCoordinates = { lat: 10.2447, lng: -67.5958 }
 const FULL_CHINA_MAP_STYLES: Array<Record<string, unknown>> = [
@@ -36,8 +35,6 @@ type Props = {
   coordinates: MapCoordinates | null
   isGpsLocation?: boolean
   origin?: MapCoordinates | null
-  zones?: DeliveryZone[]
-  roadFactor?: number
   route?: DeliveryRoute | null
   onPick: (coordinates: MapCoordinates) => void
 }
@@ -74,14 +71,6 @@ async function loadBrandLogoDataUrl() {
   }
 }
 
-function maximumCoverageRadius(zones: DeliveryZone[], roadFactor: number) {
-  const factor = Math.max(1, roadFactor || 1.3)
-  const radii = zones
-    .filter(zone => zone.maxKm != null && Number.isFinite(zone.maxKm) && zone.maxKm > 0)
-    .map(zone => Math.round((zone.maxKm as number) / factor * 1000))
-  return radii.length ? Math.max(...radii) : null
-}
-
 function routeBounds(origin: MapCoordinates, destination: MapCoordinates | null, route: DeliveryRoute | null) {
   const points = [origin, ...(destination ? [destination] : []), ...(route?.coordinates ?? [])]
   const latitudes = points.map(point => point.lat)
@@ -100,12 +89,11 @@ function routeBounds(origin: MapCoordinates, destination: MapCoordinates | null,
   }
 }
 
-export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, zones = [], roadFactor = 1.3, route, onPick }: Props) {
+export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, route, onPick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const googleMapRef = useRef<GoogleMapInstance | null>(null)
   const destinationMarkerRef = useRef<GoogleMapMarker | null>(null)
   const originMarkerRef = useRef<GoogleMapMarker | null>(null)
-  const coverageCirclesRef = useRef<GoogleMapCircle[]>([])
   const routePolylineRef = useRef<GoogleMapPolyline | null>(null)
   const routeHaloPolylineRef = useRef<GoogleMapPolyline | null>(null)
   const coordinatesRef = useRef(coordinates)
@@ -121,7 +109,6 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
   const coordinateLng = coordinates?.lng
   const originLat = origin?.lat
   const originLng = origin?.lng
-  const hasCoverageLimit = zones.some(zone => zone.maxKm != null && Number.isFinite(zone.maxKm) && zone.maxKm > 0)
   coordinatesRef.current = coordinates
   isGpsLocationRef.current = isGpsLocation
   originRef.current = origin
@@ -210,13 +197,11 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
       clickListener?.remove()
       destinationMarkerRef.current?.setMap(null)
       originMarkerRef.current?.setMap(null)
-      coverageCirclesRef.current.forEach(circle => circle.setMap(null))
       routePolylineRef.current?.setMap(null)
       routeHaloPolylineRef.current?.setMap(null)
       googleMapRef.current = null
       destinationMarkerRef.current = null
       originMarkerRef.current = null
-      coverageCirclesRef.current = []
       routePolylineRef.current = null
       routeHaloPolylineRef.current = null
     }
@@ -229,7 +214,6 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
     if (!mapReady || !map || !destinationMarker || !originMarker) return
     const store = originLat != null && originLng != null ? { lat: originLat, lng: originLng } : null
     const destination = coordinateLat != null && coordinateLng != null ? { lat: coordinateLat, lng: coordinateLng } : null
-    const coverageRadius = maximumCoverageRadius(zones, roadFactor)
 
     if (destination) {
       destinationMarker.setPosition(destination)
@@ -248,23 +232,6 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
       originMarker.setPosition(store)
       originMarker.setMap(map)
     } else originMarker.setMap(null)
-
-    coverageCirclesRef.current.forEach(circle => circle.setMap(null))
-    coverageCirclesRef.current = []
-    const CircleConstructor = window.google?.maps?.Circle
-    if (store && CircleConstructor && coverageRadius) {
-      coverageCirclesRef.current.push(new CircleConstructor({
-        map,
-        center: store,
-        radius: coverageRadius,
-        strokeColor: '#ffc83d',
-        strokeOpacity: 0.9,
-        strokeWeight: 2,
-        fillColor: '#ffc83d',
-        fillOpacity: 0.045,
-        clickable: false,
-      }))
-    }
 
     routePolylineRef.current?.setMap(null)
     routeHaloPolylineRef.current?.setMap(null)
@@ -298,20 +265,16 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, z
       map.setCenter(destination)
       map.setZoom(15)
     }
-  }, [mapReady, coordinateLat, coordinateLng, isGpsLocation, originLat, originLng, zones, roadFactor, route])
+  }, [mapReady, coordinateLat, coordinateLng, isGpsLocation, originLat, originLng, route])
 
   return (
     <div className="public-address-map-panel">
-      <div className="public-address-map-guide">
-        <strong>Ubica tu entrega</strong>
-        <span>Toca para elegir dónde entregar. El pin rojo marca Full China.</span>
-      </div>
       <div className="public-address-map public-address-map-brand">
         <div ref={containerRef} className="public-address-map-canvas" role="application" aria-label="Google Maps interactivo. Toca para elegir tu ubicación" />
         {mapError && <div className="public-address-map-error" role="status">{mapError}</div>}
         {!mapError && mapLoading && <div className="public-address-map-loading" role="status">Cargando Google Maps…</div>}
       </div>
-      <div className="public-address-map-legend"><span><i className="is-origin" /> Full China · salida</span><span><i className={isGpsLocation ? 'is-current-location' : 'is-destination'} /> {isGpsLocation ? 'Tu ubicación' : 'Punto de entrega'}</span>{hasCoverageLimit && <span><i className="is-coverage" /> Límite aprox.</span>}</div>
+      <div className="public-address-map-legend"><span><i className="is-origin" /> Restaurante</span><span><i className={isGpsLocation ? 'is-current-location' : 'is-destination'} /> Entrega</span></div>
     </div>
   )
 }
