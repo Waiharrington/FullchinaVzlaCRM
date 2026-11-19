@@ -29,3 +29,9 @@ export function publicVariantLabel(groupName: string, variantLabel: string): str
   const copy = publicVariantCopy(groupName, variantLabel)
   return copy.count ? `${copy.name} · ×${copy.count}` : copy.name
 }
+
+/** Keep included free drinks visible after a menu variant is added to the cart. */
+export function publicCartIncludedCopy(description?: string | null): string | null {
+  const phrase = description?.match(/(?:1\s+)?refresco(?:\s+de\s+\d+(?:[.,]\d+)?\s*(?:ml|litro|litros))?\s+gratis/i)?.[0]
+  return phrase ? `Incluye ${formatSpanishText(phrase)}` : null
+}

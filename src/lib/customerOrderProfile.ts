@@ -1,4 +1,5 @@
 import { customerSupabase } from './supabase'
+import { getLocalOrderTestCustomer, isLocalOrderTestMode } from './localOrderTestMode'
 
 export type CustomerOrderProfile = {
   firstName: string
@@ -11,6 +12,10 @@ export type CustomerOrderProfile = {
 
 /** Reads the signed-in customer's own checkout details through an authenticated RPC. */
 export async function getCustomerOrderProfile(): Promise<CustomerOrderProfile | null> {
+  if (isLocalOrderTestMode()) {
+    const customer = getLocalOrderTestCustomer()
+    return customer ? { ...customer } : null
+  }
   if (!customerSupabase) return null
   const { data: sessionData, error: sessionError } = await customerSupabase.auth.getSession()
   if (sessionError) throw sessionError

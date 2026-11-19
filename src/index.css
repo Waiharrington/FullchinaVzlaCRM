@@ -48,6 +48,50 @@ html, body {
   overflow-x: clip;
 }
 
+/* Any semantic modal locks the document scroll, including dialogs that do not
+   use the shared modal-open class. Scrollable content inside the dialog stays usable. */
+html:has([role="dialog"]),
+html:has([role="alertdialog"]),
+html:has([class*="modal-overlay"]),
+html:has(.cmd-sales-overlay),
+html:has(.aito-overlay),
+html:has(.db-quick-access-overlay),
+html:has(.gs-overlay),
+html:has(.gst-ai-overlay),
+html:has(.report-detail-overlay),
+html:has(.prv-overlay) {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+body:has([role="dialog"]),
+body:has([role="alertdialog"]),
+body:has([class*="modal-overlay"]),
+body:has(.cmd-sales-overlay),
+body:has(.aito-overlay),
+body:has(.db-quick-access-overlay),
+body:has(.gs-overlay),
+body:has(.gst-ai-overlay),
+body:has(.report-detail-overlay),
+body:has(.prv-overlay) {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+body:has([role="dialog"]) .app-main,
+body:has([role="alertdialog"]) .app-main,
+body:has([class*="modal-overlay"]) .app-main,
+body:has(.cmd-sales-overlay) .app-main,
+body:has(.aito-overlay) .app-main,
+body:has(.db-quick-access-overlay) .app-main,
+body:has(.gs-overlay) .app-main,
+body:has(.gst-ai-overlay) .app-main,
+body:has(.report-detail-overlay) .app-main,
+body:has(.prv-overlay) .app-main {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;

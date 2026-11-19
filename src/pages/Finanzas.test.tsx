@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getRecipeSummaries: vi.fn(),
   getPayrollSummary: vi.fn(),
   getFinancialOperations: vi.fn(),
+  getFinancialAccountCreditPayments: vi.fn(),
   getFinancialAccounts: vi.fn(),
   getPersonalAccounts: vi.fn(),
   getDeliveryAssignments: vi.fn(),
@@ -33,6 +34,7 @@ describe('Finanzas', () => {
     mocks.getRecipeSummaries.mockResolvedValue(new Map())
     mocks.getPayrollSummary.mockResolvedValue({ periods: [], bonuses: [] })
     mocks.getFinancialOperations.mockResolvedValue([])
+    mocks.getFinancialAccountCreditPayments.mockResolvedValue([])
     mocks.getPersonalAccounts.mockResolvedValue([])
     mocks.getDeliveryAssignments.mockResolvedValue([])
     mocks.isPersonalAccountOrder.mockReturnValue(false)

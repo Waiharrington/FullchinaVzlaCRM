@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Bike, LoaderCircle, ReceiptText, Store } from 'lucide-react'
+import { Bike, ReceiptText, Store } from 'lucide-react'
 import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
+import { LoadingSkeleton } from './LoadingSkeleton'
 
 function productImage(url: string) {
   const match = url.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
@@ -28,7 +29,7 @@ export default function CustomerOrderItems({ orderId, orderNumber }: { orderId: 
     return () => { active = false }
   }, [orderId])
 
-  if (loading) return <div className="customer-order-items-status" aria-live="polite"><LoaderCircle size={18} className="customer-repeat-order-spinner" />Cargando los productos…</div>
+  if (loading) return <LoadingSkeleton className="customer-order-items-status" label="Cargando productos del pedido" count={3} withAvatar />
   if (unavailable || !order) return <div className="customer-order-items-status"><ReceiptText size={24} /><strong>Comanda {orderNumber}</strong><span>No pudimos mostrar el detalle de este pedido.</span></div>
   return <div className="customer-order-items-list">
     {order.items.map((item, index) => {

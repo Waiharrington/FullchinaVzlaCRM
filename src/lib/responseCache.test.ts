@@ -65,7 +65,7 @@ describe('shared Supabase response cache', () => {
 
     expect(await (await cache.fetch('orders', 'orders', async () => new Response('new'))).text()).toBe('new')
     resolveOld(new Response('stale'))
-    expect(await (await oldRead).text()).toBe('stale')
+    expect(await (await oldRead).text()).toBe('new')
     expect(await (await cache.fetch('orders', 'orders', async () => new Response('unexpected'))).text()).toBe('new')
   })
 

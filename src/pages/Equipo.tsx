@@ -195,7 +195,7 @@ export function Equipo() {
   }, [isOwner])
 
   useEffect(() => { void load(); void loadUsers() }, [load, loadUsers])
-  useLiveDataRefresh('equipo', () => { void load(true); void loadUsers(true) })
+  useLiveDataRefresh('equipo', () => Promise.all([load(true), loadUsers(true)]))
 
   // --- Handlers empleados ---
   const handleOpenModal = (emp?: Employee) => {

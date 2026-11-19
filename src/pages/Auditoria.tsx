@@ -3,6 +3,7 @@ import { Activity, AlertTriangle, Clock3, RefreshCw, Search, Shield } from 'luci
 import { getSystemActivityLogs, type SystemActivityLog } from '../lib/dataService'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
 import './Auditoria.css'
@@ -131,7 +132,7 @@ export function Auditoria() {
           {filteredLogs.length === 0 && <div className="activity-history-empty">No hay movimientos que coincidan con la búsqueda.</div>}
         </div>
 
-        {hasMore && <button className="activity-history-more" onClick={() => void loadMore()} disabled={loadingMore}>{loadingMore ? 'Cargando…' : 'Cargar movimientos anteriores'}</button>}
+        {hasMore && <button className="activity-history-more" onClick={() => void loadMore()} disabled={loadingMore} aria-label={loadingMore ? 'Cargando movimientos anteriores' : undefined}>{loadingMore ? <LoadingSkeleton label="Cargando movimientos anteriores" variant="inline" /> : 'Cargar movimientos anteriores'}</button>}
         <p className="activity-history-footnote">El historial registra los cambios desde que se active la migración; no reconstruye acciones pasadas que no fueron auditadas.</p>
       </section>
     </div>

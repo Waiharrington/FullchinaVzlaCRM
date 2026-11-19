@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { Award, ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Gift, Heart, History, LoaderCircle, LogOut, RotateCw, Tag, Trash2, Utensils } from 'lucide-react'
-import { customerSupabase } from '../lib/supabase'
+import { customerSupabase, startCustomerDataChangeFeed, stopCustomerDataChangeFeed } from '../lib/supabase'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { customerAuthErrorMessage } from '../lib/customerAuthErrors'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
+import { getLocalOrderTestProfile, isLocalOrderTestMode, loginLocalOrderTestCustomer, registerLocalOrderTestCustomer, signOutLocalOrderTestCustomer } from '../lib/localOrderTestMode'
 import Toast from './Toast'
 import CustomerRewardJourney from './CustomerRewardJourney'
 import CustomerVisitHistory from './CustomerVisitHistory'
 import CustomerOrderItems from './CustomerOrderItems'
 import { PublicMenuSkeleton } from './PublicMenuSkeleton'
+import { LoadingSkeleton } from './LoadingSkeleton'
 import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import './CustomerLoyaltyProfile.css'
@@ -17,6 +20,7 @@ type Visit = { order_id: string; order_number: string; visited_at: string; rewar
 type LoyaltyReward = { id: number; cycle_number: number; reward_description: string; unlocked_at: string; redeemed_at?: string | null }
 type LoyaltyProfile = { customer: { first_name: string; last_name: string; full_name: string; phone: string; identification?: string }; total_visits: number; current_cycle_visits?: number; rewards_unlocked: number; reward_description: string; next_reward_description?: string; visits_per_reward: number; available_rewards: LoyaltyReward[]; redeemed_rewards: LoyaltyReward[]; has_more: boolean; visits: Visit[]; account_status: 'active' }
 type PendingCelebration = { pending: boolean; complete?: boolean; stamp?: number; stamp_pending?: boolean; reward_description?: string }
+const LOCAL_PROFILE_TEST_MODE = isLocalOrderTestMode()
 
 const pageSize = 5
 const AUTH_MODE_KEY = 'fullchina_customer_auth_preferred_mode'
@@ -77,7 +81,7 @@ function CustomerSavedFavorites({ favoriteIds, onToggleFavorite }: { favoriteIds
   const unavailableCount = Math.max(0, favoriteIds.length - favorites.length)
   return <section className="customer-saved-favorites" aria-labelledby="customer-saved-favorites-title">
     <header><div><span><Heart size={15} fill="currentColor" /> GUARDADOS DEL MENÚ</span><h2 id="customer-saved-favorites-title">Platos favoritos</h2><p>Los platos que marcaste con el corazón.</p></div><b>{favoriteIds.length}</b></header>
-    {loading ? <div className="customer-saved-favorites-status">Cargando tus favoritos…</div> : favorites.length ? <div className="customer-saved-favorites-grid">{favorites.map(group => <article key={group.key}>
+    {loading ? <LoadingSkeleton className="customer-saved-favorites-loading" label="Cargando favoritos" variant="cards" count={3} /> : favorites.length ? <div className="customer-saved-favorites-grid">{favorites.map(group => <article key={group.key}>
       <img src={customerProductImage(group.variants[0]?.product.imageUrl || '')} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true }} />
       <div><strong>{group.name}</strong><small>{group.category}</small></div>
       {onToggleFavorite && <button type="button" aria-label={`Quitar ${group.name} de favoritos`} onClick={() => onToggleFavorite(group.key)}><Trash2 size={16} /></button>}
@@ -294,6 +298,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
   const [showWelcomeIntro, setShowWelcomeIntro] = useState(true)
   const [initialAuthCheck, setInitialAuthCheck] = useState(true)
   const [celebration, setCelebration] = useState<{ stamp: number; complete: boolean; id: number; rewardDescription?: string } | null>(null)
+  const profileRootRef = useRef<HTMLElement>(null)
   const [victoryDishes, setVictoryDishes] = useState<string[]>([])
   const [newestStamp, setNewestStamp] = useState<{ index: number; id: number } | null>(null)
   const queuedRewardCelebration = useRef<{ stamp: number; complete: true; id: number; rewardDescription?: string } | null>(null)
@@ -451,6 +456,13 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     if (previous === null || count <= previous) { setNewestStamp(null); return }
     const complete = count >= limit
     setNewestStamp({ index: complete ? limit - 1 : count - 1, id: Date.now() })
+    // PublicMenu keeps mobile and desktop profile layouts mounted together.
+    // Only the visible copy should open a portal celebration after a visit.
+    if (!profileRootRef.current?.getClientRects().length) {
+      queuedRewardCelebration.current = null
+      setCelebration(null)
+      return
+    }
     const celebrationId = Date.now()
     setVictoryDishes(complete ? shuffledVictoryDishes() : [])
     if (complete) {
@@ -460,7 +472,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     } else {
       setCelebration({ stamp: count, complete: false, id: celebrationId })
     }
-    if (customerSupabase) {
+    if (customerSupabase && !LOCAL_PROFILE_TEST_MODE) {
       void customerSupabase.rpc('fn_claim_customer_loyalty_celebration')
     }
   }, [profile])
@@ -488,9 +500,20 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
   }
 
   const loadProfile = useCallback(async () => {
+    if (LOCAL_PROFILE_TEST_MODE) {
+      const localProfile = getLocalOrderTestProfile()
+      setProfile(localProfile as LoyaltyProfile | null)
+      setRecentVisits(localProfile?.visits ?? [])
+      setSessionActive(Boolean(localProfile))
+      setProfileLoading(false)
+      setProfileLoadError('')
+      setAuthReady(true)
+      return
+    }
     if (!customerSupabase) { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true); return }
     const { data: sessionData } = await customerSupabase.auth.getSession()
-    if (!sessionData.session) { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true); return }
+    if (!sessionData.session) { stopCustomerDataChangeFeed(); setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true); return }
+    startCustomerDataChangeFeed(sessionData.session.user.id)
     setSessionActive(true)
     setProfileLoading(true)
     setProfileLoadError('')
@@ -552,13 +575,27 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     if (presentation !== 'profile') return
     void loadProfile().catch(() => failProfileLoad())
       .finally(() => setInitialAuthCheck(false))
-    if (!customerSupabase) return
+    if (!customerSupabase || LOCAL_PROFILE_TEST_MODE) return
     const { data } = customerSupabase.auth.onAuthStateChange((_event, session) => {
-      if (session) window.setTimeout(() => { void loadProfile().catch(() => failProfileLoad(true)) }, 0)
-      else window.setTimeout(() => { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true) }, 0)
+      if (session) {
+        window.setTimeout(() => { void loadProfile().catch(() => failProfileLoad(true)) }, 0)
+      } else {
+        window.setTimeout(() => { setProfile(null); setRecentVisits([]); setSessionActive(false); setProfileLoading(false); setProfileLoadError(''); setAuthReady(true) }, 0)
+      }
     })
-    return () => data.subscription.unsubscribe()
+    return () => { data.subscription.unsubscribe() }
   }, [failProfileLoad, loadProfile, presentation])
+
+  useEffect(() => {
+    if (!LOCAL_PROFILE_TEST_MODE || presentation !== 'profile') return
+    const refreshLocalProfile = () => { void loadProfile() }
+    window.addEventListener('fullchina:local-order-test-updated', refreshLocalProfile)
+    return () => window.removeEventListener('fullchina:local-order-test-updated', refreshLocalProfile)
+  }, [loadProfile, presentation])
+
+  useLiveDataRefresh('fidelizacion', async () => {
+    if (presentation === 'profile' && profile) await loadProfile()
+  })
 
   useEffect(() => {
     if (!authReady || profile || !showWelcomeIntro) return
@@ -579,6 +616,30 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     setBusy(true); setError(''); setNotice('')
     let sessionEstablished = false
     try {
+      if (LOCAL_PROFILE_TEST_MODE) {
+        if (mode === 'register') {
+          await registerLocalOrderTestCustomer({
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            identification: identification.trim(),
+            phone: phone.trim(),
+            email: email.trim() || null,
+            password,
+          })
+          setNotice('Cuenta creada solo en este ensayo local. Inicia sesión para continuar.')
+          await chooseMode('login')
+        } else {
+          const localProfile = await loginLocalOrderTestCustomer(identifier, password)
+          setProfile(localProfile as LoyaltyProfile)
+          setRecentVisits(localProfile.visits)
+          setSessionActive(true)
+          setProfileLoading(false)
+          setProfileLoadError('')
+          setAuthReady(true)
+          setShowHistory(false)
+        }
+        return
+      }
       if (!customerSupabase) throw new Error('El perfil no está disponible ahora. Intenta más tarde.')
       const body = mode === 'login'
         ? { action: 'login', identifier: identifier.trim(), password }
@@ -609,7 +670,11 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     } finally { setBusy(false) }
   }
 
-  const logout = async () => { await customerSupabase?.auth.signOut(); setProfile(null); setShowHistory(false); setNotice('') }
+  const logout = async () => {
+    if (LOCAL_PROFILE_TEST_MODE) signOutLocalOrderTestCustomer()
+    else await customerSupabase?.auth.signOut()
+    setProfile(null); setShowHistory(false); setNotice('')
+  }
 
   if (presentation === 'profile' && initialAuthCheck) return <PublicMenuSkeleton />
 
@@ -694,7 +759,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
       </div>
       <div className="customer-profile-form-wrap">
         <header className="customer-profile-desktop-card-header"><img src="/optimized/root/logo.webp" alt="Full China" /><h2>{mode === 'login' ? 'Bienvenido de nuevo' : 'Únete a Full China'}</h2><p>{mode === 'login' ? 'Ingresa a tu cuenta de Full China.' : 'Crea tu cuenta y empieza a sumar beneficios.'}</p></header>
-        <div className="customer-profile-toggle" aria-busy={switchingMode}><button type="button" disabled={switchingMode} className={mode === 'login' ? 'active' : ''} onClick={() => { void chooseMode('login') }}>{switchingMode && mode === 'register' ? 'Cargando…' : 'Iniciar sesión'}</button><button type="button" disabled={switchingMode} className={mode === 'register' ? 'active' : ''} onClick={() => { void chooseMode('register') }}>{switchingMode && mode === 'login' ? 'Cargando…' : 'Crear cuenta'}</button></div>
+        <div className="customer-profile-toggle" aria-busy={switchingMode}><button type="button" disabled={switchingMode} className={mode === 'login' ? 'active' : ''} onClick={() => { void chooseMode('login') }}>{switchingMode && mode === 'register' ? <LoadingSkeleton label="Cargando inicio de sesión" variant="inline" /> : 'Iniciar sesión'}</button><button type="button" disabled={switchingMode} className={mode === 'register' ? 'active' : ''} onClick={() => { void chooseMode('register') }}>{switchingMode && mode === 'login' ? <LoadingSkeleton label="Cargando registro" variant="inline" /> : 'Crear cuenta'}</button></div>
         <form className="customer-profile-form" onSubmit={submit}>
           {mode === 'register' ? <>
             <div className="customer-profile-two customer-profile-desktop-name-fields"><label>Nombre<input required autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} /></label><label>Apellido<input required autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} /></label></div>
@@ -717,7 +782,7 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
   const redeemedRewards = profile.redeemed_rewards ?? []
   const stamps = availableRewards.length ? threshold : profile.current_cycle_visits ?? profile.total_visits % threshold
   const displayedRewards = availableRewards.length
-  return <main className="customer-profile-page customer-profile-member"><section className="customer-profile-dashboard">
+  return <main ref={profileRootRef} className="customer-profile-page customer-profile-member"><section className="customer-profile-dashboard">
     {celebration && createPortal(<div className="customer-celebration-backdrop" onClick={closeCelebration}><div ref={celebrationDialog} className={`customer-stamp-celebration${celebration.complete ? ' is-complete' : ''}`} role="dialog" aria-modal="true" aria-labelledby="customer-celebration-title" onClick={event => event.stopPropagation()}>
       <button ref={celebrationClose} type="button" className="customer-celebration-close" aria-label="Cerrar celebración" onClick={closeCelebration}>×</button>
       <div key={celebration.id} className="customer-celebration-confetti" aria-hidden="true">{Array.from({ length: 36 }, (_, i) => <i key={i} style={{ '--piece-x': `${(i * 37) % 100}%`, '--piece-delay': `${(i % 9) * (celebration.complete ? .02 : .12)}s`, '--piece-turn': `${i * 47}deg`, '--piece-drift': `${(i % 2 ? 1 : -1) * (20 + i % 5 * 13)}px`, '--piece-color': ['#ff3851', '#ffd269', '#ff9850'][i % 3] } as CSSProperties} />)}</div>

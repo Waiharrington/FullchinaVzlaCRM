@@ -50,38 +50,44 @@ export function createResponseCache({ ttlMs, maxEntries, tableDependencies, now 
     (entryTable !== null && (tableDependencies[entryTable] ?? []).includes(changedTable))
 
   const fetch = async (key: string, table: string | null, load: () => Promise<Response>) => {
-    const cached = cache.get(key)
-    if (cached && cached.expiresAt > now()) return snapshotResponse(cached)
-    if (cached) cache.delete(key)
+    while (true) {
+      const cached = cache.get(key)
+      if (cached && cached.expiresAt > now()) return snapshotResponse(cached)
+      if (cached) cache.delete(key)
 
-    let pending = inFlight.get(key)
-    if (!pending) {
-      const flight: InFlightEntry = {
-        table,
-        invalidated: false,
-        promise: Promise.resolve({ body: new ArrayBuffer(0), headers: new Headers(), status: 500, statusText: 'Internal Server Error' }),
-      }
-      flight.promise = (async () => {
-        const response = await load()
-        const snapshot = await readSnapshot(response)
-        if (response.ok && !flight.invalidated) {
-          cache.set(key, { ...snapshot, expiresAt: now() + ttlMs, table })
-          while (cache.size > maxEntries) {
-            const oldestKey = cache.keys().next().value
-            if (oldestKey === undefined) break
-            cache.delete(oldestKey)
-          }
+      let pending = inFlight.get(key)
+      if (!pending) {
+        const flight: InFlightEntry = {
+          table,
+          invalidated: false,
+          promise: Promise.resolve({ body: new ArrayBuffer(0), headers: new Headers(), status: 500, statusText: 'Internal Server Error' }),
         }
-        return snapshot
-      })()
-      pending = flight
-      inFlight.set(key, pending)
-    }
+        flight.promise = (async () => {
+          const response = await load()
+          const snapshot = await readSnapshot(response)
+          if (response.ok && !flight.invalidated) {
+            cache.set(key, { ...snapshot, expiresAt: now() + ttlMs, table })
+            while (cache.size > maxEntries) {
+              const oldestKey = cache.keys().next().value
+              if (oldestKey === undefined) break
+              cache.delete(oldestKey)
+            }
+          }
+          return snapshot
+        })()
+        pending = flight
+        inFlight.set(key, pending)
+      }
 
-    try {
-      return snapshotResponse(await pending.promise)
-    } finally {
-      if (inFlight.get(key) === pending) inFlight.delete(key)
+      try {
+        const snapshot = await pending.promise
+        // An older request can finish after a newer write. Never hand that
+        // snapshot to the UI; join or start the fresh request instead.
+        if (pending.invalidated) continue
+        return snapshotResponse(snapshot)
+      } finally {
+        if (inFlight.get(key) === pending) inFlight.delete(key)
+      }
     }
   }
 

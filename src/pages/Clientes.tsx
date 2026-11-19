@@ -10,6 +10,7 @@ import { formatProductTitle, normalizeForSearch } from '../lib/textFormat'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import {
   getCredits,
   getCreditPayments,
@@ -1067,7 +1068,7 @@ export function Clientes() {
               <span className="clientes-summary-chip">{pendingReceivableOrderCount} comandas a crédito</span>
             </div>
             <div className="receivables-list">
-              {receivablesLoading && <p className="modal-sub-desc">Cargando detalle de créditos…</p>}
+              {receivablesLoading && <LoadingSkeleton label="Cargando detalle de créditos" count={3} />}
               {credits.filter((credit) => credit.balancePending > 0).map((credit) => {
                 const order = receivableOrders[credit.id]
                 const days = Math.max(0, Math.floor((Date.now() - new Date(credit.createdAt).getTime()) / 86400000))
@@ -1458,7 +1459,7 @@ export function Clientes() {
                 </thead>
                 <tbody>
                   {profileLoading ? (
-                    <tr><td colSpan={8} className="profile-empty-state">Cargando actividad real…</td></tr>
+                    <tr><td colSpan={8} className="profile-empty-state"><LoadingSkeleton label="Cargando actividad del cliente" count={4} /></td></tr>
                   ) : customerOrders.length === 0 ? (
                     <tr><td colSpan={8} className="profile-empty-state">Este cliente todavía no tiene pedidos enlazados.</td></tr>
                   ) : customerOrders.map((order) => {

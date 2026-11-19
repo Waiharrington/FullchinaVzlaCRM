@@ -216,7 +216,7 @@ export function PaginaPedir() {
   }, [])
   useEffect(() => { void load() }, [load])
   useEffect(() => { void loadPageSettings() }, [loadPageSettings])
-  useLiveDataRefresh('pagina-pedir', () => { void load(true); void loadPageSettings() })
+  useLiveDataRefresh('pagina-pedir', () => Promise.all([load(true), loadPageSettings()]))
 
   const carouselProductIds = useMemo(() => {
     const hasSavedProducts = products.some(product => product.publicCarousel && product.isActive && product.publicVisible !== false && !product.isDelivery && product.salePrice >= 0.5)

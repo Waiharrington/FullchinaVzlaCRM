@@ -19,6 +19,7 @@ import {
   setOrderDeliveryFee,
   getAllSellableProducts,
   getCustomers,
+  createCustomer,
   getPersonalAccountOptions,
   getFinancialAccounts,
   updateOrderCustomer,
@@ -31,11 +32,13 @@ import {
   type FinancialAccount,
 } from '../lib/dataService'
 import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { CalendarPicker } from '../components/CalendarPicker'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
 import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
 import { publishDataChange, subscribeToDataChanges, supabase } from '../lib/supabase'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
 import { useRates } from '../context/rates-context'
@@ -499,7 +502,7 @@ function ComandaCardContent({ order, color, onAdvance, onConfirmWeb, onPrint, co
             {compactPaymentLabel(order.paymentMethod)}
           </span>
         ) : order.creditAuthorized ? (
-          <span className="badge-sin-pagar"><CreditCard size={12} /> Crédito autorizado</span>
+          <span className="badge-sin-pagar is-credit" title="Crédito autorizado" aria-label="Crédito autorizado"><CreditCard size={12} /> Crédito OK</span>
         ) : (
           <span className="badge-sin-pagar"><AlertTriangle size={12} /> Sin cobrar</span>
         )}
@@ -683,11 +686,17 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
   const orderItemsSectionRef = useRef<HTMLDivElement | null>(null)
   const [showAssociateCustomerModal, setShowAssociateCustomerModal] = useState(false)
+  const [showCreateAssociateCustomer, setShowCreateAssociateCustomer] = useState(false)
   const [associateCustomerSearch, setAssociateCustomerSearch] = useState('')
   const [associateCustomers, setAssociateCustomers] = useState<Customer[]>([])
   const [loadingAssociateCustomers, setLoadingAssociateCustomers] = useState(false)
   const [associateCustomerError, setAssociateCustomerError] = useState('')
   const [associatingCustomer, setAssociatingCustomer] = useState(false)
+  const [creatingAssociateCustomer, setCreatingAssociateCustomer] = useState(false)
+  const [newAssociateCustomerName, setNewAssociateCustomerName] = useState('')
+  const [newAssociateCustomerPhone, setNewAssociateCustomerPhone] = useState('')
+  const [newAssociateCustomerIdentification, setNewAssociateCustomerIdentification] = useState('')
+  const [newAssociateCustomerAddress, setNewAssociateCustomerAddress] = useState('')
   const [closingSelectedOrder, setClosingSelectedOrder] = useState(false)
   const [printReceiptPrompt, setPrintReceiptPrompt] = useState<ThermalReceiptData | null>(null)
 
@@ -763,6 +772,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [closingHistory, setClosingHistory] = useState(false)
   const [historyOrders, setHistoryOrders] = useState<ComandaOrder[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const historyLoadRequestRef = useRef(0)
   const [historySearch, setHistorySearch] = useState('')
   const [historySelectedDate, setHistorySelectedDate] = useState('')
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
@@ -918,6 +928,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     if (!selectedOrder || selectedOrder.customerId || selectedOrder.source === 'web' || isDemoMode) return
     setAssociateCustomerSearch('')
     setAssociateCustomerError('')
+    setShowCreateAssociateCustomer(false)
     setShowAssociateCustomerModal(true)
     setLoadingAssociateCustomers(true)
     try {
@@ -953,6 +964,31 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       setAssociateCustomerError(error instanceof Error ? error.message : 'No se pudo asociar el cliente')
     } finally {
       setAssociatingCustomer(false)
+    }
+  }
+
+  const handleCreateAndAssociateCustomer = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const name = newAssociateCustomerName.trim()
+    if (!name || !selectedOrder || creatingAssociateCustomer) return
+
+    setCreatingAssociateCustomer(true)
+    setAssociateCustomerError('')
+    try {
+      const customer = await createCustomer({
+        name,
+        phone: newAssociateCustomerPhone.trim(),
+        identification: newAssociateCustomerIdentification.trim(),
+        address: newAssociateCustomerAddress.trim(),
+      })
+      setAssociateCustomers(previous => [customer, ...previous.filter(existing => existing.id !== customer.id)])
+      setAssociateCustomerSearch(customer.name)
+      setShowCreateAssociateCustomer(false)
+      await handleAssociateCustomer(customer)
+    } catch (error) {
+      setAssociateCustomerError(error instanceof Error ? error.message : 'No se pudo crear el cliente')
+    } finally {
+      setCreatingAssociateCustomer(false)
     }
   }
 
@@ -1035,8 +1071,15 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       setHistoryOrders(previous => previous.filter(matchesDeletedOrder))
       publishDataChange('orders')
       publishDataChange('web_order_requests')
-      closeDeleteModal()
-      closeSelectedOrder()
+      // On success, remove both layers in this render so the order and its
+      // confirmation dialog do not linger through two separate exit timers.
+      setShowDeleteModal(false)
+      setClosingDelete(false)
+      setDeletePin('')
+      setDeleteError('')
+      setSelectedOrder(null)
+      setClosingSelectedOrder(false)
+      onEmbeddedClose?.()
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la comanda')
     } finally {
@@ -1410,7 +1453,9 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     if (embeddedOrderId) return
 
     let active = true
+    let latestLoadRequest = 0
     const loadRealOrders = async () => {
+      const loadRequest = ++latestLoadRequest
       try {
         // El "día" del negocio se calcula en horario de Venezuela (UTC-4), no en
         // UTC: de lo contrario las comandas creadas después de las 8pm local
@@ -1422,7 +1467,10 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           dateFilter === 'today' ? getPendingWebOrders() : Promise.resolve([]),
         ])
 
-        if (active) {
+        // Several changes can arrive while Supabase is responding. Only the
+        // newest snapshot may replace the board, or a slower older request
+        // can make a just-created/cancelled/updated order appear stale again.
+        if (active && loadRequest === latestLoadRequest) {
           const mapped: ComandaOrder[] = realOrders.map((o) => {
             const date = new Date(o.createdAt)
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
@@ -1566,7 +1614,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               .select('id,full_name')
               .in('id', creatorIds)
               .then(({ data: profiles, error: profilesError }) => {
-                if (!active) return
+                if (!active || loadRequest !== latestLoadRequest) return
                 if (profilesError) {
                   console.warn('No se pudieron cargar los nombres de quienes atendieron:', profilesError)
                   return
@@ -1591,8 +1639,19 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     loadRealOrders()
     let refreshTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = subscribeToDataChanges((table) => {
-      if (!['orders', 'order_items', 'payments', 'web_order_requests', 'order_event_logs', 'profiles', '*'].includes(table)) return
+      if (!['orders', 'order_items', 'order_item_modifiers', 'modifiers', 'modifier_options', 'sellable_products', 'payments', 'web_order_requests', 'web_order_items', 'order_event_logs', 'profiles', 'customers', '*'].includes(table)) return
       if (document.visibilityState === 'hidden') return
+      if (table === 'customers' && showAssociateCustomerModal) {
+        void getCustomers(true)
+          .then(customers => {
+            if (active) setAssociateCustomers(customers.filter(customer => customer.isActive))
+          })
+          .catch(error => {
+            if (active && showAssociateCustomerModal) {
+              setAssociateCustomerError(error instanceof Error ? error.message : 'No se pudo actualizar la lista de clientes')
+            }
+          })
+      }
       if (refreshTimer) clearTimeout(refreshTimer)
       refreshTimer = setTimeout(() => { void loadRealOrders() }, 180)
     })
@@ -1601,7 +1660,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       unsubscribe()
       if (refreshTimer) clearTimeout(refreshTimer)
     }
-  }, [reloadToken, dateFilter, isDemoMode, embeddedOrderId])
+  }, [reloadToken, dateFilter, isDemoMode, embeddedOrderId, showAssociateCustomerModal])
 
   useEffect(() => {
     if (!embeddedOrderId || isDemoMode) return
@@ -1770,8 +1829,9 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       (historyMonthCursor.getFullYear() === now.getFullYear() && historyMonthCursor.getMonth() < now.getMonth())
   }, [historyMonthCursor])
 
-  const loadHistoryOrders = useCallback(async (monthCursor: Date) => {
-    setHistoryLoading(true)
+  const loadHistoryOrders = useCallback(async (monthCursor: Date, silent = false) => {
+    const loadRequest = ++historyLoadRequestRef.current
+    if (!silent) setHistoryLoading(true)
     try {
       const monthStart = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1)
       const monthEnd = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0)
@@ -1779,6 +1839,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       const dateTo = dayRangeInTimeZone(monthEnd).end
 
       const allOrders = await getOrdersWithItems(dateFrom, dateTo)
+      if (loadRequest !== historyLoadRequestRef.current) return
 
       const creatorNames = new Map<string, string>()
       const creatorIds = [...new Set(allOrders.map(order => order.createdBy).filter(Boolean))]
@@ -1787,6 +1848,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           .from('profiles')
           .select('id,full_name')
           .in('id', creatorIds)
+        if (loadRequest !== historyLoadRequestRef.current) return
         for (const profile of profiles ?? []) {
           creatorNames.set(String(profile.id), String(profile.full_name || 'Usuario del sistema'))
         }
@@ -1842,6 +1904,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         }
       })
 
+      if (loadRequest !== historyLoadRequestRef.current) return
       setHistoryOrders(mapped.sort((a, b) => {
         const dateA = a.date || ''
         const dateB = b.date || ''
@@ -1849,9 +1912,9 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         return b.time.localeCompare(a.time)
       }))
     } catch (e) {
-      console.error('Error cargando historial:', e)
+      if (loadRequest === historyLoadRequestRef.current) console.error('Error cargando historial:', e)
     } finally {
-      setHistoryLoading(false)
+      if (!silent && loadRequest === historyLoadRequestRef.current) setHistoryLoading(false)
     }
   }, [])
 
@@ -1859,6 +1922,10 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     if (!showHistoryModal) return
     loadHistoryOrders(historyMonthCursor)
   }, [showHistoryModal, historyMonthCursor, loadHistoryOrders])
+
+  useLiveDataRefresh('comandas', () => {
+    if (showHistoryModal) return loadHistoryOrders(historyMonthCursor, true)
+  })
 
   const filteredHistoryOrders = useMemo(() => {
     if (!historySearch) return historyOrders
@@ -2752,50 +2819,56 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         document.body
       )}
       {selectedOrder && showAssociateCustomerModal && createPortal(
-        <div className="cmd-modal-overlay cmd-associate-customer-overlay" onClick={() => { if (!associatingCustomer) setShowAssociateCustomerModal(false) }}>
+        <div className="cmd-modal-overlay cmd-associate-customer-overlay" onClick={() => { if (!associatingCustomer && !creatingAssociateCustomer) setShowAssociateCustomerModal(false) }}>
           <section className="cmd-modal-container cmd-associate-customer-modal" role="dialog" aria-modal="true" aria-labelledby="associate-customer-title" onClick={event => event.stopPropagation()}>
             <header className="cmd-modal-header">
               <div className="cmd-associate-customer-heading">
-                <UserPlus size={19} />
+                {showCreateAssociateCustomer ? <Plus size={19} /> : <UserPlus size={19} />}
                 <div>
-                  <h2 id="associate-customer-title">Asociar cliente</h2>
+                  <h2 id="associate-customer-title">{showCreateAssociateCustomer ? 'Crear cliente' : 'Asociar cliente'}</h2>
                   <small>Comanda {selectedOrder.orderNumber}</small>
                 </div>
               </div>
-              <button type="button" className="cmd-close-btn" aria-label="Cerrar asociar cliente" onClick={() => setShowAssociateCustomerModal(false)} disabled={associatingCustomer}><X size={18} /></button>
+              <button type="button" className="cmd-close-btn" aria-label="Cerrar asociar cliente" onClick={() => setShowAssociateCustomerModal(false)} disabled={associatingCustomer || creatingAssociateCustomer}><X size={18} /></button>
             </header>
             <div className="cmd-associate-customer-content">
-              <label className="cmd-associate-customer-search">
+              {!showCreateAssociateCustomer && <label className="cmd-associate-customer-search">
                 <Search size={16} />
-                <input
-                  type="search"
-                  autoFocus
-                  placeholder="Buscar por nombre, teléfono o cédula"
-                  value={associateCustomerSearch}
-                  onChange={event => setAssociateCustomerSearch(event.target.value)}
-                />
-              </label>
+                <input type="search" autoFocus placeholder="Buscar por nombre, teléfono o cédula" value={associateCustomerSearch} onChange={event => setAssociateCustomerSearch(event.target.value)} />
+              </label>}
               {associateCustomerError && <p className="cmd-associate-customer-error" role="alert">{associateCustomerError}</p>}
-              <div className="cmd-associate-customer-list">
-                {loadingAssociateCustomers ? <p className="cmd-associate-customer-empty">Cargando clientes…</p>
-                  : filteredAssociateCustomers.length === 0 ? <p className="cmd-associate-customer-empty">{associateCustomerSearch ? 'No hay coincidencias.' : 'No hay clientes activos para asociar.'}</p>
-                    : filteredAssociateCustomers.map(customer => (
-                      <button
-                        type="button"
-                        className="cmd-associate-customer-option"
-                        key={customer.id}
-                        onClick={() => void handleAssociateCustomer(customer)}
-                        disabled={associatingCustomer}
-                      >
-                        <span className="cmd-associate-customer-avatar">{getInitials(customer.name)}</span>
-                        <span className="cmd-associate-customer-option-info">
-                          <strong>{customer.name}</strong>
-                          <small>{[customer.phone, customer.identification].filter(Boolean).join(' · ') || 'Sin teléfono ni cédula'}</small>
-                        </span>
-                        <UserPlus size={15} />
-                      </button>
-                    ))}
-              </div>
+              {showCreateAssociateCustomer ? (
+                <form className="cmd-associate-customer-form" onSubmit={event => void handleCreateAndAssociateCustomer(event)}>
+                  <button type="button" className="cmd-associate-customer-back" onClick={() => { setShowCreateAssociateCustomer(false); setAssociateCustomerError('') }} disabled={creatingAssociateCustomer}>
+                    <ChevronLeft size={15} /> Volver a elegir un cliente
+                  </button>
+                  <label><span>Nombre completo <b>*</b></span><input autoFocus required maxLength={120} autoComplete="name" value={newAssociateCustomerName} onChange={event => setNewAssociateCustomerName(event.target.value)} placeholder="Nombre y apellido" /></label>
+                  <label><span>Teléfono <small>(opcional)</small></span><input type="tel" autoComplete="tel" maxLength={32} value={newAssociateCustomerPhone} onChange={event => setNewAssociateCustomerPhone(event.target.value)} placeholder="Ej. 0412 123 4567" /></label>
+                  <label><span>Cédula <small>(opcional)</small></span><input maxLength={32} value={newAssociateCustomerIdentification} onChange={event => setNewAssociateCustomerIdentification(event.target.value)} placeholder="V-12345678" /></label>
+                  <label><span>Dirección <small>(opcional)</small></span><input autoComplete="street-address" maxLength={240} value={newAssociateCustomerAddress} onChange={event => setNewAssociateCustomerAddress(event.target.value)} placeholder="Dirección del cliente" /></label>
+                  <div className="cmd-associate-customer-form-actions">
+                    <button type="button" className="cmd-btn-secondary" onClick={() => { setShowCreateAssociateCustomer(false); setAssociateCustomerError('') }} disabled={creatingAssociateCustomer}>Cancelar</button>
+                    <button type="submit" className="cmd-btn-primary" disabled={creatingAssociateCustomer || associatingCustomer}><UserPlus size={15} /> {creatingAssociateCustomer ? 'Creando y asociando…' : 'Crear y asociar'}</button>
+                  </div>
+                </form>
+              ) : (
+                <>
+                  <button type="button" className="cmd-associate-customer-create" onClick={() => { setShowCreateAssociateCustomer(true); setAssociateCustomerError('') }} disabled={associatingCustomer || creatingAssociateCustomer}>
+                    <Plus size={16} /> Crear cliente nuevo
+                  </button>
+                  <div className="cmd-associate-customer-list">
+                    {loadingAssociateCustomers ? <LoadingSkeleton className="cmd-associate-customer-loading" label="Cargando clientes" count={6} withAvatar />
+                      : filteredAssociateCustomers.length === 0 ? <p className="cmd-associate-customer-empty">{associateCustomerSearch ? 'No hay coincidencias.' : 'No hay clientes activos para asociar.'}</p>
+                        : filteredAssociateCustomers.map(customer => (
+                          <button type="button" className="cmd-associate-customer-option" key={customer.id} onClick={() => void handleAssociateCustomer(customer)} disabled={associatingCustomer || creatingAssociateCustomer}>
+                            <span className="cmd-associate-customer-avatar">{getInitials(customer.name)}</span>
+                            <span className="cmd-associate-customer-option-info"><strong>{customer.name}</strong><small>{[customer.phone, customer.identification].filter(Boolean).join(' · ') || 'Sin teléfono ni cédula'}</small></span>
+                            <UserPlus size={15} />
+                          </button>
+                        ))}
+                  </div>
+                </>
+              )}
             </div>
           </section>
         </div>,
@@ -2804,10 +2877,10 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       {/* Modal PIN para eliminar comanda */}
       {showDeleteModal && createPortal(
         <div className={`cmd-modal-overlay ${closingDelete ? 'closing' : ''}`} onClick={() => closeDeleteModal()}>
-          <div className="cmd-pin-modal animate-pop" onClick={e => e.stopPropagation()}>
+          <div className="cmd-pin-modal animate-pop" role="alertdialog" aria-modal="true" aria-labelledby="cmd-delete-dialog-title" onClick={e => e.stopPropagation()}>
             <div className="cmd-pin-header">
               <ShieldCheck size={24} className="cmd-pin-icon" />
-              <h3>Autorización requerida</h3>
+              <h3 id="cmd-delete-dialog-title">Autorización requerida</h3>
             </div>
             <p className="cmd-pin-text">Ingresa tu PIN para eliminar la comanda <strong className="cmd-pin-order-no">{selectedOrder?.orderNumber}</strong></p>
             <p className="cmd-pin-text">Si ya estaba cobrada o entregada, se eliminarán sus pagos de caja y se revertirá el inventario. Esta acción no se puede deshacer.</p>
@@ -3171,7 +3244,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                 <div className="cmd-history-title-text">
                   <h2>Historial de comandas</h2>
                   <span className="cmd-history-subtitle">
-                    {historyLoading ? 'Cargando…' : `${filteredHistoryOrders.length} comanda${filteredHistoryOrders.length !== 1 ? 's' : ''}`}
+                    {historyLoading ? <LoadingSkeleton label="Cargando comandas" variant="inline" /> : `${filteredHistoryOrders.length} comanda${filteredHistoryOrders.length !== 1 ? 's' : ''}`}
                   </span>
                 </div>
               </div>

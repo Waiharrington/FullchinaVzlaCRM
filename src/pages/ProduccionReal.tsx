@@ -9,6 +9,7 @@ import {
 } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { SearchSelect } from '../components/SearchSelect'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
@@ -670,7 +671,7 @@ export function ProduccionReal() {
 
             {batchOptionsLoading && (
               <div className="prod-options-loading" role="status">
-                <Loader2 size={15} className="animate-spin" /> Cargando insumos y opciones…
+                <LoadingSkeleton label="Cargando insumos y opciones" count={3} />
               </div>
             )}
 

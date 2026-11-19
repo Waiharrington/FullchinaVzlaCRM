@@ -8,6 +8,7 @@ import { dateKeyInTimeZone, formatUsd, formatVes } from '../lib/money'
 import { buildReport, REPORTS, SOURCE_REPORT_IDS, type ReportData, type ReportId } from '../lib/reporting'
 import './ReportExplorer.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
+import { LoadingSkeleton } from './LoadingSkeleton'
 
 type Loaded = ReportData & { reportId?: ReportId; family?: string; start?: string; end?: string }
 const favoritesKey = 'fullchina-report-favorites'
@@ -233,7 +234,7 @@ export function ReportExplorer() {
   }, [active, definition?.ready, family, start, end])
 
   useEffect(() => { if (active) void load() }, [active, load])
-  useLiveDataRefresh('reportes', () => { if (active) void load(true) })
+  useLiveDataRefresh('reportes', () => active ? load(true) : undefined)
 
   const table = useMemo(() => active && loaded.reportId === active && loaded.family === family && loaded.start === start && loaded.end === end ? buildReport(active, start, end, loaded, startHour, endHour) : null, [active, end, endHour, family, loaded, start, startHour])
   const filteredRows = useMemo(() => {
@@ -304,7 +305,7 @@ export function ReportExplorer() {
           <label><span>Hora inicial</span><ReportTimeWheel label="Hora inicial" value={startHour} onChange={value => { setStartHour(value); setPage(1) }} /></label>
           <label><span>Hora final</span><ReportTimeWheel label="Hora final" value={endHour} onChange={value => { setEndHour(value); setPage(1) }} /></label>
         </>}
-        <button className="report-refresh" onClick={() => void load()} disabled={loading}><CalendarDays size={17} /> {loading ? 'Cargando...' : 'Actualizar'}</button>
+        <button className="report-refresh" onClick={() => void load()} disabled={loading} aria-label={loading ? 'Actualizando reporte' : undefined}><CalendarDays size={17} /> {loading ? <LoadingSkeleton label="Actualizando reporte" variant="inline" /> : 'Actualizar'}</button>
         <div className="report-presets">{['Hoy', 'Ayer', 'Semana', 'Mes'].map(preset => <button key={preset} onClick={() => setPreset(preset)}>{preset}</button>)}</div>
         {table && !error && <div className="report-filters-tools">
           <label className="report-table-search"><Search size={16} /><input value={tableSearch} onChange={event => { setTableSearch(event.target.value); setPage(1) }} placeholder="Buscar en tabla..." aria-label="Buscar en tabla" /></label>

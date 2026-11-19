@@ -2,7 +2,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AuthContext } from './auth-context'
 import type { User } from './auth-context'
-import { startDataChangeFeed, stopDataChangeFeed, supabase } from '../lib/supabase'
+import { startDataChangeFeed, stopDataChangeFeed, subscribeToDataChanges, supabase } from '../lib/supabase'
 
 type Role = 'owner' | 'manager' | 'cashier'
 interface Profile { role: Role; fullName: string; allowedModules: string[] | null }
@@ -79,6 +79,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       stopDataChangeFeed()
     }
   }, [])
+
+  useEffect(() => {
+    const userId = session?.user.id
+    if (!userId || !supabase) return
+    let active = true
+    let requestVersion = 0
+    const unsubscribe = subscribeToDataChanges(table => {
+      if (table !== 'profiles' && table !== '*') return
+      const version = ++requestVersion
+      void fetchUserProfile(userId).then(profile => {
+        if (!active || version !== requestVersion) return
+        if (!profile) {
+          setUser(null)
+          setSession(null)
+          void supabase!.auth.signOut({ scope: 'local' })
+          return
+        }
+        setUser(current => current?.id === userId ? {
+          ...current,
+          email: session.user.email || current.email,
+          fullName: profile.fullName,
+          role: profile.role,
+          allowedModules: profile.allowedModules,
+        } : current)
+      }).catch(() => undefined)
+    })
+    return () => {
+      active = false
+      unsubscribe()
+    }
+  }, [session?.user.email, session?.user.id])
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) return { error: 'Supabase no está configurado (revisa el .env).' }

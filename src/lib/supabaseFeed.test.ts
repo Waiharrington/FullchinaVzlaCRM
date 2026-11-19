@@ -50,14 +50,31 @@ afterEach(() => {
 })
 
 describe('Supabase version feed lifecycle', () => {
-  it('reconciles missed changes when the tab becomes visible even if Realtime is connected', async () => {
-    feedMock.select.mockResolvedValueOnce({ data: [{ table_name: 'orders', version: 1 }], error: null })
+  it('detects changes that happen while the Realtime channel is connecting', async () => {
+    feedMock.select
+      .mockResolvedValueOnce({ data: [{ table_name: 'orders', version: 1 }], error: null })
+      .mockResolvedValueOnce({ data: [{ table_name: 'orders', version: 2 }], error: null })
     const listener = vi.fn()
     subscribeToDataChanges(listener)
 
     startDataChangeFeed('user-a')
+    await vi.waitFor(() => expect(feedMock.callbacks).toHaveLength(1))
     feedMock.callbacks[0]('SUBSCRIBED')
-    await vi.waitFor(() => expect(feedMock.select).toHaveBeenCalledTimes(1))
+
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('orders'))
+  })
+
+  it('reconciles missed changes when the tab becomes visible even if Realtime is connected', async () => {
+    feedMock.select
+      .mockResolvedValueOnce({ data: [{ table_name: 'orders', version: 1 }], error: null })
+      .mockResolvedValueOnce({ data: [{ table_name: 'orders', version: 1 }], error: null })
+    const listener = vi.fn()
+    subscribeToDataChanges(listener)
+
+    startDataChangeFeed('user-a')
+    await vi.waitFor(() => expect(feedMock.callbacks).toHaveLength(1))
+    feedMock.callbacks[0]('SUBSCRIBED')
+    await vi.waitFor(() => expect(feedMock.select).toHaveBeenCalledTimes(2))
 
     feedMock.select.mockResolvedValueOnce({ data: [{ table_name: 'orders', version: 2 }], error: null })
     document.dispatchEvent(new Event('visibilitychange'))
@@ -73,15 +90,16 @@ describe('Supabase version feed lifecycle', () => {
     const listener = vi.fn()
     subscribeToDataChanges(listener)
     startDataChangeFeed('user-a')
-    feedMock.callbacks[0]('SUBSCRIBED')
+    await vi.waitFor(() => expect(feedMock.select).toHaveBeenCalledTimes(1))
 
     startDataChangeFeed('user-b')
-    feedMock.callbacks[1]('SUBSCRIBED')
     await vi.waitFor(() => expect(feedMock.select).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => expect(feedMock.callbacks).toHaveLength(1))
+    feedMock.callbacks[0]('SUBSCRIBED')
     resolveOldRead({ data: [{ table_name: 'orders', version: 99 }], error: null })
     await Promise.resolve()
 
     expect(listener).not.toHaveBeenCalled()
-    expect(feedMock.removeChannel).toHaveBeenCalledTimes(1)
+    expect(feedMock.removeChannel).not.toHaveBeenCalled()
   })
 })

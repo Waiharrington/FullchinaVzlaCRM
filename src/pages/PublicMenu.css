@@ -88,6 +88,9 @@
 .public-menu-page {
   position: relative;
   isolation: isolate;
+  /* Keep native controls and form widgets aligned with the fixed public menu
+     palette, regardless of the device or browser appearance preference. */
+  color-scheme: dark;
   animation: public-menu-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   min-height: 100dvh;
   background: url('/optimized/fondos/public-flow-bg.webp') center bottom / cover fixed no-repeat;
@@ -1899,6 +1902,7 @@ button.mobile-only {
 .public-confirm-page .public-confirm-info button > svg { width: 30px; height: 30px; padding: 7px; box-sizing: border-box; border: 1px solid #ed1b2f; border-radius: 50%; }
 .public-confirm-page .public-confirm-info button > div strong { color: #65686d; font-size: 13px; font-weight: 500; }
 .public-confirm-page .public-confirm-info button > div span { color: #141518; font-size: 14px; font-weight: 800; }
+.public-confirm-page .public-confirm-info button > div .public-confirm-info-notes { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
 .public-confirm-page .public-confirm-info button > div small { color: #666a70; font-size: 12px; }
 .public-confirm-page .public-confirm-info button > b { display: none; }
 .public-confirm-info button > svg { position: absolute; left: 22px; top: 50%; width: 30px; height: 30px; transform: translateY(-50%); color: #d51b2a; }
@@ -8638,7 +8642,6 @@ button.mobile-only {
   }
 }
 
-
 .public-contact-hero .public-hero-left,
 .public-contact-hero .public-contact-hero-copy {
   position: relative;
@@ -9325,6 +9328,7 @@ button.mobile-only {
    mantienen sus propias reglas cuando realmente tienen overflow. */
 .public-menu-page,
 body:has(.public-menu-page) {
+  color-scheme: dark;
   scrollbar-width: thin !important;
   scrollbar-color: rgba(255, 90, 82, .38) transparent !important;
 }
@@ -16213,4 +16217,14 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     left: auto !important;
     max-width: 100% !important;
   }
+}
+
+/* Los encabezados principales de cada paso del checkout comparten alineación;
+   se conserva centrado el logo, la descripción y los títulos internos. */
+.public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading h2 {
+  display: block !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  text-align: left !important;
 }

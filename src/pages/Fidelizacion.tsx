@@ -176,7 +176,6 @@ export function Fidelizacion() {
     }
   }, [refreshPendingRewards])
   useEffect(() => { void refreshCustomers() }, [refreshCustomers])
-  useLiveDataRefresh('fidelizacion', refreshCustomers)
 
   const refreshSelectedRewards = useCallback(async () => {
     if (!selectedCustomerId || !supabase) { setCustomerRewards({ available: [], redeemed: [] }); return }
@@ -190,6 +189,10 @@ export function Fidelizacion() {
     setRewardStorageError('')
   }, [selectedCustomerId])
   useEffect(() => { void refreshSelectedRewards() }, [refreshSelectedRewards])
+  const refreshLoyaltyModule = useCallback(async () => {
+    await Promise.all([refreshCustomers(), refreshSelectedRewards()])
+  }, [refreshCustomers, refreshSelectedRewards])
+  useLiveDataRefresh('fidelizacion', refreshLoyaltyModule)
 
   useEffect(() => {
     setPage(1)

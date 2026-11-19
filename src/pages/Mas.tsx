@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { useAuth } from '../context/auth-context'
 import jsPDF from 'jspdf'
 import {
@@ -134,10 +135,10 @@ export function Mas() {
   useEffect(() => {
     fetchAll()
   }, [fetchAll])
-  useLiveDataRefresh(isCreditsModule ? 'creditos' : 'mas', () => {
-    void fetchAll(true)
-    if (isCreditsModule) void getCustomers().then(setCustomers).catch(() => undefined)
-  })
+  useLiveDataRefresh(isCreditsModule ? 'creditos' : 'mas', () => Promise.all([
+    fetchAll(true),
+    ...(isCreditsModule ? [getCustomers().then(setCustomers).catch(() => undefined)] : []),
+  ]))
 
   useEffect(() => { if (isCreditsModule) getCustomers().then(setCustomers).catch(() => undefined) }, [isCreditsModule])
 
@@ -527,11 +528,7 @@ export function Mas() {
                                 <strong>Historial de abonos</strong>
                               </div>
                               {loadingHistory ? (
-                                <div className="credit-history-state credit-history-loading" role="status" aria-live="polite">
-                                  <Loader2 size={17} aria-hidden="true" />
-                                  <span>Cargando historial</span>
-                                  <span className="credit-history-loading-dots" aria-hidden="true"><i /><i /><i /></span>
-                                </div>
+                                <LoadingSkeleton label="Cargando historial de abonos" count={3} />
                               ) : creditPayments.length === 0 ? (
                                 <div className="credit-history-state credit-history-empty">
                                   <span className="credit-history-empty-icon"><CreditCard size={16} aria-hidden="true" /></span>

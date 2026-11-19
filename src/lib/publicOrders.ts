@@ -1,4 +1,5 @@
 import { customerSupabase, supabase } from './supabase'
+import { getLocalOrderTestOrder, isLocalOrderTestMode } from './localOrderTestMode'
 import type { Product } from './dataService'
 
 export interface WebOrderCartItem {
@@ -96,6 +97,11 @@ async function webOrderWriteDb() {
 }
 
 export async function getCustomerOrderForRepeat(orderId: string): Promise<CustomerRepeatOrder> {
+  if (isLocalOrderTestMode()) {
+    const localOrder = getLocalOrderTestOrder(orderId)
+    if (!localOrder) throw new Error('No encontramos este pedido en el historial local de prueba.')
+    return localOrder
+  }
   const { data, error } = await (await customerDb()).rpc('fn_get_customer_order_for_repeat', { p_order_id: orderId })
   if (error) throw error
   if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('No pudimos leer el pedido para repetirlo.')

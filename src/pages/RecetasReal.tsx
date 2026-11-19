@@ -233,7 +233,7 @@ export function RecetasReal() {
 
   useEffect(() => { void loadProducts() }, [loadProducts])
   useEffect(() => { void loadComponents() }, [loadComponents])
-  useLiveDataRefresh('recetas', () => { void loadProducts(true); void loadComponents() })
+  useLiveDataRefresh('recetas', () => Promise.all([loadProducts(true), loadComponents()]))
 
   useEffect(() => {
     if (ingredients.length > 0 && !addIngredientId) {

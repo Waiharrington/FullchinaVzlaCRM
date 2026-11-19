@@ -1095,7 +1095,7 @@
   .card-footer-line > .timer-mins,
   .card-footer-line > .status-ready-group,
   .card-footer-line > .badge-delivered-tag { grid-area: timer; justify-self: end; margin: 0; }
-  .card-footer-line > .badge-sin-pagar { max-width: 100%; white-space: normal; }
+  .card-footer-line > .badge-sin-pagar { max-width: 100%; white-space: nowrap; }
 }
 
 .payment-type-badge {
@@ -1238,6 +1238,12 @@
   gap: 4px;
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.badge-sin-pagar.is-credit {
+  gap: 3px;
+  padding-inline: 6px;
+  font-size: 10px;
 }
 
 /* Último ajuste para tarjetas excepcionalmente estrechas: los indicadores
@@ -2618,12 +2624,13 @@
 .cmd-associate-customer-heading { display: flex; align-items: center; gap: 11px; color: #ff4d3d; }
 .cmd-associate-customer-heading h2 { margin: 0; color: #fff; font-size: 16px; }
 .cmd-associate-customer-heading small { display: block; margin-top: 3px; color: #9ca3af; font-size: 11px; }
-.cmd-associate-customer-content { display: flex; flex-direction: column; min-height: 0; padding: 16px; }
+.cmd-associate-customer-content { display: flex; flex-direction: column; min-height: 0; padding: 16px; overflow-y: auto; }
 .cmd-associate-customer-search { display: flex; align-items: center; gap: 10px; padding: 0 12px; min-height: 42px; color: #9ca3af; background: #0c0c0c; border: 1px solid #343434; border-radius: 9px; }
 .cmd-associate-customer-search:focus-within { border-color: #e31b2b; box-shadow: 0 0 0 2px rgba(227, 27, 43, .14); }
 .cmd-associate-customer-search input { width: 100%; min-width: 0; padding: 10px 0; color: #f4f4f5; background: transparent; border: 0; outline: 0; font: inherit; font-size: 13px; }
 .cmd-associate-customer-search input::placeholder { color: #71717a; }
 .cmd-associate-customer-list { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-height: min(52dvh, 440px); overflow-y: auto; }
+.cmd-associate-customer-loading { max-height: min(52dvh, 440px); margin-top: 12px; overflow-y: auto; }
 .cmd-associate-customer-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px; color: #e4e4e7; text-align: left; background: #181818; border: 1px solid #2a2a2a; border-radius: 9px; cursor: pointer; }
 .cmd-associate-customer-option:hover:not(:disabled) { background: #222; border-color: rgba(227, 27, 43, .55); }
 .cmd-associate-customer-option:disabled { opacity: .6; cursor: wait; }
@@ -2633,6 +2640,20 @@
 .cmd-associate-customer-option-info small { overflow: hidden; color: #9ca3af; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .cmd-associate-customer-empty { margin: 18px 0; color: #9ca3af; font-size: 13px; text-align: center; }
 .cmd-associate-customer-error { margin: 10px 0 0; color: #f87171; font-size: 12px; }
+.cmd-associate-customer-create { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 40px; margin-top: 12px; padding: 8px 12px; color: #fff; background: rgba(227, 27, 43, .12); border: 1px solid rgba(227, 27, 43, .55); border-radius: 9px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.cmd-associate-customer-create:hover:not(:disabled) { background: rgba(227, 27, 43, .2); border-color: #e31b2b; }
+.cmd-associate-customer-create:disabled { opacity: .6; cursor: wait; }
+.cmd-associate-customer-form { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+.cmd-associate-customer-form > label { display: flex; flex-direction: column; gap: 6px; color: #e4e4e7; font-size: 12px; font-weight: 650; }
+.cmd-associate-customer-form > label b { color: #ff4d3d; }
+.cmd-associate-customer-form > label small { color: #9ca3af; font-weight: 400; }
+.cmd-associate-customer-form input { width: 100%; min-width: 0; box-sizing: border-box; padding: 10px 11px; color: #f4f4f5; background: #0c0c0c; border: 1px solid #343434; border-radius: 8px; font: inherit; font-size: 13px; }
+.cmd-associate-customer-form input:focus { outline: 0; border-color: #e31b2b; box-shadow: 0 0 0 2px rgba(227, 27, 43, .14); }
+.cmd-associate-customer-back { display: inline-flex; align-items: center; align-self: flex-start; gap: 4px; margin: 0 0 2px; padding: 4px 0; color: #c4c4cc; background: none; border: 0; font: inherit; font-size: 12px; cursor: pointer; }
+.cmd-associate-customer-back:hover { color: #fff; }
+.cmd-associate-customer-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid #292929; }
+.cmd-associate-customer-form-actions button:disabled,
+.cmd-associate-customer-back:disabled { opacity: .6; cursor: wait; }
 
 @media (max-width: 680px) {
   .cmd-modal-footer {

@@ -8,6 +8,7 @@ import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
 import { CashChangeSummary } from '../components/CashChangeSummary'
 import { StyledSelect } from '../components/StyledSelect'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import Toast from '../components/Toast'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
 import { calculateCashChange, formatRateDate, formatUsd, formatVes, parseMoneyInput } from '../lib/money'
@@ -1629,7 +1630,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                 </button>
               </div>
               <div className="variant-selector-list">
-                {modifierLoading && <p className="page" role="status">Cargando opciones…</p>}
+                {modifierLoading && <LoadingSkeleton label="Cargando opciones del producto" count={3} />}
                 {!modifierLoading && modifierGroups.length === 0 && (
                   <p className="page" role="status">Este producto no tiene opciones configuradas.</p>
                 )}

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deletePayrollPeriod, getAllEmployees, getPayrollEntries } from './dataService'
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), delete: vi.fn(), eq: vi.fn(), select: vi.fn(), order: vi.fn() }))
-vi.mock('./supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from } }))
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn(), delete: vi.fn(), eq: vi.fn(), select: vi.fn(), order: vi.fn(), subscribeToDataChanges: vi.fn(() => () => undefined) }))
+vi.mock('./supabase', () => ({ supabase: { rpc: mocks.rpc, from: mocks.from }, subscribeToDataChanges: mocks.subscribeToDataChanges }))
 
 describe('Borrado de períodos de nómina', () => {
   beforeEach(() => {

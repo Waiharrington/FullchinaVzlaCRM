@@ -18,6 +18,7 @@ import {
 import { exportInventoryWorkbook, previewInventoryWorkbook, type InventoryImportPreview } from '../lib/inventoryWorkbook'
 import { normalizeForSearch } from '../lib/textFormat'
 import { StyledSelect } from '../components/StyledSelect'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import {
   Package,
   Search,
@@ -1032,7 +1033,7 @@ export function Inventario() {
 
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
               {modalLoading ? (
-                <div className="inv-modal-loading"><Loader2 className="spin" /> Cargando movimientos…</div>
+                <LoadingSkeleton label="Cargando movimientos de inventario" count={4} />
               ) : filteredIngredientMovements.length === 0 ? (
                 <div className="inv-empty-state"><p>No hay movimientos registrados para este período.</p></div>
               ) : (

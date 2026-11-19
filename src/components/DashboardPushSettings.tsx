@@ -164,8 +164,7 @@ export function DashboardPushSettings({ role, isDrawerOpen, promptOnEntry = fals
             <div className="db-push-entry-heading">
               <span className="db-push-entry-icon"><BellRing size={20} aria-hidden="true" /></span>
               <div>
-                <span className="db-modal-eyebrow">Full China · avisos al instante</span>
-                <h2 id="db-push-entry-title">Activa las notificaciones</h2>
+                <h2 id="db-push-entry-title">Activa avisos</h2>
               </div>
             </div>
             <button className="db-modal-close" type="button" onClick={() => {

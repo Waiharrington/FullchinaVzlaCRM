@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSearch } from '../context/search-context'
+import { LoadingSkeleton } from './LoadingSkeleton'
 import {
   Search,
   Home,
@@ -41,6 +42,7 @@ import {
 } from '../lib/dataService'
 import { allNavItems, type Role } from './navItems'
 import { useAuth } from '../context/auth-context'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { EmptyState } from './EmptyState'
 import './GlobalSearch.css'
 
@@ -122,6 +124,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const { isOpen, open: ctxOpen, close: ctxClose } = useSearch()
   const [activeIndex, setActiveIndex] = useState(0)
   const [results, setResults] = useState<ResultGroup[]>([])
+  const [dataRevision, setDataRevision] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [closingSearch, setClosingSearch] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -132,6 +135,10 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
   const allResults = useMemo(() => results.flatMap(g => g.items), [results])
   const totalResults = allResults.length
   const showDropdown = inline ? query.trim().length > 0 : isOpen
+
+  useLiveDataRefresh('busqueda-global', () => {
+    if (query.trim()) setDataRevision(revision => revision + 1)
+  })
 
   const close = useCallback(() => {
     if (inline) {
@@ -316,7 +323,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
 
     searchAll()
     return () => { cancelled = true }
-  }, [query, canAccessPath])
+  }, [query, canAccessPath, dataRevision])
 
   const navigateTo = useCallback((path: string) => {
     navigate(path)
@@ -380,7 +387,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
               </div>
             )}
 
-            {isLoading && <div className="gs-empty-inline"><div className="gs-spinner" /> Buscando...</div>}
+            {isLoading && <div className="gs-empty-inline"><LoadingSkeleton label="Buscando resultados" variant="inline" /></div>}
 
             {results.map((group, gi) => (
               <div key={group.title} className="gs-group">
@@ -450,7 +457,7 @@ export function GlobalSearch({ inline = false }: { inline?: boolean }) {
                   <EmptyState compact title="Sin resultados" description={`No encontramos nada para "${query}"`} />
                 </div>
               )}
-              {isLoading && <div className="gs-empty"><div className="gs-spinner" /> <span>Buscando...</span></div>}
+              {isLoading && <div className="gs-empty"><LoadingSkeleton label="Buscando resultados" count={3} /></div>}
 
               {results.map((group, gi) => (
                 <div key={group.title} className="gs-group">

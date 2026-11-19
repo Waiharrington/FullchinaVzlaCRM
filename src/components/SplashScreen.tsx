@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LoadingSkeleton } from './LoadingSkeleton'
 import './SplashScreen.css'
 
 interface SplashScreenProps {
@@ -40,7 +41,7 @@ export function SplashScreen({ onDone, minDuration = 2800, ready = true }: Splas
       <div className="splash-bar-wrap">
         <div className="splash-bar-fill" />
       </div>
-      <p className="splash-loading-text">Cargando...</p>
+      <LoadingSkeleton className="splash-loading-skeleton" label="Cargando Full China" variant="inline" decorative />
     </div>
   )
 }

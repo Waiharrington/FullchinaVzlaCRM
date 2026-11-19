@@ -16,6 +16,7 @@ import NumberStepper from '../components/NumberStepper'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { StyledSelect } from '../components/StyledSelect'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { SearchSelect } from '../components/SearchSelect'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, slugifyCategory, defaultMenuCategories } from '../lib/menuCategories'
@@ -689,7 +690,7 @@ export function Menu() {
                   <div className="mnu-product-section mnu-recipe-section">
                     <div className="mnu-product-section-title">Receta e inventario <small>Descuenta ingredientes al vender</small></div>
                     <p className="mnu-recipe-help">Añade los ingredientes y cantidades que consume una porción. Si no configuras componentes, este plato no descontará inventario.</p>
-                    {recipeLoading ? <div className="mnu-recipe-loading"><Loader2 size={15} className="animate-spin" /> Cargando receta…</div> : (
+                    {recipeLoading ? <LoadingSkeleton label="Cargando receta" count={3} /> : (
                       <>
                         {recipeRows.map((row) => {
                           const ingredient = trackedIngredients.find((item) => item.id === row.ingredientId)

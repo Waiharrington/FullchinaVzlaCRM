@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { getOrdersWithItems, updateOrderStatus, type FullOrder } from '../lib/dataService'
 import { dayRangeInTimeZone } from '../lib/money'
 import './Cocina.css'
@@ -27,18 +27,21 @@ export function Cocina() {
   const [stationFilter, setStationFilter] = useState<StationFilter>('all')
   const [soundEnabled, setSoundEnabled] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const latestFetchRef = useRef(0)
 
   const fetchOrders = useCallback(async (silent = false) => {
+    const fetchId = ++latestFetchRef.current
     try {
       const { start, end } = dayRangeInTimeZone()
       const data = await getOrdersWithItems(start, end)
+      if (fetchId !== latestFetchRef.current) return
       const active = data.filter(o => ['new', 'preparing', 'ready'].includes(o.fulfillmentStatus))
       setOrders(active)
       cocinaCache = active
     } catch (e) {
-      console.error('Error cargando órdenes:', e)
+      if (fetchId === latestFetchRef.current) console.error('Error cargando órdenes:', e)
     } finally {
-      if (!silent) setLoading(false)
+      if (fetchId === latestFetchRef.current && !silent) setLoading(false)
     }
   }, [])
 
@@ -63,14 +66,23 @@ export function Cocina() {
   }
 
   const handleStatusChange = async (orderId: string, newStatus: FullOrder['fulfillmentStatus']) => {
+    const previous = orders.find(order => order.id === orderId)
+    if (!previous || updatingId) return
     setUpdatingId(orderId)
+    setOrders(current => {
+      const next = current.map(order =>
+        order.id === orderId ? { ...order, fulfillmentStatus: newStatus } : order
+      )
+      cocinaCache = next
+      return next
+    })
     try {
       await updateOrderStatus(orderId, newStatus)
-      setOrders(prev => prev.map(o =>
-        o.id === orderId ? { ...o, fulfillmentStatus: newStatus } : o
-      ))
     } catch (e) {
       console.error('Error actualizando estado:', e)
+      // Read the server's latest state instead of blindly rolling back; another
+      // device may have made a newer status change while this write was pending.
+      await fetchOrders(true)
     } finally {
       setUpdatingId(null)
     }

@@ -9,6 +9,7 @@ import { DashboardPushSettings } from '../components/DashboardPushSettings'
 import { useSearch } from '../context/search-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { DashboardQuickAccess, type DashboardShortcut } from '../components/DashboardQuickAccess'
+import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { canAccessModule } from '../components/navItems'
 import { dateKeyInTimeZone, formatRateDate, formatVes } from '../lib/money'
 import { formatProductTitle, formatSpanishText } from '../lib/textFormat'
@@ -221,6 +222,7 @@ export function Inicio() {
     setSelectedDate(date)
   }
   const [selectedDayOrders, setSelectedDayOrders] = useState<FullOrder[]>([])
+  const [liveRefreshVersion, setLiveRefreshVersion] = useState(0)
   const [selectedDayLoading, setSelectedDayLoading] = useState(true)
   const [selectedDayError, setSelectedDayError] = useState('')
   const [dailySales, setDailySales] = useState<DailySales[]>(initialCache?.dailySales ?? [])
@@ -527,7 +529,10 @@ export function Inicio() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
-  useLiveDataRefresh('dashboard', () => fetchData(salesRange, true))
+  useLiveDataRefresh('dashboard', async () => {
+    await fetchData(salesRange, true)
+    setLiveRefreshVersion(version => version + 1)
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -552,7 +557,7 @@ export function Inicio() {
       setChartLoading(false)
     })
     return () => { cancelled = true }
-  }, [selectedDate, salesRange])
+  }, [selectedDate, salesRange, liveRefreshVersion])
 
   // Secciones que aparecen más abajo no bloquean el primer render del tablero.
   useEffect(() => {
@@ -581,7 +586,7 @@ export function Inicio() {
       else setSectionLoading(previous => ({ ...previous, ranking: false }))
     })
     return () => { cancelled = true }
-  }, [user?.id])
+  }, [liveRefreshVersion, user?.id])
 
   const ordersOnSelectedDay = useMemo(() =>
     selectedDayOrders.filter(order => dateKeyInTimeZone(new Date(order.createdAt)) === selectedDate),
@@ -973,7 +978,7 @@ export function Inicio() {
               <h3>Método de pago</h3>
                 <span className="db-card-support">Cobros del {selectedDayLabel} · consumos internos y pendientes aparte</span>
             </div>
-            <span className="db-payment-count">{selectedDayLoading ? 'Cargando…' : `${dashboardPaymentMethods.length} medio${dashboardPaymentMethods.length === 1 ? '' : 's'}`}</span>
+            <span className="db-payment-count">{selectedDayLoading ? <LoadingSkeleton label="Cargando medios de pago" variant="inline" /> : `${dashboardPaymentMethods.length} medio${dashboardPaymentMethods.length === 1 ? '' : 's'}`}</span>
           </div>
           {selectedDayLoading ? <div className="db-section-skeleton db-payment-skeleton" role="status" aria-label="Cargando métodos de pago"><i /><i /><i /></div> : <div className={`db-pago-layout${dashboardPaymentMethods.length === 0 ? ' is-empty' : ''}`}>
             {dashboardPaymentMethods.length > 0 && (
@@ -1146,7 +1151,7 @@ export function Inicio() {
           </div>
           <div className="db-prod-recent">
             {recentProductionLoadState === 'loading' ? (
-              <span className="db-prod-recent-note" role="status">Cargando producciones…</span>
+              <span className="db-prod-recent-note"><LoadingSkeleton label="Cargando producciones recientes" variant="inline" /></span>
             ) : recentProductionLoadState === 'error' ? (
               <span className="db-prod-recent-note" role="status">No se pudieron cargar las producciones recientes.</span>
             ) : recentProductionBatches.length === 0 ? (

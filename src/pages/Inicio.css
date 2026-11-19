@@ -2886,6 +2886,31 @@
    Así sigue siendo legible cuando comparte fila con otros widgets. */
 .db-payment-card { container-type: inline-size; }
 
+@media (max-width: 600px) {
+  .db-date-filter .db-date-calendar {
+    flex: 0 0 62px !important;
+    justify-content: center !important;
+    gap: 0.32rem !important;
+    padding: 0 0.25rem !important;
+    border: 1px solid rgba(255, 194, 64, 0.22) !important;
+    background: rgba(255, 194, 64, 0.055) !important;
+    color: #ffd05a !important;
+  }
+
+  .db-date-filter .db-date-calendar > svg {
+    width: 18px !important;
+    height: 18px !important;
+    flex: 0 0 18px !important;
+    stroke-width: 2.3;
+  }
+
+  .db-date-filter .db-date-calendar::after {
+    display: inline-block;
+    font-size: 0.65rem;
+    line-height: 1;
+  }
+}
+
 @container (max-width: 460px) {
   .db-payment-card .db-pago-layout {
     grid-template-columns: 76px minmax(0, 1fr);

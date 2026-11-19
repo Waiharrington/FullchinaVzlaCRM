@@ -1,9 +1,11 @@
 import { customerSupabase } from './supabase'
+import { getLocalOrderTestFavorites, isLocalOrderTestMode, setLocalOrderTestFavorites } from './localOrderTestMode'
 
 const syncQueues = new Map<string, Promise<string[]>>()
 
 /** Reads the signed-in customer's saved public-menu favorite group keys. */
 export async function getCustomerFavorites(): Promise<string[]> {
+  if (isLocalOrderTestMode()) return getLocalOrderTestFavorites()
   if (!customerSupabase) throw new Error('Los favoritos de la cuenta no están disponibles ahora.')
   const { data: sessionData, error: sessionError } = await customerSupabase.auth.getSession()
   if (sessionError) throw sessionError
@@ -21,6 +23,7 @@ export async function getCustomerFavorites(): Promise<string[]> {
 
 /** Replaces the signed-in customer's favorite list atomically. */
 export async function syncCustomerFavorites(favoriteKeys: string[]): Promise<string[]> {
+  if (isLocalOrderTestMode()) return setLocalOrderTestFavorites(favoriteKeys)
   if (!customerSupabase) throw new Error('Los favoritos de la cuenta no están disponibles ahora.')
   const customerClient = customerSupabase
   const { data: sessionData, error: sessionError } = await customerClient.auth.getSession()

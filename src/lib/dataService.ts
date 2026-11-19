@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { supabase, subscribeToDataChanges } from './supabase'
 import { dateKeyInTimeZone, dayRangeInTimeZone } from './money'
 
 export interface Product {
@@ -1027,6 +1027,12 @@ const modifiersCache = new Map<string, ProductModifierGroup[]>()
 export function invalidateModifiersCache() {
   modifiersCache.clear()
 }
+
+subscribeToDataChanges(table => {
+  if (table === '*' || ['sellable_product_modifiers', 'modifiers', 'modifier_options'].includes(table)) {
+    invalidateModifiersCache()
+  }
+})
 
 /** Conjunto de ids de productos que tienen al menos un modificador asignado. */
 export async function getProductsWithModifiers(): Promise<Set<string>> {
@@ -2653,6 +2659,14 @@ let customersCache: Customer[] | null = null
 export function invalidateCustomersCache() {
   customersCache = null
 }
+
+subscribeToDataChanges(table => {
+  if (table === '*' || [
+    'customers', 'customer_loyalty_visits', 'customer_loyalty_rewards', 'customer_favorites',
+  ].includes(table)) {
+    invalidateCustomersCache()
+  }
+})
 
 export async function getCustomers(forceRefresh = false): Promise<Customer[]> {
   if (customersCache && !forceRefresh) {

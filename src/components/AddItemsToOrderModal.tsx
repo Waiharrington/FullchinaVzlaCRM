@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X, Search, CheckCircle2, Circle, UtensilsCrossed } from 'lucide-react'
 import { MoneyWithBcv } from './MoneyWithBcv'
+import { LoadingSkeleton } from './LoadingSkeleton'
 import {
   addItemsToOrder,
   getProducts,
@@ -14,6 +15,7 @@ import {
   isQuantityModifierGroup,
 } from '../lib/dataService'
 import { normalizeForSearch } from '../lib/textFormat'
+import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { EmptyState } from './EmptyState'
 import './AddItemsToOrderModal.css'
 
@@ -32,6 +34,7 @@ interface AddItemsToOrderModalProps {
 
 export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }: AddItemsToOrderModalProps) {
   const [products, setProducts] = useState<Product[]>([])
+  const [catalogRevision, setCatalogRevision] = useState(0)
   const [withMods, setWithMods] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -40,6 +43,9 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [closing, setClosing] = useState(false)
+  const hasLoadedCatalog = useRef(false)
+
+  useLiveDataRefresh('selector-productos', () => setCatalogRevision(revision => revision + 1))
 
   // Selector de modificadores (sub-vista dentro del mismo modal)
   const [modProduct, setModProduct] = useState<Product | null>(null)
@@ -50,11 +56,13 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
 
   useEffect(() => {
     let alive = true
+    if (!hasLoadedCatalog.current) setLoading(true)
     Promise.all([getProducts(), getProductsWithModifiers()])
       .then(([prods, mods]) => {
         if (!alive) return
         setProducts(prods)
         setWithMods(mods)
+        hasLoadedCatalog.current = true
       })
       .catch((e) => {
         if (alive) setLoadError(e instanceof Error ? e.message : 'No se pudieron cargar los productos')
@@ -65,7 +73,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
     return () => {
       alive = false
     }
-  }, [])
+  }, [catalogRevision])
 
   const filtered = useMemo(() => {
     const q = normalizeForSearch(search)
@@ -260,7 +268,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
             <div className="aito-body">
               <button type="button" className="aito-back" onClick={closeMod}>← Volver a productos</button>
               <h3 className="aito-mod-title">{modProduct.name}</h3>
-              {modLoading && <p className="aito-muted" role="status">Cargando opciones…</p>}
+              {modLoading && <LoadingSkeleton label="Cargando opciones del producto" count={3} />}
               {!modLoading && modGroups.length === 0 && <p className="aito-muted">Este producto no tiene opciones configuradas.</p>}
               {!modLoading &&
                 modGroups.map((group) => {
@@ -325,7 +333,7 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
               />
             </div>
             <div className="aito-body">
-              {loading && <p className="aito-muted" role="status">Cargando productos…</p>}
+              {loading && <LoadingSkeleton label="Cargando productos" variant="cards" count={4} className="aito-loading-cards" />}
               {loadError && <p className="aito-error">{loadError}</p>}
               {!loading && !loadError && (
                 <div className="aito-grid">

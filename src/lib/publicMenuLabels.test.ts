@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { publicVariantCopy, publicVariantLabel } from './publicMenuLabels'
+import { publicCartIncludedCopy, publicVariantCopy, publicVariantLabel } from './publicMenuLabels'
 
 describe('publicVariantLabel', () => {
   it('presenta claramente las seis opciones de lumpias sin acortar sus descripciones', () => {
@@ -20,5 +20,16 @@ describe('publicVariantLabel', () => {
     expect(publicVariantCopy('Trío', 'Con Camaron')).toEqual({ name: 'Con Camarón' })
     expect(publicVariantCopy('Trio', 'Clasico')).toEqual({ name: 'Clásico' })
     expect(publicVariantCopy('Arroz', 'Con Jamon y Pimenton')).toEqual({ name: 'Con Jamón y Pimentón' })
+  })
+})
+
+describe('publicCartIncludedCopy', () => {
+  it('mantiene visible la bebida gratis incluida en una presentación', () => {
+    expect(publicCartIncludedCopy('1 kg de arroz clásico con pollo con 1 refresco de 1 litro gratis'))
+      .toBe('Incluye 1 refresco de 1 litro gratis')
+  })
+
+  it('no agrega detalles para productos sin bebida gratis', () => {
+    expect(publicCartIncludedCopy('Arroz especial con pollo, jamón y huevo')).toBeNull()
   })
 })

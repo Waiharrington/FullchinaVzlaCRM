@@ -979,6 +979,7 @@
 .customer-saved-favorites-grid button{display:grid;place-items:center;flex:none;width:34px;height:34px;border:1px solid #ff5b5535;border-radius:10px;background:#ff35300d;color:#ff7771;cursor:pointer}
 .customer-saved-favorites-grid button:hover{background:#ff353025}
 .customer-saved-favorites-status{padding:16px;border:1px dashed #ffffff20;border-radius:13px;color:#aaa4aa;font-size:clamp(10px,2.8vw,13px);text-align:center;white-space:nowrap}
+.customer-saved-favorites-loading{padding:12px;border:1px dashed #ffffff20;border-radius:13px}
 .customer-saved-favorites-unavailable{margin:12px 0 0;color:#aaa4aa;font-size:11px;line-height:1.45}
 @media(max-width:600px){.customer-saved-favorites{padding:16px;border-radius:17px}.customer-saved-favorites-grid{grid-template-columns:1fr}}
 
