@@ -2,6 +2,8 @@ import { clearLegacyPwaRuntimeCaches } from './lib/pwaRuntimeCache'
 
 const DISMISSED_KEY = 'fullchina_public_welcome_dismissed_v1'
 const PENDING_DISMISS_KEY = 'fullchina_public_welcome_pending_dismiss'
+const PENDING_OPEN_KEY = 'fullchina_public_menu_pending_open_v1'
+const VERSION_RETRY_KEY = 'fullchina_public_menu_version_retry_v1'
 
 const root = document.getElementById('root')
 const staticWelcome = document.getElementById('public-welcome-static')
@@ -12,6 +14,11 @@ const status = document.getElementById('public-welcome-status')
 declare global {
   interface Window {
     __fullChinaSkipWelcomeForCurrentLoad?: boolean
+    __fullChinaOpenPublicMenu?: () => void
+    __fullChinaQueuePublicMenuOpen?: () => void
+    __fullChinaRecoverPublicMenu?: () => void
+    __fullChinaPublicMenuOpenQueued?: boolean
+    __fullChinaCheckPublicMenuVersion?: () => Promise<boolean>
   }
 }
 
@@ -20,6 +27,10 @@ let needsVersionRefresh = false
 
 window.addEventListener('fullchina:public-menu-ready', () => {
   staticWelcome?.remove()
+  try {
+    sessionStorage.removeItem(PENDING_OPEN_KEY)
+    sessionStorage.removeItem(VERSION_RETRY_KEY)
+  } catch { /* el menú no depende del almacenamiento */ }
 }, { once: true })
 
 function loadMenuFonts() {
@@ -67,8 +78,12 @@ async function refreshCustomerVersion() {
   } catch (error) {
     console.warn('No se pudo limpiar por completo la caché de navegación:', error)
   }
+  try {
+    sessionStorage.setItem(PENDING_OPEN_KEY, 'true')
+    sessionStorage.setItem(VERSION_RETRY_KEY, 'true')
+  } catch { /* la ruta con query única sigue solicitando el HTML actual */ }
   const url = new URL('/pedir', window.location.origin)
-  url.searchParams.set('actualizar', String(Date.now()))
+  url.searchParams.set('_fc_refresh', String(Date.now()))
   window.location.replace(url)
 }
 
@@ -90,6 +105,7 @@ function loadCustomerApp() {
     }
     if (status) status.textContent = 'Hay una nueva versión del menú. Actualiza para ver la carta más reciente.'
     console.error('No se pudo abrir la carta de Full China:', error)
+    if (navigator.onLine) window.__fullChinaRecoverPublicMenu?.()
     return undefined
   })
   return appLoad
@@ -106,33 +122,50 @@ function setButtonState(label: string, loading: boolean) {
   else button.prepend(document.createTextNode(`${label} `))
 }
 
+async function openPublicMenu() {
+  window.__fullChinaPublicMenuOpenQueued = false
+  setButtonState('Abriendo la carta…', true)
+  if (needsVersionRefresh) {
+    try { sessionStorage.setItem(PENDING_OPEN_KEY, 'true') } catch { /* recuperación sigue con la URL */ }
+    void refreshCustomerVersion()
+    return
+  }
+  try {
+    if (checkbox?.checked) {
+      localStorage.setItem(DISMISSED_KEY, 'true')
+      sessionStorage.removeItem(PENDING_DISMISS_KEY)
+    } else {
+      sessionStorage.removeItem(PENDING_DISMISS_KEY)
+      window.__fullChinaSkipWelcomeForCurrentLoad = true
+    }
+  } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
+  if (await window.__fullChinaCheckPublicMenuVersion?.()) {
+    window.__fullChinaRecoverPublicMenu?.()
+    return
+  }
+  // El listener inline captura toques antes de que cargue este módulo; esta
+  // función global permite atender ese primer toque sin volver a pulsar.
+  void loadCustomerApp()
+}
+
 let skipWelcome = false
+let pendingOpen = false
 try {
   skipWelcome = localStorage.getItem(DISMISSED_KEY) === 'true'
     || sessionStorage.getItem(PENDING_DISMISS_KEY) === 'true'
+  pendingOpen = sessionStorage.getItem(PENDING_OPEN_KEY) === 'true'
 } catch { /* sin almacenamiento se conserva la bienvenida */ }
+pendingOpen = pendingOpen || Boolean(window.__fullChinaPublicMenuOpenQueued)
 
-if (skipWelcome || !root || !button || !checkbox) {
+window.__fullChinaOpenPublicMenu = openPublicMenu
+button?.addEventListener('click', openPublicMenu)
+
+if (pendingOpen) {
+  // Una navegación de recuperación conserva la intención del primer toque.
+  window.__fullChinaQueuePublicMenuOpen?.()
+  void openPublicMenu()
+} else if (skipWelcome || !root || !button || !checkbox) {
   staticWelcome?.remove()
-  void loadCustomerApp()
-} else {
-  button.addEventListener('click', () => {
-    if (needsVersionRefresh) {
-      void refreshCustomerVersion()
-      return
-    }
-    try {
-      if (checkbox.checked) {
-        localStorage.setItem(DISMISSED_KEY, 'true')
-        sessionStorage.removeItem(PENDING_DISMISS_KEY)
-      } else {
-        sessionStorage.removeItem(PENDING_DISMISS_KEY)
-        window.__fullChinaSkipWelcomeForCurrentLoad = true
-      }
-    } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
-    // Mantén la bienvenida como superficie visible mientras se descargan y
-    // montan los módulos. `fullchina:public-menu-ready` la retira al primer
-    // render del menú para evitar un destello negro entre ambas vistas.
-    void loadCustomerApp()
-  })
+  window.__fullChinaQueuePublicMenuOpen?.()
+  void openPublicMenu()
 }

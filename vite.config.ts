@@ -123,6 +123,9 @@ export default defineConfig({
           '**/onboarding-slides/**',
           '**/cargando-pedido/**',
           '**/optimized/**',
+          // La entrada del cliente debe revalidarse desde /pedir; no conservar
+          // una copia HTML de bienvenida que apunte a hashes de otro deploy.
+          '**/pedir.html',
         ],
       },
     })

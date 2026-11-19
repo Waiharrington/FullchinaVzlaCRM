@@ -71,6 +71,150 @@
     </div>
     <div id="root"></div>
     <script type="module" src="/src/public-menu-entry.ts"></script>
+    <script>
+      // La tarjeta se pinta antes de que termine de descargar el módulo. Captura
+      // el primer toque desde HTML para que no se pierda en conexiones lentas.
+      (function () {
+        var button = document.getElementById('public-welcome-start');
+        var status = document.getElementById('public-welcome-status');
+        var moduleScript = Array.from(document.querySelectorAll('script[type="module"]'))
+          .find(function (script) { return script.src.indexOf('public-menu-entry') >= 0 || script.src.indexOf('/assets/pedir-') >= 0; });
+        var queued = false;
+        var moduleFailed = false;
+        var pendingOpenKey = 'fullchina_public_menu_pending_open_v1';
+        var retryKey = 'fullchina_public_menu_version_retry_v1';
+        var dismissedKey = 'fullchina_public_welcome_dismissed_v1';
+        var pendingDismissKey = 'fullchina_public_welcome_pending_dismiss';
+        var staleVersion = false;
+
+        function entrySignature(documentNode) {
+          var entry = Array.from(documentNode.querySelectorAll('script[type="module"][src]'))
+            .find(function (script) {
+              var source = script.getAttribute('src') || '';
+              return source.indexOf('public-menu-entry') >= 0 || source.indexOf('/assets/pedir-') >= 0;
+            });
+          if (!entry) return '';
+          var styles = Array.from(documentNode.querySelectorAll('link[rel="stylesheet"][href]'))
+            .map(function (link) { return link.getAttribute('href') || ''; })
+            .sort()
+            .join('|');
+          return (entry.getAttribute('src') || '') + '|' + styles;
+        }
+
+        async function checkLatestVersion() {
+          if (!moduleScript || !window.fetch) return false;
+          var controller = new AbortController();
+          var timeout = window.setTimeout(function () { controller.abort(); }, 4000);
+          try {
+            var checkUrl = new URL('/pedir.html', window.location.origin);
+            checkUrl.searchParams.set('__fc_version_check', String(Date.now()));
+            var response = await fetch(checkUrl.href, { cache: 'no-store', credentials: 'same-origin', signal: controller.signal });
+            if (!response.ok) return false;
+            var latestDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+            var currentSignature = entrySignature(document);
+            staleVersion = Boolean(currentSignature && entrySignature(latestDocument) !== currentSignature);
+            return staleVersion;
+          } catch (_) {
+            return false;
+          } finally {
+            window.clearTimeout(timeout);
+          }
+        }
+
+        var lastVersionCheckAt = 0;
+        var versionCheck = Promise.resolve(false);
+        function checkVersionIfNeeded(force) {
+          if (!force && Date.now() - lastVersionCheckAt < 3000) return versionCheck;
+          lastVersionCheckAt = Date.now();
+          versionCheck = checkLatestVersion();
+          return versionCheck;
+        }
+        void checkVersionIfNeeded(true);
+        window.addEventListener('pageshow', function (event) {
+          if (event.persisted) void checkVersionIfNeeded(true);
+        });
+
+        function setOpeningState() {
+          if (!button) return;
+          button.disabled = true;
+          button.setAttribute('aria-busy', 'true');
+          button.classList.add('is-loading');
+          var label = Array.from(button.childNodes).find(function (node) { return node.nodeType === Node.TEXT_NODE; });
+          if (label) label.nodeValue = 'Abriendo la carta… ';
+        }
+
+        function recoverFreshVersion() {
+          if (!queued) return;
+          if (!navigator.onLine) {
+            if (status) status.textContent = 'Sin conexión. Vuelve a intentarlo cuando tengas internet.';
+            if (button) {
+              button.disabled = false;
+              button.removeAttribute('aria-busy');
+              button.classList.remove('is-loading');
+            }
+            return;
+          }
+          try {
+            var alreadyRefreshed = new URL(window.location.href).searchParams.has('_fc_refresh');
+            if (alreadyRefreshed || sessionStorage.getItem(retryKey) === 'true') {
+              if (status) status.textContent = 'No se pudo abrir el menú. Toca para volver a intentarlo.';
+              if (button) {
+                button.disabled = false;
+                button.removeAttribute('aria-busy');
+                button.classList.remove('is-loading');
+              }
+              return;
+            }
+            sessionStorage.setItem(retryKey, 'true');
+            sessionStorage.setItem(pendingOpenKey, 'true');
+          } catch (_) { /* el parámetro nuevo sigue evitando reutilizar la URL anterior */ }
+          var freshUrl = new URL('/pedir', window.location.origin);
+          freshUrl.searchParams.set('_fc_refresh', String(Date.now()));
+          window.location.replace(freshUrl.href);
+        }
+
+        window.__fullChinaRecoverPublicMenu = recoverFreshVersion;
+        window.__fullChinaCheckPublicMenuVersion = function () { return checkVersionIfNeeded(false); };
+        window.__fullChinaQueuePublicMenuOpen = function () {
+          queued = true;
+          window.__fullChinaPublicMenuOpenQueued = true;
+          setOpeningState();
+          var checkbox = document.getElementById('public-welcome-dismiss');
+          try {
+            if (checkbox && checkbox.checked) {
+              localStorage.setItem(dismissedKey, 'true');
+              sessionStorage.removeItem(pendingDismissKey);
+            }
+          } catch (_) { /* el menú sigue disponible si el almacenamiento está bloqueado */ }
+          if (moduleFailed) recoverFreshVersion();
+        };
+
+        if (moduleScript) {
+          moduleScript.addEventListener('error', function () {
+            moduleFailed = true;
+            if (!queued && document.documentElement.hasAttribute('data-skip-public-welcome')) {
+              window.__fullChinaQueuePublicMenuOpen();
+            } else if (queued) {
+              recoverFreshVersion();
+            }
+          });
+        }
+
+        if (button) {
+          button.addEventListener('click', function (event) {
+            var openMenu = window.__fullChinaOpenPublicMenu;
+            if (typeof openMenu === 'function') {
+              event.stopImmediatePropagation();
+              window.__fullChinaQueuePublicMenuOpen();
+              openMenu();
+              return;
+            }
+            event.stopImmediatePropagation();
+            window.__fullChinaQueuePublicMenuOpen();
+          }, true);
+        }
+      })();
+    </script>
   </body>
 </html>
 
