@@ -16228,6 +16228,14 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   margin-right: 0 !important;
   text-align: left !important;
 }
+.public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-heading p {
+  width: calc(100% - 28px) !important;
+  margin-left: 28px !important;
+  margin-right: 0 !important;
+  padding: 0 !important;
+  box-sizing: border-box;
+  text-align: left !important;
+}
 .public-pickup-step {
   display: grid;
   gap: 16px;
