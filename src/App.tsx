@@ -9,16 +9,14 @@ function AppContent() {
   const location = useLocation()
   const isPublicMenu = /^\/pedir\/?$/i.test(location.pathname)
   const isPublicEntry = location.pathname === '/'
-  const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | null>(() =>
+  const [updateStatus, setUpdateStatus] = useState<'available' | 'applying' | 'failed' | null>(() =>
     (window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable ? 'available' : null,
   )
 
   useEffect(() => {
     const showUpdate = () => setUpdateStatus(current => current === 'applying' ? current : 'available')
     const markApplying = () => setUpdateStatus('applying')
-    // No dejar un aviso de error persistente ni ofrecer un reintento que no
-    // haya podido completar. La app puede volver a anunciar otra actualización.
-    const markFailed = () => setUpdateStatus(null)
+    const markFailed = () => setUpdateStatus('failed')
     window.addEventListener('fullchina:pwa-update-available', showUpdate)
     window.addEventListener('fullchina:pwa-update-applying', markApplying)
     window.addEventListener('fullchina:pwa-update-apply-failed', markFailed)
@@ -71,7 +69,11 @@ function AppContent() {
       }}
     >
       <span role="status" aria-live="polite">
-        {updateStatus === 'applying' ? 'Aplicando la actualización…' : 'Hay una actualización lista.'}
+        {updateStatus === 'applying'
+          ? 'Aplicando la actualización…'
+          : updateStatus === 'failed'
+            ? 'No se pudo aplicar. Intenta de nuevo.'
+            : 'Hay una actualización lista.'}
       </span>
       <button
         type="button"
@@ -90,7 +92,7 @@ function AppContent() {
           opacity: updateStatus === 'applying' ? .7 : 1,
         }}
       >
-        {updateStatus === 'applying' ? 'Aplicando…' : 'Actualizar'}
+        {updateStatus === 'applying' ? 'Aplicando…' : updateStatus === 'failed' ? 'Reintentar' : 'Actualizar'}
       </button>
       <button
         type="button"

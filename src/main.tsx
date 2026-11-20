@@ -32,7 +32,7 @@ const checkForAppUpdate = () => {
   })
 }
 
-const updateServiceWorker = registerSW({
+registerSW({
   immediate: true,
   onRegisteredSW(_swUrl, registration) {
     appServiceWorkerRegistration = registration
@@ -109,45 +109,56 @@ window.addEventListener('pageshow', checkForAppUpdate)
 document.addEventListener('visibilitychange', checkForAppUpdate)
 window.setInterval(checkForAppUpdate, 5 * 60 * 1000)
 
+let isApplyingAppUpdate = false
+
 window.addEventListener('fullchina:pwa-apply-update', () => {
+  if (isApplyingAppUpdate) return
+  isApplyingAppUpdate = true
   window.dispatchEvent(new Event('fullchina:pwa-update-applying'))
   void (async () => {
-    const registration = appServiceWorkerRegistration
-    if (!registration) {
-      window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
-      return
-    }
-
     try {
+      const registration = appServiceWorkerRegistration ?? await navigator.serviceWorker?.getRegistration()
+      if (!registration) {
+        window.location.reload()
+        return
+      }
+
       let waitingWorker = registration.waiting
       if (!waitingWorker) {
         const workerReady = waitForWaitingWorker(registration)
-        await registration.update()
+        // Don't wait on update(): Chrome can keep that promise pending while
+        // the worker downloads. The registration events above already watch
+        // for the new worker becoming available.
+        void registration.update().catch(() => undefined)
         waitingWorker = await workerReady
       }
-      if (!waitingWorker || registration.waiting !== waitingWorker) {
-        waitingWorker = registration.waiting
-      }
       if (!waitingWorker) {
-        window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+        // The update notice can outlive the waiting worker (for example, if
+        // another tab already activated it). Reload the document either way.
+        window.location.reload()
         return
       }
 
-      // El SW actual no usa clientsClaim, por lo que controllerchange puede no
-      // llegar aunque el nuevo worker sí se active. Espera su activación y
-      // recarga explícitamente para que la pestaña pase a usar la versión nueva.
       const activation = waitForWorkerActivation(waitingWorker)
-      await updateServiceWorker(true)
+      // Ask the exact worker we observed to activate. Going through the
+      // registerSW helper here could wait indefinitely for Workbox's initial
+      // registration promise, leaving the UI stuck on “Aplicando…”.
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' })
       if (!await activation) {
-        window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+        window.location.reload()
         return
       }
 
-      await clearLegacyPwaRuntimeCaches()
+      await Promise.race([
+        clearLegacyPwaRuntimeCaches(),
+        new Promise<void>(resolve => window.setTimeout(resolve, 1000)),
+      ])
       ;(window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable = false
       window.location.reload()
     } catch {
       window.dispatchEvent(new Event('fullchina:pwa-update-apply-failed'))
+    } finally {
+      isApplyingAppUpdate = false
     }
   })()
 })
