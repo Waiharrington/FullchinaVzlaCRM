@@ -696,6 +696,48 @@ export function PublicMenu() {
   }, [hasBlockingOverlay])
 
   useEffect(() => {
+    if (!cartOpen || !desktopCheckoutCanScrollPage) return
+
+    const drawer = document.querySelector<HTMLElement>('.public-cart-drawer')
+    if (!drawer) return
+
+    const forwardWheelToPage = (event: WheelEvent) => {
+      const deltaY = event.deltaY * (
+        event.deltaMode === WheelEvent.DOM_DELTA_LINE
+          ? 16
+          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
+            ? drawer.clientHeight
+            : 1
+      )
+      if (!deltaY) return
+
+      const candidates = [
+        document.querySelector<HTMLElement>('.app-main'),
+        document.querySelector<HTMLElement>('.public-menu-page'),
+        document.scrollingElement as HTMLElement | null,
+        document.documentElement,
+        document.body,
+      ]
+      const scrollTarget = candidates.find((element): element is HTMLElement => {
+        if (!element) return false
+        const overflowY = window.getComputedStyle(element).overflowY
+        if (!['auto', 'scroll', 'overlay'].includes(overflowY)) return false
+        const maxScrollTop = element.scrollHeight - element.clientHeight
+        return deltaY > 0
+          ? element.scrollTop < maxScrollTop
+          : element.scrollTop > 0
+      })
+
+      if (!scrollTarget) return
+      event.preventDefault()
+      scrollTarget.scrollTop += deltaY
+    }
+
+    drawer.addEventListener('wheel', forwardWheelToPage, { passive: false })
+    return () => drawer.removeEventListener('wheel', forwardWheelToPage)
+  }, [cartOpen, desktopCheckoutCanScrollPage])
+
+  useEffect(() => {
     if (!showStoreClosedNotice || showWelcomeNotice) return
     storeClosedNoticeButtonRef.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
