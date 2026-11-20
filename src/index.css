@@ -457,15 +457,15 @@ input:-webkit-autofill:active {
 
 /* Menú público y checkout: sus campos son transparentes sobre tarjetas con
    textura, así que el autocompletado no debe pintar ningún recuadro (ni el
-   blanco/azul del navegador ni el gris de arriba). background-clip: text deja
-   el fondo del navegador solo dentro de las letras, cubiertas por el color del
-   texto; funciona aunque Safari (iPhone) marque su fondo como !important.
+   blanco/azul del navegador ni el gris de arriba). Safari en iPhone ignora
+   background-clip: text en el autocompletado, así que una sombra interior del
+   mismo tono oscuro de los campos tapa su fondo blanco; el texto queda blanco.
    Cada pseudo-clase va en su propia regla: un navegador que no conozca una
    no debe invalidar la otra. Va después de la regla universal para ganarle. */
 :is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):-webkit-autofill,
 :is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):-webkit-autofill:is(:hover, :focus, :active) {
-  -webkit-box-shadow: none !important;
-  box-shadow: none !important;
+  -webkit-box-shadow: 0 0 0 1000px #0b0c10 inset !important;
+  box-shadow: 0 0 0 1000px #0b0c10 inset !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: #ffffff !important;
@@ -476,8 +476,8 @@ input:-webkit-autofill:active {
 
 :is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):autofill,
 :is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):autofill:is(:hover, :focus, :active) {
-  -webkit-box-shadow: none !important;
-  box-shadow: none !important;
+  -webkit-box-shadow: 0 0 0 1000px #0b0c10 inset !important;
+  box-shadow: 0 0 0 1000px #0b0c10 inset !important;
   -webkit-background-clip: text !important;
   background-clip: text !important;
   -webkit-text-fill-color: #ffffff !important;

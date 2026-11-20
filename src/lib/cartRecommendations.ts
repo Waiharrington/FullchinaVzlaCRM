@@ -98,3 +98,23 @@ export function getCartRecommendations(
     .sort((a, b) => (rank.get(categoryOf(a)) ?? 999) - (rank.get(categoryOf(b)) ?? 999))
     .slice(0, limit)
 }
+
+/**
+ * Lista larga para el carrusel "¿Algo más?" de "Tu pedido": primero las
+ * recomendaciones que complementan el carrito, luego el resto del menú que no
+ * está en el carrito. Así, al deslizar, siempre hay más opciones para agregar.
+ */
+export function getCartCarouselGroups(
+  cart: WebOrderCartItem[],
+  catalogGroups: MenuProductGroup[],
+): MenuProductGroup[] {
+  if (cart.length === 0) return []
+  const cartProductIds = new Set(cart.map(item => item.productId))
+  const featured = getCartRecommendations(cart, catalogGroups, catalogGroups.length)
+  const featuredKeys = new Set(featured.map(group => group.key))
+  const rest = catalogGroups.filter(group =>
+    !featuredKeys.has(group.key)
+    && !group.variants.some(variant => cartProductIds.has(variant.product.id)),
+  )
+  return [...featured, ...rest]
+}

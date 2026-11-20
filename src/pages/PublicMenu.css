@@ -17450,20 +17450,113 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   width: auto !important;
   margin: 0 auto !important;
   padding: 0 !important;
-  max-width: 30ch !important;
+  max-width: 100% !important;
   color: #c4c4cc !important;
   font-size: 13.5px !important;
   line-height: 1.4 !important;
   text-align: center !important;
   text-wrap: balance;
 }
-/* En "Tu pedido" la entrega estimada va centrada debajo del subtítulo para
-   que el título del paso quede centrado como en los demás pasos. */
-.public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-header .public-review-heading {
-  grid-column: 1 / -1 !important;
+
+/* "Tu pedido": la entrega estimada va como una línea discreta sobre el botón
+   Continuar, no debajo del título. */
+.public-cart-eta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  color: #c4c4cc;
+  font-size: 13px;
 }
-.public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-header .public-estimate-card {
-  grid-column: 1 / -1 !important;
-  justify-self: center !important;
-  margin-top: 6px !important;
+.public-cart-eta svg { width: 15px; height: 15px; color: #22c55e; }
+.public-cart-eta strong { color: #fff; font-weight: 800; }
+
+/* "¿Algo más?" en "Tu pedido": carrusel horizontal (2 tarjetas y un borde de
+   la siguiente en teléfono, 3 en pantallas más anchas) para no empujar el
+   botón Continuar fuera de la pantalla. */
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row {
+  display: grid !important;
+  grid-auto-flow: column !important;
+  grid-template-columns: none !important;
+  grid-auto-columns: 42% !important;
+  gap: 10px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 2px 2px 6px !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row::-webkit-scrollbar { display: none; }
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article {
+  position: relative !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  grid-template-rows: auto 1fr !important;
+  align-items: start !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  height: auto !important;
+  padding: 8px !important;
+  scroll-snap-align: start;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > img {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px !important;
+  object-fit: cover !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > div {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+  padding-right: 34px !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > div > strong {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > button {
+  position: absolute !important;
+  right: 8px !important;
+  bottom: 8px !important;
+  width: 32px !important;
+  height: 32px !important;
+}
+@media (min-width: 520px) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row {
+    grid-auto-columns: calc((100% - 20px) / 3) !important;
+  }
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > img {
+  aspect-ratio: 16 / 10;
+}
+
+/* "Continuar" de "Tu pedido" siempre a la vista, como en "Revisa y confirma". */
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-review-page > .public-primary {
+  position: sticky !important;
+  bottom: 12px !important;
+  z-index: 3 !important;
+  box-shadow: 0 0 0 12px rgb(14, 16, 22), 0 -18px 24px 8px rgb(14, 16, 22), 0 12px 26px rgba(227, 27, 43, 0.3) !important;
+}
+
+/* "Tu pedido": eliminar, cantidad y Editar siempre en la misma fila. El
+   precio va fijo arriba a la derecha, así que la fila de controles puede usar
+   también ese ancho y "Editar" nunca baja a otra línea. */
+.public-drawer-backdrop .public-cart-drawer .public-cart-item .public-cart-item-controls {
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: calc(100% + 76px) !important;
+  margin-right: -76px !important;
+}
+.public-drawer-backdrop .public-cart-drawer .public-cart-item .public-cart-item-controls > * {
+  flex: 0 0 auto !important;
 }

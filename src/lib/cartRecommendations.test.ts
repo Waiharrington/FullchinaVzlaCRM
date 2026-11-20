@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Product } from './dataService'
 import { groupMenuProducts, type MenuProductGroup } from './menuGrouping'
 import type { WebOrderCartItem } from './publicOrders'
-import { getCartRecommendations } from './cartRecommendations'
+import { getCartCarouselGroups, getCartRecommendations } from './cartRecommendations'
 
 function product(id: string, name: string, category: string, description: string | null = null): Product {
   return {
@@ -105,5 +105,29 @@ describe('getCartRecommendations', () => {
     expect(getCartRecommendations([cartLine(trio)], candidates).map(group => group.name))
       .toEqual(['Lumpias'])
     expect(getCartRecommendations([], candidates)).toEqual([])
+  })
+})
+
+describe('getCartCarouselGroups', () => {
+  it('pone primero los complementos y luego el resto del menú, sin repetir lo que ya está en el carrito', () => {
+    const rice = product('rice', 'Arroz Camarón y Pollo', 'arroz')
+    const catalog = groups(
+      rice,
+      product('rice-other', 'Arroz Cantonés', 'arroz'),
+      product('drink', 'Refresco 1 Litro', 'bebidas'),
+      product('side', 'Pollo Agridulce', 'raciones'),
+      product('combo', 'Promo Familiar', 'promociones'),
+    )
+    const names = getCartCarouselGroups([cartLine(rice)], catalog).map(group => group.name)
+    const featured = getCartRecommendations([cartLine(rice)], catalog, catalog.length).map(group => group.name)
+
+    expect(names.slice(0, featured.length)).toEqual(featured)
+    expect(names).not.toContain('Arroz Camarón y Pollo')
+    expect(new Set(names).size).toBe(names.length)
+    expect(names).toHaveLength(catalog.length - 1)
+  })
+
+  it('no muestra nada con el carrito vacío', () => {
+    expect(getCartCarouselGroups([], groups(product('drink', 'Refresco 1 Litro', 'bebidas')))).toEqual([])
   })
 })
