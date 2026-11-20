@@ -47,7 +47,7 @@ function AppContent() {
     if (link.getAttribute('href') !== href) link.setAttribute('href', href)
   }, [isPublicMenu, isPublicEntry])
 
-  const updateNotice = updateStatus && (
+  const updateNotice = updateStatus === 'failed' && (
     <aside
       role="status"
       style={{
@@ -69,16 +69,10 @@ function AppContent() {
       }}
     >
       <span role="status" aria-live="polite">
-        {updateStatus === 'applying'
-          ? 'Aplicando la actualización…'
-          : updateStatus === 'failed'
-            ? 'No se pudo aplicar. Intenta de nuevo.'
-            : 'Hay una actualización lista.'}
+        No se pudo aplicar la actualización. Intenta de nuevo.
       </span>
       <button
         type="button"
-        disabled={updateStatus === 'applying'}
-        aria-busy={updateStatus === 'applying'}
         onClick={() => window.dispatchEvent(new Event('fullchina:pwa-apply-update'))}
         style={{
           flexShrink: 0,
@@ -89,15 +83,13 @@ function AppContent() {
           color: '#fff',
           font: '700 13px Inter, system-ui, sans-serif',
           cursor: 'pointer',
-          opacity: updateStatus === 'applying' ? .7 : 1,
         }}
       >
-        {updateStatus === 'applying' ? 'Aplicando…' : updateStatus === 'failed' ? 'Reintentar' : 'Actualizar'}
+        Reintentar
       </button>
       <button
         type="button"
         aria-label="Cerrar aviso de actualización"
-        disabled={updateStatus === 'applying'}
         onClick={() => setUpdateStatus(null)}
         style={{ border: 0, background: 'transparent', color: '#aaa', fontSize: 18, cursor: 'pointer' }}
       >

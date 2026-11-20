@@ -40,12 +40,9 @@ registerSW({
   onNeedRefresh() {
     ;(window as typeof window & { fullChinaUpdateAvailable?: boolean }).fullChinaUpdateAvailable = true
     window.dispatchEvent(new Event('fullchina:pwa-update-available'))
-    // La carta pública debe mantenerse al día sin pedirle al cliente que
-    // fuerce una recarga; el panel administrativo conserva su actualización
-    // explícita para no interrumpir el trabajo en curso.
-    if (/^\/pedir\/?$/i.test(window.location.pathname)) {
-      window.dispatchEvent(new Event('fullchina:pwa-apply-update'))
-    }
+    // Aplica la versión nueva en segundo plano tanto en la carta pública como
+    // en el administrador; ambos usan el mismo service worker y recarga segura.
+    window.dispatchEvent(new Event('fullchina:pwa-apply-update'))
   },
 })
 
