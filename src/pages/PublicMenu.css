@@ -16602,3 +16602,13 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     to { opacity: 1; }
   }
 }
+
+/* En computadora, el CTA ya abre el paso para elegir Delivery o retiro y
+   continuar con la dirección. Evita repetir esos mismos controles en el
+   resumen lateral; el flujo móvil conserva sus opciones actuales. */
+@media (min-width: 1024px) {
+  .public-desktop-sidebar .public-sidebar-type-toggle,
+  .public-desktop-sidebar .public-sidebar-address-box {
+    display: none !important;
+  }
+}
