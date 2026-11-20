@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Search, CheckCircle2, Circle, UtensilsCrossed } from 'lucide-react'
+import { X, Search, Check, CheckCircle2, ChevronLeft, Circle, Minus, Plus, UtensilsCrossed } from 'lucide-react'
 import { MoneyWithBcv } from './MoneyWithBcv'
 import { LoadingSkeleton } from './LoadingSkeleton'
 import {
@@ -181,6 +181,38 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
     return extra
   }, [modGroups, modSel])
 
+  // Fotos de las opciones (Pollo, Camarón…): salen de los productos de extras
+  // del menú ("Extra de Camarón", "Extra de Cerdo"…), que ya vienen en el catálogo.
+  const extraPhotoByOption = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const product of products) {
+      if (!product.imageUrl) continue
+      const match = normalizeForSearch(product.name).match(/extras? de (.+)$/)
+      if (match && !map.has(match[1].trim())) map.set(match[1].trim(), product.imageUrl)
+    }
+    return map
+  }, [products])
+
+  const optionPhoto = (optionName: string) => {
+    const key = normalizeForSearch(optionName)
+    const exact = extraPhotoByOption.get(key)
+    if (exact) return exact
+    for (const [name, url] of extraPhotoByOption) {
+      if (name.includes(key) || key.includes(name)) return url
+    }
+    return undefined
+  }
+
+  const modSummary = useMemo(() => modGroups
+    .flatMap((group) => Object.entries(modSel[group.modifierId] ?? {})
+      .filter(([, qty]) => qty > 0)
+      .map(([optionId, qty]) => {
+        const option = group.options.find((candidate) => candidate.id === optionId)
+        return option ? `${option.name}${qty > 1 ? ` ×${qty}` : ''}` : ''
+      }))
+    .filter(Boolean)
+    .join(', '), [modGroups, modSel])
+
   const confirmMod = () => {
     if (!modProduct) return
     for (const g of modGroups) {
@@ -265,59 +297,99 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
 
         {modProduct ? (
           <>
-            <div className="aito-body">
-              <button type="button" className="aito-back" onClick={closeMod}>← Volver a productos</button>
-              <h3 className="aito-mod-title">{modProduct.name}</h3>
+            <div className="aito-body aito-mod-body">
+              <button type="button" className="aito-back" onClick={closeMod}><ChevronLeft size={15} /> Volver a productos</button>
+              <div className="aito-mod-hero">
+                <span className="aito-mod-hero-photo">
+                  {modProduct.imageUrl ? <img src={modProduct.imageUrl} alt="" /> : <UtensilsCrossed size={22} />}
+                </span>
+                <div>
+                  <h3 className="aito-mod-title">{modProduct.name}</h3>
+                  <span className="aito-mod-base">Precio base <MoneyWithBcv usd={modProduct.price} compact align="start" /></span>
+                </div>
+              </div>
               {modLoading && <LoadingSkeleton label="Cargando opciones del producto" count={3} />}
               {!modLoading && modGroups.length === 0 && <p className="aito-muted">Este producto no tiene opciones configuradas.</p>}
               {!modLoading &&
                 modGroups.map((group) => {
                   const sel = modSel[group.modifierId] ?? {}
+                  const chosen = Object.values(sel).reduce((sum, qty) => sum + qty, 0)
+                  const isQuantity = isQuantityModifierGroup(group)
+                  const max = group.maxSelections
                   const rule =
-                    group.maxSelections === 1
-                      ? group.minSelections >= 1
-                        ? 'Elige 1'
-                        : 'Elige 1 (opcional)'
-                      : `Elige ${group.minSelections}${group.maxSelections != null ? `–${group.maxSelections}` : '+'}`
+                    max === 1
+                      ? group.minSelections >= 1 ? 'Elige 1' : 'Elige 1 (opcional)'
+                      : max != null
+                        ? group.minSelections > 0 ? `Elige de ${group.minSelections} a ${max}` : `Elige hasta ${max}`
+                        : group.minSelections > 0 ? `Elige al menos ${group.minSelections}` : 'Elige las que quieras'
+                  const groupFull = max != null && chosen >= max
                   return (
-                    <div key={group.modifierId} className="aito-mod-group">
+                    <section key={group.modifierId} className="aito-mod-group">
                       <div className="aito-mod-grouphead">
-                        <strong>{group.name}</strong>
-                        <small>{rule}</small>
+                        <div>
+                          <strong>{group.name}</strong>
+                          <small>{rule}</small>
+                        </div>
+                        <span className={`aito-mod-counter ${chosen < group.minSelections ? 'is-missing' : groupFull ? 'is-full' : ''}`}>
+                          {max != null ? `${chosen} de ${max}` : `${chosen} elegidas`}
+                        </span>
                       </div>
-                      {group.options.map((opt) => {
-                        const qty = sel[opt.id] ?? 0
-                        const selected = qty > 0
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            className={`aito-opt ${selected ? 'is-selected' : ''}`}
-                            onClick={() => toggleMod(group, opt.id)}
-                          >
-                            <span className="aito-opt-check">{selected ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
-                            <span className="aito-opt-name">{opt.name}{qty > 1 ? ` ×${qty}` : ''}</span>
-                            {opt.price > 0 ? (
-                              <MoneyWithBcv usd={opt.price} className="aito-opt-price" compact />
-                            ) : (
-                              <span className="aito-opt-incl">Incluido</span>
-                            )}
-                            {isQuantityModifierGroup(group) ? <span className="quantity-modifier-controls"><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, -1) }} disabled={!selected} aria-label={`Quitar ${opt.name}`}>−</button><strong>{qty}</strong><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, 1) }} aria-label={`Agregar ${opt.name}`}>+</button></span> : <span className="aito-opt-add">{selected ? 'Quitar' : 'Elegir'}</span>}
-                          </button>
-                        )
-                      })}
-                    </div>
+                      <div className="aito-optgrid">
+                        {group.options.map((opt) => {
+                          const qty = sel[opt.id] ?? 0
+                          const selected = qty > 0
+                          const photo = optionPhoto(opt.name)
+                          const blocked = !selected && groupFull && max !== 1
+                          const content = (
+                            <>
+                              <span className="aito-optcard-photo">
+                                {photo ? <img src={photo} alt="" loading="lazy" /> : <UtensilsCrossed size={20} />}
+                                {selected && <span className="aito-optcard-badge" aria-hidden="true">{qty > 1 ? `×${qty}` : <Check size={13} strokeWidth={3.2} />}</span>}
+                              </span>
+                              <span className="aito-optcard-copy">
+                                <span className="aito-optcard-name">{opt.name}</span>
+                                {opt.price > 0
+                                  ? <span className="aito-optcard-price">+ <MoneyWithBcv usd={opt.price} compact align="start" /></span>
+                                  : <span className="aito-optcard-incl">Incluido</span>}
+                              </span>
+                            </>
+                          )
+                          return isQuantity ? (
+                            <div key={opt.id} className={`aito-optcard ${selected ? 'is-selected' : ''}`}>
+                              {content}
+                              <span className="aito-optcard-stepper">
+                                <button type="button" onClick={() => changeQuantityModifier(group, opt.id, -1)} disabled={!selected} aria-label={`Quitar ${opt.name}`}><Minus size={15} /></button>
+                                <strong aria-live="polite">{qty}</strong>
+                                <button type="button" onClick={() => changeQuantityModifier(group, opt.id, 1)} disabled={groupFull} aria-label={`Agregar ${opt.name}`}><Plus size={15} /></button>
+                              </span>
+                            </div>
+                          ) : (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              className={`aito-optcard is-toggle ${selected ? 'is-selected' : ''} ${blocked ? 'is-blocked' : ''}`}
+                              aria-pressed={selected}
+                              onClick={() => toggleMod(group, opt.id)}
+                            >
+                              {content}
+                              <span className="aito-optcard-check" aria-hidden="true">{selected ? <CheckCircle2 size={20} /> : <Circle size={20} />}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </section>
                   )
                 })}
               {modError && <p className="aito-error">{modError}</p>}
             </div>
             {!modLoading && modGroups.length > 0 && (
-              <footer className="aito-footer">
+              <footer className="aito-footer aito-mod-footer">
                 <div className="aito-total">
                   <span className="aito-total-label">Precio</span>
                   <MoneyWithBcv usd={modProduct.price + modExtra} align="start" className="aito-total-money" />
+                  {modSummary && <span className="aito-mod-summary">{modSummary}</span>}
                 </div>
-                <button type="button" className="aito-cta" onClick={confirmMod}>Añadir al pedido</button>
+                <button type="button" className="aito-cta" onClick={confirmMod}><Plus size={17} /> Añadir al pedido</button>
               </footer>
             )}
           </>

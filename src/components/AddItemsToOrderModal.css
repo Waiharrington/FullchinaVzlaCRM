@@ -261,3 +261,142 @@
   .aito-grid { grid-template-columns: 1fr; }
 }
 .quantity-modifier-controls{display:inline-flex;align-items:center;gap:7px;padding:4px;border:1px solid rgba(227,27,43,.35);border-radius:9px;background:rgba(227,27,43,.08)}.quantity-modifier-controls button{width:25px;height:25px;padding:0;color:#fff;background:#e31b2b;border:0;border-radius:6px;font-size:17px;line-height:1;cursor:pointer}.quantity-modifier-controls button:disabled{opacity:.35;cursor:not-allowed}.quantity-modifier-controls strong{min-width:14px;color:#fff;font-size:12px;text-align:center}
+
+/* ===== Opciones del producto con foto (proteínas, extras…) ===== */
+.aito-mod-body { gap: 16px; }
+.aito-back { display: inline-flex; align-items: center; gap: 4px; }
+.aito-mod-hero {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; background: #1f1f23;
+}
+.aito-mod-hero-photo {
+  display: grid; place-items: center; flex: 0 0 auto; overflow: hidden;
+  width: 64px; height: 64px; border-radius: 12px; background: #2a2a2e; color: #a1a1aa;
+}
+.aito-mod-hero-photo img { width: 100%; height: 100%; object-fit: cover; }
+.aito-mod-hero .aito-mod-title { margin: 0 0 4px; font-size: 18px; line-height: 1.25; }
+.aito-mod-base { display: inline-flex; align-items: baseline; gap: 6px; color: #a1a1aa; font-size: 12.5px; }
+.aito-mod-base .money-with-bcv { display: inline-flex; align-items: baseline; gap: 6px; }
+.aito-mod-base .money-usd { color: #fff; font-size: 14px; font-weight: 800; }
+
+.aito-mod-group { gap: 10px; margin-bottom: 0; }
+.aito-mod-grouphead { align-items: center; gap: 12px; }
+.aito-mod-grouphead > div { display: grid; gap: 2px; }
+.aito-mod-grouphead strong { color: #fff; font-size: 15.5px; }
+.aito-mod-grouphead small { color: #a1a1aa; font-size: 12.5px; }
+.aito-mod-counter {
+  flex: 0 0 auto; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12); background: #222226;
+  color: #d4d4d8; font-size: 12px; font-weight: 800; white-space: nowrap;
+}
+.aito-mod-counter.is-full { border-color: rgba(52, 211, 153, 0.4); background: rgba(52, 211, 153, 0.1); color: #34d399; }
+.aito-mod-counter.is-missing { border-color: rgba(251, 191, 36, 0.4); background: rgba(251, 191, 36, 0.1); color: #fbbf24; }
+
+.aito-optgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.aito-optcard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px 10px 10px;
+  box-sizing: border-box;
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: #202024;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+.aito-optcard.is-toggle { cursor: pointer; }
+.aito-optcard.is-toggle:hover { border-color: rgba(255, 255, 255, 0.2); }
+.aito-optcard.is-selected {
+  border-color: #e31b2b;
+  background: linear-gradient(135deg, rgba(227, 27, 43, 0.16), rgba(227, 27, 43, 0.05));
+  box-shadow: 0 0 0 3px rgba(227, 27, 43, 0.12);
+}
+.aito-optcard.is-blocked { opacity: 0.45; }
+.aito-optcard-photo {
+  position: relative;
+  display: grid; place-items: center;
+  width: 58px; height: 58px; border-radius: 12px;
+  background: #2a2a2e; color: #71717a;
+}
+.aito-optcard-photo img { width: 100%; height: 100%; border-radius: 12px; object-fit: cover; }
+.aito-optcard-badge {
+  position: absolute; top: -6px; right: -6px;
+  display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 5px; box-sizing: border-box;
+  border: 2px solid #18181b; border-radius: 999px;
+  background: #e31b2b; color: #fff; font-size: 11px; font-weight: 900;
+}
+.aito-optcard-copy { display: grid; gap: 3px; min-width: 0; }
+.aito-optcard-name { color: #fff; font-size: 14.5px; font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.aito-optcard-incl { color: #34d399; font-size: 12px; font-weight: 700; }
+.aito-optcard-price { display: inline-flex; align-items: baseline; gap: 4px; color: #fbbf24; font-size: 12.5px; font-weight: 800; }
+.aito-optcard-price .money-with-bcv { display: inline-flex; align-items: baseline; gap: 6px; }
+.aito-optcard-price .money-usd { color: #fbbf24; font-size: 13px; }
+.aito-optcard-price .money-ves { color: #8b8b93; font-size: 11px; }
+.aito-optcard-check { display: grid; color: #52525b; }
+.aito-optcard.is-selected .aito-optcard-check { color: #ff4d3d; }
+.aito-optcard-stepper {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px; border-radius: 11px; background: #141416; border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.aito-optcard-stepper button {
+  display: grid; place-items: center; width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: 8px; background: #e31b2b; color: #fff; cursor: pointer;
+}
+.aito-optcard-stepper button:first-child { background: #2a2a2e; }
+.aito-optcard-stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+.aito-optcard-stepper strong { min-width: 16px; color: #fff; font-size: 14px; text-align: center; }
+
+.aito-mod-footer .aito-total { display: grid; gap: 2px; min-width: 0; }
+.aito-mod-summary {
+  max-width: 300px; color: #a1a1aa; font-size: 12px; line-height: 1.35;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.aito-mod-footer .aito-cta { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; }
+
+@media (max-width: 560px) {
+  .aito-optgrid { grid-template-columns: 1fr; }
+  .aito-mod-hero-photo { width: 54px; height: 54px; }
+  .aito-mod-summary { max-width: 52vw; }
+}
+
+/* Botones + y − más fáciles de pulsar (mínimo 36 px) y buscador con aire:
+   la lista se desvanece al pasar por debajo en vez de cortarse en seco. */
+.aito-search { margin: 14px 16px 6px; padding: 11px 14px; }
+.aito-search + .aito-body {
+  padding-top: 16px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 16px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 16px);
+}
+
+.aito-qty { gap: 6px; padding: 3px; border-radius: 12px; background: #141416; border: 1px solid rgba(255, 255, 255, 0.08); }
+.aito-qty button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: #2a2a2e;
+  font-size: 19px;
+  font-weight: 700;
+}
+.aito-qty button:last-child { background: #e31b2b; }
+.aito-qty button:hover { filter: brightness(1.15); border-color: transparent; }
+.aito-qty span { min-width: 22px; font-size: 15px; }
+.aito-pending-del { width: 36px; height: 36px; border-radius: 9px; }
+.aito-pending-row { gap: 12px; }
+
+.aito-optcard-stepper { gap: 8px; padding: 4px; }
+.aito-optcard-stepper button { width: 38px; height: 38px; border-radius: 10px; }
+.aito-optcard-stepper button svg { width: 18px; height: 18px; }
+.aito-optcard-stepper strong { min-width: 20px; font-size: 16px; }
+
+@media (max-width: 680px) {
+  .aito-qty button, .aito-pending-del { width: 40px; height: 40px; }
+  .aito-optcard-stepper button { width: 40px; height: 40px; }
+}
