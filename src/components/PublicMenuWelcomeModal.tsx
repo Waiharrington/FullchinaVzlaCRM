@@ -31,7 +31,7 @@ export function PublicMenuWelcomeModal({
         <div className="public-welcome-menu-heading">
           <span>BIENVENIDO A LA CASA</span>
           <h2 id="public-welcome-title">La carta de Full China</h2>
-          <p id="public-welcome-copy">Arma tu pedido aquí. <strong>No pagas en esta página.</strong> Al finalizar, confirmas la compra y coordinas el pago por WhatsApp con Full China.</p>
+          <p id="public-welcome-copy">Arma tu pedido aquí. <strong>No pagas en esta página.</strong> Al finalizar, Full China te escribe por WhatsApp para confirmar tu pedido y coordinar el pago.</p>
         </div>
         <div className="public-welcome-menu-list" aria-label="Pasos para hacer tu pedido">
           <div className="public-welcome-menu-section-title">TU PEDIDO, PASO A PASO</div>
@@ -44,8 +44,8 @@ export function PublicMenuWelcomeModal({
             <small>Revisa tu pedido.</small>
           </div>
           <div className="public-welcome-menu-item">
-            <span><b>03</b><strong>Confirma por WhatsApp</strong></span>
-            <small>Allí confirmas la compra y coordinas el pago.</small>
+            <span><b>03</b><strong>Te escribimos por WhatsApp</strong></span>
+            <small>Confirmamos tu pedido y coordinamos el pago contigo.</small>
           </div>
         </div>
         {showDismissChoice && <label className="public-welcome-dismiss-choice">

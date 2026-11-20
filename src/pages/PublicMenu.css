@@ -17139,3 +17139,133 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     font-size: 15px !important;
   }
 }
+
+/* Iconos de las pistas y notas del checkout: iconos reales en vez de caracteres
+   (⌖, ✦) que se veían diminutos. Mismo tamaño y alineación en todos los anchos. */
+.public-delivery-hint.public-delivery-hint,
+.public-drawer-backdrop .public-cart-drawer .public-delivery-hint.public-delivery-hint {
+  display: flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+}
+.public-delivery-hint.public-delivery-hint svg {
+  flex: 0 0 auto;
+  width: 16px !important;
+  height: 16px !important;
+  color: #FF5A52 !important;
+}
+.public-cart-item-notes.public-cart-item-notes-extra {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 5px !important;
+}
+.public-cart-item-notes.public-cart-item-notes-extra svg {
+  flex: 0 0 auto;
+  width: 13px !important;
+  height: 13px !important;
+  margin-top: 1px;
+  color: currentColor !important;
+}
+.public-order-security.public-order-security,
+.public-drawer-backdrop .public-cart-drawer .public-order-security.public-order-security {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+.public-order-security.public-order-security svg {
+  flex: 0 0 auto;
+  width: 14px !important;
+  height: 14px !important;
+  color: #22C55E !important;
+}
+
+/* Pantalla final del pedido: confirma que llegó, explica que Full China
+   escribe al cliente por WhatsApp y resume lo pedido. Sin pasos "en vivo":
+   el estado no se actualiza en tiempo real. */
+.public-track {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 2px 16px;
+  box-sizing: border-box;
+  color: #fff;
+}
+.public-drawer-backdrop .public-cart-drawer > .public-track {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px 16px 18px;
+}
+.public-track-hero { display: grid; justify-items: center; gap: 8px; text-align: center; }
+.public-track-check {
+  display: grid; place-items: center;
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 3px solid #16d66c; color: #42f584; background: rgba(0, 160, 70, 0.12);
+  box-shadow: 0 0 0 9px rgba(0, 210, 90, 0.07), 0 0 30px rgba(0, 210, 90, 0.35);
+}
+.public-track-check svg { width: 34px; height: 34px; stroke-width: 3; }
+.public-track-hero h3 { margin: 6px 0 0; font-size: clamp(24px, 6vw, 32px); font-weight: 800; letter-spacing: -0.02em; }
+.public-track-code {
+  padding: 5px 14px; border: 1px solid rgba(255, 214, 102, 0.4); border-radius: 10px;
+  color: #ffd666; background: rgba(255, 214, 102, 0.08); font-size: 15px; letter-spacing: 0.05em;
+}
+.public-track-hero p { max-width: 420px; margin: 4px 0 0; color: #d3d5da; font-size: 14.5px; line-height: 1.5; }
+.public-track-hero p b { color: #fff; }
+.public-track-phone { white-space: nowrap; }
+
+.public-track-next,
+.public-track-summary {
+  display: grid; gap: 12px; padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; background: rgba(0, 0, 0, 0.32);
+}
+.public-track-next h4 { margin: 0; color: #fff; font-size: 15px; font-weight: 800; }
+.public-track-next ol { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.public-track-next li { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding-bottom: 14px; }
+.public-track-next li:last-child { padding-bottom: 0; }
+.public-track-next li:not(:last-child)::before {
+  content: "";
+  position: absolute; left: 14px; top: 32px; bottom: 2px; width: 2px; border-radius: 2px; background: rgba(255, 255, 255, 0.12);
+}
+.public-track-next li > span {
+  position: relative; z-index: 1;
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid #3a3a3f; background: #141416; color: #a1a1aa; font-size: 13px; font-weight: 800;
+}
+.public-track-next li > span svg { width: 16px; height: 16px; stroke-width: 3; }
+.public-track-next li.is-done > span { border-color: #16d66c; background: #07130b; color: #42f584; }
+.public-track-next li.is-done:not(:last-child)::before { background: rgba(22, 214, 108, 0.55); }
+.public-track-next li.is-next > span { border-color: #25d366; background: #25d366; color: #0b1a10; box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.18); }
+.public-track-next li > div { display: grid; gap: 3px; padding-top: 4px; min-width: 0; }
+.public-track-next strong { color: #fff; font-size: 14.5px; font-weight: 700; }
+.public-track-next small { color: #a1a1aa; font-size: 13px; line-height: 1.4; }
+.public-track-next li.is-next strong { color: #4ade80; }
+
+.public-track-summary header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.public-track-summary header span { display: inline-flex; align-items: center; gap: 7px; color: #e4e4e7; font-size: 14px; font-weight: 700; }
+.public-track-summary header svg { width: 17px; height: 17px; color: #ff5a52; }
+.public-track-summary header b { color: #ffd666; font-size: 18px; font-weight: 800; }
+.public-track-summary > p { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: #d4d4d8; font-size: 13px; line-height: 1.4; }
+.public-track-summary > p svg { flex: 0 0 auto; width: 15px; height: 15px; margin-top: 1px; color: #a1a1aa; }
+.public-track-summary ul { display: grid; gap: 7px; margin: 0; padding: 12px 0 0; border-top: 1px solid rgba(255, 255, 255, 0.08); list-style: none; }
+.public-track-summary li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; color: #e4e4e7; font-size: 13.5px; line-height: 1.35; }
+.public-track-summary li b { color: #ff6b61; font-weight: 800; }
+.public-track-summary li span { overflow-wrap: anywhere; }
+
+.public-track-actions { display: grid; gap: 10px; }
+.public-track-new {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 100%; height: 54px; border: 0; border-radius: 14px;
+  background: #e31b2b; color: #fff; font: inherit; font-size: 15.5px; font-weight: 800; cursor: pointer;
+  box-shadow: 0 10px 24px rgba(227, 27, 43, 0.28);
+}
+.public-track-new:hover { filter: brightness(1.08); }
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer .public-track-new { height: 56px; font-size: 15px; }
+}
