@@ -66,8 +66,6 @@ import {
   MapPin,
   CreditCard,
   Printer,
-  Edit3,
-  Hash,
   Phone,
   FileText,
   X,
@@ -2428,396 +2426,274 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         />
       )}
 
-      {/* Modal detail */}
-      {selectedOrder && createPortal(
-        <div className={`cmd-modal-overlay ${closingSelectedOrder ? 'closing' : ''}`} onClick={() => closeSelectedOrder()}>
-          <div className="cmd-modal-container animate-pop" onClick={e => e.stopPropagation()}>
-            <header className="cmd-modal-header">
-              <div className="cmd-modal-title">
-                <Clock size={18} className="cmd-icon-title" />
-                <span>Detalle de comanda</span>
-                <h2>{selectedOrder.orderNumber}</h2>
-                <div className={`cmd-badge ${selectedOrder.status}`}>
-                  {selectedOrder.status === 'new' && 'Nueva'}
-                  {selectedOrder.status === 'preparing' && 'En preparación'}
-                  {selectedOrder.status === 'ready' && 'Lista'}
-                  {selectedOrder.status === 'delivered' && 'Entregada'}
-                </div>
-                {selectedOrder.isPaid ? (
-                  <div className="cmd-badge paid">Pagado</div>
-                ) : selectedOrder.creditAuthorized ? (
-                  <div className="cmd-badge sin-pagar"><CreditCard size={14} /> Crédito autorizado</div>
-                ) : (
-                  <div className="cmd-badge sin-pagar"><AlertTriangle size={14} /> Sin cobrar</div>
-                )}
-                <div className={`cmd-badge ${selectedOrder.orderType === 'Delivery' ? 'type-delivery' : selectedOrder.orderType.startsWith('Mesa') ? 'type-mesa' : 'type-takeaway'}`}>{selectedOrder.orderType}</div>
-                <button
-                  type="button"
-                  className="cmd-btn-outline cmd-header-associate-customer"
-                  onClick={() => void openAssociateCustomerModal()}
-                  disabled={Boolean(selectedOrder.customerId) || selectedOrder.source === 'web' || isDemoMode || associatingCustomer}
-                  title={selectedOrder.customerId ? 'Esta comanda ya tiene un cliente asociado' : 'Asociar un cliente registrado a esta comanda'}
-                >
-                  {selectedOrder.customerId ? <UserCheck size={14} /> : <UserPlus size={14} />}
-                  {selectedOrder.customerId ? 'Cliente asociado' : 'Asociar cliente'}
-                </button>
-              </div>
-              <div className="cmd-header-actions">
-                <button className="cmd-btn-outline cmd-header-print-btn" onClick={() => printThermalReceipt(thermalReceiptForComanda(selectedOrder))}>
-                  <Printer size={16} /> {selectedOrder.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}
-                </button>
-                <button type="button" className="cmd-delete-btn" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda" aria-label="Eliminar comanda">
-                  <Trash2 size={18} /><span>Eliminar</span>
-                </button>
-                <button type="button" className="cmd-close-btn" onClick={() => closeSelectedOrder()} title="Cerrar detalle" aria-label="Cerrar detalle de comanda">
-                  <X size={20} /><span>Cerrar</span>
-                </button>
-              </div>
-            </header>
+      {/* Modal detail: cabecera con estado, contenido a la izquierda y un panel
+          fijo con el total y la única acción principal que toca en ese momento. */}
+      {selectedOrder && (() => {
+        const order = selectedOrder
+        const isWebPending = order.source === 'web'
+        const statusSteps: Array<{ key: ComandaStatus; label: string; time?: string }> = [
+          { key: 'new', label: 'Nueva', time: order.time },
+          { key: 'preparing', label: 'En preparación' },
+          { key: 'ready', label: 'Lista' },
+          { key: 'delivered', label: 'Entregada', time: order.status === 'delivered' ? order.deliveredTime : undefined },
+        ]
+        const currentStepIndex = statusSteps.findIndex(step => step.key === order.status)
+        const orderTypeIcon = order.orderType === 'Delivery'
+          ? <Bike size={14} />
+          : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={14} /> : <ShoppingBag size={14} />
+        const visibleNotes = cleanNotes(order.notes)
+        const preferredPayment = !order.isPaid ? extractPreferredPayment(order.notes) : null
+        const subtotal = (order.totalAmount || 0) - (order.serviceCharge || 0) + (order.discount || 0)
+        const hasAdjustments = (order.serviceCharge || 0) > 0 || (order.discount || 0) > 0
+        const paidMethodLabels: Record<PaymentMethod, string> = {
+          cash: 'Efectivo', mobile: 'Pago móvil', card: 'Tarjeta / Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro',
+          personal_account: 'Cuenta personal',
+        }
+        const advanceLabel = order.status === 'new'
+          ? 'Pasar a preparación'
+          : order.status === 'preparing' ? 'Marcar como lista' : 'Marcar como entregada'
+        const canAdvance = !isWebPending && order.status !== 'delivered'
+        const canCharge = !isWebPending && !order.isPaid && !order.creditAuthorized
+        const advanceButton = canAdvance && (
+          <button
+            type="button"
+            className="cmdx-action-primary"
+            onClick={() => {
+              handleAdvanceStatus(order.id, order.status)
+              closeSelectedOrder()
+            }}
+          >
+            <CheckCircle size={18} /> {advanceLabel}
+          </button>
+        )
+        const chargeButton = canCharge && (
+          <button type="button" className={canAdvance ? 'cmdx-action-secondary' : 'cmdx-action-primary'} onClick={() => handleOpenPaymentForOrder(order)}>
+            <DollarSign size={18} /> Cobrar {formatUsd(order.totalAmount || 0)}
+          </button>
+        )
 
-            <div className="cmd-modal-meta">
-              <div className="cmd-meta-cluster cmd-meta-customer">
-                <span className="cmd-customer-avatar">{getInitials(selectedOrder.customerName)}</span>
-                <div className="cmd-customer-info">
-                  <span className="cmd-meta-label">Cliente</span>
-                  <span className="cmd-customer-name">{selectedOrder.customerName}</span>
-                  <div className="cmd-customer-sub">
-                    <span><Phone size={11} /> {selectedOrder.customerPhone || 'Sin teléfono'}</span>
-                    <span><User size={11} /> {selectedOrder.customerIdentification || 'Sin cédula'}</span>
+        return createPortal(
+          <div className={`cmd-modal-overlay ${closingSelectedOrder ? 'closing' : ''}`} onClick={() => closeSelectedOrder()}>
+            <div className="cmd-modal-container cmdx-detail animate-pop" role="dialog" aria-modal="true" aria-labelledby="cmdx-detail-title" onClick={e => e.stopPropagation()}>
+              <header className="cmdx-head">
+                <div className="cmdx-head-row">
+                  <div className="cmdx-title">
+                    <span className="cmdx-kicker">Comanda</span>
+                    <h2 id="cmdx-detail-title">{order.orderNumber}</h2>
+                    <span className="cmdx-chip">{orderTypeIcon} {order.orderType}</span>
+                    {isWebPending && <span className="cmdx-chip is-warning"><Globe size={14} /> Pedido web por confirmar</span>}
+                  </div>
+                  <div className="cmdx-head-actions">
+                    <button type="button" className="cmdx-icon-btn cmdx-print-btn" onClick={() => printThermalReceipt(thermalReceiptForComanda(order))} title={order.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}>
+                      <Printer size={17} /><span>{order.isPaid ? 'Recibo' : 'Precuenta'}</span>
+                    </button>
+                    <button type="button" className="cmdx-icon-btn is-danger" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda" aria-label="Eliminar comanda">
+                      <Trash2 size={17} />
+                    </button>
+                    <button type="button" className="cmdx-icon-btn" onClick={() => closeSelectedOrder()} title="Cerrar detalle" aria-label="Cerrar detalle de comanda">
+                      <X size={19} />
+                    </button>
                   </div>
                 </div>
-              </div>
 
-              <span className="cmd-meta-divider" />
+                <ol className="cmdx-steps" aria-label="Estado del pedido">
+                  {statusSteps.map((step, index) => (
+                    <li
+                      key={step.key}
+                      className={`cmdx-step ${index < currentStepIndex ? 'is-done' : ''} ${index === currentStepIndex ? 'is-current' : ''}`}
+                      aria-current={index === currentStepIndex ? 'step' : undefined}
+                    >
+                      <span className="cmdx-step-dot">{index < currentStepIndex ? <CheckCircle2 size={14} /> : index + 1}</span>
+                      <span className="cmdx-step-label">{step.label}{step.time && <small>{step.time}</small>}</span>
+                    </li>
+                  ))}
+                </ol>
+              </header>
 
-              <div className="cmd-meta-cluster">
-                <div className="cmd-meta-item">
-                  <Calendar size={14} className="cmd-meta-icon cmd-icon-time" />
-                  <div>
-                    <span className="cmd-meta-label">Fecha</span>
-                    <span className="cmd-meta-val">{selectedOrder.date || '24/05/2025'}</span>
+              <div className="cmdx-main">
+                <section className="cmdx-customer" aria-label="Cliente">
+                  <span className="cmdx-avatar">{getInitials(order.customerName)}</span>
+                  <div className="cmdx-customer-copy">
+                    <strong>{order.customerName}</strong>
+                    <span className="cmdx-customer-line">
+                      <span><Phone size={12} /> {order.customerPhone || 'Sin teléfono'}</span>
+                      <span><User size={12} /> {order.customerIdentification || 'Sin cédula'}</span>
+                    </span>
+                    <span className="cmdx-customer-line is-muted">
+                      <span><Calendar size={12} /> {order.date ? `${order.date} · ` : ''}{order.time}</span>
+                      <span className="cmdx-elapsed"><Timer size={12} /> hace {formatElapsed(order.elapsedMins)}</span>
+                      <span>{order.source === 'web' ? 'Pedido desde la web' : `Atendido por ${order.attendedBy || 'Admin'}`}</span>
+                    </span>
                   </div>
-                </div>
-                <div className="cmd-meta-item">
-                  <Clock size={14} className="cmd-meta-icon cmd-icon-time" />
-                  <div>
-                    <span className="cmd-meta-label">Hora</span>
-                    <span className="cmd-meta-val">{selectedOrder.time}</span>
-                  </div>
-                </div>
-                <span className="cmd-elapsed-chip"><Clock size={12} /> {formatElapsed(selectedOrder.elapsedMins)}</span>
-              </div>
+                  {order.customerId ? (
+                    <span className="cmdx-customer-link is-linked"><UserCheck size={14} /> Cliente registrado</span>
+                  ) : order.source !== 'web' && (
+                    <button
+                      type="button"
+                      className="cmdx-customer-link"
+                      onClick={() => void openAssociateCustomerModal()}
+                      disabled={isDemoMode || associatingCustomer}
+                      title="Asociar un cliente registrado a esta comanda"
+                    >
+                      <UserPlus size={14} /> Asociar cliente
+                    </button>
+                  )}
+                </section>
 
-              <span className="cmd-meta-divider" />
-
-              <div className="cmd-meta-cluster">
-                <div className="cmd-meta-item">
-                  <User size={14} className="cmd-meta-icon cmd-icon-ops" />
-                  <div>
-                    <span className="cmd-meta-label">Atendido por</span>
-                    <span className="cmd-meta-val">{selectedOrder.attendedBy || 'Admin'}</span>
-                  </div>
-                </div>
-                <div className="cmd-meta-item">
-                  <Hash size={14} className="cmd-meta-icon cmd-icon-ops" />
-                  <div>
-                    <span className="cmd-meta-label">Nº de pedido</span>
-                    <span className="cmd-meta-val">{selectedOrder.orderNumber.replace('#FC-', '')}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="cmd-modal-body">
-              <div className="cmd-col-left">
-                {selectedOrder.orderType === 'Delivery' && (
-                  <div className="cmd-section cmd-address-section">
-                    <div className="cmd-section-title"><MapPin size={16} className="cmd-icon-address" /> Dirección de entrega</div>
-                    <div className="cmd-address-content">
-                      <div className="cmd-address-text">
-                        <p>{selectedOrder.address || 'Sin dirección registrada'}</p>
-                        {selectedOrder.reference && <p className="cmd-reference">Referencia de entrega: {selectedOrder.reference}</p>}
-                        {selectedOrder.paymentReference && <p className="cmd-reference">Referencia de pago: {selectedOrder.paymentReference}</p>}
+                {order.orderType === 'Delivery' && (
+                  <section className="cmdx-card">
+                    <h3 className="cmdx-card-title"><MapPin size={16} /> Dirección de entrega</h3>
+                    <div className="cmdx-address">
+                      <div className="cmdx-address-copy">
+                        <p>{order.address || 'Sin dirección registrada'}</p>
+                        {order.reference && <small>Referencia: {order.reference}</small>}
+                        {order.paymentReference && <small>Referencia de pago: {order.paymentReference}</small>}
                       </div>
-                      {extractMapsUrl(selectedOrder.notes) ? (
-                        <a
-                          className="cmd-map-link"
-                          href={extractMapsUrl(selectedOrder.notes)!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <MapPin size={18} />
-                          <span>Ver ubicación</span>
+                      {extractMapsUrl(order.notes) && (
+                        <a className="cmdx-map-link" href={extractMapsUrl(order.notes)!} target="_blank" rel="noopener noreferrer">
+                          <MapPin size={16} /> Ver ubicación
                         </a>
-                      ) : (
-                        <div className="cmd-map-placeholder">
-                          <MapPin size={24} className="cmd-map-icon" />
-                        </div>
                       )}
                     </div>
-
-                    {!selectedOrder.isPaid && selectedOrder.source !== 'web' && (
-                      <div className="cmd-delivery-fee">
-                        <label className="cmd-delivery-fee-label"><Bike size={14} /> Costo del delivery</label>
-                        <div className="cmd-delivery-fee-row">
-                          <span className="cmd-delivery-fee-currency">$</span>
+                    {!order.isPaid && order.source !== 'web' && (
+                      <div className="cmdx-delivery-fee">
+                        <label htmlFor="cmdx-delivery-fee-input"><Bike size={14} /> Costo del delivery</label>
+                        <div className="cmdx-delivery-fee-row">
+                          <span>$</span>
                           <input
+                            id="cmdx-delivery-fee-input"
                             type="text"
                             inputMode="decimal"
-                            className="cmd-delivery-fee-input"
                             value={deliveryFeeInput}
                             onChange={(e) => setDeliveryFeeInput(e.target.value.replace(/[^0-9.,]/g, ''))}
                             placeholder="0,00"
                           />
-                          <button
-                            type="button"
-                            className="cmd-delivery-fee-save"
-                            disabled={savingDelivery}
-                            onClick={handleSaveDeliveryFee}
-                          >
+                          <button type="button" disabled={savingDelivery} onClick={handleSaveDeliveryFee}>
                             {savingDelivery ? 'Guardando…' : 'Guardar'}
                           </button>
                         </div>
-                        <small className="cmd-delivery-fee-hint">Monto cotizado por WhatsApp según la ubicación. Se suma al total.</small>
+                        <small>Monto cotizado por WhatsApp según la ubicación. Se suma al total.</small>
                       </div>
                     )}
-                    {!selectedOrder.isPaid && selectedOrder.source === 'web' && (
-                      <p className="cmd-delivery-fee-hint" style={{ marginTop: 12 }}>
-                        <Bike size={12} /> Confirma el pedido de WhatsApp para poder agregar el costo del delivery.
-                      </p>
+                    {!order.isPaid && order.source === 'web' && (
+                      <small className="cmdx-hint"><Bike size={13} /> Confirma el pedido para poder agregar el costo del delivery.</small>
                     )}
-                  </div>
+                  </section>
                 )}
 
-                <div className="cmd-section cmd-production-section" ref={orderItemsSectionRef}>
-                  <div className="cmd-section-title cmd-section-title-row">
-                    <span className="cmd-section-title-text"><ShoppingBag size={16} className="cmd-icon-production" /> Producción del pedido</span>
-                    {!selectedOrder.isPaid && (
-                      <button type="button" className="cmd-add-item-btn" onClick={() => setShowAddItems(true)}>
-                        <Plus size={14} /> Agregar producto
+                <section className="cmdx-card" ref={orderItemsSectionRef}>
+                  <div className="cmdx-card-head">
+                    <h3 className="cmdx-card-title"><ShoppingBag size={16} /> Productos <span className="cmdx-count">{order.items.reduce((sum, item) => sum + item.quantity, 0)}</span></h3>
+                    {!order.isPaid && (
+                      <button type="button" className="cmdx-add-btn" onClick={() => setShowAddItems(true)}>
+                        <Plus size={15} /> Agregar
                       </button>
                     )}
                   </div>
-                  <div className="cmd-items-table-wrap">
-                    <table className="cmd-items-table">
-                      <thead>
-                        <tr>
-                          <th>Producto</th>
-                          <th>Observaciones / Extras</th>
-                          <th>Cant.</th>
-                          <th>P. Unit.</th>
-                          <th>Subtotal</th>
-                          {!selectedOrder.isPaid && <th aria-label="Acciones"></th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {selectedOrder.items.map(item => (
-                          <tr key={item.id}>
-                            <td>
-                              <div className="cmd-product-cell">
-                                <div className={`cmd-product-img ${item.name === 'Delivery' ? 'is-delivery' : 'is-food'}`}>
-                                  {item.name === 'Delivery' ? (
-                                    <Bike size={16} />
-                                  ) : productImageByName.get(normalizeForSearch(item.name)) ? (
-                                    <img src={productImageByName.get(normalizeForSearch(item.name))} alt={item.name} className="cmd-product-photo" />
-                                  ) : (
-                                    <Utensils size={16} />
-                                  )}
-                                </div>
-                                <span>{item.name}</span>
-                              </div>
-                            </td>
-                            <td className="cmd-obs">{item.observations || '—'}</td>
-                            <td>x{item.quantity}</td>
-                            <td><MoneyWithBcv usd={item.unitPrice || 0} rate={selectedOrder.bcvRate} compact /></td>
-                            <td><MoneyWithBcv usd={item.subtotal || 0} rate={selectedOrder.bcvRate} compact /></td>
-                            {!selectedOrder.isPaid && (
-                              <td className="cmd-item-actions">
-                                <button
-                                  type="button"
-                                  className="cmd-item-remove"
-                                  title="Quitar producto"
-                                  aria-label={`Quitar ${item.name}`}
-                                  disabled={removingItemId === item.id}
-                                  onClick={() => handleRemoveItem(item.id)}
-                                >
-                                  <Trash2 size={15} />
-                                </button>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <ul className="cmdx-items">
+                    {order.items.map(item => {
+                      const photo = item.name === 'Delivery' ? null : productImageByName.get(normalizeForSearch(item.name))
+                      return (
+                        <li key={item.id} className="cmdx-item">
+                          <span className={`cmdx-item-thumb ${item.name === 'Delivery' ? 'is-delivery' : ''}`}>
+                            {item.name === 'Delivery' ? <Bike size={18} /> : photo ? <img src={photo} alt="" /> : <Utensils size={18} />}
+                          </span>
+                          <span className="cmdx-item-qty">{item.quantity}×</span>
+                          <span className="cmdx-item-copy">
+                            <strong>{item.name}</strong>
+                            {item.observations && <small className="cmdx-item-extras">{item.observations}</small>}
+                            {item.quantity > 1 && <small className="cmdx-item-unit">{formatUsd(item.unitPrice || 0)} c/u</small>}
+                          </span>
+                          <MoneyWithBcv usd={item.subtotal || 0} rate={order.bcvRate} className="cmdx-item-price" compact />
+                          {!order.isPaid && (
+                            <button
+                              type="button"
+                              className="cmdx-item-remove"
+                              title="Quitar producto"
+                              aria-label={`Quitar ${item.name}`}
+                              disabled={removingItemId === item.id}
+                              onClick={() => handleRemoveItem(item.id)}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
                   {removeError && <p className="cmd-item-remove-error">{removeError}</p>}
-                </div>
+                </section>
 
-                <div className="cmd-section cmd-notes-section">
-                  <div className="cmd-section-title"><FileText size={16} className="cmd-icon-notes" /> Notas del pedido</div>
-                  <div className="cmd-notes-content">
-                    {cleanNotes(selectedOrder.notes) ? cleanNotes(selectedOrder.notes).split('\n').map((line, i) => <p key={i}>{line}</p>) : <p>Sin notas adicionales.</p>}
-                  </div>
-                </div>
-
-                <div className="cmd-modal-timeline cmd-modal-timeline-compact">
-                  <div className="cmd-timeline-header">
-                    <Clock size={14} className="cmd-tl-icon"/> Progreso del pedido
-                  </div>
-                  <div className="cmd-timeline-steps">
-                    <div className={`cmd-step ${['new', 'preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                      <div className="cmd-step-icon"><FileText size={14} /></div>
-                      <div className="cmd-step-info">
-                        <span className="cmd-step-name">Nueva</span>
-                        <span className="cmd-step-time">{selectedOrder.time}</span>
-                      </div>
-                    </div>
-                    <div className={`cmd-timeline-line ${['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
-                    <div className={`cmd-step ${['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                      <div className="cmd-step-icon"><Clock size={14} /></div>
-                      <div className="cmd-step-info">
-                        <span className="cmd-step-name">En preparación</span>
-                        <span className="cmd-step-time">{['preparing', 'ready', 'delivered'].includes(selectedOrder.status) ? selectedOrder.time : '—'}</span>
-                      </div>
-                    </div>
-                    <div className={`cmd-timeline-line ${['ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
-                    <div className={`cmd-step ${['ready', 'delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                      <div className="cmd-step-icon"><CheckCircle size={14} /></div>
-                      <div className="cmd-step-info">
-                        <span className="cmd-step-name">Lista</span>
-                        <span className="cmd-step-time">—</span>
-                      </div>
-                    </div>
-                    <div className={`cmd-timeline-line ${['delivered'].includes(selectedOrder.status) ? 'active' : ''}`}></div>
-                    <div className={`cmd-step ${['delivered'].includes(selectedOrder.status) ? 'active' : ''}`}>
-                      <div className="cmd-step-icon"><Truck size={14} /></div>
-                      <div className="cmd-step-info">
-                        <span className="cmd-step-name">Entregada</span>
-                        <span className="cmd-step-time">{selectedOrder.status === 'delivered' ? (selectedOrder.deliveredTime || '—') : '—'}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {visibleNotes && (
+                  <section className="cmdx-card cmdx-notes">
+                    <h3 className="cmdx-card-title"><FileText size={16} /> Notas del pedido</h3>
+                    {visibleNotes.split('\n').map((line, i) => <p key={i}>{line}</p>)}
+                  </section>
+                )}
               </div>
 
-              <div className="cmd-col-right">
-                <div className="cmd-section cmd-payment-section">
-                  <div className="cmd-section-title"><CreditCard size={16} className="cmd-icon-payment" /> Resumen de pago</div>
-                  
-                  <div className="cmd-summary-row">
-                    <span>Subtotal</span>
-                    <MoneyWithBcv usd={selectedOrder.totalAmount! - (selectedOrder.serviceCharge || 0) + (selectedOrder.discount || 0)} rate={selectedOrder.bcvRate} compact />
-                  </div>
-                  {(selectedOrder.serviceCharge || 0) > 0 && (
-                    <div className="cmd-summary-row">
-                      <span>Cargo por servicio (10%)</span>
-                      <MoneyWithBcv usd={selectedOrder.serviceCharge || 0} rate={selectedOrder.bcvRate} compact />
-                    </div>
-                  )}
-                  {(selectedOrder.discount || 0) > 0 && (
-                    <div className="cmd-summary-row cmd-discount">
-                      <span>Descuento</span>
-                      <MoneyWithBcv usd={-(selectedOrder.discount || 0)} rate={selectedOrder.bcvRate} compact />
-                    </div>
-                  )}
-                  
-                  <div className="cmd-summary-total">
-                    <span>TOTAL</span>
-                    <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className="cmd-total-amounts" usdClassName="cmd-total-usd" />
-                  </div>
-
-                  <div className="cmd-payment-method-row">
-                    <span className="cmd-method-label">Método de pago</span>
-                    <span className="cmd-method-badge">{selectedOrder.isPaid ? selectedOrder.paymentMethod : selectedOrder.creditAuthorized ? 'Crédito autorizado' : <><AlertTriangle size={14} /> Sin cobrar</>}</span>
-                  </div>
-                  {!selectedOrder.isPaid && extractPreferredPayment(selectedOrder.notes) && (
-                    <div className="cmd-payment-method-row cmd-pref-pay-row">
-                      <span className="cmd-method-label"><CreditCard size={14} /> Pago del cliente</span>
-                      <span className="cmd-pref-pay-badge">{extractPreferredPayment(selectedOrder.notes)!.label}</span>
-                    </div>
-                  )}
-
-                  <div className="cmd-breakdown-section">
-                    <div className="cmd-summary-row cmd-breakdown-title">Desglose del pago</div>
-                    {selectedOrder.isPaid ? (
-                      selectedOrder.payments?.length ? selectedOrder.payments.map((payment, index) => {
-                        const paymentLabels: Record<PaymentMethod, string> = {
-                          cash: 'Efectivo', mobile: 'Pago móvil', card: 'Tarjeta / Punto', transfer: 'Transferencia', binance: 'Binance', zelle: 'Zelle', other: 'Otro',
-                          personal_account: 'Cuenta personal',
-                        }
-                        return <div className="cmd-summary-row cmd-breakdown-item" key={`${payment.method}-${index}`}>
-                          <span className="cmd-paid-green">{paymentLabels[payment.method] ?? payment.method}</span>
-                          <MoneyWithBcv usd={payment.amount} rate={selectedOrder.bcvRate} compact />
-                        </div>
-                      }) : <div className="cmd-summary-row cmd-breakdown-item">
-                        <span className="cmd-paid-green">Pagado ({selectedOrder.paymentMethod})</span>
-                        <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} compact />
-                      </div>
-                    ) : (
-                      <div className="cmd-summary-row cmd-breakdown-item">
-                        <span className="cmd-paid-yellow"><AlertTriangle size={14} /> Pendiente de cobro</span>
-                        <MoneyWithBcv usd={selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className="cmd-paid-yellow" compact />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="cmd-summary-row cmd-total-paid">
-                    <span>Total pagado</span>
-                    <MoneyWithBcv usd={selectedOrder.isPaid ? selectedOrder.totalAmount || 0 : 0} rate={selectedOrder.bcvRate} className={selectedOrder.isPaid ? 'cmd-paid-green' : ''} compact />
-                  </div>
-                  <div className="cmd-summary-row cmd-balance">
-                    <span>Saldo restante</span>
-                    <MoneyWithBcv usd={selectedOrder.isPaid ? 0 : selectedOrder.totalAmount || 0} rate={selectedOrder.bcvRate} className={!selectedOrder.isPaid ? 'cmd-paid-yellow' : 'cmd-paid-green'} compact />
-                  </div>
+              <aside className="cmdx-summary" aria-label="Pago">
+                {hasAdjustments && (
+                  <dl className="cmdx-summary-rows">
+                    <div><dt>Subtotal</dt><dd>{formatUsd(subtotal)}</dd></div>
+                    {(order.serviceCharge || 0) > 0 && <div><dt>Servicio (10%)</dt><dd>{formatUsd(order.serviceCharge || 0)}</dd></div>}
+                    {(order.discount || 0) > 0 && <div className="is-discount"><dt>Descuento</dt><dd>−{formatUsd(order.discount || 0)}</dd></div>}
+                  </dl>
+                )}
+                <div className="cmdx-total">
+                  <span>Total</span>
+                  <MoneyWithBcv usd={order.totalAmount || 0} rate={order.bcvRate} className="cmdx-total-money" />
                 </div>
-              </div>
-            </div>
 
-            {(selectedOrder.status !== 'delivered' || selectedOrder.source === 'web' || !selectedOrder.isPaid) && (
-              <footer className="cmd-modal-footer">
-                <div className="cmd-footer-left">
-                  {selectedOrder.status !== 'delivered' && (
+                {order.isPaid ? (
+                  <div className="cmdx-pay-state is-paid">
+                    <strong><CheckCircle2 size={16} /> Pagado</strong>
+                    {order.payments?.length
+                      ? order.payments.map((payment, index) => (
+                        <span key={`${payment.method}-${index}`}>{paidMethodLabels[payment.method] ?? payment.method} · {formatUsd(payment.amount)}</span>
+                      ))
+                      : <span>{order.paymentMethod}</span>}
+                  </div>
+                ) : order.creditAuthorized ? (
+                  <div className="cmdx-pay-state is-credit">
+                    <strong><CreditCard size={16} /> Crédito autorizado</strong>
+                    <span>Queda en cuentas por cobrar.</span>
+                  </div>
+                ) : (
+                  <div className="cmdx-pay-state is-pending">
+                    <strong><AlertTriangle size={16} /> Pendiente de cobro · {formatUsd(order.totalAmount || 0)}</strong>
+                    {preferredPayment && <span>El cliente pagará con <b>{preferredPayment.label}</b></span>}
+                  </div>
+                )}
+              </aside>
+
+              <footer className="cmdx-actions">
+                {isWebPending ? (
+                  <>
                     <button
                       type="button"
-                      className="cmd-btn-outline"
-                      disabled={selectedOrder.isPaid || selectedOrder.source === 'web'}
-                      title={selectedOrder.isPaid ? 'No se puede editar una comanda ya cobrada' : selectedOrder.source === 'web' ? 'Confirma primero el pedido web' : 'Ir a los productos del pedido'}
-                      onClick={() => orderItemsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                      className="cmdx-action-primary"
+                      disabled={confirmingWebId === order.webRequestId}
+                      onClick={() => handleConfirmWebOrder(order)}
                     >
-                      <Edit3 size={16} />
-                      {selectedOrder.isPaid ? 'Pedido cobrado' : selectedOrder.source === 'web' ? 'Confirma el pedido' : 'Editar pedido'}
+                      <CheckCircle size={18} /> {confirmingWebId === order.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
                     </button>
-                  )}
-                </div>
-                <div className="cmd-footer-right">
-                  {selectedOrder.source === 'web' ? (
-                    <button className="cmd-btn-primary" disabled={confirmingWebId === selectedOrder.webRequestId} onClick={() => handleConfirmWebOrder(selectedOrder)}>
-                      <CheckCircle size={16} /> {confirmingWebId === selectedOrder.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
-                    </button>
-                  ) : !selectedOrder.isPaid && !selectedOrder.creditAuthorized && (
-                    <button
-                      className="cmd-btn-cobrar"
-                      onClick={() => handleOpenPaymentForOrder(selectedOrder)}
-                    >
-                      <DollarSign size={16} /> Cobrar pedido
-                    </button>
-                  )}
-                  {selectedOrder.source !== 'web' && selectedOrder.status !== 'delivered' && <button
-                    className="cmd-btn-primary"
-                    onClick={() => {
-                      handleAdvanceStatus(selectedOrder.id, selectedOrder.status)
-                      closeSelectedOrder()
-                    }}
-                  >
-                    <CheckCircle size={16} /> Marcar como {selectedOrder.status === 'new' ? 'preparación' : selectedOrder.status === 'preparing' ? 'lista' : 'entregada'}
-                  </button>}
-                </div>
+                    <small className="cmdx-actions-hint">Al confirmarlo podrás prepararlo, editarlo y cobrarlo.</small>
+                  </>
+                ) : advanceButton || chargeButton ? (
+                  <>
+                    {advanceButton}
+                    {chargeButton}
+                  </>
+                ) : (
+                  <p className="cmdx-actions-done"><CheckCircle2 size={16} /> Pedido entregado y pagado</p>
+                )}
               </footer>
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
+            </div>
+          </div>,
+          document.body
+        )
+      })()}
       {selectedOrder && showAssociateCustomerModal && createPortal(
         <div className="cmd-modal-overlay cmd-associate-customer-overlay" onClick={() => { if (!associatingCustomer && !creatingAssociateCustomer) setShowAssociateCustomerModal(false) }}>
           <section className="cmd-modal-container cmd-associate-customer-modal" role="dialog" aria-modal="true" aria-labelledby="associate-customer-title" onClick={event => event.stopPropagation()}>
