@@ -12271,6 +12271,17 @@ body:has(.public-drawer-backdrop) .public-menu-page .public-desktop-sidebar {
   }
 }
 
+/* El bloqueo modal global no debe cambiar el scrollport del layout en
+   escritorio: la tarjeta lateral usa position: sticky y saltaba al cambiar
+   .app-main de auto a hidden mientras la ficha del producto estaba abierta. */
+@media (min-width: 1280px), (min-width: 1024px) and (orientation: landscape) {
+  :root:has(.public-menu-page .public-modal-backdrop) .app-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: none !important;
+  }
+}
+
 /* Checkout comparte el mismo marco del carrito lateral en escritorio
    intermedio: un solo panel, con igual ancho, posición y altura. */
 @media (min-width: 900px) and (max-width: 1279px) and (orientation: landscape) {
