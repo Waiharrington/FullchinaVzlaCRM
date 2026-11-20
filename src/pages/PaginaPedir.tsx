@@ -375,7 +375,7 @@ export function PaginaPedir() {
     try {
       await updatePublicOrderStoreStatus(mode)
       setPageSettings(current => ({ ...current, storeStatusMode: mode }))
-      setNotice(mode === 'open' ? 'Tienda abierta para pruebas.' : mode === 'closed' ? 'Tienda cerrada manualmente.' : 'La tienda volverá a seguir el horario configurado.')
+      setNotice(mode === 'open' ? 'La tienda quedó abierta.' : mode === 'closed' ? 'La tienda quedó cerrada.' : 'La tienda volverá a seguir el horario configurado.')
       window.setTimeout(() => setNotice(''), 3000)
     } catch (cause) {
       setSettingsError(cause instanceof Error ? cause.message : 'No se pudo actualizar el estado de la tienda')
