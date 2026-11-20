@@ -17292,3 +17292,27 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   white-space: nowrap;
   cursor: pointer;
 }
+
+
+/* Mientras se envía el pedido, el botón de confirmar muestra su texto real
+   ("Enviando pedido…") con un círculo girando en vez del texto fijo. */
+.public-step-confirm .public-whatsapp-cta.is-sending .public-whatsapp-copy strong {
+  font-size: 16px !important;
+}
+.public-step-confirm .public-whatsapp-cta.is-sending .public-whatsapp-copy strong::after {
+  content: none !important;
+}
+.public-step-confirm .public-whatsapp-cta.is-sending .public-confirm-check {
+  border-color: transparent;
+}
+.public-step-confirm .public-whatsapp-cta.is-sending:disabled {
+  opacity: 1 !important;
+  cursor: wait !important;
+  filter: saturate(0.9);
+}
+.public-confirm-spinner {
+  width: 20px;
+  height: 20px;
+  animation: public-confirm-spin 0.9s linear infinite;
+}
+@keyframes public-confirm-spin { to { transform: rotate(360deg); } }
