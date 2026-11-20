@@ -17107,3 +17107,35 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     height: 28px !important;
   }
 }
+
+/* Con la tarjeta lateral visible, "Tu pedido" vive en ella: el paso "cart" del
+   checkout solo sirve de soporte para "Ver todos". Su versión móvil del carrito
+   nunca debe verse detrás del catálogo, tampoco mientras ambos se cierran.
+   Debe coincidir con DESKTOP_SIDEBAR_MEDIA_QUERY en PublicMenu.tsx. */
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart > :not(.public-cart-all-extras) {
+    visibility: hidden !important;
+  }
+}
+
+/* Sin palabras huérfanas: el navegador reparte las líneas para que la última
+   nunca quede con una sola palabra. Especificidad cero: las reglas que ya fijan
+   text-wrap (por ejemplo balance en títulos) siguen mandando. */
+:where(.public-menu-page, .public-drawer-backdrop) :where(p, span, small, strong, b, em, label, h1, h2, h3, h4, h5, li) {
+  text-wrap: pretty;
+}
+
+/* Botón principal del checkout en escritorio: mismo alto en todos los pasos,
+   igual al de "Continuar con el pedido" de la tarjeta lateral. Algunos pasos
+   usan grid y estiraban la fila del botón con el alto sobrante; align-self lo
+   mantiene abajo sin crecer. */
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer.public-cart-drawer .public-primary.public-primary {
+    height: 56px !important;
+    min-height: 56px !important;
+    max-height: 56px !important;
+    align-self: end !important;
+    padding: 0 18px !important;
+    font-size: 15px !important;
+  }
+}

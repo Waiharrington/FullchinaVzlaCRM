@@ -185,7 +185,9 @@
 }
 
 /* Mientras exista una capa modal, ningún contenedor del fondo puede desplazarse.
-   :has() permite cubrir también los modales antiguos sin cambiar su lógica. */
+   :has() permite cubrir también los modales antiguos sin cambiar su lógica.
+   El checkout del menú público queda fuera: en escritorio la página debe seguir
+   desplazándose junto a la tarjeta, y en móvil PublicMenu.tsx ya bloquea el fondo. */
 :root:has(:is(
   .modal-overlay,
   .modal-overlay-dark,
@@ -193,8 +195,8 @@
   [class*="-modal-overlay "],
   [class$="-modal-backdrop"],
   [class*="-modal-backdrop "],
-  [class$="-drawer-backdrop"],
-  [class*="-drawer-backdrop "],
+  [class$="-drawer-backdrop"]:not(.public-drawer-backdrop),
+  [class*="-drawer-backdrop "]:not(.public-drawer-backdrop),
   .aito-overlay,
   .prv-overlay,
   .gs-overlay,
@@ -212,8 +214,8 @@
   [class*="-modal-overlay "],
   [class$="-modal-backdrop"],
   [class*="-modal-backdrop "],
-  [class$="-drawer-backdrop"],
-  [class*="-drawer-backdrop "],
+  [class$="-drawer-backdrop"]:not(.public-drawer-backdrop),
+  [class*="-drawer-backdrop "]:not(.public-drawer-backdrop),
   .aito-overlay,
   .prv-overlay,
   .gs-overlay,
@@ -227,8 +229,8 @@
   [class*="-modal-overlay "],
   [class$="-modal-backdrop"],
   [class*="-modal-backdrop "],
-  [class$="-drawer-backdrop"],
-  [class*="-drawer-backdrop "],
+  [class$="-drawer-backdrop"]:not(.public-drawer-backdrop),
+  [class*="-drawer-backdrop "]:not(.public-drawer-backdrop),
   .aito-overlay,
   .prv-overlay,
   .gs-overlay,
