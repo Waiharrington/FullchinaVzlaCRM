@@ -627,14 +627,23 @@ export function PublicMenu() {
   const [showSearch, setShowSearch] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [closingCart, setClosingCart] = useState(false)
+  const [cartDrawerAnchorTop, setCartDrawerAnchorTop] = useState<number | null>(null)
   const [step, setStep] = useState<'cart' | 'delivery' | 'pickup' | 'address' | 'details' | 'confirm' | 'preparing' | 'whatsapp' | 'sent'>('cart')
   const [returnToConfirmAfterEdit, setReturnToConfirmAfterEdit] = useState(false)
   const [editingCartLineKey, setEditingCartLineKey] = useState<string | null>(null)
 
-  // Regla global de overlays: mientras exista una ventana abierta, el
-  // documento que queda detrás no puede desplazarse. El scroll pertenece
-  // exclusivamente al modal o drawer activo.
-  const hasBlockingOverlay = Boolean(quickVariantGroup || selectedGroup || cartOpen || showAllExtras || showStoreClosedNotice || showWelcomeNotice)
+  // En desktop, el checkout deja que la página siga desplazándose por fuera
+  // de la tarjeta. En móvil y en los demás overlays sí se bloquea el fondo.
+  const desktopCheckoutCanScrollPage = typeof window !== 'undefined'
+    && window.matchMedia('(min-width: 900px) and (orientation: landscape)').matches
+  const hasBlockingOverlay = Boolean(
+    quickVariantGroup
+    || selectedGroup
+    || (cartOpen && !desktopCheckoutCanScrollPage)
+    || showAllExtras
+    || showStoreClosedNotice
+    || showWelcomeNotice
+  )
   useEffect(() => {
     const root = document.documentElement
     const body = document.body
@@ -2061,7 +2070,15 @@ export function PublicMenu() {
     window.setTimeout(() => {
       setCartOpen(false)
       setClosingCart(false)
+      setCartDrawerAnchorTop(null)
     }, 360)
+  }
+  const openCartFromSidebar = (nextStep: typeof step) => {
+    const desktop = window.matchMedia('(min-width: 900px) and (orientation: landscape)').matches
+    const sidebarTop = desktop ? sidebarCardRef.current?.getBoundingClientRect().top : null
+    setCartDrawerAnchorTop(typeof sidebarTop === 'number' ? Math.round(sidebarTop) : null)
+    setCartOpen(true)
+    setStep(nextStep)
   }
   const requireCart = () => {
     const cartLimitViolation = getPublicCartLimitViolation(cart)
@@ -3964,7 +3981,7 @@ export function PublicMenu() {
 
                 {/* Address Input Box */}
                 {orderType === 'delivery' && (
-                  <div className="public-sidebar-address-box" onClick={() => { setCartOpen(true); setStep('address'); }}>
+                  <div className="public-sidebar-address-box" onClick={() => openCartFromSidebar('address')}>
                     <MapPin size={16} />
                     <input 
                       readOnly 
@@ -3983,10 +4000,9 @@ export function PublicMenu() {
                   disabled={!cart.length || submitting}
                   onClick={() => {
                     if (!cart.length) return;
-                    setCartOpen(true);
                     // Desde el resumen siempre se inicia el flujo de entrega;
                     // todavía faltan tipo de entrega, dirección y datos.
-                    setStep('delivery');
+                    openCartFromSidebar('delivery');
                   }}
                 >
                   <div className="public-sidebar-checkout-main">
@@ -4014,7 +4030,7 @@ export function PublicMenu() {
           <span className="public-cart-fab-tooltip">
             Toca aquí para ver tu pedido <ChevronRight size={14} />
           </span>
-          <button className="public-cart-fab" onClick={() => { setReturnToConfirmAfterEdit(false); setCartOpen(true); setStep('cart') }}>
+          <button className="public-cart-fab" onClick={() => { setReturnToConfirmAfterEdit(false); openCartFromSidebar('cart') }}>
             <ShoppingCart size={24} />
             <span className="public-cart-fab-badge">{itemCount}</span>
           </button>
@@ -4385,7 +4401,7 @@ export function PublicMenu() {
         </div>, document.body
       )}
       {cartOpen && step !== 'whatsapp' && createPortal(
-        <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
+        <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} style={{ '--public-cart-drawer-anchor-top': `${cartDrawerAnchorTop ?? 20}px` } as CSSProperties} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
         <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (isDesktop) closeCart(); else setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Consulta la dirección y el horario para retirar.' : step === 'address' ? 'Busca o marca en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : step === 'preparing' ? 'Estamos preparando tu mensaje de WhatsApp.' : 'Ajusta cantidades.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
