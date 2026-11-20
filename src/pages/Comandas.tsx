@@ -2485,7 +2485,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                   </div>
                   <div className="cmdx-head-actions">
                     <button type="button" className="cmdx-icon-btn cmdx-print-btn" onClick={() => printThermalReceipt(thermalReceiptForComanda(order))} title={order.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}>
-                      <Printer size={17} /><span>{order.isPaid ? 'Recibo' : 'Precuenta'}</span>
+                      <Printer size={17} /><span>{order.isPaid ? 'Reimprimir recibo' : 'Imprimir precuenta'}</span>
                     </button>
                     <button type="button" className="cmdx-icon-btn is-danger" onClick={() => { setDeletePin(''); setDeleteError(''); setShowDeleteModal(true) }} title="Eliminar comanda" aria-label="Eliminar comanda">
                       <Trash2 size={17} />

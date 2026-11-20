@@ -3643,7 +3643,6 @@
   .cmdx-head { padding: 14px 14px 12px; gap: 14px; }
   .cmdx-title h2 { font-size: 20px; }
   .cmdx-kicker { display: none; }
-  .cmdx-print-btn span { display: none; }
   .cmdx-head-row { align-items: flex-start; }
   .cmdx-step { flex-direction: column; align-items: center; gap: 5px; text-align: center; }
   .cmdx-step:not(:last-child)::after {
@@ -3676,4 +3675,13 @@
     max-height: calc(100dvh - max(16px, env(safe-area-inset-top, 0px)) - max(16px, env(safe-area-inset-bottom, 0px)));
     border-radius: 20px;
   }
+}
+
+/* En pantallas angostas el botón de imprimir conserva su texto; el título
+   pasa a su propia línea para dejarle espacio. */
+@media (max-width: 899px) {
+  .cmdx-head-row { flex-wrap: wrap; }
+  .cmdx-title { flex: 1 1 100%; }
+  .cmdx-head-actions { flex: 1 1 100%; }
+  .cmdx-head-actions .cmdx-print-btn { flex: 1 1 auto; }
 }
