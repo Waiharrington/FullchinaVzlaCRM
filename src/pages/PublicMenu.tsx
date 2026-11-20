@@ -20,6 +20,7 @@ import { consumePublicMenuWelcomeDismissal, PUBLIC_MENU_WELCOME_DISMISSED_KEY } 
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
 import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
 import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, DEFAULT_PUBLIC_ORDER_REELS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, type PublicOrderPageSettings, type PublicOrderReel } from '../lib/publicOrderPageSettings'
+import { formatPublicOrderDays, getPublicOrderDayCodes } from '../lib/publicOrderSchedule'
 import { preserveEmptyPublicCarousel, selectPublicCarouselGroups } from '../lib/publicOrderCarousel'
 import { getLocalOrderTestConfirmationCopy, isLocalOrderTestMode, recordLocalOrderTestOrder } from '../lib/localOrderTestMode'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
@@ -70,13 +71,6 @@ const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
 
 const STORE_TIME_ZONE = 'America/Caracas'
 
-const SCHEDULE_DAY_SETS: Record<string, string[]> = {
-  'Martes a Domingo': ['Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  'Lunes a Domingo': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  'Lunes a Sábado': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
-  'Lunes a Viernes': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
-}
-
 function formatStoreTime(value: string) {
   const [hour = '0', minute = '00'] = value.split(':')
   const numericHour = Number(hour)
@@ -86,13 +80,7 @@ function formatStoreTime(value: string) {
 }
 
 function formatStoreSchedule(settings: PublicOrderPageSettings) {
-  const dayNames: Record<string, string> = {
-    'Martes a Domingo': 'Mar a dom',
-    'Lunes a Domingo': 'Lun a dom',
-    'Lunes a Sábado': 'Lun a sáb',
-    'Lunes a Viernes': 'Lun a vie',
-  }
-  return `${dayNames[settings.contactDays] ?? settings.contactDays} · ${formatStoreTime(settings.contactOpenTime)}–${formatStoreTime(settings.contactCloseTime)}`
+  return `${formatPublicOrderDays(settings.contactDays)} · ${formatStoreTime(settings.contactOpenTime)}–${formatStoreTime(settings.contactCloseTime)}`
 }
 
 function getStoreClock(settings: PublicOrderPageSettings = DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS) {
@@ -111,16 +99,11 @@ function getStoreClock(settings: PublicOrderPageSettings = DEFAULT_PUBLIC_ORDER_
   const now = hour * 60 + minute
   const opens = Number(openHour) * 60 + Number(openMinute)
   const closes = Number(closeHour) * 60 + Number(closeMinute)
-  const openDay = (SCHEDULE_DAY_SETS[settings.contactDays] ?? SCHEDULE_DAY_SETS['Martes a Domingo']).includes(weekday)
+  const openDay = getPublicOrderDayCodes(settings.contactDays).includes(weekday)
   const previewClosed = import.meta.env.DEV
     && new URLSearchParams(window.location.search).get('previewStoreClosed') === '1'
   const isOpen = !previewClosed && openDay && now >= opens && now < closes
-  return {
-    isOpen,
-    reopeningMessage: previewClosed
-      ? 'Consulta nuestro horario de atención'
-      : `Horario: ${settings.contactDays}, ${formatStoreTime(settings.contactOpenTime)} a ${formatStoreTime(settings.contactCloseTime)}`,
-  }
+  return { isOpen }
 }
 
 const DEFAULT_INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
@@ -178,9 +161,8 @@ const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
 const PUBLIC_WHATSAPP_PHONE = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
 const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
 const LOCAL_ORDER_TEST_MODE = isLocalOrderTestMode()
-// Temporal: dejar realizar pedidos fuera del horario mientras se valida el flujo público.
-// Volver a true cuando se solicite restaurar el bloqueo de horario.
-const ORDER_HOURS_BLOCK_ENABLED = false
+// El checkout público solo permite pedidos durante el horario configurado.
+const ORDER_HOURS_BLOCK_ENABLED = true
 const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
 const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
 // v2 intentionally drops caches created while the public RPC still returned
@@ -607,7 +589,7 @@ export function PublicMenu() {
   const [showStoreClosedNotice, setShowStoreClosedNotice] = useState(() => {
     const showPreviewNotice = import.meta.env.DEV
       && new URLSearchParams(window.location.search).get('showClosedNotice') === '1'
-    return showPreviewNotice || (ORDER_HOURS_BLOCK_ENABLED && !LOCAL_ORDER_TEST_MODE && !getStoreClock().isOpen)
+    return showPreviewNotice
   })
   const [showWelcomeNotice, setShowWelcomeNotice] = useState(() => {
     return !consumePublicMenuWelcomeDismissal()
@@ -870,6 +852,7 @@ export function PublicMenu() {
   const [requestedRecommendedIndex, setRequestedRecommendedIndex] = useState<number | null>(null)
   const [recommendedImageSrc, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
   const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
+  const [pageSettingsLoaded, setPageSettingsLoaded] = useState(false)
   const currentInstagramReels = pageSettings.contactReels.length ? pageSettings.contactReels : DEFAULT_PUBLIC_ORDER_REELS
   const publicWhatsappPhone = (pageSettings.contactWhatsapp || PUBLIC_WHATSAPP_PHONE).replace(/\D/g, '')
   const publicInstagramUrl = pageSettings.contactInstagramUrl || DEFAULT_INSTAGRAM_PROFILE_URL
@@ -880,8 +863,9 @@ export function PublicMenu() {
   const mapPreviewUrl = getPublicOrderMapEmbedUrl(pageSettings.contactDirectionsUrl, pageSettings.contactAddress)
   const refreshPublicPageSettings = useCallback(async () => {
     setPageSettings(await getPublicOrderPageSettings())
+    setPageSettingsLoaded(true)
   }, [])
-  useEffect(() => { void refreshPublicPageSettings().catch(() => undefined) }, [refreshPublicPageSettings])
+  useEffect(() => { void refreshPublicPageSettings().catch(() => setPageSettingsLoaded(true)) }, [refreshPublicPageSettings])
   const refreshPublicMenuData = useCallback(async () => {
     // These modifier groups are cached separately from Supabase's response
     // cache. A feed event bypasses that first cache, so clear this one before
@@ -894,7 +878,10 @@ export function PublicMenu() {
       getPublicMenuCategories(),
     ])
 
-    if (settingsResult.status === 'fulfilled') setPageSettings(settingsResult.value)
+    if (settingsResult.status === 'fulfilled') {
+      setPageSettings(settingsResult.value)
+      setPageSettingsLoaded(true)
+    }
     if (catalogResult.status === 'fulfilled') {
       const resolved = prepareCatalog(catalogResult.value)
       const categories = categoriesResult.status === 'fulfilled' && categoriesResult.value.length
@@ -1692,9 +1679,13 @@ export function PublicMenu() {
     const timer = window.setInterval(() => setStoreClock(getStoreClock(pageSettings)), 60_000)
     return () => window.clearInterval(timer)
   }, [pageSettings])
-  const isStoreOpen = LOCAL_ORDER_TEST_MODE || storeClock.isOpen
+  const isStoreOpen = LOCAL_ORDER_TEST_MODE || pageSettings.storeStatusMode === 'open' || (pageSettings.storeStatusMode !== 'closed' && storeClock.isOpen)
+  useEffect(() => {
+    if (!pageSettingsLoaded) return
+    setShowStoreClosedNotice(ORDER_HOURS_BLOCK_ENABLED && !LOCAL_ORDER_TEST_MODE && !isStoreOpen)
+  }, [isStoreOpen, pageSettingsLoaded])
   const blockClosedStoreAdd = () => {
-    if (!ORDER_HOURS_BLOCK_ENABLED || isStoreOpen) return false
+    if (!pageSettingsLoaded || !ORDER_HOURS_BLOCK_ENABLED || isStoreOpen) return false
     setShowStoreClosedNotice(true)
     return true
   }
@@ -2823,6 +2814,7 @@ export function PublicMenu() {
 
   const submitOrder = async () => {
     if (submitLockRef.current || submitting) return
+    if (blockClosedStoreAdd()) return
     setError('')
     setFieldError('')
     if (name.trim().length < 2) { setStep('details'); return setFieldError('name') }
@@ -4394,7 +4386,7 @@ export function PublicMenu() {
       )}
       {cartOpen && step !== 'whatsapp' && createPortal(
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (isDesktop) closeCart(); else setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira tu pedido en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Consulta la dirección y el horario para retirar.' : step === 'address' ? 'Busca tu dirección o elige el punto en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : step === 'preparing' ? 'Estamos preparando tu mensaje de WhatsApp.' : 'Ajusta cantidades.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
+        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches; if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (isDesktop) closeCart(); else setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Consulta la dirección y el horario para retirar.' : step === 'address' ? 'Busca o marca en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : step === 'preparing' ? 'Estamos preparando tu mensaje de WhatsApp.' : 'Ajusta cantidades.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
         {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong>{getCartIncludedCopy(item) && <small className="public-cart-item-notes">{getCartIncludedCopy(item)}</small>}<span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes">✦ {item.notes}</small>}<div className="public-cart-item-controls"><div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { editCartItem(item) }, 380) }}>Editar</button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong></div>)}</div>{cart.length > 0 && recommendations.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{recommendations.map(group => <article key={group.key}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
@@ -4513,13 +4505,12 @@ export function PublicMenu() {
               <span className="public-store-closed-scene-road" />
             </div>
             <div className="public-store-closed-content">
-              <div className="public-store-closed-brand"><img src="/optimized/root/logo.webp" alt="Full China" /><span>FULL CHINA <i>•</i> PEDIDOS</span></div>
               <h2 id="public-store-closed-title">El wok descansa por ahora</h2>
               <p id="public-store-closed-copy">Puedes recorrer el menú y elegir tus favoritos. Te esperamos cuando abramos para preparar tu pedido.</p>
               <div className="public-store-closed-hours">
                 <span><Clock size={15} /> HORARIO DEL LOCAL</span>
                 <strong>{formattedOpenTime} <i>—</i> {formattedCloseTime}</strong>
-                <small>{storeClock.reopeningMessage}</small>
+                <small>{pageSettings.contactDays}</small>
               </div>
               <button ref={storeClosedNoticeButtonRef} type="button" className="public-store-closed-confirm" onClick={() => setShowStoreClosedNotice(false)}>Seguir viendo el menú <ChevronRight size={17} /></button>
             </div>

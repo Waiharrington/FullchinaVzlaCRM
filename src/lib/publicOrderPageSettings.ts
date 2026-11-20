@@ -20,8 +20,11 @@ export interface PublicOrderPageSettings {
   contactDays: string
   contactOpenTime: string
   contactCloseTime: string
+  storeStatusMode: 'automatic' | 'open' | 'closed'
   contactReels: PublicOrderReel[]
 }
+
+export type PublicOrderStoreStatusMode = PublicOrderPageSettings['storeStatusMode']
 
 export interface PublicOrderReel {
   src: string
@@ -96,6 +99,7 @@ export const DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS: PublicOrderPageSettings = {
   contactDays: 'Martes a Domingo',
   contactOpenTime: '11:30',
   contactCloseTime: '22:00',
+  storeStatusMode: 'automatic',
   contactReels: DEFAULT_PUBLIC_ORDER_REELS,
 }
 
@@ -139,6 +143,7 @@ export function normalizePublicOrderPageSettings(value: unknown): PublicOrderPag
     contactDays: text(row.contactDays, DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.contactDays, 80),
     contactOpenTime: validTime(row.contactOpenTime, DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.contactOpenTime),
     contactCloseTime: validTime(row.contactCloseTime, DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS.contactCloseTime),
+    storeStatusMode: row.storeStatusMode === 'open' || row.storeStatusMode === 'closed' ? row.storeStatusMode : 'automatic',
     contactReels: normalizePublicOrderReels(row.contactReels),
   }
 }
@@ -214,6 +219,13 @@ export async function updatePublicOrderContactSettings(settings: PublicOrderPage
     p_contact_open_time: settings.contactOpenTime,
     p_contact_close_time: settings.contactCloseTime,
   })
+  if (error) throw error
+  publishDataChange('public_order_page_settings')
+}
+
+export async function updatePublicOrderStoreStatus(mode: PublicOrderStoreStatusMode): Promise<void> {
+  if (!supabase) throw new Error('No hay conexión con la configuración de la tienda')
+  const { error } = await supabase.rpc('fn_admin_update_public_order_store_status', { p_status_mode: mode })
   if (error) throw error
   publishDataChange('public_order_page_settings')
 }

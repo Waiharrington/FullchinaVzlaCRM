@@ -2198,6 +2198,7 @@ button.mobile-only {
   .public-cart-drawer .public-review-heading { margin-top: 22px; padding: 0 4px; }
   .public-cart-drawer .public-review-heading h2 { font-size: clamp(17px, 5.3vw, 25px); line-height: 1.16; letter-spacing: -.55px; }
   .public-cart-drawer .public-review-heading p { font-size: 12px; line-height: 1.4; }
+  .public-cart-drawer.public-step-address .public-review-heading p { white-space: nowrap; }
   .public-step-confirm .public-review-header { min-height: 188px; padding-top: 58px; padding-bottom: 68px; }
   .public-step-confirm .public-review-heading { top: 58px; }
   .public-step-confirm .public-review-heading h2 { font-size: clamp(22px, 6vw, 30px); }
@@ -15726,7 +15727,7 @@ body:has(.public-menu-page) .public-drawer-backdrop .public-cart-drawer *::-webk
 .public-store-closed-spark { position: absolute; color: #ffc83d; text-shadow: 0 0 10px rgba(255,200,61,.8); animation: public-store-spark 2.2s ease-in-out infinite; }
 .public-store-closed-spark-one { left: calc(50% - 156px); top: 62px; font-size: 14px; }
 .public-store-closed-spark-two { right: calc(50% - 160px); top: 103px; color: #ff5b63; font-size: 11px; animation-delay: .8s; }
-.public-store-closed-content { padding: 0 28px 26px; text-align: center; }
+.public-store-closed-content { padding: 20px 28px 26px; text-align: center; }
 .public-store-closed-brand { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 17px 0 13px; }
 .public-store-closed-brand img { width: 88px; height: 40px; object-fit: contain; }
 .public-store-closed-brand span { color: #ffc83d; font-size: 9px; font-weight: 850; letter-spacing: .12em; text-align: left; }
@@ -15752,7 +15753,7 @@ body:has(.public-menu-page) .public-drawer-backdrop .public-cart-drawer *::-webk
   .public-store-closed-dialog { width: min(100%, 410px); max-height: calc(100dvh - 28px); border-radius: 23px; }
   .public-store-closed-scene { height: 188px; }
   .public-store-closed-truck { scale: .88; transform-origin: bottom center; }
-  .public-store-closed-content { padding: 0 20px 20px; }
+  .public-store-closed-content { padding: 18px 20px 20px; }
   .public-store-closed-brand { margin-top: 13px; }
   .public-store-closed-dialog h2 { font-size: 23px; }
   .public-store-closed-copy { margin: 8px auto 14px; font-size: 13px; }
@@ -16483,4 +16484,91 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   .public-address-map-legend { gap: 6px; }
   .public-address-map-legend > span { min-height: 28px; padding: 0 9px; font-size: 10px; }
   .public-address-quote-retry { margin-left: 0; }
+}
+
+/* En pantallas horizontales, todos los pasos del checkout ocupan exactamente
+   la columna original del carrito. El contenido puede alargar la tarjeta,
+   pero cambiar de paso nunca debe moverla, ensancharla ni animar el contenedor. */
+@media (min-width: 900px) and (orientation: landscape) {
+  body:has(.public-drawer-backdrop) .public-drawer-backdrop {
+    animation: none !important;
+    transition: none !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+
+  body:has(.public-drawer-backdrop) .public-drawer-backdrop .public-cart-drawer {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    margin: 104px max(52px, calc((100vw - 1312px) / 2)) 28px auto !important;
+    width: 350px !important;
+    min-width: 350px !important;
+    max-width: 350px !important;
+    height: auto !important;
+    max-height: none !important;
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(
+    .public-review-page,
+    .public-delivery-step,
+    .public-pickup-step,
+    .public-address-step,
+    .public-checkout,
+    .public-confirm-page,
+    .public-preparing-page,
+    .public-success
+  ) {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Los desplazamientos verticales amplían el área desplazable durante la
+     transición y hacen aparecer un scrollbar fugaz dentro de la tarjeta. */
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer > :is(
+    .public-review-page,
+    .public-delivery-step,
+    .public-address-step,
+    .public-checkout,
+    .public-confirm-page,
+    .public-preparing-page,
+    .public-success
+  ) {
+    animation-name: public-checkout-step-fade-in !important;
+  }
+
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer > :is(
+    .public-review-page,
+    .public-delivery-step,
+    .public-address-step,
+    .public-checkout,
+    .public-confirm-page,
+    .public-preparing-page,
+    .public-success
+  ) > *,
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer .public-cart-item,
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer .public-confirm-info,
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer .public-address-extra,
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer .public-location-row,
+  .public-drawer-backdrop:not(.closing) .public-cart-drawer .public-address-summary {
+    animation-name: public-checkout-content-fade-in !important;
+  }
+
+  @keyframes public-checkout-step-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes public-checkout-content-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
 }

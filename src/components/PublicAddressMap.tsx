@@ -34,6 +34,7 @@ const FULL_CHINA_MAP_STYLES: Array<Record<string, unknown>> = [
 type Props = {
   coordinates: MapCoordinates | null
   isGpsLocation?: boolean
+  selectionMode?: 'delivery' | 'origin'
   origin?: MapCoordinates | null
   route?: DeliveryRoute | null
   onPick: (coordinates: MapCoordinates) => void
@@ -89,7 +90,7 @@ function routeBounds(origin: MapCoordinates, destination: MapCoordinates | null,
   }
 }
 
-export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, route, onPick }: Props) {
+export function PublicAddressMap({ coordinates, isGpsLocation = false, selectionMode = 'delivery', origin, route, onPick }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const googleMapRef = useRef<GoogleMapInstance | null>(null)
   const destinationMarkerRef = useRef<GoogleMapMarker | null>(null)
@@ -98,6 +99,7 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, r
   const routeHaloPolylineRef = useRef<GoogleMapPolyline | null>(null)
   const coordinatesRef = useRef(coordinates)
   const isGpsLocationRef = useRef(isGpsLocation)
+  const selectionModeRef = useRef(selectionMode)
   const originRef = useRef(origin)
   const markerSizingRef = useRef<{ size: unknown; dotSize: unknown; pinAnchor: unknown; dotAnchor: unknown } | null>(null)
   const brandLogoRef = useRef('')
@@ -111,6 +113,7 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, r
   const originLng = origin?.lng
   coordinatesRef.current = coordinates
   isGpsLocationRef.current = isGpsLocation
+  selectionModeRef.current = selectionMode
   originRef.current = origin
   onPickRef.current = onPick
 
@@ -157,7 +160,7 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, r
           zoomControlOptions: { position: core.ControlPosition.RIGHT_BOTTOM },
         })
         const destinationMarker = new markerLibrary.Marker({
-          map: selectedPoint ? map : null,
+          map: selectedPoint && selectionModeRef.current !== 'origin' ? map : null,
           position: selectedPoint || center,
           title: isGpsLocationRef.current ? 'Tu ubicación actual' : 'Ubicación de entrega seleccionada',
           icon: isGpsLocationRef.current
@@ -165,16 +168,23 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, r
             : { url: markerSvg('delivery', brandLogo), scaledSize: new core.Size(56, 66), anchor: new core.Point(28, 64) },
         })
         const originMarker = new markerLibrary.Marker({
-          map: store ? map : null,
-          position: store || center,
-          title: 'Origen: Full China',
+          map: store || (selectionModeRef.current === 'origin' && selectedPoint) ? map : null,
+          position: store || (selectionModeRef.current === 'origin' ? selectedPoint : null) || center,
+          title: selectionModeRef.current === 'origin' ? 'Ubicación de Full China' : 'Origen: Full China',
           icon: { url: markerSvg('store', brandLogo), scaledSize: new core.Size(56, 66), anchor: new core.Point(28, 64) },
         })
         clickListener = map.addListener('click', event => {
           if (!event.latLng) return
           const point = { lat: event.latLng.lat(), lng: event.latLng.lng() }
-          destinationMarker.setPosition(point)
-          destinationMarker.setMap(map)
+          if (selectionModeRef.current === 'origin') {
+            originMarker.setPosition(point)
+            originMarker.setTitle('Ubicación de Full China')
+            originMarker.setMap(map)
+            destinationMarker.setMap(null)
+          } else {
+            destinationMarker.setPosition(point)
+            destinationMarker.setMap(map)
+          }
           onPickRef.current(point)
         })
         googleMapRef.current = map
@@ -215,23 +225,33 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, r
     const store = originLat != null && originLng != null ? { lat: originLat, lng: originLng } : null
     const destination = coordinateLat != null && coordinateLng != null ? { lat: coordinateLat, lng: coordinateLng } : null
 
-    if (destination) {
-      destinationMarker.setPosition(destination)
-      destinationMarker.setTitle(isGpsLocation ? 'Tu ubicación actual' : 'Ubicación de entrega seleccionada')
-      const sizing = markerSizingRef.current
-      if (sizing) {
-        destinationMarker.setIcon({
-          url: markerSvg(isGpsLocation ? 'current-location' : 'delivery', brandLogoRef.current),
-          scaledSize: isGpsLocation ? sizing.dotSize : sizing.size,
-          anchor: isGpsLocation ? sizing.dotAnchor : sizing.pinAnchor,
-        })
-      }
-      destinationMarker.setMap(map)
-    } else destinationMarker.setMap(null)
-    if (store) {
-      originMarker.setPosition(store)
-      originMarker.setMap(map)
-    } else originMarker.setMap(null)
+    if (selectionMode === 'origin') {
+      destinationMarker.setMap(null)
+      const selectedOrigin = destination || store
+      if (selectedOrigin) {
+        originMarker.setPosition(selectedOrigin)
+        originMarker.setTitle('Ubicación de Full China')
+        originMarker.setMap(map)
+      } else originMarker.setMap(null)
+    } else {
+      if (destination) {
+        destinationMarker.setPosition(destination)
+        destinationMarker.setTitle(isGpsLocation ? 'Tu ubicación actual' : 'Ubicación de entrega seleccionada')
+        const sizing = markerSizingRef.current
+        if (sizing) {
+          destinationMarker.setIcon({
+            url: markerSvg(isGpsLocation ? 'current-location' : 'delivery', brandLogoRef.current),
+            scaledSize: isGpsLocation ? sizing.dotSize : sizing.size,
+            anchor: isGpsLocation ? sizing.dotAnchor : sizing.pinAnchor,
+          })
+        }
+        destinationMarker.setMap(map)
+      } else destinationMarker.setMap(null)
+      if (store) {
+        originMarker.setPosition(store)
+        originMarker.setMap(map)
+      } else originMarker.setMap(null)
+    }
 
     routePolylineRef.current?.setMap(null)
     routeHaloPolylineRef.current?.setMap(null)
@@ -259,22 +279,30 @@ export function PublicAddressMap({ coordinates, isGpsLocation = false, origin, r
       })
     }
 
-    if (store) {
+    if (selectionMode === 'origin') {
+      const selectedOrigin = destination || store
+      if (selectedOrigin) {
+        map.setCenter(selectedOrigin)
+        map.setZoom(15)
+      }
+    } else if (store) {
       map.fitBounds(routeBounds(store, destination, route ?? null), 34)
     } else if (destination) {
       map.setCenter(destination)
       map.setZoom(15)
     }
-  }, [mapReady, coordinateLat, coordinateLng, isGpsLocation, originLat, originLng, route])
+  }, [mapReady, coordinateLat, coordinateLng, isGpsLocation, originLat, originLng, route, selectionMode])
 
   return (
     <div className="public-address-map-panel">
       <div className="public-address-map public-address-map-brand">
-        <div ref={containerRef} className="public-address-map-canvas" role="application" aria-label="Google Maps interactivo. Toca para elegir tu ubicación" />
+        <div ref={containerRef} className="public-address-map-canvas" role="application" aria-label={selectionMode === 'origin' ? 'Google Maps interactivo. Haz clic para elegir la ubicación de Full China' : 'Google Maps interactivo. Toca para elegir tu ubicación'} />
         {mapError && <div className="public-address-map-error" role="status">{mapError}</div>}
         {!mapError && mapLoading && <div className="public-address-map-loading" role="status">Cargando Google Maps…</div>}
       </div>
-      <div className="public-address-map-legend"><span><i className="is-origin" /> Restaurante</span><span><i className={isGpsLocation ? 'is-current-location' : 'is-destination'} /> Entrega</span></div>
+      {selectionMode === 'origin'
+        ? <div className="public-address-map-legend"><span><i className="is-origin" /> Full China</span><span>Haz clic para marcar el local</span></div>
+        : <div className="public-address-map-legend"><span><i className="is-origin" /> Restaurante</span><span><i className={isGpsLocation ? 'is-current-location' : 'is-destination'} /> Entrega</span></div>}
     </div>
   )
 }

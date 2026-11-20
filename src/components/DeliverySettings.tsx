@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { lazy, Suspense, useEffect, useState, useCallback } from 'react'
 import { Loader2, MapPin, Plus, Save, Trash2, Bike } from 'lucide-react'
 import Toast from './Toast'
 import NumberStepper from './NumberStepper'
@@ -11,6 +11,8 @@ import { PageSkeleton } from './PageSkeleton'
 import { confirmDialog } from './ConfirmDialog'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { useAuth } from '../context/auth-context'
+
+const AddressMap = lazy(() => import('./PublicAddressMap').then(module => ({ default: module.PublicAddressMap })))
 
 /** Configuración administrable del delivery por distancia (origen + zonas). */
 export function DeliverySettings() {
@@ -120,6 +122,13 @@ export function DeliverySettings() {
       parts[0], parts[1],
     )
   })()
+  const originCoordinates = (() => {
+    const originLat = Number.parseFloat(lat)
+    const originLng = Number.parseFloat(lng)
+    if (!lat.trim() || !lng.trim() || !Number.isFinite(originLat) || !Number.isFinite(originLng)) return null
+    if (originLat < -90 || originLat > 90 || originLng < -180 || originLng > 180) return null
+    return { lat: originLat, lng: originLng }
+  })()
 
   if (loading) return <div className="card"><PageSkeleton cards={2} rows={3} /></div>
 
@@ -149,7 +158,16 @@ export function DeliverySettings() {
 
       <div className="ds-section">
         <h3 className="ds-h3"><MapPin size={15} style={{ verticalAlign: -2, marginRight: 5 }} />Ubicación de Full China (origen)</h3>
-        <p className="ds-hint">En Google Maps, clic derecho sobre el local → copia los dos números (latitud, longitud).</p>
+        <p className="ds-hint">Haz clic en el mapa para marcar el local; puedes ajustar las coordenadas abajo.</p>
+        <div className="ds-origin-map">
+          <Suspense fallback={<div className="ds-origin-map-loading" role="status">Cargando Google Maps…</div>}>
+            <AddressMap
+              coordinates={originCoordinates}
+              selectionMode="origin"
+              onPick={point => { setLat(point.lat.toFixed(6)); setLng(point.lng.toFixed(6)) }}
+            />
+          </Suspense>
+        </div>
         <div className="ds-grid">
           <div className="ds-field"><label>Latitud</label><input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="10.2547567" /></div>
           <div className="ds-field"><label>Longitud</label><input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-67.5926267" /></div>

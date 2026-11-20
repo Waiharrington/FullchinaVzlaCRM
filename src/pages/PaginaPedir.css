@@ -251,14 +251,42 @@ html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:1
 .pedir-contact-heading p { margin:0; color:#a1a1aa; font-size:12px; line-height:1.5; }
 .pedir-contact-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(300px,.9fr); gap:clamp(18px,3vw,36px); align-items:start; }
 .pedir-contact-fields { display:grid; gap:13px; }
-.pedir-contact-fields>label,.pedir-contact-hours>label { display:grid; gap:7px; color:#c3c3ca; font-size:12px; font-weight:700; }
-.pedir-contact-fields>label>span,.pedir-contact-hours>label>span { display:flex; align-items:center; gap:7px; }
-.pedir-contact-fields>label>span svg,.pedir-contact-hours>label>span svg { color:#fb7185; }
+.pedir-contact-fields>label,.pedir-schedule-times>label { display:grid; gap:7px; color:#c3c3ca; font-size:12px; font-weight:700; }
+.pedir-contact-fields>label>span,.pedir-schedule-times>label>span { display:flex; align-items:center; gap:7px; }
+.pedir-contact-fields>label>span svg,.pedir-schedule-times>label>span svg { color:#fb7185; }
 .pedir-contact-fields input,.pedir-contact-fields select { width:100%; min-width:0; min-height:43px; padding:0 13px; border:1px solid rgba(255,255,255,.11); border-radius:12px; outline:0; color:#f4f4f5; background:#1b1b1f; font:500 13px var(--font-sans,sans-serif); }
 .pedir-contact-fields input:focus,.pedir-contact-fields select:focus { border-color:rgba(227,27,43,.65); box-shadow:0 0 0 3px rgba(227,27,43,.1); }
 .pedir-contact-fields input::placeholder { color:#74747d; }
 .pedir-contact-fields>label>small { color:#85858e; font-size:10px; font-weight:500; line-height:1.45; }
-.pedir-contact-hours { display:grid; grid-template-columns:minmax(0,1fr) minmax(95px,.55fr) minmax(95px,.55fr); gap:10px; padding-top:4px; }
+.pedir-schedule-settings { display:grid; gap:14px; margin-top:5px; padding:16px; border:1px solid rgba(255,200,61,.16); border-radius:15px; background:linear-gradient(145deg,rgba(255,200,61,.045),rgba(255,255,255,.018)); }
+.pedir-schedule-heading h3 { margin:5px 0 4px; color:#f4f4f5; font-size:15px; }
+.pedir-schedule-heading p { margin:0; color:#96969f; font-size:11px; line-height:1.45; }
+.pedir-schedule-days { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.pedir-schedule-day { min-height:37px; padding:6px 8px; border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#b9b9c1; background:#19191d; font:600 11px var(--font-sans,sans-serif); cursor:pointer; transition:background .16s ease,border-color .16s ease,color .16s ease; }
+.pedir-schedule-day.selected { border-color:rgba(255,200,61,.55); color:#ffe08a; background:rgba(255,200,61,.1); }
+.pedir-schedule-day:focus-visible { outline:2px solid #ffc83d; outline-offset:2px; }
+.pedir-schedule-times { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.pedir-schedule-time-select .fc-select-trigger { min-height:44px; border-color:#ead7d3; color:#611b26; background:#fffaf8; font-size:13px; }
+.pedir-schedule-time-select .fc-select-trigger:hover,.pedir-schedule-time-select.fc-select.is-open .fc-select-trigger { border-color:#db9ca4; background:#fff4f1; }
+.pedir-schedule-time-select .fc-select-trigger svg { color:#a13746; }
+.fc-select-menu.pedir-schedule-time-menu { border-color:#ead7d3; color:#611b26; background:#fffdfb; box-shadow:0 16px 36px rgba(33,10,14,.24); }
+.pedir-schedule-time-menu .fc-select-options { scrollbar-color:#b83a4a transparent; }
+.pedir-schedule-time-menu .fc-select-options::-webkit-scrollbar-thumb { background:#b83a4a; }
+.pedir-schedule-time-menu .fc-select-option { min-height:44px; color:#611b26; font-size:13px; }
+.pedir-schedule-time-menu .fc-select-option:hover,.pedir-schedule-time-menu .fc-select-option.is-active { color:#611b26; background:#fff0f0; }
+.pedir-schedule-time-menu .fc-select-option.is-selected { color:#8d2635; background:#fcebed; }
+.pedir-schedule-time-menu .fc-select-option.is-selected svg { color:#bb2639; }
+.pedir-store-status-control { display:grid; gap:11px; padding-top:14px; border-top:1px solid rgba(255,255,255,.08); }
+.pedir-store-status-control>div:first-child { display:grid; gap:4px; }
+.pedir-store-status-control>div:first-child strong { color:#f4f4f5; font-size:12px; }
+.pedir-store-status-control>div:first-child small { color:#96969f; font-size:10px; line-height:1.45; }
+.pedir-store-status-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
+.pedir-store-status-actions button { min-height:37px; padding:6px 8px; border:1px solid rgba(255,255,255,.1); border-radius:10px; color:#b9b9c1; background:#19191d; font:700 10px var(--font-sans,sans-serif); cursor:pointer; }
+.pedir-store-status-actions button.selected { border-color:rgba(255,200,61,.52); color:#ffe08a; background:rgba(255,200,61,.09); }
+.pedir-store-status-actions button.selected.is-open { border-color:rgba(52,211,153,.48); color:#6ee7b7; background:rgba(16,185,129,.1); }
+.pedir-store-status-actions button.selected.is-closed { border-color:rgba(251,113,133,.48); color:#fda4af; background:rgba(244,63,94,.1); }
+.pedir-store-status-actions button:disabled { opacity:.55; cursor:wait; }
+.pedir-store-status-actions button:focus-visible { outline:2px solid #ffc83d; outline-offset:2px; }
 .pedir-contact-note { margin:2px 0 0; padding:11px 12px; border:1px solid rgba(255,200,61,.16); border-radius:11px; color:#aaaab2; background:rgba(255,200,61,.045); font-size:10px; line-height:1.5; }
 .pedir-contact-preview-wrap { position:sticky; top:18px; display:grid; gap:9px; }
 .pedir-contact-preview-page { display:grid; gap:10px; }
@@ -297,7 +325,7 @@ html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:1
 .pedir-reels-public-preview { display:grid; gap:9px; padding:16px; border:1px solid rgba(255,255,255,.09); border-radius:18px; background:linear-gradient(145deg,#151518,#101012); }
 .pedir-reels-public-preview>.pedir-contact-public-card { width:min(100%,620px); box-sizing:border-box; }
 @media (max-width:900px) { .pedir-contact-layout { grid-template-columns:1fr; } .pedir-contact-preview-wrap { position:static; } }
-@media (max-width:620px) { .pedir-contact-heading { align-items:stretch; flex-direction:column; } .pedir-contact-heading .pedir-save-button { width:100%; } .pedir-contact-hours { grid-template-columns:1fr 1fr; } .pedir-contact-hours>label:first-child { grid-column:1/-1; } }
+@media (max-width:620px) { .pedir-contact-heading { align-items:stretch; flex-direction:column; } .pedir-contact-heading .pedir-save-button { width:100%; } .pedir-schedule-settings { padding:13px; } .pedir-schedule-days { grid-template-columns:repeat(2,minmax(0,1fr)); } .pedir-schedule-times { gap:8px; } .pedir-store-status-actions { grid-template-columns:1fr; } }
 
 .pedir-reels-section { display:grid; gap:18px; }
 .pedir-reels-intro { display:flex; justify-content:space-between; align-items:flex-end; gap:18px; padding:22px; border:1px solid rgba(255,255,255,.09); border-radius:18px; background:linear-gradient(145deg,#171719,#101012); }

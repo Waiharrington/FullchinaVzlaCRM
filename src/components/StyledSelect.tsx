@@ -27,6 +27,7 @@ interface SelectOption {
 export interface StyledSelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   children: ReactNode
   menuClassName?: string
+  searchable?: boolean
 }
 
 function nodeText(node: ReactNode): string {
@@ -37,6 +38,7 @@ export function StyledSelect({
   children,
   className = '',
   menuClassName = '',
+  searchable: searchableOverride,
   style,
   value,
   defaultValue,
@@ -76,7 +78,7 @@ export function StyledSelect({
 
   const selectedValue = value !== undefined ? String(value) : internalValue
   const selectedOption = options.find(option => option.value === selectedValue) || options[0]
-  const searchable = options.length >= 8
+  const searchable = searchableOverride ?? (options.length >= 8)
   const filteredOptions = useMemo(() => {
     const term = normalizeForSearch(query)
     return term ? options.filter(option => normalizeForSearch(option.label).includes(term)) : options

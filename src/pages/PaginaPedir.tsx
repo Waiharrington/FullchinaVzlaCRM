@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom'
 import { Eye, EyeOff, Flame, Search, ShoppingBag, Tag, ExternalLink, Check, ChevronLeft, ChevronRight, Image, ImagePlus, PackageSearch, SlidersHorizontal, ArrowLeft, ArrowLeftRight, CirclePlus, CircleMinus, X, MapPin, Clock, MessageSquareText, Star, Zap, CupSoda, Navigation, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { StyledSelect } from '../components/StyledSelect'
-import { TimeSelect } from '../components/TimeSelect'
 import { getAllSellableProducts, updateProduct, type SellableProduct } from '../lib/dataService'
 import { formatUsd } from '../lib/money'
 import { categoryLabel } from '../lib/menuCategories'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
-import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderCarouselSelection, updatePublicOrderPageSettings, updatePublicOrderContactSettings, type PublicOrderPageSettings } from '../lib/publicOrderPageSettings'
+import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, PUBLIC_ORDER_BANNER_OPTIONS, updatePublicOrderCarouselSelection, updatePublicOrderPageSettings, updatePublicOrderContactSettings, updatePublicOrderStoreStatus, type PublicOrderPageSettings, type PublicOrderStoreStatusMode } from '../lib/publicOrderPageSettings'
+import { formatPublicOrderDays, getPublicOrderDayCodes, PUBLIC_ORDER_WEEKDAYS, serializePublicOrderDays } from '../lib/publicOrderSchedule'
 import { getAutomaticPublicCarouselProductIds } from '../lib/publicOrderCarousel'
 import { PageSkeleton } from '../components/PageSkeleton'
 import Toast from '../components/Toast'
@@ -65,6 +65,22 @@ function formatContactTime(value: string) {
   return `${hour24 % 12 || 12}:${minute} ${hour24 >= 12 ? 'p. m.' : 'a. m.'}`
 }
 
+const ORDER_TIME_OPTIONS = Array.from({ length: 96 }, (_, index) => {
+  const minutes = index * 15
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`
+})
+
+function getOrderTimeOptions(currentValue: string) {
+  if (ORDER_TIME_OPTIONS.includes(currentValue)) return ORDER_TIME_OPTIONS
+  return [...ORDER_TIME_OPTIONS, currentValue].sort((left, right) => Number(left.replace(':', '')) - Number(right.replace(':', '')))
+}
+
+function formatOrderTimeOption(value: string) {
+  const [hourValue, minute = '00'] = value.split(':')
+  const hour = Number(hourValue)
+  return `${String(hour % 12 || 12).padStart(2, '0')}:${minute} ${hour >= 12 ? 'p. m.' : 'a. m.'}`
+}
+
 function getMobilePaginationItems(currentPage: number, pageCount: number): Array<number | 'ellipsis-start' | 'ellipsis-end'> {
   if (pageCount <= 5) return Array.from({ length: pageCount }, (_, index) => index + 1)
   if (currentPage <= 3) return [1, 2, 3, 4, 'ellipsis-end', pageCount]
@@ -112,6 +128,7 @@ export function PaginaPedir() {
   const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [contactSaving, setContactSaving] = useState(false)
+  const [storeStatusSaving, setStoreStatusSaving] = useState(false)
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsError, setSettingsError] = useState('')
   const [replacementProduct, setReplacementProduct] = useState<SellableProduct | null>(null)
@@ -337,6 +354,10 @@ export function PaginaPedir() {
   }
 
   const saveContactSettings = async () => {
+    if (getPublicOrderDayCodes(pageSettings.contactDays).length === 0) {
+      setSettingsError('Selecciona al menos un día para aceptar pedidos.')
+      return
+    }
     setContactSaving(true)
     setSettingsError('')
     try {
@@ -346,6 +367,19 @@ export function PaginaPedir() {
     } catch (cause) {
       setSettingsError(cause instanceof Error ? cause.message : 'No se pudo guardar la información del local')
     } finally { setContactSaving(false) }
+  }
+
+  const changeStoreStatus = async (mode: PublicOrderStoreStatusMode) => {
+    setStoreStatusSaving(true)
+    setSettingsError('')
+    try {
+      await updatePublicOrderStoreStatus(mode)
+      setPageSettings(current => ({ ...current, storeStatusMode: mode }))
+      setNotice(mode === 'open' ? 'Tienda abierta para pruebas.' : mode === 'closed' ? 'Tienda cerrada manualmente.' : 'La tienda volverá a seguir el horario configurado.')
+      window.setTimeout(() => setNotice(''), 3000)
+    } catch (cause) {
+      setSettingsError(cause instanceof Error ? cause.message : 'No se pudo actualizar el estado de la tienda')
+    } finally { setStoreStatusSaving(false) }
   }
 
   const updateSetting = <K extends keyof PublicOrderPageSettings>(key: K, value: PublicOrderPageSettings[K]) => {
@@ -403,21 +437,43 @@ export function PaginaPedir() {
     </section></section>}
     {section === 'contact' && <section className="pedir-contact-section">
       <section className="pedir-contact-settings" aria-labelledby="pedir-contact-title">
-        <div className="pedir-contact-heading"><div><span className="pedir-admin-kicker">DATOS PARA TUS CLIENTES</span><h2 id="pedir-contact-title">Información del local</h2><p>Estos datos aparecen en Contacto dentro de la página de pedir. La vista previa se actualiza mientras editas.</p></div><button type="button" className="pedir-save-button" onClick={() => void saveContactSettings()} disabled={contactSaving || settingsLoading}>{contactSaving ? 'Guardando…' : 'Guardar información'}</button></div>
+        <div className="pedir-contact-heading"><div><span className="pedir-admin-kicker">DATOS PARA TUS CLIENTES</span><h2 id="pedir-contact-title">Información del local</h2><p>Dirección, contacto y horario que también controlan cuándo acepta pedidos la página pública.</p></div><button type="button" className="pedir-save-button" onClick={() => void saveContactSettings()} disabled={contactSaving || settingsLoading}>{contactSaving ? 'Guardando…' : 'Guardar información'}</button></div>
         <div className="pedir-contact-layout">
           <div className="pedir-contact-fields">
             <label><span><MessageSquareText size={14} /> Número de WhatsApp</span><input type="tel" maxLength={30} value={pageSettings.contactWhatsapp} onChange={event => updateSetting('contactWhatsapp', event.target.value)} placeholder="Agrega un número de WhatsApp" /><small>Este número actualiza el destino de “Escríbenos ahora” y de los enlaces de WhatsApp para pedidos.</small></label>
             <label><span><MapPin size={14} /> Dirección o zona</span><input maxLength={180} value={pageSettings.contactAddress} onChange={event => updateSetting('contactAddress', event.target.value)} placeholder="Ciudad · Estado" /></label>
             <label><span><ExternalLink size={14} /> Enlace para llegar</span><input type="url" maxLength={400} value={pageSettings.contactDirectionsUrl} onChange={event => updateSetting('contactDirectionsUrl', event.target.value)} placeholder="https://maps.app.goo.gl/..." /></label>
             <label><span>Instagram</span><input type="url" maxLength={400} value={pageSettings.contactInstagramUrl} onChange={event => updateSetting('contactInstagramUrl', event.target.value)} placeholder="https://www.instagram.com/..." /></label>
-            <div className="pedir-contact-hours"><label><span><Clock size={14} /> Días de atención</span><StyledSelect className="pedir-contact-days-select" value={pageSettings.contactDays} onChange={event => updateSetting('contactDays', event.target.value)}><option>Martes a Domingo</option><option>Lunes a Domingo</option><option>Lunes a Sábado</option><option>Lunes a Viernes</option></StyledSelect></label><label><span>Abre</span><TimeSelect label="Hora de apertura" value={pageSettings.contactOpenTime} onChange={value => updateSetting('contactOpenTime', value)} /></label><label><span>Cierra</span><TimeSelect label="Hora de cierre" value={pageSettings.contactCloseTime} onChange={value => updateSetting('contactCloseTime', value)} /></label></div>
+            <section className="pedir-schedule-settings" aria-labelledby="pedir-schedule-title">
+              <div className="pedir-schedule-heading"><span className="pedir-admin-kicker">HORARIO DE PEDIDOS</span><h3 id="pedir-schedule-title">¿Qué días reciben pedidos?</h3><p>Elige cada día por separado. La página permitirá pedir solo durante los días y horas seleccionados.</p></div>
+              <div className="pedir-schedule-days" role="group" aria-label="Días en que se aceptan pedidos">
+                {PUBLIC_ORDER_WEEKDAYS.map(day => {
+                  const selected = getPublicOrderDayCodes(pageSettings.contactDays).includes(day.code)
+                  return <button key={day.code} type="button" className={`pedir-schedule-day${selected ? ' selected' : ''}`} aria-pressed={selected} onClick={() => {
+                    const current = getPublicOrderDayCodes(pageSettings.contactDays)
+                    const next = selected ? current.filter(code => code !== day.code) : [...current, day.code]
+                    updateSetting('contactDays', serializePublicOrderDays(next))
+                    setSettingsError('')
+                  }}>{day.name}</button>
+                })}
+              </div>
+              <div className="pedir-schedule-times"><label><span><Clock size={14} /> Abre</span><StyledSelect className="pedir-schedule-time-select" menuClassName="pedir-schedule-time-menu" searchable={false} value={pageSettings.contactOpenTime} onChange={event => updateSetting('contactOpenTime', event.target.value)} aria-label="Hora de apertura">{getOrderTimeOptions(pageSettings.contactOpenTime).map(time => <option key={time} value={time}>{formatOrderTimeOption(time)}</option>)}</StyledSelect></label><label><span><Clock size={14} /> Cierra</span><StyledSelect className="pedir-schedule-time-select" menuClassName="pedir-schedule-time-menu" searchable={false} value={pageSettings.contactCloseTime} onChange={event => updateSetting('contactCloseTime', event.target.value)} aria-label="Hora de cierre">{getOrderTimeOptions(pageSettings.contactCloseTime).map(time => <option key={time} value={time}>{formatOrderTimeOption(time)}</option>)}</StyledSelect></label></div>
+              <div className="pedir-store-status-control" aria-label="Control global de apertura de la tienda">
+                <div><strong>Estado de la tienda</strong><small>{pageSettings.storeStatusMode === 'open' ? 'Abierta manualmente, incluso fuera de horario.' : pageSettings.storeStatusMode === 'closed' ? 'Cerrada manualmente, aunque esté dentro del horario.' : 'Se abre y se cierra según los días y horas de arriba.'}</small></div>
+                <div className="pedir-store-status-actions">
+                  <button type="button" className={pageSettings.storeStatusMode === 'automatic' ? 'selected' : ''} aria-pressed={pageSettings.storeStatusMode === 'automatic'} disabled={storeStatusSaving} onClick={() => void changeStoreStatus('automatic')}>Según horario</button>
+                  <button type="button" className={pageSettings.storeStatusMode === 'open' ? 'selected is-open' : ''} aria-pressed={pageSettings.storeStatusMode === 'open'} disabled={storeStatusSaving} onClick={() => void changeStoreStatus('open')}>Abrir ahora</button>
+                  <button type="button" className={pageSettings.storeStatusMode === 'closed' ? 'selected is-closed' : ''} aria-pressed={pageSettings.storeStatusMode === 'closed'} disabled={storeStatusSaving} onClick={() => void changeStoreStatus('closed')}>Cerrar ahora</button>
+                </div>
+              </div>
+            </section>
           </div>
           <div className="pedir-contact-preview-wrap">
             <div className="pedir-preview-label">VISTA PREVIA · ASÍ SE VE CONTACTO EN LA TIENDA</div>
             <div className="pedir-contact-preview-page">
               <article className="pedir-contact-public-card pedir-contact-public-direct">
                 <header><span><Flame size={14} /> Pedido directo</span><h3>Pide sin complicarte</h3></header>
-                <div className="pedir-contact-public-hours"><span><Clock size={14} /> Horario de atención</span><strong>{pageSettings.contactDays || 'Días de atención'}</strong><small>{formatContactTime(pageSettings.contactOpenTime)} – {formatContactTime(pageSettings.contactCloseTime)}</small>
+                <div className="pedir-contact-public-hours"><span><Clock size={14} /> Horario de atención</span><strong>{formatPublicOrderDays(pageSettings.contactDays) || 'Selecciona días'}</strong><small>{formatContactTime(pageSettings.contactOpenTime)} – {formatContactTime(pageSettings.contactCloseTime)}</small>
                 </div>
                 <div className="pedir-contact-public-payments"><Wallet size={15} /><span>Métodos de pago</span><small>Efectivo USD · Bs. · Pago móvil · Punto de venta</small></div>
               </article>
