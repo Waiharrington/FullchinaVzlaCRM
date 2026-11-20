@@ -13,7 +13,7 @@ import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
+import { PublicContactSkeleton, PublicHomeProductSkeletons, PublicHomePromoSkeletons, PublicProfileSkeleton } from '../components/PublicPageSkeletons'
 import { CustomerLoyaltyPromo } from '../components/CustomerLoyaltyPromo'
 import { PublicMenuWelcomeModal } from '../components/PublicMenuWelcomeModal'
 import { consumePublicMenuWelcomeDismissal, PUBLIC_MENU_WELCOME_DISMISSED_KEY } from '../lib/publicMenuWelcome'
@@ -169,6 +169,11 @@ const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
 // inline Base64 images (those entries could occupy several megabytes).
 // v3 descarta catálogos que guardaron las rutas estáticas antiguas M*.jpg.
 const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v4'
+// Solo en desarrollo: /pedir?previewLoading=1 deja el menú en estado de carga
+// para revisar los esqueletos (como ?showClosedNotice=1 con el aviso de cerrado).
+const PREVIEW_LOADING = import.meta.env.DEV
+  && typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('previewLoading') === '1'
 const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 // Debe coincidir exactamente con el breakpoint de PublicMenu.css: escritorio
 // desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
@@ -305,11 +310,15 @@ type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
 function PublicCatalogLoadingSkeleton() {
   return (
     <div className="public-catalog-skeleton" role="status" aria-label="Cargando platos del menú">
-      {Array.from({ length: 4 }, (_, index) => (
+      <div className="public-catalog-skeleton-head" aria-hidden="true">
+        <span className="fc-skeleton" />
+        <span className="fc-skeleton" />
+      </div>
+      {Array.from({ length: 6 }, (_, index) => (
         <article className="public-catalog-skeleton-card" key={index} aria-hidden="true">
           <span className="public-catalog-skeleton-image" />
+          <span className="public-catalog-skeleton-button fc-skeleton" />
           <span className="public-catalog-skeleton-line public-catalog-skeleton-line-title" />
-          <span className="public-catalog-skeleton-line public-catalog-skeleton-line-copy" />
           <span className="public-catalog-skeleton-line public-catalog-skeleton-line-price" />
         </article>
       ))}
@@ -545,6 +554,7 @@ export function PublicMenu() {
   const fullImageRequestsRef = useRef(new WeakMap<HTMLImageElement, string>())
   const isDesktopViewport = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
   const initialCatalog = useMemo(() => {
+    if (PREVIEW_LOADING) return null
     const cached = readCatalogCache()
     if (cached?.categories.length) hydrateMenuCategories(cached.categories)
     return cached
@@ -1222,6 +1232,10 @@ export function PublicMenu() {
     // cliente mirando la pantalla de carga.
     const catalogPromise = getPublicCatalogWithRetry()
       .then(catalog => {
+        if (PREVIEW_LOADING) {
+          window.__removeFCSplash?.()
+          return null
+        }
         const resolved = prepareCatalog(catalog)
         if (!active) return resolved
         saveCatalogCache(resolved, initialCatalog?.categories ?? [])
@@ -3375,11 +3389,11 @@ export function PublicMenu() {
 
         {/* CONTACT VIEW */}
         {currentTab === 'contacto' && (
-          <Suspense fallback={<section className="public-contact-view public-contact-page" aria-busy="true" />}>
+          <Suspense fallback={<PublicContactSkeleton />}>
             <PublicMenuContactView variant="mobile" {...contactViewProps} />
           </Suspense>
         )}
-        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicMenuSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
+        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
 
         {/* Bottom Tab Bar */}
         <nav className="public-mobile-tab-bar">
@@ -3586,7 +3600,7 @@ export function PublicMenu() {
                     </button>
                   )}
                   <div className="public-home-products-grid" ref={popularScrollRef}>
-                    {popularGroups.map(group => renderDesktopProductCard(group))}
+                    {popularGroups.length === 0 && loading ? <PublicHomeProductSkeletons /> : popularGroups.map(group => renderDesktopProductCard(group))}
                   </div>
                   {canScrollPopular && (
                     <button type="button" className="public-home-carousel-arrow next" aria-label="Ver siguiente plato" onClick={() => scrollPopular(1)}>
@@ -3653,7 +3667,7 @@ export function PublicMenu() {
                 </div>
 
                 <div className="public-home-promos-grid">
-                  {promoGroups.map(group => renderDesktopPromoCard(group))}
+                  {promoGroups.length === 0 && loading ? <PublicHomePromoSkeletons /> : promoGroups.map(group => renderDesktopPromoCard(group))}
                 </div>
               </section>
             </>
@@ -3775,11 +3789,11 @@ export function PublicMenu() {
 
           {/* TAB 3: CONTACTO */}
           {currentTab === 'contacto' && (
-            <Suspense fallback={<section className="public-contact-view public-contact-page" aria-busy="true" />}>
+            <Suspense fallback={<PublicContactSkeleton />}>
               <PublicMenuContactView variant="desktop" {...contactViewProps} />
             </Suspense>
           )}
-          {currentTab === 'perfil' && <Suspense fallback={<PublicMenuSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
+          {currentTab === 'perfil' && <Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
 
         </div>
 

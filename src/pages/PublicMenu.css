@@ -17614,3 +17614,67 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 }
 .public-home-hero-dots button { position: relative; }
 .public-home-hero-dots button::before { content: ""; position: absolute; inset: -10px -4px; }
+
+/* ===== Esqueletos de /pedir =====
+   Copian la forma real de cada tarjeta para que, al llegar los datos, el
+   contenido ocupe exactamente el mismo lugar. El brillo es el global
+   (--fc-skeleton-*, index.css). */
+.public-catalog-skeleton {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+.public-catalog-skeleton-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 2px 4px;
+}
+.public-catalog-skeleton-head span { display: block; border-radius: 999px; }
+.public-catalog-skeleton-head span:first-child { width: 140px; height: 18px; }
+.public-catalog-skeleton-head span:last-child { width: 70px; height: 24px; }
+.public-catalog-skeleton-card {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "image" "button" "title" "price";
+  gap: 10px !important;
+  min-height: 274px;
+  box-sizing: border-box;
+}
+.public-catalog-skeleton-image { grid-area: image; height: 145px; aspect-ratio: auto !important; border-radius: 12px !important; }
+.public-catalog-skeleton-button { grid-area: button; display: block; height: 41px; border-radius: 999px; }
+.public-catalog-skeleton-line-title { grid-area: title; width: 82% !important; height: 14px !important; }
+.public-catalog-skeleton-line-price { grid-area: price; width: 46% !important; height: 14px !important; margin-top: 0 !important; }
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-catalog-skeleton { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 18px !important; }
+  .public-catalog-skeleton-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "image image" "title title" "price button";
+    align-items: center;
+    min-height: 271px;
+    border-radius: 20px !important;
+  }
+  .public-catalog-skeleton-image { height: 155px; }
+  .public-catalog-skeleton-button { width: 87px; height: 37px; border-radius: 10px; }
+  .public-catalog-skeleton-line-price { width: 52% !important; height: 18px !important; }
+}
+
+/* Fotos de platos mientras se descargan: el hueco brilla en vez de quedar
+   liso (la foto se revela completa al terminar, como hasta ahora). */
+.public-prod-img-wrap:has(> img:not(.public-image-ready):not(.public-image-error)),
+.public-home-prod-img-wrap:has(> img:not(.public-image-ready):not(.public-image-error)),
+.public-home-promo-img-wrap:has(> img:not(.public-image-ready):not(.public-image-error)) {
+  background-image: linear-gradient(100deg, var(--fc-skeleton-base) 20%, var(--fc-skeleton-glow) 40%, var(--fc-skeleton-base) 60%) !important;
+  background-size: 220% 100% !important;
+  animation: fc-skeleton-shimmer var(--fc-skeleton-speed) ease-in-out infinite;
+}
+
+/* Opciones de un plato mientras cargan: mismo brillo que el resto. */
+.ppdm-chip-skeleton.public-skeleton-block {
+  background-image: linear-gradient(100deg, var(--fc-skeleton-base) 20%, var(--fc-skeleton-glow) 40%, var(--fc-skeleton-base) 60%) !important;
+  background-size: 220% 100% !important;
+  animation: fc-skeleton-shimmer var(--fc-skeleton-speed) ease-in-out infinite !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-prod-img-wrap, .public-home-prod-img-wrap, .public-home-promo-img-wrap, .ppdm-chip-skeleton.public-skeleton-block { animation: none !important; }
+}

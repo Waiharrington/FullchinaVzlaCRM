@@ -10,7 +10,7 @@ import Toast from './Toast'
 import CustomerRewardJourney from './CustomerRewardJourney'
 import CustomerVisitHistory from './CustomerVisitHistory'
 import CustomerOrderItems from './CustomerOrderItems'
-import { PublicMenuSkeleton } from './PublicMenuSkeleton'
+import { PublicProfileSkeleton } from './PublicPageSkeletons'
 import { LoadingSkeleton } from './LoadingSkeleton'
 import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
@@ -663,9 +663,9 @@ export function CustomerLoyaltyProfile({ onRepeatOrder, favoriteIds = [], onTogg
     setProfile(null); setShowHistory(false); setNotice('')
   }
 
-  if (initialAuthCheck) return <PublicMenuSkeleton />
+  if (initialAuthCheck) return <PublicProfileSkeleton />
 
-  if (!profile && sessionActive && profileLoading) return <PublicMenuSkeleton />
+  if (!profile && sessionActive && profileLoading) return <PublicProfileSkeleton />
 
   if (!profile && sessionActive && profileLoadError) return <main className={`customer-profile-page customer-profile-auth customer-profile-auth-login${lightAuthMotion ? ' customer-profile-auth-light-motion' : ''}`}>
     <section className="customer-profile-shell">

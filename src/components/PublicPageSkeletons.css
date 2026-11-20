@@ -1,0 +1,45 @@
+/* Piezas de los esqueletos de la página pública. El brillo viene de
+   .fc-skeleton (index.css); aquí solo van tamaños y disposición. */
+.pps-line { display: block; height: 11px; border-radius: 99px; }
+.pps-line.pps-tall { height: 15px; }
+.pps-w30 { width: 30%; }
+.pps-w40 { width: 40%; }
+.pps-w50 { width: 50%; }
+.pps-w60 { width: 60%; }
+.pps-w70 { width: 70%; }
+
+.pps-home-product,
+.pps-home-promo { pointer-events: none; }
+.pps-home-product .pps-media { display: block; width: 100%; height: 160px; border-radius: 16px 16px 0 0; }
+.pps-home-product .pps-body { display: grid; gap: 10px; padding: 14px; }
+.pps-home-product .pps-actions { display: flex; gap: 8px; margin-top: 4px; }
+.pps-stepper { display: block; width: 78px; height: 36px; border-radius: 10px; }
+.pps-button { display: block; flex: 1; height: 36px; border-radius: 10px; }
+.pps-button.pps-full { width: 100%; flex: none; }
+
+.pps-home-promo { display: grid; align-content: start; gap: 10px; }
+.pps-promo-media { display: block; width: 100%; height: 120px; border-radius: 12px; }
+
+.pps-profile,
+.pps-contact { display: grid; align-content: start; gap: 14px; width: 100%; max-width: 760px; margin: 0 auto; padding: 18px 16px 28px; box-sizing: border-box; }
+.pps-profile-card { display: block; width: 100%; height: 190px; border-radius: 20px; }
+.pps-profile-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.pps-profile-stats > span { display: block; height: 64px; border-radius: 14px; }
+.pps-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  background: rgba(20, 22, 28, 0.6);
+}
+.pps-row-copy { display: grid; gap: 8px; min-width: 0; }
+.pps-thumb { display: block; width: 52px; height: 52px; border-radius: 12px; }
+.pps-icon { display: block; width: 40px; height: 40px; border-radius: 12px; }
+.pps-price { width: 56px; }
+.pps-contact-hero { display: block; width: 100%; height: clamp(180px, 34vw, 300px); border-radius: 20px; }
+/* Mismo alto que las tarjetas reales (315 px y 270 px en escritorio). */
+.pps-home-product { min-height: 315px; box-sizing: border-box; }
+.pps-home-promo { min-height: 270px; box-sizing: border-box; }
