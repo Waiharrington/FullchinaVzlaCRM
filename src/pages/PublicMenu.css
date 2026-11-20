@@ -1876,8 +1876,8 @@ button.mobile-only {
 .public-receipt-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px 14px; border-bottom: 1px dashed rgba(255,255,255,.28); }
 .public-receipt-head img { width: 130px; height: auto; object-fit: contain; }
 .public-receipt-head div { display: grid; gap: 3px; text-align: right; }
-.public-receipt-head span, .public-receipt-head small { color: #F3F4F6; font-size: 12px; }
-.public-receipt-head strong { color: #FFD666; font-size: 16px; }
+.public-receipt-head span, .public-receipt-head small { color: #6E7075; font-size: 12px; }
+.public-receipt-head strong { color: #D51B2A; font-size: 16px; }
 .public-confirm-page .public-receipt-head { border-color: #c9c9c9; }
 .public-confirm-page .public-receipt-head img { width: 112px; }
 .public-confirm-page .public-receipt-head span, .public-confirm-page .public-receipt-head small { color: #6e7075; }
@@ -17316,3 +17316,154 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   animation: public-confirm-spin 0.9s linear infinite;
 }
 @keyframes public-confirm-spin { to { transform: rotate(360deg); } }
+
+/* "Confirmar pedido" siempre a la vista: queda pegado abajo mientras el
+   recibo se desplaza por detrás. El anillo del color de la tarjeta tapa el
+   contenido que pasa por debajo; al final del recibo vuelve a su lugar. */
+.public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-confirm-page > .public-whatsapp-cta {
+  position: sticky !important;
+  bottom: 12px !important;
+  z-index: 3 !important;
+  box-shadow: 0 0 0 12px rgb(14, 16, 22), 0 -18px 24px 8px rgb(14, 16, 22), 0 12px 26px rgba(227, 27, 43, 0.3) !important;
+}
+
+/* Campo que falta llenar al intentar avanzar: se ilumina un momento para que
+   el cliente lo encuentre sin que se abra el teclado. */
+.public-field-attention {
+  animation: public-field-attention 1.2s ease-out 1;
+}
+@keyframes public-field-attention {
+  0% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.65); }
+  35% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.28); }
+  100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .public-field-attention { animation: none; outline: 2px solid rgba(251, 191, 36, 0.7); }
+}
+
+/* ===== Colores por superficie (contraste mínimo 4,5:1, WCAG AA) =====
+   Los acentos claros (amarillo, rojo) solo se leen sobre fondo oscuro. Sobre
+   el recibo blanco se usan sus versiones oscuras. El test
+   src/test/publicMenuContrast.test.ts revisa estos pares y cualquier color
+   de texto dentro de .public-receipt. */
+:root {
+  --public-surface-dark: #0e1016;
+  --public-surface-light: #ffffff;
+  --public-accent-on-dark: #ffd666;
+  --public-red-on-dark: #ff5a52;
+  --public-muted-on-dark: #a1a1aa;
+  --public-accent-on-light: #92400e;
+  --public-accent-on-light-bg: #fef3c7;
+  --public-red-on-light: #c81e2b;
+  --public-muted-on-light: #52525b;
+}
+
+.public-receipt .public-cart-item-notes {
+  justify-self: start;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--public-accent-on-light) !important;
+  background: var(--public-accent-on-light-bg);
+  font-weight: 700;
+}
+.public-order-security,
+.public-drawer-backdrop .public-cart-drawer .public-order-security {
+  color: var(--public-muted-on-dark) !important;
+}
+.public-cart-recommendations-head > button {
+  color: var(--public-red-on-dark) !important;
+}
+
+/* Etiquetas del menú (Recomendado, Nuevo, Más vendido) en teléfono y tablet
+   vertical: la misma cápsula que en escritorio, en la esquina inferior de la foto
+   (arriba está el corazón de favoritos y no cabría el texto completo).
+   Antes solo existía dentro de la vista de escritorio y aquí salía como texto
+   suelto que empujaba la foto. "Refresco gratis" sigue con su sticker. */
+@media (max-width: 899.98px), (max-width: 1279.98px) and (orientation: portrait) {
+  .public-prod-img-wrap { position: relative; }
+  .public-prod-img-wrap > .public-menu-label {
+    position: absolute;
+    z-index: 2;
+    bottom: 8px;
+    left: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: calc(100% - 16px);
+    height: 24px;
+    padding: 0 9px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 9.5px;
+    font-weight: 850;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+    pointer-events: none;
+  }
+  .public-prod-img-wrap > .public-menu-label > svg { flex: 0 0 auto; width: 11px; height: 11px; color: #fff4cc; stroke: #fff4cc; }
+  .public-prod-img-wrap > .public-menu-label.top-sales { color: #2a1800; border-color: rgba(255, 226, 145, 0.8); background: linear-gradient(135deg, #ffd767, #f4a72e 70%, #e98020); }
+  .public-prod-img-wrap > .public-menu-label.top-sales > svg { color: #542c00; stroke: #542c00; }
+  .public-prod-img-wrap > .public-menu-label.new { border-color: rgba(255, 167, 156, 0.72); background: linear-gradient(135deg, #fa4a43, #dc1f31 72%, #a81028); }
+  .public-prod-img-wrap > .public-menu-label.new > svg { color: #ffe7a3; stroke: #ffe7a3; }
+  .public-prod-img-wrap > .public-menu-label.recommended { border-color: rgba(255, 214, 105, 0.8); background: linear-gradient(135deg, #a8212c, #e3422c 62%, #f07827); }
+  .public-prod-img-wrap > .public-menu-label.recommended > svg { fill: #ffd23f; }
+}
+
+/* Cabecera de cada paso del checkout: título y subtítulo centrados bajo el
+   logo ("dónde estoy"), con la misma escala en todos los pasos. Las secciones
+   de contenido ("¿A nombre de quién?", "¿Cómo vas a pagar?") siguen alineadas
+   a la izquierda con sus tarjetas ("lo que tengo que llenar"). */
+.public-drawer-backdrop .public-cart-drawer.public-cart-drawer.public-cart-drawer > .public-review-header .public-review-heading {
+  display: grid !important;
+  justify-items: center !important;
+  gap: 4px !important;
+  width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  text-align: center !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-cart-drawer.public-cart-drawer > .public-review-header .public-review-heading h2 {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  max-width: 100% !important;
+  font-size: clamp(20px, 5.6vw, 23px) !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+  text-wrap: balance;
+}
+.public-drawer-backdrop .public-cart-drawer.public-cart-drawer.public-cart-drawer > .public-review-header .public-review-heading h2 .public-review-heading-icon {
+  flex: 0 0 auto;
+  width: 20px !important;
+  height: 20px !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-cart-drawer.public-cart-drawer > .public-review-header .public-review-heading p {
+  width: auto !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
+  max-width: 30ch !important;
+  color: #c4c4cc !important;
+  font-size: 13.5px !important;
+  line-height: 1.4 !important;
+  text-align: center !important;
+  text-wrap: balance;
+}
+/* En "Tu pedido" la entrega estimada va centrada debajo del subtítulo para
+   que el título del paso quede centrado como en los demás pasos. */
+.public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-header .public-review-heading {
+  grid-column: 1 / -1 !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-header .public-estimate-card {
+  grid-column: 1 / -1 !important;
+  justify-self: center !important;
+  margin-top: 6px !important;
+}

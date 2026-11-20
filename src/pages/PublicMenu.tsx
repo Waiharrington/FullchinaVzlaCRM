@@ -513,6 +513,24 @@ function readCheckoutAttempt(): { signature: string; key: string } | null {
   } catch { return null }
 }
 
+// Lleva al cliente al campo que falta y lo resalta un momento. En pantallas
+// táctiles no pone el cursor: hacerlo abre el teclado, que tapa el aviso y
+// mueve la vista. El cliente toca el campo cuando quiera escribir.
+function revealCheckoutField(field: HTMLElement | null, focus: boolean) {
+  if (!field) return
+  field.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  const box = field.closest<HTMLElement>('label')
+    ?? field.closest<HTMLElement>('.public-address-selected, [class*="-field"]')
+    ?? field
+  box.classList.remove('public-field-attention')
+  void box.offsetWidth
+  box.classList.add('public-field-attention')
+  window.setTimeout(() => box.classList.remove('public-field-attention'), 1400)
+  const canFocusWithoutKeyboard = typeof window.matchMedia === 'function'
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  if (focus && canFocusWithoutKeyboard) field.focus({ preventScroll: true })
+}
+
 export function PublicMenu() {
   useEffect(() => {
     window.dispatchEvent(new Event('fullchina:public-menu-ready'))
@@ -840,21 +858,32 @@ export function PublicMenu() {
   const nameRef = useRef<HTMLInputElement>(null)
   const phoneRef = useRef<HTMLInputElement>(null)
   const identificationRef = useRef<HTMLInputElement>(null)
-  // Al fallar la validación de un campo puntual, llevar al cliente directo a
-  // ese campo (en vez de un aviso genérico perdido en la pantalla).
+  // Al pulsar Continuar/Revisar/Confirmar con un dato faltante, llevar al
+  // cliente a ese campo cada vez que lo intenta. Los avisos que aparecen al
+  // salir de un campo (onBlur) no mueven la vista ni roban el cursor.
+  const [revealRequest, setRevealRequest] = useState<{ field: 'name' | 'phone' | 'identification' | 'address' | 'geo' | 'reference'; id: number } | null>(null)
+  const showFieldError = (field: 'name' | 'phone' | 'identification') => {
+    setFieldError(field)
+    setRevealRequest(current => ({ field, id: (current?.id ?? 0) + 1 }))
+  }
+  const showAddressFieldError = (field: 'address' | 'geo' | 'reference') => {
+    setAddressFieldError(field)
+    setRevealRequest(current => ({ field, id: (current?.id ?? 0) + 1 }))
+  }
   useEffect(() => {
-    if (!fieldError) return
-    const ref = fieldError === 'name' ? nameRef : fieldError === 'phone' ? phoneRef : identificationRef
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    ref.current?.focus()
-  }, [fieldError])
-  useEffect(() => {
-    if (!addressFieldError) return
-    const ref = addressFieldError === 'reference' ? referenceRef : addressFieldError === 'address' ? addressRef : addressSelectedRef
-    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    if (addressFieldError === 'address') addressRef.current?.focus()
-    if (addressFieldError === 'reference') referenceRef.current?.focus()
-  }, [addressFieldError])
+    if (!revealRequest) return
+    const { field } = revealRequest
+    const frame = window.requestAnimationFrame(() => {
+      const target = field === 'name' ? nameRef.current
+        : field === 'phone' ? phoneRef.current
+          : field === 'identification' ? identificationRef.current
+            : field === 'reference' ? referenceRef.current
+              : field === 'address' ? addressRef.current
+                : addressSelectedRef.current
+      revealCheckoutField(target, field !== 'geo')
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [revealRequest])
   const [cartGuardMessage, setCartGuardMessage] = useState('')
   const [cartGuardClosing, setCartGuardClosing] = useState(false)
   const restoringFlow = useRef(true)
@@ -2782,9 +2811,9 @@ export function PublicMenu() {
   }
 
   const continueFromAddress = () => {
-    if (address.trim().length < 8) return setAddressFieldError('address')
-    if (!geoCoords) return setAddressFieldError('geo')
-    if (orderType === 'delivery' && !addressReference.trim()) return setAddressFieldError('reference')
+    if (address.trim().length < 8) return showAddressFieldError('address')
+    if (!geoCoords) return showAddressFieldError('geo')
+    if (orderType === 'delivery' && !addressReference.trim()) return showAddressFieldError('reference')
     if (orderType === 'delivery' && (deliverySettingsStatus !== 'ready' || deliveryQuoteStatus !== 'ready' || deliveryCoverageUnavailable)) return
     setAddressFieldError('')
     setStep('details')
@@ -2793,14 +2822,14 @@ export function PublicMenu() {
   const continueToConfirmation = () => {
     setError('')
     setFieldError('')
-    if (name.trim().length < 2) return setFieldError('name')
-    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) return setFieldError('identification')
-    if (phone.replace(/\D/g, '').length !== 11) return setFieldError('phone')
+    if (name.trim().length < 2) return showFieldError('name')
+    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) return showFieldError('identification')
+    if (phone.replace(/\D/g, '').length !== 11) return showFieldError('phone')
     if (orderType === 'delivery' && (address.trim().length < 8 || !geoCoords || !addressReference.trim())) {
       setStep('address')
-      if (address.trim().length < 8) return setAddressFieldError('address')
-      if (!geoCoords) return setAddressFieldError('geo')
-      return setAddressFieldError('reference')
+      if (address.trim().length < 8) return showAddressFieldError('address')
+      if (!geoCoords) return showAddressFieldError('geo')
+      return showAddressFieldError('reference')
     }
     if (orderType === 'delivery' && (deliveryQuoteStatus !== 'ready' || !deliverySettings?.enabled || !deliveryEstimate || deliveryEstimate.fee == null)) {
       setStep('address')
@@ -2828,10 +2857,10 @@ export function PublicMenu() {
     if (blockClosedStoreAdd()) return
     setError('')
     setFieldError('')
-    if (name.trim().length < 2) { setStep('details'); return setFieldError('name') }
-    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) { setStep('details'); return setFieldError('identification') }
-    if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return setFieldError('phone') }
-    if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return setAddressFieldError('address') }
+    if (name.trim().length < 2) { setStep('details'); return showFieldError('name') }
+    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) { setStep('details'); return showFieldError('identification') }
+    if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return showFieldError('phone') }
+    if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return showAddressFieldError('address') }
     if (!cart.length) return setError('Tu carrito está vacío.')
     if (!LOCAL_ORDER_TEST_MODE && publicWhatsappPhone.length < 7) {
       setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
