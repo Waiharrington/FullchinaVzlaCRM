@@ -55,6 +55,13 @@ export function formatRateDate(value: string | null) {
   return date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
+/** Presenta una fecha DATE sin interpretarla como medianoche UTC. */
+export function formatDateOnly(value: string, options?: Intl.DateTimeFormatOptions) {
+  const date = new Date(`${value}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('es-VE', options)
+}
+
 export function dateKeyInTimeZone(date: Date = new Date(), timeZone = 'America/Caracas') {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,

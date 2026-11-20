@@ -1,13 +1,20 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cancelQueuedWhatsAppMessages, deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAppMessages, getWhatsAppSegments, getWhatsAppTemplates, queueWhatsAppMessages, saveWhatsAppSegment, saveWhatsAppTemplate, type Customer, type WhatsAppMessage, type WhatsAppSegment, type WhatsAppTemplate } from '../lib/dataService'
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { DateField } from '../components/DateField'
 import { dateKeyInTimeZone } from '../lib/money'
-import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer, Square, TriangleAlert } from 'lucide-react'
+import { MessageSquare, Cake, Bot, Send, Users, CheckCircle2, Clock, Plus, X, Pencil, Trash2, UserRound, ChevronLeft, ChevronRight, CalendarDays, Clock3, Timer, Square, TriangleAlert, Wifi, WifiOff, QrCode, RefreshCw } from 'lucide-react'
 import './MarketingWhatsApp.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
+import { supabase } from '../lib/supabase'
+
+interface WhatsAppBotStatus {
+  connection_status: 'starting' | 'awaiting_qr' | 'connecting' | 'connected' | 'disconnected' | 'auth_failed'
+  qr_data_url: string | null
+  updated_at: string | null
+}
 
 const formatMessageDate = (value: string) => {
   const date = new Date(value)
@@ -72,6 +79,9 @@ export function MarketingWhatsApp() {
   const [stopping, setStopping] = useState(false)
   const [messageDetail, setMessageDetail] = useState<WhatsAppMessage | null>(null)
   const [activeBatchId, setActiveBatchId] = useState<string | undefined>(undefined)
+  const [botStatus, setBotStatus] = useState<WhatsAppBotStatus | null>(null)
+  const [botStatusError, setBotStatusError] = useState(false)
+  const [refreshingBotStatus, setRefreshingBotStatus] = useState(false)
 
   const todayStr = dateKeyInTimeZone()
   const refreshMarketingData = async () => {
@@ -98,6 +108,39 @@ export function MarketingWhatsApp() {
   useLiveDataRefresh('marketing', refreshMarketingData)
 
   const hasQueued = queuedCount > 0
+
+  const refreshBotStatus = useCallback(async () => {
+    if (!supabase || user?.role !== 'owner') return
+    setRefreshingBotStatus(true)
+    const { data, error } = await supabase.rpc('fn_get_whatsapp_bot_status')
+    if (error) {
+      setBotStatusError(true)
+    } else {
+      const row = (Array.isArray(data) ? data[0] : data) as WhatsAppBotStatus | null
+      setBotStatus(row ?? null)
+      setBotStatusError(false)
+    }
+    setRefreshingBotStatus(false)
+  }, [user?.role])
+
+  useEffect(() => {
+    if (user?.role !== 'owner') return
+    void refreshBotStatus()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refreshBotStatus()
+    }, 15_000)
+    return () => window.clearInterval(timer)
+  }, [refreshBotStatus, user?.role])
+
+  const statusIsStale = !botStatus?.updated_at || Date.now() - new Date(botStatus.updated_at).getTime() > 90_000
+  const botIsConnected = botStatus?.connection_status === 'connected' && !statusIsStale
+  const botStatusLabel = botStatusError ? 'No se pudo consultar el estado'
+    : statusIsStale ? 'Sin señal reciente del bot'
+      : botIsConnected ? 'Conectado'
+        : botStatus?.connection_status === 'awaiting_qr' ? 'Esperando escaneo del QR'
+          : botStatus?.connection_status === 'connecting' || botStatus?.connection_status === 'starting' ? 'Conectando…'
+            : botStatus?.connection_status === 'auth_failed' ? 'Falló la autenticación'
+              : 'Desconectado'
 
   useEffect(() => {
     if (!hasQueued) return
@@ -301,9 +344,20 @@ export function MarketingWhatsApp() {
           <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
         </div>
         <div className="wa-header-actions">
-          <span className="wa-provider-state"><span /> {hasQueued ? `Enviando: ${queuedCount} en cola` : 'Envío por el WhatsApp de Full China'}</span>
+          <span className={`wa-provider-state ${user?.role === 'owner' ? (botIsConnected ? 'wa-provider-state--connected' : 'wa-provider-state--disconnected') : ''}`}><span /> {user?.role === 'owner' ? `${botStatusLabel}${hasQueued ? ` · ${queuedCount} en cola` : ''}` : hasQueued ? `Enviando: ${queuedCount} en cola` : 'Envío por el WhatsApp de Full China'}</span>
         </div>
       </header>
+
+      {user?.role === 'owner' && <section className={`wa-bot-connection ${botIsConnected ? 'wa-bot-connection--connected' : 'wa-bot-connection--disconnected'}`} aria-label="Conexión del bot de WhatsApp">
+        <div className="wa-bot-connection-icon">{botIsConnected ? <Wifi size={19} /> : <WifiOff size={19} />}</div>
+        <div className="wa-bot-connection-copy">
+          <span className="wa-eyebrow">Estado del bot</span>
+          <strong>{botStatusLabel}</strong>
+          <small>{botStatusError ? 'Revisa la conexión a internet o intenta actualizar.' : botIsConnected ? 'WhatsApp está vinculado y disponible para los mensajes permitidos.' : statusIsStale ? 'El bot no ha enviado señal recientemente.' : botStatus?.connection_status === 'auth_failed' ? 'Vuelve a vincular la cuenta con el QR.' : 'Cuando aparezca el código, escanéalo desde Dispositivos vinculados en WhatsApp.'}</small>
+        </div>
+        {botStatus?.qr_data_url && !statusIsStale && !botIsConnected && <div className="wa-bot-qr"><img src={botStatus.qr_data_url} alt="Código QR para vincular WhatsApp" /><span><QrCode size={14} /> Escanea con WhatsApp</span></div>}
+        <button type="button" className="wa-bot-refresh" onClick={() => void refreshBotStatus()} disabled={refreshingBotStatus} aria-label="Actualizar estado del bot"><RefreshCw size={16} className={refreshingBotStatus ? 'wa-spin' : ''} /> Actualizar</button>
+      </section>}
 
       <section className="wa-metrics management-workspace-metrics" aria-label="Resumen de marketing">
         <article className="wa-metric wa-metric--green"><span className="wa-metric-icon"><MessageSquare size={20} /></span><div><small>Mensajes</small><strong>{messages.length}</strong><span>En el historial</span></div></article>

@@ -638,7 +638,7 @@ export function PublicMenu() {
   // Cada paso reaparece desde el inicio de su contenido. Es especialmente
   // importante al volver a "Tu pedido", cuyo alto puede superar el panel.
   useLayoutEffect(() => {
-    if (!cartOpen || step === 'whatsapp') return
+    if (!cartOpen) return
     const drawer = document.querySelector<HTMLElement>('.public-cart-drawer')
     drawer?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     drawer?.querySelector<HTMLElement>(
@@ -861,7 +861,6 @@ export function PublicMenu() {
   const [orderCode, setOrderCode] = useState('')
   const [localTestOrderLinkedToProfile, setLocalTestOrderLinkedToProfile] = useState(false)
   const [draftOrderCode, setDraftOrderCode] = useState('')
-  const [whatsappUrl, setWhatsappUrl] = useState('')
   const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string; productId: string; status: 'checking' | 'added' } | null>(null)
   const [addFeedbackClosing, setAddFeedbackClosing] = useState(false)
   const [pendingQuickAdds, setPendingQuickAdds] = useState<Set<string>>(() => new Set())
@@ -1789,7 +1788,7 @@ export function PublicMenu() {
     if (!restoringFlow.current) return
     try {
       const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
-      const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number; whatsappUrl?: string } | null
+      const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
       if (saved && cart.length > 0) {
         if (saved.name || saved.phone || saved.identification || saved.email) customerDetailsTouched.current = true
         setName(saved.name || '')
@@ -1807,7 +1806,6 @@ export function PublicMenu() {
         setAddressMethod(saved.addressMethod || null)
         if (sent?.sentAt) {
           setOrderCode(sent.code || '')
-          setWhatsappUrl(sent.whatsappUrl || '')
           setCartOpen(true)
           setStep('sent')
         } else {
@@ -1827,10 +1825,9 @@ export function PublicMenu() {
     // que el resultado sea el mismo con recarga o con el botón Atrás.
     const restoreSentState = () => {
       try {
-        const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number; whatsappUrl?: string } | null
+        const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
         if (!sent?.sentAt || cart.length === 0) return
         setOrderCode(sent.code || '')
-        setWhatsappUrl(sent.whatsappUrl || '')
         setCartOpen(true)
         setStep('sent')
       } catch { /* ignore malformed sent state */ }
@@ -2815,24 +2812,8 @@ export function PublicMenu() {
     setStep('confirm')
   }
 
-  const openWhatsApp = () => {
-    if (!whatsappUrl) return
-    try {
-      localStorage.setItem(WHATSAPP_SENT_KEY, JSON.stringify({
-        code: orderCode || draftOrderCode || '',
-        sentAt: Date.now(),
-        whatsappUrl,
-      }))
-      localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen: true, step: 'sent', name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
-    } catch { /* storage unavailable */ }
-    // Navegar en la pestaña actual evita duplicar WhatsApp en una pestaña
-    // nueva y conserva una sola salida clara del checkout.
-    window.location.assign(whatsappUrl)
-  }
-
   const returnToOrderReview = () => {
     if (submitting) return
-    setWhatsappUrl('')
     setStep('confirm')
   }
 
@@ -2876,7 +2857,6 @@ export function PublicMenu() {
       })
       setLocalTestOrderLinkedToProfile(linkedToProfile)
       setOrderCode(testOrderCode)
-      setWhatsappUrl('')
       setSubmitting(false)
       submitLockRef.current = false
       setStep('sent')
@@ -2892,7 +2872,6 @@ export function PublicMenu() {
     // Método de pago que el cliente indica. Va en su propia línea con códigos
     // para que Comandas lo pre-seleccione al cobrar (y lo limpie del texto).
     const paymentCodes = payMode === 'mixed' ? `${payPrimary}+${paySecondary}` : payPrimary
-    const paymentLabels = payMode === 'mixed' ? `${payLabel(payPrimary)} + ${payLabel(paySecondary)}` : payLabel(payPrimary)
     const payLine = `\nPago preferido: ${paymentCodes}`
     const primaryNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ')
     const orderNotes = appendRequiredOrderMetadata(primaryNotes, `${mapsLine}${payLine}`)
@@ -2909,7 +2888,7 @@ export function PublicMenu() {
     setSubmitting(true)
     // Mantener la pantalla final visible durante la petición evita mostrar la
     // antigua pantalla intermedia antes de que esté listo el mensaje.
-    setStep('whatsapp')
+    setStep('preparing')
     try {
       const result = await createWebOrder({
         customerName: name.trim(), customerPhone: phone.trim(), customerIdentification: identification.trim().toUpperCase(), orderType,
@@ -2918,10 +2897,8 @@ export function PublicMenu() {
       })
       if (result.legacyReview) {
         setOrderCode(result.code)
-        const reviewMessage = `Hola, tengo una solicitud anterior ${result.code} creada antes de la actualización del sistema. Por favor revisen sus productos y personalizaciones antes de confirmarla; no quiero duplicar el pedido.`
-        setWhatsappUrl(`https://wa.me/${publicWhatsappPhone}?text=${encodeURIComponent(reviewMessage)}`)
-        setError('Ya existe una solicitud anterior con ese código. La enviamos a revisión por WhatsApp para evitar duplicarla o confirmar datos incompletos.')
-        setStep('whatsapp')
+        setError('Encontramos una solicitud anterior con ese código y no la reenviamos para evitar duplicar el pedido. Comunícate con Full China para revisarla.')
+        setStep('confirm')
         return
       }
       if (result.priceChanged) {
@@ -2943,58 +2920,14 @@ export function PublicMenu() {
         const current = result.items?.find(line => line.lineNumber === index + 1 && line.productId === item.productId)
         return current ? { ...item, price: current.unitPrice } : item
       })
-      const serverSubtotal = result.subtotal ?? pricedCart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-      const serverDeliveryFee = result.deliveryFee ?? Math.max(0, result.total - serverSubtotal)
       commitCart(pricedCart)
       try { localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(pricedCart)) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
       checkoutAttemptRef.current = null
       try { sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY) } catch { /* storage unavailable */ }
       setLastOrder(pricedCart)
       setOrderCode(result.code)
-      const separator = '━━━━━━━━━━━━━━'
-      const itemLines = pricedCart.flatMap(item => [
-        `• *${item.quantity}x ${item.productName}* — ${money(item.price * item.quantity)}`,
-        ...(item.notes ? [`  _${item.notes}_`] : []),
-        '',
-      ])
-      const customerLines = [
-        `Nombre: ${name.trim()}`,
-        `Teléfono: ${phone.trim()}`,
-        `Cédula: ${identification.trim().toUpperCase()}`,
-        `💳 Pago: ${paymentLabels}`,
-        `Modalidad: ${orderType === 'delivery' ? '🛵 Delivery' : '🥡 Retiro en el local'}`,
-        ...(orderType === 'delivery' ? ['', `🏠 ${address.trim()}`] : []),
-        ...(orderType === 'delivery' && addressReference.trim() ? [`Referencia: ${addressReference.trim()}`] : []),
-        ...(orderType === 'delivery' && geoCoords ? ['', '📍 Ubicación:', `https://maps.google.com/?q=${geoCoords.lat},${geoCoords.lng}`] : []),
-      ]
-      const message = [
-        '¡Hola, Full China! 👋🏻',
-        `Quiero confirmar mi pedido *${result.code}*.`,
-        '',
-        separator,
-        '*🥡 RESUMEN DEL PEDIDO*',
-        '',
-        ...itemLines,
-        separator,
-        '*💰 RESUMEN DE PAGO*',
-        '',
-        `Subtotal productos: ${money(serverSubtotal)}`,
-        `Delivery: ${orderType === 'delivery' ? money(serverDeliveryFee) : 'No aplica'}`,
-        `*Total del pedido: ${money(result.total)}*`,
-        ...(bcvRate ? [`*Referencia BCV: Bs. ${(result.total * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}*`] : []),
-        '',
-        separator,
-        '*👤 DATOS DEL CLIENTE*',
-        '',
-        ...customerLines,
-        ...(notes.trim() ? ['', separator, '*📝 INDICACIONES*', '', notes.trim()] : []),
-        '',
-        separator,
-        'Envía este mensaje para que podamos confirmar tu pedido.',
-      ].join('\n')
-      const whatsappFallback = `https://wa.me/${publicWhatsappPhone}?text=${encodeURIComponent(message)}`
-      setWhatsappUrl(whatsappFallback)
-      setStep('whatsapp')
+      try { localStorage.setItem(WHATSAPP_SENT_KEY, JSON.stringify({ code: result.code, sentAt: Date.now() })) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
+      setStep('sent')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'No pudimos registrar el pedido.')
       setStep('confirm')
@@ -4398,21 +4331,14 @@ export function PublicMenu() {
               <span className="public-whatsapp-ready-icon" aria-hidden="true"><span className="public-whatsapp-mark"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span></span>
               <h1 id="whatsapp-ready-title">{LOCAL_ORDER_TEST_MODE ? 'Vista previa del pedido' : '¡Pedido registrado!'}</h1>
               <strong>#{orderCode || 'WEB-PENDIENTE'}</strong>
-              {submitting && <span className="public-whatsapp-ready-loading" role="status" aria-live="polite"><span className="public-loading-dots" aria-hidden="true"><i /><i /><i /></span>Preparando tu enlace de WhatsApp…</span>}
+              {submitting && <span className="public-whatsapp-ready-loading" role="status" aria-live="polite"><span className="public-loading-dots" aria-hidden="true"><i /><i /><i /></span>Enviando tu pedido al bot de WhatsApp…</span>}
               </div>
               <section className="public-whatsapp-ready-card">
               <span className="public-whatsapp-ready-kicker">{LOCAL_ORDER_TEST_MODE ? 'MODO DE PRUEBA' : 'Muy importante:'}</span>
-              <h2>{LOCAL_ORDER_TEST_MODE ? 'El pedido no se registró ni se envió.' : 'Como último paso, envía tu pedido por WhatsApp a Full China para coordinar los detalles finales.'}</h2>
-              <p>{LOCAL_ORDER_TEST_MODE ? 'Esta vista previa te permite probar el recorrido. Puedes volver al pedido y hacer cambios.' : 'Presiona ahora el botón de “Enviar pedido por WhatsApp” y se abrirá una conversación donde debes enviar el mensaje que hemos preparado para ti.'}</p>
-              {!LOCAL_ORDER_TEST_MODE && <>
-              <span className="public-whatsapp-ready-arrow" aria-hidden="true">↓</span>
-              <button type="button" className="public-whatsapp-ready-btn" onClick={openWhatsApp} disabled={!whatsappUrl}>
-                <span className="public-whatsapp-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3-.7-3.1Z" /></svg></span>
-                <span>Enviar pedido por WhatsApp</span><ChevronRight aria-hidden="true" />
-              </button>
-              </>}
+              <h2>{LOCAL_ORDER_TEST_MODE ? 'El pedido no se registró ni se envió.' : 'El bot de Full China te enviará tu pedido por WhatsApp.'}</h2>
+              <p>{LOCAL_ORDER_TEST_MODE ? 'Esta vista previa te permite probar el recorrido. Puedes volver al pedido y hacer cambios.' : 'Recibirás la comanda en el número que indicaste para revisarla y confirmarla.'}</p>
               <button type="button" className="public-whatsapp-review-link" onClick={returnToOrderReview} disabled={submitting}>{LOCAL_ORDER_TEST_MODE ? '← Volver a revisar el pedido' : '← Revisar mi pedido'}</button>
-              <small className="public-whatsapp-ready-footnote">{LOCAL_ORDER_TEST_MODE ? 'La prueba no crea pedidos reales.' : 'Full China recibirá tu solicitud por esta conversación.'}</small>
+              <small className="public-whatsapp-ready-footnote">{LOCAL_ORDER_TEST_MODE ? 'La prueba no crea pedidos reales.' : 'No necesitas abrir WhatsApp ni enviar nada manualmente.'}</small>
               </section>
             </div>
           </section>
@@ -4510,20 +4436,21 @@ export function PublicMenu() {
            <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'pickup')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button>{notes.trim() && <button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'details')}><MessageSquareText /><div><strong>{orderType === 'delivery' ? 'Indicaciones de entrega' : 'Indicaciones para la cocina'}</strong><span className="public-confirm-info-notes">{notes.trim()}</span><small>Se enviarán con tu pedido</small></div><b>Editar</b></button>}</div>{error && <Toast type="error" message={error} onClose={() => setError('')} />}</div>
           <button className="public-primary whatsapp public-whatsapp-cta" disabled={submitting} onClick={submitOrder}><span className="public-confirm-check" aria-hidden="true"><Check /></span><span className="public-whatsapp-copy"><strong>{submitting ? 'Preparando pedido…' : 'Confirmar pedido'}</strong></span></button><p className="public-order-security"><ShieldCheck aria-hidden="true" /><span>Tu pedido será confirmado directamente por Full China</span></p>
         </div>}
-        {step === 'preparing' && <div className="public-preparing-page"><img className="preparing-logo" src="/optimized/root/logo.webp" alt="Full China" /><div className="public-preparing-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div><h3>Enviando tu pedido<br />a Full China<span className="preparing-ellipsis">…</span></h3><p>Estamos creando tu solicitud segura.</p><div className="public-preparing-progress" aria-label="Progreso del pedido"><div className="public-progress-rail"><span /></div><div className="public-progress-step progress-step-one"><i><Check size={22} /></i><strong>Solicitud<br />creada</strong></div><div className="public-progress-step progress-step-two"><i><Check size={22} /></i><strong>Armando tu<br />pedido</strong></div><div className="public-progress-step progress-step-three"><i><LoaderCircle size={22} /></i><strong>Abriendo<br />WhatsApp</strong></div></div><div className="public-preparing-security"><ShieldCheck size={20} /><div><strong>Tus datos viajan seguros</strong><span>Solo los usamos para confirmar tu pedido.</span></div></div></div>}
-        {step === 'sent' && (LOCAL_ORDER_TEST_MODE ? <div className="public-success"><span><Check /></span><h3>{LOCAL_ORDER_TEST_MODE ? 'Prueba local completada' : '¡Solicitud registrada!'}</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>{LOCAL_ORDER_TEST_MODE ? getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).body : <>La solicitud quedó guardada. En WhatsApp debes revisar el mensaje y pulsar <b>Enviar</b>; no podemos verificarlo desde esta página.</>}</p><div className="public-status-timeline">{LOCAL_ORDER_TEST_MODE ? <><div className="complete"><i><Check size={18} /></i><div><strong>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).title}</strong><small>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).history}</small></div><time>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).time}</time></div><div className="pending"><i>2</i><div><strong>Envío omitido</strong><small>El modo de prueba no abre WhatsApp ni contacta al local.</small></div><time>·</time></div><div className="pending"><i>3</i><div><strong>Sin pedido real</strong><small>Esta confirmación no crea una comanda en el sistema.</small></div><time>·</time></div></> : <><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido quedó registrado correctamente.</small></div><time>Ahora</time></div><div className="pending"><i>2</i><div><strong>Enviar por WhatsApp</strong><small>Confirma el envío en la aplicación para que Full China reciba tu pedido.</small></div><time>◷</time></div><div className="pending"><i>3</i><div><strong>Esperando confirmación</strong><small>Full China te confirmará el pedido por WhatsApp.</small></div><time>◷</time></div></>}</div><div className="public-success-actions">{!LOCAL_ORDER_TEST_MODE && whatsappUrl && <button type="button" className="public-secondary" onClick={openWhatsApp}>Abrir WhatsApp si todavía no enviaste</button>}<button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div> : <div className="public-track">
+        {step === 'preparing' && <div className="public-preparing-page"><img className="preparing-logo" src="/optimized/root/logo.webp" alt="Full China" /><div className="public-preparing-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div><h3>Enviando tu pedido<br />a Full China<span className="preparing-ellipsis">…</span></h3><p>Estamos creando tu solicitud segura.</p><div className="public-preparing-progress" aria-label="Progreso del pedido"><div className="public-progress-rail"><span /></div><div className="public-progress-step progress-step-one"><i><Check size={22} /></i><strong>Solicitud<br />creada</strong></div><div className="public-progress-step progress-step-two"><i><Check size={22} /></i><strong>Armando tu<br />pedido</strong></div><div className="public-progress-step progress-step-three"><i><LoaderCircle size={22} /></i><strong>Enviando<br />WhatsApp</strong></div></div><div className="public-preparing-security"><ShieldCheck size={20} /><div><strong>Tus datos viajan seguros</strong><span>Solo los usamos para confirmar tu pedido.</span></div></div></div>}
+        {step === 'sent' && (LOCAL_ORDER_TEST_MODE ? <div className="public-success"><span><Check /></span><h3>{LOCAL_ORDER_TEST_MODE ? 'Prueba local completada' : '¡Solicitud registrada!'}</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>{LOCAL_ORDER_TEST_MODE ? getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).body : <>El bot de Full China te enviará la comanda al número de WhatsApp que indicaste para que la revises y nos la confirmes.</>}</p><div className="public-status-timeline">{LOCAL_ORDER_TEST_MODE ? <><div className="complete"><i><Check size={18} /></i><div><strong>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).title}</strong><small>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).history}</small></div><time>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).time}</time></div><div className="pending"><i>2</i><div><strong>Envío omitido</strong><small>El modo de prueba no abre WhatsApp ni contacta al local.</small></div><time>·</time></div><div className="pending"><i>3</i><div><strong>Sin pedido real</strong><small>Esta confirmación no crea una comanda en el sistema.</small></div><time>·</time></div></> : <><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido quedó registrado correctamente.</small></div><time>Ahora</time></div><div className="pending"><i>2</i><div><strong>Envío por el bot</strong><small>El bot enviará la comanda automáticamente al número indicado.</small></div><time>◷</time></div><div className="pending"><i>3</i><div><strong>Confirma tu pedido</strong><small>Respóndenos por WhatsApp para confirmar los detalles.</small></div><time>◷</time></div></>}</div><div className="public-success-actions"><button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div> : <div className="public-track">
           <div className="public-track-hero">
             <span className="public-track-check" aria-hidden="true"><Check /></span>
             <h3>¡Pedido recibido!</h3>
             <strong className="public-track-code">#{orderCode || 'WEB-PENDIENTE'}</strong>
-            <p>Full China ya tiene tu pedido. <b>No tienes que enviar nada:</b> te escribiremos por WhatsApp{phone ? <> al <b className="public-track-phone">{phone}</b></> : null} para confirmarlo.</p>
+            <p>Full China ya tiene tu pedido. <b>No tienes que enviar nada:</b> en un momento te llegará la comanda por WhatsApp{phone ? <> al <b className="public-track-phone">{phone}</b></> : null} para que la revises y nos la confirmes.</p>
           </div>
           <section className="public-track-next" aria-labelledby="public-track-next-title">
             <h4 id="public-track-next-title">¿Qué sigue?</h4>
             <ol>
               <li className="is-done"><span><Check aria-hidden="true" /></span><div><strong>Pedido recibido</strong><small>Lo registramos en Full China.</small></div></li>
-              <li className="is-next"><span>2</span><div><strong>Te escribimos por WhatsApp</strong><small>Confirmamos tu pedido, el total y la forma de pago.</small></div></li>
-              <li><span>3</span><div><strong>{orderType === 'delivery' ? 'Te lo llevamos' : 'Lo retiras en Full China'}</strong><small>{orderType === 'delivery' ? 'Te avisamos cuando salga el delivery.' : 'Te avisamos cuando esté listo para retirar.'}</small></div></li>
+              <li className="is-next"><span>2</span><div><strong>Te llega la comanda por WhatsApp</strong><small>La enviamos automáticamente al número que indicaste.</small></div></li>
+              <li><span>3</span><div><strong>Confírmala respondiendo</strong><small>Respóndenos por WhatsApp para confirmar los detalles y el pago.</small></div></li>
+              <li><span>4</span><div><strong>{orderType === 'delivery' ? 'Te lo llevamos' : 'Lo retiras en Full China'}</strong><small>{orderType === 'delivery' ? 'Te avisamos cuando salga el delivery.' : 'Te avisamos cuando esté listo para retirar.'}</small></div></li>
             </ol>
           </section>
           <section className="public-track-summary" aria-label="Resumen del pedido">

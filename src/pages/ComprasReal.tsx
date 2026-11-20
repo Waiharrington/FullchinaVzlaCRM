@@ -14,7 +14,7 @@ import NumberStepper from '../components/NumberStepper'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
-import { formatUsd, formatVes, formatUsdPrecise, dateKeyInTimeZone } from '../lib/money'
+import { formatUsd, formatVes, formatUsdPrecise, dateKeyInTimeZone, formatDateOnly } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import { calculateMobilePaymentFee } from '../lib/paymentFees'
 import {
@@ -207,7 +207,7 @@ export function ComprasReal() {
   const summary = useMemo(() => {
     const now = new Date()
     const inMonth = (d: string, offset = 0) => {
-      const dt = new Date(d)
+      const dt = new Date(`${d}T12:00:00`)
       return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth() - offset
     }
     const activePurchases = purchases.filter((p) => !p.isVoided)
@@ -581,7 +581,7 @@ export function ComprasReal() {
         <div className="cmp-sum orange">
           <span className="cmp-sum-ic"><CalendarClock size={20} /></span>
           <div><div className="cmp-sum-lbl">Última compra</div>
-            <div className="cmp-sum-val" style={{ fontSize: 16 }}>{summary.last ? new Date(summary.last.purchaseDate).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
+            <div className="cmp-sum-val" style={{ fontSize: 16 }}>{summary.last ? formatDateOnly(summary.last.purchaseDate, { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
             <div className="cmp-sum-sub">{summary.last ? `Proveedor: ${summary.last.supplierName}` : 'Sin compras'}</div>
           </div>
         </div>
@@ -726,7 +726,7 @@ export function ComprasReal() {
               <div className="cmp-mobile-purchase-head">
                 <div className="cmp-mobile-purchase-who">
                   <strong>{p.supplierName || 'Proveedor sin nombre'}</strong>
-                  <time>{new Date(p.purchaseDate).toLocaleDateString('es-VE')}</time>
+                  <time>{formatDateOnly(p.purchaseDate)}</time>
                 </div>
                 <MoneyWithBcv usd={p.totalAmount} rate={p.exchangeRate} primaryCurrency="VES" align="end" compact className="cmp-mobile-purchase-money" usdPrecise />
               </div>
@@ -763,7 +763,7 @@ export function ComprasReal() {
             <tbody>
               {pageItems.map((p) => (
                 <tr key={p.id}>
-                  <td>{new Date(p.purchaseDate).toLocaleDateString('es-VE')}</td>
+                  <td>{formatDateOnly(p.purchaseDate)}</td>
                   <td><strong>{p.supplierName || '—'}</strong></td>
                   <td style={{ color: '#a1a1aa' }}>{p.invoiceNumber || '—'}</td>
                   <td>{p.items.length + p.expenseItems.length}</td>
@@ -806,7 +806,7 @@ export function ComprasReal() {
               <h3>Compra · {detail.supplierName}</h3>
               <button className="cmp-icon-btn" onClick={() => closeDetail()}><X size={18} /></button>
             </div>
-            <div className="cmp-detail-row"><span className="k">Fecha</span><span>{new Date(detail.purchaseDate).toLocaleDateString('es-VE')}</span></div>
+            <div className="cmp-detail-row"><span className="k">Fecha</span><span>{formatDateOnly(detail.purchaseDate)}</span></div>
             <div className="cmp-detail-row"><span className="k">Factura</span><span>{detail.invoiceNumber || '—'}</span></div>
             {detail.payments.length > 1 ? (
               <div className="cmp-detail-row"><span className="k">Pagos</span><span>{detail.payments.map((pp, idx) => <div key={idx}>{pp.accountName}: {pp.currency === 'VES' ? formatVes(pp.amount) : formatUsdPrecise(pp.amount)}{pp.reference ? ` · Ref. ${pp.reference}` : ''}</div>)}</span></div>

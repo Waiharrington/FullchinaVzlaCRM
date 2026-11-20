@@ -1159,7 +1159,12 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
           },
         ]
       } else {
-        if (selectedPaymentTab === 'cash' && enteredAmount < total) {
+        // Compare to cents, like NUMERIC(12,2) in the payment RPC. When cash
+        // arrives in bolívares, dividing a rounded VES amount by the BCV rate
+        // can produce a USD value a fraction of a cent below the exact total.
+        const enteredCents = Math.round((enteredAmount + Number.EPSILON) * 100)
+        const totalCents = Math.round((total + Number.EPSILON) * 100)
+        if (selectedPaymentTab === 'cash' && enteredCents < totalCents) {
           throw new Error('El efectivo recibido no cubre el total')
         }
         finalMethod = selectedPaymentTab

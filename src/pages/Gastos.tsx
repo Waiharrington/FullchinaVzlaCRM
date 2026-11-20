@@ -4,7 +4,7 @@ import { createExpense, updateExpense, deleteExpense, getExpenses, getFinancialA
 import { useAuth } from '../context/auth-context'
 import { StyledSelect } from '../components/StyledSelect'
 import { getExchangeRates } from '../lib/rates'
-import { formatUsd, formatVes, dateKeyInTimeZone } from '../lib/money'
+import { formatUsd, formatVes, dateKeyInTimeZone, formatDateOnly } from '../lib/money'
 import { normalizeForSearch } from '../lib/textFormat'
 import { calculateMobilePaymentFee } from '../lib/paymentFees'
 import {
@@ -152,8 +152,8 @@ export function Gastos() {
 
   const summary = useMemo(() => {
     const now = new Date()
-    const thisMonth = expenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() })
-    const prevMonth = expenses.filter((e) => { const d = new Date(e.date); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() - 1 })
+    const thisMonth = expenses.filter((e) => { const d = new Date(`${e.date}T12:00:00`); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() })
+    const prevMonth = expenses.filter((e) => { const d = new Date(`${e.date}T12:00:00`); return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() - 1 })
     const total = thisMonth.reduce((s, e) => s + e.amountUsd, 0)
     const prev = prevMonth.reduce((s, e) => s + e.amountUsd, 0)
     const fixed = thisMonth.filter((e) => e.type === 'fixed').reduce((s, e) => s + e.amountUsd, 0)
@@ -368,7 +368,7 @@ export function Gastos() {
               <tbody>
                 {pageItems.map((e) => (
                   <tr key={e.id}>
-                    <td style={{ color: '#a1a1aa', fontSize: 12 }}>{new Date(e.date).toLocaleDateString('es-VE')}</td>
+                    <td style={{ color: '#a1a1aa', fontSize: 12 }}>{formatDateOnly(e.date)}</td>
                     <td style={{ fontWeight: 600 }}>{e.description}{e.purchaseExpenseItemId && <small style={{ display: 'block', color: '#a1a1aa', fontWeight: 400 }}>Registrado en Compras</small>}</td>
                     <td><span className={`gst-badge ${e.type === 'fixed' ? 'fijo' : e.type === 'variable' ? 'variable' : 'otro'}`}>{e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro'}</span></td>
                     <td><span className="gst-cat">{catLabel(e.category)}</span></td>
@@ -398,7 +398,7 @@ export function Gastos() {
               <article className="gst-mobile-expense" key={e.id}>
                 <header>
                   <span className={`gst-badge ${e.type === 'fixed' ? 'fijo' : e.type === 'variable' ? 'variable' : 'otro'}`}>{e.type === 'fixed' ? 'Fijo' : e.type === 'variable' ? 'Variable' : 'Otro'}</span>
-                  <time dateTime={e.date}>{new Date(e.date).toLocaleDateString('es-VE')}</time>
+                  <time dateTime={e.date}>{formatDateOnly(e.date)}</time>
                 </header>
                 <strong className="gst-mobile-expense-title">{e.description}</strong>
                 {e.purchaseExpenseItemId && <small className="gst-mobile-purchase-note">Registrado en Compras</small>}

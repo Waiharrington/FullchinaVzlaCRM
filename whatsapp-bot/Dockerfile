@@ -10,5 +10,6 @@ RUN npm install --omit=dev
 RUN node scripts/patch-whatsapp-web.js
 COPY index.js queue.js ./
 RUN mkdir -p /data/session
-EXPOSE 3033
+EXPOSE 3033 3034
+HEALTHCHECK --interval=30s --timeout=15s --start-period=180s --retries=5 CMD node -e "fetch('http://127.0.0.1:3034/health').then(async r => { if (!r.ok) process.exit(1); const h = await r.json(); process.exit(h.connected ? 0 : 1) }).catch(() => process.exit(1))"
 CMD ["npm", "start"]

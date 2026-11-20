@@ -1,10 +1,118 @@
 # Estado y continuidad de FullChinaVzla
 
+## Confirmación automática de pedidos públicos por WhatsApp (2026-11-20)
+
+Al enviar un pedido en `/pedir`, la solicitud pública encola una sola
+confirmación en `whatsapp_messages`, ligada al pedido para impedir duplicados.
+El bot envía al número del cliente la comanda detallada, con su primer nombre,
+la modalidad, el detalle y el total; el mensaje cierra con «Nos lo confirmas
+por favor». El checkout ya no redirige a WhatsApp. Las confirmaciones web se
+permiten también durante el horario nocturno.
+
+Se integró `origin/master` hasta `854be10`, incluida la migración de estado
+manual de la tienda `20261120100000_public_order_store_status_override.sql`.
+Se aplicaron y registraron las migraciones `20261120100000` y
+`20261120120000` en `fullchinavzla`. Antes se creó el respaldo completo
+`/root/fullchina-backups/fullchinavzla-pre-public-whatsapp-order-confirmation-20261120.dump`
+(30.508.599 bytes, 10.972 objetos restaurables; SHA-256
+`f45e86eca384b16e9ffe263f96d5d36e4c4dc2dfbb12a40c8cd03332bf060250`).
+Una transacción de verificación comprobó saludo, cierre, formato monetario,
+método de pago y normalización del teléfono; se revirtió sin dejar pedido ni
+mensaje de prueba.
+
+El bot corre como
+`fullchina-whatsapp-bot:20261120-public-order-confirmation`; su healthcheck
+responde `connected: true`. El contenedor, la imagen, la configuración y la
+fuente anteriores se conservaron para rollback en
+`/root/fullchina-backups/fullchina-whatsapp-pre-public-order-confirmation-20261120`.
+La carpeta de sesión persistente se mantuvo; solo se apartaron los tres enlaces
+de bloqueo de Chromium que pertenecían al contenedor ya detenido.
+
+Build y lint pasan. Las 16 pruebas del bot pasan. En la suite principal, 170 de
+171 pruebas pasaron; una prueba de Inicio agotó el timeout de 5 s al correr la
+suite, aunque pasó al ejecutarla por separado. El commit `7358e99` quedó en
+`master`; Vercel publicó el deployment de producción
+`dpl_8G5LwQ3691CHEzyVYDDKW8U77uEY` (`READY`) y el alias `/pedir` respondió HTTP
+200 con el bundle actualizado. Las dos migraciones están registradas en el VPS
+y el estado del bot confirma `connected` tras reemplazar su imagen, con el
+contenedor y la imagen anteriores preservados para rollback.
+
+## Cobro exacto en efectivo (2026-11-17)
+
+El cobro de efectivo convertido de VES a USD podía mostrar “El efectivo
+recibido no cubre el total” cuando el monto exacto, redondeado a centavos en
+bolívares, producía una diferencia fraccionaria de centavo al dividirlo por la
+tasa BCV. Caja y Comandas comparan ahora los importes en centavos, igual que la
+precisión `NUMERIC(12,2)` del flujo de pagos. El reporte de la clienta mostró
+que el primer ajuste había llegado a Caja, mientras Comandas conservaba la
+comparación antigua; ambos flujos quedaron corregidos. Build y prebuild Vercel
+pasaron; el último deployment es `dpl_9VBfxv4R42WrR9ZnY5GLoRQCAk14` (`READY`)
+y el bundle actualizado de Comandas respondió HTTP 200 en el alias oficial. No
+hubo cambios de base de datos.
+
+## Filtro nocturno del bot de WhatsApp (2026-11-16)
+
+Se desplegó la imagen `fullchina-whatsapp-bot:20261116-quiet-hours-v2` en el VPS,
+conservando la sesión montada y la configuración previa. Entre las 10:00 p. m.
+y las 8:00 a. m. de Caracas el bot cancela campañas pendientes y solo envía
+mensajes individuales de postcompra (`post_purchase`) y confirmaciones web
+(`web_order_confirmation`). Al reanudar el horario
+diurno también cancela campañas antiguas anteriores a las 8:00 a. m., para que
+no se envíen después por un reinicio nocturno. Las campañas nuevas entre las
+8:00 a. m. y las 10:00 p. m. siguen la cola normal.
+
+Se agregó `/health` en el puerto 3034, que faltaba aunque la imagen previa ya
+lo comprobaba. Su healthcheck usa 15 segundos y termina explícitamente al
+recibir el estado. Verificado: el bot quedó `healthy`, `/health` responde
+`connected: true` y el evento `ready` se registró. Se conservaron
+`WHATSAPP_SEND_QUEUE=true`, `WHATSAPP_QUEUE_AUTOMATIONS=true` y
+`WHATSAPP_AUTO_REPLY=false`. La cola estaba vacía al activar el filtro y no se
+ejecutó ninguna migración de Supabase. Respaldos previos del contenedor, imagen
+y código fuente:
+
+- `/root/fullchina-backups/fullchina-whatsapp-pre-quiet-hours-20261116`
+- `/root/fullchina-backups/fullchina-whatsapp-pre-health-timeout-20261116`
+
+## Fechas de gastos y compras (2026-11-17)
+
+La base guarda `expense_date` y `purchase_date` como `DATE`; una consulta
+read-only confirmó que el gasto de almuerzo y la compra del día 17 mantienen
+esa fecha, y los gastos del domingo mantienen el día 15. El desfase estaba en
+la interfaz: `new Date('YYYY-MM-DD')` interpreta el valor a medianoche UTC y
+en Caracas lo presenta como el día anterior. Se añadió `formatDateOnly()` y se
+ajustaron Gastos, Compras y sus resúmenes mensuales para interpretar fechas sin
+desplazarlas. Publicado en Vercel `dpl_8kFaP3PXcBo2vTNgbq31Pqrb52B5` (`READY`);
+verificación HTTP 200 de los bundles de ambas páginas. No se modificaron datos
+ni se aplicó migración de base de datos.
+
+## Panel de conexión y QR de WhatsApp (2026-11-16)
+
+El panel de Marketing por WhatsApp muestra la conexión y se actualiza cada 15
+segundos; presenta el QR temporal cuando la cuenta requiere vinculación. Solo
+`owner` puede consultar la función `fn_get_whatsapp_bot_status()` y el QR; se
+verificó que `cashier` recibe `42501` y que el rol `authenticated` no puede
+leer directamente la tabla. Se aplicó la migración
+`20261116110000_whatsapp_bot_admin_status.sql` después de validar el backup
+completo `/root/fullchina-backups/fullchinavzla-pre-whatsapp-bot-admin-status-20261116_1821.dump`
+(37.243.671 bytes, 10.499 entradas; SHA-256
+`7cbd1f103d535115ac4d17bde8227fc548624e3baa68ab42a3ea4aa97aa77eaf`).
+
+El bot corre como `fullchina-whatsapp-bot:20261116-admin-status-v1`, está
+`healthy`, conserva la sesión en `/opt/fullchina-whatsapp-session` y publica
+`connected` en la tabla de estado. El contenedor previo se conserva como
+`fullchina-whatsapp-bot-pre-admin-status-20261116`; respaldo de configuración y
+receta de rollback en `/root/fullchina-backups/fullchina-whatsapp-pre-admin-status-20261116_1824`.
+La PWA se publicó a Vercel en el deployment `dpl_GXQzM3sTQztCzLRS2ZnCkrgv3LSE`
+(estado `READY`, alias `https://fullchinavzla.vercel.app`). Se verificaron HTTP
+200 para la app y sus bundles WhatsApp, con la función RPC y etiqueta del QR
+incluidas. `npm run build` pasó; permanece la advertencia existente de bundle
+grande para `xlsx`.
+
 ## Proteínas opcionales en el pedido web (2026-11-07)
 
 Se aplicó `20261107000000_allow_removing_included_proteins.sql` al VPS tras validar el respaldo completo `/root/fullchina-backups/fullchinavzla-pre-remove-proteins-20261107.dump` (34.830.717 bytes; SHA-256 `0d58e6c0fd7baeaa615c79a5b4b3426568e179771fbcd7991f9e9fbecdd8b22b`). El grupo **Proteínas incluidas · Full Kilo** quedó con mínimo 0 y máximo 4, y se verificó activo `trg_reconcile_web_order_protein_stock`. En la página pública se muestran todas incluidas por defecto; el cliente puede quitar una sin sustituirla. Al confirmar el pedido web, un ajuste de inventario en la misma transacción compensa la proteína quitada de la receta fija. Pendiente: comprobar un pedido real elegido por la clienta de punta a punta.
 
-Última actualización: 2026-11-04.
+Última actualización: 2026-11-20.
 
 ## Historial detallado por cuenta y ajuste del correo diario (2026-11-04)
 

@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class MainActivity extends Activity {
     private static final int FILE_PICKER_REQUEST = 301;
-    private static final String SITE_URL = "https://fullchinavzla.vercel.app/";
+    private static final String SITE_URL = "https://fullchinavzla.vercel.app/login";
     private static final String SITE_HOST = "fullchinavzla.vercel.app";
     private static final String PREFS_NAME = "printer_settings";
     private static final String PREF_HOST = "host";
