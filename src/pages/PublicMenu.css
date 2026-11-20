@@ -16506,7 +16506,9 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     transition: none !important;
     overflow-x: hidden !important;
     overflow-y: auto !important;
-    overscroll-behavior: contain;
+    overscroll-behavior-y: auto !important;
+    box-sizing: border-box !important;
+    padding-top: 20px !important;
   }
 
   body:has(.public-drawer-backdrop) .public-drawer-backdrop .public-cart-drawer {
@@ -16515,7 +16517,7 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     right: auto !important;
     bottom: auto !important;
     left: auto !important;
-    margin: 104px max(52px, calc((100vw - 1312px) / 2)) 28px auto !important;
+    margin: 0 max(24px, calc((100vw - 1312px) / 2)) 28px auto !important;
     width: 350px !important;
     min-width: 350px !important;
     max-width: 350px !important;
