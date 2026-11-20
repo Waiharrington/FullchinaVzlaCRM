@@ -17570,3 +17570,47 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 .public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-confirm-page > .public-whatsapp-cta + .public-order-security {
   margin-top: 16px !important;
 }
+
+/* ===== Áreas táctiles mínimas en el menú público =====
+   En teléfono todo control debe poder tocarse con el dedo (unos 40 px). Los
+   íconos pequeños conservan su tamaño visual y amplían solo el área de toque;
+   los enlaces de texto ganan altura real de botón. */
+.public-favorite-btn { position: relative; }
+.public-favorite-btn::before { content: ""; position: absolute; inset: -6px; border-radius: 50%; }
+.public-recommended-dots-overlay > button { position: relative; }
+.public-recommended-dots-overlay > button::before { content: ""; position: absolute; inset: -12px -5px; }
+
+.public-cart-recommendations-head > button {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 36px !important;
+  padding: 0 4px !important;
+}
+.public-drawer-backdrop .public-cart-drawer .public-review-qty button {
+  min-width: 36px !important;
+  min-height: 36px !important;
+}
+.public-drawer-backdrop .public-cart-drawer .public-review-edit {
+  min-height: 40px !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > button {
+  width: 38px !important;
+  height: 38px !important;
+}
+.public-drawer-backdrop .public-cart-drawer .public-id-prefix-toggle button {
+  min-width: 38px !important;
+  min-height: 36px !important;
+}
+.public-drawer-backdrop .public-cart-drawer .public-address-selected > button,
+.public-drawer-backdrop .public-cart-drawer .public-location-feedback button {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 36px !important;
+  padding: 0 12px !important;
+}
+.public-home-stepper button {
+  width: 30px !important;
+  height: 30px !important;
+}
+.public-home-hero-dots button { position: relative; }
+.public-home-hero-dots button::before { content: ""; position: absolute; inset: -10px -4px; }

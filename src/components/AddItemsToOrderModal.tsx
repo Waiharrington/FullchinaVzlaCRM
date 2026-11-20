@@ -308,7 +308,16 @@ export function AddItemsToOrderModal({ orderId, orderNumber, onClose, onAdded }:
                   <span className="aito-mod-base">Precio base <MoneyWithBcv usd={modProduct.price} compact align="start" /></span>
                 </div>
               </div>
-              {modLoading && <LoadingSkeleton label="Cargando opciones del producto" count={3} />}
+              {modLoading && (
+                <div className="aito-mod-skeleton" role="status" aria-label="Cargando opciones del producto">
+                  <span className="aito-optcard-skeleton is-head" aria-hidden="true"><i /><i /></span>
+                  <div className="aito-optgrid" aria-hidden="true">
+                    {Array.from({ length: 4 }, (_, index) => (
+                      <span key={index} className="aito-optcard aito-optcard-skeleton"><i /><span><i /><i /></span><i /></span>
+                    ))}
+                  </div>
+                </div>
+              )}
               {!modLoading && modGroups.length === 0 && <p className="aito-muted">Este producto no tiene opciones configuradas.</p>}
               {!modLoading &&
                 modGroups.map((group) => {

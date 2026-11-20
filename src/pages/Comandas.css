@@ -3885,3 +3885,31 @@
   .cmd-history-month-nav { gap: 0 !important; }
   .cmd-history-group-label { align-items: center; }
 }
+
+/* Esqueleto del historial: imita la fila nueva (hora · cliente y productos ·
+   total y estado) para que al cargar no "salte" el diseño. */
+.cmd-history-skeleton-day.cmd-history-skeleton-cell { display: flex; justify-content: space-between; align-items: center; margin: 4px 2px 2px; }
+.cmd-history-skeleton-day i:first-child { width: 64px; height: 11px; }
+.cmd-history-skeleton-day i:last-child { width: 120px; height: 11px; }
+.cmd-history-skeleton-row {
+  display: grid !important;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px !important;
+  min-height: 68px;
+  border-left: 3px solid #2a2a2e !important;
+}
+.cmd-history-skeleton-cell { display: grid; gap: 7px; min-width: 0; }
+.cmd-history-skeleton-cell i { display: block; height: 10px; border-radius: 99px; }
+.cmd-history-skeleton-cell.is-time i:first-child { width: 44px; height: 14px; }
+.cmd-history-skeleton-cell.is-time i:last-child { width: 26px; height: 8px; }
+.cmd-history-skeleton-cell.is-main i:nth-child(1) { width: 55%; height: 13px; }
+.cmd-history-skeleton-cell.is-main i:nth-child(2) { width: 38%; }
+.cmd-history-skeleton-cell.is-main i:nth-child(3) { width: 70%; height: 9px; }
+.cmd-history-skeleton-cell.is-side { justify-items: end; }
+.cmd-history-skeleton-cell.is-side i:first-child { width: 56px; height: 14px; }
+.cmd-history-skeleton-cell.is-side i:last-child { width: 84px; height: 18px; border-radius: 999px; }
+@media (max-width: 640px) {
+  .cmd-history-skeleton-row { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px !important; }
+  .cmd-history-skeleton-cell.is-side i:last-child { width: 70px; }
+}

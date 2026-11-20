@@ -400,3 +400,16 @@
   .aito-qty button, .aito-pending-del { width: 40px; height: 40px; }
   .aito-optcard-stepper button { width: 40px; height: 40px; }
 }
+
+/* Esqueleto de las opciones: imita las tarjetas con foto que van a aparecer. */
+.aito-mod-skeleton { display: grid; gap: 10px; }
+.aito-optcard-skeleton i { display: block; border-radius: 99px; }
+.aito-optcard-skeleton.is-head { display: flex; justify-content: space-between; align-items: center; }
+.aito-optcard-skeleton.is-head i:first-child { width: 46%; height: 13px; }
+.aito-optcard-skeleton.is-head i:last-child { width: 54px; height: 22px; }
+.aito-optcard.aito-optcard-skeleton { cursor: default; }
+.aito-optcard.aito-optcard-skeleton > i:first-child { width: 58px; height: 58px; border-radius: 12px; }
+.aito-optcard.aito-optcard-skeleton > span { display: grid; gap: 7px; min-width: 0; }
+.aito-optcard.aito-optcard-skeleton > span i:first-child { width: 70%; height: 12px; }
+.aito-optcard.aito-optcard-skeleton > span i:last-child { width: 40%; height: 9px; }
+.aito-optcard.aito-optcard-skeleton > i:last-child { width: 30px; height: 30px; border-radius: 9px; }

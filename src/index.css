@@ -539,3 +539,56 @@ input:-webkit-autofill:active {
   padding-top: 22px !important;
   padding-bottom: 14px !important;
 }
+
+/* ===== Esqueletos de carga: un solo brillo en toda la app =====
+   Mismo tono, misma velocidad y misma dirección en el admin, la caja, las
+   comandas y el menú público. Cada página conserva la forma de su esqueleto
+   (filas, tarjetas, tabla), que debe imitar el contenido que va a aparecer. */
+:root {
+  --fc-skeleton-base: rgba(255, 255, 255, 0.055);
+  --fc-skeleton-glow: rgba(255, 255, 255, 0.12);
+  --fc-skeleton-speed: 1.4s;
+}
+@keyframes fc-skeleton-shimmer {
+  from { background-position: 110% 0; }
+  to { background-position: -110% 0; }
+}
+.fc-skeleton,
+.ui-loading-skeleton-row > i,
+.ui-loading-skeleton-copy i,
+.ui-loading-skeleton--inline i,
+.ui-loading-skeleton-card > i,
+.ui-loading-skeleton-card > span,
+.ui-loading-skeleton-card > b,
+.sk-title, .sk-subtitle, .sk-card-icon, .sk-card-label, .sk-card-value,
+.sk-search, .sk-filter, .sk-table-cell, .sk-grid-img, .sk-grid-title, .sk-grid-sub,
+.sk-grid-row::before, .sk-grid-row::after,
+.product-skeleton-image, .product-skeleton-line,
+.cmd-history-skeleton-icon, .cmd-history-skeleton-line, .cmd-history-skeleton-cell i,
+.public-catalog-skeleton-image, .public-catalog-skeleton-line,
+.aito-optcard-skeleton i {
+  background-color: transparent !important;
+  background-image: linear-gradient(100deg, var(--fc-skeleton-base) 20%, var(--fc-skeleton-glow) 40%, var(--fc-skeleton-base) 60%) !important;
+  background-size: 220% 100% !important;
+  animation: fc-skeleton-shimmer var(--fc-skeleton-speed) ease-in-out infinite !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fc-skeleton,
+  .ui-loading-skeleton-row > i, .ui-loading-skeleton-copy i, .ui-loading-skeleton--inline i,
+  .ui-loading-skeleton-card > i, .ui-loading-skeleton-card > span, .ui-loading-skeleton-card > b,
+  .sk-title, .sk-subtitle, .sk-card-icon, .sk-card-label, .sk-card-value, .sk-search, .sk-filter,
+  .sk-table-cell, .sk-grid-img, .sk-grid-title, .sk-grid-sub, .sk-grid-row::before, .sk-grid-row::after,
+  .product-skeleton-image, .product-skeleton-line,
+  .cmd-history-skeleton-icon, .cmd-history-skeleton-line, .cmd-history-skeleton-cell i,
+  .public-catalog-skeleton-image, .public-catalog-skeleton-line, .aito-optcard-skeleton i {
+    animation: none !important;
+    background-image: none !important;
+    background-color: var(--fc-skeleton-base) !important;
+  }
+}
+
+/* Fotos del carrusel "¿Algo más?": fondo fijo del tono de carga mientras llegan
+   (sin animación, para no gastar batería detrás de fotos ya cargadas). */
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row > article > img {
+  background-color: var(--fc-skeleton-base) !important;
+}

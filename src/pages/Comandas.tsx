@@ -3281,14 +3281,13 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
 
             <div className="cmd-history-body">
               {historyLoading ? (
-                <div className="cmd-history-skeleton" aria-hidden>
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div className="cmd-history-skeleton-row" key={i}>
-                      <span className="cmd-history-skeleton-icon" />
-                      <span className="cmd-history-skeleton-lines">
-                        <span className="cmd-history-skeleton-line wide" />
-                        <span className="cmd-history-skeleton-line" />
-                      </span>
+                <div className="cmd-history-skeleton" role="status" aria-label="Cargando comandas">
+                  <span className="cmd-history-skeleton-day cmd-history-skeleton-cell" aria-hidden="true"><i /><i /></span>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div className="cmd-history-skeleton-row" key={i} aria-hidden="true">
+                      <span className="cmd-history-skeleton-cell is-time"><i /><i /></span>
+                      <span className="cmd-history-skeleton-cell is-main"><i /><i /><i /></span>
+                      <span className="cmd-history-skeleton-cell is-side"><i /><i /></span>
                     </div>
                   ))}
                 </div>
