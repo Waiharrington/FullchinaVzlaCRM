@@ -455,6 +455,37 @@ input:-webkit-autofill:active {
   transition: background-color 50000s ease-in-out 0s !important;
 }
 
+/* Menú público y checkout: sus campos son transparentes sobre tarjetas con
+   textura, así que el autocompletado no debe pintar ningún recuadro (ni el
+   blanco/azul del navegador ni el gris de arriba). background-clip: text deja
+   el fondo del navegador solo dentro de las letras, cubiertas por el color del
+   texto; funciona aunque Safari (iPhone) marque su fondo como !important.
+   Cada pseudo-clase va en su propia regla: un navegador que no conozca una
+   no debe invalidar la otra. Va después de la regla universal para ganarle. */
+:is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):-webkit-autofill,
+:is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):-webkit-autofill:is(:hover, :focus, :active) {
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 600000s 0s, color 600000s 0s !important;
+}
+
+:is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):autofill,
+:is(.public-menu-page, .public-drawer-backdrop) :is(input, textarea, select):autofill:is(:hover, :focus, :active) {
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: #ffffff !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 600000s 0s, color 600000s 0s !important;
+}
+
 /* Hide the sidebar drawer & bottom nav when a modal is open, mobile only —
    on tablet/desktop the sidebar is docked in the layout, not an overlay, so it stays visible. */
 @media (max-width: 767px) {
