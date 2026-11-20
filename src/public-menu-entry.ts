@@ -23,6 +23,8 @@ declare global {
 }
 
 let appLoad: Promise<unknown> | null = null
+let menuModuleLoad: Promise<typeof import('./pages/PublicMenu')> | null = null
+let menuCatalogWarmupStarted = false
 let needsVersionRefresh = false
 
 window.addEventListener('fullchina:public-menu-ready', () => {
@@ -93,6 +95,7 @@ function loadCustomerApp() {
     setButtonState('Abriendo la carta…', true)
   }
   loadMenuFonts()
+  void preloadPublicMenu().catch(() => undefined)
 
   appLoad = import('./main').catch(error => {
     appLoad = null
@@ -109,6 +112,41 @@ function loadCustomerApp() {
     return undefined
   })
   return appLoad
+}
+
+function preloadPublicMenu() {
+  if (!menuModuleLoad) {
+    menuModuleLoad = import('./pages/PublicMenu').catch(error => {
+      menuModuleLoad = null
+      menuCatalogWarmupStarted = false
+      throw error
+    })
+  }
+
+  if (!menuCatalogWarmupStarted) {
+    menuCatalogWarmupStarted = true
+    void menuModuleLoad.then(module => module.preloadPublicMenuCatalog()).catch(() => undefined)
+  }
+
+  return menuModuleLoad
+}
+
+function schedulePublicMenuWarmup() {
+  const connection = (navigator as Navigator & {
+    connection?: { effectiveType?: string; saveData?: boolean }
+  }).connection
+  if (connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType || '')) return
+
+  const warm = () => {
+    if (!staticWelcome?.isConnected || window.__fullChinaPublicMenuOpenQueued) return
+    void preloadPublicMenu().catch(() => undefined)
+  }
+  const idleWindow = window as Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number
+  }
+
+  if (idleWindow.requestIdleCallback) idleWindow.requestIdleCallback.call(window, warm, { timeout: 2500 })
+  else window.setTimeout(warm, 2500)
 }
 
 function setButtonState(label: string, loading: boolean) {
@@ -169,4 +207,6 @@ if (pendingOpen) {
   staticWelcome?.remove()
   window.__fullChinaQueuePublicMenuOpen?.()
   void openPublicMenu()
+} else {
+  schedulePublicMenuWarmup()
 }

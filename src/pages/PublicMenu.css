@@ -8781,6 +8781,23 @@ button.mobile-only {
 .customer-loyalty-promotion-cta:focus-visible { outline:3px solid #ffc83d; outline-offset:3px; }
 .customer-loyalty-promotion-card-wrap { display:grid; min-height:170px; place-items:center; perspective:800px; }
 .customer-profile-welcome-card.customer-loyalty-promotion-card { position:relative; inset:auto; width:min(100%,275px); height:174px; padding:15px; border:1px solid rgba(255,211,119,.9); border-radius:18px; background:linear-gradient(105deg,rgba(16,5,8,.55),rgba(26,6,10,.35)),url('/optimized/customer-profile/welcome-card-bg.webp') center/cover; box-shadow:inset 0 0 0 3px rgba(255,206,113,.18),inset 0 1px 0 #fff5d54d,0 0 0 1px #8b3035,0 0 28px #ff3f4a44,0 22px 40px #000a; transform:perspective(700px) rotateX(5deg) rotateY(-10deg) rotateZ(-4deg); transform-origin:center; animation:customer-mini-card-float 4.8s ease-in-out infinite; }
+.customer-loyalty-promotion-card { display:grid; grid-template-columns:1fr auto; grid-template-rows:auto minmax(0,1fr); box-sizing:border-box; overflow:hidden; transform-style:preserve-3d; backface-visibility:hidden; }
+.customer-loyalty-promotion-card::before { position:absolute; inset:6px; content:""; border:1px solid #ffe5a18a; border-radius:13px; box-shadow:inset 0 0 12px #ffc83d24,0 0 10px #ff4a3840; pointer-events:none; }
+.customer-loyalty-promotion-card::after { position:absolute; top:-30%; bottom:-30%; left:-70%; width:40%; content:""; transform:skewX(-18deg); background:linear-gradient(90deg,transparent,#fff8d86e,transparent); animation:customer-welcome-card-shine 2.7s ease-in-out 1.15s infinite; pointer-events:none; }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-top { position:relative; z-index:1; display:flex; grid-column:1/-1; align-items:center; justify-content:space-between; min-width:0; }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-top img { height:34px; object-fit:contain; filter:drop-shadow(0 2px 7px #0009); }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-top > span { font:800 8px/1.25 'Outfit',sans-serif; letter-spacing:.16em; text-align:right; }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-copy { position:relative; z-index:1; grid-column:1; grid-row:2; align-self:center; display:grid; min-width:0; gap:5px; transform:translate3d(0,-9px,18px); text-align:left; }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-copy small { color:#ff6b57; font:800 8px 'Outfit',sans-serif; letter-spacing:.16em; }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-copy strong { color:#fff; font:900 21px/.95 'Outfit',sans-serif; letter-spacing:-.045em; }
+.customer-loyalty-promotion-card .customer-profile-welcome-card-copy em { color:#ffc83d; font-style:normal; }
+.customer-loyalty-promotion-card .customer-profile-welcome-stamps { position:relative; z-index:1; display:grid; grid-column:2; grid-row:2; grid-template-columns:repeat(2,15px); align-content:center; gap:3px 5px; transform:translateZ(25px); }
+.customer-loyalty-promotion-card .customer-profile-welcome-stamps span { display:grid; place-items:center; width:15px; height:15px; border:1px solid #f3ca6b99; border-radius:50%; background:radial-gradient(circle,#ffc83d30,#140e0e 75%); box-shadow:0 0 9px #ffc83d45,0 0 14px #ff3c2d28; }
+.customer-loyalty-promotion-card .customer-profile-welcome-stamps span:nth-child(2n) { transform:translateX(3px); }
+.customer-loyalty-promotion-card .customer-profile-welcome-stamps span:nth-child(3n) { border-color:#ff596b; background:radial-gradient(circle,#ff465730,#140e0e 75%); animation:customer-welcome-stamp-pulse 1.8s ease-in-out infinite alternate; }
+.customer-loyalty-promotion-card .customer-profile-welcome-stamps img { width:70%; height:70%; object-fit:contain; filter:sepia(1) saturate(1.8) brightness(1.4); }
+@keyframes customer-welcome-card-shine { 0%,18% { left:-70%; opacity:0; } 30% { opacity:1; } 58%,100% { left:140%; opacity:0; } }
+@keyframes customer-welcome-stamp-pulse { from { box-shadow:0 0 4px #ff465730; } to { box-shadow:0 0 16px #ff465780; } }
 .customer-loyalty-promotion-card .customer-profile-welcome-card-top img { width:112px; }
 .customer-loyalty-promotion-card .customer-profile-welcome-card-top span { color:#ffc83d; font-size:9px; }
 .customer-loyalty-promotion-card .customer-profile-welcome-card-copy { left:16px; bottom:15px; }
@@ -8841,7 +8858,10 @@ button.mobile-only {
   .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-card-copy strong { font-size:12px; line-height:1.05; }
   .public-contact-hub .customer-loyalty-promotion-card .customer-profile-welcome-stamps { position:absolute; right:8px; bottom:11px; }
 }
-@media (prefers-reduced-motion: reduce) { .customer-profile-welcome-card.customer-loyalty-promotion-card { animation:none; } .customer-loyalty-promotion-cta { transition:none; } }
+@media (prefers-reduced-motion: reduce) { .customer-profile-welcome-card.customer-loyalty-promotion-card, .customer-loyalty-promotion-card::after, .customer-loyalty-promotion-card .customer-profile-welcome-stamps span { animation:none!important; } .customer-loyalty-promotion-cta { transition:none; } }
+@media (max-width: 767px) { .customer-loyalty-promotion-card { gap:5px 10px; } }
+@media (max-width: 380px) { .customer-loyalty-promotion-card { gap:8px 10px; } .customer-loyalty-promotion-card .customer-profile-welcome-card-top img { height:29px; } .customer-loyalty-promotion-card .customer-profile-welcome-stamps { grid-template-columns:repeat(2,21px); } .customer-loyalty-promotion-card .customer-profile-welcome-card-copy { transform:translate3d(0,-7px,18px); } }
+@media (min-width: 768px) { .customer-loyalty-promotion-card { gap:8px 12px; } .customer-loyalty-promotion-card .customer-profile-welcome-card-top img { height:38px; } .customer-loyalty-promotion-card .customer-profile-welcome-stamps { grid-template-columns:repeat(2,28px); } }
 
 .public-contact-panel {
   display: flex;

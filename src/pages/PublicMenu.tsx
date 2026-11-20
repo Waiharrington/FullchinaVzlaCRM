@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pause, Pencil, Play, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, Volume2, VolumeX, X, Zap } from 'lucide-react'
+import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartRecommendations } from '../lib/cartRecommendations'
 import { publicCartIncludedCopy, publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
@@ -13,7 +13,8 @@ import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
 import { HeroWokEmbers } from '../components/HeroWokEmbers'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { CustomerLoyaltyProfile } from '../components/CustomerLoyaltyProfile'
+import { PublicMenuSkeleton } from '../components/PublicMenuSkeleton'
+import { CustomerLoyaltyPromo } from '../components/CustomerLoyaltyPromo'
 import { PublicMenuWelcomeModal } from '../components/PublicMenuWelcomeModal'
 import { consumePublicMenuWelcomeDismissal, PUBLIC_MENU_WELCOME_DISMISSED_KEY } from '../lib/publicMenuWelcome'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
@@ -27,6 +28,13 @@ import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../li
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
 import Toast from '../components/Toast'
 import './PublicMenu.css'
+
+const loadCustomerLoyaltyProfile = () => import('../components/CustomerLoyaltyProfile')
+const CustomerLoyaltyProfile = lazy(() => loadCustomerLoyaltyProfile().then(module => ({ default: module.CustomerLoyaltyProfile })))
+const preloadCustomerLoyaltyProfile = () => { void loadCustomerLoyaltyProfile().catch(() => undefined) }
+const loadPublicMenuContactView = () => import('../components/PublicMenuContactView')
+const PublicMenuContactView = lazy(() => loadPublicMenuContactView().then(module => ({ default: module.PublicMenuContactView })))
+const preloadPublicMenuContactView = () => { void loadPublicMenuContactView().catch(() => undefined) }
 
 declare global { interface Window { __removeFCSplash?: () => void } }
 
@@ -243,19 +251,37 @@ function warmPublicMenuImages(products: Product[]) {
   loadNext()
 }
 
-async function getPublicCatalogWithRetry() {
-  try {
-    return await getPublicCatalog()
-  } catch (error) {
-    const status = error && typeof error === 'object' && 'status' in error
-      ? Number((error as { status: unknown }).status)
-      : null
-    const missingClient = error instanceof Error && error.message === 'El menú no está disponible en este momento'
-    if (missingClient || (status !== null && status > 0 && status < 500 && status !== 429)) throw error
+const PUBLIC_CATALOG_REQUEST_TTL_MS = 15_000
+let publicCatalogRequestId = 0
+let publicCatalogRequest: { id: number; startedAt: number; promise: Promise<Product[]> } | null = null
 
-    await new Promise(resolve => window.setTimeout(resolve, 900))
-    return getPublicCatalog()
+function getPublicCatalogWithRetry(forceRefresh = false): Promise<Product[]> {
+  const now = Date.now()
+  if (!forceRefresh && publicCatalogRequest && now - publicCatalogRequest.startedAt < PUBLIC_CATALOG_REQUEST_TTL_MS) {
+    return publicCatalogRequest.promise
   }
+
+  const startedAt = now
+  const requestId = ++publicCatalogRequestId
+  const request = (async () => {
+    try {
+      return await getPublicCatalog()
+    } catch (error) {
+      const status = error && typeof error === 'object' && 'status' in error
+        ? Number((error as { status: unknown }).status)
+        : null
+      const missingClient = error instanceof Error && error.message === 'El menú no está disponible en este momento'
+      if (missingClient || (status !== null && status > 0 && status < 500 && status !== 429)) throw error
+
+      await new Promise(resolve => window.setTimeout(resolve, 900))
+      return getPublicCatalog()
+    }
+  })().catch(error => {
+    if (publicCatalogRequest?.id === requestId) publicCatalogRequest = null
+    throw error
+  })
+  publicCatalogRequest = { id: requestId, startedAt, promise: request }
+  return request
 }
 
 function warmProfileBackgroundImages(prioritizeAuth = false) {
@@ -353,6 +379,21 @@ function prepareCatalog(catalog: Product[]) {
     const categoryDelta = menuCategoryRank(a.category) - menuCategoryRank(b.category)
     return categoryDelta || menuItemRank(a.name, a.category) - menuItemRank(b.name, b.category)
   })
+}
+
+// The public entry uses this route-level hook to share the catalog request before React mounts.
+// eslint-disable-next-line react-refresh/only-export-components
+export async function preloadPublicMenuCatalog() {
+  const cached = readCatalogCache()
+  const request = getPublicCatalogWithRetry()
+
+  try {
+    const catalog = await request
+    if (publicCatalogRequest?.promise !== request) return
+    saveCatalogCache(prepareCatalog(catalog), cached?.categories ?? [])
+  } catch {
+    // La carta repetirá la consulta al abrirse y mostrará su propio estado de carga.
+  }
 }
 
 // Métodos de pago que el cliente puede indicar en la web. Los códigos coinciden
@@ -848,7 +889,7 @@ export function PublicMenu() {
     PUBLIC_MODIFIER_CACHE.clear()
     const detailsRequestId = modifierRequestRef.current
     const [catalogResult, settingsResult, categoriesResult] = await Promise.allSettled([
-      getPublicCatalogWithRetry(),
+      getPublicCatalogWithRetry(true),
       getPublicOrderPageSettings(),
       getPublicMenuCategories(),
     ])
@@ -940,6 +981,7 @@ export function PublicMenu() {
     return savedTab === 'perfil' || savedTab === 'contacto'
   })
   const openCustomerProfile = () => {
+    preloadCustomerLoyaltyProfile()
     warmProfileBackgroundImages(true)
     setHasLeftMobileMenu(true)
     setHasVisitedProfile(true)
@@ -3086,6 +3128,30 @@ export function PublicMenu() {
     )
   }
 
+  const contactViewProps = {
+    pageSettings,
+    formattedOpenTime,
+    formattedCloseTime,
+    publicWhatsappPhone,
+    publicInstagramUrl,
+    publicFacebookUrl,
+    mapPreviewUrl,
+    currentInstagramReels,
+    instagramReels,
+    instagramActiveIndex,
+    instagramAudioEnabled,
+    instagramPlaybackStarted,
+    instagramDesktopPlaybackConfirmed,
+    instagramPaused,
+    toggleInstagramAudio,
+    toggleInstagramPlayback,
+    startInstagramReelWithSound,
+    handleInstagramProfileClick,
+    setInstagramPaused,
+    setInstagramActiveIndex,
+    setInstagramDesktopPlaybackConfirmed,
+    openCustomerProfile,
+  }
   return (
     <main
       ref={pageRef}
@@ -3122,10 +3188,13 @@ export function PublicMenu() {
               <button 
                 type="button" 
                 className={`public-nav-tab-btn ${currentTab === 'contacto' ? 'active' : ''}`} 
+                onPointerDown={preloadPublicMenuContactView}
+                onMouseEnter={preloadPublicMenuContactView}
+                onFocus={preloadPublicMenuContactView}
                 onClick={() => { setCurrentTab('contacto'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                 Contacto
               </button>
-              <button type="button" className={`public-nav-tab-btn ${currentTab === 'perfil' ? 'active' : ''}`} onClick={openCustomerProfile}>
+              <button type="button" className={`public-nav-tab-btn ${currentTab === 'perfil' ? 'active' : ''}`} onPointerDown={preloadCustomerLoyaltyProfile} onMouseEnter={preloadCustomerLoyaltyProfile} onFocus={preloadCustomerLoyaltyProfile} onClick={openCustomerProfile}>
                 Mi perfil
               </button>
             </nav>
@@ -3230,7 +3299,7 @@ export function PublicMenu() {
           onMouseEnter={pauseRecommendedAutoplay}
           onMouseLeave={resumeRecommendedAutoplay}
         >
-          {isLoyaltyRecommended ? <CustomerLoyaltyProfile presentation="recommended" onJoin={openCustomerProfile} /> : <>
+          {isLoyaltyRecommended ? <CustomerLoyaltyPromo presentation="recommended" onJoin={openCustomerProfile} /> : <>
             <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
               <small>RECOMENDADO <Flame size={12} /></small>
               <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
@@ -3318,157 +3387,11 @@ export function PublicMenu() {
 
         {/* CONTACT VIEW */}
         {currentTab === 'contacto' && (
-          <div className="public-mobile-tab-content" key="contacto">
-          <section className="public-contact-view public-contact-page">
-            <section className="public-cinematic-hero public-contact-hero">
-              <HeroWokEmbers />
-              <div className="public-hero-left public-contact-hero-copy">
-                <span className="public-hero-tag">
-                  <Flame size={14} className="fire-icon-pulse" />
-                  ESTAMOS PARA SERVIRTE
-                </span>
-                <h1 className="public-hero-main-title">
-                  CONTÁCTANOS <br /><span className="public-hero-gold">TE ESCUCHAMOS</span>
-                </h1>
-                <p className="public-hero-desc">Escríbenos, estamos para servirte.</p>
-                <div className="public-hero-search-row public-contact-hero-actions">
-                  {publicWhatsappPhone && (
-                    <a href={`https://wa.me/${publicWhatsappPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
-                      Escríbenos ahora <ChevronRight size={16} />
-                    </a>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            <section className="public-contact-hub">
-              <CustomerLoyaltyProfile presentation="promotion" onJoin={openCustomerProfile} />
-              <article className="public-contact-panel public-contact-talk">
-                <header className="public-order-ticket-head">
-                  <span><Flame size={14} /> Pedido directo</span>
-                  <h2>Pide sin complicarte</h2>
-                </header>
-                <div className="public-contact-status-row">
-                  <span><Clock size={14} /> Horario de atención</span>
-                  <strong>{pageSettings.contactDays}</strong>
-                  <small>{formattedOpenTime} – {formattedCloseTime}</small>
-                </div>
-                <div className="public-contact-payment-block">
-                  <span><Wallet size={17} /> Métodos de pago</span>
-                  <ul className="public-payment-ticket-list">
-                    <li><i>01</i><span>Efectivo USD</span></li>
-                    <li><i>02</i><span>Efectivo Bs.</span></li>
-                    <li><i>03</i><span>Pago móvil</span></li>
-                    <li><i>04</i><span>Punto de venta</span></li>
-                    <li><i>05</i><span>Binance</span></li>
-                    <li><i>06</i><span>Transferencia Bs.</span></li>
-                    <li className="is-mixed"><i>+</i><span>Pago mixto<small>Combina dos métodos</small></span></li>
-                  </ul>
-                </div>
-              </article>
-
-              <article className="public-contact-panel public-contact-instagram-studio">
-                <header className="public-order-ticket-head public-instagram-ticket-head">
-                  <span>
-                    <svg className="public-instagram-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect width="18" height="18" x="3" y="3" rx="5" />
-                      <circle cx="12" cy="12" r="4" />
-                      <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
-                    </svg>
-                    Desde Instagram
-                  </span>
-                  <h2>El wok en movimiento</h2>
-                </header>
-                <div className="public-instagram-intro">
-                  <p><span>Fuego alto.</span> El wok en acción.</p>
-                  <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
-                    {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
-                  </button>
-                </div>
-                <div className="public-instagram-reel-stage public-instagram-mobile-stage" aria-label="Reel destacado de Full China">
-                  {instagramReels.map(({ reel, position }) => {
-                    const reelIndex = currentInstagramReels.indexOf(reel)
-                    const isActive = reelIndex === instagramActiveIndex
-                    return (
-                    <div
-                      key={reel.src}
-                      className={`public-instagram-reel is-reel-${position + 1}`}
-                      data-active={isActive ? 'true' : undefined}
-                      onClick={!isActive ? () => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) } : undefined}
-                    >
-                      <video autoPlay={isActive && instagramPlaybackStarted && !instagramPaused} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active={isActive ? 'true' : undefined} onClick={isActive ? toggleInstagramPlayback : undefined} onTimeUpdate={event => {
-                        if (!isActive) return
-                        const video = event.currentTarget
-                        const progress = video.duration > 0 ? video.currentTime / video.duration : 0
-                        video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
-                      }} onEnded={() => { if (isActive) { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % currentInstagramReels.length) } }}>
-                        <source data-src={reel.src} type="video/mp4" />
-                      </video>
-                      <span className="public-instagram-reel-shade" aria-hidden="true" />
-                      {isActive && <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(reelIndex + 1).padStart(2, '0')} / 06</b></span>}
-                      <span className="public-instagram-reel-progress" aria-hidden="true" />
-                      {isActive && !instagramPlaybackStarted && <button type="button" className="public-instagram-start-prompt" onClick={toggleInstagramPlayback} aria-label="Toca para ver el reel"><Play size={14} fill="currentColor" /><span>Toca para ver</span></button>}
-                      {isActive && instagramPlaybackStarted && <button type="button" className="public-instagram-play-toggle" aria-label={instagramPaused ? 'Reanudar video' : 'Pausar video'} title={instagramPaused ? 'Reanudar video' : 'Pausar video'} onClick={toggleInstagramPlayback}>{instagramPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} />}</button>}
-                    </div>
-                    )
-                  })}
-                </div>
-                <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
-                  {currentInstagramReels.map((reel, reelIndex) => (
-                    <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
-                      <img src={reel.poster} alt="" loading="lazy" />
-                      <span>{String(reelIndex + 1).padStart(2, '0')}</span>
-                    </button>
-                  ))}
-                </div>
-                <a
-                  href={publicInstagramUrl}
-                  onClick={handleInstagramProfileClick}
-                  className="public-contact-footer-cta is-instagram"
-                >
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect width="18" height="18" x="3" y="3" rx="5" />
-                    <circle cx="12" cy="12" r="4" />
-                    <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
-                  </svg>
-                  <span>Seguir en <strong>Instagram</strong></span>
-                  <ChevronRight size={18} />
-                </a>
-                {publicFacebookUrl && <a href={publicFacebookUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-instagram"><MessageSquareText size={17} /><span>Visitar <strong>Facebook</strong></span><ChevronRight size={18} /></a>}
-              </article>
-
-              <article className="public-contact-panel public-contact-location">
-                <div className="public-contact-location-stage">
-                  <iframe
-                    title="Ubicación de Full China en Google Maps"
-                    src={mapPreviewUrl}
-                    loading="eager"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    allowFullScreen
-                  />
-                  <span className="public-contact-location-tint" aria-hidden="true" />
-                  <span className="public-contact-location-tag"><MapPin size={14} /> Punto Full China</span>
-                  <span className="public-contact-brand-pin" aria-hidden="true">
-                    <img src="/optimized/root/logo.webp" alt="" />
-                  </span>
-                  <div className="public-contact-location-overlay">
-                    <span>{pageSettings.contactAddress}</span>
-                    <strong>Ven, come<br />y disfruta.</strong>
-                    <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
-                    <a href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-location">
-                      <Navigation size={16} />
-                      <span>Cómo llegar</span>
-                      <ChevronRight size={17} />
-                    </a>
-                  </div>
-                </div>
-              </article>
-            </section>
-          </section>
-          </div>
+          <Suspense fallback={<section className="public-contact-view public-contact-page" aria-busy="true" />}>
+            <PublicMenuContactView variant="mobile" {...contactViewProps} />
+          </Suspense>
         )}
-
-        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></div>}
+        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicMenuSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
 
         {/* Bottom Tab Bar */}
         <nav className="public-mobile-tab-bar">
@@ -3476,11 +3399,11 @@ export function PublicMenu() {
             <Utensils size={18} />
             <span>Menú</span>
           </button>
-          <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onClick={() => { setHasLeftMobileMenu(true); setCurrentTab('contacto') }}>
+          <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onPointerDown={preloadPublicMenuContactView} onFocus={preloadPublicMenuContactView} onClick={() => { setHasLeftMobileMenu(true); setCurrentTab('contacto') }}>
             <Store size={18} />
             <span>Contacto</span>
           </button>
-          <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onClick={openCustomerProfile}>
+          <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onPointerDown={preloadCustomerLoyaltyProfile} onFocus={preloadCustomerLoyaltyProfile} onClick={openCustomerProfile}>
             <UserRound size={18} />
             <span>Mi perfil</span>
           </button>
@@ -3864,190 +3787,11 @@ export function PublicMenu() {
 
           {/* TAB 3: CONTACTO */}
           {currentTab === 'contacto' && (
-            <section className="public-contact-view public-contact-page">
-              <section className="public-cinematic-hero public-contact-hero">
-                <HeroWokEmbers />
-                <div className="public-hero-left public-contact-hero-copy">
-                  <span className="public-hero-tag">
-                    <Flame size={14} className="fire-icon-pulse" />
-                    ESTAMOS PARA SERVIRTE
-                  </span>
-                  <h1 className="public-hero-main-title">
-                    CONTÁCTANOS <br /><span className="public-hero-gold">TE ESCUCHAMOS</span>
-                  </h1>
-                <p className="public-hero-desc">¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.</p>
-
-                  <div className="public-hero-search-row public-contact-hero-actions">
-                  {publicWhatsappPhone ? (
-                    <a href={`https://wa.me/${publicWhatsappPhone}`} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
-                        Escríbenos ahora <ChevronRight size={16} />
-                      </a>
-                    ) : null}
-                  </div>
-                </div>
-              </section>
-
-              <section className="public-contact-hub">
-                <CustomerLoyaltyProfile presentation="promotion" onJoin={openCustomerProfile} interactivePromotionCard />
-                <article className="public-contact-panel public-contact-talk">
-                  <header className="public-order-ticket-head">
-                    <span><Flame size={14} /> Pedido directo</span>
-                    <h2>Pide sin complicarte</h2>
-                  </header>
-                  <div className="public-contact-status-row">
-                    <span><Clock size={14} /> Horario de atención</span>
-                    <strong>{pageSettings.contactDays}</strong>
-                    <small>{formattedOpenTime} – {formattedCloseTime}</small>
-                  </div>
-                  <div className="public-contact-payment-block">
-                    <span><Wallet size={17} /> Métodos de pago</span>
-                    <ul className="public-payment-ticket-list">
-                      <li><i>01</i><span>Efectivo USD</span></li>
-                      <li><i>02</i><span>Efectivo Bs.</span></li>
-                      <li><i>03</i><span>Pago móvil</span></li>
-                      <li><i>04</i><span>Punto de venta</span></li>
-                      <li><i>05</i><span>Binance</span></li>
-                      <li><i>06</i><span>Transferencia Bs.</span></li>
-                      <li className="is-mixed"><i>+</i><span>Pago mixto<small>Combina dos métodos</small></span></li>
-                    </ul>
-                  </div>
-                </article>
-
-                <article className="public-contact-panel public-contact-instagram-studio">
-                  <header className="public-order-ticket-head public-instagram-ticket-head">
-                    <span>
-                      <svg className="public-instagram-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <rect width="18" height="18" x="3" y="3" rx="5" />
-                        <circle cx="12" cy="12" r="4" />
-                        <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
-                      </svg>
-                      Desde Instagram
-                    </span>
-                    <h2>El wok en movimiento</h2>
-                  </header>
-                  <div className="public-instagram-intro">
-                    <p><span>Fuego alto.</span> El wok en acción.</p>
-                    <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
-                      {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
-                    </button>
-                  </div>
-                  <div className="public-instagram-reel-stage public-instagram-desktop-stage" aria-label="Reel destacado de Full China">
-                    {(() => {
-                      const reel = currentInstagramReels[instagramActiveIndex % currentInstagramReels.length]
-                      return (
-                        <div
-                          key={reel.src}
-                          className="public-instagram-reel public-instagram-desktop-reel"
-                          data-active="true"
-                        >
-                          <video autoPlay={instagramDesktopPlaybackConfirmed && !instagramPaused} muted={!instagramAudioEnabled} playsInline preload="none" disableRemotePlayback controlsList="noremoteplayback" poster={reel.poster} data-active="true" onPlay={event => { event.currentTarget.closest('.public-instagram-desktop-reel')?.setAttribute('data-video-playing', 'true'); setInstagramDesktopPlaybackConfirmed(true) }} onPause={event => event.currentTarget.closest('.public-instagram-desktop-reel')?.removeAttribute('data-video-playing')} onClick={toggleInstagramPlayback} onTimeUpdate={event => {
-                            const video = event.currentTarget
-                            const progress = video.duration > 0 ? video.currentTime / video.duration : 0
-                            video.closest<HTMLElement>('.public-instagram-reel')?.style.setProperty('--reel-progress', String(progress))
-                          }} onEnded={() => { setInstagramPaused(false); setInstagramActiveIndex(current => (current + 1) % currentInstagramReels.length) }}>
-                            <source data-src={reel.src} type="video/mp4" />
-                          </video>
-                          <span className="public-instagram-reel-shade" aria-hidden="true" />
-                          <span className="public-instagram-mobile-frame-label" aria-hidden="true"><i /> EN ESCENA <b>{String(instagramActiveIndex + 1).padStart(2, '0')} / {String(currentInstagramReels.length).padStart(2, '0')}</b></span>
-                          <span className="public-instagram-reel-progress" aria-hidden="true" />
-                          <button type="button" className="public-instagram-play-toggle" aria-label="Pausar o reanudar video" title="Pausar o reanudar video" onClick={toggleInstagramPlayback}>{instagramPaused ? <Play size={15} fill="currentColor" /> : <Pause size={15} />}</button>
-                        </div>
-                      )
-                    })()}
-                    {!instagramAudioEnabled && (
-                      <button
-                        type="button"
-                        className="public-instagram-start-prompt public-instagram-desktop-start-prompt"
-                        onClick={startInstagramReelWithSound}
-                        aria-label="Toca para ver el reel"
-                        style={{
-                          position: 'absolute',
-                          zIndex: 100,
-                          top: '50%',
-                          left: '50%',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
-                          minHeight: 42,
-                          padding: '0 16px',
-                          border: '1px solid rgba(255, 200, 61, .9)',
-                          borderRadius: 999,
-                          background: 'rgba(12, 12, 15, .94)',
-                          color: '#fff',
-                          font: '750 12px/1 Inter, system-ui, sans-serif',
-                          whiteSpace: 'nowrap',
-                          cursor: 'pointer',
-                          boxShadow: '0 6px 20px rgba(0, 0, 0, .65)',
-                          transform: 'translate(-50%, -50%)',
-                        }}
-                      >
-                        <Play size={14} fill="currentColor" style={{ color: '#ffc83d', fill: '#ffc83d' }} />
-                        <span>Toca para ver</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
-                    {currentInstagramReels.map((reel, reelIndex) => (
-                      <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={`Reproducir reel ${reelIndex + 1}`} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
-                        <img src={reel.poster} alt="" loading="lazy" />
-                        <span>{String(reelIndex + 1).padStart(2, '0')}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <a
-                    href={publicInstagramUrl}
-                    onClick={handleInstagramProfileClick}
-                    className="public-contact-footer-cta is-instagram"
-                  >
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect width="18" height="18" x="3" y="3" rx="5" />
-                      <circle cx="12" cy="12" r="4" />
-                      <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
-                    </svg>
-                    <span>Seguir en <strong>Instagram</strong></span>
-                    <ChevronRight size={18} />
-                  </a>
-                  {publicFacebookUrl && <a href={publicFacebookUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-instagram"><MessageSquareText size={17} /><span>Visitar <strong>Facebook</strong></span><ChevronRight size={18} /></a>}
-                </article>
-
-                <article className="public-contact-panel public-contact-location">
-                  <div className="public-contact-location-stage">
-                    <iframe
-                      title="Ubicación de Full China en Google Maps"
-                      src={mapPreviewUrl}
-                      loading="eager"
-                      referrerPolicy="no-referrer-when-downgrade"
-                      allowFullScreen
-                    />
-                    <span className="public-contact-location-tint" aria-hidden="true" />
-                    <span className="public-contact-location-tag"><MapPin size={14} /> Punto Full China</span>
-                    <span className="public-contact-brand-pin" aria-hidden="true">
-                      <img src="/optimized/root/logo.webp" alt="" />
-                    </span>
-                    <div className="public-contact-location-overlay">
-                      <span>{pageSettings.contactAddress}</span>
-                      <strong>Ven, come<br />y disfruta.</strong>
-                      <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
-                      <a
-                        href={pageSettings.contactDirectionsUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="public-contact-footer-cta is-location"
-                      >
-                        <Navigation size={16} />
-                        <span>Cómo llegar</span>
-                        <ChevronRight size={17} />
-                      </a>
-                    </div>
-                  </div>
-                </article>
-              </section>
-
-            </section>
+            <Suspense fallback={<section className="public-contact-view public-contact-page" aria-busy="true" />}>
+              <PublicMenuContactView variant="desktop" {...contactViewProps} />
+            </Suspense>
           )}
-
-          {currentTab === 'perfil' && <CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} />}
+          {currentTab === 'perfil' && <Suspense fallback={<PublicMenuSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
 
         </div>
 
