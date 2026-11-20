@@ -17269,3 +17269,26 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .public-drawer-backdrop .public-cart-drawer .public-track-new { height: 56px; font-size: 15px; }
 }
+
+/* El aviso "Agregado al carrito" lleva en el teléfono un acceso directo al
+   carrito para revisar lo que se acaba de agregar. */
+.public-add-toast:has(.public-add-toast-action) {
+  pointer-events: auto;
+  padding-right: 6px;
+}
+.public-add-toast .public-add-toast-action {
+  flex: 0 0 auto;
+  height: 36px !important;
+  min-height: 36px !important;
+  margin-left: 2px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #e31b2b;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+}

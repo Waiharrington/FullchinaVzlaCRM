@@ -2128,7 +2128,7 @@ export function PublicMenu() {
     addFeedbackTimer.current = setTimeout(() => {
       setAddFeedbackClosing(true)
       addFeedbackExitTimer.current = setTimeout(() => setAddFeedback(null), 320)
-    }, 1800)
+    }, 2800)
   }
 
   const addProduct = (product: Product, quantity = 1, notes = '', extrasPrice = 0, modifiers: WebOrderCartItem['modifiers'] = [], closeDetailAfterAdd = true) => {
@@ -2630,6 +2630,9 @@ export function PublicMenu() {
             return next
           })
         }
+        // Agregar cierra el detalle: el aviso "Agregado al carrito" queda a la
+        // vista y el carrito (tarjeta lateral o botón flotante) muestra lo nuevo.
+        closeProductDetail()
         window.setTimeout(() => {
           addingSelectedProductRef.current = false
           setAddingSelectedProduct(false)
@@ -4058,6 +4061,11 @@ export function PublicMenu() {
             <span className="public-add-toast-name">{addFeedback.name}</span>
           </span>
           <span className="public-add-toast-check">{addFeedback.status === 'checking' ? <LoaderCircle size={16} className="public-add-toast-spinner" /> : <CircleCheck size={16} />}</span>
+          {addFeedback.status === 'added' && !window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches && (
+            <button type="button" className="public-add-toast-action" onClick={() => { setAddFeedback(null); setReturnToConfirmAfterEdit(false); openCartFromSidebar('cart') }}>
+              Ver carrito
+            </button>
+          )}
         </div>
       )}
 
