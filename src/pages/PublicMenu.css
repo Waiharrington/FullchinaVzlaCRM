@@ -17324,7 +17324,7 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   position: sticky !important;
   bottom: 12px !important;
   z-index: 3 !important;
-  box-shadow: 0 0 0 12px rgb(14, 16, 22), 0 -18px 24px 8px rgb(14, 16, 22), 0 12px 26px rgba(227, 27, 43, 0.3) !important;
+  box-shadow: 0 0 0 10px rgb(14, 16, 22), 0 10px 22px rgba(227, 27, 43, 0.28) !important;
 }
 
 /* Campo que falta llenar al intentar avanzar: se ilumina un momento para que
@@ -17544,7 +17544,7 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   position: sticky !important;
   bottom: 12px !important;
   z-index: 3 !important;
-  box-shadow: 0 0 0 12px rgb(14, 16, 22), 0 -18px 24px 8px rgb(14, 16, 22), 0 12px 26px rgba(227, 27, 43, 0.3) !important;
+  box-shadow: 0 0 0 10px rgb(14, 16, 22), 0 10px 22px rgba(227, 27, 43, 0.28) !important;
 }
 
 /* "Tu pedido": eliminar, cantidad y Editar siempre en la misma fila. El
@@ -17559,4 +17559,14 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 }
 .public-drawer-backdrop .public-cart-drawer .public-cart-item .public-cart-item-controls > * {
   flex: 0 0 auto !important;
+}
+
+/* El botón fijo nunca tapa los textos que lo acompañan: al llegar al final del
+   paso, "Entrega estimada" (arriba del botón) y "Tu pedido será confirmado…"
+   (debajo) quedan fuera del borde de 10 px que rodea al botón. */
+.public-drawer-backdrop .public-cart-drawer.public-step-cart .public-review-page > .public-cart-eta {
+  margin: 6px 0 14px !important;
+}
+.public-drawer-backdrop .public-cart-drawer.public-step-confirm .public-confirm-page > .public-whatsapp-cta + .public-order-security {
+  margin-top: 16px !important;
 }
