@@ -772,6 +772,8 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const [historyLoading, setHistoryLoading] = useState(false)
   const historyLoadRequestRef = useRef(0)
   const [historySearch, setHistorySearch] = useState('')
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'unpaid' | 'active' | 'delivery' | 'pickup'>('all')
+  const historyWeeksRef = useRef<HTMLDivElement>(null)
   const [historySelectedDate, setHistorySelectedDate] = useState('')
   const [showNewOrderModal, setShowNewOrderModal] = useState(false)
   const [closingNewOrder, setClosingNewOrder] = useState(false)
@@ -1961,6 +1963,12 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       }
       if (!selectedWeek) return false
       return d.getTime() >= selectedWeek.start.getTime() && d.getTime() <= selectedWeek.end.getTime()
+    }).filter(order => {
+      if (historyFilter === 'unpaid') return !order.isPaid && !order.creditAuthorized
+      if (historyFilter === 'active') return order.status !== 'delivered'
+      if (historyFilter === 'delivery') return order.orderType === 'Delivery'
+      if (historyFilter === 'pickup') return order.orderType !== 'Delivery'
+      return true
     })
 
     const map = new Map<string, ComandaOrder[]>()
@@ -1982,9 +1990,20 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           label = raw.charAt(0).toUpperCase() + raw.slice(1)
         }
       }
-      return { key, label, orders }
+      const total = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0)
+      return { key, label, orders, total }
     })
-  }, [filteredHistoryOrders, historyWeeksInMonth, historyWeekStartKey, historySelectedDate])
+  }, [filteredHistoryOrders, historyWeeksInMonth, historyWeekStartKey, historySelectedDate, historyFilter])
+
+  // La semana elegida siempre queda a la vista en la fila desplazable.
+  useEffect(() => {
+    if (!showHistoryModal) return
+    const frame = window.requestAnimationFrame(() => {
+      historyWeeksRef.current?.querySelector<HTMLElement>('.cmd-history-week-btn.active')
+        ?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [showHistoryModal, historyWeekStartKey, historyMonthCursor])
 
   // Simulation timer for elapsed mins
   useEffect(() => {
@@ -3218,23 +3237,46 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
                     </div>
                   )}
                 </div>
-                {!historySelectedDate && (
-                  <div className="cmd-history-weeks" role="tablist" aria-label="Semana">
-                    {historyWeeksInMonth.map(w => (
-                      <button
-                        key={w.key}
-                        type="button"
-                        role="tab"
-                        aria-selected={historyWeekStartKey === w.key}
-                        className={`cmd-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
-                        onClick={() => { setHistorySelectedDate(''); setHistoryWeekStartKey(w.key) }}
-                      >
-                        {w.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
+            </div>
+
+            {!historySelectedDate && (
+              <div className="cmd-history-weeks-row">
+                <div className="cmd-history-weeks" role="tablist" aria-label="Semana" ref={historyWeeksRef}>
+                  {historyWeeksInMonth.map(w => (
+                    <button
+                      key={w.key}
+                      type="button"
+                      role="tab"
+                      aria-selected={historyWeekStartKey === w.key}
+                      className={`cmd-history-week-btn ${historyWeekStartKey === w.key ? 'active' : ''}`}
+                      onClick={() => { setHistorySelectedDate(''); setHistoryWeekStartKey(w.key) }}
+                    >
+                      {w.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="cmd-history-filters" role="group" aria-label="Filtrar comandas">
+              {([
+                ['all', 'Todas'],
+                ['unpaid', 'Sin cobrar'],
+                ['active', 'En curso'],
+                ['delivery', 'Delivery'],
+                ['pickup', 'Para llevar / Mesa'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={historyFilter === value}
+                  className={`cmd-history-filter ${historyFilter === value ? 'active' : ''}`}
+                  onClick={() => setHistoryFilter(value)}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
 
             <div className="cmd-history-body">
@@ -3259,44 +3301,56 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               ) : (
                 historyGroups.map(group => (
                   <section className="cmd-history-group" key={group.key}>
-                    <h3 className="cmd-history-group-label">{group.label}</h3>
+                    <h3 className="cmd-history-group-label">
+                      <span>{group.label}</span>
+                      <small>{group.orders.length} comanda{group.orders.length !== 1 ? 's' : ''} · {formatUsd(group.total)}</small>
+                    </h3>
                     <div className="cmd-history-list">
-                      {group.orders.map(order => (
-                        <div
-                          key={order.id}
-                          className={`cmd-history-item ${order.isPaid ? 'paid' : 'unpaid'}`}
-                          onClick={() => closeHistoryModal(() => setSelectedOrder(order))}
-                        >
-                          <span className="cmd-history-item-icon">
-                            {order.orderType === 'Delivery' ? <Bike size={16} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={16} /> : <ShoppingBag size={16} />}
-                          </span>
-                          <div className="cmd-history-item-main">
-                            <div className="cmd-history-item-row">
-                              <span className="cmd-history-customer">{order.customerName}</span>
-                              <span className="cmd-history-order-no">{order.orderNumber}</span>
-                            </div>
-                            <div className="cmd-history-item-tags">
-                              <span className="cmd-history-type">{order.orderType}</span>
-                              {order.items.slice(0, 2).map(item => (
-                                <span key={item.id} className="cmd-history-item-tag">{item.name} ×{item.quantity}</span>
-                              ))}
-                              {order.items.length > 2 && <span className="cmd-history-item-more">+{order.items.length - 2}</span>}
-                            </div>
-                          </div>
-                          <div className="cmd-history-item-right">
-                            <span className="cmd-history-time">{order.time}</span>
-                            <span className={`cmd-history-status ${order.status}`}>
-                              {order.status === 'delivered' ? '✓ Entregada' : order.status === 'ready' ? '✓ Lista' : order.status === 'preparing' ? <><Flame size={11} /> Preparando</> : <><Package size={11} /> Nueva</>}
+                      {group.orders.map(order => {
+                        const deliveryLine = order.items.find(item => item.name === 'Delivery')
+                        const products = order.items.filter(item => item.name !== 'Delivery')
+                        const productText = products.slice(0, 2).map(item => `${item.name} ×${item.quantity}`).join(', ')
+                          + (products.length > 2 ? ` +${products.length - 2}` : '')
+                        const statusLabel = order.status === 'new' ? 'Nueva' : order.status === 'preparing' ? 'En preparación' : order.status === 'ready' ? 'Lista' : 'Entregada'
+                        const paidMethod = compactPaymentLabel(order.paymentMethod).replace(/^Pago combinado$/i, 'Combinado')
+                        const state = order.status !== 'delivered'
+                          ? { tone: 'active', label: `En curso · ${statusLabel}${order.isPaid ? ' · Pagado' : ''}` }
+                          : order.isPaid
+                            ? { tone: 'paid', label: `Pagado · ${paidMethod}` }
+                            : order.creditAuthorized
+                              ? { tone: 'credit', label: 'Crédito' }
+                              : { tone: 'unpaid', label: 'Sin cobrar' }
+                        return (
+                          <button
+                            key={order.id}
+                            type="button"
+                            className={`cmd-history-row is-${state.tone}`}
+                            onClick={() => closeHistoryModal(() => setSelectedOrder(order))}
+                          >
+                            <span className="cmd-history-row-time">
+                              <strong>{compactCardTime(order.time)}</strong>
+                              <small>{/p\.?\s*m/i.test(order.time) ? 'p. m.' : /a\.?\s*m/i.test(order.time) ? 'a. m.' : ''}</small>
                             </span>
-                          </div>
-                          <div className="cmd-history-item-total">
-                            <MoneyWithBcv usd={order.totalAmount || 0} compact />
-                            <span className={`cmd-history-paid-badge ${order.isPaid ? 'paid' : 'unpaid'}`}>
-                              {order.isPaid ? order.paymentMethod : order.creditAuthorized ? 'Crédito autorizado' : <><AlertTriangle size={11} /> Sin cobrar</>}
+                            <span className="cmd-history-row-type" aria-hidden="true">
+                              {order.orderType === 'Delivery' ? <Bike size={16} /> : order.orderType.startsWith('Mesa') ? <UtensilsCrossed size={16} /> : <ShoppingBag size={16} />}
                             </span>
-                          </div>
-                        </div>
-                      ))}
+                            <span className="cmd-history-row-main">
+                              <span className="cmd-history-row-title">
+                                <strong>{order.customerName}</strong>
+                                <small>{order.orderNumber}</small>
+                              </span>
+                              <span className="cmd-history-row-detail">
+                                <span className="cmd-history-row-kind">{order.orderType}{deliveryLine ? ` · ${formatUsd(deliveryLine.subtotal || 0)}` : ''}</span>
+                                {productText && <span className="cmd-history-row-products">{productText}</span>}
+                              </span>
+                            </span>
+                            <span className="cmd-history-row-side">
+                              <MoneyWithBcv usd={order.totalAmount || 0} compact className="cmd-history-row-total" />
+                              <span className={`cmd-history-state is-${state.tone}`}>{state.label}</span>
+                            </span>
+                          </button>
+                        )
+                      })}
                     </div>
                   </section>
                 ))

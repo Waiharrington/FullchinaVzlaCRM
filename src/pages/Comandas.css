@@ -3685,3 +3685,136 @@
   .cmdx-head-actions { flex: 1 1 100%; }
   .cmdx-head-actions .cmdx-print-btn { flex: 1 1 auto; }
 }
+
+/* ===== Historial de comandas: más fácil de leer =====
+   Semanas en su propia fila desplazable, filtros rápidos, resumen por día y
+   filas en tres zonas (hora · cliente y productos · total con un solo estado). */
+.cmd-history-weeks-row {
+  position: relative;
+  flex-shrink: 0;
+  padding: 0 0 10px;
+}
+.cmd-history-weeks-row .cmd-history-weeks {
+  padding: 2px 24px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 32px), transparent 100%);
+}
+.cmd-history-weeks-row .cmd-history-weeks::-webkit-scrollbar { display: none; }
+.cmd-history-weeks-row .cmd-history-week-btn { scroll-snap-align: center; height: 32px; padding: 0 14px; font-size: 12.5px; color: #b4b4bb; }
+
+.cmd-history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 24px 12px;
+  flex-shrink: 0;
+}
+.cmd-history-filter {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  background: transparent;
+  color: #b4b4bb;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cmd-history-filter:hover { color: #fff; border-color: rgba(255, 255, 255, 0.2); }
+.cmd-history-filter.active { border-color: #e31b2b; background: rgba(227, 27, 43, 0.14); color: #fff; }
+
+.cmd-history-group-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cmd-history-group-label small {
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.cmd-history-row {
+  display: grid;
+  grid-template-columns: 58px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #262626;
+  border-left: 3px solid #3a3a3f;
+  border-radius: 12px;
+  background: #1c1c1e;
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.cmd-history-row:hover { background: #222225; border-color: #333; }
+.cmd-history-row.is-paid { border-left-color: #22c55e; }
+.cmd-history-row.is-unpaid { border-left-color: #f59e0b; }
+.cmd-history-row.is-credit { border-left-color: #60a5fa; }
+.cmd-history-row.is-active { border-left-color: #e31b2b; }
+
+.cmd-history-row-time { display: grid; justify-items: start; line-height: 1.1; }
+.cmd-history-row-time strong { color: #fff; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cmd-history-row-time small { color: #8b8b93; font-size: 11px; font-weight: 600; }
+
+.cmd-history-row-type {
+  display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 10px;
+  background: rgba(249, 115, 22, 0.12); color: #fb923c;
+}
+
+.cmd-history-row-main { display: grid; gap: 4px; min-width: 0; }
+.cmd-history-row-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.cmd-history-row-title strong { overflow: hidden; color: #fff; font-size: 14.5px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.cmd-history-row-title small { flex: 0 0 auto; color: #8b8b93; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.cmd-history-row-detail { display: flex; align-items: baseline; gap: 6px; min-width: 0; color: #a1a1aa; font-size: 12.5px; }
+.cmd-history-row-kind { flex: 0 0 auto; color: #d4d4d8; font-weight: 600; }
+.cmd-history-row-kind::after { content: "·"; margin-left: 6px; color: #52525b; }
+.cmd-history-row-kind:last-child::after { content: none; }
+.cmd-history-row-products { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.cmd-history-row-side { display: grid; justify-items: end; gap: 5px; }
+.cmd-history-row-total .money-usd { color: #fff; font-size: 16px; font-weight: 800; }
+.cmd-history-row-total .money-ves { color: #8b8b93 !important; font-size: 11px !important; font-weight: 600; }
+.cmd-history-state {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid;
+  font-size: 11.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.cmd-history-state.is-paid { border-color: rgba(34, 197, 94, 0.35); background: rgba(34, 197, 94, 0.1); color: #4ade80; }
+.cmd-history-state.is-unpaid { border-color: rgba(245, 158, 11, 0.4); background: rgba(245, 158, 11, 0.12); color: #fbbf24; }
+.cmd-history-state.is-credit { border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.12); color: #93c5fd; }
+.cmd-history-state.is-active { border-color: rgba(227, 27, 43, 0.45); background: rgba(227, 27, 43, 0.14); color: #ff8078; }
+
+@media (max-width: 640px) {
+  .cmd-history-weeks-row .cmd-history-weeks { padding: 2px 14px; }
+  .cmd-history-filters { flex-wrap: nowrap; overflow-x: auto; padding: 0 14px 10px; scrollbar-width: none; }
+  .cmd-history-filters::-webkit-scrollbar { display: none; }
+  .cmd-history-filter { flex: 0 0 auto; }
+  .cmd-history-row {
+    grid-template-columns: 50px minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 11px 12px;
+  }
+  .cmd-history-row-type { display: none; }
+  .cmd-history-row-time strong { font-size: 15px; }
+  .cmd-history-row-detail { flex-wrap: wrap; row-gap: 2px; }
+  .cmd-history-row-kind::after { content: none; }
+  .cmd-history-row-products { flex: 1 1 100%; }
+  .cmd-history-row-total .money-usd { font-size: 15px; }
+  .cmd-history-state { font-size: 11px; padding: 3px 8px; }
+}
