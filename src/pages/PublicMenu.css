@@ -16522,7 +16522,7 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 
   body:has(.public-drawer-backdrop) .public-drawer-backdrop .public-cart-drawer {
     position: fixed !important;
-    top: var(--public-cart-drawer-anchor-top, 20px) !important;
+    top: 90px !important;
     right: max(24px, calc((100vw - 1312px) / 2)) !important;
     bottom: auto !important;
     left: auto !important;
@@ -16629,5 +16629,481 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     z-index: 20 !important;
     margin: 0 !important;
     transform: none !important;
+  }
+}
+
+/* En escritorio hay dos zonas de desplazamiento independientes: el menú se
+   desplaza por fuera de la tarjeta y el paso activo se desplaza dentro de ella. */
+@media (min-width: 900px) and (orientation: landscape) {
+  :root:has(.public-menu-page.has-public-drawer),
+  :root:has(.public-menu-page.has-public-drawer) body,
+  :root:has(.public-menu-page.has-public-drawer) .app-main {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior-y: auto !important;
+  }
+
+  body:has(.public-drawer-backdrop) .public-drawer-backdrop .public-cart-drawer {
+    top: 90px !important;
+    right: max(24px, calc((100vw - 1312px) / 2)) !important;
+    bottom: auto !important;
+    left: auto !important;
+    width: min(350px, calc(100vw - 32px)) !important;
+    min-width: 0 !important;
+    max-width: min(350px, calc(100vw - 32px)) !important;
+    height: min(734px, calc(100dvh - 110px)) !important;
+    min-height: 0 !important;
+    max-height: calc(100dvh - 110px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    overscroll-behavior: contain !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    flex: 0 0 auto !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(
+    .public-review-page,
+    .public-delivery-step,
+    .public-address-step,
+    .public-checkout,
+    .public-confirm-page,
+    .public-preparing-page,
+    .public-success
+  ) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 90, 82, .62) transparent !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(
+    .public-review-page,
+    .public-delivery-step,
+    .public-address-step,
+    .public-checkout,
+    .public-confirm-page,
+    .public-preparing-page,
+    .public-success
+  )::-webkit-scrollbar {
+    display: block !important;
+    width: 5px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > :is(
+    .public-review-page,
+    .public-delivery-step,
+    .public-address-step,
+    .public-checkout,
+    .public-confirm-page,
+    .public-preparing-page,
+    .public-success
+  )::-webkit-scrollbar-thumb {
+    background: rgba(255, 90, 82, .62) !important;
+    border-radius: 999px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-items {
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item {
+    position: relative !important;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    box-sizing: border-box !important;
+    padding: 10px 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-image {
+    grid-row: 1 / span 2 !important;
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-main {
+    grid-column: 2 !important;
+    min-width: 0 !important;
+    gap: 3px !important;
+    padding: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-main > strong {
+    max-width: 100% !important;
+    padding-right: 88px !important;
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-main > span {
+    font-size: 11px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-total {
+    position: absolute !important;
+    top: 10px !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: 84px !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-bs {
+    display: block !important;
+    font-size: 10px !important;
+    white-space: nowrap !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-item-controls {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-qty {
+    gap: 8px !important;
+    margin-top: 5px !important;
+    padding: 3px 7px !important;
+    border-radius: 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-edit {
+    position: static !important;
+    flex: 0 0 auto !important;
+    min-height: 42px !important;
+    margin: 5px 0 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-cart-recommendations {
+    min-width: 0 !important;
+    gap: 8px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row article {
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) 30px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 64px !important;
+    box-sizing: border-box !important;
+    padding: 7px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row img {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row article > div {
+    min-width: 0 !important;
+    gap: 3px !important;
+    padding: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row strong {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row b {
+    font-size: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-recommendation-row article > button {
+    position: static !important;
+    width: 28px !important;
+    height: 28px !important;
+    flex: 0 0 28px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total {
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+    column-gap: 8px !important;
+    row-gap: 6px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding: 12px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total > * {
+    min-width: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total > span,
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total > small {
+    overflow-wrap: anywhere !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total > strong {
+    font-size: 14px !important;
+    text-align: right !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total > b {
+    grid-column: 1 / -1 !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    font-size: 14px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page .public-review-total > b > em {
+    max-width: 60% !important;
+    font-size: 16px !important;
+    text-align: right !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-page > .public-primary:last-child {
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: 2 !important;
+    width: 100% !important;
+    margin-top: 12px !important;
+  }
+
+  /* Retiro también necesita su propio scroll: el mapa y los datos pueden
+     superar el espacio restante del panel en pantallas bajas. */
+  .public-drawer-backdrop .public-cart-drawer > .public-pickup-step {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+  }
+
+  /* La regla compacta antigua daba altura intrínseca al paso Delivery y
+     anulaba su scroll dentro de la tarjeta de escritorio. */
+  .public-drawer-backdrop .public-cart-drawer.public-step-delivery > .public-delivery-step {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+}
+
+/* El retorno al resumen se usa también en ventanas angostas de computadora.
+   Restablece una única columna y alturas intrínsecas para que los productos y
+   recomendaciones nunca se monten unos sobre otros al volver desde Delivery. */
+@media (max-width: 899px) {
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-page {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    grid-auto-rows: max-content !important;
+    align-content: start !important;
+    gap: 12px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 12px !important;
+    overflow: visible !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart > .public-review-page > * {
+    position: relative !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-items {
+    display: grid !important;
+    grid-auto-rows: max-content !important;
+    align-content: start !important;
+    gap: 6px !important;
+    padding: 8px 10px !important;
+    border-radius: 16px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) !important;
+    grid-template-rows: max-content !important;
+    align-items: start !important;
+    gap: 8px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 64px !important;
+    padding: 10px 76px 10px 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-image {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 48px !important;
+    height: 48px !important;
+    min-height: 0 !important;
+    object-fit: cover !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-main {
+    position: static !important;
+    display: grid !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-content: start !important;
+    gap: 3px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-main > strong {
+    display: block !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-main > span,
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-notes {
+    padding: 0 !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-total {
+    position: absolute !important;
+    top: 10px !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: 72px !important;
+    font-size: 12px !important;
+    line-height: 1.15 !important;
+    text-align: right !important;
+    white-space: normal !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-controls {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-review-qty {
+    gap: 8px !important;
+    margin: 4px 0 0 !important;
+    padding: 3px 7px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-item-controls .public-review-edit {
+    position: static !important;
+    min-width: 0 !important;
+    min-height: 38px !important;
+    margin: 4px 0 0 !important;
+    padding: 0 10px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-cart-recommendations {
+    display: grid !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+    overflow: visible !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    min-width: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row article {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: 48px minmax(0, 1fr) 30px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    height: auto !important;
+    min-width: 0 !important;
+    min-height: 64px !important;
+    padding: 7px !important;
+    box-sizing: border-box !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row article > img {
+    width: 48px !important;
+    height: 48px !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row article > div {
+    display: grid !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer.public-step-cart .public-recommendation-row article > button {
+    position: static !important;
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    width: 28px !important;
+    height: 28px !important;
   }
 }

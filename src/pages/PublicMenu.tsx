@@ -627,13 +627,23 @@ export function PublicMenu() {
   const [showSearch, setShowSearch] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [closingCart, setClosingCart] = useState(false)
-  const [cartDrawerAnchorTop, setCartDrawerAnchorTop] = useState<number | null>(null)
   const [step, setStep] = useState<'cart' | 'delivery' | 'pickup' | 'address' | 'details' | 'confirm' | 'preparing' | 'whatsapp' | 'sent'>('cart')
   const [returnToConfirmAfterEdit, setReturnToConfirmAfterEdit] = useState(false)
   const [editingCartLineKey, setEditingCartLineKey] = useState<string | null>(null)
 
-  // En desktop, el checkout deja que la página siga desplazándose por fuera
-  // de la tarjeta. En móvil y en los demás overlays sí se bloquea el fondo.
+  // Cada paso reaparece desde el inicio de su contenido. Es especialmente
+  // importante al volver a "Tu pedido", cuyo alto puede superar el panel.
+  useLayoutEffect(() => {
+    if (!cartOpen || step === 'whatsapp') return
+    const drawer = document.querySelector<HTMLElement>('.public-cart-drawer')
+    drawer?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    drawer?.querySelector<HTMLElement>(
+      '.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success',
+    )?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [cartOpen, step])
+
+  // En escritorio, el contenido del checkout tiene su propio scroll y la
+  // página conserva el suyo fuera de la tarjeta. En móvil sí se bloquea el fondo.
   const desktopCheckoutCanScrollPage = typeof window !== 'undefined'
     && window.matchMedia('(min-width: 900px) and (orientation: landscape)').matches
   const hasBlockingOverlay = Boolean(
@@ -694,48 +704,6 @@ export function PublicMenu() {
       window.scrollTo(scrollX, scrollY)
     }
   }, [hasBlockingOverlay])
-
-  useEffect(() => {
-    if (!cartOpen || !desktopCheckoutCanScrollPage) return
-
-    const drawer = document.querySelector<HTMLElement>('.public-cart-drawer')
-    if (!drawer) return
-
-    const forwardWheelToPage = (event: WheelEvent) => {
-      const deltaY = event.deltaY * (
-        event.deltaMode === WheelEvent.DOM_DELTA_LINE
-          ? 16
-          : event.deltaMode === WheelEvent.DOM_DELTA_PAGE
-            ? drawer.clientHeight
-            : 1
-      )
-      if (!deltaY) return
-
-      const candidates = [
-        document.querySelector<HTMLElement>('.app-main'),
-        document.querySelector<HTMLElement>('.public-menu-page'),
-        document.scrollingElement as HTMLElement | null,
-        document.documentElement,
-        document.body,
-      ]
-      const scrollTarget = candidates.find((element): element is HTMLElement => {
-        if (!element) return false
-        const overflowY = window.getComputedStyle(element).overflowY
-        if (!['auto', 'scroll', 'overlay'].includes(overflowY)) return false
-        const maxScrollTop = element.scrollHeight - element.clientHeight
-        return deltaY > 0
-          ? element.scrollTop < maxScrollTop
-          : element.scrollTop > 0
-      })
-
-      if (!scrollTarget) return
-      event.preventDefault()
-      scrollTarget.scrollTop += deltaY
-    }
-
-    drawer.addEventListener('wheel', forwardWheelToPage, { passive: false })
-    return () => drawer.removeEventListener('wheel', forwardWheelToPage)
-  }, [cartOpen, desktopCheckoutCanScrollPage])
 
   useEffect(() => {
     if (!showStoreClosedNotice || showWelcomeNotice) return
@@ -2112,13 +2080,9 @@ export function PublicMenu() {
     window.setTimeout(() => {
       setCartOpen(false)
       setClosingCart(false)
-      setCartDrawerAnchorTop(null)
     }, 360)
   }
   const openCartFromSidebar = (nextStep: typeof step) => {
-    const desktop = window.matchMedia('(min-width: 900px) and (orientation: landscape)').matches
-    const sidebarTop = desktop ? sidebarCardRef.current?.getBoundingClientRect().top : null
-    setCartDrawerAnchorTop(typeof sidebarTop === 'number' ? Math.round(sidebarTop) : null)
     setCartOpen(true)
     setStep(nextStep)
   }
@@ -4443,7 +4407,7 @@ export function PublicMenu() {
         </div>, document.body
       )}
       {cartOpen && step !== 'whatsapp' && createPortal(
-        <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} style={{ '--public-cart-drawer-anchor-top': `${cartDrawerAnchorTop ?? 20}px` } as CSSProperties} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
+        <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}`} onClick={event => event.stopPropagation()}>
         <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { setStep('cart'); } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Consulta la dirección y el horario para retirar.' : step === 'address' ? 'Busca o marca en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : step === 'preparing' ? 'Estamos preparando tu mensaje de WhatsApp.' : 'Ajusta cantidades.'}</p></div>}{step === 'cart' && cart.length > 0 && <div className="public-estimate-card" aria-label="Entrega estimada"><span className="public-estimate-dot" /><div><small>Entrega estimada</small><strong>35–50 min</strong></div></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
