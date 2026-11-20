@@ -11,6 +11,33 @@ const DISCONNECTED_STATES = [
 const STALE_SENDING_MESSAGE =
   'Envío interrumpido: el bot se reinició antes de confirmar el resultado (pudo haberse enviado). Revisa manualmente antes de reenviar.'
 
+const ALLOWED_AFTER_HOURS_TYPES = new Set(['post_purchase', 'web_order_confirmation'])
+
+function isQuietHours(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Caracas',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)
+  const hour = Number(parts.find(part => part.type === 'hour')?.value)
+  return hour >= 22 || hour < 8
+}
+
+function campaignWindowStart(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Caracas',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const value = type => parts.find(part => part.type === type)?.value
+  return new Date(`${value('year')}-${value('month')}-${value('day')}T08:00:00-04:00`).toISOString()
+}
+
+function isAllowedAfterHours(message) {
+  return ALLOWED_AFTER_HOURS_TYPES.has(String(message?.template_type || '').toLowerCase())
+}
+
 const normalizeChatId = phone => {
   let digits = String(phone || '').replace(/\D/g, '')
   if (digits.startsWith('0')) digits = digits.slice(1)
@@ -38,7 +65,7 @@ async function isClientReady(client) {
 //  - Justo antes de enviar se re-verifica el estado (ventana de "Detener").
 //  - markSent se reintenta; si falla, el loop se detiene en lugar de
 //    arriesgar un duplicado.
-function createQueueProcessor({ db, client, log = console, sleepFn = sleep, delayFn = nextSendDelay, isEnabled = () => true, staleAfterMinutes = 5, markRetries = 3 }) {
+function createQueueProcessor({ db, client, log = console, sleepFn = sleep, delayFn = nextSendDelay, isEnabled = () => true, quietHours = isQuietHours, staleAfterMinutes = 5, markRetries = 3 }) {
   let running = false
 
   async function resolveStaleSending() {
@@ -92,6 +119,40 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
     return !data || data.length > 0
   }
 
+  async function cancelCampaignQueue() {
+    const { data, error } = await db.from('whatsapp_messages')
+      .update({ status: 'cancelled', error_message: 'Campaña cancelada automáticamente fuera del horario permitido (10:00 p. m. a 8:00 a. m., hora de Caracas).' })
+      .eq('status', 'queued')
+      .not('template_type', 'in', '(post_purchase)')
+      .select('id')
+    if (error) throw new Error(`No se pudieron cancelar las campañas fuera de horario: ${error.message}`)
+    const cancelled = data ? data.length : 0
+    if (cancelled > 0) log.warn(`Se cancelaron ${cancelled} campaña(s) pendiente(s) por horario.`)
+    return cancelled
+  }
+
+  async function cancelOvernightCampaignQueue(date = new Date()) {
+    const cutoff = campaignWindowStart(date)
+    const { data, error } = await db.from('whatsapp_messages')
+      .update({ status: 'cancelled', error_message: 'Campaña pendiente de la noche anterior cancelada automáticamente al reanudar el horario diurno (8:00 a. m., hora de Caracas).' })
+      .eq('status', 'queued')
+      .lt('created_at', cutoff)
+      .not('template_type', 'in', '(post_purchase)')
+      .select('id')
+    if (error) throw new Error(`No se pudieron cancelar campañas anteriores al horario diurno: ${error.message}`)
+    const cancelled = data ? data.length : 0
+    if (cancelled > 0) log.warn(`Se cancelaron ${cancelled} campaña(s) de la noche anterior.`)
+    return cancelled
+  }
+
+  async function cancelClaimedCampaign(id) {
+    const { error } = await db.from('whatsapp_messages')
+      .update({ status: 'cancelled', error_message: 'Campaña cancelada automáticamente al llegar las 10:00 p. m. (hora de Caracas).' })
+      .eq('id', id)
+      .eq('status', 'sending')
+    if (error) throw new Error(`No se pudo cancelar la campaña reclamada: ${error.message}`)
+  }
+
   async function markSent(id) {
     const payload = { status: 'sent', sent_at: new Date().toISOString(), provider_id: 'whatsapp-web.js' }
     for (let attempt = 1; attempt <= markRetries; attempt += 1) {
@@ -113,6 +174,11 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
     const current = await getStatus(next.id)
     if (current !== 'sending') {
       log.log(`El mensaje ${next.id} fue cancelado antes de enviar; se omite.`)
+      return 'skipped'
+    }
+    if (quietHours() && !isAllowedAfterHours(next)) {
+      await cancelClaimedCampaign(next.id)
+      log.warn(`Se canceló la campaña ${next.id}; fuera de horario solo se permiten mensajes individuales de postcompra.`)
       return 'skipped'
     }
     if (!(await isClientReady(client))) {
@@ -141,6 +207,8 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
     try {
       await resolveStaleSending()
       while (isEnabled()) {
+        if (quietHours()) await cancelCampaignQueue()
+        else await cancelOvernightCampaignQueue()
         if (!(await isClientReady(client))) {
           log.log('WhatsApp no está listo para enviar; se reintenta en unos segundos.')
           break
@@ -163,4 +231,4 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
   return { processQueue, resolveStaleSending, markSent, markFailed, releaseClaim }
 }
 
-module.exports = { sleep, nextSendDelay, normalizeChatId, personalizeMessage, isClientReady, STALE_SENDING_MESSAGE, createQueueProcessor }
+module.exports = { sleep, nextSendDelay, normalizeChatId, personalizeMessage, isClientReady, isQuietHours, campaignWindowStart, isAllowedAfterHours, STALE_SENDING_MESSAGE, createQueueProcessor }

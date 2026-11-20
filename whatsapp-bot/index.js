@@ -19,6 +19,30 @@ const qrHost = process.env.WHATSAPP_QR_HOST || '127.0.0.1'
 const qrToken = process.env.WHATSAPP_QR_ACCESS_TOKEN || ''
 const supabase = createClient(required('SUPABASE_URL'), required('SUPABASE_SERVICE_ROLE_KEY'), { db: { schema: 'fullchinavzla' } })
 let latestQr = null
+let whatsappConnected = false
+let botStatusWrite = Promise.resolve()
+
+// Publish the connection state for the authenticated admin panel. The QR is
+// stored only in the private status table and exposed through an owner-only RPC.
+let botStatus = 'starting'
+async function publishBotStatus(status = botStatus, qrDataUrl = latestQr) {
+  botStatus = status
+  const write = async () => {
+    const { error } = await supabase.from('whatsapp_bot_status').upsert({
+      id: true,
+      connection_status: status,
+      qr_data_url: qrDataUrl,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' })
+    if (error) console.error('No se pudo actualizar el estado del bot:', error.message)
+  }
+  botStatusWrite = botStatusWrite.then(write, write)
+  await botStatusWrite
+}
+
+void publishBotStatus('starting', null)
+const statusHeartbeat = setInterval(() => { void publishBotStatus() }, 20_000)
+statusHeartbeat.unref?.()
 
 const client = new Client({
   authStrategy: new LocalAuth({ clientId: 'fullchina', dataPath: process.env.WHATSAPP_SESSION_PATH || './.wwebjs_auth' }),
@@ -27,11 +51,11 @@ const client = new Client({
 
 client.on('qr', qr => {
   qrcodeTerminal.generate(qr, { small: true })
-  QRCode.toDataURL(qr).then(data => { latestQr = data }).catch(error => console.error('QR:', error.message))
+  QRCode.toDataURL(qr).then(data => { latestQr = data; return publishBotStatus('awaiting_qr', data) }).catch(error => console.error('QR:', error.message))
   console.log('Escanea el QR desde el WhatsApp de Full China.')
 })
-client.on('authenticated', () => { latestQr = null; console.log('WhatsApp Full China autenticado.') })
-client.on('ready', () => { console.log('Bot de WhatsApp Full China listo para conversaciones individuales.'); processQueue() })
+client.on('authenticated', () => { latestQr = null; void publishBotStatus('connecting', null); console.log('WhatsApp Full China autenticado.') })
+client.on('ready', () => { whatsappConnected = true; void publishBotStatus('connected', null); console.log('Bot de WhatsApp Full China listo para conversaciones individuales.'); processQueue() })
 async function queueAutomations() {
   const { data, error } = await supabase.rpc('fn_queue_whatsapp_automations')
   if (error) console.error('No se pudieron preparar automatizaciones:', error.message)
@@ -113,8 +137,21 @@ if (autoReplyEnabled) client.on('message', async message => {
     }
   } catch (error) { console.error('Error atendiendo mensaje:', error.message) }
 })
-client.on('auth_failure', error => console.error('Falló la autenticación:', error.message))
-client.on('disconnected', reason => console.warn('WhatsApp desconectado:', reason))
+client.on('auth_failure', error => { whatsappConnected = false; latestQr = null; void publishBotStatus('auth_failed', null); console.error('Falló la autenticación:', error.message) })
+client.on('disconnected', reason => { whatsappConnected = false; latestQr = null; void publishBotStatus('disconnected', null); console.warn('WhatsApp desconectado:', reason) })
+
+// Health endpoint used by Docker to distinguish a running process from an
+// authenticated WhatsApp connection. Docker publishes this port on loopback.
+const healthPort = Number(process.env.WHATSAPP_HEALTH_PORT || 3034)
+http.createServer((request, response) => {
+  if (request.method !== 'GET' || request.url !== '/health') {
+    response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' })
+    return response.end('No encontrado')
+  }
+  const connected = whatsappConnected && Boolean(client.info)
+  response.writeHead(connected ? 200 : 503, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+  response.end(JSON.stringify({ connected }))
+}).listen(healthPort, '0.0.0.0', () => console.log(`Health endpoint disponible en puerto ${healthPort}.`))
 
 // --- Servidor QR endurecido --------------------------------------------------
 // - Token largo y aleatorio obligatorio (>= 32 chars): sin él, el servidor ni

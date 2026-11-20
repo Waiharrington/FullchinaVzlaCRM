@@ -8,6 +8,7 @@ const {
   personalizeMessage,
   nextSendDelay,
   isClientReady,
+  isAllowedAfterHours,
   STALE_SENDING_MESSAGE,
 } = require('../queue')
 
@@ -56,6 +57,7 @@ function createFakeDb({ rows = [], failMarkSent = false, onRpc = null } = {}) {
       if (filter.type === 'eq') return row[filter.col] === filter.value
       if (filter.type === 'lt') return row[filter.col] != null && row[filter.col] < filter.value
       if (filter.type === 'in') return filter.values.includes(row[filter.col])
+      if (filter.type === 'notIn') return !filter.values.includes(row[filter.col])
       return false
     })
     const builder = {
@@ -64,6 +66,11 @@ function createFakeDb({ rows = [], failMarkSent = false, onRpc = null } = {}) {
       eq(col, value) { state.filters.push({ type: 'eq', col, value }); return builder },
       lt(col, value) { state.filters.push({ type: 'lt', col, value }); return builder },
       in(col, values) { state.filters.push({ type: 'in', col, values }); return builder },
+      not(col, operator, value) {
+        if (operator !== 'in') throw new Error(`Operador inesperado: ${operator}`)
+        state.filters.push({ type: 'notIn', col, values: value.replace(/^\(|\)$/g, '').split(',') })
+        return builder
+      },
       maybeSingle() { state.maybe = true; return builder },
       then(resolve, reject) {
         return Promise.resolve().then(() => {
@@ -114,10 +121,11 @@ const makeRow = (id, extra = {}) => ({
   phone: '04121234567',
   message: 'Hola [Nombre], tenemos novedades.',
   full_name: 'María Pérez',
+  template_type: 'custom',
   status: 'queued',
   claimed_at: null,
   error_message: null,
-  created_at: `2026-10-01T10:00:0${id.slice(-1)}Z`,
+  created_at: new Date(Date.now() + Number(id.slice(-1)) * 1000).toISOString(),
   ...extra,
 })
 
@@ -167,6 +175,11 @@ test('isClientReady: client.info manda (getState no devuelve READY en v1.34)', a
   assert.equal(await isClientReady({ info: {}, getState: async () => 'connecting' }), false)
   assert.equal(await isClientReady({ info: {}, getState: async () => null }), true)
   assert.equal(await isClientReady({ info: {}, getState: async () => { throw new Error('x') } }), true)
+})
+
+test('las confirmaciones de pedidos web pueden enviarse fuera del horario de campañas', () => {
+  assert.equal(isAllowedAfterHours({ template_type: 'web_order_confirmation' }), true)
+  assert.equal(isAllowedAfterHours({ template_type: 'custom' }), false)
 })
 
 // --- Ciclo de envío ---------------------------------------------------------

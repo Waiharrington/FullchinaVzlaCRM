@@ -1339,7 +1339,12 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           },
         ]
       } else {
-        if (selectedPaymentTab === 'cash' && enteredAmount < total) {
+        // Keep the frontend guard at the same 2-decimal precision as the
+        // payment RPC; converting an exact VES amount to USD can leave a
+        // fractional-cent difference from the BCV division.
+        const enteredCents = Math.round((enteredAmount + Number.EPSILON) * 100)
+        const totalCents = Math.round((total + Number.EPSILON) * 100)
+        if (selectedPaymentTab === 'cash' && enteredCents < totalCents) {
           throw new Error('El efectivo recibido no cubre el total')
         }
         const allRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')

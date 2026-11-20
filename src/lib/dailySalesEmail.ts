@@ -18,6 +18,8 @@ export interface DailySalesRow {
   total: number | null
   currency?: 'USD' | 'VES'
   currencySymbol?: boolean
+  referenceValue?: number | null
+  referenceCurrency?: 'USD' | 'VES'
   detail?: string | null
   imageUrl?: string | null
   productId?: string | null
@@ -81,8 +83,10 @@ export interface DailySalesPayment {
   accountType?: string | null
   receivedAmount?: number | null
   receivedCurrency?: 'USD' | 'VES' | null
+  receivedExchangeRate?: number | null
   changeAmount?: number | null
   changeCurrency?: 'USD' | 'VES' | null
+  changeExchangeRate?: number | null
   changeAccountId?: string | null
   changeAccountCurrency?: 'USD' | 'VES' | null
   changeAccountType?: string | null
@@ -105,6 +109,24 @@ function saleOrders(orders: FullOrder[] | undefined): FullOrder[] {
 
 function orderTotal(orders: FullOrder[]): number {
   return orders.reduce((sum, order) => sum + order.totalAmount, 0)
+}
+
+function roundedMoney(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
+function paymentCurrency(method: PaymentMethod, accountCurrency?: 'USD' | 'VES' | null): 'USD' | 'VES' {
+  if (method === 'cash') return accountCurrency ?? 'USD'
+  if (method === 'mobile' || method === 'card' || method === 'transfer') return 'VES'
+  if (method === 'binance' || method === 'zelle') return 'USD'
+  return accountCurrency ?? 'USD'
+}
+
+function paymentMethodLabel(method: PaymentMethod, currency: 'USD' | 'VES'): string {
+  if (method === 'cash') return currency === 'VES' ? 'Efectivo en bolívares (Bs.)' : 'Efectivo en dólares (USD)'
+  return currency === 'VES'
+    ? `${PAYMENT_LABELS[method]} · bolívares (Bs.)`
+    : `${PAYMENT_LABELS[method]} · divisas (USD)`
 }
 
 function receivedByCurrency(payments: DailySalesPayment[] | undefined, bcvRate?: number | null): Map<'USD' | 'VES', number> {
@@ -148,7 +170,15 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
   const salesPriorWeek = orderTotal(prior)
   const salesMonth = orderTotal(month)
   const customers = countIdentifiedCustomers(day)
-  const payments = new Map<string, { method: PaymentMethod; currency: 'USD' | 'VES'; count: number | null; total: number }>()
+  const payments = new Map<string, {
+    method: PaymentMethod
+    currency: 'USD' | 'VES'
+    referenceCurrency: 'USD' | 'VES'
+    count: number | null
+    total: number
+    referenceTotal: number | null
+    sortTotalUsd: number
+  }>()
   const itemTotals = new Map<string, { count: number; total: number; productId: string }>()
   let personalConsumptionToday = source.personalConsumptionToday ?? 0
   const personalByAccount = new Map<string, number>()
@@ -171,26 +201,49 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
     }
     if (payment.method === 'cash') {
       const currency = payment.receivedCurrency ?? payment.accountCurrency ?? 'USD'
-      const received = payment.receivedAmount ?? (currency === 'VES' ? payment.amount * (payment.exchangeRate ?? source.bcvRate ?? 0) : payment.amount)
+      const exchangeRate = payment.receivedExchangeRate ?? payment.exchangeRate ?? source.bcvRate ?? 0
+      const received = payment.receivedAmount ?? (currency === 'VES' ? payment.amount * exchangeRate : payment.amount)
+      const referenceCurrency = currency === 'VES' ? 'USD' : 'VES'
+      const referenceAmount = exchangeRate > 0 ? currency === 'VES' ? received / exchangeRate : received * exchangeRate : null
       const key = `cash:${currency}`
-      const current = payments.get(key) ?? { method: 'cash', currency, count: 0, total: 0 }
+      const current = payments.get(key) ?? { method: 'cash', currency, referenceCurrency, count: 0, total: 0, referenceTotal: 0, sortTotalUsd: 0 }
       current.count = (current.count ?? 0) + 1
-      current.total += received
+      current.total = roundedMoney(current.total + received)
+      current.referenceTotal = referenceAmount == null || current.referenceTotal == null
+        ? null
+        : roundedMoney(current.referenceTotal + referenceAmount)
+      current.sortTotalUsd = roundedMoney(current.sortTotalUsd + (currency === 'USD' ? received : referenceAmount ?? 0))
       payments.set(key, current)
-      if ((payment.changeAmount ?? 0) > 0 && payment.changeAccountType === 'cash') {
+      const changeAmount = payment.changeAmount ?? 0
+      if (changeAmount > 0 && payment.changeAccountType === 'cash') {
         const changeCurrency = payment.changeCurrency ?? payment.changeAccountCurrency ?? currency
+        const changeRate = payment.changeExchangeRate ?? exchangeRate
+        const changeReferenceCurrency = changeCurrency === 'VES' ? 'USD' : 'VES'
+        const changeReference = changeRate > 0 ? changeCurrency === 'VES' ? changeAmount / changeRate : changeAmount * changeRate : null
         const changeKey = `cash:${changeCurrency}`
-        const change = payments.get(changeKey) ?? { method: 'cash', currency: changeCurrency, count: null, total: 0 }
-        change.total -= payment.changeAmount!
+        const change = payments.get(changeKey) ?? { method: 'cash', currency: changeCurrency, referenceCurrency: changeReferenceCurrency, count: null, total: 0, referenceTotal: 0, sortTotalUsd: 0 }
+        change.total = roundedMoney(change.total - changeAmount)
+        change.referenceTotal = changeReference == null || change.referenceTotal == null
+          ? null
+          : roundedMoney(change.referenceTotal - changeReference)
+        change.sortTotalUsd = roundedMoney(change.sortTotalUsd - (changeCurrency === 'USD' ? changeAmount : changeReference ?? 0))
         payments.set(changeKey, change)
       }
       continue
     }
-    const currency = payment.accountCurrency ?? 'USD'
+    const currency = paymentCurrency(payment.method, payment.accountCurrency)
+    const exchangeRate = payment.exchangeRate ?? source.bcvRate ?? 0
+    const referenceCurrency = currency === 'VES' ? 'USD' : 'VES'
+    const amount = currency === 'VES' ? payment.amount * exchangeRate : payment.amount
+    const referenceAmount = exchangeRate > 0 ? currency === 'VES' ? payment.amount : payment.amount * exchangeRate : null
     const key = `${payment.method}:${currency}`
-    const current = payments.get(key) ?? { method: payment.method, currency, count: 0, total: 0 }
+    const current = payments.get(key) ?? { method: payment.method, currency, referenceCurrency, count: 0, total: 0, referenceTotal: 0, sortTotalUsd: 0 }
     current.count = (current.count ?? 0) + 1
-    current.total += currency === 'VES' ? payment.amount * (payment.exchangeRate ?? source.bcvRate ?? 0) : payment.amount
+    current.total = roundedMoney(current.total + amount)
+    current.referenceTotal = referenceAmount == null || current.referenceTotal == null
+      ? null
+      : roundedMoney(current.referenceTotal + referenceAmount)
+    current.sortTotalUsd = roundedMoney(current.sortTotalUsd + payment.amount)
     payments.set(key, current)
   }
 
@@ -219,6 +272,21 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
   const outstandingCreditBalance = (source.openCredits ?? [])
     .filter(credit => credit.status !== 'paid' && credit.status !== 'cancelled')
     .reduce((sum, credit) => sum + Math.max(0, credit.balancePending), 0)
+  const paymentMethodRows = [...payments.values()]
+    .map(value => ({
+      sortTotalUsd: value.sortTotalUsd,
+      row: {
+        label: paymentMethodLabel(value.method, value.currency),
+        count: value.count,
+        total: value.total,
+        currency: value.currency,
+        referenceValue: value.referenceTotal,
+        referenceCurrency: value.referenceCurrency,
+        currencySymbol: value.currency === 'USD',
+      },
+    }))
+    .sort((a, b) => b.sortTotalUsd - a.sortTotalUsd)
+    .map(({ row }) => row)
 
   return {
     businessName: source.businessName,
@@ -265,14 +333,7 @@ export function buildDailySalesEmailData(source: DailySalesEmailSource): DailySa
       { label: 'Saldo pendiente de esos créditos', value: source.dayCredits ? newCreditBalance : null },
       { label: 'Saldo pendiente de todos los créditos', value: source.openCredits ? outstandingCreditBalance : null, detail: 'Saldo vigente al momento de generar el reporte.' },
     ],
-    paymentMethods: [...payments.values()]
-      .map(value => ({
-        label: value.method === 'cash'
-          ? value.currency === 'VES' ? 'Efectivo en bolívares (Bs.)' : 'Efectivo en dólares ($)'
-          : value.currency === 'VES' ? `${PAYMENT_LABELS[value.method]} · bolívares (Bs.)` : `Cobro en divisas · ${PAYMENT_LABELS[value.method]}`,
-        count: value.count, total: value.total, currency: value.currency, currencySymbol: value.currency === 'USD',
-      }))
-      .sort((a, b) => (b.total ?? 0) - (a.total ?? 0)),
+    paymentMethods: paymentMethodRows,
     personalConsumption: [
       ...personalConsumptionRows.sort((a, b) => a.name.localeCompare(b.name, 'es')).map(account => personalConsumptionMetric(account.name, account.amount)),
       personalConsumptionMetric('Total consumido en cuentas personales', personalConsumptionToday, 'Consumo del día; no es dinero recibido en caja.'),
@@ -383,9 +444,13 @@ function salesSummary(rows: DailySalesMetric[], currency: string, bcvRate: numbe
 
 function rowsTable(rows: DailySalesRow[], currency: string, countLabel: string): string {
   const header = `<tr style="background:#8f1020"><th align="left" style="padding:10px;color:#fff;border-bottom:2px solid #f0c84a;font-size:11px;text-transform:uppercase;letter-spacing:.7px">Detalle</th><th align="right" style="padding:10px;color:#fff;border-bottom:2px solid #f0c84a;font-size:11px;text-transform:uppercase;letter-spacing:.7px">Total</th></tr>`
+  const amount = (value: number, currencyCode: 'USD' | 'VES') => {
+    const formatted = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+    return `${currencyCode === 'VES' ? 'Bs.' : 'USD'} ${formatted}`
+  }
   const body = rows.length ? rows.map((row, index) => `<tr class="${index % 2 === 0 ? 'email-light-row' : 'email-light-row-alt'}" bgcolor="${index % 2 === 0 ? '#fffaf0' : '#ffffff'}" style="background-color:${index % 2 === 0 ? '#fffaf0' : '#ffffff'}">
     <td width="62%" bgcolor="${index % 2 === 0 ? '#fffaf0' : '#ffffff'}" style="width:62%;padding:10px 7px;border-bottom:1px solid #eadfca;color:#354052;font-size:12px;overflow-wrap:anywhere">${escapeHtml(row.label)}${row.count == null ? '' : `<div style="font-size:10px;color:#78632b;margin-top:3px">${escapeHtml(countLabel)}: ${escapeHtml(row.count)}</div>`}${row.detail ? `<div style="font-size:10px;color:#8993a3;margin-top:3px;overflow-wrap:anywhere">${escapeHtml(row.detail)}</div>` : ''}</td>
-    <td width="38%" bgcolor="${index % 2 === 0 ? '#fffaf0' : '#ffffff'}" style="width:38%;padding:10px 6px;border-bottom:1px solid #eadfca;color:#172033;font-size:11px;text-align:right;font-weight:700;white-space:nowrap;word-break:keep-all;overflow-wrap:normal">${row.currency === 'VES' && typeof row.total === 'number' ? `Bs. ${escapeHtml(new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(row.total))}` : row.currencySymbol && row.currency === 'USD' && typeof row.total === 'number' ? `$ ${escapeHtml(new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(row.total))}` : escapeHtml(display(row.total, row.currency ?? currency))}</td>
+    <td width="38%" bgcolor="${index % 2 === 0 ? '#fffaf0' : '#ffffff'}" style="width:38%;padding:10px 6px;border-bottom:1px solid #eadfca;color:#172033;text-align:right;white-space:nowrap;word-break:keep-all;overflow-wrap:normal"><div style="font-size:14px;line-height:18px;font-weight:800">${typeof row.total === 'number' ? escapeHtml(amount(row.total, row.currency ?? 'USD')) : escapeHtml(display(row.total, row.currency ?? currency))}</div>${typeof row.referenceValue === 'number' && row.referenceCurrency ? `<div style="font-size:10px;line-height:14px;color:${MUTED};font-weight:500;margin-top:3px">Ref. ${escapeHtml(amount(row.referenceValue, row.referenceCurrency))}</div>` : ''}</td>
   </tr>`).join('') : `<tr><td colspan="2" style="padding:12px;color:${MUTED};font-size:12px">Sin registros para este día.</td></tr>`
   return `<table class="email-light-surface" role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="${PANEL}" style="table-layout:fixed;border-collapse:collapse;background-color:${PANEL};border-top:1px solid #e4e8ee">${header}${body}</table>`
 }
@@ -436,16 +501,17 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
     <tr><td class="email-pad" style="padding:16px;border-top:3px solid #f0c84a;color:#f4e6b8;font-size:10px;text-align:center;background:#202124">Reporte generado automáticamente para uso interno · ${escapeHtml(name)}</td></tr>
   </table>
 </body></html>`
-  return preserveEmailColorsInGmailDarkMode(html)
+  return preserveEmailBackgroundsInDarkMode(html)
 }
 
 /**
  * Gmail iOS rewrites HTML email colors in dark mode and ignores color-scheme
- * metadata. Solid-color gradients are kept by Gmail's renderer; pair them
- * with explicit WebKit text fill so the report remains readable and light.
+ * metadata. Solid-color gradients are kept by Gmail's renderer. Keep this
+ * workaround limited to backgrounds: transparent gradient text disappears in
+ * Gmail for Android, which does not consistently support background-clipped text.
  */
-function preserveEmailColorsInGmailDarkMode(html: string): string {
-  const backgrounds = html.replace(/style="([^"]*)"/g, (_match, rawStyle: string) => {
+function preserveEmailBackgroundsInDarkMode(html: string): string {
+  return html.replace(/style="([^"]*)"/g, (_match, rawStyle: string) => {
     let style = rawStyle
     const colors = new Set<string>()
     style.replace(/(?:^|;)\s*(?:background-color|background)\s*:\s*(#[\da-f]{3,8}|rgba?\([^)]*\)|transparent)(?=\s*(?:;|$))/gi, (_declaration, color: string) => {
@@ -455,31 +521,5 @@ function preserveEmailColorsInGmailDarkMode(html: string): string {
     const gradient = [...colors].map(color => `background-image:linear-gradient(${color},${color})`).join(';')
     if (gradient) style += `;${gradient}`
     return `style="${style}"`
-  })
-  const stack: Array<{ tag: string; color: string }> = []
-  const voidTags = new Set(['area', 'br', 'col', 'hr', 'img', 'input', 'link', 'meta', 'source', 'wbr'])
-  return backgrounds.replace(/<[^>]*>|[^<]+/g, token => {
-    if (token.startsWith('<')) {
-      const closing = token.match(/^<\/\s*([a-z][\w:-]*)/i)
-      if (closing) {
-        let index = -1
-        for (let i = stack.length - 1; i >= 0; i--) {
-          if (stack[i].tag === closing[1].toLowerCase()) { index = i; break }
-        }
-        if (index >= 0) stack.length = index
-        return token
-      }
-      const opening = token.match(/^<\s*([a-z][\w:-]*)/i)
-      if (!opening) return token
-      const tag = opening[1].toLowerCase()
-      const inherited = stack[stack.length - 1]?.color ?? '#202939'
-      const inlineStyle = token.match(/\bstyle="([^"]*)"/i)?.[1] ?? ''
-      const color = [...inlineStyle.matchAll(/(?:^|;)\s*color\s*:\s*(#[\da-f]{3,8})/gi)].pop()?.[1] ?? inherited
-      if (!voidTags.has(tag) && !token.endsWith('/>')) stack.push({ tag, color })
-      return token
-    }
-    if (stack.some(entry => ['head', 'style', 'title'].includes(entry.tag)) || !token.trim() || token.trim() === '&nbsp;') return token
-    const color = stack[stack.length - 1]?.color ?? '#202939'
-    return `<span style="color:transparent!important;background-image:linear-gradient(${color},${color})!important;background-clip:text!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important">${token}</span>`
   })
 }
