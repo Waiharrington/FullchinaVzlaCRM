@@ -3818,3 +3818,70 @@
   .cmd-history-row-total .money-usd { font-size: 15px; }
   .cmd-history-state { font-size: 11px; padding: 3px 8px; }
 }
+
+/* ===== Historial de comandas en el teléfono =====
+   El estado baja a su propia línea para que el nombre del cliente tenga
+   espacio; mes, fecha y año van en una fila y las semanas se deslizan en una
+   sola línea. La computadora no cambia. */
+@media (max-width: 640px) {
+  .cmd-history-nav {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 8px;
+    padding: 0 14px 8px !important;
+  }
+  .cmd-history-nav-actions {
+    display: flex !important;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .cmd-history-nav-actions > .filter-dropdown-wrap:first-child .cmd-history-date-filter {
+    max-width: none !important;
+    min-height: 32px !important;
+    padding: 0 10px !important;
+    font-size: 11.5px !important;
+  }
+  .cmd-history-year-btn { min-height: 32px; padding: 0 10px !important; font-size: 12px !important; }
+  .cmd-history-month-label { min-width: 74px !important; font-size: 13px !important; }
+  .cmd-history-month-btn { width: 30px !important; height: 30px !important; }
+
+  .cmd-history-weeks-row .cmd-history-weeks {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    width: auto !important;
+    padding: 2px 14px !important;
+  }
+  .cmd-history-weeks-row .cmd-history-week-btn {
+    flex: 0 0 auto !important;
+    height: 32px;
+    padding: 0 13px !important;
+    font-size: 12px !important;
+  }
+
+  .cmd-history-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "time title title"
+      "time detail detail"
+      "time state total";
+    align-items: start;
+    row-gap: 4px;
+    column-gap: 10px;
+  }
+  .cmd-history-row-time { grid-area: time; padding-top: 1px; }
+  .cmd-history-row-main { display: contents; }
+  .cmd-history-row-title { grid-area: title; align-self: center; flex-wrap: wrap; row-gap: 0; }
+  .cmd-history-row-title strong { flex: 0 1 auto; max-width: 100%; }
+  .cmd-history-row-title strong { font-size: 14px; }
+  .cmd-history-row-title small { font-size: 10.5px; }
+  .cmd-history-row-detail { grid-area: detail; }
+  .cmd-history-row-side { display: contents; }
+  .cmd-history-row-total { grid-area: total; justify-self: end; align-self: end; text-align: right; }
+  .cmd-history-state { grid-area: state; justify-self: start; align-self: end; min-width: 0; max-width: 100%; margin-top: 2px; white-space: normal; line-height: 1.25; }
+  .cmd-history-nav-actions .fc-calendar-prefix { display: none !important; }
+  .cmd-history-month-nav { gap: 0 !important; }
+  .cmd-history-group-label { align-items: center; }
+}
