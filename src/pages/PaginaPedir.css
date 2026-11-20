@@ -266,16 +266,16 @@ html:has(.app-main > .pedir-admin),body:has(.app-main > .pedir-admin) { height:1
 .pedir-schedule-day.selected { border-color:rgba(255,200,61,.55); color:#ffe08a; background:rgba(255,200,61,.1); }
 .pedir-schedule-day:focus-visible { outline:2px solid #ffc83d; outline-offset:2px; }
 .pedir-schedule-times { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-.pedir-schedule-time-select .fc-select-trigger { min-height:44px; border-color:#ead7d3; color:#611b26; background:#fffaf8; font-size:13px; }
-.pedir-schedule-time-select .fc-select-trigger:hover,.pedir-schedule-time-select.fc-select.is-open .fc-select-trigger { border-color:#db9ca4; background:#fff4f1; }
-.pedir-schedule-time-select .fc-select-trigger svg { color:#a13746; }
-.fc-select-menu.pedir-schedule-time-menu { border-color:#ead7d3; color:#611b26; background:#fffdfb; box-shadow:0 16px 36px rgba(33,10,14,.24); }
-.pedir-schedule-time-menu .fc-select-options { scrollbar-color:#b83a4a transparent; }
-.pedir-schedule-time-menu .fc-select-options::-webkit-scrollbar-thumb { background:#b83a4a; }
-.pedir-schedule-time-menu .fc-select-option { min-height:44px; color:#611b26; font-size:13px; }
-.pedir-schedule-time-menu .fc-select-option:hover,.pedir-schedule-time-menu .fc-select-option.is-active { color:#611b26; background:#fff0f0; }
-.pedir-schedule-time-menu .fc-select-option.is-selected { color:#8d2635; background:#fcebed; }
-.pedir-schedule-time-menu .fc-select-option.is-selected svg { color:#bb2639; }
+.pedir-schedule-time-select .fc-select-trigger { min-height:44px; border-color:rgba(255,200,61,.24); color:#f4f4f5; background:linear-gradient(180deg,#202024,#18181b); font-size:13px; }
+.pedir-schedule-time-select .fc-select-trigger:hover,.pedir-schedule-time-select.fc-select.is-open .fc-select-trigger { border-color:rgba(255,200,61,.62); background:linear-gradient(180deg,#29251b,#201d17); }
+.pedir-schedule-time-select .fc-select-trigger svg { color:#ffc83d; }
+.fc-select-menu.pedir-schedule-time-menu { border-color:rgba(255,200,61,.38); color:#f4f4f5; background:rgba(20,20,23,.99); box-shadow:0 18px 42px rgba(0,0,0,.58),0 0 0 1px rgba(255,200,61,.06) inset; }
+.pedir-schedule-time-menu .fc-select-options { scrollbar-color:#a77b16 transparent; }
+.pedir-schedule-time-menu .fc-select-options::-webkit-scrollbar-thumb { background:#a77b16; }
+.pedir-schedule-time-menu .fc-select-option { min-height:44px; color:#e4e4e7; font-size:13px; }
+.pedir-schedule-time-menu .fc-select-option:hover,.pedir-schedule-time-menu .fc-select-option.is-active { color:#ffe08a; background:rgba(255,200,61,.09); }
+.pedir-schedule-time-menu .fc-select-option.is-selected { color:#ffe08a; background:rgba(255,200,61,.15); }
+.pedir-schedule-time-menu .fc-select-option.is-selected svg { color:#ffc83d; }
 .pedir-store-status-control { display:grid; gap:11px; padding-top:14px; border-top:1px solid rgba(255,255,255,.08); }
 .pedir-store-status-control>div:first-child { display:grid; gap:4px; }
 .pedir-store-status-control>div:first-child strong { color:#f4f4f5; font-size:12px; }
