@@ -30,8 +30,12 @@ de bloqueo de Chromium que pertenecían al contenedor ya detenido.
 
 Build y lint pasan. Las 16 pruebas del bot pasan. En la suite principal, 170 de
 171 pruebas pasaron; una prueba de Inicio agotó el timeout de 5 s al correr la
-suite, aunque pasó al ejecutarla por separado. Pendiente: publicar el commit en
-`master` y confirmar que Vercel quede `READY`.
+suite, aunque pasó al ejecutarla por separado. El commit `7358e99` quedó en
+`master`; Vercel publicó el deployment de producción
+`dpl_8G5LwQ3691CHEzyVYDDKW8U77uEY` (`READY`) y el alias `/pedir` respondió HTTP
+200 con el bundle actualizado. Las dos migraciones están registradas en el VPS
+y el estado del bot confirma `connected` tras reemplazar su imagen, con el
+contenedor y la imagen anteriores preservados para rollback.
 
 ## Cobro exacto en efectivo (2026-11-17)
 
@@ -108,7 +112,7 @@ grande para `xlsx`.
 
 Se aplicó `20261107000000_allow_removing_included_proteins.sql` al VPS tras validar el respaldo completo `/root/fullchina-backups/fullchinavzla-pre-remove-proteins-20261107.dump` (34.830.717 bytes; SHA-256 `0d58e6c0fd7baeaa615c79a5b4b3426568e179771fbcd7991f9e9fbecdd8b22b`). El grupo **Proteínas incluidas · Full Kilo** quedó con mínimo 0 y máximo 4, y se verificó activo `trg_reconcile_web_order_protein_stock`. En la página pública se muestran todas incluidas por defecto; el cliente puede quitar una sin sustituirla. Al confirmar el pedido web, un ajuste de inventario en la misma transacción compensa la proteína quitada de la receta fija. Pendiente: comprobar un pedido real elegido por la clienta de punta a punta.
 
-Última actualización: 2026-11-17.
+Última actualización: 2026-11-20.
 
 ## Historial detallado por cuenta y ajuste del correo diario (2026-11-04)
 
