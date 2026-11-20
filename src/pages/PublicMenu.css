@@ -16612,3 +16612,22 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
     display: none !important;
   }
 }
+
+/* En escritorio la flecha queda anclada a la tarjeta, aunque cambie el alto
+   del encabezado entre el resumen y los pasos de entrega. */
+@media (min-width: 900px) and (orientation: landscape) {
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header {
+    position: static !important;
+  }
+
+  .public-drawer-backdrop .public-cart-drawer > .public-review-header .public-review-back {
+    position: absolute !important;
+    top: 14px !important;
+    right: auto !important;
+    bottom: auto !important;
+    left: 14px !important;
+    z-index: 20 !important;
+    margin: 0 !important;
+    transform: none !important;
+  }
+}
