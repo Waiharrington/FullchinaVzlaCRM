@@ -17678,3 +17678,32 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 @media (prefers-reduced-motion: reduce) {
   .public-prod-img-wrap, .public-home-prod-img-wrap, .public-home-promo-img-wrap, .ppdm-chip-skeleton.public-skeleton-block { animation: none !important; }
 }
+
+/* ===== Esqueletos de los pasos del pedido ===== */
+/* "Tus datos" de un cliente con sesión: mientras llegan sus datos, los campos
+   vacíos brillan en vez de mostrar el texto de ejemplo. */
+.public-cart-drawer.is-autofilling .public-data-input input:placeholder-shown {
+  border-radius: 8px;
+  background-image: linear-gradient(100deg, var(--fc-skeleton-base) 20%, var(--fc-skeleton-glow) 40%, var(--fc-skeleton-base) 60%) !important;
+  background-size: 220% 100% !important;
+  animation: fc-skeleton-shimmer var(--fc-skeleton-speed) ease-in-out infinite;
+}
+.public-cart-drawer.is-autofilling .public-data-input input:placeholder-shown::placeholder { color: transparent; }
+
+/* Mapa de la dirección mientras carga: brillo en lugar de un recuadro liso. */
+.public-address-map-brand .public-address-map-loading {
+  background-color: #141416 !important;
+  background-image: linear-gradient(100deg, var(--fc-skeleton-base) 20%, var(--fc-skeleton-glow) 40%, var(--fc-skeleton-base) 60%) !important;
+  background-size: 220% 100% !important;
+  animation: fc-skeleton-shimmer var(--fc-skeleton-speed) ease-in-out infinite;
+  color: #c4c4cc !important;
+  font-size: 13px !important;
+}
+
+/* Fotos de "Retirar / Delivery" en la primera visita. */
+.public-delivery-choice > img { background-color: var(--fc-skeleton-base); }
+
+@media (prefers-reduced-motion: reduce) {
+  .public-cart-drawer.is-autofilling .public-data-input input:placeholder-shown,
+  .public-address-map-brand .public-address-map-loading { animation: none !important; }
+}
