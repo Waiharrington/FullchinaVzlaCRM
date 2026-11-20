@@ -211,10 +211,22 @@ export function Inicio() {
   const nextBcvRateDate = nextBcvUpdatedAt ? dateKeyInTimeZone(new Date(nextBcvUpdatedAt)) : null
   const hasFutureBcvRate = Boolean(nextBcvRateDate && nextBcvRateDate > dateKeyInTimeZone())
   const nextBcvRateLabel = nextBcvRate && nextBcvUpdatedAt
-    ? `Próxima disponible: $1 = Bs. ${formatVes(nextBcvRate)} desde ${formatRateDate(nextBcvUpdatedAt)}`
+    ? `Próxima disponible: $1 = ${formatVes(nextBcvRate)} desde ${formatRateDate(nextBcvUpdatedAt)}.`
     : null
-  const bcvRateHelp = nextBcvRateLabel
-    ?? `No hay una tasa futura publicada todavía. Última tasa disponible: ${formatRateDate(bcvUpdatedAt)}.`
+  const bcvRateHelp = isNextBcvRate
+    ? `Tasa próxima: $1 = ${formatVes(bcvRate ?? 0)} desde ${formatRateDate(bcvUpdatedAt)}.`
+    : nextBcvRateLabel
+      ?? `Próxima tasa pendiente de publicación. Última tasa disponible: ${formatRateDate(bcvUpdatedAt)}.`
+  // La píldora muestra solo la tasa; el detalle queda en el globo de ayuda.
+  const bcvShortNote = !bcvRate
+    ? null
+    : bcvStale
+      ? 'guardada'
+      : hasFutureBcvRate && nextBcvRate
+        ? `Próx. ${formatVes(nextBcvRate)}`
+        : isNextBcvRate
+          ? 'próxima'
+          : null
   const [selectedDate, setSelectedDate] = useState(() => dateKeyInTimeZone())
   const selectedDateRef = useRef(selectedDate)
   const changeSelectedDate = (date: string) => {
@@ -884,7 +896,7 @@ export function Inicio() {
                 <DollarSign size={12} />
                 <span>BCV</span>
                 <strong>{bcvRate ? `$1 = ${formatVes(bcvRate)}` : bcvLoading ? 'Consultando…' : 'No disponible'}</strong>
-                {bcvRate && <span className="db-rate-date">{bcvStale ? 'guardada' : hasFutureBcvRate && nextBcvRateLabel ? nextBcvRateLabel : isNextBcvRate ? `Próxima · $1 = Bs. ${formatVes(bcvRate)} · ${formatRateDate(bcvUpdatedAt)}` : 'Próxima tasa pendiente de publicación'}</span>}
+                {bcvShortNote && <span className="db-rate-date">{bcvShortNote}</span>}
               </button>
           </div>
 
