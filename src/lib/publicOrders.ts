@@ -229,6 +229,32 @@ export async function getPublicPromotions(): Promise<Promotion[]> {
   }))
 }
 
+const WEB_ORDER_ERROR_MESSAGES: Array<[RegExp, string]> = [
+  [/failed to fetch|networkerror|load failed|network request failed/i, 'No pudimos conectar con Full China. Revisa tu conexión e inténtalo de nuevo; tu pedido no se ha perdido.'],
+  [/^nombre invalido/i, 'Revisa tu nombre: debe tener entre 2 y 100 caracteres.'],
+  [/^telefono invalido/i, 'Revisa tu número de WhatsApp.'],
+  [/^cedula invalida/i, 'Revisa tu cédula: debe tener entre 6 y 8 dígitos.'],
+  [/^direccion de entrega requerida|^ubicacion de delivery incompleta/i, 'Falta confirmar la dirección de entrega en el mapa.'],
+  [/^ubicacion fuera de las zonas de delivery/i, 'Esa ubicación está fuera del área de delivery. Elige otro punto o cambia a retiro en el local.'],
+  [/^demasiados pedidos recientes para este telefono/i, 'Ya enviaste varios pedidos con este número hace poco. Espera unos minutos o escríbenos por WhatsApp.'],
+  [/^producto no disponible/i, 'Uno de los productos ya no está disponible. Recarga el menú y revisa tu pedido.'],
+  [/^opcion no valida para el producto|^seleccion incompleta o excesiva|^esta opcion no permite repeticion|^modificadores invalidos/i, 'Las opciones de un producto cambiaron. Edítalo desde el carrito y vuelve a confirmar.'],
+  [/^cantidad invalida|^carrito invalido/i, 'Revisa las cantidades de tu pedido: máximo 30 unidades por producto y 40 productos distintos.'],
+  [/^la clave de reintento pertenece/i, 'Tu pedido cambió mientras se enviaba. Revisa el resumen y vuelve a confirmar.'],
+]
+
+/** Converts backend/network failures into customer-facing Spanish copy. */
+export function describeWebOrderError(cause: unknown): string {
+  const message = cause instanceof Error
+    ? cause.message
+    : cause && typeof cause === 'object' && 'message' in cause ? String((cause as { message: unknown }).message) : ''
+  const known = WEB_ORDER_ERROR_MESSAGES.find(([pattern]) => pattern.test(message.trim()))
+  if (known) return known[1]
+  // Los mensajes nuevos del servidor ya vienen redactados para el cliente.
+  if (/[áéíóúñ]/i.test(message) && message.length <= 200) return message
+  return 'No pudimos registrar el pedido. Inténtalo de nuevo en unos segundos.'
+}
+
 export async function createWebOrder(params: {
   customerName: string
   customerPhone: string
@@ -274,11 +300,20 @@ export async function createWebOrder(params: {
   }
 }
 
+/** Inicio del día actual en Caracas (UTC-4, sin horario de verano), en ISO. */
+export function caracasTodayStartIso(now = new Date()): string {
+  const caracas = new Date(now.getTime() - 4 * 60 * 60 * 1000)
+  return new Date(Date.UTC(caracas.getUTCFullYear(), caracas.getUTCMonth(), caracas.getUTCDate(), 4)).toISOString()
+}
+
 export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
+  // Las solicitudes sin confirmar vencen a la medianoche de Caracas.
+  void db().rpc('fn_expire_stale_web_order_requests').then(() => undefined, () => undefined)
   const { data, error } = await db()
     .from('web_order_requests')
     .select('id,request_number,customer_name,customer_phone,customer_identification,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price,notes,modifiers,line_number)')
     .eq('status', 'pending_confirmation')
+    .gte('created_at', caracasTodayStartIso())
     .order('created_at', { ascending: false })
   if (error) throw error
 

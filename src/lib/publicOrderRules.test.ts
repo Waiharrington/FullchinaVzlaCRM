@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION } from './publicOrderRules'
+import { appendRequiredOrderMetadata, isValidPublicIdentification, normalizeVenezuelanPhone, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION } from './publicOrderRules'
 import type { ProductModifierGroup } from './dataService'
 
 const groups: ProductModifierGroup[] = [
@@ -115,5 +115,36 @@ describe('límites del carrito del pedido público', () => {
     const fortyLines = Array.from({ length: PUBLIC_ORDER_MAX_DISTINCT_LINES }, (_, index) => ({ productId: `product-${index}`, quantity: 1 }))
     expect(getPublicCartLimitViolation(fortyLines)).toBeNull()
     expect(getPublicCartLimitViolation([...fortyLines, { productId: 'product-40', quantity: 1 }])).toBe('distinct-lines')
+  })
+})
+
+describe('teléfono y cédula públicos', () => {
+  it('normaliza +58 a 04xx y exige 04', () => {
+    expect(normalizeVenezuelanPhone('+58 412 123 4567')).toBe('04121234567')
+    expect(normalizeVenezuelanPhone('0412 123 4567')).toBe('04121234567')
+    expect(normalizeVenezuelanPhone('0212 123 4567')).toBeNull()
+    expect(normalizeVenezuelanPhone('412')).toBeNull()
+  })
+  it('acepta cédula V/E de 6–8 dígitos y RIF J con verificador', () => {
+    expect(isValidPublicIdentification('V-12345678')).toBe(true)
+    expect(isValidPublicIdentification('V-123456789')).toBe(false)
+    expect(isValidPublicIdentification('J-123456789')).toBe(true)
+    expect(isValidPublicIdentification('J-12345')).toBe(false)
+  })
+})
+
+describe('pickup slots and identification', () => {
+  it('offers 15-minute slots from prep time until last call', async () => {
+    const { getPublicPickupSlots } = await import('./publicOrderRules')
+    expect(getPublicPickupSlots(21 * 60, '11:30', '22:00')).toEqual(['21:30', '21:45'])
+    expect(getPublicPickupSlots(10 * 60, '11:30', '12:15')).toEqual(['11:30', '11:45', '12:00'])
+    expect(getPublicPickupSlots(21 * 60 + 40, '11:30', '22:00')).toEqual([])
+  })
+
+  it('accepts a 9-digit RIF only for J', async () => {
+    const { isValidPublicIdentification } = await import('./publicOrderRules')
+    expect(isValidPublicIdentification('J-123456789')).toBe(true)
+    expect(isValidPublicIdentification('J-12345678')).toBe(false)
+    expect(isValidPublicIdentification('V-123456789')).toBe(false)
   })
 })

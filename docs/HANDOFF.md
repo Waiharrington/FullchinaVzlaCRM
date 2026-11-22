@@ -1,5 +1,30 @@
 # Estado y continuidad de FullChinaVzla
 
+## Endurecimiento del pedido web /pedir (2026-11-22)
+
+Se aplicó y registró `20261122000000_harden_public_web_orders.sql` en
+`fullchinavzla`, después del respaldo
+`/root/fullchina-backups/fullchinavzla-pre-harden-public-web-orders-20261122.dump`
+(7.646.982 bytes, solo esquema `fullchinavzla`, 1.702 entradas de `pg_restore --list`;
+SHA-256 `2c5109c5c4e3d0a406f5bb1d0fecf21f51ee54253481e385252524a472ce81c2`).
+Antes se ensayó en una transacción revertida.
+
+- Las versiones antiguas de `fn_create_web_order` (8 y 11 argumentos) ya no son
+  públicas; solo queda la de 12 (con cédula y tarifa de delivery validada).
+- El servidor rechaza pedidos con la tienda cerrada (`fn_public_order_store_is_open`),
+  productos ocultos, subtotal menor a USD 1 y abusos: 3 pendientes por cédula
+  cada 30 min, 8 por teléfono al día, 40 pedidos globales cada 10 min.
+- La tasa BCV del navegador se reemplaza por la última del personal (3 días) si
+  se desvía más de 5 %.
+- RIF jurídico: `J` + 9 dígitos. Cédulas V/E: 6–8 dígitos.
+- Las solicitudes sin confirmar vencen a la medianoche de Caracas
+  (`fn_expire_stale_web_order_requests` + trigger que impide confirmarlas).
+  Comandas solo lista las pendientes del día.
+- El WhatsApp al cliente muestra la hora de retiro elegida («Lo antes posible»
+  o una hora del horario) y ya no repite los metadatos en las indicaciones.
+- En la página, la tarifa de delivery usa la misma regla que el servidor
+  (línea recta × factor); OSRM solo dibuja la ruta.
+
 ## Confirmación automática de pedidos públicos por WhatsApp (2026-11-20)
 
 Al enviar un pedido en `/pedir`, la solicitud pública encola una sola

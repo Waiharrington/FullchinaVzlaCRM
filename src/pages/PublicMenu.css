@@ -16371,6 +16371,27 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
 }
 .public-pickup-directions svg:last-child { margin-left: auto; }
 .public-pickup-continue { width: 100%; }
+.public-pickup-time {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(255, 200, 61, 0.22);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.public-pickup-time > span { display: flex; align-items: center; gap: 8px; color: #fff; font-weight: 700; font-size: 14px; }
+.public-pickup-time > span svg { color: #ffc83d; }
+.public-pickup-time select {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: #15161a;
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+}
+.public-pickup-time small { color: #9b9da4; font-size: 12px; }
 @media (max-width: 600px) {
   .public-pickup-step { gap: 12px; }
   .public-pickup-map { min-height: 170px; height: 21vh; max-height: 210px; border-radius: 15px; }

@@ -1,41 +1,56 @@
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent as ReactMouseEvent, type SyntheticEvent, type WheelEvent as ReactWheelEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowDown, Bike, Check, ChevronRight, CircleAlert, CircleCheck, Clock, CupSoda, Drumstick, Flame, Heart, LoaderCircle, Pencil, Wallet, MapPin, MessageSquareText, Minus, Phone, Plus, Search, Navigation, ShieldCheck, ShoppingBag, ShoppingCart, Star, Store, Trash2, UserRound, Utensils, X, Zap } from 'lucide-react'
+import { ChevronRight, CircleAlert, CircleCheck, LoaderCircle, ShoppingBag, ShoppingCart } from 'lucide-react'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { getCartCarouselGroups, getCartRecommendations } from '../lib/cartRecommendations'
-import { publicCartIncludedCopy, publicVariantCopy, publicVariantLabel } from '../lib/publicMenuLabels'
-import { createWebOrder, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type CustomerRepeatOrder, type WebOrderCartItem } from '../lib/publicOrders'
-import { estimateDeliveryAsync, getDeliveryRoute, type DeliveryEstimate, type DeliveryRoute, type DeliverySettings } from '../lib/delivery'
+import { publicCartIncludedCopy } from '../lib/publicMenuLabels'
+import { createWebOrder, describeWebOrderError, getPublicCatalog, getPublicMenuCategories, getPublicDeliverySettings, getPublicProductModifiers, type CustomerRepeatOrder, type WebOrderCartItem } from '../lib/publicOrders'
+import { estimateDelivery, getDeliveryRoute, type DeliveryEstimate, type DeliveryRoute, type DeliverySettings } from '../lib/delivery'
 import { reverseGoogleAddress, searchGoogleAddresses } from '../lib/googleMaps'
-import { appendRequiredOrderMetadata, calculateModifierTotal, countModifierSelections, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
+import { appendRequiredOrderMetadata, describePickupTime, getPublicPickupSlots, PUBLIC_ORDER_MIN_SUBTOTAL,isValidPublicIdentification, normalizeVenezuelanPhone, calculateModifierTotal, getDefaultModifierSelection, getModifierSelectionError, getPublicCartLimitViolation, hasInvalidModifierSelection, isIncludedProteinGroup, PUBLIC_ORDER_MAX_DISTINCT_LINES, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, type PublicModifierSelection, type PublicCartLimitViolation } from '../lib/publicOrderRules'
 import { type ProductModifierGroup } from '../lib/dataService'
 import { getExchangeRates } from '../lib/rates'
 import type { Product } from '../lib/dataService'
-import { HeroWokEmbers } from '../components/HeroWokEmbers'
-import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { PublicContactSkeleton, PublicHomeProductSkeletons, PublicHomePromoSkeletons, PublicProfileSkeleton } from '../components/PublicPageSkeletons'
-import { CustomerLoyaltyPromo } from '../components/CustomerLoyaltyPromo'
 import { PublicMenuWelcomeModal } from '../components/PublicMenuWelcomeModal'
 import { consumePublicMenuWelcomeDismissal, PUBLIC_MENU_WELCOME_DISMISSED_KEY } from '../lib/publicMenuWelcome'
 import { getCustomerOrderProfile } from '../lib/customerOrderProfile'
 import { getCustomerFavorites, syncCustomerFavorites } from '../lib/customerFavorites'
 import { DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS, DEFAULT_PUBLIC_ORDER_REELS, getPublicOrderMapEmbedUrl, getPublicOrderPageSettings, type PublicOrderPageSettings, type PublicOrderReel } from '../lib/publicOrderPageSettings'
-import { formatPublicOrderDays, getPublicOrderDayCodes } from '../lib/publicOrderSchedule'
 import { preserveEmptyPublicCarousel, selectPublicCarouselGroups } from '../lib/publicOrderCarousel'
-import { getLocalOrderTestConfirmationCopy, isLocalOrderTestMode, recordLocalOrderTestOrder } from '../lib/localOrderTestMode'
+import { recordLocalOrderTestOrder } from '../lib/localOrderTestMode'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { customerSupabase, startCustomerDataChangeFeed, stopCustomerDataChangeFeed, startPublicMenuDataChangeFeed, stopPublicMenuDataChangeFeed, subscribeToDataChanges } from '../lib/supabase'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 import { categoryLabel, classifyMenuCategory, menuItemRank, menuCategoryRank, isKnownCategory, hydrateMenuCategories, MENU_CATEGORY_ORDER } from '../lib/menuCategories'
 import Toast from '../components/Toast'
+import { ProductCard } from '../components/public-menu/ProductCard'
+import { DesktopProductCard } from '../components/public-menu/DesktopProductCard'
+import { DesktopPromoCard } from '../components/public-menu/DesktopPromoCard'
+import { CATEGORY_ACCENT_CYCLE } from '../lib/publicMenuConfig'
+import { preloadCustomerLoyaltyProfile } from '../components/public-menu/lazyViews'
+import { PublicTopBar } from '../components/public-menu/PublicTopBar'
+import { PublicMobileView } from '../components/public-menu/PublicMobileView'
+import { PublicDesktopLayout } from '../components/public-menu/PublicDesktopLayout'
+import { QuickVariantDialog } from '../components/public-menu/QuickVariantDialog'
+import { QuickProteinDialog } from '../components/public-menu/QuickProteinDialog'
+import { ProductDetailDialog } from '../components/public-menu/ProductDetailDialog'
+import { CartExtrasCatalog } from '../components/public-menu/CartExtrasCatalog'
+import { StoreClosedNotice } from '../components/public-menu/StoreClosedNotice'
+import { CartStep } from '../components/public-checkout/CartStep'
+import { DeliveryStep } from '../components/public-checkout/DeliveryStep'
+import { PickupStep } from '../components/public-checkout/PickupStep'
+import { AddressStep } from '../components/public-checkout/AddressStep'
+import { DetailsStep } from '../components/public-checkout/DetailsStep'
+import { ConfirmStep } from '../components/public-checkout/ConfirmStep'
+import { SentStep } from '../components/public-checkout/SentStep'
+import { formatStoreSchedule, formatStoreTime, getStoreClock } from '../lib/publicStoreClock'
+import { CART_KEY, CHECKOUT_ATTEMPT_KEY, DESKTOP_MEDIA_QUERY, DESKTOP_SIDEBAR_MEDIA_QUERY, DESKTOP_TAB_KEY, FAVORITES_KEY, FLOW_STATE_KEY, LAST_ORDER_KEY, LOCAL_ORDER_TEST_MODE, ORDER_HOURS_BLOCK_ENABLED, PREVIEW_LOADING, PUBLIC_MODIFIER_CACHE, PUBLIC_WHATSAPP_PHONE, WHATSAPP_SENT_KEY, isRecentSentState } from '../lib/publicMenuConfig'
+import { readCatalogCache, readCheckoutAttempt, readDesktopTab, saveCatalogCache } from '../lib/publicMenuStorage'
+import { BS_FORMATTER, PAY_OPTIONS, PayMethod, cartLineKey, filterProteinExtraGroups, isProteinCatalogExtra, money, optimizedProductImage, previewImageSource, productImage } from '../lib/publicMenuFormat'
+import { revealCheckoutField } from '../lib/publicCheckoutDom'
+import type { MapCoordinates, DesktopTab, CheckoutStep } from '../lib/publicMenuTypes'
 import './PublicMenu.css'
 
-const loadCustomerLoyaltyProfile = () => import('../components/CustomerLoyaltyProfile')
-const CustomerLoyaltyProfile = lazy(() => loadCustomerLoyaltyProfile().then(module => ({ default: module.CustomerLoyaltyProfile })))
-const preloadCustomerLoyaltyProfile = () => { void loadCustomerLoyaltyProfile().catch(() => undefined) }
-const loadPublicMenuContactView = () => import('../components/PublicMenuContactView')
-const PublicMenuContactView = lazy(() => loadPublicMenuContactView().then(module => ({ default: module.PublicMenuContactView })))
-const preloadPublicMenuContactView = () => { void loadPublicMenuContactView().catch(() => undefined) }
 
 declare global { interface Window { __removeFCSplash?: () => void } }
 
@@ -43,68 +58,10 @@ declare global { interface Window { __removeFCSplash?: () => void } }
 // Curados para no solaparse con "Nuestras Promociones" (categorías promociones/ejecutivos/individuales).
 const FEATURED_DISH_QUERIES = ['arroz frito especial', 'chop suey especial', 'costillas agridulce', 'vermicelli especial']
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Todos: '/optimized/menu-icons/menu.webp',
-  arroz: '/optimized/menu-icons/arroz chino.webp',
-  chopsuey: '/optimized/menu-icons/Chopsuey.webp',
-  tallarines: '/optimized/menu-icons/tallarines.webp',
-  pastas: '/optimized/menu-icons/pastas.webp',
-  promociones: '/optimized/menu-icons/promociones.webp',
-  bebidas: '/optimized/menu-icons/bebidas.webp',
-  individuales: '/optimized/menu-icons/individuales.webp',
-  ejecutivos: '/optimized/menu-icons/ejecutivo.webp',
-  raciones: '/optimized/menu-icons/raciones.webp',
-  extras: '/optimized/menu-icons/raciones.webp',
-  otros: '/optimized/menu-icons/menu.webp',
-}
-
 // Tinte de fondo (RGB) para el efecto de "profundidad" que acompaña el
 // scroll en la vista "Todos" — sutil, no reemplaza la imagen de fondo de la
 // marca, solo la tiñe levemente según lo que se está viendo. Solo usa los
 // colores de la marca (rojo, dorado, naranja), intercalados por categoría.
-const CATEGORY_ACCENT_CYCLE = ['227, 27, 43', '255, 200, 61', '234, 88, 12']
-
-const DESKTOP_CATEGORY_LABELS: Record<string, string> = {
-  promociones: 'Promos',
-  ejecutivos: 'Ejecutivo',
-}
-
-const STORE_TIME_ZONE = 'America/Caracas'
-
-function formatStoreTime(value: string) {
-  const [hour = '0', minute = '00'] = value.split(':')
-  const numericHour = Number(hour)
-  const suffix = numericHour < 12 ? 'a. m.' : 'p. m.'
-  const displayHour = numericHour % 12 || 12
-  return `${displayHour}:${minute} ${suffix}`
-}
-
-function formatStoreSchedule(settings: PublicOrderPageSettings) {
-  return `${formatPublicOrderDays(settings.contactDays)} · ${formatStoreTime(settings.contactOpenTime)}–${formatStoreTime(settings.contactCloseTime)}`
-}
-
-function getStoreClock(settings: PublicOrderPageSettings = DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS) {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: STORE_TIME_ZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    weekday: 'short',
-  }).formatToParts(new Date())
-  const hour = Number(parts.find(part => part.type === 'hour')?.value ?? 0)
-  const minute = Number(parts.find(part => part.type === 'minute')?.value ?? 0)
-  const weekday = parts.find(part => part.type === 'weekday')?.value ?? ''
-  const [openHour = '0', openMinute = '0'] = settings.contactOpenTime.split(':')
-  const [closeHour = '0', closeMinute = '0'] = settings.contactCloseTime.split(':')
-  const now = hour * 60 + minute
-  const opens = Number(openHour) * 60 + Number(openMinute)
-  const closes = Number(closeHour) * 60 + Number(closeMinute)
-  const openDay = getPublicOrderDayCodes(settings.contactDays).includes(weekday)
-  const previewClosed = import.meta.env.DEV
-    && new URLSearchParams(window.location.search).get('previewStoreClosed') === '1'
-  const isOpen = !previewClosed && openDay && now >= opens && now < closes
-  return { isOpen }
-}
 
 const DEFAULT_INSTAGRAM_PROFILE_URL = 'https://www.instagram.com/_u/fullchinavzla/'
 function handleInstagramProfileClick(event: ReactMouseEvent<HTMLAnchorElement>) {
@@ -150,38 +107,6 @@ function startInstagramVideo(video: HTMLVideoElement) {
   void video.play().catch(() => undefined)
 }
 
-type MapCoordinates = { lat: number; lng: number }
-const AddressMap = lazy(() => import('../components/PublicAddressMap').then(module => ({ default: module.PublicAddressMap })))
-
-const FAVORITES_KEY = 'fullchina_public_favorites'
-const CART_KEY = 'fullchina_public_cart'
-const LAST_ORDER_KEY = 'fullchina_public_last_order'
-const FLOW_STATE_KEY = 'fullchina_public_flow_state'
-const WHATSAPP_SENT_KEY = 'fullchina_public_whatsapp_sent'
-const PUBLIC_WHATSAPP_PHONE = String(import.meta.env.VITE_FULLCHINA_WHATSAPP || '').replace(/\D/g, '')
-const CHECKOUT_ATTEMPT_KEY = 'fullchina_public_checkout_attempt'
-const LOCAL_ORDER_TEST_MODE = isLocalOrderTestMode()
-// El checkout público solo permite pedidos durante el horario configurado.
-const ORDER_HOURS_BLOCK_ENABLED = true
-const DESKTOP_TAB_KEY = 'fullchina_public_desktop_tab'
-const PUBLIC_MODIFIER_CACHE = new Map<string, ProductModifierGroup[]>()
-// v2 intentionally drops caches created while the public RPC still returned
-// inline Base64 images (those entries could occupy several megabytes).
-// v3 descarta catálogos que guardaron las rutas estáticas antiguas M*.jpg.
-const CATALOG_CACHE_KEY = 'fullchina_public_catalog_v4'
-// Solo en desarrollo: /pedir?previewLoading=1 deja el menú en estado de carga
-// para revisar los esqueletos (como ?showClosedNotice=1 con el aviso de cerrado).
-const PREVIEW_LOADING = import.meta.env.DEV
-  && typeof window !== 'undefined'
-  && new URLSearchParams(window.location.search).get('previewLoading') === '1'
-const CATALOG_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
-// Debe coincidir exactamente con el breakpoint de PublicMenu.css: escritorio
-// desde 1280px, o desde 1024px cuando el dispositivo (iPad/tablet) está en horizontal.
-const DESKTOP_MEDIA_QUERY = '(min-width: 1280px), (min-width: 1024px) and (orientation: landscape)'
-// Debe coincidir con la media query que muestra .public-desktop-sidebar en PublicMenu.css.
-// Con la tarjeta lateral visible, ella es el paso 'Tu pedido': el checkout no debe
-// mostrar su propia versión móvil del carrito al volver.
-const DESKTOP_SIDEBAR_MEDIA_QUERY = '(min-width: 1280px), (min-width: 900px) and (orientation: landscape)'
 
 // Se mantienen decodificados mientras el cliente cambia entre pestañas.
 const profileBackgroundImages = new Map<string, HTMLImageElement>()
@@ -305,58 +230,6 @@ function warmProfileBackgroundImages(prioritizeAuth = false) {
   })
 }
 
-type DesktopTab = 'inicio' | 'menu' | 'contacto' | 'perfil'
-
-function PublicCatalogLoadingSkeleton() {
-  return (
-    <div className="public-catalog-skeleton" role="status" aria-label="Cargando platos del menú">
-      <div className="public-catalog-skeleton-head" aria-hidden="true">
-        <span className="fc-skeleton" />
-        <span className="fc-skeleton" />
-      </div>
-      {Array.from({ length: 6 }, (_, index) => (
-        <article className="public-catalog-skeleton-card" key={index} aria-hidden="true">
-          <span className="public-catalog-skeleton-image" />
-          <span className="public-catalog-skeleton-button fc-skeleton" />
-          <span className="public-catalog-skeleton-line public-catalog-skeleton-line-title" />
-          <span className="public-catalog-skeleton-line public-catalog-skeleton-line-price" />
-        </article>
-      ))}
-    </div>
-  )
-}
-
-const readDesktopTab = (): DesktopTab => {
-  if (typeof window === 'undefined') return 'inicio'
-  try {
-    const savedTab = localStorage.getItem(DESKTOP_TAB_KEY)
-    return savedTab === 'menu' || savedTab === 'contacto' || savedTab === 'perfil' ? savedTab : 'inicio'
-  } catch {
-    return 'inicio'
-  }
-}
-
-type PublicMenuCategory = { key: string; label: string; sortOrder: number }
-type CatalogCache = { products: Product[]; categories: PublicMenuCategory[]; savedAt: number }
-
-function readCatalogCache(): CatalogCache | null {
-  try {
-    const cached = JSON.parse(localStorage.getItem(CATALOG_CACHE_KEY) || 'null') as CatalogCache | null
-    if (!cached || !Array.isArray(cached.products) || cached.products.length === 0 || !Number.isFinite(cached.savedAt)) return null
-    if (Date.now() - cached.savedAt > CATALOG_CACHE_MAX_AGE_MS) return null
-    return cached
-  } catch {
-    return null
-  }
-}
-
-function saveCatalogCache(products: Product[], categories: PublicMenuCategory[]) {
-  try {
-    localStorage.setItem(CATALOG_CACHE_KEY, JSON.stringify({ products, categories, savedAt: Date.now() } satisfies CatalogCache))
-  } catch {
-    // El catálogo sigue funcionando aunque el navegador no permita almacenamiento.
-  }
-}
 
 function prepareCatalog(catalog: Product[]) {
   const resolveCategory = (product: { name: string; category: string }) =>
@@ -389,155 +262,6 @@ export async function preloadPublicMenuCatalog() {
   } catch {
     // La carta repetirá la consulta al abrirse y mostrará su propio estado de carga.
   }
-}
-
-// Métodos de pago que el cliente puede indicar en la web. Los códigos coinciden
-// con los del sistema de cobro para poder pre-seleccionarlos en la comanda.
-const PAY_OPTIONS = [
-  { code: 'cash', label: 'Efectivo' },
-  { code: 'mobile', label: 'Pago móvil' },
-  { code: 'transfer', label: 'Transferencia' },
-  { code: 'card', label: 'Punto' },
-  { code: 'binance', label: 'Binance' },
-] as const
-type PayMethod = (typeof PAY_OPTIONS)[number]['code']
-const payLabel = (code: string) => PAY_OPTIONS.find((o) => o.code === code)?.label ?? code
-
-/* Desplegable de pago personalizado (reemplaza el <select> nativo).
-   No cambia la lógica: recibe el valor actual y notifica el cambio. */
-function PayDropdown({ value, onChange }: { value: PayMethod; onChange: (v: PayMethod) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
-    document.addEventListener('mousedown', onDoc)
-    document.addEventListener('keydown', onKey)
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey) }
-  }, [open])
-  return (
-    <div className={`public-paydd ${open ? 'open' : ''}`} ref={ref}>
-      <button type="button" className="public-paydd-trigger" onClick={() => setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open}>
-        <span>{payLabel(value)}</span>
-        <ChevronRight className="public-paydd-caret" size={18} aria-hidden="true" />
-      </button>
-      {open && (
-        <ul className="public-paydd-menu" role="listbox">
-          {PAY_OPTIONS.map(o => (
-            <li
-              key={o.code}
-              role="option"
-              aria-selected={o.code === value}
-              className={`public-paydd-option ${o.code === value ? 'selected' : ''}`}
-              onClick={() => { onChange(o.code); setOpen(false) }}
-            >
-              <span>{o.label}</span>
-              {o.code === value && <Check size={16} aria-hidden="true" />}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  )
-}
-
-// Opciones públicas de personalización. Se envían como indicaciones a cocina;
-function productImage(_category?: string) {
-  void _category
-  return '/optimized/menu-product-placeholder.webp'
-}
-
-function optimizedProductImage(imageUrl: string | null | undefined) {
-  if (!imageUrl) return null
-  const match = imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
-  return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imageUrl
-}
-
-function isProteinCatalogExtra(product: Product) {
-  const name = normalizeForSearch(product.name)
-  return /\b(extra|adicional)\b/.test(name)
-    && /\b(proteina|pollo|camaron|carne|cerdo|jamon|res|tofu)\b/.test(name)
-}
-
-function filterProteinExtraGroups(groups: ProductModifierGroup[], enabled: boolean) {
-  if (enabled) return groups
-  return groups.filter(group => {
-    if (isIncludedProteinGroup(group)) return true
-    const name = normalizeForSearch(group.name)
-    const proteinGroup = name.includes('proteina')
-    const optionalExtra = name.includes('extra') || group.minSelections === 0
-    return !(proteinGroup && optionalExtra)
-  })
-}
-
-function previewImageSource(source: string) {
-  const match = source.match(/^\/optimized\/(productos|fondos|login-carousel)\/([^?#]+\.webp)([?#].*)?$/i)
-  return match ? `/optimized/previews/${match[1]}/${match[2]}${match[3] || ''}` : null
-}
-
-const USD_FORMATTER = new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' })
-const BS_FORMATTER = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-function money(value: number) {
-  return USD_FORMATTER.format(value)
-}
-
-function productTitle(name: string) {
-  // Keep the em dash with the variant that follows it. This lets the line
-  // break happen before the dash instead of leaving a dangling dash above.
-  return formatProductTitle(name).replace(/\s+—\s+/g, ' —\u00a0')
-}
-
-function groupDescription(group: MenuProductGroup) {
-  if (group.isGrouped) return group.variants.map(item => formatSpanishText(item.label)).join(' • ')
-  return group.variants[0].product.description || ''
-}
-
-const menuLabelMeta = {
-  top_sales: { text: 'Más vendido', icon: Flame, className: 'top-sales' },
-  new: { text: 'Nuevo', icon: Zap, className: 'new' },
-  recommended: { text: 'Recomendado', icon: Star, className: 'recommended' },
-  free_drink: { text: 'Refresco gratis', icon: CupSoda, className: 'free-drink' },
-} as const
-
-function cartProductName(name: string) {
-  const parts = productTitle(name).split(/\s+—\s+/)
-  if (parts.length > 1) {
-    const variant = parts.slice(1).join(' — ')
-    return `${parts[0]} — ${publicVariantLabel(parts[0], variant)}`
-  }
-  return productTitle(name)
-}
-
-function cartLineKey(item: Pick<WebOrderCartItem, 'productId' | 'notes' | 'modifiers'>) {
-  const mods = [...(item.modifiers ?? [])].sort((a, b) => a.optionId.localeCompare(b.optionId)).map(m => `${m.optionId}:${m.quantity}`).join(',')
-  return `${item.productId}::${item.notes || ''}::${mods}`
-}
-
-function readCheckoutAttempt(): { signature: string; key: string } | null {
-  try {
-    const saved = JSON.parse(sessionStorage.getItem(CHECKOUT_ATTEMPT_KEY) || 'null') as { signature?: string; key?: string } | null
-    return saved?.signature && saved.key ? { signature: saved.signature, key: saved.key } : null
-  } catch { return null }
-}
-
-// Lleva al cliente al campo que falta y lo resalta un momento. En pantallas
-// táctiles no pone el cursor: hacerlo abre el teclado, que tapa el aviso y
-// mueve la vista. El cliente toca el campo cuando quiera escribir.
-function revealCheckoutField(field: HTMLElement | null, focus: boolean) {
-  if (!field) return
-  field.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  const box = field.closest<HTMLElement>('label')
-    ?? field.closest<HTMLElement>('.public-address-selected, [class*="-field"]')
-    ?? field
-  box.classList.remove('public-field-attention')
-  void box.offsetWidth
-  box.classList.add('public-field-attention')
-  window.setTimeout(() => box.classList.remove('public-field-attention'), 1400)
-  const canFocusWithoutKeyboard = typeof window.matchMedia === 'function'
-    && window.matchMedia('(hover: hover) and (pointer: fine)').matches
-  if (focus && canFocusWithoutKeyboard) field.focus({ preventScroll: true })
 }
 
 export function PublicMenu() {
@@ -659,7 +383,7 @@ export function PublicMenu() {
   const [showSearch, setShowSearch] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [closingCart, setClosingCart] = useState(false)
-  const [step, setStep] = useState<'cart' | 'delivery' | 'pickup' | 'address' | 'details' | 'confirm' | 'preparing' | 'whatsapp' | 'sent'>('cart')
+  const [step, setStep] = useState<CheckoutStep>('cart')
   const [returnToConfirmAfterEdit, setReturnToConfirmAfterEdit] = useState(false)
   const [editingCartLineKey, setEditingCartLineKey] = useState<string | null>(null)
 
@@ -766,10 +490,10 @@ export function PublicMenu() {
   const [phone, setPhone] = useState('')
   const [identification, setIdentification] = useState('')
   const [idPrefix, setIdPrefix] = useState<'V' | 'E' | 'J'>('V')
-  const [email, setEmail] = useState('')
   const [customerDetailsAutofilled, setCustomerDetailsAutofilled] = useState(false)
   const customerDetailsTouched = useRef(false)
   const [orderType, setOrderType] = useState<'takeaway' | 'delivery'>('takeaway')
+  const [pickupTime, setPickupTime] = useState<string>('asap')
   const [payMode, setPayMode] = useState<'single' | 'mixed'>('single')
   const [payPrimary, setPayPrimary] = useState<PayMethod>('cash')
   const [paySecondary, setPaySecondary] = useState<PayMethod>('mobile')
@@ -799,7 +523,9 @@ export function PublicMenu() {
     }, 0)
     return () => window.clearTimeout(timeout)
   }, [locationError])
+  // Notas para la cocina (paso datos) y para el repartidor (paso dirección): campos separados.
   const [notes, setNotes] = useState('')
+  const [deliveryNotes, setDeliveryNotes] = useState('')
   const [bcvRate, setBcvRate] = useState<number | null>(null)
   const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null)
   const [deliverySettingsStatus, setDeliverySettingsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
@@ -826,13 +552,12 @@ export function PublicMenu() {
     setDeliveryEstimate(null)
     setDeliveryQuoteStatus('loading')
     setDeliveryRoute(null)
-    void estimateDeliveryAsync(deliverySettings, destination.lat, destination.lng)
-      .then(estimate => {
-        if (!active) return
-        setDeliveryEstimate(estimate)
-        setDeliveryQuoteStatus(estimate ? 'ready' : 'error')
-      })
-      .catch(() => { if (active) { setDeliveryEstimate(null); setDeliveryQuoteStatus('error') } })
+    // La tarifa usa la misma regla que fn_create_web_order (distancia en línea
+    // recta × factor de carretera) para que el total mostrado sea el que se
+    // cobra. La ruta OSRM solo se dibuja en el mapa como referencia.
+    const estimate = estimateDelivery(deliverySettings, destination.lat, destination.lng)
+    setDeliveryEstimate(estimate)
+    setDeliveryQuoteStatus(estimate ? 'ready' : 'error')
     if (origin) {
       void getDeliveryRoute(origin, destination)
         .then(route => {
@@ -899,7 +624,6 @@ export function PublicMenu() {
   const restoringFlow = useRef(true)
   const [orderCode, setOrderCode] = useState('')
   const [localTestOrderLinkedToProfile, setLocalTestOrderLinkedToProfile] = useState(false)
-  const [draftOrderCode, setDraftOrderCode] = useState('')
   const [addFeedback, setAddFeedback] = useState<{ name: string; imageUrl?: string; productId: string; status: 'checking' | 'added' } | null>(null)
   const [addFeedbackClosing, setAddFeedbackClosing] = useState(false)
   const [pendingQuickAdds, setPendingQuickAdds] = useState<Set<string>>(() => new Set())
@@ -1019,6 +743,8 @@ export function PublicMenu() {
   }
   const submitLockRef = useRef(false)
   const checkoutAttemptRef = useRef<{ signature: string; key: string } | null>(readCheckoutAttempt())
+  // Resumen que se muestra en 'sent' aunque el carrito ya se haya vaciado.
+  const [sentSummary, setSentSummary] = useState<{ items: WebOrderCartItem[]; total: number; orderType: 'takeaway' | 'delivery'; address: string; phone: string } | null>(null)
   const [, setLastOrder] = useState<WebOrderCartItem[]>(() => {
     try { return JSON.parse(localStorage.getItem(LAST_ORDER_KEY) || '[]') as WebOrderCartItem[] } catch { return [] }
   })
@@ -1056,7 +782,6 @@ export function PublicMenu() {
       if (customer.fullName || customer.phone || customer.identification) setCustomerDetailsAutofilled(true)
       setName(current => current || customer.fullName)
       setPhone(current => current || customer.phone)
-      setEmail(current => current || customer.email)
       const prefix = customer.identification.trim().match(/^([VEJ])\s*-/i)?.[1]?.toUpperCase()
       if (prefix === 'V' || prefix === 'E' || prefix === 'J') setIdPrefix(prefix)
       setIdentification(current => current || customer.identification)
@@ -1326,6 +1051,16 @@ export function PublicMenu() {
       .catch(() => { if (active) { setDeliverySettings(null); setDeliverySettingsStatus('error') } })
     return () => { active = false }
   }, [orderType, deliverySettings, deliverySettingsRetryVersion])
+
+  // El delivery se desactiva si la configuración pública lo tiene apagado.
+  const deliveryDisabled = deliverySettingsStatus === 'ready' && deliverySettings?.enabled === false
+  useEffect(() => {
+    if (!deliveryDisabled || orderType !== 'delivery') return
+    addressActionRef.current += 1
+    setLocating(false)
+    setOrderType('takeaway')
+    setStep(current => current === 'address' ? 'delivery' : current)
+  }, [deliveryDisabled, orderType])
 
   const categories = useMemo(() => {
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
@@ -1758,12 +1493,21 @@ export function PublicMenu() {
     return () => window.clearInterval(timer)
   }, [pageSettings])
   const isStoreOpen = LOCAL_ORDER_TEST_MODE || pageSettings.storeStatusMode === 'open' || (pageSettings.storeStatusMode !== 'closed' && storeClock.isOpen)
+  const isAcceptingOrders = LOCAL_ORDER_TEST_MODE || pageSettings.storeStatusMode === 'open' || (pageSettings.storeStatusMode !== 'closed' && storeClock.acceptingOrders)
   useEffect(() => {
     if (!pageSettingsLoaded) return
-    setShowStoreClosedNotice(ORDER_HOURS_BLOCK_ENABLED && !LOCAL_ORDER_TEST_MODE && !isStoreOpen)
-  }, [isStoreOpen, pageSettingsLoaded])
+    setShowStoreClosedNotice(ORDER_HOURS_BLOCK_ENABLED && !LOCAL_ORDER_TEST_MODE && !isAcceptingOrders)
+  }, [isAcceptingOrders, pageSettingsLoaded])
+  const pickupSlots = useMemo(
+    () => getPublicPickupSlots(storeClock.nowMinutes, pageSettings.contactOpenTime, pageSettings.contactCloseTime),
+    [storeClock.nowMinutes, pageSettings.contactOpenTime, pageSettings.contactCloseTime],
+  )
+  useEffect(() => {
+    // Si la hora elegida ya pasó (el reloj avanza), se vuelve a "Lo antes posible".
+    if (pickupTime !== 'asap' && !pickupSlots.includes(pickupTime)) setPickupTime('asap')
+  }, [pickupSlots, pickupTime])
   const blockClosedStoreAdd = () => {
-    if (!pageSettingsLoaded || !ORDER_HOURS_BLOCK_ENABLED || isStoreOpen) return false
+    if (!pageSettingsLoaded || !ORDER_HOURS_BLOCK_ENABLED || isAcceptingOrders) return false
     setShowStoreClosedNotice(true)
     return true
   }
@@ -1848,24 +1592,24 @@ export function PublicMenu() {
   useEffect(() => {
     if (!restoringFlow.current) return
     try {
-      const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; email: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
+      const saved = JSON.parse(localStorage.getItem(FLOW_STATE_KEY) || 'null') as Partial<{ cartOpen: boolean; step: string; name: string; phone: string; identification: string; orderType: 'takeaway' | 'delivery'; deliveryChosen: boolean; address: string; addressReference: string; notes: string; deliveryNotes: string; geoCoords: MapCoordinates; addressMethod: 'gps' | 'map' | 'search' }> | null
       const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
       if (saved && cart.length > 0) {
-        if (saved.name || saved.phone || saved.identification || saved.email) customerDetailsTouched.current = true
+        if (saved.name || saved.phone || saved.identification) customerDetailsTouched.current = true
         setName(saved.name || '')
         setPhone(saved.phone || '')
         setIdentification(saved.identification || '')
         const savedPrefix = saved.identification?.match(/^[VEJ]/i)?.[0]?.toUpperCase()
         if (savedPrefix === 'V' || savedPrefix === 'E' || savedPrefix === 'J') setIdPrefix(savedPrefix)
-        setEmail(saved.email || '')
         setOrderType(saved.orderType === 'delivery' ? 'delivery' : 'takeaway')
         setDeliveryChosen(Boolean(saved.deliveryChosen))
         setAddress(saved.address || '')
         setAddressReference(saved.addressReference || '')
         setNotes(saved.notes || '')
+        setDeliveryNotes(saved.deliveryNotes || '')
         setGeoCoords(saved.geoCoords || null)
         setAddressMethod(saved.addressMethod || null)
-        if (sent?.sentAt) {
+        if (sent && isRecentSentState(sent)) {
           setOrderCode(sent.code || '')
           setCartOpen(true)
           setStep('sent')
@@ -1887,7 +1631,7 @@ export function PublicMenu() {
     const restoreSentState = () => {
       try {
         const sent = JSON.parse(localStorage.getItem(WHATSAPP_SENT_KEY) || 'null') as { code?: string; sentAt?: number } | null
-        if (!sent?.sentAt || cart.length === 0) return
+        if (!isRecentSentState(sent) || !sent || cart.length === 0) return
         setOrderCode(sent.code || '')
         setCartOpen(true)
         setStep('sent')
@@ -2005,11 +1749,14 @@ export function PublicMenu() {
   }, [])
   useEffect(() => {
     if (restoringFlow.current) return
-    localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod }))
-  }, [cartOpen, step, name, phone, identification, email, orderType, deliveryChosen, address, addressReference, notes, geoCoords, addressMethod])
+    // Tras un pedido exitoso no se guardan datos personales del cliente.
+    const personal = step === 'sent' ? { name: '', phone: '', identification: '' } : { name, phone, identification }
+    localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, ...personal, orderType, deliveryChosen, address, addressReference, notes, deliveryNotes, geoCoords, addressMethod }))
+  }, [cartOpen, step, name, phone, identification, orderType, deliveryChosen, address, addressReference, notes, deliveryNotes, geoCoords, addressMethod])
 
   const toggleFavorite = (groupKey: string) => setFavoriteIds(current => current.includes(groupKey) ? current.filter(id => id !== groupKey) : [...current, groupKey])
   const startNewOrder = () => {
+    setPickupTime('asap')
     addressActionRef.current += 1
     setLocating(false)
     commitCart([])
@@ -2017,7 +1764,6 @@ export function PublicMenu() {
     setPhone('')
     setIdentification('')
     setIdPrefix('V')
-    setEmail('')
     setOrderType('takeaway')
     setDeliveryChosen(false)
     setAddress('')
@@ -2025,10 +1771,11 @@ export function PublicMenu() {
     setGeoCoords(null)
     setAddressMethod(null)
     setNotes('')
+    setDeliveryNotes('')
+    setSentSummary(null)
     setError('')
     setOrderCode('')
     setLocalTestOrderLinkedToProfile(false)
-    setDraftOrderCode('')
     checkoutAttemptRef.current = null
     try {
       localStorage.removeItem(CART_KEY)
@@ -2104,13 +1851,17 @@ export function PublicMenu() {
     setOrderType(previousOrder.orderType)
     setDeliveryChosen(false)
     setAddress(previousOrder.deliveryAddress || '')
-    const savedNoteParts = previousOrder.customerNotes.split(/\s*·\s*/)
-    const savedReference = savedNoteParts.find(part => /^Referencia:\s*/i.test(part.trim()))
-    setAddressReference(savedReference?.replace(/^Referencia:\s*/i, '').trim() || '')
+    const savedNoteParts = previousOrder.customerNotes.split(/\s*·\s*/).map(part => part.trim())
+    const savedReference = previousOrder.customerNotes.match(/(?:^|\n|·\s*)Referencia:\s*([^\n·]*)/i)?.[1]
+    setAddressReference(savedReference?.trim() || '')
+    const cleanNotePart = (part: string) => part.replace(/\n(?:Referencia|Ubicación GPS|Pago preferido|Hora de retiro):[^\n]*/gi, '').trim()
+    const noteLabel = (label: string) => savedNoteParts.map(cleanNotePart).find(part => part.toLowerCase().startsWith(`${label}:`))?.slice(label.length + 1).trim() || ''
+    setDeliveryNotes(noteLabel('Repartidor'))
     setNotes(savedNoteParts
-      .filter(part => !/^(Referencia:|Personalizaciones:|Ubicación GPS:|Pago preferido:)/i.test(part.trim()))
+      .map(cleanNotePart)
+      .filter(part => part && !/^(Referencia:|Personalizaciones:|Ubicación GPS:|Pago preferido:|Repartidor:)/i.test(part))
+      .map(part => part.replace(/^Cocina:\s*/i, ''))
       .join(' · ')
-      .replace(/\n(?:Ubicación GPS|Pago preferido):[^\n]*/gi, '')
       .trim())
     const savedPayment = previousOrder.customerNotes.match(/(?:^|\n)Pago preferido:\s*([a-z_]+(?:\+[a-z_]+)?)/i)?.[1]
     const savedPaymentCodes = savedPayment?.split('+') ?? []
@@ -2154,6 +1905,10 @@ export function PublicMenu() {
       setError(cartLimitViolation === 'presentation-quantity'
         ? 'Tu carrito supera las 30 unidades de una misma presentación. Reduce la cantidad; no se ha eliminado ningún producto.'
         : 'Tu carrito supera los 40 productos distintos. Quita productos para continuar; no se ha eliminado ningún producto.')
+      return false
+    }
+    if (cart.length > 0 && cart.reduce((sum, item) => sum + item.price * item.quantity, 0) < PUBLIC_ORDER_MIN_SUBTOTAL) {
+      setError(`El pedido mínimo es de ${money(PUBLIC_ORDER_MIN_SUBTOTAL)} en productos.`)
       return false
     }
     if (cart.length > 0) return true
@@ -2855,8 +2610,10 @@ export function PublicMenu() {
     setError('')
     setFieldError('')
     if (name.trim().length < 2) return showFieldError('name')
-    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) return showFieldError('identification')
-    if (phone.replace(/\D/g, '').length !== 11) return showFieldError('phone')
+    if (!isValidPublicIdentification(identification)) return showFieldError('identification')
+    const normalizedPhone = normalizeVenezuelanPhone(phone)
+    if (!normalizedPhone) return showFieldError('phone')
+    if (normalizedPhone !== phone) setPhone(normalizedPhone)
     if (orderType === 'delivery' && (address.trim().length < 8 || !geoCoords || !addressReference.trim())) {
       setStep('address')
       if (address.trim().length < 8) return showAddressFieldError('address')
@@ -2869,12 +2626,6 @@ export function PublicMenu() {
       return
     }
     if (!cart.length) return setError('Tu carrito está vacío.')
-    if (!draftOrderCode) setDraftOrderCode(`WEB-${crypto.randomUUID().slice(0, 6).toUpperCase()}`)
-    setStep('confirm')
-  }
-
-  const returnToOrderReview = () => {
-    if (submitting) return
     setStep('confirm')
   }
 
@@ -2890,9 +2641,16 @@ export function PublicMenu() {
     setError('')
     setFieldError('')
     if (name.trim().length < 2) { setStep('details'); return showFieldError('name') }
-    if (!/^(?:[VEJ]-?)?\d{6,8}$/i.test(identification.trim())) { setStep('details'); return showFieldError('identification') }
-    if (phone.replace(/\D/g, '').length !== 11) { setStep('details'); return showFieldError('phone') }
-    if (orderType === 'delivery' && address.trim().length < 8) { setStep('address'); return showAddressFieldError('address') }
+    if (!isValidPublicIdentification(identification)) { setStep('details'); return showFieldError('identification') }
+    const normalizedPhone = normalizeVenezuelanPhone(phone)
+    if (!normalizedPhone) { setStep('details'); return showFieldError('phone') }
+    if (payMode === 'mixed' && payPrimary === paySecondary) { setStep('details'); setError('Elige dos métodos de pago distintos para el pago mixto.'); return }
+    if (orderType === 'delivery' && deliverySettings?.enabled === false) { setStep('delivery'); setError('El delivery no está disponible por ahora. Elige retiro en el local.'); return }
+    if (orderType === 'delivery') {
+      if (address.trim().length < 8) { setStep('address'); return showAddressFieldError('address') }
+      if (!geoCoords) { setStep('address'); return showAddressFieldError('geo') }
+      if (!addressReference.trim()) { setStep('address'); return showAddressFieldError('reference') }
+    }
     if (!cart.length) return setError('Tu carrito está vacío.')
     if (!LOCAL_ORDER_TEST_MODE && publicWhatsappPhone.length < 7) {
       setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
@@ -2910,10 +2668,10 @@ export function PublicMenu() {
         orderNumber: testOrderCode,
         orderType,
         customerName: name.trim(),
-        customerPhone: phone.trim(),
+        customerPhone: normalizedPhone,
         customerIdentification: identification.trim().toUpperCase(),
         deliveryAddress: address.trim() || null,
-        customerNotes: notes.trim(),
+        customerNotes: [notes.trim(), orderType === 'delivery' ? deliveryNotes.trim() : ''].filter(Boolean).join(' · '),
         items: cart,
       })
       setLocalTestOrderLinkedToProfile(linkedToProfile)
@@ -2934,11 +2692,19 @@ export function PublicMenu() {
     // para que Comandas lo pre-seleccione al cobrar (y lo limpie del texto).
     const paymentCodes = payMode === 'mixed' ? `${payPrimary}+${paySecondary}` : payPrimary
     const payLine = `\nPago preferido: ${paymentCodes}`
-    const primaryNotes = [addressReference.trim() ? `Referencia: ${addressReference.trim()}` : '', notes.trim(), lineNotes ? `Personalizaciones: ${lineNotes}` : ''].filter(Boolean).join(' · ')
-    const orderNotes = appendRequiredOrderMetadata(primaryNotes, `${mapsLine}${payLine}`)
+    // La referencia es obligatoria en delivery: va como metadato para que el
+    // recorte a 500 caracteres nunca la pierda.
+    const referenceLine = orderType === 'delivery' && addressReference.trim() ? `\nReferencia: ${addressReference.trim()}` : ''
+    const primaryNotes = [
+      notes.trim() ? `Cocina: ${notes.trim()}` : '',
+      orderType === 'delivery' && deliveryNotes.trim() ? `Repartidor: ${deliveryNotes.trim()}` : '',
+      lineNotes ? `Personalizaciones: ${lineNotes}` : '',
+    ].filter(Boolean).join(' · ')
+    const pickupLine = orderType === 'takeaway' ? `\nHora de retiro: ${describePickupTime(pickupTime)}` : ''
+    const orderNotes = appendRequiredOrderMetadata(primaryNotes, `${referenceLine}${mapsLine}${payLine}${pickupLine}`)
     const checkoutSignature = JSON.stringify({
       cart: cart.map(item => ({ productId: item.productId, quantity: item.quantity, price: item.price, notes: item.notes || '', modifiers: item.modifiers ?? [] })),
-      name: name.trim(), phone: phone.trim(), identification: identification.trim().toUpperCase(), bcvRate, orderType, address: address.trim(), orderNotes,
+      name: name.trim(), phone: normalizedPhone, identification: identification.trim().toUpperCase(), bcvRate, orderType, address: address.trim(), orderNotes,
       deliveryFee, deliveryLat: geoCoords?.lat ?? null, deliveryLng: geoCoords?.lng ?? null,
     })
     const savedAttempt = checkoutAttemptRef.current?.signature === checkoutSignature ? checkoutAttemptRef.current : null
@@ -2951,7 +2717,7 @@ export function PublicMenu() {
     // botón en "Enviando pedido…" y pasa directo a "¡Pedido recibido!".
     try {
       const result = await createWebOrder({
-        customerName: name.trim(), customerPhone: phone.trim(), customerIdentification: identification.trim().toUpperCase(), orderType,
+        customerName: name.trim(), customerPhone: normalizedPhone, customerIdentification: identification.trim().toUpperCase(), orderType,
         deliveryAddress: address.trim(), notes: orderNotes, items: cart, bcvRate,
         idempotencyKey, deliveryFee, deliveryLat: geoCoords?.lat, deliveryLng: geoCoords?.lng,
       })
@@ -2980,16 +2746,19 @@ export function PublicMenu() {
         const current = result.items?.find(line => line.lineNumber === index + 1 && line.productId === item.productId)
         return current ? { ...item, price: current.unitPrice } : item
       })
-      commitCart(pricedCart)
       try { localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(pricedCart)) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
       checkoutAttemptRef.current = null
       try { sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY) } catch { /* storage unavailable */ }
       setLastOrder(pricedCart)
+      // El resumen de "sent" se conserva aparte; el carrito se vacía para que no se pueda reenviar.
+      setSentSummary({ items: pricedCart, total: pricedCart.reduce((sum, item) => sum + item.price * item.quantity, 0) + deliveryFee, orderType, address: address.trim(), phone: normalizedPhone })
+      commitCart([])
+      try { localStorage.removeItem(CART_KEY) } catch { /* el pedido ya está registrado */ }
       setOrderCode(result.code)
       try { localStorage.setItem(WHATSAPP_SENT_KEY, JSON.stringify({ code: result.code, sentAt: Date.now() })) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
       setStep('sent')
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'No pudimos registrar el pedido.')
+      setError(describeWebOrderError(cause))
       setStep('confirm')
     } finally {
       submitLockRef.current = false
@@ -3001,147 +2770,11 @@ export function PublicMenu() {
   const priceBs = (usd: number) =>
     bcvRate ? `Bs. ${BS_FORMATTER.format(usd * bcvRate)}` : null
 
-  const renderProductCard = (group: MenuProductGroup, priority = false) => {
-    const isBeverage = group.variants.some(({ product }) => product.categories.includes('bebidas'))
-    const isTallBottle = /^(agua|refresco\s+2\s+litros)$/i.test(group.name.trim())
-    const isLiptonBottle = /^lipton\b/i.test(group.name.trim())
-    const hasOptions = group.variants.length > 1
-    const isQuickAddPending = pendingQuickAdds.has(group.key)
-    return (
-      <article className="public-prod-card" key={group.key}>
-        {group.variants.length > 0 && group.variants.every(v => v.product.menuLabel === 'free_drink') && (
-          <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="public-free-drink-sticker" />
-        )}
-        <div className="public-prod-img-wrap" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
-          {(() => {
-            const label = menuLabelMeta[group.variants.find(v => v.product.menuLabel)?.product.menuLabel as keyof typeof menuLabelMeta]
-            if (!label || label.className === 'free-drink') return null
-            const LabelIcon = label.icon
-            return <span className={`public-menu-label ${label.className}`}><LabelIcon size={12} strokeWidth={2.4} aria-hidden="true" /> {label.text}</span>
-          })()}
-          <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} className={`public-prod-img ${isBeverage ? 'public-prod-img--beverage' : ''} ${isTallBottle ? 'public-prod-img--tall-bottle' : ''} ${isLiptonBottle ? 'public-prod-img--lipton' : ''}`} alt={group.name} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" />
-          <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onPointerDown={stopProductCardInteraction} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
-        </div>
-        <button type="button" className={`public-prod-add${isQuickAddPending ? ' is-loading' : ''}`} disabled={isQuickAddPending} aria-busy={isQuickAddPending} aria-label={isQuickAddPending ? `Revisando opciones de ${group.name}` : hasOptions ? `Ver opciones de ${group.name}` : `Agregar ${group.name} al carrito`} onPointerDown={stopProductCardInteraction} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
-          {isQuickAddPending ? <LoaderCircle className="public-add-spinner" size={18} aria-hidden="true" /> : hasOptions
-            ? <ChevronRight size={18} strokeWidth={2.4} aria-hidden="true" />
-            : <ShoppingCart size={18} strokeWidth={2.4} aria-hidden="true" />}
-          <span className="public-prod-add-label-full">{isQuickAddPending ? 'Revisando…' : hasOptions ? 'Ver opciones' : 'Agregar al carrito'}</span>
-          <span className="public-prod-add-label-short">{isQuickAddPending ? 'Revisando…' : hasOptions ? 'Opciones' : 'Agregar'}</span>
-        </button>
-        <div className="public-prod-info" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
-          <h3 className="public-prod-title">{productTitle(group.name)}</h3>
-          <p className="public-prod-desc">{groupDescription(group)}</p>
-          <div className="public-prod-footer-row">
-            <div className="public-prod-price-wrap">
-              <span className="public-prod-price">{group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}</span>
-              {priceBs(group.minPrice) && <span className="public-prod-price-bs">{priceBs(group.minPrice)}</span>}
-            </div>
-          </div>
-        </div>
-      </article>
-    )
-  }
+  const renderProductCard = (group: MenuProductGroup, priority = false) => <ProductCard key={group.key} group={group} priority={priority} favoriteIds={favoriteIds} openProductFromCard={openProductFromCard} openProductFromCardKeyboard={openProductFromCardKeyboard} pendingQuickAdds={pendingQuickAdds} priceBs={priceBs} requestQuickAdd={requestQuickAdd} stopProductCardInteraction={stopProductCardInteraction} toggleFavorite={toggleFavorite} />
 
-  const renderDesktopProductCard = (group: MenuProductGroup) => {
-    const qty = getCardQty(group.key)
-    const isQuickAddPending = pendingQuickAdds.has(group.key)
+  const renderDesktopProductCard = (group: MenuProductGroup) => <DesktopProductCard key={group.key} group={group} changeCardQty={changeCardQty} favoriteIds={favoriteIds} getCardQty={getCardQty} handleCardAdd={handleCardAdd} openProductFromCard={openProductFromCard} openProductFromCardKeyboard={openProductFromCardKeyboard} pendingQuickAdds={pendingQuickAdds} priceBs={priceBs} stopProductCardInteraction={stopProductCardInteraction} toggleFavorite={toggleFavorite} />
 
-    return (
-      <article className="public-home-product-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
-        <div className="public-home-prod-img-wrap">
-          <img 
-            src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
-            alt={group.name} 
-            className={(group.name.toLowerCase().includes('agua') || group.name.toLowerCase().includes('2l') || group.name.toLowerCase().includes('2 l') || group.name.toLowerCase().includes('lipton')) ? 'public-img--beverage-recommended-align' : (group.category === 'bebidas' ? 'public-img--top-align' : '')}
-            loading="lazy" 
-            decoding="async" 
-          />
-          <button 
-            type="button" 
-            className={`public-home-fav-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`}
-            onPointerDown={stopProductCardInteraction}
-            onClick={(e) => { e.stopPropagation(); toggleFavorite(group.key) }}
-            aria-label="Favorito"
-          >
-            <Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} />
-          </button>
-        </div>
-
-        <div className="public-home-prod-body">
-          <h3 className="public-home-prod-title">{productTitle(group.name)}</h3>
-
-          <div className="public-home-prod-price-wrap">
-            <span className="public-home-prod-price">
-              {group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}
-            </span>
-            {priceBs(group.minPrice) && <span className="public-home-prod-price-bs">{priceBs(group.minPrice)}</span>}
-          </div>
-
-          <div className="public-home-prod-actions" onClick={(e) => e.stopPropagation()}>
-            <div className="public-home-stepper">
-              <button type="button" onPointerDown={stopProductCardInteraction} onClick={() => changeCardQty(group.key, -1)} aria-label="Disminuir">
-                <Minus size={13} />
-              </button>
-              <span>{qty}</span>
-              <button type="button" onPointerDown={stopProductCardInteraction} onClick={() => changeCardQty(group.key, 1)} aria-label="Aumentar">
-                <Plus size={13} />
-              </button>
-            </div>
-            <button 
-              type="button" 
-              className="public-home-add-btn"
-              disabled={isQuickAddPending}
-              aria-busy={isQuickAddPending}
-              onPointerDown={stopProductCardInteraction}
-              onClick={(event) => { event.stopPropagation(); handleCardAdd(group) }}
-            >
-              {isQuickAddPending ? <><LoaderCircle className="public-add-spinner" size={14} /> Revisando…</> : 'Agregar'}
-            </button>
-          </div>
-        </div>
-      </article>
-    )
-  }
-
-  const renderDesktopPromoCard = (group: MenuProductGroup) => {
-    const isQuickAddPending = pendingQuickAdds.has(group.key)
-    return (
-      <article className="public-home-promo-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
-        <div className="public-home-promo-top">
-          <h3 className="public-home-promo-title">{productTitle(group.name)}</h3>
-          <div className="public-home-promo-price-row">
-            <span className="public-home-promo-price">{money(group.minPrice)}</span>
-          </div>
-
-        </div>
-
-        <div className="public-home-promo-img-wrap">
-          <img 
-            src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} 
-            alt={group.name} 
-            className={(group.name.toLowerCase().includes('agua') || group.name.toLowerCase().includes('2l') || group.name.toLowerCase().includes('2 l') || group.name.toLowerCase().includes('lipton')) ? 'public-img--beverage-recommended-align' : (group.category === 'bebidas' ? 'public-img--top-align' : '')}
-            loading="lazy" 
-            decoding="async" 
-          />
-        </div>
-
-        <div className="public-home-promo-footer" onClick={(e) => e.stopPropagation()}>
-          <button 
-            type="button" 
-            className="public-home-promo-add-btn"
-            disabled={isQuickAddPending}
-            aria-busy={isQuickAddPending}
-            onPointerDown={stopProductCardInteraction}
-            onClick={(event) => { event.stopPropagation(); handleCardAdd(group) }}
-          >
-            {isQuickAddPending ? <LoaderCircle className="public-add-spinner" size={15} /> : <Plus size={15} />}
-            <span>{isQuickAddPending ? 'Revisando…' : 'Pedir promo'}</span>
-          </button>
-        </div>
-      </article>
-    )
-  }
+  const renderDesktopPromoCard = (group: MenuProductGroup) => <DesktopPromoCard key={group.key} group={group} handleCardAdd={handleCardAdd} openProductFromCard={openProductFromCard} openProductFromCardKeyboard={openProductFromCardKeyboard} pendingQuickAdds={pendingQuickAdds} stopProductCardInteraction={stopProductCardInteraction} />
 
   const contactViewProps = {
     pageSettings,
@@ -3176,852 +2809,17 @@ export function PublicMenu() {
       onErrorCapture={handleImageError}
     >
       {/* Top Navbar */}
-      <header className="public-top-bar" id="inicio">
-          <>
-            {/* Mobile: empty left spacer */}
-            <div className="mobile-only" style={{ width: 24 }} />
-
-            {/* Logo — centered on mobile, left on desktop */}
-            <div className="public-top-bar-center">
-              <img src="/optimized/root/logo.webp" alt="Full China" className="public-top-bar-logo" decoding="async" />
-            </div>
-
-            {/* Desktop Center Navigation Tabs */}
-            <nav className="public-desktop-nav-links desktop-only" aria-label="Navegación principal">
-              <button 
-                type="button" 
-                className={`public-nav-tab-btn ${currentTab === 'inicio' ? 'active' : ''}`} 
-                onClick={() => { setCurrentTab('inicio'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-                Inicio
-              </button>
-              <button 
-                type="button" 
-                className={`public-nav-tab-btn ${currentTab === 'menu' ? 'active' : ''}`} 
-                onClick={() => showDesktopMenu()}>
-                Menú
-              </button>
-              <button 
-                type="button" 
-                className={`public-nav-tab-btn ${currentTab === 'contacto' ? 'active' : ''}`} 
-                onPointerDown={preloadPublicMenuContactView}
-                onMouseEnter={preloadPublicMenuContactView}
-                onFocus={preloadPublicMenuContactView}
-                onClick={() => { setCurrentTab('contacto'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
-                Contacto
-              </button>
-              <button type="button" className={`public-nav-tab-btn ${currentTab === 'perfil' ? 'active' : ''}`} onPointerDown={preloadCustomerLoyaltyProfile} onMouseEnter={preloadCustomerLoyaltyProfile} onFocus={preloadCustomerLoyaltyProfile} onClick={openCustomerProfile}>
-                Mi perfil
-              </button>
-            </nav>
-
-            {/* Desktop Right Status Badges */}
-            <div className="public-top-bar-right desktop-only">
-              <div className="public-nav-status-badges">
-                <div className={`public-nav-status-pill${isStoreOpen ? ' is-open' : ' is-closed'}`}>
-                  <span className="public-nav-status-dot" />
-                  <strong>{LOCAL_ORDER_TEST_MODE ? 'Modo de prueba' : isStoreOpen ? 'Abierto' : 'Cerrado'}</strong>
-                  <span className="public-nav-status-hours"><Clock size={12} aria-hidden="true" />{LOCAL_ORDER_TEST_MODE ? 'No envía pedidos' : isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
-                </div>
-                {bcvRate && (
-                  <div className="public-nav-bcv-pill" title="Tasa oficial del Banco Central de Venezuela">
-                    <span className="public-nav-bcv-label">Dólar BCV</span>
-                    <span className="public-nav-bcv-val">Bs. {bcvRate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-          </>
-      </header>
+      <PublicTopBar bcvRate={bcvRate} currentTab={currentTab} formattedCloseTime={formattedCloseTime} isStoreOpen={isStoreOpen} openCustomerProfile={openCustomerProfile} setCurrentTab={setCurrentTab} showDesktopMenu={showDesktopMenu} storeScheduleLabel={storeScheduleLabel} />
 
       {/* =========================================================================
           MOBILE VIEWPORT (< 1280px) — 100% ORIGINAL f88d057 LAYOUT
           ========================================================================= */}
-      <div className="public-mobile-view mobile-only">
-
-        {/* MENU VIEW */}
-        <div className={`public-mobile-tab-content${hasLeftMobileMenu ? ' is-retained' : ''}`} key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
-        {/* 2. Hero Status */}
-        <div className="public-hero-header">
-          <div className="public-hero-title-row">
-            <h1>{pageSettings.mobileHeading} <Flame size={22} className="fire-icon-pulse" /></h1>
-            {bcvRate && (
-              <span className="public-rate-badge" title="Tasa oficial del Banco Central de Venezuela">
-                <span className="public-rate-badge-label">Dólar BCV</span>
-                <span className="public-rate-badge-value">Bs. {bcvRate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </span>
-            )}
-          </div>
-          <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
-            <i /> <strong>{LOCAL_ORDER_TEST_MODE ? 'Modo de prueba' : isStoreOpen ? 'Abierto' : 'Cerrado'}</strong><span className="public-status-hours"><Clock size={13} aria-hidden="true" />{LOCAL_ORDER_TEST_MODE ? 'No envía pedidos' : isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
-          </span>
-          <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) { heroSearchRef.current?.focus(); setShowSearch(true) } }}>
-            <Search size={16} />
-            <span className="public-hero-search-placeholder" aria-hidden={showSearch}>{pageSettings.searchPlaceholder}</span>
-            <input
-              ref={heroSearchRef}
-              aria-label="Buscar en el menú"
-              tabIndex={showSearch ? 0 : -1}
-              placeholder={showSearch ? pageSettings.searchPlaceholder : ''}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-            {showSearch && search && <button type="button" className="public-search-pill-clear" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14}/></button>}
-            {showSearch && <button type="button" className="public-search-pill-cancel" onClick={closeSearch}>Cancelar</button>}
-          </div>
-        </div>
-
-        {/* 3. Recommended Card */}
-        <div
-          className={`public-recommended-card${isLoyaltyRecommended ? ' is-loyalty-slide' : ''}`}
-          onClick={(event) => {
-            if (recommendedWasSwiped.current) {
-              recommendedWasSwiped.current = false
-              return
-            }
-            if ((event.target as HTMLElement).closest('button, .public-recommended-dots-overlay')) return
-            if (!isLoyaltyRecommended && recommendedGroup) openGroup(recommendedGroup, undefined, recommendedVariant?.product.id)
-          }}
-          onPointerDown={(event) => {
-            // Los botones (CTA e indicadores) conservan su interacción normal;
-            // solo el gesto iniciado sobre la tarjeta cambia de recomendación.
-            if ((event.target as HTMLElement).closest('button') || !event.isPrimary || event.button !== 0) return
-            recommendedSwipeStart.current = event.clientX
-            recommendedWasSwiped.current = false
-            event.currentTarget.setPointerCapture(event.pointerId)
-            pauseRecommendedAutoplay()
-          }}
-          onWheel={handleRecommendedWheel}
-          onPointerUp={(event) => {
-            const start = recommendedSwipeStart.current
-            recommendedSwipeStart.current = null
-            if (start == null || recommendedSlideCount <= 1) {
-              resumeRecommendedAutoplay()
-              return
-            }
-            const distance = event.clientX - start
-            if (Math.abs(distance) >= 42) {
-              recommendedWasSwiped.current = true
-              moveRecommended(distance < 0 ? 1 : -1)
-            } else {
-              resumeRecommendedAutoplay()
-            }
-          }}
-          onPointerCancel={() => {
-            recommendedSwipeStart.current = null
-            resumeRecommendedAutoplay()
-          }}
-          onMouseEnter={pauseRecommendedAutoplay}
-          onMouseLeave={resumeRecommendedAutoplay}
-        >
-          {isLoyaltyRecommended ? <CustomerLoyaltyPromo presentation="recommended" onJoin={openCustomerProfile} /> : <>
-            <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
-              <small>RECOMENDADO <Flame size={12} /></small>
-              <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
-              <p>{recommendedVariant?.product.description || recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
-              {recommendedGroup && <span className="public-recommended-price">{money(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</span>}
-              {recommendedGroup && priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</span>}
-              <button
-                className="public-recommended-btn"
-                onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup, undefined, recommendedVariant?.product.id) }}
-                aria-label={`Ver producto: ${productTitle(recommendedGroup?.name ?? 'producto')}`}
-              >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
-            </div>
-            <img src={recommendedImageSrc} onError={event => {
-            if (event.currentTarget.getAttribute('src') !== '/optimized/fondos/hero-banner-food.webp') {
-              setRecommendedImageSrc('/optimized/fondos/hero-banner-food.webp')
-            }
-            }} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
-          </>}
-          <div className="public-recommended-dots-overlay">
-            {Array.from({ length: recommendedSlideCount }, (_, i) => (
-              <button key={i} type="button" className={i === recommendedIndex ? 'active' : ''} aria-label={recommendedSlides[i]?.kind === 'loyalty' ? 'Ver programa de fidelidad' : `Ver recomendación ${recommendedSlides.slice(0, i + 1).filter(slide => slide.kind === 'product').length}`} aria-current={i === recommendedIndex ? 'true' : undefined} onClick={(event) => {
-                event.stopPropagation()
-                if (i === recommendedIndex) {
-                  setRequestedRecommendedIndex(null)
-                  return
-                }
-                setRequestedRecommendedIndex(i)
-                pauseRecommendedAutoplay()
-                resumeRecommendedAutoplay()
-              }} />
-            ))}
-          </div>
-        </div>
-
-        {/* 4. Category Nav */}
-        {categories.length > 4 && <div className="public-category-hint" aria-hidden="true">Desliza para ver más <ChevronRight size={13} /></div>}
-        <nav className="public-categories-scroll">
-          <button 
-             className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
-             onClick={() => setActiveCategory('Todos')}>
-             <img className="public-cat-icon-image" src={CATEGORY_ICONS.Todos} alt="" decoding="async" />
-             <span>Menú</span>
-          </button>
-          {categories.filter(c => c !== 'Todos').map(category => (
-             <button 
-               key={category} 
-               className={`public-cat-btn ${activeCategory === category ? 'active' : ''}`}
-               onClick={() => setActiveCategory(category)}
-             >
-               <img className="public-cat-icon-image" src={CATEGORY_ICONS[category] || CATEGORY_ICONS.Todos} alt="" loading="lazy" decoding="async" />
-               <span>{categoryLabel(category)}</span>
-             </button>
-          ))}
-        </nav>
-
-        {/* 5. Products Section */}
-          <section className="public-content">
-          <div className="public-list-header">
-            <h2 className={activeCategory === 'Todos' ? 'public-main-list-title' : undefined}>{activeCategory === 'Todos' ? 'Menú' : categoryLabel(activeCategory)}</h2>
-            <div className="public-list-actions">
-              <button className={`public-favorites-inline ${showFavorites ? 'active' : ''}`} onClick={() => setShowFavorites(value => !value)} aria-label="Filtrar favoritos"><Heart size={16} fill={showFavorites ? 'currentColor' : 'none'} /><span>Favoritos</span>{favoriteIds.length > 0 && <b>{favoriteIds.length}</b>}</button>
-            </div>
-          </div>
-
-          {error && products.length > 0 && !cartOpen && <Toast type="error" message={error} onClose={() => setError('')} />}
-          {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
-            <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
-              {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
-                <div className="public-empty-menu">
-                  <span><Utensils size={42} /></span>
-                  <h3>{showFavorites ? 'Todavía no tienes favoritos' : 'No encontramos ese plato'}</h3>
-                  <p>{showFavorites ? 'Toca el corazón de un plato para guardarlo en este dispositivo.' : 'Prueba con otro nombre o vuelve a ver todo el menú.'}</p>
-                  <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
-                </div>
-              ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
-                <section className="public-category-section" key={section.category} data-category={section.category}>
-                  <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><span>{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span></div>
-                  <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
-                </section>
-              )) : visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < (isDesktopViewport ? 4 : 2)))}
-            </div>
-          )}
-        </section>
-          </div>
-
-        {/* CONTACT VIEW */}
-        {currentTab === 'contacto' && (
-          <Suspense fallback={<PublicContactSkeleton />}>
-            <PublicMenuContactView variant="mobile" {...contactViewProps} />
-          </Suspense>
-        )}
-        {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
-
-        {/* Bottom Tab Bar */}
-        <nav className="public-mobile-tab-bar">
-          <button className={`public-mobile-tab ${currentTab === 'inicio' || currentTab === 'menu' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>
-            <Utensils size={18} />
-            <span>Menú</span>
-          </button>
-          <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onPointerDown={preloadPublicMenuContactView} onFocus={preloadPublicMenuContactView} onClick={() => { setHasLeftMobileMenu(true); setCurrentTab('contacto') }}>
-            <Store size={18} />
-            <span>Contacto</span>
-          </button>
-          <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onPointerDown={preloadCustomerLoyaltyProfile} onFocus={preloadCustomerLoyaltyProfile} onClick={openCustomerProfile}>
-            <UserRound size={18} />
-            <span>Mi perfil</span>
-          </button>
-        </nav>
-      </div>
+      <PublicMobileView activeCategory={activeCategory} bcvRate={bcvRate} cartOpen={cartOpen} categories={categories} categorySections={categorySections} closeSearch={closeSearch} contactViewProps={contactViewProps} currentTab={currentTab} error={error} favoriteIds={favoriteIds} formattedCloseTime={formattedCloseTime} handleRecommendedWheel={handleRecommendedWheel} hasLeftMobileMenu={hasLeftMobileMenu} hasVisitedProfile={hasVisitedProfile} heroSearchRef={heroSearchRef} isDesktopViewport={isDesktopViewport} isLoyaltyRecommended={isLoyaltyRecommended} isStoreOpen={isStoreOpen} loading={loading} moveRecommended={moveRecommended} openCustomerProfile={openCustomerProfile} openGroup={openGroup} pageSettings={pageSettings} pauseRecommendedAutoplay={pauseRecommendedAutoplay} priceBs={priceBs} products={products} recommendedGroup={recommendedGroup} recommendedImageSrc={recommendedImageSrc} recommendedIndex={recommendedIndex} recommendedSlideCount={recommendedSlideCount} recommendedSlides={recommendedSlides} recommendedSwipeStart={recommendedSwipeStart} recommendedVariant={recommendedVariant} recommendedWasSwiped={recommendedWasSwiped} renderProductCard={renderProductCard} repeatPreviousOrder={repeatPreviousOrder} resumeRecommendedAutoplay={resumeRecommendedAutoplay} retryPublicCatalog={retryPublicCatalog} search={search} setActiveCategory={setActiveCategory} setCurrentTab={setCurrentTab} setError={setError} setHasLeftMobileMenu={setHasLeftMobileMenu} setRecommendedImageSrc={setRecommendedImageSrc} setRequestedRecommendedIndex={setRequestedRecommendedIndex} setSearch={setSearch} setShowFavorites={setShowFavorites} setShowSearch={setShowSearch} showFavorites={showFavorites} showSearch={showSearch} storeScheduleLabel={storeScheduleLabel} toggleFavorite={toggleFavorite} visibleGroups={visibleGroups} />
 
       {/* =========================================================================
           DESKTOP VIEWPORT (>= 1280px) — 2-COLUMN PRO LAYOUT
           ========================================================================= */}
-      <div className={`public-desktop-layout desktop-only ${currentTab === 'contacto' || currentTab === 'perfil' ? 'is-contact-view' : ''}`}>
-        {/* LEFT COLUMN: Tab-based views */}
-        <div className="public-desktop-main">
-          
-          {/* TAB 1: INICIO (La Vitrina de Alto Impacto) */}
-          {currentTab === 'inicio' && (
-            <>
-              {/* 1. Cinematic Hero Banner with 3D Depth */}
-              <section className={`public-cinematic-hero public-home-hero-carousel ${desktopHeroSlide === 1 ? 'is-loyalty-slide' : ''} ${homeSearchTerm.length >= 2 ? 'has-search-results' : ''}`} aria-roledescription="carrusel" aria-label="Promociones de Full China" onPointerEnter={() => setDesktopHeroPaused(true)} onPointerLeave={() => setDesktopHeroPaused(false)} onFocusCapture={() => setDesktopHeroPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopHeroPaused(false) }}>
-                {/* Organic Wok Fire Embers Canvas (Confined to Banner) */}
-                <HeroWokEmbers />
-
-                <div className={`public-home-hero-slide public-home-hero-food ${desktopHeroSlide === 0 ? 'is-active' : ''}`} aria-hidden={desktopHeroSlide !== 0}>
-                <div className="public-hero-left">
-                  <span className="public-hero-tag">
-                    <Flame size={14} className="fire-icon-pulse" />
-                    {pageSettings.desktopEyebrow}
-                  </span>
-                  <h1 className="public-hero-main-title">
-                    {pageSettings.desktopTitlePrefix}<br /><span className="public-hero-gold">{pageSettings.desktopTitleAccent}</span>
-                  </h1>
-                  <p className="public-hero-desc">
-                    {pageSettings.desktopDescription}
-                  </p>
-
-                  <div className="public-hero-search-row">
-                    <div className="public-hero-search-shell">
-                      <div className="public-hero-search-box">
-                        <Search size={18} />
-                        <input
-                          placeholder={pageSettings.searchPlaceholder}
-                          value={search}
-                          onChange={event => setSearch(event.target.value)}
-                          onKeyDown={event => {
-                            if (event.key !== 'Enter' || !search.trim()) return
-                            showDesktopMenu('Todos', true)
-                          }}
-                          role="combobox"
-                          aria-autocomplete="list"
-                          aria-expanded={homeSearchTerm.length >= 2}
-                          aria-controls="public-home-search-results"
-                        />
-                        {search && <button type="button" className="public-hero-search-clear" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}
-                      </div>
-                      {homeSearchTerm.length >= 2 && (
-                        <div className="public-hero-search-results" id="public-home-search-results" role="listbox">
-                          {homeSearchSuggestions.length > 0 ? (
-                            <>
-                              {homeSearchSuggestions.map(group => (
-                                <button
-                                  type="button"
-                                  className="public-hero-search-result"
-                                  key={group.key}
-                                  role="option"
-                                  aria-selected="false"
-                                  onClick={event => {
-                                    openGroup(group, event)
-                                  }}
-                                >
-                                  <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt={productTitle(group.name)} />
-                                  <span>
-                                    <strong>{productTitle(group.name)}</strong>
-                                    <small>{categoryLabel(group.category)}</small>
-                                  </span>
-                                  <b>{money(group.minPrice)}</b>
-                                  <ChevronRight size={15} aria-hidden="true" />
-                                </button>
-                              ))}
-                              <button
-                                type="button"
-                                className="public-hero-search-all"
-                                onClick={() => showDesktopMenu('Todos', true)}
-                              >
-                                Ver todos los resultados <ChevronRight size={14} aria-hidden="true" />
-                              </button>
-                            </>
-                          ) : (
-                            <div className="public-hero-search-empty">
-                              <strong>No encontramos productos</strong>
-                              <span>Prueba con otro nombre.</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <button 
-                      type="button" 
-                      className="public-hero-cta-btn" 
-                      onClick={() => showDesktopMenu()}
-                    >
-                      Ver menú completo <ChevronRight size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="public-hero-right">
-                  <span className="public-hero-glow-aura" aria-hidden="true" />
-                  <img 
-                    src={pageSettings.desktopBannerImage}
-                    alt="Portada de Full China"
-                    className="public-hero-dish-img" 
-                    loading={isDesktopViewport ? 'eager' : 'lazy'}
-                    fetchPriority={isDesktopViewport ? 'high' : 'low'}
-                    decoding="async" 
-                  />
-                  <div className="public-hero-gradient-overlay" />
-                </div>
-                </div>
-                <div className={`public-home-hero-slide public-home-hero-loyalty ${desktopHeroSlide === 1 ? 'is-active' : ''}`} aria-hidden={desktopHeroSlide !== 1}>
-                  <div className="public-home-loyalty-banner">
-                    <div className="public-home-loyalty-copy">
-                      <span className="public-home-loyalty-kicker"><i /> PROGRAMA DE FIDELIDAD</span>
-                      <h2>Cada visita te acerca a <em>un premio</em></h2>
-                      <p><span>Un sello por visita. Completa 10 visitas.</span><span>Gana tu premio Full China.</span></p>
-                      <div className="public-home-loyalty-progress" aria-label="Tarjeta de ejemplo de diez sellos">
-                        {Array.from({ length: 10 }, (_, index) => <span key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></span>)}
-                        <small>10 visitas · 1 premio</small>
-                      </div>
-                      <button type="button" className="public-home-loyalty-cta" onClick={openCustomerProfile}>Únete al programa <ChevronRight size={17} /></button>
-                    </div>
-                    <div className="public-home-loyalty-card-wrap" aria-hidden="true">
-                      <div className="public-home-loyalty-card">
-                        <div className="public-home-loyalty-card-top"><img src="/optimized/root/logo.webp" alt="" /><span>MEMBER<br />CARD</span></div>
-                        <div className="public-home-loyalty-card-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div>
-                        <div className="public-home-loyalty-card-stamps">{Array.from({ length: 10 }, (_, index) => <i key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></i>)}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="public-home-hero-dots" role="group" aria-label="Elegir portada">
-                  <button type="button" className={desktopHeroSlide === 0 ? 'is-active' : ''} aria-label="Ver portada de Full China" aria-current={desktopHeroSlide === 0 ? 'true' : undefined} onClick={() => setDesktopHeroSlide(0)} />
-                  <button type="button" className={desktopHeroSlide === 1 ? 'is-active' : ''} aria-label="Ver programa de fidelidad" aria-current={desktopHeroSlide === 1 ? 'true' : undefined} onClick={() => setDesktopHeroSlide(1)} />
-                </div>
-              </section>
-
-              {/* 3. NUESTRAS CATEGORÍAS */}
-              <section className="public-home-section">
-                <div className="public-home-section-header">
-                  <div className="public-home-section-title-wrap">
-                    <h2 className="public-home-section-title">NUESTRAS CATEGORÍAS</h2>
-                    <span className="public-home-section-accent-line" />
-                  </div>
-                  <button 
-                    type="button" 
-                    className="public-home-see-all-btn"
-                    onClick={() => showDesktopMenu()}
-                  >
-                    <span>Ver todas</span>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-
-                <div className="public-home-categories-grid">
-                  {categories.filter(c => c !== 'Todos').map(category => (
-                    <button
-                      key={category}
-                      type="button"
-                      className={`public-home-category-card ${activeCategory === category ? 'active' : ''} ${category === 'promociones' ? 'promo-card' : ''}`}
-                      onClick={() => showDesktopMenu(category)}
-                    >
-                      <div className="public-home-cat-dish-circle">
-                        <img src={CATEGORY_ICONS[category] || CATEGORY_ICONS.Todos} alt={categoryLabel(category)} loading="lazy" decoding="async" />
-                      </div>
-                      <span className="public-home-cat-name">{DESKTOP_CATEGORY_LABELS[category] || categoryLabel(category)}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* 3. LO MÁS PEDIDO 🔥 */}
-              <section className="public-home-section">
-                <div className="public-home-section-header">
-                  <div className="public-home-section-title-wrap">
-                    <h2 className="public-home-section-title"><Flame size={18} aria-hidden="true" /> DATE UN BANQUETE EN FULL CHINA</h2>
-                    <p className="public-home-section-sub">Los favoritos de nuestros clientes.</p>
-                  </div>
-                </div>
-
-                <div className="public-home-carousel">
-                  {canScrollPopular && (
-                    <button type="button" className="public-home-carousel-arrow prev" aria-label="Ver plato anterior" onClick={() => scrollPopular(-1)}>
-                      <ChevronRight size={18} style={{ transform: 'rotate(180deg)' }} />
-                    </button>
-                  )}
-                  <div className="public-home-products-grid" ref={popularScrollRef}>
-                    {popularGroups.length === 0 && loading ? <PublicHomeProductSkeletons /> : popularGroups.map(group => renderDesktopProductCard(group))}
-                  </div>
-                  {canScrollPopular && (
-                    <button type="button" className="public-home-carousel-arrow next" aria-label="Ver siguiente plato" onClick={() => scrollPopular(1)}>
-                      <ChevronRight size={18} />
-                    </button>
-                  )}
-                </div>
-              </section>
-
-
-
-              {/* 5. ¿CÓMO QUIERES RECIBIR TU PEDIDO? */}
-              <section className="public-home-section">
-                <div className="public-home-section-header">
-                  <div className="public-home-section-title-wrap">
-                    <h2 className="public-home-section-title">¿CÓMO QUIERES RECIBIR TU PEDIDO?</h2>
-                  </div>
-                </div>
-
-                <div className="public-home-delivery-grid">
-                  {/* Card 1: Delivery */}
-                  <div className="public-home-delivery-card delivery-mode">
-                    <div className="public-home-delivery-content">
-                      <h3><Bike size={20} aria-hidden="true" /> Delivery</h3>
-                      <p>Te lo llevamos hasta tu puerta.</p>
-                      <div className="public-home-delivery-badges">
-                        <span className="del-badge"><Zap size={13} /> Rápido</span>
-                        <span className="del-badge"><ShieldCheck size={13} /> Seguro</span>
-                        <span className="del-badge"><MapPin size={13} /> Cobertura</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Retiro en Full China */}
-                  <div className="public-home-delivery-card pickup-mode">
-                    <div className="public-home-delivery-content">
-                      <h3>Retiro en Full China</h3>
-                      <p>Retíralo directo en el food truck.</p>
-                      <div className="public-home-delivery-badges">
-                        <span className="del-badge"><Clock size={13} /> Inmediato</span>
-                        <span className="del-badge"><ShoppingBag size={13} /> Listo</span>
-                        <span className="del-badge"><Zap size={13} /> Veloz</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 7. NUESTRAS PROMOCIONES */}
-              <section className="public-home-section">
-                <div className="public-home-section-header">
-                  <div className="public-home-section-title-wrap">
-                    <h2 className="public-home-section-title">NUESTRAS PROMOCIONES</h2>
-                    <p className="public-home-section-sub">Aprovecha y disfruta más por menos.</p>
-                  </div>
-                  <button
-                    type="button"
-                    className="public-home-see-all-btn"
-                    onClick={() => showDesktopMenu('promociones')}
-                  >
-                    <span>Ver todas</span>
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-
-                <div className="public-home-promos-grid">
-                  {promoGroups.length === 0 && loading ? <PublicHomePromoSkeletons /> : promoGroups.map(group => renderDesktopPromoCard(group))}
-                </div>
-              </section>
-            </>
-          )}
-
-          {/* TAB 2: MENU (Catálogo Completo) */}
-          {currentTab === 'menu' && (
-            <>
-              <section className="public-menu-discovery" aria-labelledby="public-menu-discovery-title">
-                <div className="public-menu-discovery-heading">
-                  <span><Flame size={20} aria-hidden="true" /></span>
-                  <div>
-                    <h1 id="public-menu-discovery-title">{search.trim() ? `Resultados para “${search.trim()}”` : '¿Qué se te antoja hoy?'}</h1>
-                    <p>{search.trim() ? `${visibleGroups.length} ${visibleGroups.length === 1 ? 'plato encontrado' : 'platos encontrados'} en nuestro menú.` : 'Encuentra tu plato favorito y pídelo preparado al momento.'}</p>
-                  </div>
-                </div>
-                <button className={`public-favorites-inline ${showFavorites ? 'active' : ''}`} onClick={() => setShowFavorites(value => !value)} aria-label="Filtrar favoritos"><Heart size={16} fill={showFavorites ? 'currentColor' : 'none'} /><span>Favoritos</span>{favoriteIds.length > 0 && <b>{favoriteIds.length}</b>}</button>
-                <label className="public-menu-search">
-                  <Search size={18} aria-hidden="true" />
-                  <input
-                    type="search"
-                    aria-label="Buscar en todo el menú"
-                    value={search}
-                    placeholder="Buscar arroz, promociones, bebidas…"
-                    onChange={event => {
-                      setActiveCategory('Todos')
-                      setShowFavorites(false)
-                      setSearch(event.target.value)
-                    }}
-                    onKeyDown={event => {
-                      if (event.key !== 'Escape') return
-                      setSearch('')
-                      setActiveCategory('Todos')
-                      setShowFavorites(false)
-                      event.currentTarget.blur()
-                    }}
-                  />
-                  {search && (
-                    <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }} aria-label="Limpiar búsqueda">
-                      <X size={14} />
-                    </button>
-                  )}
-                </label>
-              </section>
-
-              {/* Categories Nav (Floating Circular Dish Selector in Desktop) */}
-              {categories.length > 4 && <div className="public-category-hint" aria-hidden="true">Desliza para ver más <ChevronRight size={13} /></div>}
-              <nav className="public-categories-scroll" id="menu-section">
-                 <button
-                   className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
-                   onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>
-                   <div className="public-cat-dish-circle">
-                     <img src={CATEGORY_ICONS.Todos} alt="" width={44} height={44} decoding="async" />
-                   </div>
-                   <span className="public-cat-label-vector"><Star size={13} fill="currentColor" aria-hidden="true" />Todos</span>
-                </button>
-                {categories.filter(c => c !== 'Todos').map(category => (
-                   <button 
-                      key={category}
-                      className={`public-cat-btn ${activeCategory === category ? 'active' : ''}`}
-                      onClick={() => { setSearch(''); setActiveCategory(category); setShowFavorites(false) }}
-                   >
-                     <div className="public-cat-dish-circle">
-                       <img src={CATEGORY_ICONS[category] || CATEGORY_ICONS.Todos} alt="" width={44} height={44} loading="lazy" decoding="async" />
-                     </div>
-                     <span>{DESKTOP_CATEGORY_LABELS[category] || categoryLabel(category)}</span>
-                   </button>
-                ))}
-              </nav>
-
-              {/* Products Catalog Section */}
-              <section className="public-content">
-                {activeCategory !== 'Todos' && (
-                  <div className="public-selected-category-heading">
-                    <div><span /><h2>{categoryLabel(activeCategory)}</h2></div>
-                    <b>{visibleGroups.length} {visibleGroups.length === 1 ? 'plato' : 'platos'}</b>
-                  </div>
-                )}
-
-                {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
-                  <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
-                    {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
-                      <div className="public-empty-menu">
-                        <span className="public-empty-menu-wok" aria-hidden="true">
-                          <svg viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M14 31H51C50.2 43.4 43.1 51 32.5 51C21.9 51 14.8 43.4 14 31Z" className="public-wok-bowl" />
-                            <path d="M50 34L65 27" className="public-wok-handle" />
-                            <path d="M24 23C20.5 18.7 27.5 16.2 24.5 11" className="public-wok-steam" />
-                            <path d="M33 22C29.8 17.5 36.8 15.1 33.6 9" className="public-wok-steam public-wok-steam-delay" />
-                            <path d="M42 23C38.9 19 45.4 16.8 42.8 12" className="public-wok-steam public-wok-steam-late" />
-                            <path d="M25 55H41" className="public-wok-base" />
-                          </svg>
-                        </span>
-                        <h3>{showFavorites ? 'Todavía no tienes favoritos' : 'No encontramos ese plato'}</h3>
-                        <p>{showFavorites ? 'Toca el corazón de un plato para guardarlo en este dispositivo.' : 'Prueba con otro nombre o vuelve a ver todo el menú.'}</p>
-                        <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
-                      </div>
-                    ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
-                      <section className="public-category-section" key={section.category} data-category={section.category}>
-                        <div className="public-category-section-header">
-                          <div className="public-category-title-group">
-                            <span className="public-cat-section-bar" />
-                            <h3>{categoryLabel(section.category)}</h3>
-                          </div>
-                          <span className="public-category-count-badge">{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span>
-                        </div>
-                        <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
-                      </section>
-                    )) : (
-                      <div className="public-category-grid">
-                        {visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < (isDesktopViewport ? 4 : 2)))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </section>
-            </>
-          )}
-
-          {/* TAB 3: CONTACTO */}
-          {currentTab === 'contacto' && (
-            <Suspense fallback={<PublicContactSkeleton />}>
-              <PublicMenuContactView variant="desktop" {...contactViewProps} />
-            </Suspense>
-          )}
-          {currentTab === 'perfil' && <Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
-
-        </div>
-
-        {/* Desktop Sticky Sidebar (Live Cart & Checkout) */}
-        <aside className="public-desktop-sidebar">
-          <div ref={sidebarCardRef} className={`public-sidebar-card ${cartPulse ? 'is-pulsing' : ''} ${sidebarHasOverflow ? 'has-overflow' : ''}`}>
-            {/* Sidebar Header */}
-            <div className="public-sidebar-head">
-              <div className="public-sidebar-title">
-                <ShoppingBag size={18} />
-                <span>Tu pedido</span>
-              </div>
-              {cart.length > 0 && (
-                <span key={itemCount} className="public-sidebar-count">
-                  {itemCount} {itemCount === 1 ? 'ítem' : 'ítems'}
-                </span>
-              )}
-            </div>
-
-            {cart.length === 0 ? (
-              <div className="public-sidebar-empty">
-                <div className="public-empty-box-art">
-                  <img 
-                    src="/optimized/fondos/carrito-vacio.webp"
-                    alt="Tu pedido está vacío" 
-                    className="public-empty-cart-img"
-                  />
-                </div>
-                <h3 className="public-empty-cart-title">Tu pedido está vacío</h3>
-                <p className="public-empty-cart-msg">
-                  Parece que aún no has agregado<br />nada a tu pedido.
-                </p>
-                <p className="public-empty-cart-sub">
-                  ¡Explora nuestro menú y encuentra<br />tu próximo favorito!
-                </p>
-                <button 
-                  type="button" 
-                  className="public-empty-explore-btn"
-                  onClick={() => {
-                    showDesktopMenu()
-                  }}
-                >
-                  <ShoppingBag size={18} />
-                  <span>Explorar menú</span>
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Sidebar Cart Items */}
-                <div className="public-sidebar-items">
-                  {cart.map(item => {
-                    const lineKey = cartLineKey(item)
-                    const isDeleting = deletingKeys.includes(lineKey)
-                    return (
-                      <div className={`public-sidebar-item ${isDeleting ? 'is-deleting' : ''}`} key={lineKey}>
-                        <img 
-                          src={optimizedProductImage(item.imageUrl) || productImage()}
-                          alt="" 
-                          className="public-sidebar-item-img" 
-                        />
-                        <div className="public-sidebar-item-info">
-                          <strong>{cartProductName(item.productName)}</strong>
-                          {getCartIncludedCopy(item) && <small className="public-cart-item-notes">{getCartIncludedCopy(item)}</small>}
-                          <span className="public-sidebar-item-price">{money(item.price * item.quantity)}</span>
-                          <div className="public-sidebar-item-actions">
-                            <div className="public-sidebar-stepper">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (item.quantity === 1) {
-                                    handleRemoveSidebarItem(lineKey, 1)
-                                  } else {
-                                    updateQuantity(lineKey, -1)
-                                  }
-                                }}
-                                aria-label="Disminuir"
-                              >
-                                {item.quantity === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
-                              </button>
-                              <span key={item.quantity} className="public-stepper-num">{item.quantity}</span>
-                              <button type="button" onClick={() => updateQuantity(lineKey, 1)} aria-label="Aumentar">
-                                <Plus size={12} />
-                              </button>
-                            </div>
-                            <button type="button" className="public-sidebar-edit" onClick={() => editCartItem(item)} aria-label={`Editar ${cartProductName(item.productName)}`}>
-                              <Pencil size={12} /> <span>Editar</span>
-                            </button>
-                          </div>
-                        </div>
-                        <button 
-                          type="button" 
-                          className="public-sidebar-trash" 
-                          onClick={() => handleRemoveSidebarItem(lineKey, item.quantity)}
-                          aria-label="Eliminar producto"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <div className="public-sidebar-secondary">
-                {/* Sidebar Recommendations (carrusel: una tarjeta a la vez,
-                    rota sola — el espacio es angosto para varias en fila) */}
-                {recommendations.length > 0 && (() => {
-                  const activeReco = recommendations[sidebarRecoIndex] ?? recommendations[0]
-                  return (
-                    <section className="public-cart-recommendations public-sidebar-recommendations public-sidebar-reco-carousel">
-                      <div className="public-cart-recommendations-head">
-                        <h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3>
-                        <button type="button" onClick={() => { setReturnToConfirmAfterEdit(false); setStep('cart'); setCartOpen(true); setShowAllExtras(true) }}>Ver todos <ChevronRight size={13} /></button>
-                      </div>
-                      <div className="public-sidebar-reco-card" key={activeReco.key}>
-                        <img src={optimizedProductImage(activeReco.variants[0]?.product.imageUrl) || productImage(activeReco.category)} alt={productTitle(activeReco.name)} />
-                        <div>
-                          <strong>{productTitle(activeReco.name)}</strong>
-                          <b>{money(activeReco.minPrice)}{priceBs(activeReco.minPrice) && <small className="public-reco-bs">{priceBs(activeReco.minPrice)}</small>}</b>
-                        </div>
-                        <button type="button" disabled={pendingQuickAdds.has(activeReco.key)} aria-busy={pendingQuickAdds.has(activeReco.key)} onClick={() => requestQuickAdd(activeReco)}>{pendingQuickAdds.has(activeReco.key) ? <LoaderCircle className="public-add-spinner" size={15} /> : <Plus size={15} />}</button>
-                      </div>
-                      {recommendations.length > 1 && (
-                        <div className="public-sidebar-reco-dots">
-                          {recommendations.map((_, i) => (
-                            <span
-                              key={i}
-                              className={i === sidebarRecoIndex ? 'active' : ''}
-                              onClick={() => {
-                                if (sidebarRecoTimer.current) clearInterval(sidebarRecoTimer.current)
-                                setSidebarRecoIndex(i)
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </section>
-                  )
-                })()}
-
-                {/* Sidebar Financials */}
-                <div className="public-sidebar-summary">
-                  <div className="public-sidebar-row">
-                    <span>Subtotal</span>
-                    <strong key={total}>{money(total)}</strong>
-                  </div>
-                  <div className="public-sidebar-row">
-                    <span>Delivery</span>
-                    <small>{deliveryFeeText}</small>
-                  </div>
-                  <div className="public-sidebar-row total">
-                    <span>Total</span>
-                    <div className="public-sidebar-total-val">
-                      <em key={orderTotal}>{money(orderTotal)}</em>
-                      {priceBs(orderTotal) && <small className="public-sidebar-total-bs">{priceBs(orderTotal)}</small>}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Delivery / Retiro Switch (Modern Vector Segmented Control) */}
-                <div className="public-sidebar-type-toggle">
-                  <button 
-                    type="button" 
-                    className={`public-sidebar-type-btn ${orderType === 'delivery' ? 'active' : ''}`}
-                    onClick={() => setOrderType('delivery')}
-                  >
-                    <Bike size={16} />
-                    <span>Delivery</span>
-                  </button>
-                  <button 
-                    type="button" 
-                    className={`public-sidebar-type-btn ${orderType === 'takeaway' ? 'active' : ''}`}
-                    onClick={() => setOrderType('takeaway')}
-                  >
-                    <Store size={16} />
-                    <span>Retiro en local</span>
-                  </button>
-                </div>
-
-                {/* Address Input Box */}
-                {orderType === 'delivery' && (
-                  <div className="public-sidebar-address-box" onClick={() => openCartFromSidebar('address')}>
-                    <MapPin size={16} />
-                    <input 
-                      readOnly 
-                      placeholder="Ingresa tu dirección de entrega" 
-                      value={address || ''} 
-                    />
-                    <span className="public-sidebar-address-edit">Editar</span>
-                  </div>
-                )}
-                </div>
-
-                {/* Big Checkout CTA Button */}
-                <button 
-                  type="button" 
-                  className="public-sidebar-checkout-btn"
-                  disabled={!cart.length || submitting}
-                  onClick={() => {
-                    if (!cart.length) return;
-                    // Desde el resumen siempre se inicia el flujo de entrega;
-                    // todavía faltan tipo de entrega, dirección y datos.
-                    openCartFromSidebar('delivery');
-                  }}
-                >
-                  <div className="public-sidebar-checkout-main">
-                    <span>Continuar con el pedido</span>
-                    <MessageSquareText size={18} />
-                  </div>
-                  <small>Configura la entrega y tus datos</small>
-                </button>
-              </>
-            )}
-          </div>
-        </aside>
-      </div>
+      <PublicDesktopLayout activeCategory={activeCategory} address={address} canScrollPopular={canScrollPopular} cart={cart} cartPulse={cartPulse} categories={categories} categorySections={categorySections} contactViewProps={contactViewProps} currentTab={currentTab} deletingKeys={deletingKeys} deliveryFeeText={deliveryFeeText} desktopHeroSlide={desktopHeroSlide} editCartItem={editCartItem} error={error} favoriteIds={favoriteIds} getCartIncludedCopy={getCartIncludedCopy} handleRemoveSidebarItem={handleRemoveSidebarItem} homeSearchSuggestions={homeSearchSuggestions} homeSearchTerm={homeSearchTerm} isDesktopViewport={isDesktopViewport} itemCount={itemCount} loading={loading} openCartFromSidebar={openCartFromSidebar} openCustomerProfile={openCustomerProfile} openGroup={openGroup} orderTotal={orderTotal} orderType={orderType} pageSettings={pageSettings} pendingQuickAdds={pendingQuickAdds} popularGroups={popularGroups} popularScrollRef={popularScrollRef} priceBs={priceBs} products={products} promoGroups={promoGroups} recommendations={recommendations} renderDesktopProductCard={renderDesktopProductCard} renderDesktopPromoCard={renderDesktopPromoCard} renderProductCard={renderProductCard} repeatPreviousOrder={repeatPreviousOrder} requestQuickAdd={requestQuickAdd} retryPublicCatalog={retryPublicCatalog} scrollPopular={scrollPopular} search={search} setActiveCategory={setActiveCategory} setCartOpen={setCartOpen} setDesktopHeroPaused={setDesktopHeroPaused} setDesktopHeroSlide={setDesktopHeroSlide} setOrderType={setOrderType} setReturnToConfirmAfterEdit={setReturnToConfirmAfterEdit} setSearch={setSearch} setShowAllExtras={setShowAllExtras} setShowFavorites={setShowFavorites} setSidebarRecoIndex={setSidebarRecoIndex} setStep={setStep} showDesktopMenu={showDesktopMenu} showFavorites={showFavorites} sidebarCardRef={sidebarCardRef} sidebarHasOverflow={sidebarHasOverflow} sidebarRecoIndex={sidebarRecoIndex} sidebarRecoTimer={sidebarRecoTimer} submitting={submitting} toggleFavorite={toggleFavorite} total={total} updateQuantity={updateQuantity} visibleGroups={visibleGroups} />
 
       <footer className="public-credits-footer">
         <span>Diseñado y desarrollado por</span>{' '}
@@ -4062,509 +2860,31 @@ export function PublicMenu() {
         </div>
       )}
 
-      {quickVariantGroup && createPortal(
-        <div className={`public-variant-backdrop ${closingQuickVariant ? 'closing' : ''}`} onClick={closeQuickVariant}>
-          <section className="public-variant-picker" role="dialog" aria-modal="true" aria-labelledby="public-variant-title" onClick={event => event.stopPropagation()}>
-            <header className="public-variant-header">
-              <span className="public-variant-header-icon"><Utensils size={20} /></span>
-              <div>
-                <small>ESCOGE ANTES DE AGREGAR</small>
-                <h2 id="public-variant-title">¿Cuál presentación quieres?</h2>
-                <p>{productTitle(quickVariantGroup.name)}</p>
-              </div>
-              <button type="button" className="public-variant-close" onClick={closeQuickVariant} aria-label="Cerrar selector"><X size={18} /></button>
-            </header>
+      {quickVariantGroup && <QuickVariantDialog closeQuickVariant={closeQuickVariant} closingQuickVariant={closingQuickVariant} confirmingQuickVariant={confirmingQuickVariant} confirmQuickVariant={confirmQuickVariant} openQuickProteinDialog={openQuickProteinDialog} personalizeQuickVariant={personalizeQuickVariant} priceBs={priceBs} quickSelectedVariant={quickSelectedVariant} quickVariantGroup={quickVariantGroup} quickVariantHasModifiers={quickVariantHasModifiers} quickVariantId={quickVariantId} quickVariantOptionsLabel={quickVariantOptionsLabel} quickVariantProteinGroup={quickVariantProteinGroup} quickVariantQuantity={quickVariantQuantity} setQuickVariantId={setQuickVariantId} setQuickVariantQuantity={setQuickVariantQuantity} />}
 
-            <div className={`public-variant-options ${quickVariantGroup.variants.length > 4 ? 'is-many' : ''}`}>
-              {quickVariantGroup.variants.map(({ product, label }) => {
-                const selected = product.id === quickVariantId
-                const variantCopy = publicVariantCopy(quickVariantGroup.name, label)
-                const inheritedImage = optimizedProductImage(product.imageUrl)
-                  || optimizedProductImage(quickVariantGroup.variants[0]?.product.imageUrl)
-                  || productImage(quickVariantGroup.category)
-                return (
-                  <button
-                    type="button"
-                    className={`public-variant-option ${selected ? 'selected' : ''}`}
-                    key={product.id}
-                    onClick={() => setQuickVariantId(product.id)}
-                    aria-pressed={selected}
-                  >
-                    <span className="public-variant-option-media">
-                      <img src={inheritedImage} alt="" />
-                      {selected && <span className="public-variant-option-badge">Elegido</span>}
-                      {product.menuLabel === 'free_drink' && <img src="/icons/free-drink-badge.png" alt="Incluye refresco gratis" className="public-variant-free-drink-badge" />}
-                      <span className="public-variant-option-check"><Check size={16} /></span>
-                    </span>
-                    <span className="public-variant-option-copy">
-                      <small>Presentación</small>
-                      <strong>{variantCopy.name}</strong>
-                      {variantCopy.count && <span className="public-variant-option-count">×{variantCopy.count}</span>}
-                      <span className="public-variant-option-description">
-                        {formatSpanishText(product.description || 'Preparación Full China')}
-                      </span>
-                      <span className="public-variant-option-price">{money(product.price)}{priceBs(product.price) && <em>{priceBs(product.price)}</em>}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+      {quickProteinDialogOpen && quickVariantProteinGroup && quickSelectedVariant && <QuickProteinDialog applyQuickProteinDraft={applyQuickProteinDraft} quickSelectedVariant={quickSelectedVariant} quickVariantGroup={quickVariantGroup} quickVariantProteinDraft={quickVariantProteinDraft} quickVariantProteinGroup={quickVariantProteinGroup} setQuickProteinDialogOpen={setQuickProteinDialogOpen} toggleQuickProteinDraft={toggleQuickProteinDraft} />}
 
-            <footer className={`public-variant-footer ${quickSelectedVariant ? 'has-selection' : 'needs-selection'}`}>
-              {quickSelectedVariant ? <>
-                <div className="public-variant-quantity" aria-label="Cantidad">
-                  <button type="button" onClick={() => setQuickVariantQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus size={15} /></button>
-                  <span><small>Cantidad</small><strong>{quickVariantQuantity}</strong></span>
-                  <button type="button" onClick={() => setQuickVariantQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus size={15} /></button>
-                </div>
-                <div className="public-variant-actions">
-                  {quickVariantHasModifiers && <button type="button" className="public-variant-customize" onClick={quickVariantProteinGroup ? openQuickProteinDialog : personalizeQuickVariant}>{quickVariantOptionsLabel === 'Quitar alguna proteína' ? <Drumstick size={15} aria-hidden="true" /> : <ChevronRight size={15} aria-hidden="true" />}<span>{quickVariantOptionsLabel}</span>{quickVariantProteinGroup && <small>Opcional</small>}</button>}
-                  <button type="button" className="public-variant-add" onClick={confirmQuickVariant} disabled={confirmingQuickVariant} aria-busy={confirmingQuickVariant}>
-                    {confirmingQuickVariant ? <LoaderCircle className="public-add-spinner" size={16} /> : <ShoppingCart size={16} />}
-                    <span>{confirmingQuickVariant ? 'Revisando opciones…' : `Agregar · ${money(quickSelectedVariant.product.price * quickVariantQuantity)}`}</span>
-                  </button>
-                </div>
-              </> : <p className="public-variant-selection-hint" role="status"><span className="public-variant-tap-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M9 12V5.75a1.75 1.75 0 0 1 3.5 0V12l.45-1.1a1.75 1.75 0 0 1 3.3.65v1.02l.45-.43a1.7 1.7 0 0 1 2.87 1.17l-.4 3.72A5 5 0 0 1 14.2 21h-1.45a5.1 5.1 0 0 1-3.95-1.87L5.6 15.2a1.6 1.6 0 0 1 2.26-2.27L9 14.1" /><path d="m6.1 5.1-1-1M18 6l1-1M4.5 9H3" /></svg></span><span>Toca una presentación para continuar</span></p>}
-            </footer>
-          </section>
-        </div>,
-        document.body
-      )}
+      {selectedGroup && selectedProduct && <ProductDetailDialog addingSelectedProduct={addingSelectedProduct} addSelectedProduct={addSelectedProduct} catalogExtraProducts={catalogExtraProducts} closeProductDetail={closeProductDetail} closingDetail={closingDetail} complementaryProducts={complementaryProducts} detailExtrasTotal={detailExtrasTotal} detailModifierGroups={detailModifierGroups} detailNotes={detailNotes} detailNotesRef={detailNotesRef} detailOrigin={detailOrigin} detailQuantity={detailQuantity} editingCartLineKey={editingCartLineKey} invalidModifierSelection={invalidModifierSelection} loadingModifiers={loadingModifiers} modifierLoadError={modifierLoadError} modifierRequestRef={modifierRequestRef} modifierSelectionError={modifierSelectionError} modifierValidationError={modifierValidationError} priceBs={priceBs} requiredModifierRef={requiredModifierRef} selectedCatalogExtras={selectedCatalogExtras} selectedCatalogExtrasTotal={selectedCatalogExtrasTotal} selectedExtras={selectedExtras} selectedGroup={selectedGroup} selectedProduct={selectedProduct} selectedVariantId={selectedVariantId} setDetailModifierGroups={setDetailModifierGroups} setDetailNotes={setDetailNotes} setDetailQuantity={setDetailQuantity} setLoadingModifiers={setLoadingModifiers} setModifierLoadError={setModifierLoadError} setModifierValidationError={setModifierValidationError} setSelectedCatalogExtras={setSelectedCatalogExtras} setSelectedExtras={setSelectedExtras} setSelectedVariantId={setSelectedVariantId} showModifierGuidance={showModifierGuidance} toggleProteinExclusion={toggleProteinExclusion} />}
 
-      {quickProteinDialogOpen && quickVariantProteinGroup && quickSelectedVariant && createPortal(
-        <div className="public-protein-removal-backdrop" onClick={() => setQuickProteinDialogOpen(false)}>
-          <section className="public-protein-removal-dialog" role="dialog" aria-modal="true" aria-labelledby="public-protein-removal-title" onClick={event => event.stopPropagation()}>
-            <header className="public-protein-removal-header">
-              <span className="public-protein-removal-icon"><Drumstick size={20} aria-hidden="true" /></span>
-              <div>
-                <small>PERSONALIZA TU PLATO</small>
-                <h2 id="public-protein-removal-title">¿Qué proteína quieres quitar?</h2>
-                <p>{productTitle(quickVariantGroup?.name ?? quickSelectedVariant.product.name)} · {money(quickSelectedVariant.product.price)}</p>
-              </div>
-              <button type="button" className="public-protein-removal-close" onClick={() => setQuickProteinDialogOpen(false)} aria-label="Cerrar"><X size={18} /></button>
-            </header>
-            <div className="public-protein-removal-body">
-              <p>Desmarca las que no quieras. No se sustituyen y el precio no cambia.</p>
-              <div className="public-protein-removal-list">
-                {quickVariantProteinGroup.options.map(option => {
-                  const staysInDish = (quickVariantProteinDraft[option.id] ?? 0) > 0
-                  return (
-                    <button
-                      type="button"
-                      className={`public-protein-removal-option${staysInDish ? ' is-kept' : ' is-removed'}`}
-                      key={option.id}
-                      aria-pressed={staysInDish}
-                      onClick={() => toggleQuickProteinDraft(option.id)}
-                    >
-                      <span className="public-protein-removal-check" aria-hidden="true">{staysInDish ? <Check size={16} /> : <Minus size={16} />}</span>
-                      <strong>{formatSpanishText(option.name)}</strong>
-                      <small>{staysInDish ? 'Se queda' : 'Se quitará'}</small>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-            <footer className="public-protein-removal-footer">
-              <button type="button" className="public-protein-removal-cancel" onClick={() => setQuickProteinDialogOpen(false)}>Cancelar</button>
-              <button type="button" className="public-protein-removal-apply" onClick={applyQuickProteinDraft}>Aplicar cambios</button>
-            </footer>
-          </section>
-        </div>,
-        document.body,
-      )}
-
-      {selectedGroup && selectedProduct && createPortal(
-        <div className={`public-modal-backdrop ${closingDetail ? 'closing' : ''}`} onClick={closeProductDetail}>
-          <section
-            className="public-product-detail-modal"
-            onClick={event => event.stopPropagation()}
-            style={detailOrigin ? { transformOrigin: `${detailOrigin.x}px ${detailOrigin.y}px` } : undefined}
-          >
-            <div className="ppdm-image">
-              <img src={optimizedProductImage(selectedProduct.imageUrl) || productImage(selectedGroup.category)} alt={selectedProduct.name} decoding="async" />
-              {selectedProduct.menuLabel === 'free_drink' && (
-                <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="ppdm-free-drink-sticker" />
-              )}
-              <button className="ppdm-close" onClick={closeProductDetail} aria-label="Cerrar detalle"><X /></button>
-              <div className="ppdm-image-gradient" />
-              <div className="ppdm-hero-copy">
-                <h1>{productTitle(selectedGroup.name)}</h1>
-                <div className="ppdm-price">{money(selectedProduct.price)}{priceBs(selectedProduct.price) && <span className="ppdm-price-bs">{priceBs(selectedProduct.price)}</span>}</div>
-              </div>
-            </div>
-            <div className="ppdm-content">
-              <p className="ppdm-desc">{selectedProduct.description || 'Preparado al momento con el sabor de Full China.'}</p>
-              {showModifierGuidance && !loadingModifiers && detailModifierGroups.some(group => group.minSelections > 0 && !isIncludedProteinGroup(group)) && (
-                <div className="ppdm-required-guidance" role="status">
-                  <CircleAlert size={17} aria-hidden="true" />
-                  <span>Este plato requiere que elijas una opción antes de agregarlo. Completa el grupo marcado como obligatorio.</span>
-                  <ArrowDown className="ppdm-required-guidance-arrow" size={19} aria-hidden="true" />
-                </div>
-              )}
-              {selectedGroup.variants.length > 1 && (
-                <div className="ppdm-section">
-                  <div className="ppdm-section-header"><h3>Elige tu presentación</h3><span>Obligatorio</span></div>
-                  <div className="ppdm-options">
-                    {selectedGroup.variants.map(({ product, label }) => {
-                      const variantCopy = publicVariantCopy(selectedGroup.name, label)
-                      return (
-                      <button
-                        type="button"
-                        className="ppdm-option"
-                        key={product.id}
-                        onClick={() => {
-                          if (product.id === selectedVariantId) return
-                          setSelectedVariantId(product.id)
-                          setSelectedExtras({})
-                          setModifierValidationError('')
-                          setModifierLoadError(false)
-                          setDetailModifierGroups([])
-                          setLoadingModifiers(true)
-                          const requestId = modifierRequestRef.current + 1
-                          modifierRequestRef.current = requestId
-                          const cached = PUBLIC_MODIFIER_CACHE.get(product.id)
-                          const applyGroups = (groups: ProductModifierGroup[]) => filterProteinExtraGroups(groups, product.allowProteinExtras !== false).filter(item => item.options.length > 0).map(item => ({ ...item, options: [...item.options] }))
-                          if (cached) {
-                            const preparedGroups = applyGroups(cached)
-                            setDetailModifierGroups(preparedGroups)
-                            setSelectedExtras(getDefaultModifierSelection(preparedGroups))
-                            setLoadingModifiers(false)
-                          } else {
-                            getPublicProductModifiers(product.id).then(groups => {
-                              PUBLIC_MODIFIER_CACHE.set(product.id, groups)
-                              if (modifierRequestRef.current === requestId) {
-                                const preparedGroups = applyGroups(groups)
-                                setDetailModifierGroups(preparedGroups)
-                                setSelectedExtras(getDefaultModifierSelection(preparedGroups))
-                              }
-                            }).catch(() => {
-                              if (modifierRequestRef.current === requestId) setModifierLoadError(true)
-                            }).finally(() => {
-                              if (modifierRequestRef.current === requestId) setLoadingModifiers(false)
-                            })
-                          }
-                        }}
-                      >
-                        <span className="ppdm-radio"><span className={`ppdm-radio-inner ${selectedProduct.id === product.id ? 'active' : ''}`} /></span>
-                        <span className="ppdm-option-name">
-                          <span>{variantCopy.name}</span>
-                          {variantCopy.count && <small className="ppdm-option-count">×{variantCopy.count}</small>}
-                          {product.menuLabel === 'free_drink' && <small className="ppdm-option-free-drink"><CupSoda size={12} aria-hidden="true" /> Refresco gratis</small>}
-                        </span>
-                        <span className="ppdm-option-price">{money(product.price)}</span>
-                      </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-              {loadingModifiers && detailModifierGroups.length === 0 ? (
-                <div className="ppdm-section ppdm-extras-section">
-                  <div className="ppdm-section-header"><h3>Extras <small><LoadingSkeleton label="Cargando extras" variant="inline" /></small></h3></div>
-                  <div className="ppdm-chip-row">
-                    {[0, 1, 2, 3, 4, 5].map(i => (
-                      <div className="ppdm-chip ppdm-chip-skeleton public-skeleton-block" key={i} />
-                    ))}
-                  </div>
-                </div>
-              ) : detailModifierGroups.length > 0 && (
-                <div className="ppdm-section ppdm-extras-section">
-                  {detailModifierGroups.map(group => {
-                    const count = countModifierSelections(group, selectedExtras)
-                    const proteinGroup = isIncludedProteinGroup(group)
-                    const requiredGroup = !proteinGroup && group.minSelections > 0
-                    const groupError = requiredGroup && modifierSelectionError?.modifierId === group.modifierId
-                    return <div ref={requiredGroup ? requiredModifierRef : undefined} className={`ppdm-modifier-group ${proteinGroup ? 'ppdm-modifier-group--included-proteins' : ''}${requiredGroup ? ' ppdm-modifier-group--required' : ''}${groupError ? ' has-selection-error' : ''}${groupError && modifierValidationError ? ' has-selection-alert' : ''}`} key={group.modifierId}>
-                      {proteinGroup ? <>
-                        <div className="ppdm-section-header">
-                          <h3>Proteínas del plato</h3>
-                        </div>
-                        <p className="ppdm-protein-hint">Si no quieres alguna proteína, indícalo aquí para que cocina la quite. No se sustituye por otra.</p>
-                        <div className="ppdm-protein-options">{group.options.map(option => {
-                          const quantity = selectedExtras[option.id] ?? 0
-                          const optionName = formatSpanishText(option.name)
-                          return <div className="ppdm-protein-option" key={option.id}>
-                            <span className="ppdm-protein-option-name">{optionName}</span>
-                            <span className={`ppdm-protein-option-quantity${quantity === 0 ? ' is-unselected' : ''}`}>
-                              {quantity === 0 ? 'Se quitará' : `${quantity} ${quantity === 1 ? 'porción' : 'porciones'}`}
-                              {option.price > 0 && quantity > 0 && <small>+{money(option.price)} por porción</small>}
-                            </span>
-                            <button type="button" className="ppdm-protein-change" onClick={() => toggleProteinExclusion(option.id)} aria-pressed={quantity === 0} aria-label={quantity === 0 ? `Volver a incluir ${optionName}` : `Pedir sin ${optionName}`}>
-                              {quantity === 0 ? 'Volver a incluir' : 'Quitar'}
-                            </button>
-                          </div>
-                        })}</div>
-                      </> : <>
-                        <div className="ppdm-section-header"><h3>{formatSpanishText(group.name)} <small>{group.minSelections > 0 ? `· Elige ${group.minSelections === 1 ? '1 opción' : `al menos ${group.minSelections}`}` : '· Opcional'}{group.maxSelections !== null ? ` · Máx. ${group.maxSelections}` : ''}</small></h3><span>{group.minSelections > 0 ? 'Obligatorio · ' : ''}{count}{group.maxSelections !== null ? `/${group.maxSelections}` : ''}</span></div>
-                        {groupError && <p className="ppdm-required-group-error" role="alert">Elige una opción de {formatSpanishText(group.name)} para continuar.</p>}
-                        <div className="ppdm-chip-row">{group.options.map(option => {
-                          const selectedCount = selectedExtras[option.id] ?? 0
-                          const active = selectedCount > 0
-                          const countReached = group.maxSelections !== null && count >= group.maxSelections
-                          return <button type="button" className={`ppdm-chip ${active ? 'active' : ''}`} key={option.id} aria-pressed={active}
-                            disabled={!active && (countReached || (group.allowRepeat && selectedCount >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION))}
-                            onClick={() => {
-                              setModifierValidationError('')
-                              setSelectedExtras(current => {
-                                const next = { ...current }
-                                if (active && !group.allowRepeat) delete next[option.id]
-                                else if (active && group.allowRepeat) {
-                                  if (selectedCount <= 1) delete next[option.id]
-                                  else next[option.id] = selectedCount - 1
-                                } else if (!countReached) next[option.id] = 1
-                                return next
-                              })
-                            }}>
-                            <span className="ppdm-chip-name">{formatSpanishText(option.name)}</span>
-                            {group.allowRepeat && active && <span className="ppdm-chip-count">×{selectedCount}</span>}
-                            {option.price > 0 && <span className="ppdm-chip-price">+{money(option.price)}</span>}
-                            <span className="ppdm-chip-check"><Check size={12} /></span>
-                          </button>
-                        })}</div>
-                      </>}
-                    </div>
-                  })}
-                </div>
-              )}
-              {catalogExtraProducts.length > 0 && (
-                <div className="ppdm-section ppdm-catalog-extras">
-                  <div className="ppdm-section-header"><h3>Agrega extras <small>· Opcional</small></h3><span>Se agregan al pedido</span></div>
-                  <div className="ppdm-catalog-extra-list">
-                    {catalogExtraProducts.map(product => {
-                      const quantity = selectedCatalogExtras[product.id] ?? 0
-                      const [extraTitleLead, extraTitleDetail] = product.name.split('—', 2)
-                      return <div className="ppdm-catalog-extra" key={product.id}>
-                        <img className="ppdm-catalog-extra-image" src={optimizedProductImage(product.imageUrl) || productImage('extras')} alt={formatProductTitle(product.name)} loading="lazy" decoding="async" />
-                        <div><strong>{extraTitleDetail ? <><span>{formatProductTitle(extraTitleLead)}</span><span>— {formatProductTitle(extraTitleDetail)}</span></> : formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong><small>por unidad</small></span></div>
-                        {quantity === 0
-                          ? <button type="button" className="ppdm-catalog-extra-add" onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}>Agregar <Plus size={14} /></button>
-                          : <div className="ppdm-catalog-extra-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, quantity + 1) }))}><Plus size={14} /></button></div>}
-                      </div>
-                    })}
-                  </div>
-                  <p className="ppdm-catalog-extra-hint">Cada extra se añadirá como su propio producto y se cobrará a su precio vigente.</p>
-                </div>
-              )}
-              {!editingCartLineKey && complementaryProducts.length > 0 && (
-                <div className="ppdm-section ppdm-complementary-products">
-                  <div className="ppdm-section-header"><h3>Completa tu pedido <small>· Opcional</small></h3><span>Se agregan por separado</span></div>
-                  <div className="ppdm-complementary-carousel" aria-label="Productos para completar tu pedido">
-                    {complementaryProducts.map(product => {
-                      const quantity = selectedCatalogExtras[product.id] ?? 0
-                      return <div className="ppdm-catalog-extra" key={product.id}>
-                        <img className="ppdm-complementary-image" src={optimizedProductImage(product.imageUrl) || productImage(product.category)} alt={formatProductTitle(product.name)} loading="lazy" decoding="async" />
-                        <div className="ppdm-complementary-copy"><strong>{formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong></span></div>
-                        {quantity === 0
-                          ? <button type="button" className="ppdm-complementary-add" aria-label={`Agregar ${product.name} al pedido`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}><Plus size={16} /> Agregar</button>
-                          : <div className="ppdm-complementary-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, quantity + 1) }))}><Plus size={14} /></button></div>}
-                      </div>
-                    })}
-                  </div>
-                </div>
-              )}
-              {modifierSelectionError?.options.length === 0 && <p className="ppdm-modifier-error" role="alert"><span className="ppdm-error-group-name">“{formatSpanishText(modifierSelectionError.name)}”</span> no tiene opciones disponibles. Elige otro producto o contacta al local.</p>}
-              {invalidModifierSelection && <p className="ppdm-modifier-error" role="alert">Algunas opciones guardadas ya no están disponibles. <button type="button" onClick={() => { setSelectedExtras({}); setModifierValidationError('') }}>Limpiar opciones anteriores</button></p>}
-              {modifierLoadError && <p className="ppdm-modifier-error" role="alert">No pudimos cargar las opciones de este producto. Inténtalo de nuevo.</p>}
-              <label className="ppdm-instructions-field">Indicaciones <small>(opcional)</small><textarea ref={detailNotesRef} value={detailNotes} maxLength={160} onChange={event => setDetailNotes(event.target.value)} placeholder="Ej. Sin cebollín, por favor…" aria-label="Indicaciones para este plato (máximo 160 caracteres)" />{detailNotes.length === 160 && <span className="ppdm-instructions-limit-notice" role="status" aria-live="polite">Llegaste al límite de 160 caracteres; ya no puedes escribir más.</span>}<span className={detailNotes.length === 160 ? 'is-at-limit' : ''}>{detailNotes.length}/160</span></label>
-            </div>
-            <footer className="ppdm-footer">
-              {modifierValidationError && <p className="ppdm-footer-feedback" id="ppdm-add-feedback" role="alert" aria-live="assertive"><CircleAlert size={17} aria-hidden="true" /><span>{modifierValidationError}</span></p>}
-              <div className="ppdm-qty">
-                <button type="button" onClick={() => setDetailQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus /></button>
-                <span>{detailQuantity}</span>
-                <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
-              </div>
-              <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)}</span></>}</button>
-            </footer>
-          </section>
-        </div>,
-        document.body
-      )}
-
-      {cartOpen && step === 'whatsapp' && createPortal(
-        <div className={`public-whatsapp-ready-backdrop ${closingCart ? 'closing' : ''}`}>
-          <section className={`public-whatsapp-ready-page ${closingCart ? 'closing' : ''}`} aria-labelledby="whatsapp-ready-title">
-            <header className="public-whatsapp-ready-header"><img src="/optimized/root/logo.webp" alt="Full China" /><button type="button" className="public-whatsapp-ready-close" onClick={closeCart} aria-label="Cerrar confirmación"><X size={20} /></button></header>
-            <div className="public-preparing-visual public-whatsapp-ready-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div>
-            <div className="public-whatsapp-ready-content">
-              <div className="public-whatsapp-ready-hero">
-              <span className="public-whatsapp-ready-icon" aria-hidden="true"><span className="public-whatsapp-mark"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="13" /><path d="M11.5 10.8c.4-.5 1-.5 1.4-.1l1.7 1.8c.4.4.4 1 0 1.4l-1 1c1 2 2.4 3.4 4.4 4.4l1-1c.4-.4 1-.4 1.4 0l1.8 1.7c.4.4 0 1-.1 1.4-.8.8-2 1.1-3.1.7-4.5-1.4-7.7-4.6-9.1-9.1-.4-1.1-.1-2.3.7-3.1Z" /></svg></span></span>
-              <h1 id="whatsapp-ready-title">{LOCAL_ORDER_TEST_MODE ? 'Vista previa del pedido' : '¡Pedido registrado!'}</h1>
-              <strong>#{orderCode || 'WEB-PENDIENTE'}</strong>
-              {submitting && <span className="public-whatsapp-ready-loading" role="status" aria-live="polite"><span className="public-loading-dots" aria-hidden="true"><i /><i /><i /></span>Enviando tu pedido al bot de WhatsApp…</span>}
-              </div>
-              <section className="public-whatsapp-ready-card">
-              <span className="public-whatsapp-ready-kicker">{LOCAL_ORDER_TEST_MODE ? 'MODO DE PRUEBA' : 'Muy importante:'}</span>
-              <h2>{LOCAL_ORDER_TEST_MODE ? 'El pedido no se registró ni se envió.' : 'El bot de Full China te enviará tu pedido por WhatsApp.'}</h2>
-              <p>{LOCAL_ORDER_TEST_MODE ? 'Esta vista previa te permite probar el recorrido. Puedes volver al pedido y hacer cambios.' : 'Recibirás la comanda en el número que indicaste para revisarla y confirmarla.'}</p>
-              <button type="button" className="public-whatsapp-review-link" onClick={returnToOrderReview} disabled={submitting}>{LOCAL_ORDER_TEST_MODE ? '← Volver a revisar el pedido' : '← Revisar mi pedido'}</button>
-              <small className="public-whatsapp-ready-footnote">{LOCAL_ORDER_TEST_MODE ? 'La prueba no crea pedidos reales.' : 'No necesitas abrir WhatsApp ni enviar nada manualmente.'}</small>
-              </section>
-            </div>
-          </section>
-        </div>, document.body
-      )}
-      {cartOpen && step !== 'whatsapp' && createPortal(
+      {cartOpen && createPortal(
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}${step === 'details' && autofillingDetails ? ' is-autofilling' : ''}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else if (step === 'preparing') { closeCart(); } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : step === 'preparing' ? 'Preparando tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : step === 'preparing' ? 'Estamos enviando tu pedido a Full China.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
+        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
-        {step === 'cart' && <div className="public-review-page"><div className="public-cart-items">{cart.length === 0 ? <div className="public-sidebar-empty"><div className="public-empty-box-art"><img src="/optimized/fondos/carrito-vacio.webp" alt="Tu pedido está vacío" className="public-empty-cart-img" /></div><h3 className="public-empty-cart-title">Tu pedido está vacío</h3><p className="public-empty-cart-msg">Parece que aún no has agregado nada a tu pedido.</p><p className="public-empty-cart-sub">¡Explora nuestro menú y encuentra tu próximo favorito!</p><button type="button" className="public-empty-explore-btn" onClick={() => { setCurrentTab('menu'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}><ShoppingBag size={18} /><span>Explorar menú</span></button></div> : cart.map(item => <div className="public-cart-item" key={cartLineKey(item)}><img className="public-cart-item-image" src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div className="public-cart-item-main"><strong>{cartProductName(item.productName)}</strong>{getCartIncludedCopy(item) && <small className="public-cart-item-notes">{getCartIncludedCopy(item)}</small>}<span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small className="public-cart-item-notes public-cart-item-notes-extra"><MessageSquareText aria-hidden="true" /><span>{item.notes}</span></small>}<div className="public-cart-item-controls"><div className="public-review-qty"><button onClick={() => updateQuantity(item.productId, -1, item.notes || '')}>{item.quantity === 1 ? <Trash2 /> : <Minus />}</button><b>{item.quantity}</b><button onClick={() => updateQuantity(item.productId, 1, item.notes || '')}><Plus /></button></div><button className="public-review-edit" onClick={() => { closeCart(); setTimeout(() => { editCartItem(item) }, 380) }}>Editar</button></div></div><strong className="public-cart-item-total">{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</strong></div>)}</div>{cart.length > 0 && cartCarouselGroups.length > 0 && <section className="public-cart-recommendations"><div className="public-cart-recommendations-head"><h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3><button type="button" onClick={() => setShowAllExtras(true)}>Ver todos <ChevronRight size={13} /></button></div><div className="public-recommendation-row">{cartCarouselGroups.map(group => <article key={group.key}><img loading="lazy" decoding="async" src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" /><div><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></div><button type="button" onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>}{cart.length > 0 && <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><small>Productos seleccionados</small><b>Total productos <em>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</em></b></div>}{cart.length > 0 && <p className="public-cart-eta"><Clock aria-hidden="true" /><span>Entrega estimada <strong>35–50 min</strong></span></p>}{cart.length > 0 && <button className="public-primary" onClick={() => requireCart() && setStep('delivery')}>Continuar <ChevronRight /></button>}</div>}
-        {step === 'delivery' && <div className="public-delivery-step" role="radiogroup" aria-label="Forma de entrega">
-          <label className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`}>
-            <input className="public-delivery-choice-input" type="radio" name="public-order-type" value="takeaway" checked={orderType === 'takeaway'} onChange={() => { addressActionRef.current += 1; setLocating(false); setOrderType('takeaway'); setDeliveryChosen(true) }} />
-            <img src="/optimized/fondos/pickup-card.webp" alt="" aria-hidden="true" />
-            <span className="public-delivery-choice-copy"><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></span>
-            <span className="public-choice-radio" aria-hidden="true" />
-          </label>
-          <label className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}`}>
-            <input className="public-delivery-choice-input" type="radio" name="public-order-type" value="delivery" checked={orderType === 'delivery'} onChange={() => { setOrderType('delivery'); setDeliveryChosen(true); requestCurrentLocation() }} />
-            <img src="/optimized/fondos/delivery-card.webp" alt="" aria-hidden="true" />
-            <span className="public-delivery-choice-copy"><strong>Delivery</strong><span>Te lo llevamos hasta donde estés.</span></span>
-            <span className="public-choice-radio" aria-hidden="true" />
-          </label>
-          <p className="public-delivery-hint"><MapPin aria-hidden="true" /><span>Podrás indicar la dirección en el siguiente paso.</span></p>
-          <button type="button" className="public-primary public-delivery-continue" disabled={!cart.length} onClick={() => { setDeliveryChosen(true); setStep(orderType === 'delivery' ? 'address' : 'pickup') }}>Continuar <ChevronRight /></button>
-        </div>}
+        {step === 'cart' && <CartStep cart={cart} cartCarouselGroups={cartCarouselGroups} closeCart={closeCart} deliveryChosen={deliveryChosen} editCartItem={editCartItem} getCartIncludedCopy={getCartIncludedCopy} orderType={orderType} priceBs={priceBs} requestQuickAdd={requestQuickAdd} requireCart={requireCart} setCurrentTab={setCurrentTab} setShowAllExtras={setShowAllExtras} setStep={setStep} total={total} updateQuantity={updateQuantity} />}
+        {step === 'delivery' && <DeliveryStep addressActionRef={addressActionRef} cart={cart} deliveryDisabled={deliveryDisabled} orderType={orderType} requestCurrentLocation={requestCurrentLocation} setDeliveryChosen={setDeliveryChosen} setLocating={setLocating} setOrderType={setOrderType} setStep={setStep} />}
 
-        {step === 'pickup' && <section className="public-pickup-step" aria-label="Ubicación y horario para retirar">
-          <div className="public-pickup-map public-contact-location-stage">
-            <iframe title="Ubicación de Full China en Google Maps" src={mapPreviewUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
-            <span className="public-contact-location-tint" aria-hidden="true" />
-            <span className="public-contact-location-tag"><MapPin size={14} /> Punto Full China</span>
-            <span className="public-contact-brand-pin" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></span>
-          </div>
-          <div className="public-pickup-details">
-            <div className="public-pickup-info"><MapPin size={19} /><div><small>Dirección</small><strong>{pageSettings.contactAddress}</strong></div></div>
-            <div className="public-pickup-info"><Clock size={19} /><div><small>Horario de atención</small><strong>{pageSettings.contactDays}</strong><span>{formattedOpenTime} – {formattedCloseTime}</span></div></div>
-            <a className="public-pickup-directions" href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer"><Navigation size={17} /> Cómo llegar <ChevronRight size={17} /></a>
-          </div>
-          <button type="button" className="public-primary public-pickup-continue" disabled={!cart.length} onClick={() => setStep('details')}>Continuar con mis datos <ChevronRight /></button>
-        </section>}
-        {step === 'address' && <div className="public-address-step"><div className="public-address-search"><Search /><input ref={addressRef} value={readableAddress} onChange={event => searchAddress(event.target.value)} placeholder="Busca tu dirección o urbanización" />{address.trim() && <button type="button" className="public-address-search-clear" aria-label="Borrar dirección y ubicación" onClick={clearAddress}><X size={18} /></button>}</div>{showSuggestions && address.trim().length >= 4 && <div className="public-address-suggestions public-address-step-suggestions">{searchingAddress ? <LoadingSkeleton label="Buscando direcciones" count={3} /> : addressSuggestions.length > 0 ? <><div className="public-suggestion-heading">Direcciones encontradas</div>{addressSuggestions.map((s, i) => { const parts = s.display_name.split(','); const primary = parts.shift() || s.display_name; return <button key={i} type="button" className="public-suggestion-item" onMouseDown={() => selectSuggestion(s)}><span className="public-suggestion-icon"><MapPin size={14} /></span><span className="public-suggestion-copy"><strong>{primary}</strong><small>{parts.join(',').trim() || 'Ubicación en el mapa'}</small></span><ChevronRight size={14} className="public-suggestion-arrow" /></button> })}</> : <div className="public-suggestion-status">Google no encontró ese lugar.<small>Prueba otra búsqueda o marca el punto exacto en el mapa.</small></div>}{addressSuggestions.length > 0 && <div className="public-address-google-attribution" translate="no"><img src="/GoogleMaps_Logo_DarkGray.svg" alt="Google Maps" /></div>}</div>}{locating && <div className="public-location-pending" role="status" aria-live="polite"><Navigation size={15} /> Buscando tu ubicación para centrar el mapa…</div>}<Suspense fallback={<div className="public-address-map public-address-map-brand"><div className="public-address-map-loading" role="status">Cargando mapa…</div></div>}><AddressMap coordinates={geoCoords} isGpsLocation={addressMethod === 'gps'} origin={deliverySettings?.originLat != null && deliverySettings.originLng != null ? { lat: deliverySettings.originLat, lng: deliverySettings.originLng } : null} route={deliveryRoute} onPick={selectMapLocation} /></Suspense>{addressMethod !== 'gps' && <button type="button" className="public-location-row public-map-location-action" onClick={requestCurrentLocation} disabled={locating} aria-label={locating ? 'Obteniendo ubicación' : geoCoords ? 'Volver a mi ubicación' : 'Usar mi ubicación actual'}><Navigation />{locating ? <LoadingSkeleton label="Obteniendo ubicación" variant="inline" /> : <strong>{geoCoords ? 'Volver a mi ubicación' : 'Usar mi ubicación actual'}</strong>}<ChevronRight /></button>}<div className={`public-address-selected${addressFieldError === 'address' || addressFieldError === 'geo' ? ' invalid' : ''}`} ref={addressSelectedRef}><MapPin /><div><small>Dirección seleccionada</small><strong>{readableAddress || 'Toca el mapa o busca una dirección'}</strong><span>{addressMethod === 'gps' ? 'Ubicación actual por GPS' : addressMethod === 'map' ? 'Punto elegido en el mapa' : addressMethod === 'search' ? 'Dirección encontrada' : 'Pendiente de confirmar'}</span>{addressFieldError === 'address' && <em className="public-field-error" role="alert">Escribe una dirección o toca un punto del mapa para seleccionarla.</em>}{addressFieldError === 'geo' && <em className="public-field-error" role="alert">Confirma la ubicación tocando el mapa o eligiendo una sugerencia.</em>}</div><button type="button" onClick={() => addressRef.current?.focus()}>Editar</button></div>{deliveryCoverageUnavailable && <div className="public-address-coverage-alert" role="alert"><div><strong>Esta dirección está fuera de la cobertura disponible.</strong><p>No podemos cotizar el delivery para este punto. Elige otra ubicación o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => addressRef.current?.focus()}>Cambiar ubicación</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}{locationError && (
-  <div className="public-location-feedback" role="alert" ref={locationErrorRef}>
-    <p>{locationError}</p>
-    <div>
-      <button type="button" onClick={() => { addressRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); addressRef.current?.focus() }}>Buscar dirección</button>
-      <button type="button" onClick={() => document.querySelector<HTMLElement>('.public-address-map')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Elegir en el mapa</button>
-    </div>
-  </div>
-)}<label className={`public-address-extra${addressFieldError === 'reference' ? ' invalid' : ''}`}><span>Referencia para encontrarte</span><input ref={referenceRef} value={addressReference} onChange={event => { setAddressReference(event.target.value); if (addressFieldError === 'reference') setAddressFieldError('') }} placeholder="Ej. casa azul, torre, local o esquina cercana" />{addressFieldError === 'reference' && <em className="public-field-error" role="alert">Agrega una referencia para que el repartidor encuentre el lugar fácilmente.</em>}</label><label className="public-address-extra"><span>Instrucciones para el repartidor <small>(opcional)</small></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. tocar timbre 04B o dejar con el conserje" /></label><div className={`public-address-summary${deliveryCoverageUnavailable ? ' is-unavailable' : ''}`}><div><small>Tarifa de delivery</small><strong>{deliverySettingsStatus === 'idle' || deliverySettingsStatus === 'loading' ? 'Consultando cobertura…' : deliverySettingsStatus === 'error' ? 'No disponible' : !geoCoords ? 'Elige un punto' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'No pudimos calcularla' : deliveryCoverageUnavailable ? 'No disponible' : money(deliveryFee)}</strong></div>{deliveryEstimate && deliveryQuoteStatus === 'ready' ? <div className="public-address-distance"><strong>{`${deliveryEstimate.isApproximate ? "≈" : ""}${deliveryEstimate.distanceKm.toFixed(1)} km`}</strong><small>desde Full China · {deliveryEstimate.isApproximate ? "aprox." : "por carretera"}</small><em className={deliveryCoverageUnavailable ? 'is-outside' : ''}>{deliveryCoverageUnavailable ? 'Fuera del área de delivery' : 'Dentro del área de delivery'}</em></div> : !deliveryCoverageUnavailable && <span>{!geoCoords ? 'Selecciona una ubicación' : deliveryQuoteStatus === 'loading' ? 'Calculando tarifa…' : deliveryQuoteStatus === 'error' ? 'Reintenta o cambia a retiro' : 'Ubicación confirmada'}</span>}
-{deliveryQuoteStatus === 'error' && <button type="button" className="public-address-quote-retry" onClick={() => setDeliveryRetryVersion(version => version + 1)}>Reintentar cotización</button>}</div>
-
-{deliverySettingsStatus === 'error' && <div className="public-address-coverage-alert" role="alert"><div><strong>No pudimos consultar la cobertura.</strong><p>Inténtalo de nuevo o cambia a retiro en el local.</p></div><div className="public-address-coverage-actions"><button type="button" onClick={() => setDeliverySettingsRetryVersion(version => version + 1)}>Reintentar</button><button type="button" onClick={() => { setOrderType('takeaway'); setDeliveryChosen(true); setStep('delivery') }}>Cambiar a retiro</button></div></div>}
-{deliverySettingsStatus === 'ready' && deliveryQuoteStatus === 'ready' && !deliveryCoverageUnavailable && <button className="public-primary public-address-continue" disabled={!cart.length} onClick={continueFromAddress}>Continuar <ChevronRight /></button>}</div>}
-        {step === 'details' && (
-          <div className="public-checkout">
-            <div className="public-data-intro">
-              <strong>¿A nombre de quién?</strong>
-              <span>Solo para coordinar tu pedido.</span>
-            </div>
-            {customerDetailsAutofilled && <p className="public-checkout-profile-note"><UserRound size={15} /> Cargamos tus datos de Mi perfil. Revísalos y corrige cualquier detalle antes de continuar.</p>}
-            <div className="public-data-form-card" onChangeCapture={() => { customerDetailsTouched.current = true }}>
-              <label className={`public-data-field${fieldError === 'name' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu nombre <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={nameRef} autoComplete="name" value={name} onChange={event => { setName(event.target.value); if (fieldError === 'name') setFieldError('') }} placeholder="Nombre y apellido" /></div>{fieldError === 'name' && <em className="public-field-error" role="alert">Escribe tu nombre.</em>}</span></label>
-              <label className={`public-data-field${fieldError === 'identification' ? ' invalid' : ''}`}><span className="public-data-icon"><UserRound /></span><span className="public-data-field-copy"><span>Tu cédula <em className="public-data-req">*</em></span><div className="public-data-input"><div className="public-id-prefix-toggle">{(['V', 'E', 'J'] as const).map(p => <button key={p} type="button" className={idPrefix === p ? 'active' : ''} onClick={() => { setIdPrefix(p); setIdentification(`${p}-${identification.replace(/^[VEJ]-?/i, '')}`); if (fieldError === 'identification') setFieldError('') }}>{p}</button>)}</div><input ref={identificationRef} inputMode="numeric" autoComplete="off" value={identification.replace(/^[VEJ]-?/i, '')} maxLength={8} onChange={event => { const digits = event.target.value.replace(/\D/g, ''); setIdentification(`${idPrefix}-${digits}`); if (fieldError === 'identification') setFieldError('') }} onBlur={() => { const digits = identification.replace(/^[VEJ]-?/i, ''); if (digits && (digits.length < 6 || digits.length > 8)) setFieldError('identification') }} placeholder="12345678" /></div>{fieldError === 'identification' ? <em className="public-field-error" role="alert">La cédula debe tener entre 6 y 8 dígitos.</em> : <small>La usaremos para conservar tu historial de pedidos</small>}</span></label>
-              <label className={`public-data-field${fieldError === 'phone' ? ' invalid' : ''}`}><span className="public-data-icon"><Phone /></span><span className="public-data-field-copy"><span>Tu WhatsApp <em className="public-data-req">*</em></span><div className="public-data-input"><input ref={phoneRef} type="tel" inputMode="tel" autoComplete="tel" value={phone} maxLength={15} onChange={event => { setPhone(event.target.value); if (fieldError === 'phone') setFieldError('') }} onBlur={() => { if (phone.trim() && phone.replace(/\D/g, '').length !== 11) setFieldError('phone') }} placeholder="0412 000 0000" /></div>{fieldError === 'phone' ? <em className="public-field-error" role="alert">Debe tener exactamente 11 dígitos, ej. 0412 000 0000.</em> : <small>Te escribiremos aquí para confirmar</small>}</span></label>
-            </div>
-            <div className="public-pay-card">
-              <div className="public-pay-head"><Wallet size={17} /><span>¿Cómo vas a pagar?</span></div>
-              <div className="public-pay-modes">
-                <button type="button" className={`public-pay-mode ${payMode === 'single' ? 'active' : ''}`} onClick={() => setPayMode('single')}>Un método</button>
-                <button type="button" className={`public-pay-mode ${payMode === 'mixed' ? 'active' : ''}`} onClick={() => setPayMode('mixed')}>Mixto (2 métodos)</button>
-              </div>
-              <div className="public-pay-selects">
-                <div className="public-pay-select">
-                  <span>{payMode === 'mixed' ? 'Primer método' : 'Método de pago'}</span>
-                  <PayDropdown value={payPrimary} onChange={setPayPrimary} />
-                </div>
-                {payMode === 'mixed' && (
-                  <div className="public-pay-select">
-                    <span>Segundo método</span>
-                    <PayDropdown value={paySecondary} onChange={setPaySecondary} />
-                  </div>
-                )}
-              </div>
-              {payMode === 'mixed' && <p className="public-pay-hint">Al cobrar coordinamos cuánto va por cada método.</p>}
-            </div>
-            <label className="public-data-notes"><span className="public-data-notes-title"><MessageSquareText /><span><strong>¿Algo para la cocina?</strong><small>Opcional</small></span></span><textarea value={notes} maxLength={500} onChange={event => setNotes(event.target.value)} placeholder="Ej. Sin cebollín, poca salsa…" /></label>
-            <button className="public-primary whatsapp" disabled={submitting} onClick={continueToConfirmation}>Revisar pedido <ChevronRight /></button>
-          </div>
-        )}
-        {step === 'confirm' && <div className="public-confirm-page"><div className="public-receipt"><div className="public-receipt-head"><img src="/optimized/root/logo.webp" alt="Full China" /><div><span>Solicitud</span><strong>{orderCode || draftOrderCode || 'WEB-PENDIENTE'}</strong><small>Ahora · pedido web</small></div></div>
-          <div className="public-confirm-items">{cart.map(item => <div className="public-confirm-item" key={cartLineKey(item)}><img src={optimizedProductImage(item.imageUrl) || productImage()} alt="" /><div><div className="public-confirm-item-name-row"><strong>{cartProductName(item.productName)}</strong><button type="button" aria-label={`Editar ${item.productName}`} onClick={() => { closeCart(); window.setTimeout(() => editCartItem(item), 380) }}><Pencil aria-hidden="true" /><span>Editar</span></button></div>{getCartIncludedCopy(item) && <small className="public-cart-item-notes">{getCartIncludedCopy(item)}</small>}<span>{item.quantity} {item.quantity === 1 ? 'porción' : 'porciones'}</span>{item.notes && <small>{item.notes}</small>}</div><b>{money(item.price * item.quantity)}{priceBs(item.price * item.quantity) && <small className="public-cart-item-bs">{priceBs(item.price * item.quantity)}</small>}</b></div>)}</div>
-          <div className="public-total public-review-total"><span>Subtotal productos</span><strong>{money(total)}{priceBs(total) && <small className="public-total-bs">{priceBs(total)}</small>}</strong><div className="public-delivery-total-label">{orderType === 'delivery' ? 'Delivery' : 'Retiro'}</div><div className={`public-delivery-total-value ${orderType === 'takeaway' ? 'is-pickup' : ''}`}>{orderType === 'delivery' ? deliveryFeeText : 'En el local'}</div><b>Total del pedido <em>{money(orderTotal)}{priceBs(orderTotal) && <small className="public-total-bs">{priceBs(orderTotal)}</small>}</em></b></div>
-           <div className="public-confirm-info"><button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'pickup')}><MapPin /><div><strong>{orderType === 'delivery' ? 'Dirección de entrega' : 'Entrega'}</strong><span>{orderType === 'delivery' ? address : 'Retirar en Full China'}</span><small>{orderType === 'delivery' ? addressReference || 'Sin referencia adicional' : 'Listo para retirar en el local'}</small></div><b>Editar</b></button><button type="button" onClick={() => setStep('details')}><UserRound /><div><strong>Datos de contacto</strong><span>{name}</span><small>{phone}</small></div><b>Editar</b></button>{notes.trim() && <button type="button" onClick={() => setStep(orderType === 'delivery' ? 'address' : 'details')}><MessageSquareText /><div><strong>{orderType === 'delivery' ? 'Indicaciones de entrega' : 'Indicaciones para la cocina'}</strong><span className="public-confirm-info-notes">{notes.trim()}</span><small>Se enviarán con tu pedido</small></div><b>Editar</b></button>}</div>{error && <Toast type="error" message={error} onClose={() => setError('')} />}</div>
-          <button className={`public-primary whatsapp public-whatsapp-cta ${submitting ? 'is-sending' : ''}`} disabled={submitting} aria-busy={submitting} onClick={submitOrder}><span className="public-confirm-check" aria-hidden="true">{submitting ? <LoaderCircle className="public-confirm-spinner" /> : <Check />}</span><span className="public-whatsapp-copy"><strong>{submitting ? 'Enviando pedido…' : 'Confirmar pedido'}</strong></span></button><p className="public-order-security"><ShieldCheck aria-hidden="true" /><span>Tu pedido será confirmado directamente por Full China</span></p>
-        </div>}
-        {step === 'preparing' && <div className="public-preparing-page"><img className="preparing-logo" src="/optimized/root/logo.webp" alt="Full China" /><div className="public-preparing-visual" aria-hidden="true"><img className="preparing-layer preparing-fire-red" src="/optimized/cargando-pedido/fuego-circulo-rojo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-left"><ChevronRight size={20} /></span><img className="preparing-layer preparing-wok-new" src="/optimized/cargando-pedido/wok-nuevo.webp" alt="" /><span className="preparing-composition-arrow preparing-composition-arrow-right"><ChevronRight size={20} /></span><img className="preparing-layer preparing-whatsapp-green" src="/optimized/cargando-pedido/whatsapp-circulo-verde.webp" alt="" /></div><h3>Enviando tu pedido<br />a Full China<span className="preparing-ellipsis">…</span></h3><p>Estamos creando tu solicitud segura.</p><div className="public-preparing-progress" aria-label="Progreso del pedido"><div className="public-progress-rail"><span /></div><div className="public-progress-step progress-step-one"><i><Check size={22} /></i><strong>Solicitud<br />creada</strong></div><div className="public-progress-step progress-step-two"><i><Check size={22} /></i><strong>Armando tu<br />pedido</strong></div><div className="public-progress-step progress-step-three"><i><LoaderCircle size={22} /></i><strong>Enviando<br />WhatsApp</strong></div></div><div className="public-preparing-security"><ShieldCheck size={20} /><div><strong>Tus datos viajan seguros</strong><span>Solo los usamos para confirmar tu pedido.</span></div></div></div>}
-        {step === 'sent' && (LOCAL_ORDER_TEST_MODE ? <div className="public-success"><span><Check /></span><h3>{LOCAL_ORDER_TEST_MODE ? 'Prueba local completada' : '¡Solicitud registrada!'}</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>{LOCAL_ORDER_TEST_MODE ? getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).body : <>El bot de Full China te enviará la comanda al número de WhatsApp que indicaste para que la revises y nos la confirmes.</>}</p><div className="public-status-timeline">{LOCAL_ORDER_TEST_MODE ? <><div className="complete"><i><Check size={18} /></i><div><strong>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).title}</strong><small>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).history}</small></div><time>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).time}</time></div><div className="pending"><i>2</i><div><strong>Envío omitido</strong><small>El modo de prueba no abre WhatsApp ni contacta al local.</small></div><time>·</time></div><div className="pending"><i>3</i><div><strong>Sin pedido real</strong><small>Esta confirmación no crea una comanda en el sistema.</small></div><time>·</time></div></> : <><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido quedó registrado correctamente.</small></div><time>Ahora</time></div><div className="pending"><i>2</i><div><strong>Envío por el bot</strong><small>El bot enviará la comanda automáticamente al número indicado.</small></div><time>◷</time></div><div className="pending"><i>3</i><div><strong>Confirma tu pedido</strong><small>Respóndenos por WhatsApp para confirmar los detalles.</small></div><time>◷</time></div></>}</div><div className="public-success-actions"><button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div> : <div className="public-track">
-          <div className="public-track-hero">
-            <span className="public-track-check" aria-hidden="true"><Check /></span>
-            <h3>¡Pedido recibido!</h3>
-            <strong className="public-track-code">#{orderCode || 'WEB-PENDIENTE'}</strong>
-            <p>Full China ya tiene tu pedido. <b>No tienes que enviar nada:</b> en un momento te llegará la comanda por WhatsApp{phone ? <> al <b className="public-track-phone">{phone}</b></> : null} para que la revises y nos la confirmes.</p>
-          </div>
-          <section className="public-track-next" aria-labelledby="public-track-next-title">
-            <h4 id="public-track-next-title">¿Qué sigue?</h4>
-            <ol>
-              <li className="is-done"><span><Check aria-hidden="true" /></span><div><strong>Pedido recibido</strong><small>Lo registramos en Full China.</small></div></li>
-              <li className="is-next"><span>2</span><div><strong>Te llega la comanda por WhatsApp</strong><small>La enviamos automáticamente al número que indicaste.</small></div></li>
-              <li><span>3</span><div><strong>Confírmala respondiendo</strong><small>Respóndenos por WhatsApp para confirmar los detalles y el pago.</small></div></li>
-              <li><span>4</span><div><strong>{orderType === 'delivery' ? 'Te lo llevamos' : 'Lo retiras en Full China'}</strong><small>{orderType === 'delivery' ? 'Te avisamos cuando salga el delivery.' : 'Te avisamos cuando esté listo para retirar.'}</small></div></li>
-            </ol>
-          </section>
-          <section className="public-track-summary" aria-label="Resumen del pedido">
-            <header>
-              <span>{orderType === 'delivery' ? <Bike aria-hidden="true" /> : <Store aria-hidden="true" />}{orderType === 'delivery' ? 'Delivery' : 'Retiro en Full China'}</span>
-              <b>{money(orderTotal)}</b>
-            </header>
-            {orderType === 'delivery' && address && <p><MapPin aria-hidden="true" /><span>{address}</span></p>}
-            <ul>{cart.map(item => <li key={cartLineKey(item)}><b>{item.quantity}×</b><span>{cartProductName(item.productName)}</span></li>)}</ul>
-          </section>
-          <div className="public-track-actions">
-            <button type="button" className="public-track-new" onClick={returnToMenuAfterSent}>Hacer otro pedido</button>
-          </div>
-        </div>)}
-        {showAllExtras && step === 'cart' && <div className={`public-cart-all-extras ${closingAllExtras ? 'closing' : ''}`}><div className="public-cart-all-extras-head"><div><span>CATÁLOGO RÁPIDO</span><h3>Agrega algo más</h3></div><button type="button" onClick={() => { const isDesktop = window.matchMedia(DESKTOP_MEDIA_QUERY).matches; closeAllExtras(); if (isDesktop) closeCart() }} aria-label="Cerrar">×</button></div><label className="public-cart-extras-search"><Search size={16} /><input value={extrasSearch} onChange={event => setExtrasSearch(event.target.value)} placeholder="Buscar un plato, bebida o extra" /><button type="button" onClick={() => setExtrasSearch('')} aria-label="Limpiar búsqueda">×</button></label><div className="public-cart-extra-sections">{extrasSections.length === 0 ? <p className="public-cart-extras-empty">No encontramos ese producto. Prueba con otro nombre.</p> : extrasSections.map(([category, categoryGroups]) => <section key={category}><div className="public-cart-extra-section-head"><h4>{categoryLabel(category)}</h4><span>{categoryGroups.length}</span></div><div className="public-cart-all-extras-grid">{categoryGroups.map(group => <article key={group.key}><button type="button" className="public-cart-all-extras-open" aria-label={`Ver detalles de ${group.name}`} onClick={() => openGroup(group)}><img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt="" loading="lazy" decoding="async" /><span><strong>{productTitle(group.name)}</strong><b>{money(group.minPrice)}{priceBs(group.minPrice) && <small className="public-reco-bs">{priceBs(group.minPrice)}</small>}</b></span></button><button type="button" aria-label={`Agregar ${group.name} al pedido`} onClick={() => requestQuickAdd(group)}><Plus size={15} /></button></article>)}</div></section>)}</div></div>}
+        {step === 'pickup' && <PickupStep cart={cart} formattedCloseTime={formattedCloseTime} formattedOpenTime={formattedOpenTime} mapPreviewUrl={mapPreviewUrl} pageSettings={pageSettings} pickupSlots={pickupSlots} pickupTime={pickupTime} setPickupTime={setPickupTime} setStep={setStep} />}
+        {step === 'address' && <AddressStep address={address} addressFieldError={addressFieldError} addressMethod={addressMethod} addressRef={addressRef} addressReference={addressReference} addressSelectedRef={addressSelectedRef} addressSuggestions={addressSuggestions} cart={cart} clearAddress={clearAddress} continueFromAddress={continueFromAddress} deliveryCoverageUnavailable={deliveryCoverageUnavailable} deliveryEstimate={deliveryEstimate} deliveryFee={deliveryFee} deliveryNotes={deliveryNotes} deliveryQuoteStatus={deliveryQuoteStatus} deliveryRoute={deliveryRoute} deliverySettings={deliverySettings} deliverySettingsStatus={deliverySettingsStatus} geoCoords={geoCoords} locating={locating} locationError={locationError} locationErrorRef={locationErrorRef} readableAddress={readableAddress} referenceRef={referenceRef} requestCurrentLocation={requestCurrentLocation} searchAddress={searchAddress} searchingAddress={searchingAddress} selectMapLocation={selectMapLocation} selectSuggestion={selectSuggestion} setAddressFieldError={setAddressFieldError} setAddressReference={setAddressReference} setDeliveryChosen={setDeliveryChosen} setDeliveryNotes={setDeliveryNotes} setDeliveryRetryVersion={setDeliveryRetryVersion} setDeliverySettingsRetryVersion={setDeliverySettingsRetryVersion} setOrderType={setOrderType} setStep={setStep} showSuggestions={showSuggestions} />}
+        {step === 'details' && <DetailsStep continueToConfirmation={continueToConfirmation} customerDetailsAutofilled={customerDetailsAutofilled} customerDetailsTouched={customerDetailsTouched} fieldError={fieldError} identification={identification} identificationRef={identificationRef} idPrefix={idPrefix} name={name} nameRef={nameRef} notes={notes} payMode={payMode} payPrimary={payPrimary} paySecondary={paySecondary} phone={phone} phoneRef={phoneRef} setFieldError={setFieldError} setIdentification={setIdentification} setIdPrefix={setIdPrefix} setName={setName} setNotes={setNotes} setPayMode={setPayMode} setPayPrimary={setPayPrimary} setPaySecondary={setPaySecondary} setPhone={setPhone} submitting={submitting} />}
+        {step === 'confirm' && <ConfirmStep address={address} addressReference={addressReference} cart={cart} closeCart={closeCart} deliveryFeeText={deliveryFeeText} deliveryNotes={deliveryNotes} editCartItem={editCartItem} error={error} getCartIncludedCopy={getCartIncludedCopy} name={name} notes={notes} orderCode={orderCode} orderTotal={orderTotal} orderType={orderType} payMode={payMode} payPrimary={payPrimary} paySecondary={paySecondary} phone={phone} pickupTime={pickupTime} priceBs={priceBs} setError={setError} setStep={setStep} submitOrder={submitOrder} submitting={submitting} total={total} />}
+        {step === 'sent' && <SentStep address={address} cart={cart} localTestOrderLinkedToProfile={localTestOrderLinkedToProfile} orderCode={orderCode} orderTotal={orderTotal} orderType={orderType} phone={phone} pickupTime={pickupTime} returnToMenuAfterSent={returnToMenuAfterSent} sentSummary={sentSummary} />}
+        {showAllExtras && step === 'cart' && <CartExtrasCatalog closeAllExtras={closeAllExtras} closeCart={closeCart} closingAllExtras={closingAllExtras} extrasSearch={extrasSearch} extrasSections={extrasSections} openGroup={openGroup} priceBs={priceBs} requestQuickAdd={requestQuickAdd} setExtrasSearch={setExtrasSearch} />}
       </aside></div>,
         document.body
       )}
 
-      {showStoreClosedNotice && createPortal(
-        <div className="public-store-closed-backdrop" onClick={() => setShowStoreClosedNotice(false)}>
-          <section className="public-store-closed-dialog" role="alertdialog" aria-modal="true" aria-labelledby="public-store-closed-title" aria-describedby="public-store-closed-copy" onClick={event => event.stopPropagation()}>
-            <div className="public-store-closed-scene" aria-hidden="true">
-              <span className="public-store-closed-scene-glow" />
-              <span className="public-store-closed-spark public-store-closed-spark-one">✦</span>
-              <span className="public-store-closed-spark public-store-closed-spark-two">✦</span>
-              <div className="public-store-closed-truck">
-                <div className="public-store-closed-truck-roof" />
-                <div className="public-store-closed-truck-body">
-                  <div className="public-store-closed-truck-window" />
-                  <div className="public-store-closed-truck-service-window"><i /><i /><i /></div>
-                  <div className="public-store-closed-truck-logo"><img src="/optimized/root/logo.webp" alt="" /></div>
-                  <span className="public-store-closed-truck-bumper" />
-                </div>
-                <span className="public-store-closed-wheel public-store-closed-wheel-back" />
-                <span className="public-store-closed-wheel public-store-closed-wheel-front" />
-                <span className="public-store-closed-sign">CERRADO</span>
-              </div>
-              <span className="public-store-closed-scene-road" />
-            </div>
-            <div className="public-store-closed-content">
-              <h2 id="public-store-closed-title">El wok descansa por ahora</h2>
-              <p id="public-store-closed-copy">Puedes recorrer el menú y elegir tus favoritos. Te esperamos cuando abramos para preparar tu pedido.</p>
-              <div className="public-store-closed-hours">
-                <span><Clock size={15} /> HORARIO DEL LOCAL</span>
-                <strong>{formattedOpenTime} <i>—</i> {formattedCloseTime}</strong>
-                <small>{pageSettings.contactDays}</small>
-              </div>
-              <button ref={storeClosedNoticeButtonRef} type="button" className="public-store-closed-confirm" onClick={() => setShowStoreClosedNotice(false)}>Seguir viendo el menú <ChevronRight size={17} /></button>
-            </div>
-          </section>
-        </div>,
-        document.body
-      )}
+      {showStoreClosedNotice && <StoreClosedNotice formattedCloseTime={formattedCloseTime} formattedOpenTime={formattedOpenTime} pageSettings={pageSettings} setShowStoreClosedNotice={setShowStoreClosedNotice} storeClosedNoticeButtonRef={storeClosedNoticeButtonRef} />}
 
       {showWelcomeNotice && createPortal(
         <PublicMenuWelcomeModal
