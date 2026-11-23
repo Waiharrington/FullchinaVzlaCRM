@@ -16,6 +16,17 @@ interface WhatsAppBotStatus {
   updated_at: string | null
 }
 
+// Las campañas solo salen de 8:00 a. m. a 10:00 p. m. (hora de Caracas); el bot
+// cancela el resto. Devuelve los minutos que faltan para las 10 p. m., o null
+// si ya estamos fuera del horario.
+const minutesUntilCampaignCutoff = (now = new Date()): number | null => {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now)
+  const hour = Number(parts.find(part => part.type === 'hour')?.value)
+  const minute = Number(parts.find(part => part.type === 'minute')?.value)
+  if (hour >= 22 || hour < 8) return null
+  return (22 - hour) * 60 - minute
+}
+
 const formatMessageDate = (value: string) => {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -415,6 +426,7 @@ export function MarketingWhatsApp() {
           </header>
 
           {sentNotice && <div className="wa-notice" role="status"><CheckCircle2 size={16} /><span>{sentNotice}</span></div>}
+          {minutesUntilCampaignCutoff() === null && <div className="wa-detail-error" role="alert"><TriangleAlert size={16} /><div><strong>Fuera de horario</strong><p>Las campañas solo se envían de 8:00 a. m. a 10:00 p. m. (hora de Caracas). Si envías ahora, el bot las cancelará. Prográmalas para mañana después de las 8:00 a. m.</p></div></div>}
           <form onSubmit={handleSendMessage} className="wa-compose-form">
             <div className="wa-audience-switch" role="tablist" aria-label="Tipo de público">
               <button type="button" role="tab" aria-selected={audienceMode === 'segment'} className={audienceMode === 'segment' ? 'active' : ''} onClick={() => setAudienceMode('segment')}><Users size={15} /> Segmento</button>
@@ -476,6 +488,12 @@ export function MarketingWhatsApp() {
           <div className="wa-segment-form">
             <div className="wa-confirm-body">
               <p>Se enviarán <strong>{confirmCount} mensaje{confirmCount === 1 ? '' : 's'}</strong> con ~10 s de separación entre cada uno (unos {estimatedMinutes(confirmCount)} min en total) desde el WhatsApp de Full China.</p>
+              {(() => {
+                const left = minutesUntilCampaignCutoff()
+                if (left === null) return <p className="wa-detail-note"><strong>Atención:</strong> es horario nocturno y el bot cancelará esta campaña. Envíala después de las 8:00 a. m.</p>
+                if (estimatedMinutes(confirmCount) > left) return <p className="wa-detail-note"><strong>Atención:</strong> la campaña tardaría más de lo que falta para las 10:00 p. m. Los mensajes que no alcancen a salir se cancelarán automáticamente.</p>
+                return null
+              })()}
               <p>Solo llegará a clientes con teléfono registrado. Si el mensaje incluye <code>[Nombre]</code>, se reemplaza por el nombre de cada cliente.</p>
             </div>
             <div className="wa-segment-form-actions">
@@ -503,7 +521,7 @@ export function MarketingWhatsApp() {
             )}
             {messageDetail.status === 'queued' && <p className="wa-detail-note">Pendiente: el bot lo enviará cuando le toque en la cola (un mensaje cada ~10 s).</p>}
             {messageDetail.status === 'sent' && <p className="wa-detail-note">Enviado desde el WhatsApp de Full China el {formatMessageDate(messageDetail.sentAt)}.</p>}
-            {messageDetail.status === 'cancelled' && <p className="wa-detail-note">Cancelado antes de enviarse porque se detuvo el envío.</p>}
+            {messageDetail.status === 'cancelled' && <p className="wa-detail-note">{messageDetail.errorMessage || 'Cancelado antes de enviarse porque se detuvo el envío.'}</p>}
             {messageDetail.phone.trim() && <a className="wa-detail-link" href={waLink(messageDetail.phone)} target="_blank" rel="noreferrer">Abrir chat en WhatsApp</a>}
           </div>
         </section>
