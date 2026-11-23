@@ -501,30 +501,6 @@ export function buildDailySalesEmailHtml(data: DailySalesEmailData): string {
     <tr><td class="email-pad" style="padding:16px;border-top:3px solid #f0c84a;color:#f4e6b8;font-size:10px;text-align:center;background:#202124">Reporte generado automáticamente para uso interno · ${escapeHtml(name)}</td></tr>
   </table>
 </body></html>`
-  return preserveEmailBackgroundsInDarkMode(html)
-}
-
-/**
- * Gmail iOS rewrites HTML email colors in dark mode and ignores color-scheme
- * metadata. Solid-color gradients are kept by Gmail's renderer. Keep this
- * workaround limited to backgrounds: transparent gradient text disappears in
- * Gmail for Android, which does not consistently support background-clipped text.
- */
-function preserveEmailBackgroundsInDarkMode(html: string): string {
-  return html.replace(/style="([^"]*)"/g, (_match, rawStyle: string) => {
-    let style = rawStyle
-    const colors = new Set<string>()
-    style.replace(/(?:^|;)\s*(?:background-color|background)\s*:\s*(#[\da-f]{3,8}|rgba?\([^)]*\)|transparent)(?=\s*(?:;|$))/gi, (_declaration, color: string) => {
-      if (color.toLowerCase() !== 'transparent') colors.add(color)
-      return _declaration
-    })
-    const gradient = [...colors].map(color => `background-image:linear-gradient(${color},${color})`).join(';')
-    if (gradient) style += `;${gradient}`
-    // Gmail oscuro reescribe `color` (texto oscuro -> claro) aunque conservemos
-    // los fondos claros, dejando títulos y cifras ilegibles. WebKit/Blink pintan
-    // con -webkit-text-fill-color por encima de `color`, y Gmail no lo toca.
-    const textColor = /(?:^|;)\s*color\s*:\s*(#[\da-f]{3,8})(?=\s*(?:;|$))/i.exec(style)
-    if (textColor && !/-webkit-text-fill-color/i.test(style)) style += `;-webkit-text-fill-color:${textColor[1]}`
-    return `style="${style}"`
-  })
+  // Sin forzar fondos claros: Gmail oscuro invierte fondo y texto juntos y se lee bien.
+  return html
 }
