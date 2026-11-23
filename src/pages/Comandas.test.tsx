@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CashSessionSnapshot, FinancialAccount, FullOrder } from '../lib/dataService'
 import { Comandas } from './Comandas'
 
+// Pantallas completas: bajo la carga de toda la suite pueden pasar de los 5 s por defecto.
+vi.setConfig({ testTimeout: 20000 })
+
 const mocks = vi.hoisted(() => ({
   getOrdersWithItems: vi.fn(),
   getOrderById: vi.fn(),

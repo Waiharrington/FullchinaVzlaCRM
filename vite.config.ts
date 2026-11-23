@@ -159,6 +159,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Las pruebas de pantallas completas pueden pasar de 5 s cuando la máquina corre todo a la vez.
+    testTimeout: 20000,
+    hookTimeout: 20000,
     exclude: [...configDefaults.exclude, 'whatsapp-bot/**']
   }
 })
