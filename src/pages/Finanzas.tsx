@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccountCreditPayments, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation, getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments, type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type FinancialAccountCreditPayment, type PersonalAccount, type DeliveryAssignment } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
@@ -24,7 +24,7 @@ interface FinanzasSnapshot {
   orders: FullOrder[]; expenses: Expense[]; purchases: Purchase[]; recipeCost: Map<string, RecipeSummary>
   payroll: { periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }
   operations: FinancialOperation[]; creditAccountPayments: FinancialAccountCreditPayment[]
-  accounts: FinancialAccount[]; personalAccounts: PersonalAccount[]; deliveryAssignments: DeliveryAssignment[]
+  accounts: FinancialAccount[]; personalAccounts: PersonalAccount[]; deliveryAssignments: DeliveryAssignment[]; fullHistory: boolean
 }
 let finanzasCache: FinanzasSnapshot | null = null
 
@@ -168,11 +168,21 @@ export function Finanzas() {
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeAccount, closeLedger, closeTransfer, selectedAccount, selectedLedgerCurrency, selectedPersonalAccount, showTransfer, transferSaving, manualFinanceMode, manualFinanceSaving])
 
-  const load = useCallback(async (silent = false) => {
+  // Por defecto solo se cargan los pedidos desde 14 días atrás (o desde el 1 del mes, lo que sea más antiguo,
+  // para que "Mes" siempre sea exacto). El historial completo se carga al pedirlo.
+  const windowStart = useMemo(() => {
+    const now = new Date()
+    return isoDate(startOfDay(new Date(Math.min(addDays(now, -14).getTime(), new Date(now.getFullYear(), now.getMonth(), 1).getTime()))))
+  }, [])
+  const [fullHistory, setFullHistory] = useState(finanzasCache?.fullHistory ?? false)
+  const fullHistoryRef = useRef(fullHistory)
+  const load = useCallback(async (silent = false, forceFull = false) => {
     try {
       if (!silent) setLoading(true)
+      const full = forceFull || fullHistoryRef.current
+      fullHistoryRef.current = full
       const [ords, exps, purchaseData, recipes, pay, ops, creditPayments, accts, personalAccts, deliveries] = await Promise.all([
-        getOrdersWithItems(undefined, undefined, true),
+        full ? getOrdersWithItems(undefined, undefined, true) : getOrdersWithItems(`${windowStart}T00:00:00-04:00`, undefined, true),
         getExpenses(undefined, undefined, true),
         getPurchases(true).catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
@@ -181,11 +191,22 @@ export function Finanzas() {
         getFinancialAccountCreditPayments(true).catch((error) => { console.error('No se pudieron cargar los abonos de cuentas por cobrar:', error); return [] }),
         getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []), getDeliveryAssignments(),
       ])
-      finanzasCache = { orders: ords, expenses: exps, purchases: purchaseData, recipeCost: recipes, payroll: pay, operations: ops, creditAccountPayments: creditPayments, accounts: accts, personalAccounts: personalAccts, deliveryAssignments: deliveries }
-      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setCreditAccountPayments(creditPayments); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries)
+      finanzasCache = { orders: ords, expenses: exps, purchases: purchaseData, recipeCost: recipes, payroll: pay, operations: ops, creditAccountPayments: creditPayments, accounts: accts, personalAccounts: personalAccts, deliveryAssignments: deliveries, fullHistory: full }
+      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setCreditAccountPayments(creditPayments); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries); setFullHistory(full)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
-  }, [])
+  }, [windowStart])
   useEffect(() => { void load() }, [load])
+  const [loadingFull, setLoadingFull] = useState(false)
+  const loadFullHistory = useCallback(async () => {
+    if (fullHistoryRef.current) return
+    setLoadingFull(true)
+    try { await load(true, true) } finally { setLoadingFull(false) }
+  }, [load])
+  // Rangos o detalles que necesitan datos más viejos que la ventana inicial piden el historial completo solos.
+  const needsFullHistory = !fullHistory && !loading && (
+    (period === 'rango' && rangeStart < windowStart) || !!selectedAccount || !!selectedLedgerCurrency || !!selectedPersonalAccount
+  )
+  useEffect(() => { if (needsFullHistory) void loadFullHistory() }, [needsFullHistory, loadFullHistory])
   useLiveDataRefresh('finanzas', () => load(true))
 
   const computePL = useCallback((start: Date, end: Date): PL => {
@@ -791,6 +812,13 @@ export function Finanzas() {
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
+
+      {!loading && !fullHistory && (
+        <p className="fin-history-window" role="status" style={{ margin: '0 0 12px', fontSize: 13, opacity: 0.8 }}>
+          Mostrando pedidos desde {new Date(`${windowStart}T12:00:00`).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}. Los saldos de las cuentas son siempre completos.{' '}
+          <button type="button" className="fin-dialog-secondary" disabled={loadingFull} onClick={() => void loadFullHistory()}>{loadingFull ? 'Cargando…' : 'Cargar historial completo'}</button>
+        </p>
+      )}
 
       <div className="fin-tabs" role="tablist" aria-label="Secciones de Finanzas">
         {([
