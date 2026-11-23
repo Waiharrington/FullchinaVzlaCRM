@@ -17,24 +17,12 @@ export const PAYMENT_METHODS = [
 ] as const
 
 export type ActivePaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle'> | 'credit'
-export type SplitPaymentMethod = Exclude<PaymentMethod, 'other' | 'zelle' | 'personal_account'>
+import type { SplitPaymentMethod } from '../../lib/paymentInput'
+export type { SplitPaymentMethod }
 export const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
   (item): item is (typeof PAYMENT_METHODS)[number] & { method: SplitPaymentMethod } => item.method !== 'split' && item.method !== 'personal_account',
 )
-export const usesBolivares = (method: SplitPaymentMethod) => method === 'mobile' || method === 'card' || method === 'transfer'
-export const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
-export const paymentReferenceLabel = (method: SplitPaymentMethod) => {
-  if (method === 'card') return 'Referencia del voucher del punto *'
-  if (method === 'binance') return 'ID de transacción de Binance *'
-  return 'Número de referencia *'
-}
-export const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null) => {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return 0
-  return usesBolivares(method) ? (rate && rate > 0 ? amount / rate : 0) : amount
-}
-export const usdToPaymentInput = (usd: number, method: SplitPaymentMethod, rate: number | null) =>
-  (usesBolivares(method) ? usd * (rate || 0) : usd).toFixed(2)
+export { usesBolivares, requiresPaymentReference, paymentReferenceLabel, paymentInputToUsd, usdToPaymentInput } from '../../lib/paymentInput'
 
 export interface ComandaItem {
   id: string

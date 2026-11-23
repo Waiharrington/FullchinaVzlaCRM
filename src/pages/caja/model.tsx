@@ -20,7 +20,8 @@ export const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNo
 }
 
 export type ActivePaymentMethod = Exclude<PaymentMethod, 'zelle'>
-export type SplitPaymentMethod = Exclude<ActivePaymentMethod, 'other' | 'personal_account'>
+import type { SplitPaymentMethod } from '../../lib/paymentInput'
+export type { SplitPaymentMethod }
 
 export const PAYMENT_DETAILS: Record<ActivePaymentMethod | 'split', { label: string; desc: string; icon: ReactNode }> = {
   card: { label: 'Punto de venta', desc: 'Tarjeta de débito o crédito', icon: <CreditCard size={16} strokeWidth={1.8} /> },
@@ -48,21 +49,7 @@ export const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
 )
 export const MOBILE_CART_TRIGGER_EXIT_MS = 180
 
-export const usesBolivares = (method: SplitPaymentMethod, cashCurrency: 'USD' | 'VES' = 'USD') =>
-  method === 'mobile' || method === 'card' || method === 'transfer' || (method === 'cash' && cashCurrency === 'VES')
-export const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
-export const paymentReferenceLabel = (method: SplitPaymentMethod) => {
-  if (method === 'card') return 'Referencia del voucher del punto *'
-  if (method === 'binance') return 'ID de transacción de Binance *'
-  return 'Número de referencia *'
-}
-export const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null, cashCurrency: 'USD' | 'VES' = 'USD') => {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return 0
-  return usesBolivares(method, cashCurrency) ? (rate && rate > 0 ? amount / rate : 0) : amount
-}
-export const usdToPaymentInput = (usd: number, method: SplitPaymentMethod, rate: number | null, cashCurrency: 'USD' | 'VES' = 'USD') =>
-  (usesBolivares(method, cashCurrency) ? usd * (rate || 0) : usd).toFixed(2)
+export { usesBolivares, requiresPaymentReference, paymentReferenceLabel, paymentInputToUsd, usdToPaymentInput } from '../../lib/paymentInput'
 
 export const FOOD_IMAGES: Record<string, string> = {
   arroz: '/optimized/productos/M1.webp',
