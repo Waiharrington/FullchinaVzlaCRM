@@ -1424,11 +1424,20 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                         const qty = sel[opt.id] ?? 0
                         const selected = qty > 0
                         return (
-                          <button
+                          <div
                             key={opt.id}
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             className="variant-option-card"
                             onClick={() => toggleModifierOption(group, opt.id)}
+                            onKeyDown={(event) => {
+                              // Los botones de cantidad internos manejan sus propias teclas.
+                              if (event.target !== event.currentTarget) return
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault()
+                                toggleModifierOption(group, opt.id)
+                              }
+                            }}
                             style={selected ? { outline: '2px solid var(--accent, #f97316)', outlineOffset: -2 } : undefined}
                           >
                             <span className="variant-option-emoji">{selected ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
@@ -1439,7 +1448,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                               ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact />
                               : <span className="variant-option-price" style={{ opacity: 0.6 }}>Incluido</span>}
                             {isQuantityModifierGroup(group) ? <span className="quantity-modifier-controls"><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, -1) }} disabled={!selected} aria-label={`Quitar ${opt.name}`}>−</button><strong>{qty}</strong><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, 1) }} aria-label={`Agregar ${opt.name}`}>+</button></span> : <span className="variant-option-add">{selected ? 'Quitar' : 'Elegir'}</span>}
-                          </button>
+                          </div>
                         )
                       })}
                     </div>
