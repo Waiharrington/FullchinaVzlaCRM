@@ -24,6 +24,7 @@ import { EmptyState } from '../components/EmptyState'
 import './Comandas.css'
 
 import { COLUMN_PREVIEW_LIMIT, PAYMENT_METHODS, ActivePaymentMethod, SplitPaymentMethod, SPLIT_PAYMENT_METHODS, usesBolivares, requiresPaymentReference, paymentReferenceLabel, paymentInputToUsd, usdToPaymentInput, ComandaItem, ComandaOrder, mapFullOrderToComanda, thermalReceiptForComanda, MOCK_COMANDAS, createDemoComandas, formatElapsed, compactPaymentLabel, compactCardTime, getInitials, extractMapsUrl, cleanNotes, extractPreferredPayment, COLUMNS } from './comandas/model'
+import { buildOrderPayments } from './comandas/buildOrderPayments'
 import { HistoryDayPicker, ComandaCardContent, KanbanColumn } from './comandas/ComandaCards'
 
 
@@ -620,117 +621,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         return
       }
 
-      const total = Number(paymentOrder.balanceDue ?? paymentOrder.totalAmount ?? 0)
-      const enteredAmountRaw = parseMoneyInput(amountReceived)
-      let enteredAmount = enteredAmountRaw
-      if (total <= 0) throw new Error('La comanda no tiene un total cobrable')
-      if (!Number.isFinite(enteredAmount) || enteredAmount <= 0) {
-        throw new Error('Ingresa un monto válido')
-      }
-      if (selectedPaymentTab === 'cash' && cashCurrency === 'VES') {
-        enteredAmount = paymentRate && paymentRate > 0 ? enteredAmount / paymentRate : 0
-      }
-
-      const requiresReference = selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account' && requiresPaymentReference(selectedPaymentTab)
-      if (requiresReference && !refNumber.trim()) {
-        throw new Error('La referencia es obligatoria para este método')
-      }
-
-      let payments: Array<{
-        method: PaymentMethod
-        amount: number
-        personalAccountId?: string
-        referenceNumber?: string
-        receivedAmount?: number
-        receivedCurrency?: 'USD' | 'VES'
-        receivedExchangeRate?: number
-        changeAmount?: number
-        changeCurrency?: 'USD' | 'VES'
-        changeAccountId?: string
-        changeExchangeRate?: number
-        accountId?: string
-        notes?: string
-      }>
-
-      if (selectedPaymentTab === 'split') {
-        const primaryAmount = Math.round(splitPrimaryAmountUsd * 100) / 100
-        const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
-        if (primaryAmount <= 0 || secondaryAmount <= 0) {
-          throw new Error('El pago combinado necesita dos montos mayores a cero')
-        }
-        if (splitPrimaryMethod === splitSecondaryMethod) {
-          throw new Error('Selecciona dos métodos de pago diferentes')
-        }
-        if (requiresPaymentReference(splitPrimaryMethod) && !splitPrimaryReference.trim()) {
-          throw new Error('Ingresa la referencia del primer método')
-        }
-        if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
-          throw new Error('Ingresa la referencia del segundo método')
-        }
-        payments = [
-          {
-            method: splitPrimaryMethod,
-            amount: primaryAmount,
-            referenceNumber: splitPrimaryReference.trim() || undefined,
-            receivedAmount: splitPrimaryMethod === 'cash' ? parseMoneyInput(splitPrimaryCashReceived) : undefined,
-            receivedCurrency: splitPrimaryMethod === 'cash' ? splitPrimaryCashCurrency : undefined,
-            receivedExchangeRate: splitPrimaryMethod === 'cash' && splitPrimaryCashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
-            accountId: splitPrimaryMethod === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === splitPrimaryCashCurrency)?.id : undefined,
-            changeAmount: splitPrimaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, paymentRate, changeAccount?.currency ?? splitPrimaryCashCurrency)?.amount : undefined,
-            changeCurrency: splitPrimaryMethod === 'cash' ? changeAccount?.currency ?? splitPrimaryCashCurrency : undefined,
-            changeAccountId: splitPrimaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, paymentRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
-            changeExchangeRate: splitPrimaryMethod === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
-            notes: paymentNote || undefined,
-          },
-          {
-            method: splitSecondaryMethod,
-            amount: secondaryAmount,
-            referenceNumber: splitSecondaryReference.trim() || undefined,
-            receivedAmount: splitSecondaryMethod === 'cash' ? parseMoneyInput(splitSecondaryCashReceived) : undefined,
-            receivedCurrency: splitSecondaryMethod === 'cash' ? splitSecondaryCashCurrency : undefined,
-            receivedExchangeRate: splitSecondaryMethod === 'cash' && splitSecondaryCashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
-            accountId: splitSecondaryMethod === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === splitSecondaryCashCurrency)?.id : undefined,
-            changeAmount: splitSecondaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, paymentRate, changeAccount?.currency ?? splitSecondaryCashCurrency)?.amount : undefined,
-            changeCurrency: splitSecondaryMethod === 'cash' ? changeAccount?.currency ?? splitSecondaryCashCurrency : undefined,
-            changeAccountId: splitSecondaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, paymentRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
-            changeExchangeRate: splitSecondaryMethod === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
-            notes: paymentNote || undefined,
-          },
-        ]
-      } else {
-        // Keep the frontend guard at the same 2-decimal precision as the
-        // payment RPC; converting an exact VES amount to USD can leave a
-        // fractional-cent difference from the BCV division.
-        const enteredCents = Math.round((enteredAmount + Number.EPSILON) * 100)
-        const totalCents = Math.round((total + Number.EPSILON) * 100)
-        if (selectedPaymentTab === 'cash' && enteredCents < totalCents) {
-          throw new Error('El efectivo recibido no cubre el total')
-        }
-        const allRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-        payments = [{
-          method: selectedPaymentTab,
-          amount: total,
-          personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : undefined,
-          referenceNumber: allRefs || undefined,
-          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmountRaw : undefined,
-          receivedCurrency: selectedPaymentTab === 'cash' ? cashCurrency : undefined,
-          receivedExchangeRate: selectedPaymentTab === 'cash' && cashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
-          changeAmount: selectedPaymentTab === 'cash' ? cashChange?.amount : undefined,
-          changeCurrency: selectedPaymentTab === 'cash' ? cashChange?.currency : undefined,
-          changeAccountId: selectedPaymentTab === 'cash' && (cashChange?.amount ?? 0) > 0 ? changeAccountId : undefined,
-          changeExchangeRate: selectedPaymentTab === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
-          accountId: selectedPaymentTab === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === cashCurrency)?.id : undefined,
-          notes: paymentNote || undefined,
-        }]
-      }
-
-      if (payments.some(payment => (payment.changeAmount ?? 0) > 0) && !changeAccountId) {
-        throw new Error('Selecciona la cuenta de origen de donde saldrá el vuelto')
-      }
-
-      if (selectedPaymentTab === 'personal_account' && !personalAccounts.some(account => account.id === paymentPersonalAccountId && account.isActive)) {
-        throw new Error('Selecciona una cuenta personal activa')
-      }
+      const { payments } = buildOrderPayments({ paymentOrder, selectedPaymentTab, amountReceived, cashCurrency, paymentRate, refNumber, extraRefs, splitPrimaryAmountUsd, splitPrimaryMethod, splitSecondaryMethod, splitPrimaryReference, splitSecondaryReference, splitPrimaryCashReceived, splitSecondaryCashReceived, splitPrimaryCashCurrency, splitSecondaryCashCurrency, financialAccounts, changeAccount, changeAccountId, cashChange, personalAccounts, paymentPersonalAccountId, paymentNote })
 
       await recordOrderPayments({
         orderId: paymentOrder.id,
