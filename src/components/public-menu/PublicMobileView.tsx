@@ -190,12 +190,6 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
             {/* 4. Category Nav */}
             {categories.length > 4 && <div className="public-category-hint" aria-hidden="true">Desliza para ver más <ChevronRight size={13} /></div>}
             <nav className="public-categories-scroll">
-              <button 
-                 className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
-                 onClick={() => setActiveCategory('Todos')}>
-                 <img className="public-cat-icon-image" src={CATEGORY_ICONS.Todos} alt="" decoding="async" />
-                 <span>Menú</span>
-              </button>
               {categories.filter(c => c !== 'Todos').map(category => (
                  <button 
                    key={category} 
@@ -206,6 +200,12 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                    <span>{categoryLabel(category)}</span>
                  </button>
               ))}
+              <button 
+                 className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
+                 onClick={() => setActiveCategory('Todos')}>
+                 <img className="public-cat-icon-image" src={CATEGORY_ICONS.Todos} alt="" decoding="async" />
+                 <span>Menú</span>
+              </button>
             </nav>
     
             {/* 5. Products Section */}

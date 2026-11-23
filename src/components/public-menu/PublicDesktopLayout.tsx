@@ -385,14 +385,6 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                   {/* Categories Nav (Floating Circular Dish Selector in Desktop) */}
                   {categories.length > 4 && <div className="public-category-hint" aria-hidden="true">Desliza para ver más <ChevronRight size={13} /></div>}
                   <nav className="public-categories-scroll" id="menu-section">
-                     <button
-                       className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
-                       onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>
-                       <div className="public-cat-dish-circle">
-                         <img src={CATEGORY_ICONS.Todos} alt="" width={44} height={44} decoding="async" />
-                       </div>
-                       <span className="public-cat-label-vector"><Star size={13} fill="currentColor" aria-hidden="true" />Todos</span>
-                    </button>
                     {categories.filter(c => c !== 'Todos').map(category => (
                        <button 
                           key={category}
@@ -405,6 +397,14 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                          <span>{DESKTOP_CATEGORY_LABELS[category] || categoryLabel(category)}</span>
                        </button>
                     ))}
+                     <button
+                       className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
+                       onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>
+                       <div className="public-cat-dish-circle">
+                         <img src={CATEGORY_ICONS.Todos} alt="" width={44} height={44} decoding="async" />
+                       </div>
+                       <span className="public-cat-label-vector"><Star size={13} fill="currentColor" aria-hidden="true" />Todos</span>
+                    </button>
                   </nav>
     
                   {/* Products Catalog Section */}

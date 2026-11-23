@@ -181,7 +181,7 @@ export function useCatalog({ activeCategory, initialCatalog, loading, modifierRe
     const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
     const allCats = Array.from(new Set([...MENU_CATEGORY_ORDER, ...extracted]));
     allCats.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
-    return ['Todos', ...allCats.filter(c => c !== 'otros' && c !== 'extras')];
+    return [...allCats.filter(c => c !== 'otros' && c !== 'extras'), 'Todos'];
   }, [products]);
   const groups = useMemo(() => groupMenuProducts(products.filter(product => {
     const categoryMatch = activeCategory === 'Todos' || product.categories.includes(activeCategory)
