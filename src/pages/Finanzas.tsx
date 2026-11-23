@@ -18,25 +18,35 @@ import './Finanzas.css'
 import { Period, PL, startOfDay, endOfDay, parseFinancialAmount, addDays, isoDate, pct, isDeliveryItem, FinanceTab, ManualFinanceMode, HistoryDirection, FinancialHistoryEntry, AccountDayMovement, AccountHistoryMovement, PAY_META, OP_META } from './finanzas/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
+// Cache a nivel de módulo: al volver a Finanzas se muestran los datos de la
+// última visita al instante mientras se refrescan en segundo plano.
+interface FinanzasSnapshot {
+  orders: FullOrder[]; expenses: Expense[]; purchases: Purchase[]; recipeCost: Map<string, RecipeSummary>
+  payroll: { periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }
+  operations: FinancialOperation[]; creditAccountPayments: FinancialAccountCreditPayment[]
+  accounts: FinancialAccount[]; personalAccounts: PersonalAccount[]; deliveryAssignments: DeliveryAssignment[]
+}
+let finanzasCache: FinanzasSnapshot | null = null
+
 export function Finanzas() {
   const { bcvRate } = useRates()
   const { user } = useAuth()
-  const [orders, setOrders] = useState<FullOrder[]>([])
-  const [deliveryAssignments, setDeliveryAssignments] = useState<DeliveryAssignment[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [purchases, setPurchases] = useState<Purchase[]>([])
-  const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
-  const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
-  const [operations, setOperations] = useState<FinancialOperation[]>([])
-  const [creditAccountPayments, setCreditAccountPayments] = useState<FinancialAccountCreditPayment[]>([])
-  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
-  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>([])
+  const [orders, setOrders] = useState<FullOrder[]>(finanzasCache?.orders ?? [])
+  const [deliveryAssignments, setDeliveryAssignments] = useState<DeliveryAssignment[]>(finanzasCache?.deliveryAssignments ?? [])
+  const [expenses, setExpenses] = useState<Expense[]>(finanzasCache?.expenses ?? [])
+  const [purchases, setPurchases] = useState<Purchase[]>(finanzasCache?.purchases ?? [])
+  const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(finanzasCache?.recipeCost ?? new Map())
+  const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>(finanzasCache?.payroll ?? { periods: [], bonuses: [] })
+  const [operations, setOperations] = useState<FinancialOperation[]>(finanzasCache?.operations ?? [])
+  const [creditAccountPayments, setCreditAccountPayments] = useState<FinancialAccountCreditPayment[]>(finanzasCache?.creditAccountPayments ?? [])
+  const [accounts, setAccounts] = useState<FinancialAccount[]>(finanzasCache?.accounts ?? [])
+  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>(finanzasCache?.personalAccounts ?? [])
   const [selectedPersonalAccount, setSelectedPersonalAccount] = useState<PersonalAccount | null>(null)
   const [personalConsumptionPage, setPersonalConsumptionPage] = useState(1)
   const [newPersonalAccountName, setNewPersonalAccountName] = useState('')
   const [savingPersonalAccount, setSavingPersonalAccount] = useState(false)
   const [personalAccountError, setPersonalAccountError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!finanzasCache)
   const [activeTab, setActiveTab] = useState<FinanceTab>('overview')
   const [historyFilter, setHistoryFilter] = useState<'all' | HistoryDirection>('all')
   const [historyPage, setHistoryPage] = useState(1)
@@ -171,6 +181,7 @@ export function Finanzas() {
         getFinancialAccountCreditPayments(true).catch((error) => { console.error('No se pudieron cargar los abonos de cuentas por cobrar:', error); return [] }),
         getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []), getDeliveryAssignments(),
       ])
+      finanzasCache = { orders: ords, expenses: exps, purchases: purchaseData, recipeCost: recipes, payroll: pay, operations: ops, creditAccountPayments: creditPayments, accounts: accts, personalAccounts: personalAccts, deliveryAssignments: deliveries }
       setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setCreditAccountPayments(creditPayments); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
   }, [])
