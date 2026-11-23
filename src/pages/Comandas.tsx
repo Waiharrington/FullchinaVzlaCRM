@@ -106,6 +106,9 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
     setFinancialAccounts,
     changeAccountId,
     setChangeAccountId,
+    paymentAccountId,
+    splitPrimaryAccountId,
+    splitSecondaryAccountId,
   } = paymentForm
   const [statusError, setStatusError] = useState('')
   const [updatingOrderIds, setUpdatingOrderIds] = useState<Set<string>>(() => new Set())
@@ -644,7 +647,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         return
       }
 
-      const { payments } = buildOrderPayments({ paymentOrder, selectedPaymentTab, amountReceived, cashCurrency, paymentRate, refNumber, extraRefs, splitPrimaryAmountUsd, splitPrimaryMethod, splitSecondaryMethod, splitPrimaryReference, splitSecondaryReference, splitPrimaryCashReceived, splitSecondaryCashReceived, splitPrimaryCashCurrency, splitSecondaryCashCurrency, financialAccounts, changeAccount, changeAccountId, cashChange, personalAccounts, paymentPersonalAccountId, paymentNote })
+      const { payments } = buildOrderPayments({ paymentOrder, selectedPaymentTab, amountReceived, cashCurrency, paymentRate, refNumber, extraRefs, splitPrimaryAmountUsd, splitPrimaryMethod, splitSecondaryMethod, splitPrimaryReference, splitSecondaryReference, splitPrimaryCashReceived, splitSecondaryCashReceived, splitPrimaryCashCurrency, splitSecondaryCashCurrency, changeAccount, changeAccountId, cashChange, personalAccounts, paymentPersonalAccountId, paymentNote, paymentAccountId, splitPrimaryAccountId, splitSecondaryAccountId })
 
       await recordOrderPayments({
         orderId: paymentOrder.id,

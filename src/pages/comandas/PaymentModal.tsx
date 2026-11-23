@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { MoneyWithBcv } from '../../components/MoneyWithBcv'
 import { PaymentMethodSelect } from '../../components/PaymentMethodSelect'
+import { StyledSelect } from '../../components/StyledSelect'
 import { CashChangeSummary } from '../../components/CashChangeSummary'
 import { formatUsd, formatVes, parseMoneyInput } from '../../lib/money'
 import { printThermalReceipt } from '../../lib/thermalReceipt'
@@ -24,7 +25,7 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ form, closingPayment, paymentOrder, paymentRate, paymentDue, splitPrimaryAmountUsd, splitSecondaryAmountUsd, syncSplitFromPrimary, syncSplitFromSecondary, handleSelectPaymentTab, handleConfirmOrderPayment, closePaymentModal }: PaymentModalProps) {
-  const { selectedPaymentTab, personalAccounts, paymentPersonalAccountId, setPaymentPersonalAccountId, refNumber, setRefNumber, extraRefs, setExtraRefs, amountReceived, setAmountReceived, amountReceivedSecondary, setAmountReceivedSecondary, splitPrimaryCashReceived, setSplitPrimaryCashReceived, splitSecondaryCashReceived, setSplitSecondaryCashReceived, splitPrimaryCashCurrency, setSplitPrimaryCashCurrency, splitSecondaryCashCurrency, setSplitSecondaryCashCurrency, splitPrimaryMethod, setSplitPrimaryMethod, splitSecondaryMethod, setSplitSecondaryMethod, splitPrimaryReference, setSplitPrimaryReference, splitSecondaryReference, setSplitSecondaryReference, paymentNote, setPaymentNote, paymentError, setPaymentError, creditAuthorizationPin, setCreditAuthorizationPin, paying, cashCurrency, setCashCurrency, financialAccounts, changeAccountId, setChangeAccountId } = form
+  const { accountsForMethod, paymentAccountId, setPaymentAccountId, splitPrimaryAccountId, setSplitPrimaryAccountId, splitSecondaryAccountId, setSplitSecondaryAccountId, selectedPaymentTab, personalAccounts, paymentPersonalAccountId, setPaymentPersonalAccountId, refNumber, setRefNumber, extraRefs, setExtraRefs, amountReceived, setAmountReceived, amountReceivedSecondary, setAmountReceivedSecondary, splitPrimaryCashReceived, setSplitPrimaryCashReceived, splitSecondaryCashReceived, setSplitSecondaryCashReceived, splitPrimaryCashCurrency, setSplitPrimaryCashCurrency, splitSecondaryCashCurrency, setSplitSecondaryCashCurrency, splitPrimaryMethod, setSplitPrimaryMethod, splitSecondaryMethod, setSplitSecondaryMethod, splitPrimaryReference, setSplitPrimaryReference, splitSecondaryReference, setSplitSecondaryReference, paymentNote, setPaymentNote, paymentError, setPaymentError, creditAuthorizationPin, setCreditAuthorizationPin, paying, cashCurrency, setCashCurrency, financialAccounts, changeAccountId, setChangeAccountId } = form
         return createPortal(
       <div className={`modal-overlay-dark ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
         <div className="payment-modal-box animate-pop" onClick={(e) => e.stopPropagation()}>
@@ -84,7 +85,16 @@ export function PaymentModal({ form, closingPayment, paymentOrder, paymentRate, 
                   </select>
                   <span className="payment-hint-sub">Consumo interno; descuenta inventario y queda fuera de caja y ventas.</span>
                 </div>
-              ) : selectedPaymentTab !== 'split' && selectedPaymentTab !== 'credit' && requiresPaymentReference(selectedPaymentTab) && (
+              ) : selectedPaymentTab !== 'split' && selectedPaymentTab !== 'credit' && (
+                <div className="payment-field-group mt-2">
+                  <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
+                  <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
+                    <option value="">Selecciona una cuenta</option>
+                    {accountsForMethod(selectedPaymentTab).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                  </StyledSelect>
+                </div>
+              )}
+              {selectedPaymentTab !== 'personal_account' && selectedPaymentTab !== 'split' && selectedPaymentTab !== 'credit' && requiresPaymentReference(selectedPaymentTab) && (
               <div className="payment-field-group mt-2">
                 <label className="payment-field-label">
                   {paymentReferenceLabel(selectedPaymentTab)}
@@ -137,6 +147,11 @@ export function PaymentModal({ form, closingPayment, paymentOrder, paymentRate, 
                       setSplitPrimaryReference('')
                       setPaymentError('')
                     }} />
+                    <label className="payment-field-label">Cuenta de ingreso *</label>
+                    <StyledSelect value={splitPrimaryAccountId} onChange={(e) => setSplitPrimaryAccountId(e.target.value)}>
+                      <option value="">Selecciona una cuenta</option>
+                      {accountsForMethod(splitPrimaryMethod, splitPrimaryCashCurrency).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                    </StyledSelect>
                     <label className="payment-field-label">Monto del primer método</label>
                     <div className="payment-input-wrap">
                       <input type="text" inputMode="decimal" className="payment-field-input" value={amountReceived} onChange={(event) => syncSplitFromPrimary(event.target.value)} />
@@ -177,6 +192,11 @@ export function PaymentModal({ form, closingPayment, paymentOrder, paymentRate, 
                       setSplitSecondaryReference('')
                       setPaymentError('')
                     }} />
+                    <label className="payment-field-label">Cuenta de ingreso *</label>
+                    <StyledSelect value={splitSecondaryAccountId} onChange={(e) => setSplitSecondaryAccountId(e.target.value)}>
+                      <option value="">Selecciona una cuenta</option>
+                      {accountsForMethod(splitSecondaryMethod, splitSecondaryCashCurrency).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
+                    </StyledSelect>
                     <label className="payment-field-label">Monto del segundo método</label>
                     <div className="payment-input-wrap">
                       <input type="text" inputMode="decimal" className="payment-field-input" value={amountReceivedSecondary} onChange={(event) => syncSplitFromSecondary(event.target.value)} />

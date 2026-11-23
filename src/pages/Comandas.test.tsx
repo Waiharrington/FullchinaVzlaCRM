@@ -80,7 +80,7 @@ describe('Comandas · cobro de punta a punta (datos demo)', () => {
     const call = mocks.recordOrderPayments.mock.calls[0][0]
     expect(call.orderId).toBe('order-1')
     expect(call.payments).toHaveLength(1)
-    expect(call.payments[0]).toMatchObject({ method: 'cash', amount: 20, receivedAmount: 20, receivedCurrency: 'USD' })
+    expect(call.payments[0]).toMatchObject({ method: 'cash', amount: 20, receivedAmount: 20, receivedCurrency: 'USD', accountId: 'acc-usd' })
   })
 
   it('no permite confirmar el cobro si la caja está cerrada', async () => {

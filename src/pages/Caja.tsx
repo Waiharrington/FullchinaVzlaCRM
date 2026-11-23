@@ -13,6 +13,7 @@ import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
+import { accountsForPaymentMethod } from '../lib/paymentAccounts'
 import { getProducts, getTodayOrders, getTopSellingProducts, getActiveCashSession, checkout, sendToKitchen, getCustomers, createCustomer, getProductModifiers, getAllProductModifiers, getOccupiedTables, getMenuCategories, getFinancialAccounts, getPersonalAccountOptions, isQuantityModifierGroup, type Product, type CartItem, type OrderResult, type TodayOrder, type CashSessionSnapshot, type ProductModifierGroup, type SelectedModifier } from '../lib/dataService'
 import { X, Check, Printer, CheckCircle, CheckCircle2, Share2, ListOrdered, ChefHat, BellRing, ShoppingCart, Flame, WalletCards, PencilLine, Plus, Minus, Trash2, Search, Bike, RefreshCw, Circle } from 'lucide-react'
 import './Caja.css'
@@ -500,17 +501,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setPersonalAccounts(personal)
   })
 
-  const accountsForMethod = (method: SplitPaymentMethod, cashCurrencyOverride: 'USD' | 'VES' = cashCurrency) => {
-    const paymentAccounts = financialAccounts.filter((account) => account.acceptsCustomerPayments)
-    if (method === 'cash') return paymentAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrencyOverride)
-    if (method === 'mobile') return paymentAccounts
-      .filter((a) => a.currency === 'VES' && a.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(a.name))
-      .sort((a, b) => Number(b.name === 'Banco Exterior') - Number(a.name === 'Banco Exterior'))
-    if (method === 'transfer') return paymentAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
-    if (method === 'card') return paymentAccounts.filter((a) => a.currency === 'VES' && a.name === 'Punto de venta')
-    if (method === 'binance') return paymentAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
-    return paymentAccounts
-  }
+  const accountsForMethod = (method: SplitPaymentMethod, cashCurrencyOverride: 'USD' | 'VES' = cashCurrency) =>
+    accountsForPaymentMethod(financialAccounts, method, cashCurrencyOverride)
 
   const ensureAccountForMethod = (method: SplitPaymentMethod, cashCurrencyOverride: 'USD' | 'VES' = cashCurrency) => {
     const options = accountsForMethod(method, cashCurrencyOverride)

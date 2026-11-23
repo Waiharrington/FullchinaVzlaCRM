@@ -28,7 +28,9 @@ const base = (over: Partial<OrderPaymentFormState> = {}): OrderPaymentFormState 
     splitSecondaryCashReceived: '',
     splitPrimaryCashCurrency: 'USD',
     splitSecondaryCashCurrency: 'USD',
-    financialAccounts,
+    paymentAccountId: 'usd',
+    splitPrimaryAccountId: 'usd',
+    splitSecondaryAccountId: 'ves',
     changeAccount: financialAccounts[0],
     changeAccountId: 'usd',
     cashChange: calculateCashChange(25, 22, 'USD', 800, 'USD'),
@@ -53,7 +55,7 @@ describe('buildOrderPayments', () => {
   it('efectivo en bolívares usa la tasa de la comanda', () => {
     const { payments } = buildOrderPayments(base({
       amountReceived: '20000', cashCurrency: 'VES',
-      cashChange: calculateCashChange(20000, 22, 'VES', 800, 'USD'),
+      cashChange: calculateCashChange(20000, 22, 'VES', 800, 'USD'), paymentAccountId: 'ves',
     }))
     expect(payments[0]).toMatchObject({ receivedAmount: 20000, receivedCurrency: 'VES', receivedExchangeRate: 800, accountId: 'ves' })
   })
@@ -93,5 +95,19 @@ describe('buildOrderPayments', () => {
     expect(() => buildOrderPayments(split({ splitPrimaryAmountUsd: 22 }))).toThrow('dos montos mayores a cero')
     expect(() => buildOrderPayments(split({ splitSecondaryMethod: 'cash' }))).toThrow('dos métodos de pago diferentes')
     expect(() => buildOrderPayments(split({ splitSecondaryReference: '' }))).toThrow('referencia del segundo método')
+  })
+
+  it('exige la cuenta destino en cualquier método', () => {
+    expect(() => buildOrderPayments(base({ paymentAccountId: '' }))).toThrow(/cuenta donde ingresa/i)
+    expect(() => buildOrderPayments(base({ selectedPaymentTab: 'mobile', refNumber: '123', paymentAccountId: '' }))).toThrow(/cuenta donde ingresa/i)
+  })
+
+  it('envía la cuenta elegida en pagos no efectivo', () => {
+    const { payments } = buildOrderPayments(base({ selectedPaymentTab: 'mobile', amountReceived: '17600', refNumber: '123', paymentAccountId: 'ves' }))
+    expect(payments[0]).toMatchObject({ method: 'mobile', accountId: 'ves' })
+  })
+
+  it('el pago combinado exige las dos cuentas', () => {
+    expect(() => buildOrderPayments(base({ selectedPaymentTab: 'split', splitPrimaryAmountUsd: 10, splitSecondaryAccountId: '' }))).toThrow(/cuenta/i)
   })
 })

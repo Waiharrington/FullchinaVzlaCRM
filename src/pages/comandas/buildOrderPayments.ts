@@ -19,13 +19,15 @@ export interface OrderPaymentFormState {
   splitSecondaryCashReceived: string
   splitPrimaryCashCurrency: 'USD' | 'VES'
   splitSecondaryCashCurrency: 'USD' | 'VES'
-  financialAccounts: FinancialAccount[]
   changeAccount: FinancialAccount | undefined
   changeAccountId: string
   cashChange: ReturnType<typeof calculateCashChange>
   personalAccounts: PersonalAccountOption[]
   paymentPersonalAccountId: string
   paymentNote: string
+  paymentAccountId: string
+  splitPrimaryAccountId: string
+  splitSecondaryAccountId: string
 }
 
 /**
@@ -34,7 +36,7 @@ export interface OrderPaymentFormState {
  * (El pago a crédito se resuelve antes, en el componente.)
  */
 export function buildOrderPayments(state: OrderPaymentFormState) {
-  const { paymentOrder, selectedPaymentTab, amountReceived, cashCurrency, paymentRate, refNumber, extraRefs, splitPrimaryAmountUsd, splitPrimaryMethod, splitSecondaryMethod, splitPrimaryReference, splitSecondaryReference, splitPrimaryCashReceived, splitSecondaryCashReceived, splitPrimaryCashCurrency, splitSecondaryCashCurrency, financialAccounts, changeAccount, changeAccountId, cashChange, personalAccounts, paymentPersonalAccountId, paymentNote } = state
+  const { paymentOrder, selectedPaymentTab, amountReceived, cashCurrency, paymentRate, refNumber, extraRefs, splitPrimaryAmountUsd, splitPrimaryMethod, splitSecondaryMethod, splitPrimaryReference, splitSecondaryReference, splitPrimaryCashReceived, splitSecondaryCashReceived, splitPrimaryCashCurrency, splitSecondaryCashCurrency, changeAccount, changeAccountId, cashChange, personalAccounts, paymentPersonalAccountId, paymentNote, paymentAccountId, splitPrimaryAccountId, splitSecondaryAccountId } = state
         const total = Number(paymentOrder.balanceDue ?? paymentOrder.totalAmount ?? 0)
         const enteredAmountRaw = parseMoneyInput(amountReceived)
         let enteredAmount = enteredAmountRaw
@@ -49,6 +51,10 @@ export function buildOrderPayments(state: OrderPaymentFormState) {
         const requiresReference = selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account' && requiresPaymentReference(selectedPaymentTab)
         if (requiresReference && !refNumber.trim()) {
           throw new Error('La referencia es obligatoria para este método')
+        }
+
+        if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account' && !paymentAccountId) {
+          throw new Error('Selecciona la cuenta donde ingresa el dinero')
         }
 
         let payments: Array<{
@@ -70,6 +76,9 @@ export function buildOrderPayments(state: OrderPaymentFormState) {
         if (selectedPaymentTab === 'split') {
           const primaryAmount = Math.round(splitPrimaryAmountUsd * 100) / 100
           const secondaryAmount = Math.round((total - primaryAmount) * 100) / 100
+          if (!splitPrimaryAccountId || !splitSecondaryAccountId) {
+            throw new Error('Selecciona la cuenta donde ingresa cada pago')
+          }
           if (primaryAmount <= 0 || secondaryAmount <= 0) {
             throw new Error('El pago combinado necesita dos montos mayores a cero')
           }
@@ -90,7 +99,7 @@ export function buildOrderPayments(state: OrderPaymentFormState) {
               receivedAmount: splitPrimaryMethod === 'cash' ? parseMoneyInput(splitPrimaryCashReceived) : undefined,
               receivedCurrency: splitPrimaryMethod === 'cash' ? splitPrimaryCashCurrency : undefined,
               receivedExchangeRate: splitPrimaryMethod === 'cash' && splitPrimaryCashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
-              accountId: splitPrimaryMethod === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === splitPrimaryCashCurrency)?.id : undefined,
+              accountId: splitPrimaryAccountId,
               changeAmount: splitPrimaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, paymentRate, changeAccount?.currency ?? splitPrimaryCashCurrency)?.amount : undefined,
               changeCurrency: splitPrimaryMethod === 'cash' ? changeAccount?.currency ?? splitPrimaryCashCurrency : undefined,
               changeAccountId: splitPrimaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, paymentRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
@@ -104,7 +113,7 @@ export function buildOrderPayments(state: OrderPaymentFormState) {
               receivedAmount: splitSecondaryMethod === 'cash' ? parseMoneyInput(splitSecondaryCashReceived) : undefined,
               receivedCurrency: splitSecondaryMethod === 'cash' ? splitSecondaryCashCurrency : undefined,
               receivedExchangeRate: splitSecondaryMethod === 'cash' && splitSecondaryCashCurrency === 'VES' ? paymentRate ?? undefined : undefined,
-              accountId: splitSecondaryMethod === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === splitSecondaryCashCurrency)?.id : undefined,
+              accountId: splitSecondaryAccountId,
               changeAmount: splitSecondaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, paymentRate, changeAccount?.currency ?? splitSecondaryCashCurrency)?.amount : undefined,
               changeCurrency: splitSecondaryMethod === 'cash' ? changeAccount?.currency ?? splitSecondaryCashCurrency : undefined,
               changeAccountId: splitSecondaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, paymentRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
@@ -134,7 +143,7 @@ export function buildOrderPayments(state: OrderPaymentFormState) {
             changeCurrency: selectedPaymentTab === 'cash' ? cashChange?.currency : undefined,
             changeAccountId: selectedPaymentTab === 'cash' && (cashChange?.amount ?? 0) > 0 ? changeAccountId : undefined,
             changeExchangeRate: selectedPaymentTab === 'cash' && changeAccount?.currency === 'VES' ? paymentRate ?? undefined : undefined,
-            accountId: selectedPaymentTab === 'cash' ? financialAccounts.find(a => a.isActive && a.accountType === 'cash' && a.currency === cashCurrency)?.id : undefined,
+            accountId: selectedPaymentTab === 'personal_account' ? undefined : paymentAccountId,
             notes: paymentNote || undefined,
           }]
         }

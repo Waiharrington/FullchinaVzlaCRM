@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FinancialAccount, PersonalAccountOption } from '../../lib/dataService'
+import { accountsForPaymentMethod, resolveAccountChoice } from '../../lib/paymentAccounts'
 import type { ActivePaymentMethod, SplitPaymentMethod } from './model'
 
 /** Estado del formulario de cobro de una comanda (método, referencias, cuentas, pago combinado, crédito). */
@@ -26,6 +27,15 @@ export function usePaymentForm() {
   const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
   const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
   const [changeAccountId, setChangeAccountId] = useState('')
+  // Elección del cajero; la cuenta efectiva siempre es válida para el método y la moneda actuales.
+  const [paymentAccountChoice, setPaymentAccountId] = useState('')
+  const [splitPrimaryAccountChoice, setSplitPrimaryAccountId] = useState('')
+  const [splitSecondaryAccountChoice, setSplitSecondaryAccountId] = useState('')
+  const accountsForMethod = (method: SplitPaymentMethod, currency: 'USD' | 'VES' = cashCurrency) => accountsForPaymentMethod(financialAccounts, method, currency)
+  const singleMethod: SplitPaymentMethod = selectedPaymentTab === 'split' || selectedPaymentTab === 'credit' || selectedPaymentTab === 'personal_account' ? 'cash' : selectedPaymentTab
+  const paymentAccountId = resolveAccountChoice(paymentAccountChoice, accountsForMethod(singleMethod))
+  const splitPrimaryAccountId = resolveAccountChoice(splitPrimaryAccountChoice, accountsForMethod(splitPrimaryMethod, splitPrimaryCashCurrency))
+  const splitSecondaryAccountId = resolveAccountChoice(splitSecondaryAccountChoice, accountsForMethod(splitSecondaryMethod, splitSecondaryCashCurrency))
 
   return {
     selectedPaymentTab,
@@ -72,5 +82,12 @@ export function usePaymentForm() {
     setFinancialAccounts,
     changeAccountId,
     setChangeAccountId,
+    accountsForMethod,
+    paymentAccountId,
+    setPaymentAccountId,
+    splitPrimaryAccountId,
+    setSplitPrimaryAccountId,
+    splitSecondaryAccountId,
+    setSplitSecondaryAccountId,
   }
 }
