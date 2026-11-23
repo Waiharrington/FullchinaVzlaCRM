@@ -29,6 +29,6 @@ describe('getOrdersWithItems · allPages', () => {
     const orders = await getOrdersWithItems(undefined, undefined, true)
     expect(orders).toHaveLength(TOTAL)
     expect(orders.map(o => o.orderNumber)).toEqual(Array.from({ length: TOTAL }, (_, i) => i))
-    expect(calls).toEqual([[0, 499], [500, 999], [1000, 1499]])
+    expect(calls).toEqual([[0, 499], [500, 999], [1000, 1499], [1500, 1999]])
   })
 })

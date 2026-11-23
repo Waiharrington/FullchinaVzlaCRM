@@ -1,5 +1,5 @@
 import { dayRangeInTimeZone } from '../money'
-import { client } from './client'
+import { client, fetchRows } from './client'
 import type { CartItem, PaymentMethod, OrderPaymentComponent, OrderResult, TodayOrder, FullOrder, FloorTable } from './types'
 
 export async function checkout(params: {
@@ -394,39 +394,15 @@ export async function getOccupiedTables(): Promise<number[]> {
 // --- Órdenes completas (para Comandas/Cocina) --------------------------------
 
 export async function getOrdersWithItems(dateStart?: string, dateEnd?: string, allPages = false, statuses?: string[]): Promise<FullOrder[]> {
-  const PAGE = 500
-  const buildQuery = () => {
-    let query = client().from('v_orders_with_credit_status').select('*', allPages ? { count: 'exact' } : undefined)
+  // Con allPages se piden varias páginas a la vez (ver fetchRows): el historial
+  // completo de Finanzas e Inicio no espera a que termine cada página.
+  const rows = await fetchRows(() => {
+    let query = client().from('v_orders_with_credit_status').select('*')
     if (statuses?.length) query = query.in('status', statuses)
     if (dateStart) query = query.gte('created_at', dateStart)
     if (dateEnd) query = allPages ? query.lt('created_at', dateEnd) : query.lte('created_at', dateEnd)
     return query.order('created_at', { ascending: false }).order('id', { ascending: false })
-  }
-
-  const rows: Record<string, unknown>[] = []
-  if (!allPages) {
-    const { data, error } = await buildQuery()
-    if (error) throw error
-    rows.push(...((data ?? []) as Record<string, unknown>[]))
-  } else {
-    // La primera página trae también el total; el resto se pide en paralelo
-    // en vez de una por una (historial completo de Finanzas e Inicio).
-    const first = await buildQuery().range(0, PAGE - 1)
-    if (first.error) throw first.error
-    const firstBatch = (first.data ?? []) as Record<string, unknown>[]
-    rows.push(...firstBatch)
-    const total = first.count ?? firstBatch.length
-    if (firstBatch.length === PAGE && total > PAGE) {
-      const offsets: number[] = []
-      for (let offset = PAGE; offset < total; offset += PAGE) offsets.push(offset)
-      const pages = await Promise.all(offsets.map(async offset => {
-        const { data, error } = await buildQuery().range(offset, offset + PAGE - 1)
-        if (error) throw error
-        return (data ?? []) as Record<string, unknown>[]
-      }))
-      for (const page of pages) rows.push(...page)
-    }
-  }
+  }, allPages)
 
   return rows.map((o) => ({
     id: o.id as string,
