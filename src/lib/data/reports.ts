@@ -1,5 +1,5 @@
 import { dateKeyInTimeZone } from '../money'
-import { client } from './client'
+import { client, fetchRows } from './client'
 import type { TodayStats, DailySales, ProductRanking, CategorySales, PaymentMethodSales, LegacySaleReportRow, LegacyDeletedOrderReportRow, LegacyPurchaseOrderReportRow, ReportEventRow, ReportAdjustmentRow, ReportAttendanceRow, ReportRequisitionRow, ReportGiftCardRow, DashboardAlertInput, DashboardAlertEvent } from './types'
 
 /** Synchronizes dashboard alert transitions and returns the latest active/recent history. */
@@ -162,18 +162,10 @@ export async function getPaymentMethodSales(): Promise<PaymentMethodSales[]> {
 
 /** Registros importados de Invu; son una fuente histórica y no se mezclan con ventas nuevas. */
 export async function getLegacySalesReport(allPages = false): Promise<LegacySaleReportRow[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('legacy_sales').select('id,order_label,customer_text,closed_at,order_type,subtotal,item_discount,order_discount,tax,total_tips,total,cash_paid,card_paid,cheque_paid,other_paid').order('closed_at', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  const query = client().from('legacy_sales').select('id,order_label,customer_text,closed_at,order_type,subtotal,item_discount,order_discount,tax,total_tips,total,cash_paid,card_paid,cheque_paid,other_paid').order('closed_at', { ascending: false })
+    return query
+  }, allPages)
   return rows.map(row => ({
     id: String(row.id), orderLabel: row.order_label == null ? null : String(row.order_label), customer: row.customer_text == null ? null : String(row.customer_text),
     closedAt: row.closed_at == null ? null : String(row.closed_at), orderType: row.order_type == null ? null : String(row.order_type),
@@ -183,34 +175,18 @@ export async function getLegacySalesReport(allPages = false): Promise<LegacySale
 }
 
 export async function getLegacyDeletedOrdersReport(allPages = false): Promise<LegacyDeletedOrderReportRow[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('legacy_deleted_orders').select('id,order_label,description,deleted_at,deleted_by').order('deleted_at', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  const query = client().from('legacy_deleted_orders').select('id,order_label,description,deleted_at,deleted_by').order('deleted_at', { ascending: false })
+    return query
+  }, allPages)
   return rows.map(row => ({ id: String(row.id), orderLabel: row.order_label == null ? null : String(row.order_label), description: row.description == null ? null : String(row.description), deletedAt: row.deleted_at == null ? null : String(row.deleted_at), deletedBy: row.deleted_by == null ? null : String(row.deleted_by) }))
 }
 
 export async function getLegacyPurchaseOrdersReport(allPages = false): Promise<LegacyPurchaseOrderReportRow[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('legacy_purchase_orders').select('id,po_code,supplier_text,po_date,tax,discount,total,status').order('po_date', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  const query = client().from('legacy_purchase_orders').select('id,po_code,supplier_text,po_date,tax,discount,total,status').order('po_date', { ascending: false })
+    return query
+  }, allPages)
   return rows.map(row => ({ id: String(row.id), poCode: row.po_code == null ? null : String(row.po_code), supplier: row.supplier_text == null ? null : String(row.supplier_text), poDate: row.po_date == null ? null : String(row.po_date), tax: Number(row.tax ?? 0), discount: Number(row.discount ?? 0), total: Number(row.total ?? 0), status: row.status == null ? null : String(row.status) }))
 }
 

@@ -1,23 +1,15 @@
-import { client } from './client'
+import { client, fetchRows } from './client'
 import type { AuditLog, SystemActivityLog } from './types'
 
 export async function getAuditLogs(limit = 200, allPages = false): Promise<AuditLog[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client()
-    .from('audit_logs')
-    .select('id,occurred_at,actor_name,module,action,details,severity')
-    .order('occurred_at', { ascending: false })
-    .limit(allPages ? 500 : limit)
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  const query = client()
+  .from('audit_logs')
+  .select('id,occurred_at,actor_name,module,action,details,severity')
+  .order('occurred_at', { ascending: false })
+  .limit(allPages ? 500 : limit)
+    return query
+  }, allPages)
   return rows.map((r) => ({
     id: r.id as string,
     occurredAt: r.occurred_at as string,

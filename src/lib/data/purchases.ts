@@ -1,4 +1,4 @@
-import { client } from './client'
+import { client, fetchRows } from './client'
 import type { Supplier, Purchase, CustomerPurchaseMetric, LegacyPurchaseOrder } from './types'
 
 // Totales reales por nombre de cliente para la tabla principal. Las órdenes
@@ -118,25 +118,17 @@ export async function updateSupplier(
 // --- Compras ------------------------------------------------------------------
 
 export async function getPurchases(allPages = false): Promise<Purchase[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('purchases').select(`
-      id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, is_voided, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
-      suppliers(name),
-      financial_accounts(name,currency),
-      purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, stock_location, ingredients(name), units(symbol)),
-      purchase_expense_items(id, description, quantity, unit_id, unit_cost, units(symbol)),
-      purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))
-    `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  const query = client().from('purchases').select(`
+    id, supplier_id, purchase_date, invoice_number, notes, created_by, created_at, is_paid, is_voided, account_id, exchange_rate, payment_currency, payment_method, payment_reference,
+    suppliers(name),
+    financial_accounts(name,currency),
+    purchase_items(id, purchase_id, ingredient_id, quantity, unit_id, unit_cost, stock_location, ingredients(name), units(symbol)),
+    purchase_expense_items(id, description, quantity, unit_id, unit_cost, units(symbol)),
+    purchase_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))
+  `).order('purchase_date', { ascending: false }).order('id', { ascending: false })
+    return query
+  }, allPages)
 
   return rows.map((p) => {
     const items = ((p.purchase_items as Array<Record<string, unknown>>) ?? []).map((pi) => ({

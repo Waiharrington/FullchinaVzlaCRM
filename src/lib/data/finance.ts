@@ -1,22 +1,14 @@
-import { client } from './client'
+import { client, fetchRows } from './client'
 import type { Expense, FinancialOperation, FinancialAccount, PersonalAccount, PersonalAccountOption } from './types'
 
 export async function getExpenses(dateStart?: string, dateEnd?: string, allPages = false): Promise<Expense[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('expenses').select('*, expense_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))')
-    if (dateStart) query = query.gte('expense_date', dateStart)
-    if (dateEnd) query = query.lte('expense_date', dateEnd)
-    query = query.order('expense_date', { ascending: false }).order('id', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  let query = client().from('expenses').select('*, expense_payments(id, account_id, amount, amount_usd, currency, exchange_rate, method, reference, bank_fee_amount, financial_accounts(name))')
+  if (dateStart) query = query.gte('expense_date', dateStart)
+  if (dateEnd) query = query.lte('expense_date', dateEnd)
+  query = query.order('expense_date', { ascending: false }).order('id', { ascending: false })
+    return query
+  }, allPages)
 
   return rows.map((e) => ({
     id: e.id as string,
@@ -133,26 +125,18 @@ export async function updateExpense(id: string, params: {
 }
 
 export async function getFinancialOperations(dateStart?: string, dateEnd?: string, allPages = false): Promise<FinancialOperation[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('financial_operations').select(`
-    id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,from_account_id,to_account_id,
-    counterparty,reference_number,affects_profit,
-    from_account:financial_accounts!financial_operations_from_account_id_fkey(name),
-    to_account:financial_accounts!financial_operations_to_account_id_fkey(name)
-  `).eq('status', 'confirmed')
-    if (dateStart) query = query.gte('operation_date', dateStart)
-    if (dateEnd) query = query.lte('operation_date', dateEnd)
-    query = query.order('operation_date', { ascending: false }).order('id', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  let query = client().from('financial_operations').select(`
+  id,operation_type,concept,operation_date,amount_usd,original_currency,original_amount,exchange_rate,from_account_id,to_account_id,
+  counterparty,reference_number,affects_profit,
+  from_account:financial_accounts!financial_operations_from_account_id_fkey(name),
+  to_account:financial_accounts!financial_operations_to_account_id_fkey(name)
+`).eq('status', 'confirmed')
+  if (dateStart) query = query.gte('operation_date', dateStart)
+  if (dateEnd) query = query.lte('operation_date', dateEnd)
+  query = query.order('operation_date', { ascending: false }).order('id', { ascending: false })
+    return query
+  }, allPages)
   const relationName = (value: unknown) => {
     const row = Array.isArray(value) ? value[0] : value
     return row && typeof row === 'object' && 'name' in row ? String(row.name) : null

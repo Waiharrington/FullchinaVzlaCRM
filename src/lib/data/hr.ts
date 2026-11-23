@@ -1,5 +1,5 @@
 import { dateKeyInTimeZone } from '../money'
-import { client } from './client'
+import { client, fetchRows } from './client'
 import { getProductionBonusRecords } from './production'
 import type { Employee, PayrollPeriod, PayrollEntry, DeliveryAssignment, PayrollPayment, PayrollAdjustment, Advance } from './types'
 
@@ -382,20 +382,12 @@ export async function upsertPayrollEntry(params: {
 }
 
 export async function getPayrollPayments(allPages = false): Promise<PayrollPayment[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client().from('payroll_payments')
-    .select('id,employee_id,payroll_period_id,amount,currency,exchange_rate,payment_account,account_id,payment_date,reference,notes,bank_fee_amount,employees(full_name)')
-    .order('payment_date', { ascending: false }).order('created_at', { ascending: false })
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  const query = client().from('payroll_payments')
+  .select('id,employee_id,payroll_period_id,amount,currency,exchange_rate,payment_account,account_id,payment_date,reference,notes,bank_fee_amount,employees(full_name)')
+  .order('payment_date', { ascending: false }).order('created_at', { ascending: false })
+    return query
+  }, allPages)
   return rows.map((r) => ({
     id: r.id as string, employeeId: r.employee_id as string,
     employeeName: Array.isArray(r.employees) ? String((r.employees[0] as Record<string, unknown>)?.full_name ?? '') : '',
@@ -468,23 +460,15 @@ export async function createPayrollAdjustment(params: {
 }
 
 export async function getAdvances(dateStart?: string, dateEnd?: string, allPages = false): Promise<Advance[]> {
-  const rows: Record<string, unknown>[] = []
-  let offset = 0
-  for (;;) {
-    let query = client()
-    .from('advances')
-    .select('id,employee_id,amount,account_id,currency,original_amount,exchange_rate,advance_date,is_deducted,notes,created_at,employees(full_name),financial_accounts(name)')
-    .order('advance_date', { ascending: false })
-  if (dateStart) query = query.gte('advance_date', dateStart)
-  if (dateEnd) query = query.lte('advance_date', dateEnd)
-    if (allPages) query = query.range(offset, offset + 499)
-    const { data, error } = await query
-    if (error) throw error
-    const batch = (data ?? []) as Record<string, unknown>[]
-    rows.push(...batch)
-    if (!allPages || batch.length < 500) break
-    offset += 500
-  }
+  const rows = await fetchRows(() => {
+  let query = client()
+  .from('advances')
+  .select('id,employee_id,amount,account_id,currency,original_amount,exchange_rate,advance_date,is_deducted,notes,created_at,employees(full_name),financial_accounts(name)')
+  .order('advance_date', { ascending: false })
+if (dateStart) query = query.gte('advance_date', dateStart)
+if (dateEnd) query = query.lte('advance_date', dateEnd)
+    return query
+  }, allPages)
   return rows.map((r) => ({
     id: r.id as string,
     employeeId: r.employee_id as string,
