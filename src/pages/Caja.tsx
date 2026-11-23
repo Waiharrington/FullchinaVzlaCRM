@@ -11,17 +11,18 @@ import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import Toast from '../components/Toast'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
-import { calculateCashChange, formatRateDate, formatUsd, formatVes, parseMoneyInput } from '../lib/money'
+import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
-import { getProducts, getTodayOrders, getTopSellingProducts, getActiveCashSession, checkout, sendToKitchen, getCustomers, createCustomer, getProductModifiers, getAllProductModifiers, getOccupiedTables, getMenuCategories, getFinancialAccounts, getPersonalAccountOptions, isQuantityModifierGroup, type Product, type CartItem, type OrderResult, type TodayOrder, type PaymentMethod, type CashSessionSnapshot, type ProductModifierGroup, type SelectedModifier, type FinancialAccount, type PersonalAccountOption } from '../lib/dataService'
+import { getProducts, getTodayOrders, getTopSellingProducts, getActiveCashSession, checkout, sendToKitchen, getCustomers, createCustomer, getProductModifiers, getAllProductModifiers, getOccupiedTables, getMenuCategories, getFinancialAccounts, getPersonalAccountOptions, isQuantityModifierGroup, type Product, type CartItem, type OrderResult, type TodayOrder, type CashSessionSnapshot, type ProductModifierGroup, type SelectedModifier, type FinancialAccount, type PersonalAccountOption } from '../lib/dataService'
 import { X, Check, Printer, CheckCircle, CheckCircle2, QrCode, ShieldCheck, Share2, ListOrdered, ChefHat, BellRing, Phone, ShoppingCart, Flame, WalletCards, PencilLine, Pencil, Plus, Minus, Trash2, Search, Bike, IdCard, MapPin, Info, RefreshCw, Circle, User } from 'lucide-react'
 import './Caja.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 
 import { BIRTH_MONTHS, getDaysInBirthMonth, TABLE_COUNT, ORDER_TYPE_LABELS, ActivePaymentMethod, SplitPaymentMethod, PAYMENT_DETAILS, PAYMENT_METHODS, SPLIT_PAYMENT_METHODS, MOBILE_CART_TRIGGER_EXIT_MS, usesBolivares, requiresPaymentReference, paymentReferenceLabel, paymentInputToUsd, usdToPaymentInput, FOOD_IMAGES, getProductImage, CAJA_PRODUCTS_CACHE_KEY, CAJA_DRAFT_KEY, clearCajaDraft, readCajaDraft } from './caja/model'
+import { buildPayment } from './caja/buildPayment'
 
 let cajaCache: {
   products: Product[]
@@ -735,9 +736,6 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
   const total = subtotal + deliveryFeeUsd
-  const changeAccount = financialAccounts.find(account => account.id === changeAccountId)
-  const selectedCashChange = calculateCashChange(parseMoneyInput(amountReceived), total, cashCurrency, bcvRate, changeAccount?.currency ?? cashCurrency)
-  const cashChange = selectedCashChange?.amountUsd ?? 0
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency)
   const splitSecondaryAmountUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency)
   // Los dos métodos del pago combinado están enlazados: editar uno recalcula el
@@ -903,113 +901,38 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       }
       setCashSession(activeSession)
 
-      const enteredAmountRaw = parseMoneyInput(amountReceived)
-      if (!Number.isFinite(enteredAmountRaw) || enteredAmountRaw <= 0) {
-        throw new Error('Ingresa un monto válido')
-      }
-      const enteredAmount = (selectedPaymentTab === 'cash' && cashCurrency === 'VES' && bcvRate && bcvRate > 0)
-        ? enteredAmountRaw / bcvRate
-        : enteredAmountRaw
-
-      const requiresReference = selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account'
-        && selectedPaymentTab !== 'other'
-        && requiresPaymentReference(selectedPaymentTab)
-      if (requiresReference && !refNumber.trim()) {
-        throw new Error('La referencia es obligatoria para este método')
-      }
-      if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && !paymentAccountId) {
-        throw new Error('Selecciona la cuenta donde ingresó el dinero')
-      }
-      if (selectedPaymentTab === 'personal_account' && !personalAccounts.some(account => account.id === paymentPersonalAccountId && account.isActive)) {
-        throw new Error('Selecciona una cuenta personal activa')
-      }
-      const combinedRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-
-      let paymentComponents
-      let finalMethod: PaymentMethod
-      if (selectedPaymentTab === 'split') {
-        const totalCents = Math.round(total * 100)
-        const primaryCents = Math.round(splitPrimaryAmountUsd * 100)
-        const primaryAmount = primaryCents / 100
-        const secondaryAmount = (totalCents - primaryCents) / 100
-        if (primaryAmount <= 0 || secondaryAmount <= 0) {
-          throw new Error('El pago combinado necesita dos montos mayores a cero')
-        }
-        if (splitPrimaryMethod === splitSecondaryMethod) {
-          throw new Error('Selecciona dos métodos de pago diferentes')
-        }
-        if (requiresPaymentReference(splitPrimaryMethod) && !splitPrimaryReference.trim()) {
-          throw new Error('Ingresa la referencia del primer método')
-        }
-        if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
-          throw new Error('Ingresa la referencia del segundo método')
-        }
-        if (!splitPrimaryAccountId || !splitSecondaryAccountId) {
-          throw new Error('Selecciona la cuenta de cada método de pago')
-        }
-        finalMethod = 'other'
-        const primaryRefs = [splitPrimaryReference, ...splitPrimaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-        const secondaryRefs = [splitSecondaryReference, ...splitSecondaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-        paymentComponents = [
-          {
-            method: splitPrimaryMethod,
-            amount: primaryAmount,
-            referenceNumber: primaryRefs || undefined,
-            accountId: splitPrimaryAccountId || null,
-            receivedAmount: splitPrimaryMethod === 'cash' ? parseMoneyInput(splitPrimaryCashReceived) : undefined,
-            receivedCurrency: splitPrimaryMethod === 'cash' ? (splitPrimaryCashCurrency) : undefined,
-            receivedExchangeRate: splitPrimaryMethod === 'cash' && splitPrimaryCashCurrency === 'VES' ? bcvRate : undefined,
-            changeAmount: splitPrimaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, bcvRate, financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitPrimaryCashCurrency)?.amount : undefined,
-            changeCurrency: splitPrimaryMethod === 'cash' ? financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitPrimaryCashCurrency : undefined,
-            changeAccountId: splitPrimaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, bcvRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
-            changeExchangeRate: splitPrimaryMethod === 'cash' && financialAccounts.find(a => a.id === changeAccountId)?.currency === 'VES' ? bcvRate : undefined,
-            notes: paymentNote || undefined,
-          },
-          {
-            method: splitSecondaryMethod,
-            amount: secondaryAmount,
-            referenceNumber: secondaryRefs || undefined,
-            accountId: splitSecondaryAccountId || null,
-            receivedAmount: splitSecondaryMethod === 'cash' ? parseMoneyInput(splitSecondaryCashReceived) : undefined,
-            receivedCurrency: splitSecondaryMethod === 'cash' ? splitSecondaryCashCurrency : undefined,
-            receivedExchangeRate: splitSecondaryMethod === 'cash' && splitSecondaryCashCurrency === 'VES' ? bcvRate : undefined,
-            changeAmount: splitSecondaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, bcvRate, financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitSecondaryCashCurrency)?.amount : undefined,
-            changeCurrency: splitSecondaryMethod === 'cash' ? financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitSecondaryCashCurrency : undefined,
-            changeAccountId: splitSecondaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, bcvRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
-            changeExchangeRate: splitSecondaryMethod === 'cash' && financialAccounts.find(a => a.id === changeAccountId)?.currency === 'VES' ? bcvRate : undefined,
-            notes: paymentNote || undefined,
-          },
-        ]
-      } else {
-        // Compare to cents, like NUMERIC(12,2) in the payment RPC. When cash
-        // arrives in bolívares, dividing a rounded VES amount by the BCV rate
-        // can produce a USD value a fraction of a cent below the exact total.
-        const enteredCents = Math.round((enteredAmount + Number.EPSILON) * 100)
-        const totalCents = Math.round((total + Number.EPSILON) * 100)
-        if (selectedPaymentTab === 'cash' && enteredCents < totalCents) {
-          throw new Error('El efectivo recibido no cubre el total')
-        }
-        finalMethod = selectedPaymentTab
-        paymentComponents = [{
-          method: selectedPaymentTab,
-          amount: total,
-          referenceNumber: combinedRefs || undefined,
-          accountId: selectedPaymentTab === 'personal_account' ? null : paymentAccountId || null,
-          personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : null,
-          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmountRaw : undefined,
-          receivedCurrency: selectedPaymentTab === 'cash' ? cashCurrency : undefined,
-          receivedExchangeRate: selectedPaymentTab === 'cash' && cashCurrency === 'VES' ? bcvRate : undefined,
-          changeAmount: selectedPaymentTab === 'cash' ? selectedCashChange?.amount : undefined,
-          changeCurrency: selectedPaymentTab === 'cash' ? selectedCashChange?.currency : undefined,
-          changeAccountId: selectedPaymentTab === 'cash' && cashChange > 0 ? changeAccountId : undefined,
-          changeExchangeRate: selectedPaymentTab === 'cash' && changeAccount?.currency === 'VES' ? bcvRate : undefined,
-          notes: paymentNote || undefined,
-        }]
-      }
-
-      if (paymentComponents.some((payment: { changeAmount?: number }) => (payment.changeAmount ?? 0) > 0) && !changeAccountId) {
-        throw new Error('Selecciona la cuenta de origen de donde saldrá el vuelto')
-      }
+      const { finalMethod, payments: paymentComponents, combinedRefs, enteredAmountUsd: enteredAmount } = buildPayment({
+        tab: selectedPaymentTab,
+        total,
+        bcvRate,
+        amountReceived,
+        cashCurrency,
+        refNumber,
+        extraRefs,
+        paymentAccountId,
+        paymentPersonalAccountId,
+        personalAccounts,
+        changeAccountId,
+        financialAccounts,
+        paymentNote,
+        splitPrimaryAmountUsd,
+        splitPrimary: {
+          method: splitPrimaryMethod,
+          accountId: splitPrimaryAccountId,
+          reference: splitPrimaryReference,
+          extraRefs: splitPrimaryExtraRefs,
+          cashReceived: splitPrimaryCashReceived,
+          cashCurrency: splitPrimaryCashCurrency,
+        },
+        splitSecondary: {
+          method: splitSecondaryMethod,
+          accountId: splitSecondaryAccountId,
+          reference: splitSecondaryReference,
+          extraRefs: splitSecondaryExtraRefs,
+          cashReceived: splitSecondaryCashReceived,
+          cashCurrency: splitSecondaryCashCurrency,
+        },
+      })
 
       const order = await checkout({
         items: cart,
