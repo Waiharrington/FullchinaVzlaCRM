@@ -520,6 +520,11 @@ function preserveEmailBackgroundsInDarkMode(html: string): string {
     })
     const gradient = [...colors].map(color => `background-image:linear-gradient(${color},${color})`).join(';')
     if (gradient) style += `;${gradient}`
+    // Gmail oscuro reescribe `color` (texto oscuro -> claro) aunque conservemos
+    // los fondos claros, dejando títulos y cifras ilegibles. WebKit/Blink pintan
+    // con -webkit-text-fill-color por encima de `color`, y Gmail no lo toca.
+    const textColor = /(?:^|;)\s*color\s*:\s*(#[\da-f]{3,8})(?=\s*(?:;|$))/i.exec(style)
+    if (textColor && !/-webkit-text-fill-color/i.test(style)) style += `;-webkit-text-fill-color:${textColor[1]}`
     return `style="${style}"`
   })
 }
