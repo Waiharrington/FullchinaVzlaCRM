@@ -1,13 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccountCreditPayments, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation,
-  getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments,
-  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type FinancialAccountCreditPayment, type PersonalAccount, type DeliveryAssignment,
-} from '../lib/dataService'
+import { getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccountCreditPayments, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation, getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments, type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type FinancialAccountCreditPayment, type PersonalAccount, type DeliveryAssignment } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
-import { buildPaymentBreakdown, type PaymentBreakdownEntry } from '../lib/paymentBreakdown'
+import { buildPaymentBreakdown } from '../lib/paymentBreakdown'
 import { deliveryCommissionCost } from '../lib/deliveryCommission'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
@@ -17,86 +13,10 @@ import { StyledSelect } from '../components/StyledSelect'
 import { DateField } from '../components/DateField'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { formatUsd, formatVes } from '../lib/money'
-import {
-  Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
-  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X, Plus,
-  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2,
-  Clock, Gift, Users, Landmark, ArrowRight, TrendingDown,
-} from 'lucide-react'
+import { Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent, Banknote, Building2, CalendarDays, Download, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2, Clock, Users, ArrowRight, TrendingDown } from 'lucide-react'
 import './Finanzas.css'
+import { Period, PL, startOfDay, endOfDay, parseFinancialAmount, addDays, isoDate, pct, isDeliveryItem, FinanceTab, ManualFinanceMode, HistoryDirection, FinancialHistoryEntry, AccountDayMovement, AccountHistoryMovement, PAY_META, OP_META } from './finanzas/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
-
-type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
-interface PL {
-  grossSales: number; cogs: number; opex: number; payroll: number
-  grossProfit: number; netProfit: number; margin: number
-  ordersCount: number; avgTicket: number; payments: Record<string, PaymentBreakdownEntry>
-}
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
-const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-function parseFinancialAmount(value: string): number {
-  const normalized = value.trim().replace(/\s/g, '').replace(/\.(?=.*[,])/g, '').replace(',', '.')
-  return normalized ? Number(normalized) : Number.NaN
-}
-const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
-const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
-const isDeliveryItem = (item: FullOrder['items'][number]) => item.productName.trim().toLowerCase() === 'delivery'
-
-type FinanceTab = 'overview' | 'daily' | 'closing' | 'history'
-type ManualFinanceMode = 'income' | 'expense'
-type HistoryDirection = 'in' | 'out' | 'transfer'
-interface FinancialHistoryEntry {
-  id: string
-  date: string
-  direction: HistoryDirection
-  category: string
-  concept: string
-  detail: string
-  account: string
-  amountUsd: number
-  nativeAmount: number
-  currency: 'USD' | 'VES'
-}
-
-interface AccountDayMovement {
-  id: string
-  direction: 'in' | 'out'
-  category: string
-  concept: string
-  detail: string
-  amount: number
-  occurredAt: string | null
-}
-
-interface AccountHistoryMovement extends AccountDayMovement {
-  date: string
-  balanceAfter: number
-}
-
-const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
-  cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
-  mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#facc15', sub: 'Verificado con referencia' },
-  card: { label: 'Punto de Venta', icon: <CreditCard size={16} />, color: '#eab308', sub: 'Tarjeta crédito/débito' },
-  transfer: { label: 'Transferencia', icon: <Building2 size={16} />, color: '#fde047' },
-  binance: { label: 'Binance', icon: <DollarSign size={16} />, color: '#eab308' },
-  zelle: { label: 'Zelle', icon: <DollarSign size={16} />, color: '#6366f1' },
-  other: { label: 'Otro', icon: <Wallet size={16} />, color: '#71717a' },
-}
-
-const OP_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  transfer: { label: 'Transferencia', icon: <ArrowRightLeft size={15} />, color: '#eab308' },
-  receivable: { label: 'Cuenta por cobrar', icon: <Clock size={15} />, color: '#fde047' },
-  receivable_collection: { label: 'Cobro recibido', icon: <CircleCheckBig size={15} />, color: '#22c55e' },
-  tip: { label: 'Propina', icon: <Gift size={15} />, color: '#eab308' },
-  tip_distribution: { label: 'Reparto de propinas', icon: <Users size={15} />, color: '#facc15' },
-  employee_advance: { label: 'Adelanto', icon: <Wallet size={15} />, color: '#facc15' },
-  loan: { label: 'Préstamo', icon: <Landmark size={15} />, color: '#818cf8' },
-  loan_payment: { label: 'Pago de préstamo', icon: <Check size={15} />, color: '#4ade80' },
-  bank_fee: { label: 'Comisión bancaria', icon: <Percent size={15} />, color: '#f87171' },
-  adjustment: { label: 'Ajuste', icon: <Pencil size={15} />, color: '#a1a1aa' },
-  payroll: { label: 'Nómina', icon: <Users size={15} />, color: '#fb7185' },
-}
 
 export function Finanzas() {
   const { bcvRate } = useRates()
