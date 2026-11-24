@@ -109,3 +109,9 @@ export function readCajaDraft(): CajaDraft | null {
   } catch { return null }
 }
 
+export interface CustomerOption {
+  id: string
+  name: string
+  initials: string
+  phone: string
+}
