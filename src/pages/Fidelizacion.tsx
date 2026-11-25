@@ -13,11 +13,12 @@ const WIDE_PAGE_SIZE = 12
 const ACCOUNT_PAGE_SIZE = 10
 type LoyaltySection = 'cards' | 'rewards' | 'accounts' | 'program'
 type Account = { customer_id: string; customer_name: string; identification: string | null; phone: string | null; email: string | null; status: 'active' | 'disabled' }
-type CustomerRewardRecord = { id: number; cycle_number: number; reward_description: string; unlocked_at: string; redeemed_at?: string | null }
+type RewardChoice = { id: string; name: string }
+type CustomerRewardRecord = { id: number; cycle_number: number; reward_description: string; unlocked_at: string; redeemed_at?: string | null; choices?: RewardChoice[] | null }
 type CustomerRewardState = { available: CustomerRewardRecord[]; redeemed: CustomerRewardRecord[] }
 type PendingCustomerReward = CustomerRewardRecord & { customer_id: string; customer_name: string; phone: string | null }
 type RewardMenuProduct = { id: string; name: string; category: string | null; image_url: string | null }
-type RewardConfig = { visits_per_reward: number; sequence: Array<{ product_id: string; name: string }> }
+type RewardConfig = { visits_per_reward: number; mode?: 'fixed' | 'choice'; choice_label?: string | null; choices?: RewardChoice[]; sequence: Array<{ product_id: string; name: string }> }
 
 const AVATAR_COLORS = ['#E31B2B', '#FF6259', '#FF9E1B', '#FFD23F', '#b91c1c', '#c2410c']
 
@@ -36,6 +37,11 @@ function loyaltyProductImage(imageUrl: string | null | undefined) {
   if (!imageUrl) return null
   const match = imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
   return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imageUrl
+}
+
+function RewardChoiceSelect({ reward, value, onChange }: { reward: CustomerRewardRecord; value?: string; onChange: (value: string) => void }) {
+  if (!reward.choices?.length) return null
+  return <label className="fidel-reward-choice">Proteína<select value={value ?? reward.choices[0].id} onChange={event => onChange(event.target.value)}>{reward.choices.map(choice => <option key={choice.id} value={choice.id}>{choice.name.replace(/^.*—\s*/, '')}</option>)}</select></label>
 }
 
 export function Fidelizacion() {
@@ -58,6 +64,10 @@ export function Fidelizacion() {
   const [visitsPerReward, setVisitsPerReward] = useState(10)
   const [rewardMenuProducts, setRewardMenuProducts] = useState<RewardMenuProduct[]>([])
   const [rewardProductIds, setRewardProductIds] = useState<string[]>([])
+  const [choiceMode, setChoiceMode] = useState(false)
+  const [choiceLabel, setChoiceLabel] = useState('Ración de lumpias')
+  const [choiceProductIds, setChoiceProductIds] = useState<string[]>([])
+  const [rewardChoiceByReward, setRewardChoiceByReward] = useState<Record<number, string>>({})
   const [rewardProductSearch, setRewardProductSearch] = useState('')
   const [adminNotice, setAdminNotice] = useState('')
   const [customerRewards, setCustomerRewards] = useState<CustomerRewardState>({ available: [], redeemed: [] })
@@ -167,6 +177,9 @@ export function Fidelizacion() {
         const config = settingsResult.data as RewardConfig
         setVisitsPerReward(Number(config.visits_per_reward))
         setRewardProductIds((config.sequence ?? []).map(reward => reward.product_id))
+        setChoiceMode(config.mode === 'choice')
+        if (config.choice_label) setChoiceLabel(config.choice_label)
+        setChoiceProductIds((config.choices ?? []).map(choice => choice.id))
       }
       if (menuProductsResult?.data) setRewardMenuProducts(menuProductsResult.data as RewardMenuProduct[])
     } catch (error) {
@@ -203,7 +216,9 @@ export function Fidelizacion() {
   }, [accountSearch])
 
   const saveLoyaltySettings = async () => {
-    const { error } = await supabase!.rpc('fn_admin_set_loyalty_reward_config', { p_visits: visitsPerReward, p_sellable_product_ids: rewardProductIds })
+    const { error } = choiceMode
+      ? await supabase!.rpc('fn_admin_set_loyalty_choice_reward', { p_visits: visitsPerReward, p_label: choiceLabel, p_sellable_product_ids: choiceProductIds })
+      : await supabase!.rpc('fn_admin_set_loyalty_reward_config', { p_visits: visitsPerReward, p_sellable_product_ids: rewardProductIds })
     setAdminNotice(error ? error.message : 'Configuración de fidelización guardada.')
     if (!error) {
       await refreshCustomers()
@@ -222,8 +237,10 @@ export function Fidelizacion() {
   const redeemCustomerReward = async (reward: PendingCustomerReward | CustomerRewardRecord) => {
     const customerName = 'customer_name' in reward ? reward.customer_name : selectedCustomer.name
     if (!window.confirm(`Confirma que entregaste “${reward.reward_description}” a ${customerName}.`)) return
+    const needsChoice = Boolean(reward.choices?.length)
+    const chosenProductId = needsChoice ? (rewardChoiceByReward[reward.id] || reward.choices![0].id) : null
     setRedeemingRewardId(reward.id)
-    const { error } = await supabase!.rpc('fn_admin_redeem_customer_loyalty_reward', { p_reward_id: reward.id })
+    const { error } = await supabase!.rpc('fn_admin_redeem_customer_loyalty_reward', { p_reward_id: reward.id, ...(chosenProductId ? { p_choice_product_id: chosenProductId } : {}) })
     if (error) setRewardActionNotice(`No se pudo registrar el canje: ${error.message}`)
     else {
       setRewardActionNotice(`Premio del ciclo ${reward.cycle_number} marcado como canjeado.`)
@@ -261,6 +278,8 @@ export function Fidelizacion() {
   const totalVisitsAll = customers.reduce((s, c) => s + c.totalVisits, 0)
   const totalRewards = customers.reduce((s, c) => s + c.rewardsUnlocked, 0)
   const vipCount = new Set(pendingRewards.map(reward => reward.customer_id)).size
+  const activeIds = choiceMode ? choiceProductIds : rewardProductIds
+  const setActiveIds = choiceMode ? setChoiceProductIds : setRewardProductIds
   const filteredRewardMenuProducts = rewardMenuProducts.filter(product => {
     const query = normalizeForSearch(rewardProductSearch)
     return !query || normalizeForSearch(`${product.name} ${product.category ?? ''}`).includes(query)
@@ -321,7 +340,7 @@ export function Fidelizacion() {
               : `Faltan ${loyaltyCycle - stampsInCycle} visita(s) para el próximo premio`}
           </span>
         </div>
-        {customerRewards.available.map(reward => <div className="fidel-customer-reward-row" key={reward.id}><span><strong>{reward.reward_description}</strong><small>Tarjeta {reward.cycle_number} · {new Date(reward.unlocked_at).toLocaleDateString('es-VE')}</small></span><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></div>)}
+        {customerRewards.available.map(reward => <div className="fidel-customer-reward-row" key={reward.id}><span><strong>{reward.reward_description}</strong><small>Tarjeta {reward.cycle_number} · {new Date(reward.unlocked_at).toLocaleDateString('es-VE')}</small></span><RewardChoiceSelect reward={reward} value={rewardChoiceByReward[reward.id]} onChange={value => setRewardChoiceByReward(current => ({ ...current, [reward.id]: value }))} /><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></div>)}
         {customerRewards.redeemed.length > 0 && <details className="fidel-customer-redeemed"><summary>Premios canjeados ({customerRewards.redeemed.length})</summary>{customerRewards.redeemed.map(reward => <div key={reward.id}><span>{reward.reward_description}</span><small>Tarjeta {reward.cycle_number} · {new Date(reward.redeemed_at ?? reward.unlocked_at).toLocaleDateString('es-VE')}</small></div>)}</details>}
         <span className="loyalty-automatic-note"><CheckCircle2 size={14} /> Visitas automáticas al pagar una comanda con comida</span>
       </div>
@@ -430,7 +449,7 @@ export function Fidelizacion() {
       {activeSection === 'rewards' && <section className="fidel-pending-panel fidel-tab-panel" role="tabpanel" aria-labelledby="fidel-pending-title">
         <header><div><Gift size={19} /><div><h2 id="fidel-pending-title">Premios por entregar</h2><p>Confirma el canje cuando el cliente reciba su recompensa.</p></div></div><b>{pendingRewards.length}</b></header>
         {rewardStorageError && <p className="fidel-reward-storage-notice" role="status">{rewardStorageError}</p>}{rewardActionNotice && <p className="fidel-admin-notice" role="status">{rewardActionNotice}</p>}
-        {pendingRewards.length ? <div className="fidel-pending-list">{pendingRewards.map(reward => <article key={reward.id}><div className="fidel-pending-customer"><strong>{reward.customer_name}</strong><small>{reward.phone || 'Sin teléfono'} · Tarjeta {reward.cycle_number}</small></div><div className="fidel-pending-prize"><span>{reward.reward_description}</span><small>Disponible desde {new Date(reward.unlocked_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></article>)}</div> : !rewardStorageError && <p className="fidel-pending-empty">No hay premios pendientes. Aquí aparecerán al completar una tarjeta.</p>}
+        {pendingRewards.length ? <div className="fidel-pending-list">{pendingRewards.map(reward => <article key={reward.id}><div className="fidel-pending-customer"><strong>{reward.customer_name}</strong><small>{reward.phone || 'Sin teléfono'} · Tarjeta {reward.cycle_number}</small></div><div className="fidel-pending-prize"><span>{reward.reward_description}</span><small>Disponible desde {new Date(reward.unlocked_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><RewardChoiceSelect reward={reward} value={rewardChoiceByReward[reward.id]} onChange={value => setRewardChoiceByReward(current => ({ ...current, [reward.id]: value }))} /><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></article>)}</div> : !rewardStorageError && <p className="fidel-pending-empty">No hay premios pendientes. Aquí aparecerán al completar una tarjeta.</p>}
       </section>}
 
       {activeSection === 'accounts' && <section className="fidel-accounts-panel fidel-accounts-page" role="tabpanel">
@@ -447,17 +466,19 @@ export function Fidelizacion() {
             <header><div><h2><Settings2 size={19} /> Programa de fidelización</h2><p>Configura las visitas necesarias y los premios que se entregan.</p></div></header>
             <div className="fidel-loyalty-settings">
               <label>Visitas para ganar un premio<input type="number" min={1} max={50} value={visitsPerReward} onChange={e => setVisitsPerReward(Number(e.target.value))} /></label>
+              <label className="fidel-reward-mode"><input type="checkbox" checked={choiceMode} onChange={e => setChoiceMode(e.target.checked)} /> El cliente elige la proteína del premio (ración genérica)</label>
+              {choiceMode && <label>Nombre del premio<input type="text" maxLength={120} value={choiceLabel} onChange={e => setChoiceLabel(e.target.value)} /></label>}
               <div className="fidel-reward-picker">
-                <div className="fidel-reward-picker-heading"><strong>Arma los premios de la tarjeta <span>{rewardProductIds.length}/20</span></strong><small>Toca un plato para sumarlo. Al completar cada tarjeta se entrega el siguiente premio.</small></div>
-                {rewardProductIds.length > 0 && <div className="fidel-reward-selected-list" aria-label="Premios seleccionados en orden">{rewardProductIds.map((productId, index) => {
+                <div className="fidel-reward-picker-heading"><strong>Arma los premios de la tarjeta <span>{activeIds.length}/20</span></strong><small>Toca un plato para sumarlo. Al completar cada tarjeta se entrega el siguiente premio.</small></div>
+                {activeIds.length > 0 && <div className="fidel-reward-selected-list" aria-label="Premios seleccionados en orden">{activeIds.map((productId, index) => {
                   const product = rewardMenuProducts.find(item => item.id === productId)
-                  return <div className="fidel-reward-selected-item" key={`${index}-${productId}`}>{loyaltyProductImage(product?.image_url) ? <img className="fidel-reward-selected-image" src={loyaltyProductImage(product?.image_url)!} alt="" loading="lazy" decoding="async" /> : <span className="fidel-reward-selected-fallback"><UtensilsCrossed size={17} /></span>}<span className="fidel-reward-selected-number">{index + 1}</span><span className="fidel-reward-selected-name"><strong>{product?.name ?? 'Plato del menú'}</strong><small>{product?.category ?? 'Premio'} · Tarjeta {index + 1}</small></span><button type="button" aria-label={`Quitar ${product?.name ?? 'premio'} de la secuencia`} onClick={() => setRewardProductIds(current => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={15} /></button></div>
+                  return <div className="fidel-reward-selected-item" key={`${index}-${productId}`}>{loyaltyProductImage(product?.image_url) ? <img className="fidel-reward-selected-image" src={loyaltyProductImage(product?.image_url)!} alt="" loading="lazy" decoding="async" /> : <span className="fidel-reward-selected-fallback"><UtensilsCrossed size={17} /></span>}<span className="fidel-reward-selected-number">{index + 1}</span><span className="fidel-reward-selected-name"><strong>{product?.name ?? 'Plato del menú'}</strong><small>{product?.category ?? 'Premio'} · Tarjeta {index + 1}</small></span><button type="button" aria-label={`Quitar ${product?.name ?? 'premio'} de la secuencia`} onClick={() => setActiveIds(current => current.filter((_, itemIndex) => itemIndex !== index))}><Trash2 size={15} /></button></div>
                 })}</div>}
                 <label className="fidel-reward-search"><Search size={16} /><input type="search" value={rewardProductSearch} onChange={event => setRewardProductSearch(event.target.value)} placeholder="Buscar plato o categoría…" aria-label="Buscar platos para premios" /></label>
-                {filteredRewardMenuProducts.length > 0 ? <div className="fidel-reward-menu-grid" aria-label="Platos disponibles para premios">{filteredRewardMenuProducts.map(product => <button className="fidel-reward-menu-option" type="button" key={product.id} disabled={rewardProductIds.length >= 20} onClick={() => setRewardProductIds(current => current.length < 20 ? [...current, product.id] : current)}>{loyaltyProductImage(product.image_url) ? <img className="fidel-reward-menu-option-image" src={loyaltyProductImage(product.image_url)!} alt="" loading="lazy" decoding="async" /> : <span className="fidel-reward-menu-option-fallback"><UtensilsCrossed size={17} /></span>}<span className="fidel-reward-menu-option-copy"><strong>{product.name}</strong><small>{product.category || 'Menú'}</small></span><span className="fidel-reward-menu-option-add"><Plus size={16} /></span></button>)}</div> : <p className="fidel-reward-picker-empty">{rewardMenuProducts.length ? 'No encontramos platos con esa búsqueda.' : 'No hay platos activos con receta disponibles para elegir.'}</p>}
+                {filteredRewardMenuProducts.length > 0 ? <div className="fidel-reward-menu-grid" aria-label="Platos disponibles para premios">{filteredRewardMenuProducts.map(product => <button className="fidel-reward-menu-option" type="button" key={product.id} disabled={activeIds.length >= 20} onClick={() => setActiveIds(current => current.length < 20 ? [...current, product.id] : current)}>{loyaltyProductImage(product.image_url) ? <img className="fidel-reward-menu-option-image" src={loyaltyProductImage(product.image_url)!} alt="" loading="lazy" decoding="async" /> : <span className="fidel-reward-menu-option-fallback"><UtensilsCrossed size={17} /></span>}<span className="fidel-reward-menu-option-copy"><strong>{product.name}</strong><small>{product.category || 'Menú'}</small></span><span className="fidel-reward-menu-option-add"><Plus size={16} /></span></button>)}</div> : <p className="fidel-reward-picker-empty">{rewardMenuProducts.length ? 'No encontramos platos con esa búsqueda.' : 'No hay platos activos con receta disponibles para elegir.'}</p>}
                 <p className="fidel-reward-inventory-note"><CheckCircle2 size={14} /> El regalo descuenta ingredientes de inventario, sin sumar a caja.</p>
               </div>
-              <button type="button" disabled={rewardProductIds.length === 0} onClick={() => void saveLoyaltySettings()}>Guardar programa</button>
+              <button type="button" disabled={activeIds.length === 0} onClick={() => void saveLoyaltySettings()}>Guardar programa</button>
             </div>
             {adminNotice && <p className="fidel-admin-notice">{adminNotice}</p>}
       </section>}

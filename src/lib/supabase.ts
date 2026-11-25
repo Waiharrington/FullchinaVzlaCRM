@@ -105,6 +105,7 @@ const RPC_CHANGE_TABLES: Record<string, readonly string[]> = {
   fn_sync_customer_favorites: ['customer_favorites'],
   fn_claim_customer_loyalty_celebration: ['customer_loyalty_rewards'],
   fn_admin_set_loyalty_reward_config: ['loyalty_settings', 'loyalty_reward_sequence'],
+  fn_admin_set_loyalty_choice_reward: ['loyalty_settings', 'loyalty_reward_sequence', 'loyalty_reward_choices'],
   fn_admin_redeem_customer_loyalty_reward: ['customer_loyalty_rewards', 'customers'],
   fn_admin_update_public_order_page_settings: ['public_order_page_settings'],
   fn_admin_update_public_order_contact: ['public_order_page_settings'],
