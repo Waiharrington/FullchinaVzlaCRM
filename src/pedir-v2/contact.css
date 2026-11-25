@@ -1,0 +1,125 @@
+/* ===== Contacto ===== */
+.public-contact-page { background: var(--bg); }
+.public-contact-hero { position: relative; isolation: isolate; overflow: hidden; display: grid; align-items: end; min-height: 330px; padding: 24px 20px 44px; color: #fff; background: #0B0706 url('/optimized/fondos/contacto-banner-mobile-chatgpt.webp') 50% 30% / cover; border-radius: 0 0 50% 50% / 0 0 34px 34px; }
+.public-contact-hero::after { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(rgba(11, 7, 6, 0) 10%, rgba(11, 7, 6, .88) 82%); }
+.pd-contact-wok { display: none; }
+.public-contact-hero-copy { display: grid; justify-items: start; gap: 10px; }
+.public-contact-hero .public-hero-tag { color: var(--pd-yellow); font-size: 14.5px; font-weight: 800; text-transform: lowercase; }
+.public-contact-hero .public-hero-tag::first-letter { text-transform: uppercase; }
+.public-contact-hero .public-hero-main-title { font: 400 clamp(33px, 9.6vw, 46px)/1 var(--pd-display); }
+.public-contact-hero .public-hero-gold { color: var(--pd-yellow); }
+.public-contact-hero .public-hero-desc { color: #FFE9DF; font-size: 16px; }
+.public-contact-hero-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; padding: 0 24px; border-radius: 18px; color: #fff; background: var(--pd-green); box-shadow: 0 5px 0 #0A5429; font-size: 17px; font-weight: 800; text-decoration: none; transition: transform .14s, box-shadow .14s; }
+.public-contact-hero-cta:active { transform: translateY(4px); box-shadow: 0 1px 0 #0A5429; }
+.public-contact-hero > * > * { animation: pd-rise .5s var(--pd-out) both; }
+.public-contact-hero > * > :nth-child(2) { animation-delay: .07s; }
+.public-contact-hero > * > :nth-child(3) { animation-delay: .13s; }
+.public-contact-hero > * > :nth-child(4) { animation-delay: .19s; }
+
+.public-contact-hub { display: grid; gap: 18px; padding: 20px 18px 26px; }
+.public-order-ticket-head > span { display: inline-flex; align-items: center; gap: 7px; color: var(--accent); font-size: 14.5px; font-weight: 800; }
+.public-order-ticket-head h2 { margin-top: 2px !important; font: 400 28px/1.06 var(--pd-display); text-wrap: balance; }
+
+/* Promo de fidelidad */
+.customer-loyalty-promotion { position: relative; isolation: isolate; color: #fff; }
+.customer-loyalty-promotion:not(.customer-loyalty-promotion--recommended) { padding: 26px 22px 0; border-radius: 30px; overflow: hidden; background: var(--stage); }
+.customer-loyalty-promotion-glow { display: none; }
+.customer-loyalty-promotion-copy { display: grid; justify-items: start; gap: 11px; }
+.customer-loyalty-promotion-kicker { color: var(--pd-yellow); font-size: 13.5px; font-weight: 800; text-transform: lowercase; }
+.customer-loyalty-promotion-kicker::first-letter { text-transform: uppercase; }
+.customer-loyalty-promotion h2 { font: 400 29px/1.04 var(--pd-display); text-wrap: balance; }
+.customer-loyalty-promotion h2 em { color: var(--pd-yellow); font-style: normal; }
+.customer-loyalty-promotion p { color: #FFE9DF; font-size: 15px; line-height: 1.4; }
+.customer-loyalty-promotion-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.customer-loyalty-promotion-progress > span { display: grid; place-items: center; width: 27px; height: 27px; border: 2px dashed rgba(255, 255, 255, .5); border-radius: 50%; }
+.customer-loyalty-promotion-progress img { width: 18px; opacity: 0; }
+.customer-loyalty-promotion-progress .is-earned { border: 0; background: var(--card); }
+.customer-loyalty-promotion-progress .is-earned img { opacity: 1; }
+.customer-loyalty-promotion-progress small { flex-basis: 100%; font-size: 14px; font-weight: 700; }
+.customer-loyalty-promotion-cta { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 18px; border: 0; border-radius: 16px; color: var(--pd-ink); background: var(--pd-yellow); box-shadow: 0 4px 0 #8C0811; font-size: 15px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
+.customer-loyalty-promotion-cta:active { transform: translateY(3px); box-shadow: 0 1px 0 #8C0811; }
+.customer-loyalty-promotion:not(.customer-loyalty-promotion--recommended) .customer-loyalty-promotion-card-wrap { width: min(88%, 330px); margin: 24px auto -56px; perspective: 1000px; }
+.customer-loyalty-promotion-card-trigger { display: block; width: 100%; padding: 0; border: 0; background: none; transform-style: preserve-3d; }
+.customer-loyalty-promotion-card-trigger.is-spinning { animation: pd-card-spin .95s cubic-bezier(.3, .8, .3, 1); }
+@keyframes pd-card-spin { to { transform: rotateY(360deg); } }
+.customer-profile-welcome-card { display: grid; gap: 10px; padding: 20px; border-radius: 20px; color: var(--fg); background: #FFFBF4; box-shadow: 0 22px 34px -18px rgba(50, 0, 4, .9); text-align: left; }
+.customer-profile-welcome-card-top { display: flex; align-items: center; justify-content: space-between; }
+.customer-profile-welcome-card-top img { height: 38px; width: auto; }
+.customer-profile-welcome-card-top span { color: var(--accent); font-size: 12px; font-weight: 800; line-height: 1.1; text-align: right; }
+.customer-profile-welcome-card-copy small { display: block; color: var(--soft); font-size: 12px; }
+.customer-profile-welcome-card-copy strong { font: 400 21px/1 var(--pd-display); }
+.customer-profile-welcome-card-copy em { color: var(--price); font-style: normal; }
+.customer-profile-welcome-stamps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+.customer-profile-welcome-stamps span { display: grid; place-items: center; aspect-ratio: 1; border: 2px solid var(--pd-red); border-radius: 50%; background: var(--chip); }
+.customer-profile-welcome-stamps img { width: 66%; }
+
+/* Pedido directo */
+.public-contact-talk { display: grid; gap: 18px; padding: 24px 22px 34px; background: var(--card); -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 18px 100%; mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 18px 100%; border-radius: 26px 26px 0 0; }
+.public-contact-status-row { display: grid; gap: 2px; padding-bottom: 16px; border-bottom: 2px dashed var(--line-2); }
+.public-contact-status-row > span, .public-contact-payment-block > span { display: inline-flex; align-items: center; gap: 7px; color: var(--soft); font-size: 14.5px; }
+.public-contact-status-row svg, .public-contact-payment-block > span svg { color: var(--accent); }
+.public-contact-status-row strong { font-size: 18px; line-height: 1.25; }
+.public-contact-status-row small { color: var(--accent); font-size: 17px; font-weight: 800; }
+.public-payment-ticket-list { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin: 12px 0 0; padding: 0; list-style: none; }
+.public-payment-ticket-list li { display: flex; align-items: center; min-height: 48px; padding: 6px 15px; border-radius: 16px; background: var(--bg); font-size: 15px; font-weight: 700; line-height: 1.2; transition: transform .3s var(--pd-spring), background .2s; }
+.public-payment-ticket-list li:hover { transform: translateY(-3px) rotate(-1deg); background: var(--chip); }
+.public-payment-ticket-list i { display: none; }
+.public-payment-ticket-list small { display: block; color: #5A3F00; font-size: 13.5px; font-weight: 500; }
+.public-payment-ticket-list .is-mixed { background: var(--pd-yellow); }
+
+/* Reels: sala oscura */
+.public-contact-instagram-studio { display: grid; gap: 14px; margin: 0 -18px; padding: 30px 18px 34px; color: var(--inv-fg); background: var(--inv); border-radius: 50% 50% 50% 50% / 26px 26px 26px 26px; }
+.public-contact-instagram-studio .public-order-ticket-head > span { color: var(--pd-yellow); }
+.public-instagram-intro { display: flex; align-items: center; justify-content: space-between; }
+.public-instagram-intro p { color: #EADDD4; font-size: 16px; }
+.public-instagram-intro p span { color: #fff; font-weight: 800; }
+.public-instagram-audio-toggle, .public-instagram-play-toggle { display: grid; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 50%; color: #fff; background: rgba(255, 255, 255, .16); }
+.public-instagram-reel-stage { position: relative; width: min(100%, 340px); margin: 0 auto; aspect-ratio: 9 / 15; }
+.public-instagram-mobile-stage .public-instagram-reel { position: absolute; inset: 0; border-radius: 30px; overflow: hidden; background: #000; transform: translateX(0) scale(.84); opacity: 0; transition: transform .5s cubic-bezier(.2, 1, .3, 1), opacity .3s; }
+.public-instagram-mobile-stage .public-instagram-reel[data-active] { z-index: 2; opacity: 1; transform: none; }
+.public-instagram-desktop-reel { position: absolute; inset: 0; border-radius: 30px; overflow: hidden; background: #000; animation: pd-pop-in .4s var(--pd-out); }
+.public-instagram-reel video { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+.public-instagram-reel-shade { position: absolute; inset: auto 0 0; height: 34%; background: linear-gradient(transparent, rgba(0, 0, 0, .6)); pointer-events: none; }
+.public-instagram-mobile-frame-label { position: absolute; left: 18px; bottom: 22px; color: #fff; font-size: 14px; font-weight: 700; text-transform: capitalize; }
+.public-instagram-mobile-frame-label b { margin-left: 8px; color: var(--pd-yellow); }
+.public-instagram-reel-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: var(--pd-yellow); transform-origin: 0 50%; transform: scaleX(var(--reel-progress, 0)); }
+.public-instagram-play-toggle { position: absolute; right: 14px; bottom: 18px; }
+.public-instagram-start-prompt { position: absolute; z-index: 5; top: 50%; left: 50%; display: inline-flex; align-items: center; gap: 9px; min-height: 56px; padding: 0 24px; border: 0; border-radius: 19px; color: var(--pd-ink); background: var(--pd-yellow); font-size: 16.5px; font-weight: 800; white-space: nowrap; transform: translate(-50%, -50%); }
+.public-instagram-filmstrip { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.public-instagram-filmstrip button { position: relative; aspect-ratio: 3 / 4; padding: 0; border: 3px solid transparent; border-radius: 14px; overflow: hidden; background: #000; opacity: .62; transition: transform .3s var(--pd-spring), opacity .2s, border-color .2s; }
+.public-instagram-filmstrip img { width: 100%; height: 100%; object-fit: cover; }
+.public-instagram-filmstrip span { display: none; }
+.public-instagram-filmstrip .is-active { border-color: var(--pd-yellow); opacity: 1; transform: translateY(-4px); }
+.public-contact-footer-cta { display: grid; grid-template-columns: 20px 1fr 20px; align-items: center; gap: 12px; min-height: 58px; padding: 0 20px; border-radius: 19px; color: #fff; background: rgba(255, 255, 255, .12); font-size: 16px; text-decoration: none; transition: background .2s; }
+.public-contact-footer-cta:hover { background: rgba(255, 255, 255, .2); }
+
+/* Ubicación */
+.public-contact-location-stage { display: grid; }
+.public-contact-location iframe { width: 100%; height: 280px; border: 0; }
+.public-contact-location .public-contact-brand-pin { top: 140px; }
+.public-contact-location-overlay { display: grid; gap: 9px; padding: 24px 22px 26px; color: #fff; background: var(--stage); }
+.public-contact-location-overlay > span { color: #FFE5DA; font-size: 15px; line-height: 1.35; }
+.public-contact-location-overlay strong { order: -1; font: 400 31px/1.02 var(--pd-display); }
+.public-contact-location-overlay p { color: #FFE9DF; font-size: 15.5px; line-height: 1.4; }
+.public-contact-footer-cta.is-location { margin-top: 6px; color: var(--pd-ink); background: var(--pd-yellow); font-weight: 800; box-shadow: 0 4px 0 #8C0811; }
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-contact-hero { min-height: 420px; align-items: center; padding: 40px max(48px, calc((100vw - 1360px) / 2)) 64px; background: #0B0706 url('/optimized/fondos/contacto-banner.webp') 100% 50% / cover; }
+  .public-contact-hero::after { background: linear-gradient(90deg, rgba(11, 7, 6, .9) 14%, rgba(11, 7, 6, 0) 62%); }
+  .public-contact-hero-copy { max-width: 600px; gap: 16px; }
+  .public-contact-hero .public-hero-main-title { font-size: 64px; }
+  .public-contact-hub { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 24px; max-width: 1400px; margin: 0 auto; padding: 36px 28px 40px; }
+  .public-contact-hub > .customer-loyalty-promotion { grid-column: span 7; display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; padding: 38px 40px !important; }
+  .public-contact-hub > .customer-loyalty-promotion .customer-loyalty-promotion-card-wrap { width: 100%; max-width: 330px; margin: 0 0 0 auto !important; transform: rotate(4deg); }
+  .customer-loyalty-promotion h2 { font-size: 40px; }
+  .customer-loyalty-promotion p { font-size: 16.5px; }
+  .public-contact-talk { grid-column: span 5; padding: 32px 32px 44px; }
+  .public-contact-instagram-studio { grid-column: span 5; margin: 0; padding: 34px 34px 38px; border-radius: 34px; }
+  .public-contact-location { grid-column: span 7; display: grid; }
+  .public-contact-location-stage { grid-template-rows: 1fr auto; border-radius: 34px; }
+  .public-contact-location iframe { height: 100%; min-height: 380px; }
+  .public-contact-location .public-contact-brand-pin { top: 36%; }
+  .public-contact-location-overlay { padding: 30px 34px 34px; }
+  .public-contact-location-overlay strong { font-size: 42px; }
+  .public-contact-footer-cta.is-location { max-width: 320px; }
+}

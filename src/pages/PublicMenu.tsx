@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronRight, CircleAlert, CircleCheck, LoaderCircle, ShoppingBag, ShoppingCart } from 'lucide-react'
+import { ChevronRight, CircleAlert, CircleCheck, LoaderCircle, ShoppingBag } from 'lucide-react'
 import { type MenuProductGroup } from '../lib/menuGrouping'
 import { type WebOrderCartItem } from '../lib/publicOrders'
 import { type DeliveryEstimate, type DeliveryRoute, type DeliverySettings } from '../lib/delivery'
@@ -49,7 +49,9 @@ import { CART_KEY, DESKTOP_MEDIA_QUERY, DESKTOP_SIDEBAR_MEDIA_QUERY, DESKTOP_TAB
 import { readCatalogCache, readDesktopTab } from '../lib/publicMenuStorage'
 import { BS_FORMATTER, PayMethod, money } from '../lib/publicMenuFormat'
 import type { DesktopTab, CheckoutStep } from '../lib/publicMenuTypes'
-import './PublicMenu.css'
+import { Fit, Fuse, Odo, Thumb, Wok } from '../pedir-v2/ui'
+import { useKitchenFx } from '../pedir-v2/useKitchenFx'
+import '../pedir-v2/index.css'
 
 
 declare global { interface Window { __removeFCSplash?: () => void } }
@@ -286,7 +288,7 @@ export function PublicMenu() {
   const [desktopHeroSlide, setDesktopHeroSlide] = useState(0)
   const [desktopHeroPaused, setDesktopHeroPaused] = useState(false)
   const [requestedRecommendedIndex, setRequestedRecommendedIndex] = useState<number | null>(null)
-  const [recommendedImageSrc, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
+  const [, setRecommendedImageSrc] = useState('/optimized/fondos/hero-banner-food.webp')
   const [pageSettings, setPageSettings] = useState<PublicOrderPageSettings>(DEFAULT_PUBLIC_ORDER_PAGE_SETTINGS)
   const [pageSettingsLoaded, setPageSettingsLoaded] = useState(false)
   const { currentInstagramReels, blockClosedStoreAdd, publicWhatsappPhone, formattedOpenTime, formattedCloseTime, publicInstagramUrl, publicFacebookUrl, mapPreviewUrl, isStoreOpen, storeScheduleLabel, pickupSlots, dismissWelcomeNotice } = useStoreStatus({ closingWelcomeNotice, dontShowWelcomeAgain, pageSettings, pageSettingsLoaded, pickupTime, setClosingWelcomeNotice, setPageSettings, setPageSettingsLoaded, setPickupTime, setShowStoreClosedNotice, setShowWelcomeNotice, showStoreClosedNotice, showWelcomeNotice, storeClosedNoticeButtonRef, welcomeNoticeButtonRef })
@@ -401,6 +403,9 @@ export function PublicMenu() {
   const { openProductFromCard, openProductFromCardKeyboard, stopProductCardInteraction, changeCardQty, getCardQty, handleCardAdd, categorySections, visibleGroups, homeSearchSuggestions, homeSearchTerm, popularGroups, promoGroups } = useMenuBrowse({ activeCategory, cardQtys, categories, currentTab, desktopHeroPaused, favoriteIds, groups, openGroup, popularScrollRef, products, requestQuickAdd, search, setCanScrollPopular, setCardQtys, setDesktopHeroSlide, setScrollCategory, showFavorites })
 
   const orderTotal = total + deliveryFee
+  // Solo visual: el plato vuela al wok y las tarjetas reaccionan al puntero.
+  useKitchenFx(addFeedback, pageRef)
+  const inCart = (group: MenuProductGroup) => cart.reduce((sum, item) => group.variants.some(({ product }) => product.id === item.productId) ? sum + item.quantity : sum, 0)
   // "Ver todos" belongs to the cart, not to the currently selected menu tab.
   const allExtras = useMemo(
     () => allCatalogGroups.filter(group => !group.variants.some(variant => cartProductIds.has(variant.product.id))),
@@ -422,7 +427,7 @@ export function PublicMenu() {
   const priceBs = (usd: number) =>
     bcvRate ? `Bs. ${BS_FORMATTER.format(usd * bcvRate)}` : null
 
-  const renderProductCard = (group: MenuProductGroup, priority = false) => <ProductCard key={group.key} group={group} priority={priority} favoriteIds={favoriteIds} openProductFromCard={openProductFromCard} openProductFromCardKeyboard={openProductFromCardKeyboard} pendingQuickAdds={pendingQuickAdds} priceBs={priceBs} requestQuickAdd={requestQuickAdd} stopProductCardInteraction={stopProductCardInteraction} toggleFavorite={toggleFavorite} />
+  const renderProductCard = (group: MenuProductGroup, priority = false) => <ProductCard key={group.key} group={group} inCart={inCart(group)} priority={priority} favoriteIds={favoriteIds} openProductFromCard={openProductFromCard} openProductFromCardKeyboard={openProductFromCardKeyboard} pendingQuickAdds={pendingQuickAdds} priceBs={priceBs} requestQuickAdd={requestQuickAdd} stopProductCardInteraction={stopProductCardInteraction} toggleFavorite={toggleFavorite} />
 
   const renderDesktopProductCard = (group: MenuProductGroup) => <DesktopProductCard key={group.key} group={group} changeCardQty={changeCardQty} favoriteIds={favoriteIds} getCardQty={getCardQty} handleCardAdd={handleCardAdd} openProductFromCard={openProductFromCard} openProductFromCardKeyboard={openProductFromCardKeyboard} pendingQuickAdds={pendingQuickAdds} priceBs={priceBs} stopProductCardInteraction={stopProductCardInteraction} toggleFavorite={toggleFavorite} />
 
@@ -461,18 +466,21 @@ export function PublicMenu() {
       onLoadCapture={handleImageLoad}
       onErrorCapture={handleImageError}
     >
+      {/* La santamaría sube al abrir la carta (solo CSS, no captura toques). */}
+      <div className="pd-curtain" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></div>
+
       {/* Top Navbar */}
       <PublicTopBar bcvRate={bcvRate} currentTab={currentTab} formattedCloseTime={formattedCloseTime} isStoreOpen={isStoreOpen} openCustomerProfile={openCustomerProfile} setCurrentTab={setCurrentTab} showDesktopMenu={showDesktopMenu} storeScheduleLabel={storeScheduleLabel} />
 
       {/* =========================================================================
           MOBILE VIEWPORT (< 1280px) — 100% ORIGINAL f88d057 LAYOUT
           ========================================================================= */}
-      <PublicMobileView activeCategory={activeCategory} bcvRate={bcvRate} cartOpen={cartOpen} categories={categories} categorySections={categorySections} closeSearch={closeSearch} contactViewProps={contactViewProps} currentTab={currentTab} error={error} favoriteIds={favoriteIds} formattedCloseTime={formattedCloseTime} handleRecommendedWheel={handleRecommendedWheel} hasLeftMobileMenu={hasLeftMobileMenu} hasVisitedProfile={hasVisitedProfile} heroSearchRef={heroSearchRef} isDesktopViewport={isDesktopViewport} isLoyaltyRecommended={isLoyaltyRecommended} isStoreOpen={isStoreOpen} loading={loading} moveRecommended={moveRecommended} openCustomerProfile={openCustomerProfile} openGroup={openGroup} pageSettings={pageSettings} pauseRecommendedAutoplay={pauseRecommendedAutoplay} priceBs={priceBs} products={products} recommendedGroup={recommendedGroup} recommendedImageSrc={recommendedImageSrc} recommendedIndex={recommendedIndex} recommendedSlideCount={recommendedSlideCount} recommendedSlides={recommendedSlides} recommendedSwipeStart={recommendedSwipeStart} recommendedVariant={recommendedVariant} recommendedWasSwiped={recommendedWasSwiped} renderProductCard={renderProductCard} repeatPreviousOrder={repeatPreviousOrder} resumeRecommendedAutoplay={resumeRecommendedAutoplay} retryPublicCatalog={retryPublicCatalog} search={search} setActiveCategory={setActiveCategory} setCurrentTab={setCurrentTab} setError={setError} setHasLeftMobileMenu={setHasLeftMobileMenu} setRecommendedImageSrc={setRecommendedImageSrc} setRequestedRecommendedIndex={setRequestedRecommendedIndex} setSearch={setSearch} setShowFavorites={setShowFavorites} setShowSearch={setShowSearch} showFavorites={showFavorites} showSearch={showSearch} storeScheduleLabel={storeScheduleLabel} toggleFavorite={toggleFavorite} visibleGroups={visibleGroups} />
+      <PublicMobileView scrollCategory={scrollCategory} activeCategory={activeCategory} bcvRate={bcvRate} cartOpen={cartOpen} categories={categories} categorySections={categorySections} closeSearch={closeSearch} contactViewProps={contactViewProps} currentTab={currentTab} error={error} favoriteIds={favoriteIds} formattedCloseTime={formattedCloseTime} handleRecommendedWheel={handleRecommendedWheel} hasLeftMobileMenu={hasLeftMobileMenu} hasVisitedProfile={hasVisitedProfile} heroSearchRef={heroSearchRef} isDesktopViewport={isDesktopViewport} isLoyaltyRecommended={isLoyaltyRecommended} isStoreOpen={isStoreOpen} loading={loading} moveRecommended={moveRecommended} openCustomerProfile={openCustomerProfile} openGroup={openGroup} pageSettings={pageSettings} pauseRecommendedAutoplay={pauseRecommendedAutoplay} priceBs={priceBs} products={products} recommendedGroup={recommendedGroup} recommendedIndex={recommendedIndex} recommendedSlideCount={recommendedSlideCount} recommendedSlides={recommendedSlides} recommendedSwipeStart={recommendedSwipeStart} recommendedVariant={recommendedVariant} recommendedWasSwiped={recommendedWasSwiped} renderProductCard={renderProductCard} repeatPreviousOrder={repeatPreviousOrder} resumeRecommendedAutoplay={resumeRecommendedAutoplay} retryPublicCatalog={retryPublicCatalog} search={search} setActiveCategory={setActiveCategory} setCurrentTab={setCurrentTab} setError={setError} setHasLeftMobileMenu={setHasLeftMobileMenu} setRequestedRecommendedIndex={setRequestedRecommendedIndex} setSearch={setSearch} setShowFavorites={setShowFavorites} setShowSearch={setShowSearch} showFavorites={showFavorites} showSearch={showSearch} storeScheduleLabel={storeScheduleLabel} toggleFavorite={toggleFavorite} visibleGroups={visibleGroups} />
 
       {/* =========================================================================
           DESKTOP VIEWPORT (>= 1280px) — 2-COLUMN PRO LAYOUT
           ========================================================================= */}
-      <PublicDesktopLayout activeCategory={activeCategory} address={address} canScrollPopular={canScrollPopular} cart={cart} cartPulse={cartPulse} categories={categories} categorySections={categorySections} contactViewProps={contactViewProps} currentTab={currentTab} deletingKeys={deletingKeys} deliveryFeeText={deliveryFeeText} desktopHeroSlide={desktopHeroSlide} editCartItem={editCartItem} error={error} favoriteIds={favoriteIds} getCartIncludedCopy={getCartIncludedCopy} handleRemoveSidebarItem={handleRemoveSidebarItem} homeSearchSuggestions={homeSearchSuggestions} homeSearchTerm={homeSearchTerm} isDesktopViewport={isDesktopViewport} itemCount={itemCount} loading={loading} openCartFromSidebar={openCartFromSidebar} openCustomerProfile={openCustomerProfile} openGroup={openGroup} orderTotal={orderTotal} orderType={orderType} pageSettings={pageSettings} pendingQuickAdds={pendingQuickAdds} popularGroups={popularGroups} popularScrollRef={popularScrollRef} priceBs={priceBs} products={products} promoGroups={promoGroups} recommendations={recommendations} renderDesktopProductCard={renderDesktopProductCard} renderDesktopPromoCard={renderDesktopPromoCard} renderProductCard={renderProductCard} repeatPreviousOrder={repeatPreviousOrder} requestQuickAdd={requestQuickAdd} retryPublicCatalog={retryPublicCatalog} scrollPopular={scrollPopular} search={search} setActiveCategory={setActiveCategory} setCartOpen={setCartOpen} setDesktopHeroPaused={setDesktopHeroPaused} setDesktopHeroSlide={setDesktopHeroSlide} setOrderType={setOrderType} setReturnToConfirmAfterEdit={setReturnToConfirmAfterEdit} setSearch={setSearch} setShowAllExtras={setShowAllExtras} setShowFavorites={setShowFavorites} setSidebarRecoIndex={setSidebarRecoIndex} setStep={setStep} showDesktopMenu={showDesktopMenu} showFavorites={showFavorites} sidebarCardRef={sidebarCardRef} sidebarHasOverflow={sidebarHasOverflow} sidebarRecoIndex={sidebarRecoIndex} sidebarRecoTimer={sidebarRecoTimer} submitting={submitting} toggleFavorite={toggleFavorite} total={total} updateQuantity={updateQuantity} visibleGroups={visibleGroups} />
+      <PublicDesktopLayout scrollCategory={scrollCategory} activeCategory={activeCategory} address={address} canScrollPopular={canScrollPopular} cart={cart} cartPulse={cartPulse} categories={categories} categorySections={categorySections} contactViewProps={contactViewProps} currentTab={currentTab} deletingKeys={deletingKeys} deliveryFeeText={deliveryFeeText} desktopHeroSlide={desktopHeroSlide} editCartItem={editCartItem} error={error} favoriteIds={favoriteIds} getCartIncludedCopy={getCartIncludedCopy} handleRemoveSidebarItem={handleRemoveSidebarItem} homeSearchSuggestions={homeSearchSuggestions} homeSearchTerm={homeSearchTerm} isDesktopViewport={isDesktopViewport} itemCount={itemCount} loading={loading} openCartFromSidebar={openCartFromSidebar} openCustomerProfile={openCustomerProfile} openGroup={openGroup} orderTotal={orderTotal} orderType={orderType} pageSettings={pageSettings} pendingQuickAdds={pendingQuickAdds} popularGroups={popularGroups} popularScrollRef={popularScrollRef} priceBs={priceBs} products={products} promoGroups={promoGroups} recommendations={recommendations} renderDesktopProductCard={renderDesktopProductCard} renderDesktopPromoCard={renderDesktopPromoCard} renderProductCard={renderProductCard} repeatPreviousOrder={repeatPreviousOrder} requestQuickAdd={requestQuickAdd} retryPublicCatalog={retryPublicCatalog} scrollPopular={scrollPopular} search={search} setActiveCategory={setActiveCategory} setCartOpen={setCartOpen} setDesktopHeroPaused={setDesktopHeroPaused} setDesktopHeroSlide={setDesktopHeroSlide} setOrderType={setOrderType} setReturnToConfirmAfterEdit={setReturnToConfirmAfterEdit} setSearch={setSearch} setShowAllExtras={setShowAllExtras} setShowFavorites={setShowFavorites} setSidebarRecoIndex={setSidebarRecoIndex} setStep={setStep} showDesktopMenu={showDesktopMenu} showFavorites={showFavorites} sidebarCardRef={sidebarCardRef} sidebarHasOverflow={sidebarHasOverflow} sidebarRecoIndex={sidebarRecoIndex} sidebarRecoTimer={sidebarRecoTimer} submitting={submitting} toggleFavorite={toggleFavorite} total={total} updateQuantity={updateQuantity} visibleGroups={visibleGroups} />
 
       <footer className="public-credits-footer">
         <span>Diseñado y desarrollado por</span>{' '}
@@ -484,12 +492,14 @@ export function PublicMenu() {
       {/* Floating Cart FAB for Mobile */}
       {itemCount > 0 && !cartOpen && currentTab !== 'contacto' && currentTab !== 'perfil' && (
         <div className="public-cart-fab-wrap">
-          <span className="public-cart-fab-tooltip">
-            Toca aquí para ver tu pedido <ChevronRight size={14} />
-          </span>
-          <button className="public-cart-fab" onClick={() => { setReturnToConfirmAfterEdit(false); openCartFromSidebar('cart') }}>
-            <ShoppingCart size={24} />
-            <span className="public-cart-fab-badge">{itemCount}</span>
+          <button className="public-cart-fab" aria-label={`Ver mi pedido: ${itemCount} ${itemCount === 1 ? 'plato' : 'platos'}, ${money(total)}`} onClick={() => { setReturnToConfirmAfterEdit(false); openCartFromSidebar('cart') }}>
+            <span className="pd-wokbar-wok" aria-hidden="true">
+              <span className="pd-wokbar-dishes">{cart.slice(-3).map(item => <Thumb key={item.productId} imageUrl={item.imageUrl} />)}</span>
+              <Wok />
+              <span className="public-cart-fab-badge" key={itemCount}>{itemCount}</span>
+            </span>
+            <span className="pd-wokbar-copy"><strong>Ver mi pedido</strong><small>{itemCount} {itemCount === 1 ? 'plato en el wok' : 'platos en el wok'}</small></span>
+            <Odo value={money(total)} className="pd-wokbar-total" />
           </button>
         </div>
       )}
@@ -521,7 +531,7 @@ export function PublicMenu() {
 
       {cartOpen && createPortal(
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}${step === 'details' && autofillingDetails ? ' is-autofilling' : ''}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <div className="public-review-heading"><h2><ShoppingBag size={20} className="public-review-heading-icon" /> {step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa y confirma tu pedido' : 'Tu pedido'}</h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
+        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <Fuse step={step} />}{step !== 'sent' && <div className="public-review-heading" key={step}><h2><Fit>{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Confirma tu pedido' : 'Tu pedido'}</Fit></h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
         {step === 'cart' && <CartStep cart={cart} cartCarouselGroups={cartCarouselGroups} closeCart={closeCart} deliveryChosen={deliveryChosen} editCartItem={editCartItem} getCartIncludedCopy={getCartIncludedCopy} orderType={orderType} priceBs={priceBs} requestQuickAdd={requestQuickAdd} requireCart={requireCart} setCurrentTab={setCurrentTab} setShowAllExtras={setShowAllExtras} setStep={setStep} total={total} updateQuantity={updateQuantity} />}

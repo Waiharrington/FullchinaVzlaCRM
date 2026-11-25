@@ -19,31 +19,28 @@ export function PublicTopBar({ bcvRate, currentTab, formattedCloseTime, isStoreO
   return (
 <header className="public-top-bar" id="inicio">
               <>
-                {/* Mobile: empty left spacer */}
-                <div className="mobile-only" style={{ width: 24 }} />
-    
                 {/* Logo — centered on mobile, left on desktop */}
                 <div className="public-top-bar-center">
                   <img src="/optimized/root/logo.webp" alt="Full China" className="public-top-bar-logo" decoding="async" />
                 </div>
-    
+
                 {/* Desktop Center Navigation Tabs */}
                 <nav className="public-desktop-nav-links desktop-only" aria-label="Navegación principal">
-                  <button 
-                    type="button" 
-                    className={`public-nav-tab-btn ${currentTab === 'inicio' ? 'active' : ''}`} 
+                  <button
+                    type="button"
+                    className={`public-nav-tab-btn ${currentTab === 'inicio' ? 'active' : ''}`}
                     onClick={() => { setCurrentTab('inicio'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
                     Inicio
                   </button>
-                  <button 
-                    type="button" 
-                    className={`public-nav-tab-btn ${currentTab === 'menu' ? 'active' : ''}`} 
+                  <button
+                    type="button"
+                    className={`public-nav-tab-btn ${currentTab === 'menu' ? 'active' : ''}`}
                     onClick={() => showDesktopMenu()}>
                     Menú
                   </button>
-                  <button 
-                    type="button" 
-                    className={`public-nav-tab-btn ${currentTab === 'contacto' ? 'active' : ''}`} 
+                  <button
+                    type="button"
+                    className={`public-nav-tab-btn ${currentTab === 'contacto' ? 'active' : ''}`}
                     onPointerDown={preloadPublicMenuContactView}
                     onMouseEnter={preloadPublicMenuContactView}
                     onFocus={preloadPublicMenuContactView}
@@ -54,7 +51,7 @@ export function PublicTopBar({ bcvRate, currentTab, formattedCloseTime, isStoreO
                     Mi perfil
                   </button>
                 </nav>
-    
+
                 {/* Desktop Right Status Badges */}
                 <div className="public-top-bar-right desktop-only">
                   <div className="public-nav-status-badges">
@@ -71,7 +68,7 @@ export function PublicTopBar({ bcvRate, currentTab, formattedCloseTime, isStoreO
                     )}
                   </div>
                 </div>
-    
+
               </>
           </header>
   )

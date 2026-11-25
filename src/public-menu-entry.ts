@@ -38,7 +38,7 @@ window.addEventListener('fullchina:public-menu-ready', () => {
 function loadMenuFonts() {
   const fonts = document.createElement('link')
   fonts.rel = 'stylesheet'
-  fonts.href = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Graduate&family=Outfit:wght@300;400;500;600;700;800;900&display=swap'
+  fonts.href = 'https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap'
   fonts.media = 'print'
   fonts.onload = () => { fonts.media = 'all' }
   document.head.append(fonts)

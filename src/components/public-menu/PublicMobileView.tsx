@@ -2,8 +2,8 @@ import type { MenuVariant } from '../../lib/menuGrouping'
 import { PublicCatalogLoadingSkeleton } from './PublicCatalogLoadingSkeleton'
 import { CustomerLoyaltyProfile, PublicMenuContactView, preloadCustomerLoyaltyProfile, preloadPublicMenuContactView } from './lazyViews'
 import { CATEGORY_ICONS } from '../../lib/publicMenuConfig'
-import { Suspense, type MouseEvent, type WheelEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
-import { Flame, Clock, Search, X, ChevronRight, Heart, Utensils, Store, UserRound } from 'lucide-react'
+import { Suspense, useRef, type MouseEvent, type WheelEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
+import { Clock, Search, X, ChevronRight, Heart, Utensils, Store, UserRound } from 'lucide-react'
 import { LOCAL_ORDER_TEST_MODE } from '../../lib/publicMenuConfig'
 import { CustomerLoyaltyPromo } from '../../components/CustomerLoyaltyPromo'
 import { productTitle, money } from '../../lib/publicMenuFormat'
@@ -16,8 +16,12 @@ import { type DesktopTab } from '../../lib/publicMenuTypes'
 import { type PublicModifierSelection } from '../../lib/publicOrderRules'
 import { type Product } from '../../lib/dataService'
 import { type CustomerRepeatOrder } from '../../lib/publicOrders'
+import { usePauseOffscreen } from '../../pedir-v2/hooks'
+import { Chopsticks, Fit } from '../../pedir-v2/ui'
+import { Turntable } from '../../pedir-v2/Turntable'
 
 interface PublicMobileViewProps {
+  scrollCategory: string | null
   activeCategory: string
   bcvRate: number | null
   cartOpen: boolean
@@ -45,7 +49,6 @@ interface PublicMobileViewProps {
   priceBs: (usd: number) => string | null
   products: Product[]
   recommendedGroup: MenuProductGroup | null
-  recommendedImageSrc: string
   recommendedIndex: number
   recommendedSlideCount: number
   recommendedSlides: ({ kind: "product"; group: MenuProductGroup; } | { kind: "loyalty"; })[]
@@ -61,7 +64,6 @@ interface PublicMobileViewProps {
   setCurrentTab: Dispatch<SetStateAction<DesktopTab>>
   setError: Dispatch<SetStateAction<string>>
   setHasLeftMobileMenu: Dispatch<SetStateAction<boolean>>
-  setRecommendedImageSrc: Dispatch<SetStateAction<string>>
   setRequestedRecommendedIndex: Dispatch<SetStateAction<number | null>>
   setSearch: Dispatch<SetStateAction<string>>
   setShowFavorites: Dispatch<SetStateAction<boolean>>
@@ -73,26 +75,41 @@ interface PublicMobileViewProps {
   visibleGroups: MenuProductGroup[]
 }
 
-export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories, categorySections, closeSearch, contactViewProps, currentTab, error, favoriteIds, formattedCloseTime, handleRecommendedWheel, hasLeftMobileMenu, hasVisitedProfile, heroSearchRef, isDesktopViewport, isLoyaltyRecommended, isStoreOpen, loading, moveRecommended, openCustomerProfile, openGroup, pageSettings, pauseRecommendedAutoplay, priceBs, products, recommendedGroup, recommendedImageSrc, recommendedIndex, recommendedSlideCount, recommendedSlides, recommendedSwipeStart, recommendedVariant, recommendedWasSwiped, renderProductCard, repeatPreviousOrder, resumeRecommendedAutoplay, retryPublicCatalog, search, setActiveCategory, setCurrentTab, setError, setHasLeftMobileMenu, setRecommendedImageSrc, setRequestedRecommendedIndex, setSearch, setShowFavorites, setShowSearch, showFavorites, showSearch, storeScheduleLabel, toggleFavorite, visibleGroups }: PublicMobileViewProps) {
+export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cartOpen, categories, categorySections, closeSearch, contactViewProps, currentTab, error, favoriteIds, formattedCloseTime, handleRecommendedWheel, hasLeftMobileMenu, hasVisitedProfile, heroSearchRef, isDesktopViewport, isLoyaltyRecommended, isStoreOpen, loading, moveRecommended, openCustomerProfile, openGroup, pageSettings, pauseRecommendedAutoplay, priceBs, products, recommendedGroup, recommendedIndex, recommendedSlideCount, recommendedSlides, recommendedSwipeStart, recommendedVariant, recommendedWasSwiped, renderProductCard, repeatPreviousOrder, resumeRecommendedAutoplay, retryPublicCatalog, search, setActiveCategory, setCurrentTab, setError, setHasLeftMobileMenu, setRequestedRecommendedIndex, setSearch, setShowFavorites, setShowSearch, showFavorites, showSearch, storeScheduleLabel, toggleFavorite, visibleGroups }: PublicMobileViewProps) {
+  const railRef = useRef<HTMLElement>(null)
+  const tableRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  usePauseOffscreen(stageRef)
+  // Solo visual: qué categoría sostienen los palillos mientras se recorre el menú.
+  const heldCategory = activeCategory === 'Todos' ? scrollCategory : activeCategory
+  const catClass = (category: string) => `public-cat-btn ${activeCategory === category ? 'active' : ''} ${heldCategory === category || (!heldCategory && category === 'Todos') ? 'is-held' : ''}`
+  const chooseCategory = (category: string) => {
+    setActiveCategory(category)
+    const top = (stageRef.current?.offsetTop ?? 0) + (stageRef.current?.offsetHeight ?? 0)
+    if (window.scrollY > top) window.scrollTo({ top, behavior: 'auto' })
+  }
   return (
 <div className="public-mobile-view mobile-only">
-    
+
             {/* MENU VIEW */}
             <div className={`public-mobile-tab-content${hasLeftMobileMenu ? ' is-retained' : ''}`} key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
             {/* 2. Hero Status */}
+            <div className="pd-stage" ref={stageRef}>
             <div className="public-hero-header">
               <div className="public-hero-title-row">
-                <h1>{pageSettings.mobileHeading} <Flame size={22} className="fire-icon-pulse" /></h1>
+                <h1><Fit>{pageSettings.mobileHeading}</Fit></h1>
+              </div>
+              <div className="pd-status-row">
+              <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
+                <i /> <strong>{LOCAL_ORDER_TEST_MODE ? 'Modo de prueba' : isStoreOpen ? 'Abierto' : 'Cerrado'}</strong><span className="public-status-hours"><Clock size={13} aria-hidden="true" />{LOCAL_ORDER_TEST_MODE ? 'No envía pedidos' : isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
+              </span>
                 {bcvRate && (
                   <span className="public-rate-badge" title="Tasa oficial del Banco Central de Venezuela">
-                    <span className="public-rate-badge-label">Dólar BCV</span>
+                    <span className="public-rate-badge-label">BCV</span>
                     <span className="public-rate-badge-value">Bs. {bcvRate.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </span>
                 )}
               </div>
-              <span className={`public-status ${isStoreOpen ? 'is-open' : 'is-closed'}`}>
-                <i /> <strong>{LOCAL_ORDER_TEST_MODE ? 'Modo de prueba' : isStoreOpen ? 'Abierto' : 'Cerrado'}</strong><span className="public-status-hours"><Clock size={13} aria-hidden="true" />{LOCAL_ORDER_TEST_MODE ? 'No envía pedidos' : isStoreOpen ? `Hasta las ${formattedCloseTime}` : storeScheduleLabel}</span>
-              </span>
               <div className={`public-hero-search-pill ${showSearch ? 'is-active' : ''}`} onClick={() => { if (!showSearch) { heroSearchRef.current?.focus(); setShowSearch(true) } }}>
                 <Search size={16} />
                 <span className="public-hero-search-placeholder" aria-hidden={showSearch}>{pageSettings.searchPlaceholder}</span>
@@ -108,7 +125,7 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                 {showSearch && <button type="button" className="public-search-pill-cancel" onClick={closeSearch}>Cancelar</button>}
               </div>
             </div>
-    
+
             {/* 3. Recommended Card */}
             <div
               className={`public-recommended-card${isLoyaltyRecommended ? ' is-loyalty-slide' : ''}`}
@@ -129,8 +146,17 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                 event.currentTarget.setPointerCapture(event.pointerId)
                 pauseRecommendedAutoplay()
               }}
+              onPointerMove={event => {
+                // Solo visual: la mesa acompaña al dedo mientras se arrastra.
+                const start = recommendedSwipeStart.current
+                if (start == null) return
+                tableRef.current?.classList.add('is-dragging')
+                tableRef.current?.style.setProperty('--drag', `${Math.max(-26, Math.min(26, (event.clientX - start) / 9))}deg`)
+              }}
               onWheel={handleRecommendedWheel}
               onPointerUp={(event) => {
+                tableRef.current?.classList.remove('is-dragging')
+                tableRef.current?.style.removeProperty('--drag')
                 const start = recommendedSwipeStart.current
                 recommendedSwipeStart.current = null
                 if (start == null || recommendedSlideCount <= 1) {
@@ -146,31 +172,27 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                 }
               }}
               onPointerCancel={() => {
+                tableRef.current?.classList.remove('is-dragging')
+                tableRef.current?.style.removeProperty('--drag')
                 recommendedSwipeStart.current = null
                 resumeRecommendedAutoplay()
               }}
               onMouseEnter={pauseRecommendedAutoplay}
               onMouseLeave={resumeRecommendedAutoplay}
             >
-              {isLoyaltyRecommended ? <CustomerLoyaltyPromo presentation="recommended" onJoin={openCustomerProfile} /> : <>
-                <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
-                  <small>RECOMENDADO <Flame size={12} /></small>
-                  <h2>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</h2>
-                  <p>{recommendedVariant?.product.description || recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
-                  {recommendedGroup && <span className="public-recommended-price">{money(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</span>}
-                  {recommendedGroup && priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice) && <span className="public-prod-price-bs">{priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</span>}
+              <Turntable slides={recommendedSlides} index={recommendedIndex} tableRef={tableRef} />
+              {isLoyaltyRecommended ? <CustomerLoyaltyPromo presentation="recommended" onJoin={openCustomerProfile} /> : <div className="public-recommended-copy" key={`copy-${recommendedGroup?.key ?? 'empty'}`}>
+                <h2><Fit>{productTitle(recommendedGroup?.name ?? 'Explora nuestro menú')}</Fit></h2>
+                <p>{recommendedVariant?.product.description || recommendedGroup?.variants[0]?.product.description || 'Elige tu favorito y arma tu pedido.'}</p>
+                <div className="pd-hero-buy">
+                  {recommendedGroup && <span className="pd-hero-price"><strong>{money(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</strong>{priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice) && <small>{priceBs(recommendedVariant?.product.price ?? recommendedGroup.minPrice)}</small>}</span>}
                   <button
                     className="public-recommended-btn"
                     onClick={(event) => { event.stopPropagation(); if (recommendedGroup) openGroup(recommendedGroup, undefined, recommendedVariant?.product.id) }}
                     aria-label={`Ver producto: ${productTitle(recommendedGroup?.name ?? 'producto')}`}
-                  >Ver producto <ChevronRight size={14} strokeWidth={2.5} aria-hidden="true" /></button>
+                  >Lo quiero <ChevronRight size={16} strokeWidth={2.6} aria-hidden="true" /></button>
                 </div>
-                <img src={recommendedImageSrc} onError={event => {
-                if (event.currentTarget.getAttribute('src') !== '/optimized/fondos/hero-banner-food.webp') {
-                  setRecommendedImageSrc('/optimized/fondos/hero-banner-food.webp')
-                }
-                }} alt={productTitle(recommendedGroup?.name ?? 'Menú Full China')} className={`public-recommended-img${['Agua', 'Refresco 2 Litros'].includes(recommendedGroup?.name ?? '') ? ' public-recommended-img--bottle' : ''}`} fetchPriority="high" decoding="async" />
-              </>}
+              </div>}
               <div className="public-recommended-dots-overlay">
                 {Array.from({ length: recommendedSlideCount }, (_, i) => (
                   <button key={i} type="button" className={i === recommendedIndex ? 'active' : ''} aria-label={recommendedSlides[i]?.kind === 'loyalty' ? 'Ver programa de fidelidad' : `Ver recomendación ${recommendedSlides.slice(0, i + 1).filter(slide => slide.kind === 'product').length}`} aria-current={i === recommendedIndex ? 'true' : undefined} onClick={(event) => {
@@ -186,28 +208,32 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                 ))}
               </div>
             </div>
-    
+
+            </div>
+
             {/* 4. Category Nav */}
-            {categories.length > 4 && <div className="public-category-hint" aria-hidden="true">Desliza para ver más <ChevronRight size={13} /></div>}
-            <nav className="public-categories-scroll">
-              <button 
-                 className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
-                 onClick={() => setActiveCategory('Todos')}>
+            <div className="pd-rail-wrap">
+            <nav className="public-categories-scroll" ref={railRef} aria-label="Categorías del menú">
+              <Chopsticks railRef={railRef} active={heldCategory ?? 'Todos'} />
+              <button
+                 className={catClass('Todos')}
+                 onClick={() => chooseCategory('Todos')}>
                  <img className="public-cat-icon-image" src={CATEGORY_ICONS.Todos} alt="" decoding="async" />
                  <span>Menú</span>
               </button>
               {categories.filter(c => c !== 'Todos').map(category => (
-                 <button 
-                   key={category} 
-                   className={`public-cat-btn ${activeCategory === category ? 'active' : ''}`}
-                   onClick={() => setActiveCategory(category)}
+                 <button
+                   key={category}
+                   className={catClass(category)}
+                   onClick={() => chooseCategory(category)}
                  >
                    <img className="public-cat-icon-image" src={CATEGORY_ICONS[category] || CATEGORY_ICONS.Todos} alt="" loading="lazy" decoding="async" />
                    <span>{categoryLabel(category)}</span>
                  </button>
               ))}
             </nav>
-    
+            </div>
+
             {/* 5. Products Section */}
               <section className="public-content">
               <div className="public-list-header">
@@ -216,7 +242,7 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                   <button className={`public-favorites-inline ${showFavorites ? 'active' : ''}`} onClick={() => setShowFavorites(value => !value)} aria-label="Filtrar favoritos"><Heart size={16} fill={showFavorites ? 'currentColor' : 'none'} /><span>Favoritos</span>{favoriteIds.length > 0 && <b>{favoriteIds.length}</b>}</button>
                 </div>
               </div>
-    
+
               {error && products.length > 0 && !cartOpen && <Toast type="error" message={error} onClose={() => setError('')} />}
               {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
                 <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
@@ -229,7 +255,7 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
                     </div>
                   ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
                     <section className="public-category-section" key={section.category} data-category={section.category}>
-                      <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><span>{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span></div>
+                      <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><span>{section.groups.length} {section.groups.length === 1 ? 'opción' : 'opciones'}</span></div>
                       <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
                     </section>
                   )) : visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < (isDesktopViewport ? 4 : 2)))}
@@ -237,7 +263,7 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
               )}
             </section>
               </div>
-    
+
             {/* CONTACT VIEW */}
             {currentTab === 'contacto' && (
               <Suspense fallback={<PublicContactSkeleton />}>
@@ -245,7 +271,7 @@ export function PublicMobileView({ activeCategory, bcvRate, cartOpen, categories
               </Suspense>
             )}
             {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
-    
+
             {/* Bottom Tab Bar */}
             <nav className="public-mobile-tab-bar">
               <button className={`public-mobile-tab ${currentTab === 'inicio' || currentTab === 'menu' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>

@@ -1,10 +1,11 @@
 import { PublicCatalogLoadingSkeleton } from './PublicCatalogLoadingSkeleton'
 import { CustomerLoyaltyProfile, PublicMenuContactView } from './lazyViews'
 import { CATEGORY_ICONS, DESKTOP_CATEGORY_LABELS } from '../../lib/publicMenuConfig'
-import { Suspense, type MouseEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
-import { HeroWokEmbers } from '../../components/HeroWokEmbers'
-import { Flame, Search, X, ChevronRight, Bike, Zap, ShieldCheck, MapPin, Clock, ShoppingBag, Heart, Star, Trash2, Minus, Plus, Pencil, LoaderCircle, Store, MessageSquareText } from 'lucide-react'
-import { optimizedProductImage, productImage, productTitle, money, cartLineKey, cartProductName } from '../../lib/publicMenuFormat'
+import { Suspense, useRef, type MouseEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
+import { usePauseOffscreen } from '../../pedir-v2/hooks'
+import { Chopsticks, Fit, Odo, Thumb, Wok } from '../../pedir-v2/ui'
+import { Flame, Search, X, ChevronRight, Bike, Zap, ShieldCheck, MapPin, Clock, ShoppingBag, Heart, Trash2, Minus, Plus, Pencil, LoaderCircle, Store, MessageSquareText } from 'lucide-react'
+import { productTitle, money, cartLineKey, cartProductName } from '../../lib/publicMenuFormat'
 import { categoryLabel } from '../../lib/menuCategories'
 import { PublicHomeProductSkeletons, PublicHomePromoSkeletons, PublicContactSkeleton, PublicProfileSkeleton } from '../../components/PublicPageSkeletons'
 import { type WebOrderCartItem, type CustomerRepeatOrder } from '../../lib/publicOrders'
@@ -15,6 +16,7 @@ import { type PublicModifierSelection } from '../../lib/publicOrderRules'
 import { type Product } from '../../lib/dataService'
 
 interface PublicDesktopLayoutProps {
+  scrollCategory: string | null
   activeCategory: string
   address: string
   canScrollPopular: boolean
@@ -82,33 +84,36 @@ interface PublicDesktopLayoutProps {
   visibleGroups: MenuProductGroup[]
 }
 
-export function PublicDesktopLayout({ activeCategory, address, canScrollPopular, cart, cartPulse, categories, categorySections, contactViewProps, currentTab, deletingKeys, deliveryFeeText, desktopHeroSlide, editCartItem, error, favoriteIds, getCartIncludedCopy, handleRemoveSidebarItem, homeSearchSuggestions, homeSearchTerm, isDesktopViewport, itemCount, loading, openCartFromSidebar, openCustomerProfile, openGroup, orderTotal, orderType, pageSettings, pendingQuickAdds, popularGroups, popularScrollRef, priceBs, products, promoGroups, recommendations, renderDesktopProductCard, renderDesktopPromoCard, renderProductCard, repeatPreviousOrder, requestQuickAdd, retryPublicCatalog, scrollPopular, search, setActiveCategory, setCartOpen, setDesktopHeroPaused, setDesktopHeroSlide, setOrderType, setReturnToConfirmAfterEdit, setSearch, setShowAllExtras, setShowFavorites, setSidebarRecoIndex, setStep, showDesktopMenu, showFavorites, sidebarCardRef, sidebarHasOverflow, sidebarRecoIndex, sidebarRecoTimer, submitting, toggleFavorite, total, updateQuantity, visibleGroups }: PublicDesktopLayoutProps) {
+export function PublicDesktopLayout({ scrollCategory, activeCategory, address, canScrollPopular, cart, cartPulse, categories, categorySections, contactViewProps, currentTab, deletingKeys, deliveryFeeText, desktopHeroSlide, editCartItem, error, favoriteIds, getCartIncludedCopy, handleRemoveSidebarItem, homeSearchSuggestions, homeSearchTerm, isDesktopViewport, itemCount, loading, openCartFromSidebar, openCustomerProfile, openGroup, orderTotal, orderType, pageSettings, pendingQuickAdds, popularGroups, popularScrollRef, priceBs, products, promoGroups, recommendations, renderDesktopProductCard, renderDesktopPromoCard, renderProductCard, repeatPreviousOrder, requestQuickAdd, retryPublicCatalog, scrollPopular, search, setActiveCategory, setCartOpen, setDesktopHeroPaused, setDesktopHeroSlide, setOrderType, setReturnToConfirmAfterEdit, setSearch, setShowAllExtras, setShowFavorites, setSidebarRecoIndex, setStep, showDesktopMenu, showFavorites, sidebarCardRef, sidebarHasOverflow, sidebarRecoIndex, sidebarRecoTimer, submitting, toggleFavorite, total, updateQuantity, visibleGroups }: PublicDesktopLayoutProps) {
+  const railRef = useRef<HTMLElement>(null)
+  const layoutRef = useRef<HTMLDivElement>(null)
+  usePauseOffscreen(layoutRef)
+  // Solo visual: qué categoría sostienen los palillos mientras se recorre el menú.
+  const heldCategory = activeCategory === 'Todos' ? scrollCategory : activeCategory
+  const catClass = (category: string) => `public-cat-btn ${activeCategory === category ? 'active' : ''} ${heldCategory === category || (!heldCategory && category === 'Todos') ? 'is-held' : ''}`
   return (
-<div className={`public-desktop-layout desktop-only ${currentTab === 'contacto' || currentTab === 'perfil' ? 'is-contact-view' : ''}`}>
+<div ref={layoutRef} className={`public-desktop-layout desktop-only ${currentTab === 'contacto' || currentTab === 'perfil' ? 'is-contact-view' : ''}`}>
             {/* LEFT COLUMN: Tab-based views */}
             <div className="public-desktop-main">
-              
+
               {/* TAB 1: INICIO (La Vitrina de Alto Impacto) */}
               {currentTab === 'inicio' && (
                 <>
                   {/* 1. Cinematic Hero Banner with 3D Depth */}
                   <section className={`public-cinematic-hero public-home-hero-carousel ${desktopHeroSlide === 1 ? 'is-loyalty-slide' : ''} ${homeSearchTerm.length >= 2 ? 'has-search-results' : ''}`} aria-roledescription="carrusel" aria-label="Promociones de Full China" onPointerEnter={() => setDesktopHeroPaused(true)} onPointerLeave={() => setDesktopHeroPaused(false)} onFocusCapture={() => setDesktopHeroPaused(true)} onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDesktopHeroPaused(false) }}>
-                    {/* Organic Wok Fire Embers Canvas (Confined to Banner) */}
-                    <HeroWokEmbers />
-    
                     <div className={`public-home-hero-slide public-home-hero-food ${desktopHeroSlide === 0 ? 'is-active' : ''}`} aria-hidden={desktopHeroSlide !== 0}>
                     <div className="public-hero-left">
                       <span className="public-hero-tag">
-                        <Flame size={14} className="fire-icon-pulse" />
+                        <Flame size={14} />
                         {pageSettings.desktopEyebrow}
                       </span>
                       <h1 className="public-hero-main-title">
-                        {pageSettings.desktopTitlePrefix}<br /><span className="public-hero-gold">{pageSettings.desktopTitleAccent}</span>
+                        <Fit>{pageSettings.desktopTitlePrefix} <span className="public-hero-gold">{pageSettings.desktopTitleAccent}</span></Fit>
                       </h1>
                       <p className="public-hero-desc">
                         {pageSettings.desktopDescription}
                       </p>
-    
+
                       <div className="public-hero-search-row">
                         <div className="public-hero-search-shell">
                           <div className="public-hero-search-box">
@@ -143,7 +148,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                                         openGroup(group, event)
                                       }}
                                     >
-                                      <img src={optimizedProductImage(group.variants[0]?.product.imageUrl) || productImage(group.category)} alt={productTitle(group.name)} />
+                                      <Thumb imageUrl={group.variants[0]?.product.imageUrl} alt={productTitle(group.name)} />
                                       <span>
                                         <strong>{productTitle(group.name)}</strong>
                                         <small>{categoryLabel(group.category)}</small>
@@ -169,25 +174,25 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                             </div>
                           )}
                         </div>
-                        <button 
-                          type="button" 
-                          className="public-hero-cta-btn" 
+                        <button
+                          type="button"
+                          className="public-hero-cta-btn"
                           onClick={() => showDesktopMenu()}
                         >
                           Ver menú completo <ChevronRight size={16} />
                         </button>
                       </div>
                     </div>
-    
+
                     <div className="public-hero-right">
                       <span className="public-hero-glow-aura" aria-hidden="true" />
-                      <img 
+                      <img
                         src={pageSettings.desktopBannerImage}
                         alt="Portada de Full China"
-                        className="public-hero-dish-img" 
+                        className="public-hero-dish-img"
                         loading={isDesktopViewport ? 'eager' : 'lazy'}
                         fetchPriority={isDesktopViewport ? 'high' : 'low'}
-                        decoding="async" 
+                        decoding="async"
                       />
                       <div className="public-hero-gradient-overlay" />
                     </div>
@@ -196,7 +201,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       <div className="public-home-loyalty-banner">
                         <div className="public-home-loyalty-copy">
                           <span className="public-home-loyalty-kicker"><i /> PROGRAMA DE FIDELIDAD</span>
-                          <h2>Cada visita te acerca a <em>un premio</em></h2>
+                          <h2><Fit>Cada visita <em>te premia</em></Fit></h2>
                           <p><span>Un sello por visita. Completa 10 visitas.</span><span>Gana tu premio Full China.</span></p>
                           <div className="public-home-loyalty-progress" aria-label="Tarjeta de ejemplo de diez sellos">
                             {Array.from({ length: 10 }, (_, index) => <span key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></span>)}
@@ -218,16 +223,17 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       <button type="button" className={desktopHeroSlide === 1 ? 'is-active' : ''} aria-label="Ver programa de fidelidad" aria-current={desktopHeroSlide === 1 ? 'true' : undefined} onClick={() => setDesktopHeroSlide(1)} />
                     </div>
                   </section>
-    
+
+                  <div className="pd-marquee" aria-hidden="true"><div>{[0, 1].map(copy => <span key={copy}>{categories.filter(c => c !== 'Todos').map(category => <b key={category}>{categoryLabel(category)}<Wok lit={false} /></b>)}</span>)}</div></div>
+
                   {/* 3. NUESTRAS CATEGORÍAS */}
                   <section className="public-home-section">
                     <div className="public-home-section-header">
                       <div className="public-home-section-title-wrap">
                         <h2 className="public-home-section-title">NUESTRAS CATEGORÍAS</h2>
-                        <span className="public-home-section-accent-line" />
                       </div>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="public-home-see-all-btn"
                         onClick={() => showDesktopMenu()}
                       >
@@ -235,7 +241,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         <ChevronRight size={14} />
                       </button>
                     </div>
-    
+
                     <div className="public-home-categories-grid">
                       {categories.filter(c => c !== 'Todos').map(category => (
                         <button
@@ -252,7 +258,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       ))}
                     </div>
                   </section>
-    
+
                   {/* 3. LO MÁS PEDIDO 🔥 */}
                   <section className="public-home-section">
                     <div className="public-home-section-header">
@@ -261,7 +267,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         <p className="public-home-section-sub">Los favoritos de nuestros clientes.</p>
                       </div>
                     </div>
-    
+
                     <div className="public-home-carousel">
                       {canScrollPopular && (
                         <button type="button" className="public-home-carousel-arrow prev" aria-label="Ver plato anterior" onClick={() => scrollPopular(-1)}>
@@ -278,9 +284,9 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       )}
                     </div>
                   </section>
-    
-    
-    
+
+
+
                   {/* 5. ¿CÓMO QUIERES RECIBIR TU PEDIDO? */}
                   <section className="public-home-section">
                     <div className="public-home-section-header">
@@ -288,7 +294,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         <h2 className="public-home-section-title">¿CÓMO QUIERES RECIBIR TU PEDIDO?</h2>
                       </div>
                     </div>
-    
+
                     <div className="public-home-delivery-grid">
                       {/* Card 1: Delivery */}
                       <div className="public-home-delivery-card delivery-mode">
@@ -302,11 +308,11 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                           </div>
                         </div>
                       </div>
-    
+
                       {/* Card 2: Retiro en Full China */}
                       <div className="public-home-delivery-card pickup-mode">
                         <div className="public-home-delivery-content">
-                          <h3>Retiro en Full China</h3>
+                          <h3>Retiro en local</h3>
                           <p>Retíralo directo en el food truck.</p>
                           <div className="public-home-delivery-badges">
                             <span className="del-badge"><Clock size={13} /> Inmediato</span>
@@ -317,7 +323,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       </div>
                     </div>
                   </section>
-    
+
                   {/* 7. NUESTRAS PROMOCIONES */}
                   <section className="public-home-section">
                     <div className="public-home-section-header">
@@ -334,14 +340,14 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         <ChevronRight size={14} />
                       </button>
                     </div>
-    
+
                     <div className="public-home-promos-grid">
                       {promoGroups.length === 0 && loading ? <PublicHomePromoSkeletons /> : promoGroups.map(group => renderDesktopPromoCard(group))}
                     </div>
                   </section>
                 </>
               )}
-    
+
               {/* TAB 2: MENU (Catálogo Completo) */}
               {currentTab === 'menu' && (
                 <>
@@ -349,7 +355,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                     <div className="public-menu-discovery-heading">
                       <span><Flame size={20} aria-hidden="true" /></span>
                       <div>
-                        <h1 id="public-menu-discovery-title">{search.trim() ? `Resultados para “${search.trim()}”` : '¿Qué se te antoja hoy?'}</h1>
+                        <h1 id="public-menu-discovery-title"><Fit>{search.trim() ? `Resultados para “${search.trim()}”` : '¿Qué se te antoja hoy?'}</Fit></h1>
                         <p>{search.trim() ? `${visibleGroups.length} ${visibleGroups.length === 1 ? 'plato encontrado' : 'platos encontrados'} en nuestro menú.` : 'Encuentra tu plato favorito y pídelo preparado al momento.'}</p>
                       </div>
                     </div>
@@ -381,22 +387,23 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       )}
                     </label>
                   </section>
-    
+
                   {/* Categories Nav (Floating Circular Dish Selector in Desktop) */}
-                  {categories.length > 4 && <div className="public-category-hint" aria-hidden="true">Desliza para ver más <ChevronRight size={13} /></div>}
-                  <nav className="public-categories-scroll" id="menu-section">
+                  <div className="pd-rail-wrap">
+                  <nav className="public-categories-scroll" id="menu-section" ref={railRef} aria-label="Categorías del menú">
+                     <Chopsticks railRef={railRef} active={heldCategory ?? 'Todos'} />
                      <button
-                       className={`public-cat-btn ${activeCategory === 'Todos' ? 'active' : ''}`} 
+                       className={catClass('Todos')}
                        onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>
                        <div className="public-cat-dish-circle">
                          <img src={CATEGORY_ICONS.Todos} alt="" width={44} height={44} decoding="async" />
                        </div>
-                       <span className="public-cat-label-vector"><Star size={13} fill="currentColor" aria-hidden="true" />Todos</span>
+                       <span>Todos</span>
                     </button>
                     {categories.filter(c => c !== 'Todos').map(category => (
-                       <button 
+                       <button
                           key={category}
-                          className={`public-cat-btn ${activeCategory === category ? 'active' : ''}`}
+                          className={catClass(category)}
                           onClick={() => { setSearch(''); setActiveCategory(category); setShowFavorites(false) }}
                        >
                          <div className="public-cat-dish-circle">
@@ -406,7 +413,8 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                        </button>
                     ))}
                   </nav>
-    
+                  </div>
+
                   {/* Products Catalog Section */}
                   <section className="public-content">
                     {activeCategory !== 'Todos' && (
@@ -415,7 +423,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         <b>{visibleGroups.length} {visibleGroups.length === 1 ? 'plato' : 'platos'}</b>
                       </div>
                     )}
-    
+
                     {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
                       <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
                         {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
@@ -441,7 +449,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                                 <span className="public-cat-section-bar" />
                                 <h3>{categoryLabel(section.category)}</h3>
                               </div>
-                              <span className="public-category-count-badge">{section.groups.length} {section.groups.length === 1 ? 'plato' : 'platos'}</span>
+                              <span className="public-category-count-badge">{section.groups.length} {section.groups.length === 1 ? 'opción' : 'opciones'}</span>
                             </div>
                             <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
                           </section>
@@ -455,7 +463,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                   </section>
                 </>
               )}
-    
+
               {/* TAB 3: CONTACTO */}
               {currentTab === 'contacto' && (
                 <Suspense fallback={<PublicContactSkeleton />}>
@@ -463,16 +471,16 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                 </Suspense>
               )}
               {currentTab === 'perfil' && <Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
-    
+
             </div>
-    
+
             {/* Desktop Sticky Sidebar (Live Cart & Checkout) */}
             <aside className="public-desktop-sidebar">
               <div ref={sidebarCardRef} className={`public-sidebar-card ${cartPulse ? 'is-pulsing' : ''} ${sidebarHasOverflow ? 'has-overflow' : ''}`}>
                 {/* Sidebar Header */}
                 <div className="public-sidebar-head">
                   <div className="public-sidebar-title">
-                    <ShoppingBag size={18} />
+                    <Wok lit={cart.length > 0} />
                     <span>Tu pedido</span>
                   </div>
                   {cart.length > 0 && (
@@ -481,13 +489,13 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                     </span>
                   )}
                 </div>
-    
+
                 {cart.length === 0 ? (
                   <div className="public-sidebar-empty">
                     <div className="public-empty-box-art">
-                      <img 
+                      <img
                         src="/optimized/fondos/carrito-vacio.webp"
-                        alt="Tu pedido está vacío" 
+                        alt="Tu pedido está vacío"
                         className="public-empty-cart-img"
                       />
                     </div>
@@ -498,8 +506,8 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                     <p className="public-empty-cart-sub">
                       ¡Explora nuestro menú y encuentra<br />tu próximo favorito!
                     </p>
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="public-empty-explore-btn"
                       onClick={() => {
                         showDesktopMenu()
@@ -518,13 +526,9 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         const isDeleting = deletingKeys.includes(lineKey)
                         return (
                           <div className={`public-sidebar-item ${isDeleting ? 'is-deleting' : ''}`} key={lineKey}>
-                            <img 
-                              src={optimizedProductImage(item.imageUrl) || productImage()}
-                              alt="" 
-                              className="public-sidebar-item-img" 
-                            />
+                            <Thumb imageUrl={item.imageUrl} className="public-sidebar-item-img" />
                             <div className="public-sidebar-item-info">
-                              <strong>{cartProductName(item.productName)}</strong>
+                              <strong><Fit>{cartProductName(item.productName)}</Fit></strong>
                               {getCartIncludedCopy(item) && <small className="public-cart-item-notes">{getCartIncludedCopy(item)}</small>}
                               <span className="public-sidebar-item-price">{money(item.price * item.quantity)}</span>
                               <div className="public-sidebar-item-actions">
@@ -552,9 +556,9 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                                 </button>
                               </div>
                             </div>
-                            <button 
-                              type="button" 
-                              className="public-sidebar-trash" 
+                            <button
+                              type="button"
+                              className="public-sidebar-trash"
                               onClick={() => handleRemoveSidebarItem(lineKey, item.quantity)}
                               aria-label="Eliminar producto"
                             >
@@ -564,7 +568,7 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         )
                       })}
                     </div>
-    
+
                     <div className="public-sidebar-secondary">
                     {/* Sidebar Recommendations (carrusel: una tarjeta a la vez,
                         rota sola — el espacio es angosto para varias en fila) */}
@@ -573,11 +577,11 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       return (
                         <section className="public-cart-recommendations public-sidebar-recommendations public-sidebar-reco-carousel">
                           <div className="public-cart-recommendations-head">
-                            <h3><Flame size={18} color="#FF5A52" className="fire-icon-pulse" /> ¿Algo más?</h3>
+                            <h3>¿Algo más?</h3>
                             <button type="button" onClick={() => { setReturnToConfirmAfterEdit(false); setStep('cart'); setCartOpen(true); setShowAllExtras(true) }}>Ver todos <ChevronRight size={13} /></button>
                           </div>
                           <div className="public-sidebar-reco-card" key={activeReco.key}>
-                            <img src={optimizedProductImage(activeReco.variants[0]?.product.imageUrl) || productImage(activeReco.category)} alt={productTitle(activeReco.name)} />
+                            <Thumb imageUrl={activeReco.variants[0]?.product.imageUrl} alt={productTitle(activeReco.name)} />
                             <div>
                               <strong>{productTitle(activeReco.name)}</strong>
                               <b>{money(activeReco.minPrice)}{priceBs(activeReco.minPrice) && <small className="public-reco-bs">{priceBs(activeReco.minPrice)}</small>}</b>
@@ -601,12 +605,12 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         </section>
                       )
                     })()}
-    
+
                     {/* Sidebar Financials */}
                     <div className="public-sidebar-summary">
                       <div className="public-sidebar-row">
                         <span>Subtotal</span>
-                        <strong key={total}>{money(total)}</strong>
+                        <strong><Odo value={money(total)} /></strong>
                       </div>
                       <div className="public-sidebar-row">
                         <span>Delivery</span>
@@ -615,24 +619,24 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                       <div className="public-sidebar-row total">
                         <span>Total</span>
                         <div className="public-sidebar-total-val">
-                          <em key={orderTotal}>{money(orderTotal)}</em>
+                          <em><Odo value={money(orderTotal)} /></em>
                           {priceBs(orderTotal) && <small className="public-sidebar-total-bs">{priceBs(orderTotal)}</small>}
                         </div>
                       </div>
                     </div>
-    
+
                     {/* Delivery / Retiro Switch (Modern Vector Segmented Control) */}
                     <div className="public-sidebar-type-toggle">
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className={`public-sidebar-type-btn ${orderType === 'delivery' ? 'active' : ''}`}
                         onClick={() => setOrderType('delivery')}
                       >
                         <Bike size={16} />
                         <span>Delivery</span>
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className={`public-sidebar-type-btn ${orderType === 'takeaway' ? 'active' : ''}`}
                         onClick={() => setOrderType('takeaway')}
                       >
@@ -640,24 +644,24 @@ export function PublicDesktopLayout({ activeCategory, address, canScrollPopular,
                         <span>Retiro en local</span>
                       </button>
                     </div>
-    
+
                     {/* Address Input Box */}
                     {orderType === 'delivery' && (
                       <div className="public-sidebar-address-box" onClick={() => openCartFromSidebar('address')}>
                         <MapPin size={16} />
-                        <input 
-                          readOnly 
-                          placeholder="Ingresa tu dirección de entrega" 
-                          value={address || ''} 
+                        <input
+                          readOnly
+                          placeholder="Ingresa tu dirección de entrega"
+                          value={address || ''}
                         />
                         <span className="public-sidebar-address-edit">Editar</span>
                       </div>
                     )}
                     </div>
-    
+
                     {/* Big Checkout CTA Button */}
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       className="public-sidebar-checkout-btn"
                       disabled={!cart.length || submitting}
                       onClick={() => {

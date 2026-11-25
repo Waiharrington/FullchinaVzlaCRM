@@ -101,7 +101,7 @@ function AppContent() {
   if (isPublicEntry) return <Navigate to="/pedir" replace />
   if (isPublicMenu) return <>
     {updateNotice}
-    <Suspense fallback={<div style={{ backgroundColor: '#0a0b0e', width: '100vw', height: '100dvh' }} />}><PublicMenu /></Suspense>
+    <Suspense fallback={<div style={{ backgroundColor: '#0A0706', width: '100vw', height: '100dvh' }} />}><PublicMenu /></Suspense>
     <Suspense fallback={null}><PwaInstallPrompt /></Suspense>
   </>
   // El bundle de AdminApp (login + dashboard + AuthProvider, que es quien

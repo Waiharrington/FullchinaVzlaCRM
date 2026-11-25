@@ -25,6 +25,7 @@ export function PublicMenuWelcomeModal({
   return (
     <div className={`public-welcome-backdrop${closing ? ' is-closing' : ''}`}>
       <section className="public-welcome-dialog" role="dialog" aria-modal="true" aria-labelledby="public-welcome-title" aria-describedby="public-welcome-copy">
+        <div className="pd-welcome-scene" aria-hidden="true"><img className="pd-w-flame" src="/optimized/pedir-v2/llama-wok.webp" alt="" /><img className="pd-w-food" src="/optimized/pedir-v2/comida-wok.webp" alt="" /><img className="pd-w-bowl" src="/optimized/pedir-v2/wok-bowl.webp" alt="" /></div>
         <div className="public-welcome-brand">
           <img src="/optimized/root/logo-welcome.webp" alt="Full China" width="192" height="84" />
         </div>
@@ -56,6 +57,7 @@ export function PublicMenuWelcomeModal({
           {loading ? 'Abriendo la carta…' : <>Explorar la carta <ChevronRight size={19} /></>}
         </button>
       </section>
+      <div className="pd-curtain pd-curtain--welcome" aria-hidden="true"><img src="/optimized/root/logo-welcome.webp" alt="" /><span>Prendiendo el fuego…</span></div>
     </div>
   )
 }

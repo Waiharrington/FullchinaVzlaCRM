@@ -1,6 +1,6 @@
 import { type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
-import { optimizedProductImage, productImage, productTitle, money, filterProteinExtraGroups } from '../../lib/publicMenuFormat'
+import { productTitle, money, filterProteinExtraGroups } from '../../lib/publicMenuFormat'
 import { X, CircleAlert, ArrowDown, CupSoda, Check, Plus, Minus, LoaderCircle } from 'lucide-react'
 import { isIncludedProteinGroup, getDefaultModifierSelection, countModifierSelections, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION } from '../../lib/publicOrderRules'
 import { publicVariantCopy } from '../../lib/publicMenuLabels'
@@ -10,6 +10,7 @@ import { getPublicProductModifiers } from '../../lib/publicOrders'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { formatSpanishText, formatProductTitle } from '../../lib/textFormat'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
+import { Fit, Odo, SpinDish, Thumb } from '../../pedir-v2/ui'
 
 interface ProductDetailDialogProps {
   addingSelectedProduct: boolean
@@ -62,14 +63,15 @@ createPortal(
                 style={detailOrigin ? { transformOrigin: `${detailOrigin.x}px ${detailOrigin.y}px` } : undefined}
               >
                 <div className="ppdm-image">
-                  <img src={optimizedProductImage(selectedProduct.imageUrl) || productImage(selectedGroup.category)} alt={selectedProduct.name} decoding="async" />
+                  <SpinDish key={selectedProduct.imageUrl} imageUrl={selectedProduct.imageUrl} alt={selectedProduct.name} />
+                  <span className="pd-spin-hint" aria-hidden="true">Gíralo con el dedo</span>
                   {selectedProduct.menuLabel === 'free_drink' && (
                     <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="ppdm-free-drink-sticker" />
                   )}
                   <button className="ppdm-close" onClick={closeProductDetail} aria-label="Cerrar detalle"><X /></button>
-                  <div className="ppdm-image-gradient" />
+                  <span className="pd-steam" aria-hidden="true"><i /><i /><i /></span>
                   <div className="ppdm-hero-copy">
-                    <h1>{productTitle(selectedGroup.name)}</h1>
+                    <h1><Fit>{productTitle(selectedGroup.name)}</Fit></h1>
                     <div className="ppdm-price">{money(selectedProduct.price)}{priceBs(selectedProduct.price) && <span className="ppdm-price-bs">{priceBs(selectedProduct.price)}</span>}</div>
                   </div>
                 </div>
@@ -84,7 +86,7 @@ createPortal(
                   )}
                   {selectedGroup.variants.length > 1 && (
                     <div className="ppdm-section">
-                      <div className="ppdm-section-header"><h3>Elige tu presentación</h3><span>Obligatorio</span></div>
+                      <div className="ppdm-section-header"><h3>Presentación</h3><span>Obligatorio</span></div>
                       <div className="ppdm-options">
                         {selectedGroup.variants.map(({ product, label }) => {
                           const variantCopy = publicVariantCopy(selectedGroup.name, label)
@@ -215,7 +217,7 @@ createPortal(
                           const quantity = selectedCatalogExtras[product.id] ?? 0
                           const [extraTitleLead, extraTitleDetail] = product.name.split('—', 2)
                           return <div className="ppdm-catalog-extra" key={product.id}>
-                            <img className="ppdm-catalog-extra-image" src={optimizedProductImage(product.imageUrl) || productImage('extras')} alt={formatProductTitle(product.name)} loading="lazy" decoding="async" />
+                            <Thumb className="ppdm-catalog-extra-image" imageUrl={product.imageUrl} alt={formatProductTitle(product.name)} />
                             <div><strong>{extraTitleDetail ? <><span>{formatProductTitle(extraTitleLead)}</span><span>— {formatProductTitle(extraTitleDetail)}</span></> : formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong><small>por unidad</small></span></div>
                             {quantity === 0
                               ? <button type="button" className="ppdm-catalog-extra-add" onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}>Agregar <Plus size={14} /></button>
@@ -233,7 +235,7 @@ createPortal(
                         {complementaryProducts.map(product => {
                           const quantity = selectedCatalogExtras[product.id] ?? 0
                           return <div className="ppdm-catalog-extra" key={product.id}>
-                            <img className="ppdm-complementary-image" src={optimizedProductImage(product.imageUrl) || productImage(product.category)} alt={formatProductTitle(product.name)} loading="lazy" decoding="async" />
+                            <Thumb className="ppdm-complementary-image" imageUrl={product.imageUrl} alt={formatProductTitle(product.name)} />
                             <div className="ppdm-complementary-copy"><strong>{formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong></span></div>
                             {quantity === 0
                               ? <button type="button" className="ppdm-complementary-add" aria-label={`Agregar ${product.name} al pedido`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}><Plus size={16} /> Agregar</button>
@@ -252,10 +254,10 @@ createPortal(
                   {modifierValidationError && <p className="ppdm-footer-feedback" id="ppdm-add-feedback" role="alert" aria-live="assertive"><CircleAlert size={17} aria-hidden="true" /><span>{modifierValidationError}</span></p>}
                   <div className="ppdm-qty">
                     <button type="button" onClick={() => setDetailQuantity(value => Math.max(1, value - 1))} aria-label="Disminuir cantidad"><Minus /></button>
-                    <span>{detailQuantity}</span>
+                    <span key={detailQuantity}>{detailQuantity}</span>
                     <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
                   </div>
-                  <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} · <span className="ppdm-add-btn-total" key={(selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity}>{money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)}</span></>}</button>
+                  <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Al wok'} <Odo className="ppdm-add-btn-total" value={money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)} /></>}</button>
                 </footer>
               </section>
             </div>,

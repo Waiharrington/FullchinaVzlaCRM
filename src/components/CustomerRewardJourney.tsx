@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Gift } from 'lucide-react'
+import { Fit } from '../pedir-v2/ui'
 
 const artwork = '/optimized/customer-profile/'
 const chapters = [
@@ -46,7 +47,7 @@ export default function CustomerRewardJourney({ stamps, threshold, rewards, desc
     <div className="customer-journey-scene" key={`${stamps}-${available}`}>
       <div className="customer-journey-copy">
         <small>{available ? 'RECOMPENSA DISPONIBLE' : 'TU CAMINO AL PREMIO'}</small>
-        <h3>{title}</h3>
+        <h3><Fit>{title}</Fit></h3>
         <p className="customer-journey-message-desktop">{message}</p>
         <p className="customer-journey-message-mobile">{mobileMessage}</p>
         {!available && <><p className="customer-journey-remaining customer-journey-remaining-desktop">Te {remaining === 1 ? 'falta' : 'faltan'} <b>{remaining} {remaining === 1 ? 'visita' : 'visitas'}</b> para desbloquearlo.</p><p className="customer-journey-remaining customer-journey-remaining-mobile">{remaining === 1 ? '1 visita para el premio.' : `Faltan ${remaining} visitas.`}</p></>}

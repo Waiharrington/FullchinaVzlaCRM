@@ -1,7 +1,7 @@
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react'
-import { ChevronRight, Clock, Flame, MapPin, MessageSquareText, Navigation, Pause, Play, Volume2, VolumeX, Wallet } from 'lucide-react'
+import { ChevronRight, Clock, MapPin, MessageSquareText, Navigation, Pause, Play, Volume2, VolumeX, Wallet } from 'lucide-react'
 import { CustomerLoyaltyPromo } from './CustomerLoyaltyPromo'
-import { HeroWokEmbers } from './HeroWokEmbers'
+import { Fit, Wok } from '../pedir-v2/ui'
 import type { PublicOrderPageSettings, PublicOrderReel } from '../lib/publicOrderPageSettings'
 
 type PublicMenuContactViewProps = {
@@ -59,14 +59,13 @@ export function PublicMenuContactView({
 
   const content = <section className="public-contact-view public-contact-page">
     <section className="public-cinematic-hero public-contact-hero">
-      <HeroWokEmbers />
+      <span className="pd-contact-wok" aria-hidden="true"><Wok /></span>
       <div className="public-hero-left public-contact-hero-copy">
         <span className="public-hero-tag">
-          <Flame size={14} className="fire-icon-pulse" />
           ESTAMOS PARA SERVIRTE
         </span>
         <h1 className="public-hero-main-title">
-          CONTÁCTANOS <br /><span className="public-hero-gold">TE ESCUCHAMOS</span>
+          <Fit>Te <span className="public-hero-gold">escuchamos</span></Fit>
         </h1>
         <p className="public-hero-desc">{mobile ? 'Escríbenos, estamos para servirte.' : '¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.'}</p>
         <div className="public-hero-search-row public-contact-hero-actions">
@@ -83,8 +82,8 @@ export function PublicMenuContactView({
       <CustomerLoyaltyPromo onJoin={openCustomerProfile} interactiveCard={!mobile} />
       <article className="public-contact-panel public-contact-talk">
         <header className="public-order-ticket-head">
-          <span><Flame size={14} /> Pedido directo</span>
-          <h2>Pide sin complicarte</h2>
+          <span>Pedido directo</span>
+          <h2><Fit>Pide sin complicarte</Fit></h2>
         </header>
         <div className="public-contact-status-row">
           <span><Clock size={14} /> Horario de atención</span>
@@ -115,7 +114,7 @@ export function PublicMenuContactView({
             </svg>
             Desde Instagram
           </span>
-          <h2>El wok en movimiento</h2>
+          <h2><Fit>El wok en movimiento</Fit></h2>
         </header>
         <div className="public-instagram-intro">
           <p><span>Fuego alto.</span> El wok en acción.</p>
@@ -248,7 +247,7 @@ export function PublicMenuContactView({
           </span>
           <div className="public-contact-location-overlay">
             <span>{pageSettings.contactAddress}</span>
-            <strong>Ven, come<br />y disfruta.</strong>
+            <strong><Fit>Ven, come y disfruta.</Fit></strong>
             <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
             <a href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-location">
               <Navigation size={16} />

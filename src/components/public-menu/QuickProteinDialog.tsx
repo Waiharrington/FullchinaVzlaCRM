@@ -5,6 +5,7 @@ import { Drumstick, X, Check, Minus } from 'lucide-react'
 import { productTitle, money } from '../../lib/publicMenuFormat'
 import { formatSpanishText } from '../../lib/textFormat'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
+import { Fit } from '../../pedir-v2/ui'
 import { type ProductModifierGroup } from '../../lib/dataService'
 
 interface QuickProteinDialogProps {
@@ -26,7 +27,7 @@ createPortal(
                   <span className="public-protein-removal-icon"><Drumstick size={20} aria-hidden="true" /></span>
                   <div>
                     <small>PERSONALIZA TU PLATO</small>
-                    <h2 id="public-protein-removal-title">¿Qué proteína quieres quitar?</h2>
+                    <h2 id="public-protein-removal-title"><Fit>¿Qué proteína quitamos?</Fit></h2>
                     <p>{productTitle(quickVariantGroup?.name ?? quickSelectedVariant.product.name)} · {money(quickSelectedVariant.product.price)}</p>
                   </div>
                   <button type="button" className="public-protein-removal-close" onClick={() => setQuickProteinDialogOpen(false)} aria-label="Cerrar"><X size={18} /></button>

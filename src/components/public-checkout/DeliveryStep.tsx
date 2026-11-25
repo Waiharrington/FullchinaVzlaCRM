@@ -21,7 +21,7 @@ export function DeliveryStep({ addressActionRef, cart, deliveryDisabled, orderTy
               <label className={`public-delivery-choice ${orderType === 'takeaway' ? 'selected' : ''}`}>
                 <input className="public-delivery-choice-input" type="radio" name="public-order-type" value="takeaway" checked={orderType === 'takeaway'} onChange={() => { addressActionRef.current += 1; setLocating(false); setOrderType('takeaway'); setDeliveryChosen(true) }} />
                 <img src="/optimized/fondos/pickup-card.webp" alt="" aria-hidden="true" />
-                <span className="public-delivery-choice-copy"><strong>Retirar en Full China</strong><span>Lo prepararemos para que vengas a buscarlo.</span></span>
+                <span className="public-delivery-choice-copy"><strong>Retiro en local</strong><span>Lo prepararemos para que vengas a buscarlo.</span></span>
                 <span className="public-choice-radio" aria-hidden="true" />
               </label>
               <label className={`public-delivery-choice ${orderType === 'delivery' ? 'selected' : ''}${deliveryDisabled ? ' is-disabled' : ''}`} aria-disabled={deliveryDisabled}>

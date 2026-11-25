@@ -2,11 +2,12 @@ import type { MenuVariant } from '../../lib/menuGrouping'
 import { type Dispatch, type SetStateAction } from 'react'
 import { createPortal } from 'react-dom'
 import { Utensils, X, Check, Minus, Plus, Drumstick, ChevronRight, LoaderCircle, ShoppingCart } from 'lucide-react'
-import { productTitle, optimizedProductImage, productImage, money } from '../../lib/publicMenuFormat'
+import { productTitle, money } from '../../lib/publicMenuFormat'
 import { publicVariantCopy } from '../../lib/publicMenuLabels'
 import { formatSpanishText } from '../../lib/textFormat'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
 import { type ProductModifierGroup } from '../../lib/dataService'
+import { Dish, Fit } from '../../pedir-v2/ui'
 
 interface QuickVariantDialogProps {
   closeQuickVariant: () => void
@@ -36,19 +37,17 @@ createPortal(
                   <span className="public-variant-header-icon"><Utensils size={20} /></span>
                   <div>
                     <small>ESCOGE ANTES DE AGREGAR</small>
-                    <h2 id="public-variant-title">¿Cuál presentación quieres?</h2>
+                    <h2 id="public-variant-title"><Fit>Elige tu presentación</Fit></h2>
                     <p>{productTitle(quickVariantGroup.name)}</p>
                   </div>
                   <button type="button" className="public-variant-close" onClick={closeQuickVariant} aria-label="Cerrar selector"><X size={18} /></button>
                 </header>
-    
+
                 <div className={`public-variant-options ${quickVariantGroup.variants.length > 4 ? 'is-many' : ''}`}>
                   {quickVariantGroup.variants.map(({ product, label }) => {
                     const selected = product.id === quickVariantId
                     const variantCopy = publicVariantCopy(quickVariantGroup.name, label)
-                    const inheritedImage = optimizedProductImage(product.imageUrl)
-                      || optimizedProductImage(quickVariantGroup.variants[0]?.product.imageUrl)
-                      || productImage(quickVariantGroup.category)
+                    const inheritedImage = product.imageUrl || quickVariantGroup.variants[0]?.product.imageUrl
                     return (
                       <button
                         type="button"
@@ -58,7 +57,7 @@ createPortal(
                         aria-pressed={selected}
                       >
                         <span className="public-variant-option-media">
-                          <img src={inheritedImage} alt="" />
+                          <Dish imageUrl={inheritedImage} alt="" eager />
                           {selected && <span className="public-variant-option-badge">Elegido</span>}
                           {product.menuLabel === 'free_drink' && <img src="/icons/free-drink-badge.png" alt="Incluye refresco gratis" className="public-variant-free-drink-badge" />}
                           <span className="public-variant-option-check"><Check size={16} /></span>
@@ -76,7 +75,7 @@ createPortal(
                     )
                   })}
                 </div>
-    
+
                 <footer className={`public-variant-footer ${quickSelectedVariant ? 'has-selection' : 'needs-selection'}`}>
                   {quickSelectedVariant ? <>
                     <div className="public-variant-quantity" aria-label="Cantidad">

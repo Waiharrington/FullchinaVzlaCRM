@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ArrowRight } from 'lucide-react'
+import { Fit } from '../pedir-v2/ui'
 
 type CustomerLoyaltyPromoProps = {
   presentation?: 'promotion' | 'recommended'
@@ -20,7 +21,7 @@ export function CustomerLoyaltyPromo({ presentation = 'promotion', onJoin, inter
     <div className="customer-loyalty-promotion-glow" aria-hidden="true" />
     <div className="customer-loyalty-promotion-copy">
       <span className="customer-loyalty-promotion-kicker"><i /> PROGRAMA DE FIDELIDAD</span>
-      <h2 id="customer-loyalty-promotion-title">Cada visita te acerca a <em>un premio</em></h2>
+      <h2 id="customer-loyalty-promotion-title"><Fit>Cada visita <em>te premia</em></Fit></h2>
       <p>Por cada visita sumas un sello. Completa los 10 y disfruta tu recompensa Full China.</p>
       <div className="customer-loyalty-promotion-progress" aria-label="Tarjeta de diez sellos">
         {Array.from({ length: 10 }, (_, index) => <span key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></span>)}

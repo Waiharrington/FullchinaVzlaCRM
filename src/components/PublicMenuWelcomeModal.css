@@ -1,118 +1,171 @@
+/* Bienvenida de /pedir. Se carga desde pedir.html antes que React, por eso
+   no depende de ninguna otra hoja. Solo anima transform y opacity. */
 .public-welcome-backdrop {
   position: fixed;
   inset: 0;
   z-index: 10020;
   display: grid;
   place-items: center;
-  padding: max(18px, env(safe-area-inset-top, 0px)) 18px max(18px, env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  /* El fondo sólido evita que Safari mezcle el color del body en la zona
-     segura inferior antes de que React termine de montar el menú. */
-  background: #050507;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  animation: public-store-closed-fade 220ms ease both;
+  overflow: hidden auto;
+  color: #fff;
+  font-family: Archivo, system-ui, sans-serif;
+  background: #0A0706;
 }
-.public-welcome-backdrop.is-closing { pointer-events: none; animation: public-welcome-exit 220ms ease-in both; }
-.public-welcome-backdrop.is-closing .public-welcome-dialog { animation: public-welcome-dialog-exit 220ms cubic-bezier(.4,0,1,1) both; }
-@keyframes public-welcome-exit { to { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); } }
-@keyframes public-welcome-dialog-exit { to { opacity: 0; transform: translateY(14px) scale(.975); filter: blur(2px); } }
+.public-welcome-backdrop *, .public-welcome-backdrop *::before, .public-welcome-backdrop *::after { box-sizing: border-box; }
+.public-welcome-backdrop.is-closing { pointer-events: none; animation: pd-welcome-out 220ms ease-in both; }
+
 .public-welcome-dialog {
-  /* The static welcome is rendered before the app-wide reset stylesheet loads. */
-  box-sizing: border-box;
-  width: min(100%, 510px);
-  max-height: calc(100dvh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  overflow: auto;
-  padding: clamp(24px, 5vw, 38px);
-  border: 1px solid rgba(255, 200, 61, .46);
-  border-radius: 26px;
-  color: #f8f7f5;
-  font-family: Inter, "DM Sans", system-ui, sans-serif;
-  background: radial-gradient(ellipse at 50% 0%, rgba(227, 27, 43, .18), transparent 55%), linear-gradient(160deg, #171418, #0d0e12 75%);
-  box-shadow: 0 32px 110px rgba(0,0,0,.72), 0 0 55px rgba(190,12,29,.16);
-  animation: public-store-closed-pop 320ms cubic-bezier(.2,.8,.2,1) both;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  width: min(100%, 460px);
+  min-height: 100dvh;
+  align-content: center;
+  padding: max(14px, env(safe-area-inset-top, 0px)) 22px max(18px, env(safe-area-inset-bottom, 0px));
+  text-align: center;
 }
-.public-welcome-dialog *,
-.public-welcome-dialog *::before,
-.public-welcome-dialog *::after { box-sizing: border-box; }
-.public-welcome-loading-status { min-height: 0; margin: 0; color: #bdbbc2; font-size: 12px; line-height: 1.4; text-align: center; }
+
+.pd-welcome-scene { position: relative; width: min(50vw, 25dvh, 226px); aspect-ratio: 1 / .92; margin-bottom: -4px; }
+/* La llama del logo respira detrás del wok, sin meterse con el texto. */
+.pd-welcome-scene::before {
+  content: '';
+  position: absolute;
+  inset: -20% -14% -14%;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='24 0 80 80'%3E%3Cpath fill='%23C8111B' d='M64 3c3 13 19 19 20 37 5-3 7-8 6-13 9 9 12 25 4 37-4 8-12 14-30 14S36 72 33 64c-10-13-5-27 3-37 1 7 4 11 8 12-2-15 6-30 20-36Z'/%3E%3C/svg%3E") center / contain no-repeat;
+  transform-origin: 50% 100%;
+  animation: pd-sway 2.2s ease-in-out infinite alternate;
+}
+.pd-welcome-scene img { position: absolute; left: 0; width: 100%; max-width: none; }
+.pd-w-flame { bottom: 16%; left: 12% !important; width: 76% !important; transform-origin: 50% 100%; animation: pd-flame 1.1s ease-in-out infinite alternate; }
+.pd-w-bowl { bottom: 0; animation: pd-bowl-toss 2.6s cubic-bezier(.45,0,.3,1) infinite; transform-origin: 60% 90%; }
+.pd-w-food { bottom: 30%; left: 17% !important; width: 66% !important; z-index: 1; animation: pd-food-toss 2.6s cubic-bezier(.3,.1,.4,1) infinite; }
+
+.public-welcome-brand { position: relative; z-index: 2; animation: pd-slap .5s .12s cubic-bezier(.2,1.5,.4,1) both; }
+.public-welcome-brand img { display: block; width: min(52vw, 214px); height: auto; filter: drop-shadow(0 5px 0 rgba(60, 0, 4, .35)); }
+
+.public-welcome-menu-heading { position: relative; margin-top: 10px; }
+.public-welcome-menu-heading > span { display: none; }
+.public-welcome-menu-heading h1, .public-welcome-menu-heading h2 { margin: 0; color: #fff; font: 400 clamp(20px, 7.2vw, 38px)/1.05 'Alfa Slab One', Rockwell, serif; white-space: nowrap; animation: pd-rise .5s .22s cubic-bezier(.2,.8,.2,1) both; }
+.public-welcome-menu-heading p { max-width: 36ch; margin: 9px auto 0; color: #FFE9DC; font-size: 14.5px; line-height: 1.42; text-wrap: pretty; animation: pd-rise .5s .3s cubic-bezier(.2,.8,.2,1) both; }
+.public-welcome-menu-heading p strong { color: #FFD24D; font-weight: 750; }
+
+/* Comanda colgada con los tres pasos. */
+.public-welcome-menu-list {
+  position: relative;
+  width: 100%;
+  margin: 24px 0 14px;
+  padding: 18px 18px 20px;
+  color: #17100E;
+  text-align: left;
+  background: #FFFBF4;
+  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
+  transform-origin: 50% -14px;
+  animation: pd-hang 1s .34s cubic-bezier(.3,1.4,.5,1) both;
+}
+.public-welcome-menu-section-title { display: none; }
+.public-welcome-menu-item { display: grid; padding: 8px 0 8px 46px; position: relative; opacity: 0; animation: pd-rise .42s calc(.55s + var(--i, 0) * .09s) cubic-bezier(.2,.8,.2,1) forwards; }
+.public-welcome-menu-item:nth-of-type(3) { --i: 1; }
+.public-welcome-menu-item:nth-of-type(4) { --i: 2; }
+.public-welcome-menu-item + .public-welcome-menu-item { border-top: 1.5px dashed #E6D5C4; }
+.public-welcome-menu-item b { position: absolute; left: 0; top: 50%; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; color: #fff; background: #D9141E; font: 400 14px/1 'Alfa Slab One', Rockwell, serif; }
+.public-welcome-menu-item strong { font-size: 15.5px; font-weight: 800; line-height: 1.2; }
+.public-welcome-menu-item small { margin-top: 2px; color: #6B5B55; font-size: 13px; line-height: 1.35; }
+
+.public-welcome-dismiss-choice { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px; color: #FFE9DC; font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.public-welcome-dismiss-choice input { appearance: none; -webkit-appearance: none; display: grid; place-items: center; width: 22px; height: 22px; margin: 0; border: 2px solid #FFD9CC; border-radius: 7px; background: transparent; cursor: pointer; transition: background .15s, border-color .15s; }
+.public-welcome-dismiss-choice input:checked { border-color: #FFC21A; background: #FFC21A; }
+.public-welcome-dismiss-choice input:checked::after { content: ''; width: 11px; height: 6px; margin-top: -3px; border: solid #17100E; border-width: 0 0 2.5px 2.5px; transform: rotate(-45deg); animation: pd-slap .22s both; }
+.public-welcome-dismiss-choice input:focus-visible, .public-welcome-confirm:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+.public-welcome-confirm {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 60px;
+  margin-top: 4px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 18px;
+  color: #17100E;
+  background: #FFC21A;
+  box-shadow: 0 6px 0 #8C0811;
+  font: 400 19px/1 'Alfa Slab One', Rockwell, serif;
+  cursor: pointer;
+  transition: transform .14s, box-shadow .14s;
+  animation: pd-rise .5s .74s cubic-bezier(.2,.8,.2,1) both;
+  -webkit-tap-highlight-color: transparent;
+}
+.public-welcome-confirm:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 8px 0 #8C0811; }
+.public-welcome-confirm:not(:disabled):active { transform: translateY(5px) scale(1); box-shadow: 0 1px 0 #8C0811; }
+.public-welcome-confirm > span, .public-welcome-confirm > svg { animation: pd-nudge 1.4s ease-in-out infinite; }
+.public-welcome-confirm:disabled { cursor: progress; }
+.public-welcome-loading-status { margin: 10px 0 0; color: #FFE9DC; font-size: 13px; line-height: 1.4; }
 .public-welcome-loading-status:empty { display: none; }
-.public-welcome-brand { display: grid; justify-items: center; gap: 7px; margin-bottom: 18px; }
-.public-welcome-brand img { width: 112px; height: 52px; object-fit: contain; }
-.public-welcome-menu-heading { margin: 0 0 20px; padding: 4px 0 18px; border-bottom: 1px solid rgba(255,200,61,.45); text-align: center; }
-.public-welcome-menu-heading > span { display: block; margin-bottom: 8px; color: #ffc83d; font-size: 10px; font-weight: 900; letter-spacing: .2em; }
-.public-welcome-menu-heading h1,
-.public-welcome-menu-heading h2 { margin: 0; color: #fff; font-size: clamp(24px, 5vw, 31px); line-height: 1.15; letter-spacing: -.04em; text-align: center; }
-.public-welcome-menu-heading p { max-width: 410px; margin: 11px auto 0; color: #c4c4cc; font-size: 15px; line-height: 1.5; }
-.public-welcome-menu-heading p strong { color: #fff; }
-.public-welcome-menu-heading::after { content: '✦  ✦  ✦'; display: block; margin: 14px auto -1px; color: #ffc83d; font-size: 10px; letter-spacing: .22em; }
-.public-welcome-menu-list { display: grid; padding: 2px 0; border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1); }
-.public-welcome-menu-section-title { padding: 10px 3px 8px; color: #ffc83d; font-size: 9px; font-weight: 900; letter-spacing: .17em; }
-.public-welcome-menu-item { padding: 13px 3px; }
-.public-welcome-menu-item + .public-welcome-menu-item { border-top: 1px dotted rgba(255,200,61,.35); }
-.public-welcome-menu-item > span { display: flex; align-items: baseline; gap: 10px; }
-.public-welcome-menu-item b { flex: 0 0 auto; color: #ed2638; font-size: 11px; font-weight: 950; letter-spacing: .08em; }
-.public-welcome-menu-item strong { color: #f8f6f3; font-size: 15px; font-weight: 800; }
-.public-welcome-menu-item small { display: block; margin: 4px 0 0 29px; color: #bdbbc2; font-size: 13px; line-height: 1.45; }
-.public-welcome-dismiss-choice { display: flex; align-items: center; justify-content: center; gap: 11px; min-height: 52px; margin: 16px 0 13px; padding: 10px 14px; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; color: #dedde2; background: rgba(255,255,255,.045); font-size: 14px; font-weight: 650; line-height: 1.35; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-.public-welcome-dismiss-choice input { box-sizing: border-box; appearance: none; -webkit-appearance: none; display: grid; flex: 0 0 22px; width: 22px; min-width: 22px; height: 22px; min-height: 22px; padding: 0; place-items: center; margin: 0; border: 1.5px solid rgba(255,255,255,.65); border-radius: 6px; background: rgba(0,0,0,.32); cursor: pointer; transition: none; }
-.public-welcome-dismiss-choice input:checked { border-color: #e31b2b; background: #e31b2b; }
-.public-welcome-dismiss-choice input:checked::after { content: ''; width: 9px; height: 5px; margin-top: -2px; border: solid #fff; border-width: 0 0 2px 2px; transform: rotate(-45deg); }
-.public-welcome-dismiss-choice input:focus-visible { outline: 2px solid #ffc83d; outline-offset: 3px; }
-.public-welcome-confirm { appearance: none; -webkit-appearance: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 52px; padding: 12px 16px; border: 1px solid rgba(255,95,99,.65); border-radius: 15px; color: #fff; background: linear-gradient(105deg,#f21c32,#ce1025); box-shadow: 0 8px 22px rgba(205,16,37,.23); font: inherit; font-size: 15px; font-weight: 850; cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; transition: transform .18s ease, box-shadow .18s ease; }
-.public-welcome-confirm:hover { transform: translateY(-1px); box-shadow: 0 10px 27px rgba(205,16,37,.35); }
-.public-welcome-confirm:active, .public-welcome-confirm:disabled, .public-welcome-confirm.is-loading { transform: none; border-radius: 15px; opacity: 1; color: #fff; background: linear-gradient(105deg,#f21c32,#ce1025); box-shadow: 0 8px 22px rgba(205,16,37,.23); }
-.public-welcome-confirm:disabled, .public-welcome-confirm.is-loading { cursor: wait; }
-.public-welcome-confirm:focus-visible { outline: 3px solid #ffc83d; outline-offset: 3px; }
-@media (max-width: 560px) {
-  /* Igualar los márgenes móviles de la bienvenida estática y la de React. */
-  .public-welcome-backdrop { padding: max(10px, env(safe-area-inset-top, 0px)) 12px max(10px, env(safe-area-inset-bottom, 0px)); }
-  .public-welcome-dialog { max-height: calc(100dvh - 20px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow: hidden; padding: 15px 16px 14px; border-radius: 21px; }
-  .public-welcome-brand { gap: 4px; margin-bottom: 8px; }
-  .public-welcome-brand img { width: 82px; height: 38px; }
-  .public-welcome-menu-heading { margin-bottom: 8px; padding: 0 0 10px; }
-  .public-welcome-menu-heading > span { margin-bottom: 5px; font-size: 9px; }
-  .public-welcome-menu-heading h1,
-  .public-welcome-menu-heading h2 { font-size: 25px; }
-  .public-welcome-menu-heading p { margin-top: 6px; font-size: 13px; line-height: 1.35; }
-  .public-welcome-menu-heading::after { margin: 6px auto -1px; }
-  .public-welcome-menu-section-title { padding: 7px 3px 4px; font-size: 8px; }
-  .public-welcome-menu-item { padding: 6px 2px; }
-  .public-welcome-menu-item strong { font-size: 13px; }
-  .public-welcome-menu-item small { margin-top: 2px; font-size: 11px; line-height: 1.3; }
-  .public-welcome-dismiss-choice { justify-content: flex-start; min-height: 48px; margin: 9px 0 8px; padding: 8px 11px; font-size: 13px; }
-  .public-welcome-dismiss-choice input { width: 20px; height: 20px; flex-basis: 20px; }
-  .public-welcome-confirm { min-height: 48px; padding: 10px 14px; font-size: 14px; }
+
+/* Santamaría: baja al tocar "Explorar" y sube al abrir la carta. */
+.pd-curtain {
+  position: fixed;
+  inset: 0 0 -4px;
+  z-index: 10015;
+  display: grid;
+  place-items: center;
+  place-content: center;
+  gap: 14px;
+  pointer-events: none;
+  background: linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,0) 18%, rgba(0,0,0,0) 84%, rgba(0,0,0,.6)), repeating-linear-gradient(#0A0706 0 3px, #2C211D 3px 8px, #1C1412 8px 26px, #050303 26px 28px);
+  border-bottom: 12px solid #D9141E;
+  animation: pd-curtain-up .8s .16s cubic-bezier(.75,0,.2,1) both;
 }
-@media (max-width: 560px) and (max-height: 700px) {
-  .public-welcome-dialog { padding-top: 10px; padding-bottom: 10px; }
-  .public-welcome-brand { margin-bottom: 5px; }
-  .public-welcome-brand img { width: 70px; height: 32px; }
-  .public-welcome-menu-heading h1,
-  .public-welcome-menu-heading h2 { font-size: 23px; }
-  .public-welcome-menu-heading p { font-size: 12px; line-height: 1.3; }
-  .public-welcome-menu-section-title { padding-top: 5px; }
-  .public-welcome-menu-item { padding-top: 4px; padding-bottom: 4px; }
-  .public-welcome-dismiss-choice { margin-top: 6px; margin-bottom: 6px; }
+.pd-curtain img { width: min(56vw, 280px); height: auto; filter: drop-shadow(0 6px 0 rgba(60,0,4,.35)); }
+.pd-curtain span { color: #FFD24D; font: 700 15px/1 Archivo, system-ui, sans-serif; }
+.pd-curtain--welcome { z-index: 10030; transform: translateY(-104%); animation: none; transition: transform .3s cubic-bezier(.5,0,.8,1); }
+.public-welcome-backdrop:has(.public-welcome-confirm.is-loading) .pd-curtain--welcome,
+.public-welcome-backdrop:has(.public-welcome-confirm[aria-busy="true"]) .pd-curtain--welcome { transform: translateY(0); }
+
+@media (min-width: 900px) and (min-height: 560px) {
+  .public-welcome-dialog { width: min(100%, 980px); grid-template-columns: 1fr 1fr; column-gap: 56px; grid-template-rows: auto auto auto auto auto; text-align: left; justify-items: start; }
+  .pd-welcome-scene { grid-area: 1 / 1 / 4 / 2; width: min(100%, 380px, 52vh); justify-self: center; align-self: end; margin: 0 0 -14px; }
+  .public-welcome-brand { grid-area: 4 / 1 / 6 / 2; justify-self: center; align-self: start; }
+  .public-welcome-brand img { width: 320px; }
+  .public-welcome-menu-heading { grid-area: 1 / 2; margin: 0; }
+  .public-welcome-menu-heading h1, .public-welcome-menu-heading h2 { font-size: 46px; }
+  .public-welcome-menu-heading p { margin-left: 0; font-size: 16px; }
+  .public-welcome-menu-list { grid-area: 2 / 2; }
+  .public-welcome-dismiss-choice { grid-area: 3 / 2; padding-left: 0; }
+  .public-welcome-confirm { grid-area: 4 / 2; }
+  .public-welcome-loading-status { grid-area: 5 / 2; }
 }
-@media (min-width: 561px) {
-  .public-welcome-dialog { width: min(100%, 460px); padding: 20px 26px 18px; border-radius: 22px; }
-  .public-welcome-brand { gap: 4px; margin-bottom: 9px; }
-  .public-welcome-brand img { width: 88px; height: 42px; }
-  .public-welcome-menu-heading { margin-bottom: 10px; padding: 0 0 11px; }
-  .public-welcome-menu-heading > span { margin-bottom: 5px; }
-  .public-welcome-menu-heading h1,
-  .public-welcome-menu-heading h2 { font-size: 27px; }
-  .public-welcome-menu-heading p { margin-top: 7px; font-size: 14px; line-height: 1.38; }
-  .public-welcome-menu-heading::after { margin: 7px auto -1px; }
-  .public-welcome-menu-item { padding: 8px 3px; }
-  .public-welcome-menu-item small { margin-top: 2px; font-size: 12px; line-height: 1.35; }
-  .public-welcome-dismiss-choice { min-height: 46px; margin: 10px 0 8px; padding: 8px 12px; font-size: 13px; }
-  .public-welcome-dismiss-choice input { width: 20px; height: 20px; flex-basis: 20px; }
-  .public-welcome-confirm { min-height: 46px; padding: 10px 14px; font-size: 14px; }
+@media (max-height: 790px) and (max-width: 899px) {
+  .pd-welcome-scene { width: min(42vw, 19dvh); }
+  .public-welcome-brand img { width: 168px; }
+  .public-welcome-menu-list { margin: 16px 0 8px; padding: 10px 16px 14px; }
+  .public-welcome-menu-item { padding-block: 6px; }
+  .public-welcome-confirm { min-height: 54px; margin-top: 0; }
 }
+@media (max-height: 700px) and (max-width: 899px) {
+  .pd-welcome-scene { width: min(30vw, 128px); }
+  .public-welcome-menu-list { margin: 14px 0 6px; padding: 10px 16px 14px; }
+  .public-welcome-menu-item { padding-block: 5px; }
+}
+
+@keyframes pd-sway { from { transform: scale(.97, .94) skewX(-2deg); } to { transform: scale(1.02, 1.05) skewX(2deg); } }
+@keyframes pd-sun { to { transform: rotate(360deg); } }
+@keyframes pd-flame { from { transform: scale(.94, .9) rotate(-1.5deg); } to { transform: scale(1.03, 1.08) rotate(1.5deg); } }
+@keyframes pd-food-toss { 0%, 46%, 100% { transform: none; } 12% { transform: translateY(5%); } 28% { transform: translateY(-46%) rotate(-16deg) scale(1.03); } 40% { transform: translateY(3%) rotate(2deg); } }
+@keyframes pd-bowl-toss { 0%, 46%, 100% { transform: none; } 11% { transform: translateY(4%) rotate(4deg); } 20% { transform: translateY(-3%) rotate(-8deg); } 38% { transform: translateY(2%) rotate(1deg); } }
+@keyframes pd-slap { from { opacity: 0; transform: scale(1.7) rotate(-10deg); } to { opacity: 1; transform: none; } }
+@keyframes pd-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes pd-hang { 0% { opacity: 0; transform: rotate(-7deg) translateY(-18px); } 45% { opacity: 1; transform: rotate(3deg); } 70% { transform: rotate(-1.4deg); } 100% { opacity: 1; transform: none; } }
+@keyframes pd-nudge { 0%, 60%, 100% { transform: none; } 78% { transform: translateX(6px); } }
+@keyframes pd-welcome-out { to { opacity: 0; transform: translateY(-3%); } }
+@keyframes pd-curtain-up { from { transform: none; visibility: visible; } 99% { transform: translateY(-104%); visibility: visible; } to { transform: translateY(-104%); visibility: hidden; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .public-welcome-backdrop, .public-welcome-dialog { animation: none; }
-  .public-welcome-backdrop.is-closing, .public-welcome-backdrop.is-closing .public-welcome-dialog { animation: none; }
-  .public-welcome-confirm { transition: none; }
+  .public-welcome-backdrop *, .public-welcome-backdrop::before { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  .public-welcome-menu-item { opacity: 1; }
+  .pd-curtain:not(.pd-curtain--welcome) { display: none; }
 }
