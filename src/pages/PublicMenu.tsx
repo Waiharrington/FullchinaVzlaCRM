@@ -301,11 +301,11 @@ export function PublicMenu() {
   const modifierRequestRef = useRef(0)
   const { groups, categories, retryPublicCatalog } = useCatalog({ activeCategory, initialCatalog, loading, modifierRequestRef, orderType, products, search, selectedGroup, selectedVariantId, setBcvRate, setDeliverySettings, setDeliverySettingsStatus, setDetailModifierGroups, setError, setExtrasProducts, setLoading, setPageSettings, setPageSettingsLoaded, setProducts, setSelectedExtras, setSelectedGroup })
 
-  // Abre en Promociones; si no hay ninguna activa, cae a "Todos".
+  // Abre en Promociones; si la categoría elegida no tiene platos, cae a "Todos".
   useEffect(() => {
     if (loading || products.length === 0) return
-    if (activeCategory === 'promociones' && !products.some(p => p.categories.includes('promociones'))) setActiveCategory('Todos')
-  }, [loading, products, activeCategory])
+    if (!categories.includes(activeCategory)) setActiveCategory('Todos')
+  }, [loading, products, categories, activeCategory])
 
   const heroSearchRef = useRef<HTMLInputElement>(null)
   const popularScrollRef = useRef<HTMLDivElement>(null)

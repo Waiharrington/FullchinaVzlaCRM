@@ -4,7 +4,7 @@ import { PUBLIC_MODIFIER_CACHE, PREVIEW_LOADING } from '../../lib/publicMenuConf
 import { getPublicCatalogWithRetry, prepareCatalog, warmPublicMenuImages } from '../../lib/publicMenuRuntime'
 import { getPublicOrderPageSettings, type PublicOrderPageSettings } from '../../lib/publicOrderPageSettings'
 import { getPublicMenuCategories, getPublicProductModifiers, getPublicDeliverySettings } from '../../lib/publicOrders'
-import { hydrateMenuCategories, MENU_CATEGORY_ORDER, menuCategoryRank } from '../../lib/menuCategories'
+import { hydrateMenuCategories, menuCategoryRank } from '../../lib/menuCategories'
 import { saveCatalogCache } from '../../lib/publicMenuStorage'
 import { groupMenuProducts, type MenuProductGroup } from '../../lib/menuGrouping'
 import { filterProteinExtraGroups } from '../../lib/publicMenuFormat'
@@ -177,11 +177,11 @@ export function useCatalog({ activeCategory, initialCatalog, loading, modifierRe
     return undefined
   }, [initialCatalog])
 
+  // Solo se listan las categorías que tienen al menos un plato visible en el menú.
   const categories = useMemo(() => {
-    const extracted = Array.from(new Set(products.flatMap(p => p.categories)));
-    const allCats = Array.from(new Set([...MENU_CATEGORY_ORDER, ...extracted]));
-    allCats.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
-    return [...allCats.filter(c => c !== 'otros' && c !== 'extras'), 'Todos'];
+    const filled = Array.from(new Set(products.filter(p => p.publicVisible !== false).flatMap(p => p.categories)));
+    filled.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
+    return [...filled.filter(c => c !== 'otros' && c !== 'extras'), 'Todos'];
   }, [products]);
   // Al buscar se recorre todo el menú: la categoría abierta no limita los resultados.
   const groups = useMemo(() => search.trim()
