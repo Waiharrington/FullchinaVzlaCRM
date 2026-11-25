@@ -142,6 +142,8 @@ const setup = (options = {}) => {
     log,
     sleepFn: async ms => { sleeps.push(ms) },
     delayFn: () => 9000,
+    // Fijo en horario diurno: las pruebas no deben depender de la hora real.
+    quietHours: () => false,
     ...(options.processor || {}),
   })
   return { log, sleeps, db, client, processor }
@@ -343,7 +345,7 @@ test('dos procesadores sobre la misma cola no envían ninguna fila dos veces', a
   const db = createFakeDb({ rows })
   const log = createLog()
   const client = createFakeClient()
-  const make = () => createQueueProcessor({ db, client, log, sleepFn: async () => {}, delayFn: () => 1, isEnabled: () => true })
+  const make = () => createQueueProcessor({ db, client, log, sleepFn: async () => {}, delayFn: () => 1, isEnabled: () => true, quietHours: () => false })
 
   await Promise.all([make().processQueue(), make().processQueue()])
 
