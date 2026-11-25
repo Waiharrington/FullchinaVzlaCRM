@@ -111,3 +111,43 @@
 .pd-select-option:active { transform: scale(.94); }
 .pd-select-option svg { animation: pd-pop .3s var(--pd-spring); }
 html[data-pwa-entry='cliente'] .public-pickup-time { cursor: default; }
+
+/* Las cifras vecinas del contador nunca asoman. */
+.pd-odo-digit > span { transform: translateY(calc(var(--d) * -1.4em)); margin-top: -.2em; }
+.pd-odo-digit i { height: 1.4em; line-height: 1.4; }
+/* Filas del menú completo: todas las cajas con la misma altura. */
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card:first-child .public-prod-img-wrap { aspect-ratio: 1 / .8 !important; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card:first-child .public-prod-title { font: 800 14px/1.2 var(--pd-text) !important; }
+
+/* ===== Comanda de escritorio a toda la altura ===== */
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-desktop-layout { grid-template-columns: minmax(0, 1fr) clamp(300px, 25vw, 384px); max-width: 1460px; }
+  .public-desktop-sidebar { top: 80px; }
+  .public-sidebar-card { height: calc(100dvh - 96px); max-height: none; padding: 28px 24px 28px; }
+  .public-sidebar-head { padding-bottom: 12px; }
+  .public-sidebar-title { font-size: 24px; }
+  .public-sidebar-title .pd-wok-svg { width: 52px; }
+  .public-sidebar-count { font-size: 15px; }
+  /* Renglones de libreta: el espacio libre es papel por llenar, no un hueco. */
+  .public-sidebar-items { flex: 1 1 auto; align-content: start; background: url('/optimized/pedir-v2/wok-agua.webp') 50% calc(100% - 22px) / 118px auto no-repeat, repeating-linear-gradient(#0000 0 35px, #F3E4D3 35px 36px); background-blend-mode: normal; }
+  .public-sidebar-items { position: relative; }
+  .public-sidebar-item { grid-template-columns: 64px 1fr; padding-block: 12px; border-bottom: 0; box-shadow: 0 1px 0 #EBD9C6; background: #fff; }
+  .public-sidebar-item-img { width: 64px; height: 64px; border-radius: 16px; }
+  .public-sidebar-item-info > strong { font-size: 16px; }
+  .public-sidebar-item-price { font-size: 16px; }
+  .public-sidebar-summary { font-size: 15.5px; gap: 6px; }
+  .public-sidebar-row.total { font-size: 19px; }
+  .public-sidebar-total-val em { font-size: 29px; }
+  .public-sidebar-type-btn { min-height: 46px; font-size: 14.5px; }
+  .public-sidebar-checkout-btn { min-height: 62px; }
+  .public-sidebar-checkout-main { font-size: 17px; }
+  .public-sidebar-empty { flex: 1; align-content: center; }
+  .public-sidebar-empty .public-empty-cart-img { width: 210px; }
+}
+@media (min-width: 900px) and (max-height: 760px) {
+  .public-sidebar-card { padding-block: 22px 24px; }
+  .public-sidebar-item, .public-sidebar-item-img { --s: 54px; }
+  .public-sidebar-item { grid-template-columns: 54px 1fr; padding-block: 9px; }
+  .public-sidebar-item-img { width: 54px; height: 54px; }
+  .public-sidebar-items { background-size: 88px auto, auto; }
+}

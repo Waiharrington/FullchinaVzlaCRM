@@ -3,6 +3,7 @@ import { type Dispatch, type SetStateAction } from 'react'
 import { MapPin, Clock, Navigation, ChevronRight } from 'lucide-react'
 import { formatPickupClock } from '../../lib/publicOrderRules'
 import { type WebOrderCartItem } from '../../lib/publicOrders'
+import { PdSelect } from '../../pedir-v2/PdSelect'
 import { type PublicOrderPageSettings } from '../../lib/publicOrderPageSettings'
 
 interface PickupStepProps {
@@ -31,14 +32,11 @@ export function PickupStep({ cart, formattedCloseTime, formattedOpenTime, mapPre
                 <div className="public-pickup-info"><Clock size={19} /><div><small>Horario de atención</small><strong>{pageSettings.contactDays}</strong><span>{formattedOpenTime} – {formattedCloseTime}</span></div></div>
                 <a className="public-pickup-directions" href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer"><Navigation size={17} /> Cómo llegar <ChevronRight size={17} /></a>
               </div>
-              <label className="public-pickup-time">
+              <div className="public-pickup-time">
                 <span><Clock size={17} aria-hidden="true" /> ¿A qué hora lo retiras?</span>
-                <select value={pickupTime} onChange={event => setPickupTime(event.target.value)}>
-                  <option value="asap">Lo antes posible</option>
-                  {pickupSlots.map(slot => <option key={slot} value={slot}>{formatPickupClock(slot)}</option>)}
-                </select>
+                <PdSelect label="¿A qué hora lo retiras?" value={pickupTime} onChange={setPickupTime} options={[{ value: 'asap', label: 'Lo antes posible', wide: true }, ...pickupSlots.map(slot => ({ value: slot, label: formatPickupClock(slot) }))]} />
                 <small>{pickupSlots.length ? 'Puedes elegir una hora dentro del horario de hoy.' : 'Ya no quedan horas para elegir hoy; lo preparamos lo antes posible.'}</small>
-              </label>
+              </div>
               <button type="button" className="public-primary public-pickup-continue" disabled={!cart.length} onClick={() => setStep('details')}>Continuar con mis datos <ChevronRight /></button>
             </section>
   )

@@ -98,15 +98,15 @@ html[data-pwa-entry='cliente'], html[data-pwa-entry='cliente'] body { color-sche
 /* Estallido de precio */
 .pd-burst { position: relative; display: inline-grid; place-items: center; width: 96px; aspect-ratio: 1; color: var(--fg); }
 .pd-burst svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: var(--pd-yellow); filter: drop-shadow(0 3px 0 rgba(60, 0, 4, .3)); animation: pd-sun 26s linear infinite; }
-.pd-burst b { position: relative; max-width: 62px; font: 400 17px/1 var(--pd-display); text-align: center; transform: rotate(-7deg); }
+.pd-burst b { position: relative; max-width: 62px; font: 400 15.5px/1 var(--pd-display); text-align: center; transform: rotate(-7deg); }
 
 /* Barra superior */
-.public-top-bar { position: relative; z-index: 60; display: flex; align-items: center; gap: 12px; padding: max(10px, env(safe-area-inset-top, 0px)) 18px 8px; background: var(--stage); color: #fff; }
-.public-top-bar-logo { display: block; width: auto; height: 46px; filter: drop-shadow(0 2px 0 rgba(60, 0, 4, .3)); }
-html[data-pwa-entry='cliente'] .public-top-bar .pwa-install-shortcut { min-height: 44px; margin-left: auto; border: 0; color: #fff; background: rgba(60, 0, 4, .36); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; font: 700 14px/1 var(--pd-text); }
+.public-top-bar { position: relative; z-index: 60; display: flex; align-items: center; gap: 10px; padding: max(10px, env(safe-area-inset-top, 0px)) 18px 8px; background: var(--stage); color: #fff; }
+.public-top-bar-logo { display: block; width: auto; height: 44px; filter: drop-shadow(0 2px 0 rgba(60, 0, 4, .3)); }
+html[data-pwa-entry='cliente'] .public-top-bar .pwa-install-shortcut { min-height: 44px; margin-left: auto; border: 0; color: #fff; background: rgba(60, 0, 4, .36); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; font: 700 13px/1 var(--pd-text); }
 html[data-pwa-entry='cliente'] .pwa-install-shortcut svg { color: var(--pd-yellow); }
 
-.public-status, .public-nav-status-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; }
+.public-status, .public-nav-status-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
 .public-status i, .public-nav-status-dot { width: 10px; height: 10px; border-radius: 50%; background: #7CF2A6; }
 .is-open > i, .is-open > .public-nav-status-dot { animation: pd-beat 1.8s ease-in-out infinite; }
 .is-closed > i, .is-closed > .public-nav-status-dot { background: var(--pd-yellow); }
@@ -116,22 +116,22 @@ html[data-pwa-entry='cliente'] .pwa-install-shortcut svg { color: var(--pd-yello
 
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .public-top-bar { position: sticky; top: 0; display: grid; grid-template-columns: 1fr auto 1fr; min-height: 76px; padding: 8px max(28px, calc((100vw - 1440px) / 2)); }
-  .public-top-bar-logo { height: 56px; transition: transform .3s var(--pd-spring); }
+  .public-top-bar-logo { height: 48px; transition: transform .3s var(--pd-spring); }
   .public-top-bar-logo:hover { transform: rotate(-3deg) scale(1.06); }
   .public-desktop-nav-links { gap: 4px; }
-  .public-nav-tab-btn { position: relative; min-height: 46px; padding: 0 20px; border: 0; border-radius: 14px; color: #FFE5DA; background: none; font-size: 16px; font-weight: 700; }
+  .public-nav-tab-btn { position: relative; min-height: 44px; padding: 0 16.5px; border: 0; border-radius: 14px; color: #FFE5DA; background: none; font-size: 14.5px; font-weight: 700; }
   .public-nav-tab-btn::after { content: ''; position: absolute; left: 20px; right: 20px; bottom: 4px; height: 4px; border-radius: 4px; background: var(--pd-yellow); transform: scaleX(0); transition: transform .3s var(--pd-out); }
   .public-nav-tab-btn:hover { color: #fff; }
   .public-nav-tab-btn:hover::after { transform: scaleX(.4); }
   .public-nav-tab-btn.active { color: #fff; animation: none; }
   .public-nav-tab-btn.active::after { transform: none; }
   .public-top-bar-right { justify-content: flex-end; }
-  .public-nav-status-badges { display: flex; align-items: center; gap: 18px; white-space: nowrap; }
-  .public-nav-bcv-pill { display: grid; padding-left: 18px; border-left: 2px solid rgba(255, 255, 255, .22); line-height: 1.15; }
+  .public-nav-status-badges { display: flex; align-items: center; gap: 15px; white-space: nowrap; }
+  .public-nav-bcv-pill { display: grid; padding-left: 15px; border-left: 2px solid rgba(255, 255, 255, .22); line-height: 1.15; }
   .public-nav-bcv-label { font-size: 12px; color: #FFE0D4; }
-  .public-nav-bcv-val { font-size: 15px; font-weight: 800; color: var(--pd-yellow); font-variant-numeric: tabular-nums; }
+  .public-nav-bcv-val { font-size: 13.5px; font-weight: 800; color: var(--pd-yellow); font-variant-numeric: tabular-nums; }
 }
-@media (min-width: 900px) and (max-width: 1180px) { .public-nav-status-hours { display: none; } .public-nav-tab-btn { padding: 0 13px; } }
+@media (min-width: 900px) and (max-width: 1180px) { .public-nav-status-hours { display: none; } .public-nav-tab-btn { padding: 0 10.5px; } }
 
 /* Navegación inferior móvil */
 .public-mobile-tab-bar { position: fixed; inset: auto 0 0; z-index: 70; display: grid; grid-template-columns: repeat(3, 1fr); height: var(--pd-tabbar); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--card); box-shadow: 0 -1px 0 var(--line), 0 -10px 24px -18px rgba(60, 20, 0, .4); }
@@ -145,29 +145,29 @@ html[data-pwa-entry='cliente'] .pwa-install-shortcut svg { color: var(--pd-yello
 
 /* Wok-carrito */
 .public-cart-fab-wrap { position: fixed; z-index: 69; left: 12px; right: 12px; bottom: calc(var(--pd-tabbar) + 10px); display: flex; justify-content: center; pointer-events: none; animation: pd-bar-in .5s var(--pd-spring) both; }
-.public-cart-fab { pointer-events: auto; display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 8px; width: min(100%, 460px); min-height: 62px; padding: 0 18px 0 8px; border: 0; border-radius: 22px; color: var(--inv-fg); background: var(--inv); box-shadow: 0 14px 28px -12px rgba(40, 8, 0, .75); text-align: left; transition: transform .18s var(--pd-out); }
+.public-cart-fab { pointer-events: auto; display: grid; grid-template-columns: 74px 1fr auto; align-items: center; gap: 8px; width: min(100%, 460px); min-height: 53.5px; padding: 0 15px 0 8px; border: 0; border-radius: 18px; color: var(--inv-fg); background: var(--inv); box-shadow: 0 14px 28px -12px rgba(40, 8, 0, .75); text-align: left; transition: transform .18s var(--pd-out); }
 .public-cart-fab:active { transform: scale(.97); }
-.pd-wokbar-wok { position: relative; display: block; width: 74px; height: 62px; }
+.pd-wokbar-wok { position: relative; display: block; width: 74px; height: 53.5px; }
 .pd-wokbar-wok .pd-wok-svg { position: absolute; left: 0; bottom: 8px; width: 76px; --pd-ink: #3A2C26; }
 .pd-wokbar-dishes { position: absolute; left: 10px; bottom: 30px; display: flex; z-index: 0; }
 .pd-wokbar-dishes img { width: 24px; height: 24px; margin-right: -6px; border: 2px solid #fff; border-radius: 50%; object-fit: cover; animation: pd-drop .5s .25s var(--pd-spring) both; }
 .pd-wokbar-dishes img:nth-child(2) { margin-top: -6px; }
 .public-cart-fab-badge { position: absolute; top: -6px; right: -4px; z-index: 2; display: grid; place-items: center; min-width: 25px; height: 25px; padding: 0 6px; border: 2.5px solid var(--pd-ink); border-radius: 13px; background: var(--pd-red); font-size: 13px; font-weight: 800; animation: pd-pop .4s var(--pd-spring); }
 .pd-wokbar-copy { display: grid; line-height: 1.2; }
-.pd-wokbar-copy strong { font-size: 16px; font-weight: 800; }
+.pd-wokbar-copy strong { font-size: 14.5px; font-weight: 800; }
 .pd-wokbar-copy small { color: #D9C9C0; font-size: 13px; }
-.pd-wokbar-total { color: var(--pd-yellow); font-size: 18px; font-weight: 800; }
+.pd-wokbar-total { color: var(--pd-yellow); font-size: 15.5px; font-weight: 800; }
 @keyframes pd-bar-in { from { transform: translateY(130%); } }
 @keyframes pd-pop { 0% { transform: scale(.4); } 60% { transform: scale(1.25); } }
 @keyframes pd-drop { from { transform: translateY(-34px) scale(.5); opacity: 0; } }
 
 /* Aviso de agregado */
-.public-add-toast { position: fixed; z-index: 75; top: max(12px, env(safe-area-inset-top, 0px)); left: 50%; display: flex; align-items: center; gap: 11px; width: max-content; max-width: calc(100vw - 24px); min-height: 58px; padding: 7px 16px 7px 7px; border-radius: 18px; color: var(--inv-fg); background: var(--inv); box-shadow: 0 16px 30px -14px rgba(40, 8, 0, .8); transform: translateX(-50%); animation: pd-toast-in .42s var(--pd-spring) both; }
+.public-add-toast { position: fixed; z-index: 75; top: max(12px, env(safe-area-inset-top, 0px)); left: 50%; display: flex; align-items: center; gap: 11px; width: max-content; max-width: calc(100vw - 24px); min-height: 50px; padding: 7px 13px 7px 7px; border-radius: 18px; color: var(--inv-fg); background: var(--inv); box-shadow: 0 16px 30px -14px rgba(40, 8, 0, .8); transform: translateX(-50%); animation: pd-toast-in .42s var(--pd-spring) both; }
 .public-add-toast.closing { animation: pd-toast-out .28s ease-in both; }
 .public-add-toast-img { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; overflow: hidden; background: var(--pd-ink-2); }
 .public-add-toast-img img { width: 100%; height: 100%; object-fit: cover; }
 .public-add-toast-copy { display: grid; min-width: 0; line-height: 1.25; }
-.public-add-toast-label { font-size: 14px; font-weight: 800; }
+.public-add-toast-label { font-size: 13px; font-weight: 800; }
 .public-add-toast-name { max-width: 190px; overflow: hidden; color: #E4D6CD; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .public-add-toast-check { display: grid; color: var(--pd-yellow); }
 .public-add-toast-action { display: none; }
@@ -186,14 +186,14 @@ html[data-pwa-entry='cliente'] #toast-root { z-index: 10060; top: max(16px, env(
 html[data-pwa-entry='cliente'] aside.pwa-install-prompt { border: 0; color: var(--fg); background: var(--card); box-shadow: 0 24px 60px -18px rgba(40, 8, 0, .55); backdrop-filter: none; -webkit-backdrop-filter: none; font-family: var(--pd-text); }
 html[data-pwa-entry='cliente'] aside.pwa-install-prompt::before { background: var(--pd-red); }
 html[data-pwa-entry='cliente'] aside .pwa-install-prompt__eyebrow { color: var(--accent); font-size: 12px; letter-spacing: 0; }
-html[data-pwa-entry='cliente'] aside .pwa-install-prompt__content > span, html[data-pwa-entry='cliente'] aside .pwa-install-prompt__demo-copy p { color: var(--soft); font-size: 13.5px; }
+html[data-pwa-entry='cliente'] aside .pwa-install-prompt__content > span, html[data-pwa-entry='cliente'] aside .pwa-install-prompt__demo-copy p { color: var(--soft); font-size: 13px; }
 html[data-pwa-entry='cliente'] aside .pwa-install-prompt__icon, html[data-pwa-entry='cliente'] aside .pwa-install-prompt__install { background: var(--pd-red); box-shadow: none; border: 0; }
 html[data-pwa-entry='cliente'] aside .pwa-install-prompt__flow { border-color: var(--line); }
 html[data-pwa-entry='cliente'] aside .pwa-install-prompt__choice-label { color: var(--accent); }
 html[data-pwa-entry='cliente'] aside :is(.pwa-install-prompt__device-options > button, .pwa-install-prompt__step-navigation > button, .pwa-install-prompt__demo-heading > button, .pwa-install-prompt__android-choice-actions > button) { border-color: var(--line); color: var(--fg); background: var(--bg); }
 html[data-pwa-entry='cliente'] aside .pwa-install-prompt__device-options :is(strong, small), html[data-pwa-entry='cliente'] aside .pwa-install-prompt__demo-heading :is(strong, span), html[data-pwa-entry='cliente'] aside .pwa-install-prompt__demo-copy > :is(strong, span) { color: inherit; }
 
-.public-credits-footer { padding: 30px 18px 26px; color: var(--soft); font-size: 13.5px; text-align: center; }
+.public-credits-footer { padding: 24.5px 15px 21.5px; color: var(--soft); font-size: 13px; text-align: center; }
 .public-credits-footer a { color: var(--accent); font-weight: 700; }
 @media not all and (min-width: 1280px), not all and (min-width: 900px) { .public-credits-footer { padding-bottom: calc(var(--pd-tabbar) + 96px); } }
 .public-profile-tab-active .public-credits-footer { background: var(--bg); }
