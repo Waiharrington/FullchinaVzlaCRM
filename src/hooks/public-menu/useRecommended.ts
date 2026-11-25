@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo, useEffect, WheelEvent as ReactWheelEvent, type Dispatch, type SetStateAction, type RefObject } from 'react'
 import { CATEGORY_ACCENT_CYCLE } from '../../lib/publicMenuConfig'
-import { selectPublicCarouselGroups, preserveEmptyPublicCarousel } from '../../lib/publicOrderCarousel'
+import { completePublicCarousel, selectPublicCarouselGroups, preserveEmptyPublicCarousel } from '../../lib/publicOrderCarousel'
 import { optimizedProductImage, productImage } from '../../lib/publicMenuFormat'
 import { normalizeForSearch } from '../../lib/textFormat'
 import { groupMenuProducts, type MenuProductGroup } from '../../lib/menuGrouping'
@@ -68,19 +68,21 @@ export function useRecommended({ activeCategory, address, cart, categories, curr
     // fugazmente al recargar la página.
     const stableGroups = preserveEmptyPublicCarousel(source, groups, pageSettings.carouselSelectionConfigured && carouselGroups.length === 0)
     if (!carouselGroups.length && !pageSettings.carouselSelectionConfigured) stableGroups.sort((a, b) => a.key.localeCompare(b.key))
-    return stableGroups.slice(0, 8)
-  }, [groups, activeCategory, pageSettings.carouselSelectionConfigured])
+    // Si el negocio dejó el carrusel vacío a propósito, se respeta en todas las secciones.
+    const intentionallyEmpty = pageSettings.carouselSelectionConfigured && !products.some(product => product.publicCarousel)
+    const fillWith = activeCategory === 'Todos' || intentionallyEmpty ? [] : visibleGroups
+    return completePublicCarousel(stableGroups, fillWith)
+  }, [groups, products, activeCategory, pageSettings.carouselSelectionConfigured])
   const recommendedSlides = useMemo(() => {
     const slides: Array<{ kind: 'product'; group: typeof recommendedPool[number] } | { kind: 'loyalty' }> = []
     slides.push({ kind: 'loyalty' })
     if (recommendedPool.length === 0) return slides
     // La tarjeta abre Recomendado; luego cada grupo de tres productos queda
     // entre dos apariciones de fidelidad, también al cruzar el final del loop.
-    const productCount = Math.ceil(recommendedPool.length / 3) * 3
-    for (let index = 0; index < productCount; index += 1) {
-      slides.push({ kind: 'product', group: recommendedPool[index % recommendedPool.length] })
-      if ((index + 1) % 3 === 0 && index + 1 < productCount) slides.push({ kind: 'loyalty' })
-    }
+    recommendedPool.forEach((group, index) => {
+      slides.push({ kind: 'product', group })
+      if ((index + 1) % 3 === 0 && index + 1 < recommendedPool.length) slides.push({ kind: 'loyalty' })
+    })
     return slides
   }, [recommendedPool])
   const recommendedSlideCount = recommendedSlides.length

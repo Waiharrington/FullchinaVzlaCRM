@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SellableProduct } from './dataService'
-import { getAutomaticPublicCarouselProductIds, preserveEmptyPublicCarousel, selectPublicCarouselGroups } from './publicOrderCarousel'
+import type { MenuProductGroup } from './menuGrouping'
+import { completePublicCarousel, getAutomaticPublicCarouselProductIds, preserveEmptyPublicCarousel, selectPublicCarouselGroups } from './publicOrderCarousel'
 
 describe('carousel configuration state', () => {
   it('shows current automatic products until an owner saves an explicit selection', () => {
@@ -61,5 +62,24 @@ describe('automatic public carousel selection', () => {
     ]
 
     expect(getAutomaticPublicCarouselProductIds(products)).toEqual(['costilla-racion', 'lumpia-individual'])
+  })
+})
+
+describe('section carousel', () => {
+  const group = (key: string, imageUrl: string | null = `/${key}.webp`) =>
+    ({ key, name: key, variants: [{ label: key, product: { id: key, imageUrl } }] }) as unknown as MenuProductGroup
+  const keys = (groups: MenuProductGroup[]) => groups.map(item => item.key)
+
+  it('starts with the chosen dishes and completes the section without repeating any', () => {
+    expect(keys(completePublicCarousel([group('arroz')], [group('a'), group('arroz'), group('b')]))).toEqual(['arroz', 'a', 'b'])
+  })
+
+  it('does not repeat a photo shared by several dishes, but keeps dishes without photo', () => {
+    expect(keys(completePublicCarousel([], [group('a', '/x.webp'), group('b', '/x.webp'), group('c', null), group('d', null)]))).toEqual(['a', 'c', 'd'])
+  })
+
+  it('never adds dishes when there is nothing to complete with and caps at eight', () => {
+    expect(keys(completePublicCarousel([group('arroz')], []))).toEqual(['arroz'])
+    expect(completePublicCarousel([], Array.from({ length: 12 }, (_, index) => group(`p${index}`)))).toHaveLength(8)
   })
 })

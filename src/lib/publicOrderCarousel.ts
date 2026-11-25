@@ -1,5 +1,5 @@
 import type { SellableProduct, Product } from './dataService'
-import { groupMenuProducts } from './menuGrouping'
+import { groupMenuProducts, type MenuProductGroup } from './menuGrouping'
 import { normalizeForSearch } from './textFormat'
 
 const MAX_PUBLIC_CAROUSEL_GROUPS = 8
@@ -11,6 +11,22 @@ export function selectPublicCarouselGroups<T>(selectedGroups: T[], automaticGrou
 export function preserveEmptyPublicCarousel<T>(sourceGroups: T[], allGroups: T[], selectionConfigured: boolean): T[] {
   if (sourceGroups.length > 0) return sourceGroups
   return selectionConfigured ? [] : allGroups
+}
+
+/**
+ * Platos del carrusel de una sección: primero los que eligió el negocio y, si
+ * son pocos, otros de la misma sección. Nunca repite un plato ni una foto.
+ */
+export function completePublicCarousel(selectedGroups: MenuProductGroup[], sectionGroups: MenuProductGroup[]): MenuProductGroup[] {
+  const keys = new Set<string>()
+  const images = new Set<string>()
+  return [...selectedGroups, ...sectionGroups].filter(group => {
+    const image = group.variants[0]?.product.imageUrl
+    if (keys.has(group.key) || (image && images.has(image))) return false
+    keys.add(group.key)
+    if (image) images.add(image)
+    return true
+  }).slice(0, MAX_PUBLIC_CAROUSEL_GROUPS)
 }
 
 /** Resolves the products currently shown when no manual carousel is configured. */
