@@ -445,7 +445,7 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
         return
       }
       if (invalidModifierSelection) {
-        setModifierValidationError('Algunas opciones guardadas ya no están disponibles. Límpialas o vuelve al carrito y agrega este producto nuevamente.')
+        setModifierValidationError('Algunas opciones guardadas ya no están disponibles. Límpialas o vuelve a tu pedido y agrega este producto nuevamente.')
         return
       }
       const isAddingNewProduct = !editingCartLineKey
@@ -479,14 +479,14 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
           .filter(item => item.productId === selectedProduct.id)
           .reduce((sum, item) => sum + item.quantity, 0)
         if (mainPresentationQuantity + detailQuantity > PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION || extraRows.some(row => row.samePresentationQuantity + row.quantity > PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION)) {
-          setModifierValidationError('Puedes pedir hasta 30 unidades por presentación. Reduce la cantidad o los extras para guardar; tu carrito no cambiará.')
+          setModifierValidationError('Puedes pedir hasta 30 unidades por presentación. Reduce la cantidad o los extras para guardar; tu pedido no cambiará.')
           addingSelectedProductRef.current = false
           setAddingSelectedProduct(false)
           return
         }
         const newRows = Number(!mainExisting) + extraRows.filter(row => !row.existing).length
         if (currentCart.length + newRows > PUBLIC_ORDER_MAX_DISTINCT_LINES) {
-          setModifierValidationError('Tu pedido ya tiene 40 productos distintos. Quita uno desde el carrito para hacer espacio; no perderás lo agregado.')
+          setModifierValidationError('Tu pedido ya tiene 40 productos distintos. Quita uno desde tu pedido para hacer espacio; no perderás lo agregado.')
           addingSelectedProductRef.current = false
           setAddingSelectedProduct(false)
           return
@@ -499,7 +499,7 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
         const currentCart = cartRef.current
         const originalLine = currentCart.find(item => cartLineKey(item) === editingCartLineKey)
         if (!originalLine) {
-          setModifierValidationError('No encontramos ese producto en tu carrito. No se guardó ningún cambio.')
+          setModifierValidationError('No encontramos ese producto en tu pedido. No se guardó ningún cambio.')
           return
         }
         const previousAccompanimentPrefix = `Acompañamiento de ${formatProductTitle(originalLine.productName)}`
@@ -522,8 +522,8 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
         const cartLimitViolation = getPublicCartLimitViolation(nextCart)
         if (cartLimitViolation) {
           setModifierValidationError(cartLimitViolation === 'presentation-quantity'
-            ? 'Puedes pedir hasta 30 unidades por presentación. Reduce la cantidad o los extras para guardar; tu carrito no cambiará.'
-            : 'Tu pedido permite hasta 40 productos distintos. Quita uno desde el carrito antes de guardar; tus productos actuales se conservarán.')
+            ? 'Puedes pedir hasta 30 unidades por presentación. Reduce la cantidad o los extras para guardar; tu pedido no cambiará.'
+            : 'Tu pedido permite hasta 40 productos distintos. Quita uno desde tu pedido antes de guardar; tus productos actuales se conservarán.')
           return
         }
         commitCart(nextCart)

@@ -26,10 +26,10 @@ LOCAL_ORDER_TEST_MODE ? <div className="public-success"><Firecrackers /><span cl
               <div className="public-track-hero">
                 <Firecrackers />
                 <span className="pd-sent-wok" aria-hidden="true"><Wok /></span>
-                <span className="pd-stamp" aria-hidden="true">Recibido</span>
-                <h3>¡Pedido recibido!</h3>
+                <span className="pd-stamp" aria-hidden="true">Enviado</span>
+                <h3>Falta un paso: confírmalo por WhatsApp</h3>
                 <strong className="public-track-code">#{orderCode || 'WEB-PENDIENTE'}</strong>
-                <p>Full China ya tiene tu pedido. <b>No tienes que enviar nada:</b> en un momento te llegará la comanda por WhatsApp{(sentSummary?.phone ?? phone) ? <> al <b className="public-track-phone">{sentSummary?.phone ?? phone}</b></> : null} para que la revises y nos la confirmes.</p>
+                <p>Ya recibimos tu pedido. <b>No tienes que enviarlo otra vez:</b> en un momento te llegará la comanda por WhatsApp{(sentSummary?.phone ?? phone) ? <> al <b className="public-track-phone">{sentSummary?.phone ?? phone}</b></> : null} para que la revises y la confirmes respondiendo.</p>
               </div>
               <section className="public-track-next" aria-labelledby="public-track-next-title">
                 <h4 id="public-track-next-title">¿Qué sigue?</h4>

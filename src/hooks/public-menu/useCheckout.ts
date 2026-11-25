@@ -279,7 +279,7 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
   }
 
   const repeatPreviousOrder = async (previousOrder: CustomerRepeatOrder) => {
-    if (cart.length > 0 && !window.confirm('Tu carrito actual tiene productos. ¿Quieres reemplazarlo por el pedido anterior?')) return
+    if (cart.length > 0 && !window.confirm('Tu pedido actual tiene productos. ¿Quieres reemplazarlo por el pedido anterior?')) return
 
     const catalog = await getPublicCatalog()
     const activeProducts = new Map(catalog.filter(product => product.active).map(product => [product.id, product]))
@@ -326,8 +326,8 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
 
     if (cartLimitViolation) {
       throw new Error(cartLimitViolation === 'presentation-quantity'
-        ? 'Ese pedido supera el límite de 30 unidades de una misma presentación. No cambiamos tu carrito actual; ajusta la cantidad antes de volver a intentarlo.'
-        : 'Ese pedido supera el límite de 40 productos distintos. No cambiamos tu carrito actual; repítelo en pedidos separados desde el menú.')
+        ? 'Ese pedido supera el límite de 30 unidades de una misma presentación. No cambiamos tu pedido actual; ajusta la cantidad antes de volver a intentarlo.'
+        : 'Ese pedido supera el límite de 40 productos distintos. No cambiamos tu pedido actual; repítelo en pedidos separados desde el menú.')
     }
 
     if (!nextCart.length) throw new Error('Los productos de ese pedido ya no están disponibles con las mismas opciones. Puedes volver a agregarlos desde el menú.')
@@ -407,7 +407,7 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
       setError('No podemos confirmar el costo de entrega para esa ubicación. Revisa el punto en el mapa o elige retiro en el local.')
       return
     }
-    if (!cart.length) return setError('Tu carrito está vacío.')
+    if (!cart.length) return setError('Tu pedido está vacío.')
     setStep('confirm')
   }
 
@@ -433,7 +433,7 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
       if (!geoCoords) { setStep('address'); return showAddressFieldError('geo') }
       if (!addressReference.trim()) { setStep('address'); return showAddressFieldError('reference') }
     }
-    if (!cart.length) return setError('Tu carrito está vacío.')
+    if (!cart.length) return setError('Tu pedido está vacío.')
     if (!LOCAL_ORDER_TEST_MODE && publicWhatsappPhone.length < 7) {
       setError('No podemos registrar el pedido porque el WhatsApp de Full China no está configurado. Inténtalo más tarde o contáctanos por otro medio.')
       return

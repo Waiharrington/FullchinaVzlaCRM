@@ -7305,7 +7305,7 @@ button.mobile-only {
   font-size: 0 !important;
 }
 .public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong::after {
-  content: 'Confirmar pedido' !important;
+  content: 'Enviar pedido' !important;
   font-size: 16px !important;
 }
 .public-step-confirm .public-whatsapp-cta .public-confirm-check {
@@ -7704,7 +7704,7 @@ button.mobile-only {
   }
 
   .public-drawer-backdrop .public-cart-drawer .public-step-confirm .public-whatsapp-cta .public-whatsapp-copy strong::after {
-    content: 'Confirmar pedido' !important;
+    content: 'Enviar pedido' !important;
     font-size: 14px !important;
     line-height: 1.15 !important;
   }

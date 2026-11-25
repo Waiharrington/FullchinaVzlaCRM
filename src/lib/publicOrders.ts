@@ -238,7 +238,7 @@ const WEB_ORDER_ERROR_MESSAGES: Array<[RegExp, string]> = [
   [/^ubicacion fuera de las zonas de delivery/i, 'Esa ubicación está fuera del área de delivery. Elige otro punto o cambia a retiro en el local.'],
   [/^demasiados pedidos recientes para este telefono/i, 'Ya enviaste varios pedidos con este número hace poco. Espera unos minutos o escríbenos por WhatsApp.'],
   [/^producto no disponible/i, 'Uno de los productos ya no está disponible. Recarga el menú y revisa tu pedido.'],
-  [/^opcion no valida para el producto|^seleccion incompleta o excesiva|^esta opcion no permite repeticion|^modificadores invalidos/i, 'Las opciones de un producto cambiaron. Edítalo desde el carrito y vuelve a confirmar.'],
+  [/^opcion no valida para el producto|^seleccion incompleta o excesiva|^esta opcion no permite repeticion|^modificadores invalidos/i, 'Las opciones de un producto cambiaron. Edítalo desde tu pedido y vuelve a confirmar.'],
   [/^cantidad invalida|^carrito invalido/i, 'Revisa las cantidades de tu pedido: máximo 30 unidades por producto y 40 productos distintos.'],
   [/^la clave de reintento pertenece/i, 'Tu pedido cambió mientras se enviaba. Revisa el resumen y vuelve a confirmar.'],
 ]

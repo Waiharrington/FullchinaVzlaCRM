@@ -211,14 +211,14 @@ createPortal(
                   )}
                   {catalogExtraProducts.length > 0 && (
                     <div className="ppdm-section ppdm-catalog-extras">
-                      <div className="ppdm-section-header"><h3>Agrega extras <small>· Opcional</small></h3><span>Se agregan al pedido</span></div>
+                      <div className="ppdm-section-header"><h3>Agrega extras <small>· Opcional</small></h3></div>
                       <div className="ppdm-catalog-extra-list">
                         {catalogExtraProducts.map(product => {
                           const quantity = selectedCatalogExtras[product.id] ?? 0
                           const [extraTitleLead, extraTitleDetail] = product.name.split('—', 2)
                           return <div className="ppdm-catalog-extra" key={product.id}>
                             <Thumb className="ppdm-catalog-extra-image" imageUrl={product.imageUrl} alt={formatProductTitle(product.name)} />
-                            <div><strong>{extraTitleDetail ? <><span>{formatProductTitle(extraTitleLead)}</span><span>— {formatProductTitle(extraTitleDetail)}</span></> : formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong><small>por unidad</small></span></div>
+                            <div><strong>{extraTitleDetail && /^\s*extra/i.test(extraTitleDetail) ? formatProductTitle(extraTitleDetail.trim()) : extraTitleDetail ? <><span>{formatProductTitle(extraTitleLead)}</span><span>— {formatProductTitle(extraTitleDetail)}</span></> : formatProductTitle(product.name)}</strong><span className="ppdm-catalog-extra-price"><strong>{money(product.price)}</strong><small>por unidad</small></span></div>
                             {quantity === 0
                               ? <button type="button" className="ppdm-catalog-extra-add" onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: 1 }))}>Agregar <Plus size={14} /></button>
                               : <div className="ppdm-catalog-extra-qty"><button type="button" aria-label={`Quitar una unidad de ${product.name}`} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: quantity <= 1 ? 0 : quantity - 1 }))}><Minus size={14} /></button><b>{quantity}</b><button type="button" aria-label={`Agregar una unidad de ${product.name}`} disabled={quantity >= PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION} onClick={() => setSelectedCatalogExtras(current => ({ ...current, [product.id]: Math.min(PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, quantity + 1) }))}><Plus size={14} /></button></div>}
@@ -257,7 +257,7 @@ createPortal(
                     <span key={detailQuantity}>{detailQuantity}</span>
                     <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
                   </div>
-                  <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Al wok'} <Odo className="ppdm-add-btn-total" value={money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)} /></>}</button>
+                  <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} <Odo className="ppdm-add-btn-total" value={money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)} /></>}</button>
                 </footer>
               </section>
             </div>,

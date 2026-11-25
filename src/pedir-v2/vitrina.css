@@ -309,3 +309,4 @@
   .public-cart-drawer .public-data-input input { padding-inline: 9px; }
   .public-address-search input::placeholder, .public-cart-drawer .public-cart-extras-search input::placeholder { font-size: 12px; }
 }
+.public-menu-page .pd-more { color: #FFC21A; font-size: 12px; font-weight: 700; text-align: left; text-decoration: underline; }

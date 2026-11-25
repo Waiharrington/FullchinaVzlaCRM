@@ -364,8 +364,8 @@ export function PublicMenu() {
     const cartLimitViolation = getPublicCartLimitViolation(cart)
     if (cartLimitViolation) {
       setError(cartLimitViolation === 'presentation-quantity'
-        ? 'Tu carrito supera las 30 unidades de una misma presentación. Reduce la cantidad; no se ha eliminado ningún producto.'
-        : 'Tu carrito supera los 40 productos distintos. Quita productos para continuar; no se ha eliminado ningún producto.')
+        ? 'Tu pedido supera las 30 unidades de una misma presentación. Reduce la cantidad; no se ha eliminado ningún producto.'
+        : 'Tu pedido supera los 40 productos distintos. Quita productos para continuar; no se ha eliminado ningún producto.')
       return false
     }
     if (cart.length > 0 && cart.reduce((sum, item) => sum + item.price * item.quantity, 0) < PUBLIC_ORDER_MIN_SUBTOTAL) {
@@ -501,7 +501,7 @@ export function PublicMenu() {
               <Wok />
               <span className="public-cart-fab-badge" key={itemCount}>{itemCount}</span>
             </span>
-            <span className="pd-wokbar-copy"><strong>Ver mi pedido</strong><small>{itemCount} {itemCount === 1 ? 'plato en el wok' : 'platos en el wok'}</small></span>
+            <span className="pd-wokbar-copy"><strong>Ver mi pedido</strong><small>{itemCount} {itemCount === 1 ? 'plato agregado' : 'platos agregados'}</small></span>
             <Odo value={money(total)} className="pd-wokbar-total" />
           </button>
         </div>
@@ -514,13 +514,13 @@ export function PublicMenu() {
             {addFeedback.imageUrl ? <img src={addFeedback.imageUrl} alt="" /> : <ShoppingBag size={16} />}
           </span>
           <span className="public-add-toast-copy">
-            <strong className="public-add-toast-label">{addFeedback.status === 'checking' ? 'Revisando opciones…' : 'Agregado al carrito'}</strong>
+            <strong className="public-add-toast-label">{addFeedback.status === 'checking' ? 'Revisando opciones…' : 'Agregado a tu pedido'}</strong>
             <span className="public-add-toast-name">{addFeedback.name}</span>
           </span>
           <span className="public-add-toast-check">{addFeedback.status === 'checking' ? <LoaderCircle size={16} className="public-add-toast-spinner" /> : <CircleCheck size={16} />}</span>
           {addFeedback.status === 'added' && !window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches && (
             <button type="button" className="public-add-toast-action" onClick={() => { setAddFeedback(null); setReturnToConfirmAfterEdit(false); openCartFromSidebar('cart') }}>
-              Ver carrito
+              Ver pedido
             </button>
           )}
         </div>
@@ -534,8 +534,8 @@ export function PublicMenu() {
 
       {cartOpen && createPortal(
         <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}${step === 'details' && autofillingDetails ? ' is-autofilling' : ''}`} onClick={event => event.stopPropagation()}>
-        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <Fuse step={step} />}{step !== 'sent' && <div className="public-review-heading" key={step}><h2><Fit>{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Confirma tu pedido' : 'Tu pedido'}</Fit></h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
-        {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu carrito está vacío</strong><span>{cartGuardMessage}</span></div></div>}
+        <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <Fuse step={step} />}{step !== 'sent' && <div className="public-review-heading" key={step}><h2><Fit>{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa tu pedido' : 'Tu pedido'}</Fit></h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
+        {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu pedido está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
         {step === 'cart' && <CartStep cart={cart} cartCarouselGroups={cartCarouselGroups} closeCart={closeCart} deliveryChosen={deliveryChosen} editCartItem={editCartItem} getCartIncludedCopy={getCartIncludedCopy} orderType={orderType} priceBs={priceBs} requestQuickAdd={requestQuickAdd} requireCart={requireCart} setCurrentTab={setCurrentTab} setShowAllExtras={setShowAllExtras} setStep={setStep} total={total} updateQuantity={updateQuantity} />}
         {step === 'delivery' && <DeliveryStep addressActionRef={addressActionRef} cart={cart} deliveryDisabled={deliveryDisabled} orderType={orderType} requestCurrentLocation={requestCurrentLocation} setDeliveryChosen={setDeliveryChosen} setLocating={setLocating} setOrderType={setOrderType} setStep={setStep} />}

@@ -38,18 +38,19 @@ export function ProductCard({ group, inCart = 0, priority = false, favoriteIds, 
           })()}
           <Photo imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} eager={Boolean(priority)} />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onPointerDown={stopProductCardInteraction} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
-        {inCart > 0 && <span className="pd-in-cart" key={inCart}>{inCart} en tu wok</span>}
+        {inCart > 0 && <span className="pd-in-cart" key={inCart}>{inCart} en tu pedido</span>}
         </div>
         <div className="public-prod-info" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
           <h3 className="public-prod-title"><Fit>{productTitle(group.name)}</Fit></h3>
           <p className="public-prod-desc">{groupDescription(group)}</p>
+          {!group.isGrouped && groupDescription(group) && <span className="pd-more" aria-hidden="true">Ver detalle</span>}
           <div className="public-prod-footer-row">
             <div className="public-prod-price-wrap">
               <span className="public-prod-price">{group.isGrouped && group.minPrice !== group.maxPrice && <small>Desde </small>}{money(group.minPrice)}</span>
               {priceBs(group.minPrice) && <span className="public-prod-price-bs">{priceBs(group.minPrice)}</span>}
             </div>
           </div>
-          <button type="button" className={`public-prod-add${hasOptions ? ' has-options' : ''}${isQuickAddPending ? ' is-loading' : ''}`} disabled={isQuickAddPending} aria-busy={isQuickAddPending} aria-label={isQuickAddPending ? `Revisando opciones de ${group.name}` : hasOptions ? `Ver opciones de ${group.name}` : `Agregar ${group.name} al carrito`} onPointerDown={stopProductCardInteraction} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
+          <button type="button" className={`public-prod-add${hasOptions ? ' has-options' : ''}${isQuickAddPending ? ' is-loading' : ''}`} disabled={isQuickAddPending} aria-busy={isQuickAddPending} aria-label={isQuickAddPending ? `Revisando opciones de ${group.name}` : hasOptions ? `Ver opciones de ${group.name}` : `Agregar ${group.name} al pedido`} onPointerDown={stopProductCardInteraction} onClick={(e) => { e.stopPropagation(); requestQuickAdd(group) }}>
             {isQuickAddPending ? <LoaderCircle className="public-add-spinner" size={18} aria-hidden="true" /> : hasOptions
               ? <SlidersHorizontal size={17} strokeWidth={2.4} aria-hidden="true" />
               : <Plus size={20} strokeWidth={2.8} aria-hidden="true" />}

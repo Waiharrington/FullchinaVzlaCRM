@@ -133,8 +133,8 @@ export function Chopsticks({ railRef, active }: { railRef: RefObject<HTMLElement
 
 const FUSE_STEPS: Array<{ key: string; label: string; steps: CheckoutStep[] }> = [
   { key: 'cart', label: 'Pedido', steps: ['cart'] },
-  { key: 'delivery', label: 'Entrega', steps: ['delivery'] },
-  { key: 'place', label: 'Lugar', steps: ['address', 'pickup'] },
+  { key: 'delivery', label: 'Cómo', steps: ['delivery'] },
+  { key: 'place', label: 'Dónde', steps: ['address', 'pickup'] },
   { key: 'details', label: 'Datos', steps: ['details'] },
   { key: 'confirm', label: 'Listo', steps: ['confirm'] },
 ]
