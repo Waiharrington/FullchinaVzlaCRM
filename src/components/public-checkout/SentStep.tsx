@@ -15,10 +15,11 @@ interface SentStepProps {
   phone: string
   pickupTime: string
   returnToMenuAfterSent: () => void
+  whatsappPhone: string
   sentSummary: { items: WebOrderCartItem[]; total: number; orderType: "takeaway" | "delivery"; address: string; phone: string; } | null
 }
 
-export function SentStep({ address, cart, localTestOrderLinkedToProfile, orderCode, orderTotal, orderType, phone, pickupTime, returnToMenuAfterSent, sentSummary }: SentStepProps) {
+export function SentStep({ address, cart, localTestOrderLinkedToProfile, orderCode, orderTotal, orderType, phone, pickupTime, returnToMenuAfterSent, sentSummary, whatsappPhone }: SentStepProps) {
   return (
 LOCAL_ORDER_TEST_MODE ? <div className="public-success"><span><Check /></span><h3>{LOCAL_ORDER_TEST_MODE ? 'Prueba local completada' : '¡Solicitud registrada!'}</h3><strong>{orderCode || 'WEB-PENDIENTE'}</strong><p>{LOCAL_ORDER_TEST_MODE ? getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).body : <>El bot de Full China te enviará la comanda al número de WhatsApp que indicaste para que la revises y nos la confirmes.</>}</p><div className="public-status-timeline">{LOCAL_ORDER_TEST_MODE ? <><div className="complete"><i><Check size={18} /></i><div><strong>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).title}</strong><small>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).history}</small></div><time>{getLocalOrderTestConfirmationCopy(localTestOrderLinkedToProfile).time}</time></div><div className="pending"><i>2</i><div><strong>Envío omitido</strong><small>El modo de prueba no abre WhatsApp ni contacta al local.</small></div><time>·</time></div><div className="pending"><i>3</i><div><strong>Sin pedido real</strong><small>Esta confirmación no crea una comanda en el sistema.</small></div><time>·</time></div></> : <><div className="complete"><i><Check size={18} /></i><div><strong>Solicitud creada</strong><small>Tu pedido quedó registrado correctamente.</small></div><time>Ahora</time></div><div className="pending"><i>2</i><div><strong>Envío por el bot</strong><small>El bot enviará la comanda automáticamente al número indicado.</small></div><time>◷</time></div><div className="pending"><i>3</i><div><strong>Confirma tu pedido</strong><small>Respóndenos por WhatsApp para confirmar los detalles.</small></div><time>◷</time></div></>}</div><div className="public-success-actions"><button type="button" className="public-primary" onClick={returnToMenuAfterSent}>Volver al menú</button></div></div> : <div className="public-track">
               <div className="public-track-hero">
@@ -46,6 +47,7 @@ LOCAL_ORDER_TEST_MODE ? <div className="public-success"><span><Check /></span><h
               </section>
               <div className="public-track-actions">
                 <button type="button" className="public-track-new" onClick={returnToMenuAfterSent}>Hacer otro pedido</button>
+                {whatsappPhone.length >= 7 && <a className="public-track-help" href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(`Hola, hice el pedido ${orderCode || ''} en la página y aún no me llega la comanda por WhatsApp.`)}`} target="_blank" rel="noopener noreferrer">¿No te llegó la comanda? Escríbenos por WhatsApp</a>}
               </div>
             </div>
   )

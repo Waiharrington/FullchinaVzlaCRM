@@ -17287,6 +17287,8 @@ body:has(.public-menu-page.public-profile-tab-active .customer-profile-welcome-i
   box-shadow: 0 10px 24px rgba(227, 27, 43, 0.28);
 }
 .public-track-new:hover { filter: brightness(1.08); }
+.public-track-help { text-align: center; font-size: 13px; font-weight: 600; color: inherit; opacity: .75; text-decoration: underline; padding: 6px 0; }
+.public-track-help:hover { opacity: 1; }
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .public-drawer-backdrop .public-cart-drawer .public-track-new { height: 56px; font-size: 15px; }
 }
