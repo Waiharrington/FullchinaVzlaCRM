@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback, type RefObject, type Dispatch
 import { revealCheckoutField } from '../../lib/publicCheckoutDom'
 import { readCheckoutAttempt } from '../../lib/publicMenuStorage'
 import { WebOrderCartItem, CustomerRepeatOrder, getPublicCatalog, getPublicProductModifiers, createWebOrder, describeWebOrderError } from '../../lib/publicOrders'
+import { saveToStorage, withoutEmbeddedImages } from '../../lib/publicCartStorage'
 import { LAST_ORDER_KEY, FLOW_STATE_KEY, WHATSAPP_SENT_KEY, isRecentSentState, CART_KEY, CHECKOUT_ATTEMPT_KEY, LOCAL_ORDER_TEST_MODE } from '../../lib/publicMenuConfig'
 import { customerSupabase } from '../../lib/supabase'
 import { getCustomerOrderProfile } from '../../lib/customerOrderProfile'
@@ -244,7 +245,7 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
     if (restoringFlow.current) return
     // Tras un pedido exitoso no se guardan datos personales del cliente.
     const personal = step === 'sent' ? { name: '', phone: '', identification: '' } : { name, phone, identification }
-    localStorage.setItem(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, ...personal, orderType, deliveryChosen, address, addressReference, notes, deliveryNotes, geoCoords, addressMethod }))
+    saveToStorage(FLOW_STATE_KEY, JSON.stringify({ cartOpen, step, ...personal, orderType, deliveryChosen, address, addressReference, notes, deliveryNotes, geoCoords, addressMethod }))
   }, [cartOpen, step, name, phone, identification, orderType, deliveryChosen, address, addressReference, notes, deliveryNotes, geoCoords, addressMethod])
   const startNewOrder = () => {
     setPickupTime('asap')
@@ -527,7 +528,7 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
         const current = result.items?.find(line => line.lineNumber === index + 1 && line.productId === item.productId)
         return current ? { ...item, price: current.unitPrice } : item
       })
-      try { localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(pricedCart)) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
+      try { localStorage.setItem(LAST_ORDER_KEY, JSON.stringify(withoutEmbeddedImages(pricedCart))) } catch { /* el pedido ya está registrado; no depende del almacenamiento local */ }
       checkoutAttemptRef.current = null
       try { sessionStorage.removeItem(CHECKOUT_ATTEMPT_KEY) } catch { /* storage unavailable */ }
       setLastOrder(pricedCart)

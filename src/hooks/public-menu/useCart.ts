@@ -1,6 +1,7 @@
 import { useEffect, type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { WebOrderCartItem } from '../../lib/publicOrders'
-import { CART_KEY } from '../../lib/publicMenuConfig'
+import { type Product } from '../../lib/dataService'
+import { restoreCartImages, savePublicCart } from '../../lib/publicCartStorage'
 import { cartLineKey } from '../../lib/publicMenuFormat'
 import { getPublicCartLimitViolation } from '../../lib/publicOrderRules'
 import { type CheckoutStep } from '../../lib/publicMenuTypes'
@@ -9,6 +10,8 @@ interface UseCartArgs {
   cart: WebOrderCartItem[]
   cartOpen: boolean
   cartRef: RefObject<WebOrderCartItem[]>
+  extrasProducts: Product[]
+  products: Product[]
   setCart: Dispatch<SetStateAction<WebOrderCartItem[]>>
   setCartOpen: Dispatch<SetStateAction<boolean>>
   setClosingCart: Dispatch<SetStateAction<boolean>>
@@ -17,7 +20,7 @@ interface UseCartArgs {
   step: CheckoutStep
 }
 
-export function useCart({ cart, cartOpen, cartRef, setCart, setCartOpen, setClosingCart, setDeletingKeys, setError, step }: UseCartArgs) {
+export function useCart({ cart, cartOpen, cartRef, extrasProducts, products, setCart, setCartOpen, setClosingCart, setDeletingKeys, setError, step }: UseCartArgs) {
   useEffect(() => { cartRef.current = cart }, [cart, cartRef])
   const commitCart = (update: WebOrderCartItem[] | ((current: WebOrderCartItem[]) => WebOrderCartItem[])) => {
     const next = typeof update === 'function' ? update(cartRef.current) : update
@@ -26,7 +29,11 @@ export function useCart({ cart, cartOpen, cartRef, setCart, setCartOpen, setClos
   }
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  useEffect(() => { localStorage.setItem(CART_KEY, JSON.stringify(cart)) }, [cart])
+  useEffect(() => { savePublicCart(cart) }, [cart])
+  // Las fotos no se guardan con el pedido: se toman del menú al volver a abrir la página.
+  useEffect(() => {
+    setCart(current => restoreCartImages(current, [...products, ...extrasProducts]))
+  }, [products, extrasProducts, setCart])
   const updateQuantity = (itemKey: string, delta: number, legacyNotes?: string) => {
     const target = cartRef.current.find(item => cartLineKey(item) === itemKey || (item.productId === itemKey && (item.notes || '') === (legacyNotes || '')))
     const candidateCart = cartRef.current
