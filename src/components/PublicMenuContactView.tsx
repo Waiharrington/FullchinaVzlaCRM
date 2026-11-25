@@ -1,7 +1,7 @@
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react'
-import { ChevronRight, Clock, MapPin, MessageSquareText, Navigation, Pause, Play, Volume2, VolumeX, Wallet } from 'lucide-react'
-import { CustomerLoyaltyPromo } from './CustomerLoyaltyPromo'
-import { Fit, Wok } from '../pedir-v2/ui'
+import { Banknote, Bitcoin, ChevronRight, CreditCard, Landmark, MapPin, MessageSquareText, Navigation, Pause, Play, Smartphone, Volume2, VolumeX } from 'lucide-react'
+import { TruckScene } from '../pedir-v2/TruckScene'
+import { Fit } from '../pedir-v2/ui'
 import type { PublicOrderPageSettings, PublicOrderReel } from '../lib/publicOrderPageSettings'
 
 type PublicMenuContactViewProps = {
@@ -57,72 +57,62 @@ export function PublicMenuContactView({
 }: PublicMenuContactViewProps) {
   const mobile = variant === 'mobile'
 
-  const content = <section className="public-contact-view public-contact-page">
-    <section className="public-cinematic-hero public-contact-hero">
-      <span className="pd-contact-wok" aria-hidden="true"><Wok /></span>
-      <div className="public-hero-left public-contact-hero-copy">
-        <span className="public-hero-tag">
-          ESTAMOS PARA SERVIRTE
-        </span>
-        <h1 className="public-hero-main-title">
-          <Fit>Te <span className="public-hero-gold">escuchamos</span></Fit>
-        </h1>
-        <p className="public-hero-desc">{mobile ? 'Escríbenos, estamos para servirte.' : '¿Tienes dudas o necesitas ayuda con tu pedido? Escríbenos. Nuestro equipo estará feliz de atenderte.'}</p>
-        <div className="public-hero-search-row public-contact-hero-actions">
-          {publicWhatsappPhone && (
-            <a href={'https://wa.me/' + publicWhatsappPhone} target="_blank" rel="noopener noreferrer" className="public-hero-cta-btn public-contact-hero-cta">
-              Escríbenos ahora <ChevronRight size={16} />
-            </a>
-          )}
-        </div>
+  const content = <section className="public-contact-view public-contact-page pd-contact">
+    <header className="pd-contact-top">
+      <TruckScene />
+      <div className="pd-contact-hello">
+        <h1><Fit>Aquí te <span>esperamos</span></Fit></h1>
+        <p>{pageSettings.contactAddress}</p>
+        <nav className="pd-contact-actions" aria-label="Formas de contacto">
+          {publicWhatsappPhone && <a className="is-whatsapp" href={'https://wa.me/' + publicWhatsappPhone} target="_blank" rel="noopener noreferrer"><i><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 21l2.1-5.4A8.5 8.5 0 1 1 21 11.5Z" /><path d="M8.5 9.5c0 3.5 2.500 6 6 6l1-1.500-2-1.200-1 .8c-1-.4-1.700-1.100-2.100-2.100l.8-1-1.200-2z" /></svg></i><span>WhatsApp</span></a>}
+          <a className="is-map" href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer"><i><Navigation size={25} aria-hidden="true" /></i><span>Cómo llegar</span></a>
+          <a className="is-instagram" href={publicInstagramUrl} onClick={handleInstagramProfileClick}><i><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" /></svg></i><span>Instagram</span></a>
+          {publicFacebookUrl && <a className="is-facebook" href={publicFacebookUrl} target="_blank" rel="noopener noreferrer"><i><MessageSquareText size={25} aria-hidden="true" /></i><span>Facebook</span></a>}
+        </nav>
       </div>
-    </section>
+    </header>
 
-    <section className="public-contact-hub">
-      <CustomerLoyaltyPromo onJoin={openCustomerProfile} interactiveCard={!mobile} />
-      <article className="public-contact-panel public-contact-talk">
-        <header className="public-order-ticket-head">
-          <span>Pedido directo</span>
-          <h2><Fit>Pide sin complicarte</Fit></h2>
-        </header>
-        <div className="public-contact-status-row">
-          <span><Clock size={14} /> Horario de atención</span>
-          <strong>{pageSettings.contactDays}</strong>
-          <small>{formattedOpenTime} – {formattedCloseTime}</small>
+    <div className="pd-contact-body">
+      <section className="pd-board" aria-label="Horario y formas de pago">
+        <div className="pd-board-hours">
+          <h2>Horario</h2>
+          <p>{pageSettings.contactDays}</p>
+          <strong><span>{formattedOpenTime}</span><i aria-hidden="true" /><span>{formattedCloseTime}</span></strong>
         </div>
-        <div className="public-contact-payment-block">
-          <span><Wallet size={17} /> Métodos de pago</span>
-          <ul className="public-payment-ticket-list">
-            <li><i>01</i><span>Efectivo USD</span></li>
-            <li><i>02</i><span>Efectivo Bs.</span></li>
-            <li><i>03</i><span>Pago móvil</span></li>
-            <li><i>04</i><span>Punto de venta</span></li>
-            <li><i>05</i><span>Binance</span></li>
-            <li><i>06</i><span>Transferencia Bs.</span></li>
-            <li className="is-mixed"><i>+</i><span>Pago mixto<small>Combina dos métodos</small></span></li>
+        <div className="pd-board-pay">
+          <h2>Se paga con</h2>
+          <ul>
+            <li><Banknote size={20} aria-hidden="true" />Efectivo USD</li>
+            <li><Banknote size={20} aria-hidden="true" />Efectivo Bs.</li>
+            <li><Smartphone size={20} aria-hidden="true" />Pago móvil</li>
+            <li><CreditCard size={20} aria-hidden="true" />Punto de venta</li>
+            <li><Bitcoin size={20} aria-hidden="true" />Binance</li>
+            <li><Landmark size={20} aria-hidden="true" />Transferencia Bs.</li>
           </ul>
+          <p className="pd-board-mixed">¿Quieres combinar dos? También vale el pago mixto.</p>
         </div>
-      </article>
+      </section>
 
-      <article className="public-contact-panel public-contact-instagram-studio">
-        <header className="public-order-ticket-head public-instagram-ticket-head">
-          <span>
-            <svg className="public-instagram-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect width="18" height="18" x="3" y="3" rx="5" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
-            </svg>
-            Desde Instagram
-          </span>
+      <section className="pd-place public-contact-location-stage" aria-label="Ubicación">
+        <iframe
+          title="Ubicación de Full China en Google Maps"
+          src={mapPreviewUrl}
+          loading="eager"
+          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+        />
+        <span className="public-contact-brand-pin" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></span>
+        <a className="pd-place-go" href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" /><span>Abrir en el mapa</span><ChevronRight size={17} aria-hidden="true" /></a>
+      </section>
+
+      <section className="pd-cinema public-contact-instagram-studio" aria-label="Videos de Instagram">
+        <div className="pd-cinema-head">
           <h2><Fit>El wok en movimiento</Fit></h2>
-        </header>
-        <div className="public-instagram-intro">
-          <p><span>Fuego alto.</span> El wok en acción.</p>
           <button type="button" className="public-instagram-audio-toggle" onClick={toggleInstagramAudio} title={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-label={instagramAudioEnabled ? 'Silenciar videos' : 'Activar sonido de los videos'} aria-pressed={instagramAudioEnabled}>
             {instagramAudioEnabled ? <Volume2 size={17} /> : <VolumeX size={17} />}
           </button>
         </div>
-
+        <div className="pd-cinema-stage">
         {mobile ? <div className="public-instagram-reel-stage public-instagram-mobile-stage" aria-label="Reel destacado de Full China">
           {instagramReels.map(({ reel, position }) => {
             const reelIndex = currentInstagramReels.indexOf(reel)
@@ -206,7 +196,6 @@ export function PublicMenuContactView({
             </button>
           )}
         </div>}
-
         <div className="public-instagram-filmstrip" role="group" aria-label="Elegir un reel">
           {currentInstagramReels.map((reel, reelIndex) => (
             <button key={reel.src} type="button" className={reelIndex === instagramActiveIndex ? 'is-active' : ''} aria-label={'Reproducir reel ' + (reelIndex + 1)} aria-pressed={reelIndex === instagramActiveIndex} onClick={() => { setInstagramPaused(false); setInstagramActiveIndex(reelIndex) }}>
@@ -215,49 +204,18 @@ export function PublicMenuContactView({
             </button>
           ))}
         </div>
-        <a
-          href={publicInstagramUrl}
-          onClick={handleInstagramProfileClick}
-          className="public-contact-footer-cta is-instagram"
-        >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect width="18" height="18" x="3" y="3" rx="5" />
-            <circle cx="12" cy="12" r="4" />
-            <circle cx="17.5" cy="6.5" r="0.75" fill="currentColor" stroke="none" />
-          </svg>
-          <span>Seguir en <strong>Instagram</strong></span>
-          <ChevronRight size={18} />
-        </a>
-        {publicFacebookUrl && <a href={publicFacebookUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-instagram"><MessageSquareText size={17} /><span>Visitar <strong>Facebook</strong></span><ChevronRight size={18} /></a>}
-      </article>
-
-      <article className="public-contact-panel public-contact-location">
-        <div className="public-contact-location-stage">
-          <iframe
-            title="Ubicación de Full China en Google Maps"
-            src={mapPreviewUrl}
-            loading="eager"
-            referrerPolicy="no-referrer-when-downgrade"
-            allowFullScreen
-          />
-          <span className="public-contact-location-tint" aria-hidden="true" />
-          <span className="public-contact-location-tag"><MapPin size={14} /> Punto Full China</span>
-          <span className="public-contact-brand-pin" aria-hidden="true">
-            <img src="/optimized/root/logo.webp" alt="" />
-          </span>
-          <div className="public-contact-location-overlay">
-            <span>{pageSettings.contactAddress}</span>
-            <strong><Fit>Ven, come y disfruta.</Fit></strong>
-            <p>Quédate en nuestras mesas, retira tu pedido o pídelo por delivery.</p>
-            <a href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer" className="public-contact-footer-cta is-location">
-              <Navigation size={16} />
-              <span>Cómo llegar</span>
-              <ChevronRight size={17} />
-            </a>
-          </div>
         </div>
-      </article>
-    </section>
+      </section>
+
+      <section className="pd-club" aria-label="Programa de fidelidad">
+        <div>
+          <h2><Fit>Cada visita <em>te premia</em></Fit></h2>
+          <p>Un sello por visita. Con 10, tu recompensa Full China.</p>
+        </div>
+        <div className="pd-club-stamps" aria-hidden="true">{Array.from({ length: 10 }, (_, index) => <i key={index} className={index < 6 ? 'is-earned' : ''}><img src="/optimized/pedir-v2/wok-mark.webp" alt="" /></i>)}</div>
+        <button type="button" onClick={openCustomerProfile}>Únete gratis <ChevronRight size={17} aria-hidden="true" /></button>
+      </section>
+    </div>
   </section>
 
   return mobile ? <div className="public-mobile-tab-content" key="contacto">{content}</div> : content

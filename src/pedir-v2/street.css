@@ -1,0 +1,141 @@
+/* ===== Contacto: el food truck en la calle ===== */
+.pd-contact { background: var(--bg); overflow: clip; }
+.pd-contact-top { position: relative; display: grid; }
+
+/* Escena */
+.pd-street { position: relative; height: clamp(236px, 66vw, 330px); overflow: hidden; background: linear-gradient(#0A0706 0 34%, #1B0C0B 72%, #2A0F0D 84%, #0A0706 84%); }
+.pd-lights { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 62px; }
+.pd-bulb { animation: pd-bulb 3.4s ease-in-out infinite; }
+@keyframes pd-bulb { 0%, 88%, 100% { opacity: 1; } 92% { opacity: .35; } 95% { opacity: 1; } 97% { opacity: .5; } }
+.pd-truck { position: absolute; left: 50%; bottom: 4%; width: min(86%, 430px); margin: 0; padding: 0; border: 0; background: none; cursor: pointer; transform: translateX(-50%); -webkit-tap-highlight-color: transparent; }
+.pd-truck > svg { display: block; width: 100%; overflow: visible; animation: pd-truck-in 1.35s cubic-bezier(.16, .9, .25, 1.04) both; }
+.pd-truck.is-honking > svg { animation: pd-truck-hop .55s cubic-bezier(.3, 1.4, .5, 1); }
+.pd-truck:active > svg { transform: scale(.985); }
+@keyframes pd-truck-in { from { transform: translateX(-125%); } 78% { transform: translateX(1.6%) rotate(.6deg); } }
+@keyframes pd-truck-hop { 25% { transform: translateY(-9px) rotate(-1.6deg); } 60% { transform: translateY(2px) rotate(.8deg); } }
+.pd-truck-body { animation: pd-truck-rumble .34s 1.4s ease-in-out infinite alternate; transform-origin: 270px 242px; }
+@keyframes pd-truck-rumble { to { transform: translateY(-1.4px); } }
+.pd-truck-wheel { animation: pd-wheel-roll 1.35s cubic-bezier(.16, .9, .25, 1) both; }
+.is-honking .pd-truck-wheel { animation: none; }
+@keyframes pd-wheel-roll { from { transform: rotate(-900deg); } }
+.pd-truck-beam { opacity: 0; animation: pd-beam-on .7s 1.35s steps(1) forwards; }
+@keyframes pd-beam-on { 0% { opacity: .5; } 20% { opacity: 0; } 40%, 100% { opacity: .28; } }
+.pd-truck-smoke circle { fill: #8D7B72; opacity: 0; animation: pd-smoke 2.6s ease-out infinite; }
+.pd-truck-smoke circle:nth-child(2) { animation-delay: .8s; } .pd-truck-smoke circle:nth-child(3) { animation-delay: 1.6s; }
+@keyframes pd-smoke { 0% { opacity: .55; transform: translateY(14px) scale(.5); transform-origin: 97px 26px; } 100% { opacity: 0; transform: translate(-16px, -34px) scale(1.7); transform-origin: 97px 26px; } }
+.pd-cook { animation: pd-cook-sway 1.5s ease-in-out infinite; transform-origin: 139px 188px; }
+.pd-pan { animation: pd-pan-toss 1.5s ease-in-out infinite; transform-origin: 170px 172px; }
+.pd-pan-food { animation: pd-pan-food 1.5s ease-in-out infinite; }
+.pd-pan-fire { transform-origin: 218px 178px; animation: pd-lick .5s ease-in-out infinite alternate; }
+@keyframes pd-cook-sway { 50% { transform: rotate(3deg); } }
+@keyframes pd-pan-toss { 0%, 100% { transform: none; } 30% { transform: rotate(5deg); } 50% { transform: rotate(-11deg); } }
+@keyframes pd-pan-food { 0%, 34%, 100% { transform: none; } 58% { transform: translateY(-20px); } }
+.pd-truck-awning { transform-origin: 154px 74px; animation: pd-awning 3.6s ease-in-out infinite; }
+.pd-honk { position: absolute; z-index: 2; right: 2%; top: -4%; padding: 8px 14px; border-radius: 15px 15px 15px 3px; color: #17100E; background: var(--pd-yellow); font: 400 17px/1 var(--pd-display); animation: pd-honk 1.6s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes pd-honk { 0% { opacity: 0; transform: scale(.2) rotate(-14deg); } 18%, 80% { opacity: 1; transform: rotate(-5deg); } 100% { opacity: 0; transform: translateY(-14px); } }
+.pd-road { position: absolute; left: 0; right: 0; bottom: 0; height: 16%; background: #14100E; overflow: hidden; }
+.pd-road i { position: absolute; left: -80px; right: -80px; top: 46%; height: 4px; background: repeating-linear-gradient(90deg, #5A4A42 0 40px, transparent 40px 80px); animation: pd-road 1.35s cubic-bezier(.16, .9, .25, 1) both; }
+@keyframes pd-road { from { transform: translateX(80px); } }
+
+/* Saludo y acciones */
+.pd-contact-hello { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 4px; padding: 20px 18px 6px; text-align: center; }
+.pd-contact-hello h1 { width: 100%; font: 400 clamp(27px, 8.4vw, 46px)/1.05 var(--pd-display); color: #fff; animation: pd-rise .5s .5s var(--pd-out) both; }
+.pd-contact-hello h1 span span span, .pd-contact-hello h1 .pd-fit > span > span { color: var(--pd-yellow); }
+.pd-contact-hello > p { color: var(--soft); font-size: 15px; }
+.pd-contact-actions { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; width: 100%; max-width: 520px; margin-top: 14px; }
+.pd-contact-actions a { display: grid; justify-items: center; gap: 8px; padding: 4px 2px; color: #fff; font-size: 14px; font-weight: 750; text-decoration: none; animation: pd-rise .45s calc(.6s + var(--i, 0) * .08s) var(--pd-out) both; }
+.pd-contact-actions a:nth-child(2) { --i: 1; } .pd-contact-actions a:nth-child(3) { --i: 2; } .pd-contact-actions a:nth-child(4) { --i: 3; }
+.pd-contact-actions i { display: grid; place-items: center; width: 66px; height: 66px; border-radius: 22px; color: #fff; background: var(--c); box-shadow: 0 5px 0 var(--d); transition: transform .3s var(--pd-spring), box-shadow .14s, border-radius .3s; }
+.pd-contact-actions svg { transition: transform .4s var(--pd-spring); }
+.pd-contact-actions .is-whatsapp { --c: #178A4A; --d: #0A5429; }
+.pd-contact-actions .is-map { --c: #D9141E; --d: #7A0A10; }
+.pd-contact-actions .is-instagram { --c: #FFC21A; --d: #A97C00; }
+.pd-contact-actions .is-instagram i { color: #17100E; }
+.pd-contact-actions .is-facebook { --c: #2B4A8C; --d: #172B55; }
+.pd-contact-actions a:hover i { transform: translateY(-4px) rotate(-3deg); border-radius: 50%; }
+.pd-contact-actions a:hover svg { transform: scale(1.18) rotate(8deg); }
+.pd-contact-actions a:active i { transform: translateY(4px); box-shadow: 0 1px 0 var(--d); }
+
+/* Cuerpo */
+.pd-contact-body { display: grid; gap: 18px; padding: 22px 16px 20px; }
+.pd-contact-body h2 { font: 400 21px/1.1 var(--pd-display); color: #fff; }
+.pd-contact-body h2 em { font-style: normal; color: var(--pd-yellow); }
+
+/* Pizarra del día */
+.pd-board { position: relative; display: grid; gap: 20px; padding: 22px 20px; border: 9px solid #6B4426; border-radius: 18px; background: #17211C; box-shadow: inset 0 0 0 2px #3E2815, inset 0 0 40px rgba(0, 0, 0, .6); }
+.pd-board h2 { color: #FFE39A; font-size: 19px; }
+.pd-board-hours p { margin-top: 2px; color: #DCE6E0; font-size: 15.5px; }
+.pd-board-hours strong { display: flex; align-items: center; gap: 12px; margin-top: 8px; color: #fff; font: 400 clamp(19px, 5.6vw, 27px)/1 var(--pd-display); white-space: nowrap; }
+.pd-board-hours strong i { flex: 1; max-width: 70px; height: 8px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4c8-6 12-6 20 0s12 6 20 0 12-6 20 0' fill='none' stroke='%23FFC21A' stroke-width='2.500' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+.pd-board-pay ul { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 14px; margin: 11px 0 0; padding: 0; list-style: none; }
+.pd-board-pay li { display: flex; align-items: center; gap: 9px; color: #F1F5F2; font-size: 14.5px; font-weight: 650; line-height: 1.2; }
+.pd-board-pay svg { flex: 0 0 auto; color: var(--pd-yellow); transition: transform .35s var(--pd-spring); }
+.pd-board-pay li:hover svg { transform: rotate(-12deg) scale(1.25); }
+.pd-board-mixed { margin-top: 13px !important; padding-top: 12px; border-top: 2px dashed #46564D; color: #DCE6E0; font-size: 14.5px; }
+
+/* Mapa */
+.pd-place { position: relative; height: 260px; border-radius: 22px; overflow: hidden; background: #E9DDCF; }
+.pd-place iframe { width: 100%; height: calc(100% + 70px); border: 0; }
+.pd-place .public-contact-brand-pin { top: 50%; }
+.pd-place-go { position: absolute; left: 12px; right: 12px; bottom: 12px; display: grid; grid-template-columns: 20px 1fr 18px; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; border-radius: 15px; color: #fff; background: #17100E; font-size: 15.5px; font-weight: 800; text-decoration: none; transition: background .2s; }
+.pd-place-go svg:first-child { color: var(--pd-yellow); }
+.pd-place-go:hover { background: var(--pd-red); }
+
+/* Cine */
+.pd-cinema.public-contact-instagram-studio { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin: 0; padding: 18px; border-radius: 22px; background: #15100E; }
+.pd-cinema-head { display: grid; grid-template-columns: minmax(0, 1fr) 46px; align-items: center; gap: 12px; }
+.pd-cinema .public-instagram-audio-toggle { width: 46px; height: 46px; }
+.pd-cinema-stage { display: grid; grid-template-columns: minmax(0, 1fr) 62px; gap: 12px; }
+.pd-cinema .public-instagram-reel-stage { width: 100%; margin: 0; aspect-ratio: 9 / 14.5; }
+.pd-cinema .public-instagram-reel { border-radius: 18px !important; }
+.pd-cinema .public-instagram-filmstrip { display: flex; flex-direction: column; justify-content: space-between; gap: 7px; }
+.pd-cinema .public-instagram-filmstrip button { flex: 1; min-height: 0; aspect-ratio: auto; border-radius: 12px; }
+.pd-cinema .public-instagram-filmstrip .is-active { transform: scale(1.06); }
+
+/* Club */
+.pd-club { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 20px; border-radius: 22px; background: var(--pd-red-stage); color: #fff; }
+.pd-club p { margin-top: 3px; color: #FFE9DF; font-size: 14.5px; }
+.pd-club-stamps { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; max-width: 420px; }
+.pd-club-stamps i { display: grid; place-items: center; aspect-ratio: 1; border: 2px dashed rgba(255, 255, 255, .55); border-radius: 50%; }
+.pd-club-stamps .is-earned { border: 0; background: #fff; }
+.pd-club-stamps img { width: 70%; opacity: 0; }
+.pd-club-stamps .is-earned img { opacity: 1; }
+.pd-club button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 20px; border: 0; border-radius: 15px; color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #7A0A10; font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
+.pd-club button:active { transform: translateY(3px); box-shadow: 0 1px 0 #7A0A10; }
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .pd-contact-top { grid-template-columns: minmax(0, 1fr); }
+  .pd-street { height: clamp(330px, 52vh, 430px); }
+  .pd-truck { left: auto; right: max(40px, calc((100vw - 1180px) / 2)); bottom: 5%; width: min(44vw, 520px); transform: none; }
+  .pd-contact-hello { position: absolute; left: max(40px, calc((100vw - 1180px) / 2)); top: 0; bottom: 8%; width: min(40vw, 470px); align-content: center; justify-items: start; padding: 0; text-align: left; }
+  .pd-contact-hello h1 { font-size: clamp(34px, 3.6vw, 54px); }
+  .pd-contact-hello > p { font-size: 16.5px; }
+  .pd-contact-actions { grid-auto-columns: 92px; justify-content: start; gap: 14px; margin-top: 20px; }
+  .pd-contact-body { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 20px; max-width: 1220px; margin: 0 auto; padding: 28px 20px 34px; }
+  .pd-contact-body h2 { font-size: 24px; }
+  .pd-board { grid-column: span 5; align-content: center; padding: 26px; }
+  .pd-place { grid-column: span 7; height: auto; min-height: 340px; }
+  .pd-place-go { left: 18px; right: auto; bottom: 18px; padding-right: 18px; }
+  .pd-cinema.public-contact-instagram-studio { grid-column: span 5; padding: 22px; }
+  .pd-cinema .public-instagram-reel-stage { aspect-ratio: 9 / 13; }
+  .pd-club { grid-column: span 7; align-content: center; gap: 20px; padding: 40px; }
+  .pd-club h2 { font-size: clamp(28px, 2.9vw, 42px); }
+  .pd-club p { font-size: 17px; }
+  .pd-club-stamps { max-width: 480px; gap: 8px; }
+  .pd-club button { justify-self: start; min-height: 52px; padding: 0 26px; font-size: 16.5px; }
+}
+
+.pd-truck { z-index: 1; bottom: 5%; }
+.pd-cinema .public-instagram-filmstrip { height: 0; min-height: 100%; }
+.pd-cinema .public-instagram-filmstrip button { flex: 1 1 0; height: 0; }
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .pd-cinema.public-contact-instagram-studio { grid-column: span 7; }
+  .pd-cinema-stage { grid-template-columns: 250px minmax(0, 1fr); gap: 16px; }
+  .pd-cinema .public-instagram-reel-stage { aspect-ratio: 9 / 14.5; }
+  .pd-cinema .public-instagram-filmstrip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 10px; height: auto; min-height: 0; }
+  .pd-cinema .public-instagram-filmstrip button { height: auto; border-radius: 15px; }
+  .pd-club { grid-column: span 5; padding: 32px; }
+  .pd-club h2 { font-size: clamp(24px, 2.2vw, 33px); }
+  .pd-club-stamps { grid-template-columns: repeat(5, 1fr); max-width: 320px; gap: 10px; }
+  .pd-club button { justify-self: stretch; }
+}
