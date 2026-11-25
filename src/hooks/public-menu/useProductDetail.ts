@@ -4,7 +4,7 @@ import { formatProductTitle, formatSpanishText } from '../../lib/textFormat'
 import { WebOrderCartItem, getPublicProductModifiers } from '../../lib/publicOrders'
 import { optimizedProductImage, cartLineKey, filterProteinExtraGroups, isProteinCatalogExtra, money } from '../../lib/publicMenuFormat'
 import { getPublicCartLimitViolation, isIncludedProteinGroup, getDefaultModifierSelection, PublicModifierSelection, calculateModifierTotal, hasInvalidModifierSelection, getModifierSelectionError, PUBLIC_ORDER_MAX_UNITS_PER_PRESENTATION, PUBLIC_ORDER_MAX_DISTINCT_LINES } from '../../lib/publicOrderRules'
-import { MenuProductGroup } from '../../lib/menuGrouping'
+import { groupMenuProducts, MenuProductGroup } from '../../lib/menuGrouping'
 import { PUBLIC_MODIFIER_CACHE, DESKTOP_MEDIA_QUERY } from '../../lib/publicMenuConfig'
 import { type CheckoutStep } from '../../lib/publicMenuTypes'
 
@@ -21,7 +21,6 @@ interface UseProductDetailArgs {
   detailQuantity: number
   editingCartLineKey: string | null
   extrasProducts: Product[]
-  groups: MenuProductGroup[]
   loadingModifiers: boolean
   modifierLoadError: boolean
   modifierRequestRef: RefObject<number>
@@ -75,7 +74,7 @@ interface UseProductDetailArgs {
   step: CheckoutStep
 }
 
-export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDetail, closingQuickVariant, commitCart, detailModifierGroups, detailNotes, detailNotesRef, detailQuantity, editingCartLineKey, extrasProducts, groups, loadingModifiers, modifierLoadError, modifierRequestRef, products, quickVariantGroup, quickVariantId, quickVariantProteinDraft, quickVariantProteinGroup, quickVariantQuantity, requiredModifierRef, returnToConfirmAfterEdit, selectedCatalogExtras, selectedExtras, selectedGroup, selectedVariantId, setAddFeedback, setAddFeedbackClosing, setAddingSelectedProduct, setCardQtys, setCartOpen, setCartPulse, setClosingCart, setClosingDetail, setClosingQuickVariant, setConfirmingQuickVariant, setDetailModifierGroups, setDetailNotes, setDetailOrigin, setDetailQuantity, setEditingCartLineKey, setError, setLoadingModifiers, setModifierLoadError, setModifierValidationError, setPendingQuickAdds, setQuickProteinDialogOpen, setQuickVariantGroup, setQuickVariantHasModifiers, setQuickVariantId, setQuickVariantOptionsLabel, setQuickVariantProteinDraft, setQuickVariantProteinGroup, setQuickVariantQuantity, setReturnToConfirmAfterEdit, setSelectedCatalogExtras, setSelectedExtras, setSelectedGroup, setSelectedVariantId, setShowModifierGuidance, setStep, step }: UseProductDetailArgs) {
+export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDetail, closingQuickVariant, commitCart, detailModifierGroups, detailNotes, detailNotesRef, detailQuantity, editingCartLineKey, extrasProducts, loadingModifiers, modifierLoadError, modifierRequestRef, products, quickVariantGroup, quickVariantId, quickVariantProteinDraft, quickVariantProteinGroup, quickVariantQuantity, requiredModifierRef, returnToConfirmAfterEdit, selectedCatalogExtras, selectedExtras, selectedGroup, selectedVariantId, setAddFeedback, setAddFeedbackClosing, setAddingSelectedProduct, setCardQtys, setCartOpen, setCartPulse, setClosingCart, setClosingDetail, setClosingQuickVariant, setConfirmingQuickVariant, setDetailModifierGroups, setDetailNotes, setDetailOrigin, setDetailQuantity, setEditingCartLineKey, setError, setLoadingModifiers, setModifierLoadError, setModifierValidationError, setPendingQuickAdds, setQuickProteinDialogOpen, setQuickVariantGroup, setQuickVariantHasModifiers, setQuickVariantId, setQuickVariantOptionsLabel, setQuickVariantProteinDraft, setQuickVariantProteinGroup, setQuickVariantQuantity, setReturnToConfirmAfterEdit, setSelectedCatalogExtras, setSelectedExtras, setSelectedGroup, setSelectedVariantId, setShowModifierGuidance, setStep, step }: UseProductDetailArgs) {
   const [quickVariantProteinSelection, setQuickVariantProteinSelection] = useState<Record<string, number>>({})
   useEffect(() => {
     const textarea = detailNotesRef.current
@@ -577,7 +576,8 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
   }
 
   const editCartItem = (item: WebOrderCartItem) => {
-    const group = groups.find(candidate => candidate.variants.some(variant => variant.product.id === item.productId))
+    // Busca en todo el catálogo: el plato del carrito puede ser de una categoría que no está abierta.
+    const group = groupMenuProducts([...products, ...extrasProducts]).find(candidate => candidate.variants.some(variant => variant.product.id === item.productId))
     if (!group) return
     const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches
     setEditingCartLineKey(cartLineKey(item))
