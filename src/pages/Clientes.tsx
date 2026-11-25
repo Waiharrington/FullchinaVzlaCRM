@@ -11,11 +11,12 @@ import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, updateCustomer, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type FinancialAccount } from '../lib/dataService'
+import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type FinancialAccount } from '../lib/dataService'
 import { Search, Users, Calendar, User, Plus, Crown, CreditCard, DollarSign, Eye, Edit2, Trash2, X, Phone, Gift, ShoppingBag, MapPin, ArrowLeft, Tag, ChevronLeft, ChevronRight, IdCard, ShoppingCart, ClipboardList, Package, Wallet } from 'lucide-react'
 import './Clientes.css'
 import { QuickOrderModal } from './clientes/QuickOrderModal'
 import { NewClientModal } from './clientes/NewClientModal'
+import { EditClientModal } from './clientes/EditClientModal'
 import { CustomerRow, formatTenure, formatRelativeDays, formatDate, formatDateTime, formatUsdText, WhatsAppIcon, normalizeCustomerName, avatarColorFor, buildDemoClientData, ORDER_TYPE_LABELS, ORDER_TYPE_ICONS, FULFILLMENT_LABELS, formatBirthday, PAYMENT_LABELS, PAYMENT_ICONS, classifyIdentification } from './clientes/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
@@ -125,15 +126,7 @@ export function Clientes() {
   const [showNewModal, setShowNewModal] = useState(false)
 
   // Edit client modal state
-  const [editClientId, setEditClientId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editPhone, setEditPhone] = useState('')
-  const [editIdentification, setEditIdentification] = useState('')
-  const [editAddress, setEditAddress] = useState('')
-  const [editBirthMonth, setEditBirthMonth] = useState('')
-  const [editBirthDay, setEditBirthDay] = useState('')
-  const [editSaving, setEditSaving] = useState(false)
-  const [editError, setEditError] = useState('')
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
 
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentSaving, setPaymentSaving] = useState(false)
@@ -157,7 +150,6 @@ export function Clientes() {
 
   // Closing-delay flags: keep the overlay mounted for the exit animation
   // before flipping the visibility state to false/null.
-  const [closingEdit, setClosingEdit] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
   const [closingCobrar, setClosingCobrar] = useState(false)
   const [closingOrderDetail, setClosingOrderDetail] = useState(false)
@@ -168,16 +160,6 @@ export function Clientes() {
     window.setTimeout(() => {
       setOrderDetail(null)
       setClosingOrderDetail(false)
-    }, 200)
-  }
-
-  const closeEditModal = (then?: () => void) => {
-    if (!editClientId || closingEdit) return
-    setClosingEdit(true)
-    window.setTimeout(() => {
-      setEditClientId(null)
-      setClosingEdit(false)
-      then?.()
     }, 200)
   }
 
@@ -311,23 +293,7 @@ export function Clientes() {
     getProducts().then(setProducts).catch((e) => console.error('Error cargando fotos de productos:', e))
   }, [isDemoMode])
 
-  const openEditCustomer = (c: Customer) => {
-    setEditClientId(c.id)
-    setEditName(c.name)
-    setEditPhone(c.phone ?? '')
-    setEditIdentification(c.identification ?? '')
-    setEditAddress(c.address ?? '')
-    const bd = (c.birthday || '').slice(0, 10)
-    if (bd) {
-      const [, m, d] = bd.split('-')
-      setEditBirthMonth(String(Number(m)))
-      setEditBirthDay(String(Number(d)))
-    } else {
-      setEditBirthMonth('')
-      setEditBirthDay('')
-    }
-    setEditError('')
-  }
+  const openEditCustomer = (c: Customer) => setEditingCustomer(c)
 
   const handleDeactivateCustomer = async (customer: CustomerRow) => {
     const ok = await confirmDialog({
@@ -343,37 +309,6 @@ export function Clientes() {
     } catch (e) {
       console.error('Error al desactivar cliente:', e)
       void alertDialog({ message: 'No se pudo desactivar el cliente', danger: true })
-    }
-  }
-
-  const handleUpdateClient = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editClientId || !editName.trim()) return
-    const birthDate = editBirthMonth && editBirthDay ? `2000-${editBirthMonth.padStart(2, '0')}-${editBirthDay.padStart(2, '0')}` : undefined
-    setEditSaving(true)
-    setEditError('')
-    try {
-      const updated = await updateCustomer(editClientId, {
-        name: editName.trim(),
-        phone: editPhone.trim(),
-        identification: editIdentification.trim(),
-        address: editAddress.trim() || undefined,
-        birthDate,
-      })
-      setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))
-      setSelectedClient(prev => prev && prev.id === updated.id ? {
-        ...prev,
-        name: updated.name,
-        phone: updated.phone,
-        identification: updated.identification,
-        identificationStatus: classifyIdentification(updated.identification),
-      } : prev)
-      closeEditModal()
-    } catch (err) {
-      console.error('Error actualizando cliente:', err)
-      setEditError('No se pudo actualizar el cliente. Revisa los datos e intenta de nuevo.')
-    } finally {
-      setEditSaving(false)
     }
   }
 
@@ -465,77 +400,21 @@ export function Clientes() {
       )}
 
       {/* Modal Editar Cliente */}
-      {editClientId && createPortal(
-        <div className={`modal-overlay-dark ${closingEdit ? 'closing' : ''}`} onClick={() => closeEditModal()}>
-          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <div>
-                <h3 className="modal-title">Editar cliente</h3>
-                <p className="modal-sub-desc">Actualiza los datos del cliente</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleUpdateClient} className="crm-form mt-3">
-              <div className="field">
-                <label className="field-label-white">Nombre completo</label>
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="modal-input-dark" required />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cédula / Identificación</label>
-                <input type="text" placeholder="Ej. V-12345678" value={editIdentification} onChange={(e) => setEditIdentification(e.target.value)} className="modal-input-dark" />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Teléfono</label>
-                <div className="input-with-icon-wrap">
-                  <Phone size={16} className="input-left-icon" />
-                  <input type="text" placeholder="Ej. 0412 1234567" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="modal-input-dark with-left-icon" />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Dirección</label>
-                <div className="input-with-icon-wrap">
-                  <MapPin size={16} className="input-left-icon" />
-                  <input type="text" placeholder="Ej. Av. Bolívar, casa 12" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="modal-input-dark with-left-icon" />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cumpleaños</label>
-                <div className="birthday-selects-row">
-                  <div className="select-col">
-                    <span className="select-sub-label">Mes</span>
-                    <StyledSelect className="modal-select-dark" value={editBirthMonth} onChange={(e) => setEditBirthMonth(e.target.value)}>
-                      <option value="">Selecciona el mes</option>
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                  <div className="select-col">
-                    <span className="select-sub-label">Día</span>
-                    <StyledSelect className="modal-select-dark" value={editBirthDay} onChange={(e) => setEditBirthDay(e.target.value)}>
-                      <option value="">Selecciona el día</option>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-              </div>
-
-              {editError && <p className="login-error mt-2">{editError}</p>}
-
-              <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => closeEditModal()}>Cancelar</button>
-                <button type="submit" className="btn-modal-submit-red" disabled={editSaving}>{editSaving ? 'Guardando…' : 'Guardar cambios'}</button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
+      {editingCustomer && (
+        <EditClientModal
+          customer={editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSaved={(updated) => {
+            setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))
+            setSelectedClient(prev => prev && prev.id === updated.id ? {
+              ...prev,
+              name: updated.name,
+              phone: updated.phone,
+              identification: updated.identification,
+              identificationStatus: classifyIdentification(updated.identification),
+            } : prev)
+          }}
+        />
       )}
 
       {/* Modal Abonar Crédito */}

@@ -19,7 +19,7 @@ export function fullName(form: NewClientForm): string {
 }
 
 // El cumpleaños se guarda con año fijo 2000: solo importan mes y día.
-export function birthDateFrom(form: NewClientForm): string | undefined {
+export function birthDateFrom(form: { birthDay: string; birthMonth: string }): string | undefined {
   return form.birthMonth && form.birthDay ? `2000-${form.birthMonth.padStart(2, '0')}-${form.birthDay.padStart(2, '0')}` : undefined
 }
 
