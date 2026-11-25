@@ -119,7 +119,7 @@ html[data-pwa-entry='cliente'] .toast-item .toast-icon { color: var(--pd-red); }
 .pps-row { background: var(--card) !important; border-color: var(--line) !important; }
 html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card: #fff; --chip: #FFEBD6; --line: #F0E3D4; --fg: #17100E; --soft: #6B5B55; --accent: #A80C16; background: #fff; color: #17100E; }
 .public-menu-page, .public-cart-drawer, .public-modal-backdrop, .public-variant-backdrop, .customer-celebration-backdrop { --fc-skeleton-base: rgba(255, 255, 255, .06); --fc-skeleton-glow: rgba(255, 255, 255, .14); }
-.public-status i { background: #4BE08A; }
+.public-status:not(.is-closed) i { background: #4BE08A; }
 
 /* Cerrado: santamaría negra de metal con letrero rojo */
 .pd-shutter, .pd-curtain { background: linear-gradient(rgba(0, 0, 0, .45), rgba(0, 0, 0, 0) 18%, rgba(0, 0, 0, 0) 84%, rgba(0, 0, 0, .6)), repeating-linear-gradient(#0A0706 0 3px, #2C211D 3px 8px, #1C1412 8px 26px, #050303 26px 28px); border-color: var(--pd-red, #D9141E); }
