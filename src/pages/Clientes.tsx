@@ -5,18 +5,18 @@ import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
 import { StyledSelect } from '../components/StyledSelect'
-import { ReceivablePaymentEditor, type ReceivablePaymentComponent } from '../components/ReceivablePaymentEditor'
 import { formatProductTitle, normalizeForSearch } from '../lib/textFormat'
 import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type FinancialAccount } from '../lib/dataService'
+import { getCredits, getCreditPayments, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product } from '../lib/dataService'
 import { Search, Users, Calendar, User, Plus, Crown, CreditCard, DollarSign, Eye, Edit2, Trash2, X, Phone, Gift, ShoppingBag, MapPin, ArrowLeft, Tag, ChevronLeft, ChevronRight, IdCard, ShoppingCart, ClipboardList, Package, Wallet } from 'lucide-react'
 import './Clientes.css'
 import { QuickOrderModal } from './clientes/QuickOrderModal'
 import { NewClientModal } from './clientes/NewClientModal'
 import { EditClientModal } from './clientes/EditClientModal'
+import { ReceivablesModals } from './clientes/ReceivablesModals'
 import { CustomerRow, formatTenure, formatRelativeDays, formatDate, formatDateTime, formatUsdText, WhatsAppIcon, normalizeCustomerName, avatarColorFor, buildDemoClientData, ORDER_TYPE_LABELS, ORDER_TYPE_ICONS, FULFILLMENT_LABELS, formatBirthday, PAYMENT_LABELS, PAYMENT_ICONS, classifyIdentification } from './clientes/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
@@ -128,18 +128,8 @@ export function Clientes() {
   // Edit client modal state
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
 
-  const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
-  const [paymentSaving, setPaymentSaving] = useState(false)
-  const [paymentError, setPaymentError] = useState('')
-  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
   const [showCobrarModal, setShowCobrarModal] = useState(false)
 
-  useEffect(() => {
-    getCustomerPaymentAccounts().then(setFinancialAccounts).catch((error) => {
-      console.error('Error cargando cuentas para cobros:', error)
-      setFinancialAccounts([])
-    })
-  }, [])
 
   // Modal "Nuevo pedido" embebido en la ficha del cliente (no navega a Caja).
   const [showQuickOrderModal, setShowQuickOrderModal] = useState(false)
@@ -150,8 +140,6 @@ export function Clientes() {
 
   // Closing-delay flags: keep the overlay mounted for the exit animation
   // before flipping the visibility state to false/null.
-  const [closingPayment, setClosingPayment] = useState(false)
-  const [closingCobrar, setClosingCobrar] = useState(false)
   const [closingOrderDetail, setClosingOrderDetail] = useState(false)
 
   const closeOrderDetail = () => {
@@ -163,53 +151,11 @@ export function Clientes() {
     }, 200)
   }
 
-  const closePaymentModal = (then?: () => void) => {
-    if (!paymentModal || closingPayment) return
-    setClosingPayment(true)
-    window.setTimeout(() => {
-      setPaymentModal(null)
-      setClosingPayment(false)
-      then?.()
-    }, 200)
-  }
-
-  const closeCobrarModal = (then?: () => void) => {
-    if (!showCobrarModal || closingCobrar) return
-    setClosingCobrar(true)
-    window.setTimeout(() => {
-      setShowCobrarModal(false)
-      setClosingCobrar(false)
-      then?.()
-    }, 200)
-  }
   const [customerOrders, setCustomerOrders] = useState<CustomerOrderSummary[]>([])
   const [customerCreditPayments, setCustomerCreditPayments] = useState<CreditPayment[]>([])
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileError, setProfileError] = useState('')
-  const [receivableOrders, setReceivableOrders] = useState<Record<string, CustomerOrderSummary>>({})
-  const [receivablesLoading, setReceivablesLoading] = useState(false)
 
-  const openReceivablePayment = (credit: CreditType) => {
-    setPaymentError('')
-    closeCobrarModal(() => setPaymentModal(credit))
-  }
-
-  useEffect(() => {
-    if (!showCobrarModal) return
-    const linkedCredits = credits.filter((credit) => credit.balancePending > 0 && credit.orderId && credit.customerId)
-    let cancelled = false
-    setReceivablesLoading(true)
-    Promise.all(linkedCredits.map(async (credit) => {
-      const orders = await getCustomerOrders(credit.customerId as string, credit.customerName)
-      return [credit.id, orders.find((order) => order.id === credit.orderId)] as const
-    }))
-      .then((entries) => {
-        if (!cancelled) setReceivableOrders(Object.fromEntries(entries.filter((entry): entry is [string, CustomerOrderSummary] => Boolean(entry[1]))))
-      })
-      .catch((error) => console.error('Error cargando comandas por cobrar:', error))
-      .finally(() => { if (!cancelled) setReceivablesLoading(false) })
-    return () => { cancelled = true }
-  }, [showCobrarModal, credits])
 
   useEffect(() => {
     if (isDemoMode) return
@@ -312,28 +258,6 @@ export function Clientes() {
     }
   }
 
-  const handlePayment = async (payments: ReceivablePaymentComponent[], notes: string) => {
-    if (paymentModal && user) {
-      setPaymentSaving(true)
-      setPaymentError('')
-      try {
-        await addCreditPayment({
-          creditId: paymentModal.id,
-          payments,
-          notes: notes || undefined,
-        })
-        await fetchCredits()
-        closePaymentModal(() => setShowCobrarModal(true))
-      } catch (e) {
-        console.error('Error registrando abono:', e)
-        const detail = e instanceof Error ? e.message : 'Intenta de nuevo.'
-        setPaymentError(`No se pudo registrar el pago: ${detail}`)
-      } finally {
-        setPaymentSaving(false)
-      }
-    }
-  }
-
   // Clientes reales importados, enriquecidos con saldos de crédito actuales.
   const displayRows = useMemo(() => {
     const rows: CustomerRow[] = customers.map((customer) => {
@@ -417,79 +341,17 @@ export function Clientes() {
         />
       )}
 
-      {/* Modal Abonar Crédito */}
-      {paymentModal && createPortal(
-        <div className={`modal-overlay-dark ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
-          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <h3 className="modal-title">Abonar a Crédito</h3>
-            </div>
-            <div className="clientes-modal-customer-row mt-2">
-              <div className="clientes-modal-avatar">
-                {paymentModal.customerName.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase()}
-              </div>
-              <span className="clientes-modal-customer-name">{paymentModal.customerName}</span>
-            </div>
-            {receivableOrders[paymentModal.id] && <p className="modal-sub-desc">Pago de comanda #{receivableOrders[paymentModal.id].orderNumber}</p>}
-            <div className="clientes-debt-highlight mt-2">
-              <span className="clientes-debt-label">Deuda restante</span>
-              <MoneyWithBcv usd={paymentModal.balancePending} className="clientes-debt-amount" usdClassName="font-bold" compact />
-            </div>
-
-            <ReceivablePaymentEditor key={paymentModal.id} variant="clientes" credit={paymentModal} accounts={financialAccounts} exchangeRate={bcvRate} saving={paymentSaving} error={paymentError} initialNotes={receivableOrders[paymentModal.id]?.orderNumber ? `Pago de comanda #${receivableOrders[paymentModal.id].orderNumber}` : 'Abono a cuenta por cobrar'} onSubmit={(payments, notes) => void handlePayment(payments, notes)} />
-            <div className="modal-actions-row-right mt-4"><button type="button" className="btn-modal-cancel" onClick={() => closePaymentModal()}>Cancelar</button></div>
-          </div>
-        </div>,
-        document.body
+      {/* Cuentas por cobrar y abono de créditos */}
+      {showCobrarModal && (
+        <ReceivablesModals
+          bcvRate={bcvRate}
+          credits={credits}
+          pendingOrderCount={pendingReceivableOrderCount}
+          totalOutstanding={totalOutstanding}
+          onClose={() => setShowCobrarModal(false)}
+          onRefreshCredits={() => fetchCredits()}
+        />
       )}
-
-      {/* Modal Cuentas por cobrar */}
-      {showCobrarModal && createPortal((
-        <>
-        <div className={`modal-overlay-dark receivables-modal-overlay ${closingCobrar ? 'closing' : ''}`} onClick={() => closeCobrarModal()}>
-          <div className="client-modal-box receivables-modal-box animate-pop clientes-modal-glow" role="dialog" aria-modal="true" aria-labelledby="receivables-modal-title" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <div className="side-header-title">
-                <DollarSign size={18} className="text-red" />
-                <h3 id="receivables-modal-title" className="modal-title">Cuentas por cobrar</h3>
-              </div>
-              <button className="modal-close-btn" onClick={() => closeCobrarModal()}><X size={18} /></button>
-            </div>
-
-            <div className="cobrar-total-area clientes-cobrar-total-highlight mt-3">
-              <MoneyWithBcv usd={totalOutstanding} className="cobrar-total-val" align="center" />
-              <span className="cobrar-total-sub">Total pendiente</span>
-            </div>
-
-            <div className="receivables-summary-row">
-              <span className="clientes-summary-chip">{credits.filter((credit) => credit.balancePending > 0).length} cuentas activas</span>
-              <span className="clientes-summary-chip">{pendingReceivableOrderCount} comandas a crédito</span>
-            </div>
-            <div className="receivables-list">
-              {receivablesLoading && <LoadingSkeleton label="Cargando detalle de créditos" count={3} />}
-              {credits.filter((credit) => credit.balancePending > 0).map((credit) => {
-                const order = receivableOrders[credit.id]
-                const days = Math.max(0, Math.floor((Date.now() - new Date(credit.createdAt).getTime()) / 86400000))
-                return <div className="receivable-row" key={credit.id}>
-                  <div>
-                    <strong>{credit.customerName}</strong>
-                    <span>{order ? `Comanda #${order.orderNumber} · ${order.itemsText || 'Sin detalle'}` : 'Crédito manual'}</span>
-                    <small>Desde hace {days} día{days === 1 ? '' : 's'} · {formatDate(credit.createdAt)}</small>
-                  </div>
-                  <div className="receivable-row-actions">
-                    <MoneyWithBcv usd={credit.balancePending} className="legend-val font-bold" compact />
-                    <button type="button" className="receivable-payment-button" onClick={() => openReceivablePayment(credit)}>
-                      Registrar pago
-                    </button>
-                  </div>
-                </div>
-              })}
-              {!receivablesLoading && credits.filter((credit) => credit.balancePending > 0).length === 0 && <p className="modal-sub-desc">No hay cuentas por cobrar activas.</p>}
-            </div>
-          </div>
-        </div>
-        </>
-      ), document.body)}
 
       {/* Modal Nuevo pedido (embebido, no navega a Caja) */}
       {showQuickOrderModal && selectedClient && (
