@@ -123,7 +123,7 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
     const { data, error } = await db.from('whatsapp_messages')
       .update({ status: 'cancelled', error_message: 'Campaña cancelada automáticamente fuera del horario permitido (10:00 p. m. a 8:00 a. m., hora de Caracas).' })
       .eq('status', 'queued')
-      .not('template_type', 'in', '(post_purchase)')
+      .not('template_type', 'in', '(post_purchase,web_order_confirmation)')
       .select('id')
     if (error) throw new Error(`No se pudieron cancelar las campañas fuera de horario: ${error.message}`)
     const cancelled = data ? data.length : 0
@@ -137,7 +137,7 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
       .update({ status: 'cancelled', error_message: 'Campaña pendiente de la noche anterior cancelada automáticamente al reanudar el horario diurno (8:00 a. m., hora de Caracas).' })
       .eq('status', 'queued')
       .lt('created_at', cutoff)
-      .not('template_type', 'in', '(post_purchase)')
+      .not('template_type', 'in', '(post_purchase,web_order_confirmation)')
       .select('id')
     if (error) throw new Error(`No se pudieron cancelar campañas anteriores al horario diurno: ${error.message}`)
     const cancelled = data ? data.length : 0

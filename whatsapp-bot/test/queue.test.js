@@ -182,6 +182,19 @@ test('las confirmaciones de pedidos web pueden enviarse fuera del horario de cam
   assert.equal(isAllowedAfterHours({ template_type: 'custom' }), false)
 })
 
+test('de noche cancela campañas pero deja enviar la confirmación del pedido web', async () => {
+  const { db, client, processor } = setup({
+    db: { rows: [makeRow('a1', { template_type: 'web_order_confirmation' }), makeRow('b2', { template_type: 'custom' })] },
+    processor: { quietHours: () => true },
+  })
+
+  await processor.processQueue()
+
+  assert.equal(db.rows[0].status, 'sent')
+  assert.equal(db.rows[1].status, 'cancelled')
+  assert.equal(client.sent.length, 1)
+})
+
 // --- Ciclo de envío ---------------------------------------------------------
 
 test('camino feliz: reclama, personaliza, envía y confirma con delay', async () => {
