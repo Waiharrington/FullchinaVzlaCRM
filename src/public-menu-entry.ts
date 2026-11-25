@@ -1,4 +1,5 @@
 import { clearLegacyPwaRuntimeCaches } from './lib/pwaRuntimeCache'
+import { startWelcomeScene } from './pedir-v2/welcomeScene'
 
 const DISMISSED_KEY = 'fullchina_public_welcome_dismissed_v1'
 const PENDING_DISMISS_KEY = 'fullchina_public_welcome_pending_dismiss'
@@ -21,6 +22,9 @@ declare global {
     __fullChinaCheckPublicMenuVersion?: () => Promise<boolean>
   }
 }
+
+// Solo visual: la escena de platos responde al dedo y al mouse.
+startWelcomeScene(staticWelcome)
 
 let appLoad: Promise<unknown> | null = null
 let menuModuleLoad: Promise<typeof import('./pages/PublicMenu')> | null = null

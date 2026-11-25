@@ -46,7 +46,7 @@ statusHeartbeat.unref?.()
 
 const client = new Client({
   authStrategy: new LocalAuth({ clientId: 'fullchina', dataPath: process.env.WHATSAPP_SESSION_PATH || './.wwebjs_auth' }),
-  puppeteer: { headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--no-zygote'] },
+  puppeteer: { headless: true, protocolTimeout: 600000, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--no-first-run', '--no-zygote'] },
 })
 
 client.on('qr', qr => {

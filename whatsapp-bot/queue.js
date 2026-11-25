@@ -169,6 +169,20 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
     return false
   }
 
+  // Pregunta a WhatsApp por el id real del número. Evita el error "No LID for
+  // user" y detecta números sin WhatsApp. Si la consulta misma falla, se usa
+  // el id calculado como antes.
+  async function resolveChatId(phone) {
+    const fallback = normalizeChatId(phone)
+    if (typeof client.getNumberId !== 'function') return fallback
+    try {
+      const found = await client.getNumberId(fallback.replace('@c.us', ''))
+      return found ? found._serialized : null
+    } catch {
+      return fallback
+    }
+  }
+
   // outcome: 'sent' | 'failed' | 'skipped' | 'not-ready' | 'unconfirmed'
   async function sendOne(next) {
     const current = await getStatus(next.id)
@@ -187,7 +201,13 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
     }
     const text = personalizeMessage(next.message, next.full_name)
     try {
-      await client.sendMessage(normalizeChatId(next.phone), text)
+      const chatId = await resolveChatId(next.phone)
+      if (!chatId) {
+        log.warn(`El número ${next.phone} no tiene WhatsApp; no se envía.`)
+        await markFailed(next.id, 'Este número no tiene WhatsApp o está mal escrito.')
+        return 'failed'
+      }
+      await client.sendMessage(chatId, text)
     } catch (sendError) {
       log.error(`No se pudo enviar a ${next.phone}: ${sendError.message || sendError}`)
       await markFailed(next.id, sendError.message || sendError)

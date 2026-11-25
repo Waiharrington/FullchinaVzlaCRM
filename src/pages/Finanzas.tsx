@@ -1,13 +1,9 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccountCreditPayments, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation,
-  getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments,
-  type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type FinancialAccountCreditPayment, type PersonalAccount, type DeliveryAssignment,
-} from '../lib/dataService'
+import { getOrdersWithItems, getExpenses, getPurchases, getRecipeSummaries, getPayrollSummary, getFinancialOperations, getFinancialAccountCreditPayments, getFinancialAccounts, updateFinancialAccountOpeningBalance, createFinancialTransfer, createManualFinancialIncome, createExpense, deleteFinancialOperation, getPersonalAccounts, createPersonalAccount, deactivatePersonalAccount, isPersonalAccountOrder, getDeliveryAssignments, type FullOrder, type Expense, type Purchase, type RecipeSummary, type FinancialOperation, type FinancialAccount, type FinancialAccountCreditPayment, type PersonalAccount, type DeliveryAssignment } from '../lib/dataService'
 import { buildDailyFinancialRows, sumFinancialRows, weekRangeFor } from '../lib/dailyFinancialSummary'
 import { buildFinancialAccountActivity } from '../lib/financialAccountActivity'
-import { buildPaymentBreakdown, type PaymentBreakdownEntry } from '../lib/paymentBreakdown'
+import { buildPaymentBreakdown } from '../lib/paymentBreakdown'
 import { deliveryCommissionCost } from '../lib/deliveryCommission'
 import { useRates } from '../context/rates-context'
 import { useAuth } from '../context/auth-context'
@@ -17,106 +13,40 @@ import { StyledSelect } from '../components/StyledSelect'
 import { DateField } from '../components/DateField'
 import { confirmDialog } from '../components/ConfirmDialog'
 import { formatUsd, formatVes } from '../lib/money'
-import {
-  Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent,
-  Banknote, Smartphone, CreditCard, Building2, CalendarDays, Download, Pencil, Check, X, Plus,
-  ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2,
-  Clock, Gift, Users, Landmark, ArrowRight, TrendingDown,
-} from 'lucide-react'
+import { Target, ShoppingCart, Wallet, DollarSign, TrendingUp, Percent, Banknote, Building2, CalendarDays, Download, Pencil, Check, X, Plus, ChevronLeft, ChevronRight, CircleAlert, CircleCheckBig, ArrowRightLeft, Trash2, Clock, Users, ArrowRight, TrendingDown } from 'lucide-react'
 import './Finanzas.css'
+import { Period, PL, startOfDay, endOfDay, parseFinancialAmount, addDays, isoDate, pct, isDeliveryItem, FinanceTab, ManualFinanceMode, HistoryDirection, FinancialHistoryEntry, AccountDayMovement, AccountHistoryMovement, PAY_META, OP_META } from './finanzas/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
-type Period = 'hoy' | 'ayer' | 'semana' | 'mes' | 'rango'
-interface PL {
-  grossSales: number; cogs: number; opex: number; payroll: number
-  grossProfit: number; netProfit: number; margin: number
-  ordersCount: number; avgTicket: number; payments: Record<string, PaymentBreakdownEntry>
+// Cache a nivel de módulo: al volver a Finanzas se muestran los datos de la
+// última visita al instante mientras se refrescan en segundo plano.
+interface FinanzasSnapshot {
+  orders: FullOrder[]; expenses: Expense[]; purchases: Purchase[]; recipeCost: Map<string, RecipeSummary>
+  payroll: { periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }
+  operations: FinancialOperation[]; creditAccountPayments: FinancialAccountCreditPayment[]
+  accounts: FinancialAccount[]; personalAccounts: PersonalAccount[]; deliveryAssignments: DeliveryAssignment[]; fullHistory: boolean
 }
-const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0)
-const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
-function parseFinancialAmount(value: string): number {
-  const normalized = value.trim().replace(/\s/g, '').replace(/\.(?=.*[,])/g, '').replace(',', '.')
-  return normalized ? Number(normalized) : Number.NaN
-}
-const addDays = (d: Date, n: number) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
-const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
-const isDeliveryItem = (item: FullOrder['items'][number]) => item.productName.trim().toLowerCase() === 'delivery'
-
-type FinanceTab = 'overview' | 'daily' | 'closing' | 'history'
-type ManualFinanceMode = 'income' | 'expense'
-type HistoryDirection = 'in' | 'out' | 'transfer'
-interface FinancialHistoryEntry {
-  id: string
-  date: string
-  direction: HistoryDirection
-  category: string
-  concept: string
-  detail: string
-  account: string
-  amountUsd: number
-  nativeAmount: number
-  currency: 'USD' | 'VES'
-}
-
-interface AccountDayMovement {
-  id: string
-  direction: 'in' | 'out'
-  category: string
-  concept: string
-  detail: string
-  amount: number
-  occurredAt: string | null
-}
-
-interface AccountHistoryMovement extends AccountDayMovement {
-  date: string
-  balanceAfter: number
-}
-
-const PAY_META: Record<string, { label: string; icon: React.ReactNode; color: string; sub?: string }> = {
-  cash: { label: 'Efectivo', icon: <Banknote size={16} />, color: '#22c55e', sub: 'En caja física' },
-  mobile: { label: 'Pago Móvil (Bancos)', icon: <Smartphone size={16} />, color: '#facc15', sub: 'Verificado con referencia' },
-  card: { label: 'Punto de Venta', icon: <CreditCard size={16} />, color: '#eab308', sub: 'Tarjeta crédito/débito' },
-  transfer: { label: 'Transferencia', icon: <Building2 size={16} />, color: '#fde047' },
-  binance: { label: 'Binance', icon: <DollarSign size={16} />, color: '#eab308' },
-  zelle: { label: 'Zelle', icon: <DollarSign size={16} />, color: '#6366f1' },
-  other: { label: 'Otro', icon: <Wallet size={16} />, color: '#71717a' },
-}
-
-const OP_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  transfer: { label: 'Transferencia', icon: <ArrowRightLeft size={15} />, color: '#eab308' },
-  receivable: { label: 'Cuenta por cobrar', icon: <Clock size={15} />, color: '#fde047' },
-  receivable_collection: { label: 'Cobro recibido', icon: <CircleCheckBig size={15} />, color: '#22c55e' },
-  tip: { label: 'Propina', icon: <Gift size={15} />, color: '#eab308' },
-  tip_distribution: { label: 'Reparto de propinas', icon: <Users size={15} />, color: '#facc15' },
-  employee_advance: { label: 'Adelanto', icon: <Wallet size={15} />, color: '#facc15' },
-  loan: { label: 'Préstamo', icon: <Landmark size={15} />, color: '#818cf8' },
-  loan_payment: { label: 'Pago de préstamo', icon: <Check size={15} />, color: '#4ade80' },
-  bank_fee: { label: 'Comisión bancaria', icon: <Percent size={15} />, color: '#f87171' },
-  adjustment: { label: 'Ajuste', icon: <Pencil size={15} />, color: '#a1a1aa' },
-  payroll: { label: 'Nómina', icon: <Users size={15} />, color: '#fb7185' },
-}
+let finanzasCache: FinanzasSnapshot | null = null
 
 export function Finanzas() {
   const { bcvRate } = useRates()
   const { user } = useAuth()
-  const [orders, setOrders] = useState<FullOrder[]>([])
-  const [deliveryAssignments, setDeliveryAssignments] = useState<DeliveryAssignment[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [purchases, setPurchases] = useState<Purchase[]>([])
-  const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(new Map())
-  const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>({ periods: [], bonuses: [] })
-  const [operations, setOperations] = useState<FinancialOperation[]>([])
-  const [creditAccountPayments, setCreditAccountPayments] = useState<FinancialAccountCreditPayment[]>([])
-  const [accounts, setAccounts] = useState<FinancialAccount[]>([])
-  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>([])
+  const [orders, setOrders] = useState<FullOrder[]>(finanzasCache?.orders ?? [])
+  const [deliveryAssignments, setDeliveryAssignments] = useState<DeliveryAssignment[]>(finanzasCache?.deliveryAssignments ?? [])
+  const [expenses, setExpenses] = useState<Expense[]>(finanzasCache?.expenses ?? [])
+  const [purchases, setPurchases] = useState<Purchase[]>(finanzasCache?.purchases ?? [])
+  const [recipeCost, setRecipeCost] = useState<Map<string, RecipeSummary>>(finanzasCache?.recipeCost ?? new Map())
+  const [payroll, setPayroll] = useState<{ periods: Array<{ endDate: string; total: number }>; bonuses: Array<{ date: string; amount: number }> }>(finanzasCache?.payroll ?? { periods: [], bonuses: [] })
+  const [operations, setOperations] = useState<FinancialOperation[]>(finanzasCache?.operations ?? [])
+  const [creditAccountPayments, setCreditAccountPayments] = useState<FinancialAccountCreditPayment[]>(finanzasCache?.creditAccountPayments ?? [])
+  const [accounts, setAccounts] = useState<FinancialAccount[]>(finanzasCache?.accounts ?? [])
+  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccount[]>(finanzasCache?.personalAccounts ?? [])
   const [selectedPersonalAccount, setSelectedPersonalAccount] = useState<PersonalAccount | null>(null)
   const [personalConsumptionPage, setPersonalConsumptionPage] = useState(1)
   const [newPersonalAccountName, setNewPersonalAccountName] = useState('')
   const [savingPersonalAccount, setSavingPersonalAccount] = useState(false)
   const [personalAccountError, setPersonalAccountError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!finanzasCache)
   const [activeTab, setActiveTab] = useState<FinanceTab>('overview')
   const [historyFilter, setHistoryFilter] = useState<'all' | HistoryDirection>('all')
   const [historyPage, setHistoryPage] = useState(1)
@@ -238,11 +168,21 @@ export function Finanzas() {
     return () => document.removeEventListener('keydown', closeOnEscape)
   }, [closeAccount, closeLedger, closeTransfer, selectedAccount, selectedLedgerCurrency, selectedPersonalAccount, showTransfer, transferSaving, manualFinanceMode, manualFinanceSaving])
 
-  const load = useCallback(async (silent = false) => {
+  // Por defecto solo se cargan los pedidos desde 14 días atrás (o desde el 1 del mes, lo que sea más antiguo,
+  // para que "Mes" siempre sea exacto). El historial completo se carga al pedirlo.
+  const windowStart = useMemo(() => {
+    const now = new Date()
+    return isoDate(startOfDay(new Date(Math.min(addDays(now, -14).getTime(), new Date(now.getFullYear(), now.getMonth(), 1).getTime()))))
+  }, [])
+  const [fullHistory, setFullHistory] = useState(finanzasCache?.fullHistory ?? false)
+  const fullHistoryRef = useRef(fullHistory)
+  const load = useCallback(async (silent = false, forceFull = false) => {
     try {
       if (!silent) setLoading(true)
+      const full = forceFull || fullHistoryRef.current
+      fullHistoryRef.current = full
       const [ords, exps, purchaseData, recipes, pay, ops, creditPayments, accts, personalAccts, deliveries] = await Promise.all([
-        getOrdersWithItems(undefined, undefined, true),
+        full ? getOrdersWithItems(undefined, undefined, true) : getOrdersWithItems(`${windowStart}T00:00:00-04:00`, undefined, true),
         getExpenses(undefined, undefined, true),
         getPurchases(true).catch((error) => { console.error('No se pudieron cargar las compras en Finanzas:', error); return [] }),
         getRecipeSummaries().catch(() => new Map<string, RecipeSummary>()),
@@ -251,10 +191,22 @@ export function Finanzas() {
         getFinancialAccountCreditPayments(true).catch((error) => { console.error('No se pudieron cargar los abonos de cuentas por cobrar:', error); return [] }),
         getFinancialAccounts().catch(() => []), getPersonalAccounts().catch(() => []), getDeliveryAssignments(),
       ])
-      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setCreditAccountPayments(creditPayments); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries)
+      finanzasCache = { orders: ords, expenses: exps, purchases: purchaseData, recipeCost: recipes, payroll: pay, operations: ops, creditAccountPayments: creditPayments, accounts: accts, personalAccounts: personalAccts, deliveryAssignments: deliveries, fullHistory: full }
+      setOrders(ords); setExpenses(exps); setPurchases(purchaseData); setRecipeCost(recipes); setPayroll(pay); setOperations(ops); setCreditAccountPayments(creditPayments); setAccounts(accts); setPersonalAccounts(personalAccts); setDeliveryAssignments(deliveries); setFullHistory(full)
     } catch (e) { console.error(e) } finally { if (!silent) setLoading(false) }
-  }, [])
+  }, [windowStart])
   useEffect(() => { void load() }, [load])
+  const [loadingFull, setLoadingFull] = useState(false)
+  const loadFullHistory = useCallback(async () => {
+    if (fullHistoryRef.current) return
+    setLoadingFull(true)
+    try { await load(true, true) } finally { setLoadingFull(false) }
+  }, [load])
+  // Rangos o detalles que necesitan datos más viejos que la ventana inicial piden el historial completo solos.
+  const needsFullHistory = !fullHistory && !loading && (
+    (period === 'rango' && rangeStart < windowStart) || !!selectedAccount || !!selectedLedgerCurrency || !!selectedPersonalAccount
+  )
+  useEffect(() => { if (needsFullHistory) void loadFullHistory() }, [needsFullHistory, loadFullHistory])
   useLiveDataRefresh('finanzas', () => load(true))
 
   const computePL = useCallback((start: Date, end: Date): PL => {
@@ -860,6 +812,13 @@ export function Finanzas() {
           <button className="fin-export" onClick={exportReport}><Download size={15} /> Exportar reporte</button>
         </div>
       </header>
+
+      {!loading && !fullHistory && (
+        <p className="fin-history-window" role="status" style={{ margin: '0 0 12px', fontSize: 13, opacity: 0.8 }}>
+          Mostrando pedidos desde {new Date(`${windowStart}T12:00:00`).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}. Los saldos de las cuentas son siempre completos.{' '}
+          <button type="button" className="fin-dialog-secondary" disabled={loadingFull} onClick={() => void loadFullHistory()}>{loadingFull ? 'Cargando…' : 'Cargar historial completo'}</button>
+        </p>
+      )}
 
       <div className="fin-tabs" role="tablist" aria-label="Secciones de Finanzas">
         {([

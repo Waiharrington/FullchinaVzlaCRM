@@ -29,3 +29,7 @@ Thumbs.db
 *.tsbuildinfo
 .vercel
 .env*.local
+
+# Herramientas locales
+tmp/
+.playwright-cli/

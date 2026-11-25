@@ -392,14 +392,6 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                   <div className="pd-rail-wrap">
                   <nav className="public-categories-scroll" id="menu-section" ref={railRef} aria-label="Categorías del menú">
                      <Chopsticks railRef={railRef} active={heldCategory ?? 'Todos'} />
-                     <button
-                       className={catClass('Todos')}
-                       onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>
-                       <div className="public-cat-dish-circle">
-                         <img src={CATEGORY_ICONS.Todos} alt="" width={44} height={44} decoding="async" />
-                       </div>
-                       <span>Todos</span>
-                    </button>
                     {categories.filter(c => c !== 'Todos').map(category => (
                        <button
                           key={category}
@@ -412,6 +404,14 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                          <span>{DESKTOP_CATEGORY_LABELS[category] || categoryLabel(category)}</span>
                        </button>
                     ))}
+                     <button
+                       className={catClass('Todos')}
+                       onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>
+                       <div className="public-cat-dish-circle">
+                         <img src={CATEGORY_ICONS.Todos} alt="" width={44} height={44} decoding="async" />
+                       </div>
+                       <span>Todos</span>
+                    </button>
                   </nav>
                   </div>
 
@@ -425,7 +425,7 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                     )}
 
                     {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
-                      <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
+                      <div data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
                         {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                           <div className="public-empty-menu">
                             <span className="public-empty-menu-wok" aria-hidden="true">

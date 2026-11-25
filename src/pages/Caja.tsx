@@ -1,205 +1,32 @@
-import { useState, useMemo, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/auth-context'
 import { useRates } from '../context/rates-context'
 import { MoneyWithBcv } from '../components/MoneyWithBcv'
-import { PaymentMethodSelect } from '../components/PaymentMethodSelect'
-import { CashChangeSummary } from '../components/CashChangeSummary'
-import { StyledSelect } from '../components/StyledSelect'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
-import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import Toast from '../components/Toast'
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
-import { calculateCashChange, formatRateDate, formatUsd, formatVes, parseMoneyInput } from '../lib/money'
+import { formatRateDate, formatUsd, formatVes } from '../lib/money'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
-import { classifyMenuCategory, categoryLabel, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
+import { classifyMenuCategory, menuCategoryKeys, isKnownCategory, hydrateMenuCategories } from '../lib/menuCategories'
 import { defaultPaymentForOrderType, type OrderType } from '../lib/orderDefaults'
-import {
-  getProducts,
-  getTodayOrders,
-  getTopSellingProducts,
-  getActiveCashSession,
-  checkout,
-  sendToKitchen,
-  getCustomers,
-  createCustomer,
-  getProductModifiers,
-  getAllProductModifiers,
-  getOccupiedTables,
-  getMenuCategories,
-  getFinancialAccounts,
-  getPersonalAccountOptions,
-  isQuantityModifierGroup,
-  type Product,
-  type CartItem,
-  type OrderResult,
-  type TodayOrder,
-  type PaymentMethod,
-  type CashSessionSnapshot,
-  type ProductModifierGroup,
-  type SelectedModifier,
-  type FinancialAccount,
-  type PersonalAccountOption,
-} from '../lib/dataService'
-import {
-  X,
-  Check,
-  Printer,
-  CheckCircle,
-  CheckCircle2,
-  QrCode,
-  ShieldCheck,
-  Share2,
-  ListOrdered,
-  ChefHat,
-  BellRing,
-  Phone,
-  ShoppingCart,
-  Split,
-  Flame,
-  WalletCards,
-  PencilLine,
-  Pencil,
-  Plus,
-  Minus,
-  Trash2,
-  Search,
-  UtensilsCrossed,
-  ShoppingBag as TakeawayBag,
-  Bike,
-  Banknote,
-  Smartphone,
-  CreditCard,
-  Landmark,
-  Hexagon,
-  IdCard,
-  MapPin,
-  Info,
-  RefreshCw,
-  Circle,
-  User,
-} from 'lucide-react'
+import { accountsForPaymentMethod } from '../lib/paymentAccounts'
+import { getProducts, getTodayOrders, getTopSellingProducts, getActiveCashSession, checkout, sendToKitchen, getCustomers, createCustomer, getProductModifiers, getAllProductModifiers, getOccupiedTables, getMenuCategories, getFinancialAccounts, getPersonalAccountOptions, isQuantityModifierGroup, type Product, type CartItem, type OrderResult, type TodayOrder, type CashSessionSnapshot, type ProductModifierGroup, type SelectedModifier } from '../lib/dataService'
+import { X, ShoppingCart, WalletCards, RefreshCw } from 'lucide-react'
 import './Caja.css'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { formatProductTitle, formatSpanishText, normalizeForSearch } from '../lib/textFormat'
 
-const BIRTH_MONTHS = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-] as const
-const getDaysInBirthMonth = (month: string) => month ? new Date(2000, Number(month), 0).getDate() : 31
-
-const TABLE_COUNT = 10
-
-const ORDER_TYPE_LABELS: Record<OrderType, { label: string; icon: ReactNode }> = {
-  'dine-in': { label: 'Mesa', icon: <UtensilsCrossed size={18} strokeWidth={1.8} /> },
-  takeaway: { label: 'Para llevar', icon: <TakeawayBag size={18} strokeWidth={1.8} /> },
-  delivery: { label: 'Delivery', icon: <Bike size={18} strokeWidth={1.8} /> },
-}
-
-type ActivePaymentMethod = Exclude<PaymentMethod, 'zelle'>
-type SplitPaymentMethod = Exclude<ActivePaymentMethod, 'other' | 'personal_account'>
-
-const PAYMENT_DETAILS: Record<ActivePaymentMethod | 'split', { label: string; desc: string; icon: ReactNode }> = {
-  card: { label: 'Punto de venta', desc: 'Tarjeta de débito o crédito', icon: <CreditCard size={16} strokeWidth={1.8} /> },
-  mobile: { label: 'Pago móvil', desc: 'Transferencia móvil inmediata', icon: <Smartphone size={16} strokeWidth={1.8} /> },
-  cash: { label: 'Efectivo', desc: 'Dólares o bolívares en efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
-  transfer: { label: 'Transferencia', desc: 'Transferencia bancaria', icon: <Landmark size={16} strokeWidth={1.8} /> },
-  binance: { label: 'Binance Pay', desc: 'Pago en cripto USDT', icon: <Hexagon size={16} strokeWidth={1.8} /> },
-  split: { label: 'Pago combinado', desc: 'Cobrar con dos métodos', icon: <Split size={16} strokeWidth={1.8} /> },
-  other: { label: 'Otro método', desc: 'Método especial', icon: <CreditCard size={16} strokeWidth={1.8} /> },
-  personal_account: { label: 'Cuenta personal', desc: 'Consumo interno · no ingresa a caja', icon: <WalletCards size={16} strokeWidth={1.8} /> },
-}
-
-const PAYMENT_METHODS: Array<{ method: ActivePaymentMethod | 'split'; label: string; icon: ReactNode }> = [
-  { method: 'cash', label: 'Efectivo', icon: <Banknote size={16} strokeWidth={1.8} /> },
-  { method: 'mobile', label: 'Pago móvil', icon: <Smartphone size={16} strokeWidth={1.8} /> },
-  { method: 'card', label: 'Punto', icon: <CreditCard size={16} strokeWidth={1.8} /> },
-  { method: 'transfer', label: 'Transferencia', icon: <Landmark size={16} strokeWidth={1.8} /> },
-  { method: 'binance', label: 'Binance', icon: <Hexagon size={16} strokeWidth={1.8} /> },
-  { method: 'personal_account', label: 'Cuenta personal', icon: <WalletCards size={16} strokeWidth={1.8} /> },
-  { method: 'split', label: 'Pago combinado', icon: <Split size={16} strokeWidth={1.8} /> },
-]
-
-const SPLIT_PAYMENT_METHODS = PAYMENT_METHODS.filter(
-  (item): item is { method: SplitPaymentMethod; label: string; icon: ReactNode } => item.method !== 'split' && item.method !== 'other' && item.method !== 'personal_account',
-)
-const MOBILE_CART_TRIGGER_EXIT_MS = 180
-
-const usesBolivares = (method: SplitPaymentMethod, cashCurrency: 'USD' | 'VES' = 'USD') =>
-  method === 'mobile' || method === 'card' || method === 'transfer' || (method === 'cash' && cashCurrency === 'VES')
-const requiresPaymentReference = (method: SplitPaymentMethod) => method !== 'cash'
-const paymentReferenceLabel = (method: SplitPaymentMethod) => {
-  if (method === 'card') return 'Referencia del voucher del punto *'
-  if (method === 'binance') return 'ID de transacción de Binance *'
-  return 'Número de referencia *'
-}
-const paymentInputToUsd = (value: string, method: SplitPaymentMethod, rate: number | null, cashCurrency: 'USD' | 'VES' = 'USD') => {
-  const amount = Number(value)
-  if (!Number.isFinite(amount)) return 0
-  return usesBolivares(method, cashCurrency) ? (rate && rate > 0 ? amount / rate : 0) : amount
-}
-const usdToPaymentInput = (usd: number, method: SplitPaymentMethod, rate: number | null, cashCurrency: 'USD' | 'VES' = 'USD') =>
-  (usesBolivares(method, cashCurrency) ? usd * (rate || 0) : usd).toFixed(2)
-
-const FOOD_IMAGES: Record<string, string> = {
-  arroz: '/optimized/productos/M1.webp',
-  noodles: '/optimized/productos/M2.webp',
-  lumpia: '/optimized/productos/M13.webp',
-  combo: '/optimized/productos/M53.webp',
-  proteina: '/optimized/productos/M3.webp',
-  bebida: '/optimized/productos/M16.webp',
-  extra: '/optimized/productos/M4.webp',
-  default: '/optimized/productos/M1.webp'
-}
-
-function getProductImage(product: Product): string {
-  if (product.imageUrl) {
-    const match = product.imageUrl.match(/^\/productos\/([^/?#]+)\.(?:png|jpe?g|webp)([?#].*)?$/i)
-    return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : product.imageUrl
-  }
-  const nameLower = product.name.toLowerCase()
-  if (nameLower.includes('chaufa') || nameLower.includes('arroz')) return FOOD_IMAGES.arroz
-  if (nameLower.includes('chow mein') || nameLower.includes('noodle')) return FOOD_IMAGES.noodles
-  if (nameLower.includes('lumpia')) return FOOD_IMAGES.lumpia
-  if (nameLower.includes('agridulce') || nameLower.includes('pollo')) return FOOD_IMAGES.proteina
-  if (nameLower.includes('camaron') || nameLower.includes('camarón')) return FOOD_IMAGES.extra
-  if (nameLower.includes('refresco') || nameLower.includes('agua') || nameLower.includes('bebida')) return FOOD_IMAGES.bebida
-  return FOOD_IMAGES[product.category] || FOOD_IMAGES.default
-}
-
-// Cache a nivel de módulo: al volver a Ventas se muestra el catálogo de la
-// última visita al instante, sin el parpadeo de "Cargando...", mientras se
-// refresca en segundo plano.
-const CAJA_PRODUCTS_CACHE_KEY = 'fullchina:caja-products:v1'
-const CAJA_DRAFT_KEY = 'fullchina:caja-draft:v1'
-const CAJA_DRAFT_MAX_AGE_MS = 10 * 60 * 1000
-
-type CajaDraft = {
-  cart?: CartItem[]
-  orderType?: OrderType
-  tableNumber?: number | null
-  deliveryFee?: string
-  customerName?: string
-  orderNotes?: string
-  savedAt?: number
-}
-
-function clearCajaDraft() {
-  try { localStorage.removeItem(CAJA_DRAFT_KEY) } catch { /* storage bloqueado */ }
-}
-
-function readCajaDraft(): CajaDraft | null {
-  try {
-    const draft = JSON.parse(localStorage.getItem(CAJA_DRAFT_KEY) || 'null') as CajaDraft | null
-    if (!draft || typeof draft.savedAt !== 'number' || !Number.isFinite(draft.savedAt) || Date.now() - draft.savedAt > CAJA_DRAFT_MAX_AGE_MS) {
-      if (draft) clearCajaDraft()
-      return null
-    }
-    return draft
-  } catch { return null }
-}
+import { ActivePaymentMethod, SplitPaymentMethod, MOBILE_CART_TRIGGER_EXIT_MS, paymentInputToUsd, usdToPaymentInput, getProductImage, CAJA_PRODUCTS_CACHE_KEY, CAJA_DRAFT_KEY, clearCajaDraft, readCajaDraft, type CustomerOption } from './caja/model'
+import { buildPayment } from './caja/buildPayment'
+import { usePaymentForm } from './caja/usePaymentForm'
+import { CartSidebar } from './caja/CartSidebar'
+import { VariantSelectorModal } from './caja/VariantSelectorModal'
+import { ProductsSection } from './caja/ProductsSection'
+import { SaleSuccessScreen } from './caja/SaleSuccessScreen'
+import { PaymentModal } from './caja/PaymentModal'
+import { NewClientModal } from './caja/NewClientModal'
 
 let cajaCache: {
   products: Product[]
@@ -223,13 +50,6 @@ function cacheProducts(products: Product[]) {
   } catch {
     // El catálogo sigue disponible en memoria cuando el almacenamiento está bloqueado o lleno.
   }
-}
-
-interface CustomerOption {
-  id: string
-  name: string
-  initials: string
-  phone: string
 }
 
 interface CajaProps {
@@ -479,32 +299,56 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   // Payment Modal State (Matching Image 1)
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
-  const [selectedPaymentTab, setSelectedPaymentTab] = useState<ActivePaymentMethod | 'split'>(defaultPaymentForOrderType('dine-in'))
-  const [refNumber, setRefNumber] = useState('')
-  const [extraRefs, setExtraRefs] = useState<string[]>([])
-  const [amountReceived, setAmountReceived] = useState('0.00')
-  const [amountReceivedSecondary, setAmountReceivedSecondary] = useState('0.00')
-  const [splitPrimaryCashReceived, setSplitPrimaryCashReceived] = useState('0.00')
-  const [splitSecondaryCashReceived, setSplitSecondaryCashReceived] = useState('0.00')
-  const [splitPrimaryMethod, setSplitPrimaryMethod] = useState<SplitPaymentMethod>('cash')
-  const [splitSecondaryMethod, setSplitSecondaryMethod] = useState<SplitPaymentMethod>('mobile')
-  const [splitPrimaryCashCurrency, setSplitPrimaryCashCurrency] = useState<'USD' | 'VES'>('USD')
-  const [splitSecondaryCashCurrency, setSplitSecondaryCashCurrency] = useState<'USD' | 'VES'>('USD')
-  const [splitPrimaryReference, setSplitPrimaryReference] = useState('')
-  const [splitSecondaryReference, setSplitSecondaryReference] = useState('')
-  const [splitPrimaryExtraRefs, setSplitPrimaryExtraRefs] = useState<string[]>([])
-  const [splitSecondaryExtraRefs, setSplitSecondaryExtraRefs] = useState<string[]>([])
-  const [paymentNote, setPaymentNote] = useState('')
-  const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([])
-  const [personalAccounts, setPersonalAccounts] = useState<PersonalAccountOption[]>([])
-  const [paymentAccountId, setPaymentAccountId] = useState('')
-  const [paymentPersonalAccountId, setPaymentPersonalAccountId] = useState('')
-  const [splitPrimaryAccountId, setSplitPrimaryAccountId] = useState('')
-  const [splitSecondaryAccountId, setSplitSecondaryAccountId] = useState('')
+  const paymentForm = usePaymentForm()
+  const {
+    selectedPaymentTab,
+    setSelectedPaymentTab,
+    refNumber,
+    setRefNumber,
+    extraRefs,
+    setExtraRefs,
+    amountReceived,
+    setAmountReceived,
+    amountReceivedSecondary,
+    setAmountReceivedSecondary,
+    splitPrimaryCashReceived,
+    setSplitPrimaryCashReceived,
+    splitSecondaryCashReceived,
+    setSplitSecondaryCashReceived,
+    splitPrimaryMethod,
+    setSplitPrimaryMethod,
+    splitSecondaryMethod,
+    setSplitSecondaryMethod,
+    splitPrimaryCashCurrency,
+    splitSecondaryCashCurrency,
+    splitPrimaryReference,
+    setSplitPrimaryReference,
+    splitSecondaryReference,
+    setSplitSecondaryReference,
+    splitPrimaryExtraRefs,
+    setSplitPrimaryExtraRefs,
+    splitSecondaryExtraRefs,
+    setSplitSecondaryExtraRefs,
+    paymentNote,
+    setPaymentNote,
+    financialAccounts,
+    setFinancialAccounts,
+    personalAccounts,
+    setPersonalAccounts,
+    paymentAccountId,
+    setPaymentAccountId,
+    paymentPersonalAccountId,
+    setPaymentPersonalAccountId,
+    splitPrimaryAccountId,
+    setSplitPrimaryAccountId,
+    splitSecondaryAccountId,
+    setSplitSecondaryAccountId,
+    cashCurrency,
+    changeAccountId,
+    setChangeAccountId,
+  } = paymentForm
 
   const [paying, setPaying] = useState(false)
-  const [cashCurrency, setCashCurrency] = useState<'USD' | 'VES'>('USD')
-  const [changeAccountId, setChangeAccountId] = useState('')
   const [payError, setPayError] = useState('')
   const [cashSession, setCashSession] = useState<CashSessionSnapshot | null>(null)
   const [currentOrder, setCurrentOrder] = useState<OrderResult | null>(null)
@@ -633,7 +477,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   useEffect(() => {
     getFinancialAccounts().then(setFinancialAccounts).catch(() => setFinancialAccounts([]))
     getPersonalAccountOptions().then(setPersonalAccounts).catch(() => setPersonalAccounts([]))
-  }, [])
+  }, [setFinancialAccounts, setPersonalAccounts])
 
   useLiveDataRefresh('caja', async () => {
     const [productsData, ordersData, modifiers, categoriesData, occupied, ranking, session, accounts, personal] = await Promise.all([
@@ -652,17 +496,8 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
     setPersonalAccounts(personal)
   })
 
-  const accountsForMethod = (method: SplitPaymentMethod, cashCurrencyOverride: 'USD' | 'VES' = cashCurrency) => {
-    const paymentAccounts = financialAccounts.filter((account) => account.acceptsCustomerPayments)
-    if (method === 'cash') return paymentAccounts.filter((a) => a.accountType === 'cash' && a.currency === cashCurrencyOverride)
-    if (method === 'mobile') return paymentAccounts
-      .filter((a) => a.currency === 'VES' && a.accountType === 'bank' && ['Banco Exterior', 'Banesco'].includes(a.name))
-      .sort((a, b) => Number(b.name === 'Banco Exterior') - Number(a.name === 'Banco Exterior'))
-    if (method === 'transfer') return paymentAccounts.filter((a) => a.currency === 'VES' && a.accountType === 'bank')
-    if (method === 'card') return paymentAccounts.filter((a) => a.currency === 'VES' && a.name === 'Punto de venta')
-    if (method === 'binance') return paymentAccounts.filter((a) => a.currency === 'USD' && ['bank', 'digital'].includes(a.accountType))
-    return paymentAccounts
-  }
+  const accountsForMethod = (method: SplitPaymentMethod, cashCurrencyOverride: 'USD' | 'VES' = cashCurrency) =>
+    accountsForPaymentMethod(financialAccounts, method, cashCurrencyOverride)
 
   const ensureAccountForMethod = (method: SplitPaymentMethod, cashCurrencyOverride: 'USD' | 'VES' = cashCurrency) => {
     const options = accountsForMethod(method, cashCurrencyOverride)
@@ -913,9 +748,6 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
 
   const deliveryFeeUsd = orderType === 'delivery' ? Math.max(0, parseFloat(deliveryFee.replace(',', '.')) || 0) : 0
   const total = subtotal + deliveryFeeUsd
-  const changeAccount = financialAccounts.find(account => account.id === changeAccountId)
-  const selectedCashChange = calculateCashChange(parseMoneyInput(amountReceived), total, cashCurrency, bcvRate, changeAccount?.currency ?? cashCurrency)
-  const cashChange = selectedCashChange?.amountUsd ?? 0
   const splitPrimaryAmountUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency)
   const splitSecondaryAmountUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency)
   // Los dos métodos del pago combinado están enlazados: editar uno recalcula el
@@ -1081,113 +913,38 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       }
       setCashSession(activeSession)
 
-      const enteredAmountRaw = parseMoneyInput(amountReceived)
-      if (!Number.isFinite(enteredAmountRaw) || enteredAmountRaw <= 0) {
-        throw new Error('Ingresa un monto válido')
-      }
-      const enteredAmount = (selectedPaymentTab === 'cash' && cashCurrency === 'VES' && bcvRate && bcvRate > 0)
-        ? enteredAmountRaw / bcvRate
-        : enteredAmountRaw
-
-      const requiresReference = selectedPaymentTab !== 'split' && selectedPaymentTab !== 'personal_account'
-        && selectedPaymentTab !== 'other'
-        && requiresPaymentReference(selectedPaymentTab)
-      if (requiresReference && !refNumber.trim()) {
-        throw new Error('La referencia es obligatoria para este método')
-      }
-      if (selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && !paymentAccountId) {
-        throw new Error('Selecciona la cuenta donde ingresó el dinero')
-      }
-      if (selectedPaymentTab === 'personal_account' && !personalAccounts.some(account => account.id === paymentPersonalAccountId && account.isActive)) {
-        throw new Error('Selecciona una cuenta personal activa')
-      }
-      const combinedRefs = [refNumber, ...extraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-
-      let paymentComponents
-      let finalMethod: PaymentMethod
-      if (selectedPaymentTab === 'split') {
-        const totalCents = Math.round(total * 100)
-        const primaryCents = Math.round(splitPrimaryAmountUsd * 100)
-        const primaryAmount = primaryCents / 100
-        const secondaryAmount = (totalCents - primaryCents) / 100
-        if (primaryAmount <= 0 || secondaryAmount <= 0) {
-          throw new Error('El pago combinado necesita dos montos mayores a cero')
-        }
-        if (splitPrimaryMethod === splitSecondaryMethod) {
-          throw new Error('Selecciona dos métodos de pago diferentes')
-        }
-        if (requiresPaymentReference(splitPrimaryMethod) && !splitPrimaryReference.trim()) {
-          throw new Error('Ingresa la referencia del primer método')
-        }
-        if (requiresPaymentReference(splitSecondaryMethod) && !splitSecondaryReference.trim()) {
-          throw new Error('Ingresa la referencia del segundo método')
-        }
-        if (!splitPrimaryAccountId || !splitSecondaryAccountId) {
-          throw new Error('Selecciona la cuenta de cada método de pago')
-        }
-        finalMethod = 'other'
-        const primaryRefs = [splitPrimaryReference, ...splitPrimaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-        const secondaryRefs = [splitSecondaryReference, ...splitSecondaryExtraRefs].map(r => r.trim()).filter(Boolean).join(', ')
-        paymentComponents = [
-          {
-            method: splitPrimaryMethod,
-            amount: primaryAmount,
-            referenceNumber: primaryRefs || undefined,
-            accountId: splitPrimaryAccountId || null,
-            receivedAmount: splitPrimaryMethod === 'cash' ? parseMoneyInput(splitPrimaryCashReceived) : undefined,
-            receivedCurrency: splitPrimaryMethod === 'cash' ? (splitPrimaryCashCurrency) : undefined,
-            receivedExchangeRate: splitPrimaryMethod === 'cash' && splitPrimaryCashCurrency === 'VES' ? bcvRate : undefined,
-            changeAmount: splitPrimaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, bcvRate, financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitPrimaryCashCurrency)?.amount : undefined,
-            changeCurrency: splitPrimaryMethod === 'cash' ? financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitPrimaryCashCurrency : undefined,
-            changeAccountId: splitPrimaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitPrimaryCashReceived), primaryAmount, splitPrimaryCashCurrency, bcvRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
-            changeExchangeRate: splitPrimaryMethod === 'cash' && financialAccounts.find(a => a.id === changeAccountId)?.currency === 'VES' ? bcvRate : undefined,
-            notes: paymentNote || undefined,
-          },
-          {
-            method: splitSecondaryMethod,
-            amount: secondaryAmount,
-            referenceNumber: secondaryRefs || undefined,
-            accountId: splitSecondaryAccountId || null,
-            receivedAmount: splitSecondaryMethod === 'cash' ? parseMoneyInput(splitSecondaryCashReceived) : undefined,
-            receivedCurrency: splitSecondaryMethod === 'cash' ? splitSecondaryCashCurrency : undefined,
-            receivedExchangeRate: splitSecondaryMethod === 'cash' && splitSecondaryCashCurrency === 'VES' ? bcvRate : undefined,
-            changeAmount: splitSecondaryMethod === 'cash' ? calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, bcvRate, financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitSecondaryCashCurrency)?.amount : undefined,
-            changeCurrency: splitSecondaryMethod === 'cash' ? financialAccounts.find(a => a.id === changeAccountId)?.currency ?? splitSecondaryCashCurrency : undefined,
-            changeAccountId: splitSecondaryMethod === 'cash' && (calculateCashChange(parseMoneyInput(splitSecondaryCashReceived), secondaryAmount, splitSecondaryCashCurrency, bcvRate)?.amountUsd ?? 0) > 0 ? changeAccountId : undefined,
-            changeExchangeRate: splitSecondaryMethod === 'cash' && financialAccounts.find(a => a.id === changeAccountId)?.currency === 'VES' ? bcvRate : undefined,
-            notes: paymentNote || undefined,
-          },
-        ]
-      } else {
-        // Compare to cents, like NUMERIC(12,2) in the payment RPC. When cash
-        // arrives in bolívares, dividing a rounded VES amount by the BCV rate
-        // can produce a USD value a fraction of a cent below the exact total.
-        const enteredCents = Math.round((enteredAmount + Number.EPSILON) * 100)
-        const totalCents = Math.round((total + Number.EPSILON) * 100)
-        if (selectedPaymentTab === 'cash' && enteredCents < totalCents) {
-          throw new Error('El efectivo recibido no cubre el total')
-        }
-        finalMethod = selectedPaymentTab
-        paymentComponents = [{
-          method: selectedPaymentTab,
-          amount: total,
-          referenceNumber: combinedRefs || undefined,
-          accountId: selectedPaymentTab === 'personal_account' ? null : paymentAccountId || null,
-          personalAccountId: selectedPaymentTab === 'personal_account' ? paymentPersonalAccountId : null,
-          receivedAmount: selectedPaymentTab === 'cash' ? enteredAmountRaw : undefined,
-          receivedCurrency: selectedPaymentTab === 'cash' ? cashCurrency : undefined,
-          receivedExchangeRate: selectedPaymentTab === 'cash' && cashCurrency === 'VES' ? bcvRate : undefined,
-          changeAmount: selectedPaymentTab === 'cash' ? selectedCashChange?.amount : undefined,
-          changeCurrency: selectedPaymentTab === 'cash' ? selectedCashChange?.currency : undefined,
-          changeAccountId: selectedPaymentTab === 'cash' && cashChange > 0 ? changeAccountId : undefined,
-          changeExchangeRate: selectedPaymentTab === 'cash' && changeAccount?.currency === 'VES' ? bcvRate : undefined,
-          notes: paymentNote || undefined,
-        }]
-      }
-
-      if (paymentComponents.some((payment: { changeAmount?: number }) => (payment.changeAmount ?? 0) > 0) && !changeAccountId) {
-        throw new Error('Selecciona la cuenta de origen de donde saldrá el vuelto')
-      }
+      const { finalMethod, payments: paymentComponents, combinedRefs, enteredAmountUsd: enteredAmount } = buildPayment({
+        tab: selectedPaymentTab,
+        total,
+        bcvRate,
+        amountReceived,
+        cashCurrency,
+        refNumber,
+        extraRefs,
+        paymentAccountId,
+        paymentPersonalAccountId,
+        personalAccounts,
+        changeAccountId,
+        financialAccounts,
+        paymentNote,
+        splitPrimaryAmountUsd,
+        splitPrimary: {
+          method: splitPrimaryMethod,
+          accountId: splitPrimaryAccountId,
+          reference: splitPrimaryReference,
+          extraRefs: splitPrimaryExtraRefs,
+          cashReceived: splitPrimaryCashReceived,
+          cashCurrency: splitPrimaryCashCurrency,
+        },
+        splitSecondary: {
+          method: splitSecondaryMethod,
+          accountId: splitSecondaryAccountId,
+          reference: splitSecondaryReference,
+          extraRefs: splitSecondaryExtraRefs,
+          cashReceived: splitSecondaryCashReceived,
+          cashCurrency: splitSecondaryCashCurrency,
+        },
+      })
 
       const order = await checkout({
         items: cart,
@@ -1259,178 +1016,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
                   : 'Sin pago'
 
     return (
-      <div className={`page animate-fade-in ${embedded ? 'caja-embedded' : ''}`}>
-        {printPrompt && <PrintChoiceDialog documentName="el recibo de venta" onPrint={() => resolvePrintPrompt(true)} onSkip={() => resolvePrintPrompt(false)} />}
-        <div className="caja-success-layout">
-          {/* LEFT COLUMN: Success Hero Card + Timeline */}
-          <div className="success-left-col">
-            {/* Confetti Hero Card */}
-            <div className="success-hero-card">
-              <div className="confetti-dots-bg" />
-              <div className="big-check-circle">
-                <CheckCircle size={44} className="check-icon-glow" />
-              </div>
-              <h1 className="success-hero-title">{currentOrder.paymentMethod === 'personal_account' ? '¡Consumo registrado!' : '¡Pedido cobrado con éxito!'}</h1>
-              <p className="success-hero-sub">{currentOrder.paymentMethod === 'personal_account' ? 'El consumo quedó asignado a la cuenta personal y el pedido fue enviado a cocina.' : 'Gracias por tu venta. El pedido ha sido enviado a cocina.'}</p>
-
-              {/* 3 Metrics Row */}
-              <div className="success-metrics-row">
-                <div className="metric-box">
-                  <span className="metric-box-label">Número de pedido</span>
-                  <span className="metric-box-val text-red">{orderNo}</span>
-                </div>
-                <div className="metric-box">
-                  <span className="metric-box-label">Total</span>
-                  <MoneyWithBcv usd={currentOrder.total} rate={currentOrder.bcvRate || bcvRate} className="metric-box-val" align="center" />
-                </div>
-                <div className="metric-box">
-                  <span className="metric-box-label">Método de pago</span>
-                  <span className="metric-box-val font-bold">{paymentLabel}</span>
-                </div>
-              </div>
-
-              {/* Status Badges */}
-              <div className="success-status-badges-row">
-                <span className="badge-status green"><CheckCircle2 size={14} className="text-green" /> Pagado</span>
-                <span className="badge-status gold"><ChefHat size={14} /> Enviado a cocina</span>
-              </div>
-            </div>
-
-            {/* Action Buttons Bar */}
-            <div className="success-actions-bar mt-4">
-              <button
-                className="btn-success-primary"
-                onClick={() => { setShowConfirmation(false); setCart([]); setCurrentOrder(null); setCustomerName(''); setSelectedCustomer(null); setDeliveryFee('') }}
-              >
-                <span>+</span> Nueva venta
-              </button>
-              <button className="btn-success-secondary" onClick={() => embedded ? onClose?.() : navigate('/comandas')}>
-                <ListOrdered size={16} /> Ver comanda
-              </button>
-              <button className="btn-success-secondary" onClick={handlePrintReceipt}>
-                <Printer size={16} /> Imprimir recibo
-              </button>
-              <button className="btn-success-secondary" onClick={async () => {
-                const text = `Pedido #${orderNo} · Total ${currentOrder ? formatUsd(currentOrder.total) : ''}`
-                if (navigator.share) await navigator.share({ title: 'Comprobante Full China', text })
-                else if (navigator.clipboard) await navigator.clipboard.writeText(text)
-              }}>
-                <Share2 size={16} /> Compartir comprobante
-              </button>
-            </div>
-
-            {/* Timeline Card */}
-            <div className="activity-timeline-card mt-4">
-              <h3 className="timeline-card-title">Actividad del pedido</h3>
-
-              <div className="timeline-steps-wrap">
-                <div className="timeline-line-bg" />
-
-                <div className="timeline-step active">
-                  <div className="step-icon-circle">
-                    <CheckCircle size={16} />
-                  </div>
-                  <div className="step-info">
-                    <span className="step-title">Pago confirmado</span>
-                    <span className="step-time">{formattedTime}</span>
-                    <span className="step-desc">El pago ha sido procesado correctamente.</span>
-                  </div>
-                </div>
-
-                <div className="timeline-step active">
-                  <div className="step-icon-circle">
-                    <ChefHat size={16} />
-                  </div>
-                  <div className="step-info">
-                    <span className="step-title">Comanda enviada</span>
-                    <span className="step-time">{formattedTime}</span>
-                    <span className="step-desc">La comanda ha sido enviada a cocina.</span>
-                  </div>
-                </div>
-
-                <div className="timeline-step active">
-                  <div className="step-icon-circle">
-                    <BellRing size={16} />
-                  </div>
-                  <div className="step-info">
-                    <span className="step-title">Cocina notificada</span>
-                    <span className="step-time">{formattedTime}</span>
-                    <span className="step-desc">El equipo de cocina ha sido notificado del pedido.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT COLUMN: Ticket Receipt Card */}
-          <div className="success-right-col">
-            <div className="ticket-receipt-card">
-              <div className="ticket-header-logo">
-                <span className="ticket-logo-icon"><Flame size={20} /></span>
-                <span className="ticket-logo-text">FULL CHINA</span>
-                <span className="ticket-sub-title">Comprobante de venta</span>
-              </div>
-
-              <div className="ticket-dashed-line" />
-
-              <div className="ticket-meta-row">
-                <span>Pedido: <strong className="text-red">{orderNo}</strong></span>
-                <span>{formattedDate} {formattedTime}</span>
-              </div>
-              <div className="ticket-meta-row">
-                <span>{ORDER_TYPE_LABELS[orderType].label}</span>
-                <span>Atendido por: Admin</span>
-              </div>
-
-              <div className="ticket-dashed-line" />
-
-              <div className="ticket-items-list">
-                {currentOrder.items.map((item, idx) => {
-                  const prod = products.find(p => p.id === item.productId)
-                  const imgUrl = prod ? getProductImage(prod) : FOOD_IMAGES.default
-
-                  return (
-                    <div key={idx} className="ticket-item-row">
-                      <img src={imgUrl} alt={item.productName} className="ticket-item-thumb" loading="lazy" decoding="async" />
-                      <div className="ticket-item-info">
-                        <span className="ticket-item-name">{formatProductTitle(item.productName)}</span>
-                      </div>
-                      <MoneyWithBcv usd={item.price * item.quantity} rate={currentOrder.bcvRate || bcvRate} className="ticket-item-price" compact />
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="ticket-dashed-line" />
-
-              <div className="ticket-totals-list">
-                <div className="ticket-total-line">
-                  <span>Subtotal</span>
-                  <MoneyWithBcv usd={currentOrder.total} rate={currentOrder.bcvRate || bcvRate} compact />
-                </div>
-                <div className="ticket-total-line">
-                  <span>Descuento</span>
-                  <MoneyWithBcv usd={0} rate={currentOrder.bcvRate || bcvRate} compact />
-                </div>
-              </div>
-
-              <div className="ticket-total-final-row">
-                <span className="ticket-final-label">Total</span>
-                <MoneyWithBcv usd={currentOrder.total} rate={currentOrder.bcvRate || bcvRate} className="ticket-final-val" />
-              </div>
-
-              <div className="ticket-payment-method">
-                <span>Método de pago:</span>
-                <span className="font-bold">{paymentLabel}</span>
-              </div>
-
-              <div className="ticket-footer-text">
-                &nbsp;
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <SaleSuccessScreen embedded={embedded} printPrompt={printPrompt} resolvePrintPrompt={resolvePrintPrompt} currentOrder={currentOrder} orderNo={orderNo} bcvRate={bcvRate} paymentLabel={paymentLabel} setShowConfirmation={setShowConfirmation} setCart={setCart} setCurrentOrder={setCurrentOrder} setCustomerName={setCustomerName} setSelectedCustomer={setSelectedCustomer} setDeliveryFee={setDeliveryFee} onClose={onClose} navigate={navigate} handlePrintReceipt={handlePrintReceipt} formattedTime={formattedTime} formattedDate={formattedDate} orderType={orderType} products={products} />
     )
   }
 
@@ -1476,118 +1062,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       </div>
       <div className="caja-layout">
         {/* LEFT: Products */}
-        <div className="products-section">
-          {/* Hero Wok Flame Banner */}
-          <div className="caja-hero-banner">
-            <div className="hero-banner-left">
-              <div>
-                <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> Nueva venta</h1>
-                <p className="hero-subtitle">Crea pedidos, cobra y envía a cocina.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Category Tabs */}
-          <div className="category-tabs">
-            <button
-              className={`category-tab ${activeCategory === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveCategory('all')}
-            >
-              Todos
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                className={`category-tab ${activeCategory === cat ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat)}
-              >
-                {categoryLabel(cat)}
-              </button>
-            ))}
-          </div>
-
-          {/* Toolbar */}
-          <div className="products-toolbar">
-            <div className="search-box">
-              <span className="search-icon"><Search size={16} /></span>
-              <input
-                type="text"
-                placeholder="Buscar en el menú..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input-caja"
-              />
-              {searchTerm && (
-                <button type="button" className="search-clear-btn" onClick={() => setSearchTerm('')} aria-label="Borrar búsqueda">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-            <StyledSelect
-              className="sort-select"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            >
-              {salesRank.size > 0 && <option value="popular">Más vendidos</option>}
-              <option value="price">Precio</option>
-              <option value="name">Nombre</option>
-            </StyledSelect>
-          </div>
-
-          {/* Products Grid */}
-          <div className="products-container grid">
-            {loading && products.length === 0 ? (
-              Array.from({ length: 8 }, (_, index) => <div className="product-card product-card-skeleton" key={`product-skeleton-${index}`} aria-hidden><div className="product-skeleton-image" /><div className="product-skeleton-line wide" /><div className="product-skeleton-line" /></div>)
-            ) : productsError && products.length === 0 ? (
-              <div className="empty-message products-load-error"><strong>{productsError}</strong><button type="button" onClick={() => window.location.reload()}>Reintentar</button></div>
-            ) : filteredProductGroups.length === 0 ? (
-              <p className="empty-message">No hay productos en esta categoría</p>
-            ) : (
-              filteredProductGroups.map((group, index) => {
-                const product = group.variants[0].product
-                const imgUrl = getProductImage(product)
-                const rank = topProductRanks.get(group.key)
-                return (
-                  <div key={group.key} className={`product-card ${group.isGrouped ? 'product-family-card' : ''}`} onClick={() => selectMenuGroup(group)}>
-                    <div className="product-image-area">
-                      <img
-                        className="product-card-image"
-                        src={imgUrl}
-                        alt=""
-                        loading={index < 4 ? 'eager' : 'lazy'}
-                        fetchPriority={index < 4 ? 'high' : 'auto'}
-                        decoding="async"
-                      />
-                      {rank && sortBy === 'popular' && <span className="product-badge badge-popular"><strong>#{rank}</strong> Más vendido</span>}
-                      {group.isGrouped && <span className="product-badge badge-variants">{group.variants.length} opciones</span>}
-                      <button
-                        className="product-quick-add-btn"
-                        onClick={(e) => { e.stopPropagation(); selectMenuGroup(group) }}
-                        title={group.isGrouped ? 'Elegir presentación' : 'Agregar al pedido'}
-                      >
-                        {group.isGrouped ? '›' : '+'}
-                      </button>
-                    </div>
-                    <div className="product-card-body">
-                      <h3 className="product-card-title">{formatProductTitle(group.name)}</h3>
-                      {group.isGrouped && (
-                        <span className="product-variant-preview">
-                          {group.variants.map(variant => variant.label).join(' · ')}
-                        </span>
-                      )}
-                      <div className="product-card-meta">
-                        <div className="product-family-price">
-                          {group.isGrouped && group.minPrice !== group.maxPrice && <small>Desde</small>}
-                          <MoneyWithBcv usd={group.minPrice} className="product-card-price" align="start" compact />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </div>
+        <ProductsSection activeCategory={activeCategory} setActiveCategory={setActiveCategory} categories={categories} searchTerm={searchTerm} setSearchTerm={setSearchTerm} sortBy={sortBy} setSortBy={setSortBy} salesRank={salesRank} loading={loading} products={products} productsError={productsError} filteredProductGroups={filteredProductGroups} topProductRanks={topProductRanks} selectMenuGroup={selectMenuGroup} />
 
         {selectedProductGroup && createPortal(
           <div className={`modal-overlay-dark variant-selector-overlay ${closingProductGroup ? 'closing' : ''}`} onClick={() => closeProductGroupModal()}>
@@ -1623,77 +1098,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         )}
 
         {modifierProduct && createPortal(
-          <div className={`modal-overlay-dark variant-selector-overlay ${closingModifier ? 'closing' : ''}`} onClick={() => closeModifierPicker()}>
-            <section className="variant-selector-modal animate-pop" role="dialog" aria-modal="true" aria-labelledby="modifier-selector-title" onClick={(event) => event.stopPropagation()}>
-              <div className="variant-selector-header">
-                <div>
-                  <span className="variant-selector-eyebrow">Personaliza el producto</span>
-                  <h2 id="modifier-selector-title">{formatProductTitle(modifierProduct.name)}</h2>
-                </div>
-                <button type="button" className="payment-modal-close" onClick={() => closeModifierPicker()} aria-label="Cerrar selector">
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="variant-selector-list">
-                {modifierLoading && <LoadingSkeleton label="Cargando opciones del producto" count={3} />}
-                {!modifierLoading && modifierGroups.length === 0 && (
-                  <p className="page" role="status">Este producto no tiene opciones configuradas.</p>
-                )}
-                {modifierGroups.map((group) => {
-                  const sel = modifierSelections[group.modifierId] ?? {}
-                  const rule = group.maxSelections === 1
-                    ? (group.minSelections >= 1 ? 'Elige 1' : 'Elige 1 (opcional)')
-                    : `Elige ${group.minSelections}${group.maxSelections != null ? `–${group.maxSelections}` : '+'}`
-                  return (
-                    <div key={group.modifierId} style={{ marginBottom: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                      <strong>{formatProductTitle(group.name)}</strong>
-                        <small style={{ opacity: 0.7 }}>{rule}</small>
-                      </div>
-                      {group.options.map((opt) => {
-                        const qty = sel[opt.id] ?? 0
-                        const selected = qty > 0
-                        return (
-                          <button
-                            key={opt.id}
-                            type="button"
-                            className="variant-option-card"
-                            onClick={() => toggleModifierOption(group, opt.id)}
-                            style={selected ? { outline: '2px solid var(--accent, #f97316)', outlineOffset: -2 } : undefined}
-                          >
-                            <span className="variant-option-emoji">{selected ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
-                            <span className="variant-option-copy">
-                              <strong>{formatProductTitle(opt.name)}{qty > 1 ? ` ×${qty}` : ''}</strong>
-                            </span>
-                            {opt.price > 0
-                              ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact />
-                              : <span className="variant-option-price" style={{ opacity: 0.6 }}>Incluido</span>}
-                            {isQuantityModifierGroup(group) ? <span className="quantity-modifier-controls"><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, -1) }} disabled={!selected} aria-label={`Quitar ${opt.name}`}>−</button><strong>{qty}</strong><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, 1) }} aria-label={`Agregar ${opt.name}`}>+</button></span> : <span className="variant-option-add">{selected ? 'Quitar' : 'Elegir'}</span>}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  )
-                })}
-                {modifierError && <p style={{ color: '#dc2626', margin: '4px 0' }}>{modifierError}</p>}
-              </div>
-              {!modifierLoading && modifierGroups.length > 0 && (
-                <div className="variant-selector-footer">
-                  <div className="variant-selector-total">
-                    <span className="variant-selector-total-label">Total</span>
-                    <MoneyWithBcv
-                      usd={modifierProduct.price + modifierExtraPrice}
-                      align="start"
-                      className="variant-selector-total-money"
-                    />
-                  </div>
-                  <button type="button" className="btn-primary variant-selector-cta" onClick={confirmModifierSelection}>
-                    Agregar al pedido
-                  </button>
-                </div>
-              )}
-            </section>
-          </div>,
+          <VariantSelectorModal closingModifier={closingModifier} closeModifierPicker={closeModifierPicker} modifierProduct={modifierProduct} modifierLoading={modifierLoading} modifierGroups={modifierGroups} modifierSelections={modifierSelections} toggleModifierOption={toggleModifierOption} changeQuantityModifier={changeQuantityModifier} modifierError={modifierError} modifierExtraPrice={modifierExtraPrice} confirmModifierSelection={confirmModifierSelection} />,
           document.body
         )}
 
@@ -1723,314 +1128,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
         {/* RIGHT: Cart Sidebar */}
         {(() => {
           const cartSidebar = (
-        <div className={`cart-sidebar${mobileCartOpen && (!embedded || isPhoneViewport) ? ' mobile-cart-open' : ''}${mobileCartOpen && isPhoneViewport ? ' cart-sidebar--modal' : ''}${mobileCartClosing ? ' cart-sidebar--closing' : ''}`} onClick={(event) => event.stopPropagation()}>
-          <div className="cart-sidebar-header">
-            <div className="cart-order-title-group">
-              <span className="cart-eyebrow">Comanda activa</span>
-              <h3 className="cart-order-title">
-                Pedido <span className="cart-order-number">#FC-Nuevo</span>
-              </h3>
-              <div className="cart-header-badges">
-                <span className="cart-badge-type">{ORDER_TYPE_LABELS[orderType].label}</span>
-                <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
-              </div>
-            </div>
-            <button type="button" className="mobile-cart-close" onClick={closeMobileCart} aria-label="Cerrar pedido">
-              <X size={20} />
-            </button>
-          </div>
-
-          <div className="cart-sidebar-body">
-            {/* Cart Items */}
-            {cart.length === 0 ? (
-              <div className="empty-cart-sidebar">
-                <span className="empty-cart-icon"><ShoppingCart size={28} /></span>
-                <strong>Tu pedido está vacío</strong>
-                <p>Selecciona productos del menú para comenzar.</p>
-              </div>
-            ) : (
-              <div className="cart-items-list">
-                {cart.map((item) => {
-                  const prod = products.find(p => p.id === item.productId)
-                  const imgUrl = prod ? getProductImage(prod) : FOOD_IMAGES.default
-
-                  const lineKey = item.lineId ?? item.productId
-                  const mods = item.selectedModifiers && item.selectedModifiers.length > 0
-                    ? item.selectedModifiers.map((m) => `${m.optionName}${m.quantity > 1 ? ` ×${m.quantity}` : ''}`).join(', ')
-                    : null
-                  return (
-                    <div key={lineKey} className="cart-item-row">
-                      <img src={imgUrl} alt={item.productName} className="cart-item-thumb" loading="lazy" decoding="async" />
-                      <div className="cart-item-details">
-                        <span className="cart-item-name">{formatProductTitle(item.productName)}</span>
-                        {mods && <span className="cart-item-sub">{mods}</span>}
-                      </div>
-                      <div className="cart-item-controls">
-                        <button className="qty-btn-sm" aria-label={`Restar ${item.productName}`} onClick={() => updateQty(lineKey, -1)}><Minus size={18} /></button>
-                        <span className="qty-display">{item.quantity}</span>
-                        <button className="qty-btn-sm" aria-label={`Agregar ${item.productName}`} onClick={() => updateQty(lineKey, 1)}><Plus size={18} /></button>
-                      </div>
-                      <MoneyWithBcv usd={item.price * item.quantity} className="cart-item-price" compact />
-                      <button className="cart-item-remove" aria-label={`Eliminar ${item.productName}`} onClick={() => removeFromCart(lineKey)}><Trash2 size={18} /></button>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Notes */}
-            <div className="cart-field mt-2">
-              <div className="notes-wrap">
-                <span className="notes-icon"><PencilLine size={15} /></span>
-                <input
-                  type="text"
-                  className="cart-notes"
-                  placeholder="Notas del pedido (opcional)..."
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value.slice(0, 120))}
-                />
-                <span className="notes-counter">{orderNotes.length}/120</span>
-              </div>
-            </div>
-
-            {/* Customer + Order Type */}
-            <div className="cart-section-group mt-2">
-              <div className="cart-field-col customer-input-col">
-                <label className="cart-label">Cliente</label>
-                {selectedCustomer ? (
-                  <div className="customer-selected-chip">
-                    <div className="customer-chip-avatar">{selectedCustomer.initials}</div>
-                    <div className="customer-chip-info">
-                      <span className="customer-chip-badge"><Check size={12} /> Cliente seleccionado</span>
-                      <span className="customer-chip-name">{selectedCustomer.name}</span>
-                      {selectedCustomer.phone && <span className="customer-chip-phone">{selectedCustomer.phone}</span>}
-                    </div>
-                    <button
-                      type="button"
-                      className="customer-chip-clear"
-                      title="Quitar cliente"
-                      aria-label="Quitar cliente"
-                      onClick={() => {
-                        setSelectedCustomer(null)
-                        setCustomerName('')
-                        setShowCustomerDropdown(false)
-                      }}
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                ) : (
-                <div className="customer-input-wrap">
-                  <span className="input-search-icon"><Search size={15} /></span>
-                  <input
-                    type="text"
-                    placeholder="Buscar cliente (opcional)"
-                    value={customerName}
-                    onChange={(e) => {
-                      setCustomerName(e.target.value)
-                      setSelectedCustomer(null)
-                      setShowCustomerDropdown(true)
-                    }}
-                    onFocus={() => {
-                      loadCustomers()
-                      setShowCustomerDropdown(true)
-                    }}
-                    onBlur={() => {
-                      setShowCustomerDropdown(false)
-                    }}
-                    className="customer-input"
-                  />
-                  <button
-                    type="button"
-                    className="customer-add-btn"
-                    onClick={() => {
-                      setCustomerCreateError('')
-                      setShowNewClientModal(true)
-                    }}
-                    title="Nuevo cliente"
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-                )}
-
-                {/* Autocomplete Dropdown List */}
-                {!selectedCustomer && showCustomerDropdown && filteredCustomers.length > 0 && (
-                  <div className="customer-dropdown-menu">
-                    {filteredCustomers.map((cust) => (
-                      <div
-                        key={cust.id}
-                        className="customer-dropdown-item"
-                        onPointerDown={(e) => {
-                          e.preventDefault(); // prevent blur
-                          setCustomerName(cust.name)
-                          setSelectedCustomer(cust)
-                          setShowCustomerDropdown(false)
-                        }}
-                      >
-                        <div className="customer-item-avatar">{cust.initials}</div>
-                        <div className="customer-item-info">
-                          <span className="customer-item-name">{cust.name}</span>
-                          <span className="customer-item-phone">{cust.phone}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="cart-field-col mt-2">
-                <label className="cart-label">Tipo de pedido</label>
-                <div className="order-type-buttons">
-                  {(Object.entries(ORDER_TYPE_LABELS) as Array<[OrderType, { label: string; icon: ReactNode }]>).map(([key, val]) => (
-                    <button
-                        key={key}
-                        className={`order-type-card ${orderType === key ? 'active' : ''}`}
-                        onClick={() => {
-                          setOrderType(key)
-                          setSelectedPaymentTab(defaultPaymentForOrderType(key))
-                          if (key !== 'dine-in') setTableNumber(null)
-                        }}
-                      >
-                        <span className="order-type-icon">{val.icon}</span>
-                        <span className="order-type-text">{val.label}</span>
-                      </button>
-                  ))}
-                </div>
-              </div>
-
-              {orderType === 'dine-in' && (
-                <div className="cart-field-col mt-2">
-                  <label className="cart-label">Número de mesa</label>
-                  <div className="table-picker-grid">
-                    {Array.from({ length: TABLE_COUNT }, (_, i) => i + 1).map((n) => {
-                      const isOccupied = occupiedTables.has(n)
-                      const isSelected = tableNumber === n
-                      return (
-                        <button
-                          key={n}
-                          type="button"
-                          disabled={isOccupied && !isSelected}
-                          className={`table-picker-btn ${isSelected ? 'selected' : ''} ${isOccupied && !isSelected ? 'occupied' : ''}`}
-                          onClick={() => setTableNumber(n)}
-                          title={isOccupied ? `Mesa ${n} · con pedido abierto` : `Mesa ${n}`}
-                        >
-                          {n}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {occupiedTables.size > 0 && (
-                    <small className="delivery-fee-hint">Las mesas resaltadas ya tienen un pedido abierto sin cobrar.</small>
-                  )}
-                </div>
-              )}
-
-              {orderType === 'delivery' && (
-                <div className="cart-field-col mt-2">
-                  <label className="cart-label">Costo del delivery (USD)</label>
-                  <div className="delivery-fee-input">
-                    <Bike size={16} className="delivery-fee-icon" />
-                    <span className="delivery-fee-currency">$</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={deliveryFee}
-                      onChange={e => setDeliveryFee(e.target.value.replace(/[^0-9.,]/g, ''))}
-                      placeholder="0,00"
-                    />
-                    {deliveryFeeUsd > 0 && bcvRate && (
-                      <span className="delivery-fee-bs">Bs. {(deliveryFeeUsd * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    )}
-                  </div>
-                  <small className="delivery-fee-hint">Monto cotizado por WhatsApp según la ubicación del cliente.</small>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="cart-sidebar-footer">
-            {/* Totals Breakdown */}
-            <div className="cart-totals-card">
-              <div className="cart-total-row">
-                <span className="total-label">Subtotal</span>
-                <MoneyWithBcv usd={subtotal} className="total-val" compact />
-              </div>
-              <div className="cart-total-row">
-                <span className="total-label">Descuento</span>
-                <MoneyWithBcv usd={0} className="total-val" compact />
-              </div>
-              {orderType === 'delivery' && deliveryFeeUsd > 0 && (
-                <div className="cart-total-row">
-                  <span className="total-label">Delivery</span>
-                  <MoneyWithBcv usd={deliveryFeeUsd} className="total-val" compact />
-                </div>
-              )}
-              <div className="cart-divide-row">
-                {(() => {
-                  const currentPay = PAYMENT_DETAILS[selectedPaymentTab] || PAYMENT_DETAILS.card
-                  return (
-                    <button
-                      type="button"
-                      className="divide-payment-link"
-                      disabled={cart.length === 0 || paying}
-                      onClick={() => handleOpenPaymentModal(selectedPaymentTab)}
-                    >
-                      <span className="divide-payment-icon">{currentPay.icon}</span>
-                      <span className="divide-payment-copy">
-                        <strong>{currentPay.label}</strong>
-                        <small>{currentPay.desc}</small>
-                      </span>
-                      <span className="divide-payment-arrow">›</span>
-                    </button>
-                  )
-                })()}
-              </div>
-              <div className="cart-total-row total-final-row">
-                <span className="final-label">Total</span>
-                <MoneyWithBcv usd={total} className="final-amount" />
-              </div>
-            </div>
-
-            {payError && <p className="pay-error">{payError}</p>}
-
-            {/* Action buttons */}
-            <div className="cart-action-buttons mt-2">
-              <button
-                className="btn-pay-red"
-                aria-label="Cobrar pedido"
-                disabled={cart.length === 0 || paying}
-                onClick={() => handleOpenPaymentModal(selectedPaymentTab)}
-              >
-                <WalletCards size={18} />
-                <span className="cart-action-label-full">Cobrar pedido</span>
-                <span className="cart-action-label-short" aria-hidden="true">Cobrar</span>
-              </button>
-              <button
-                className="btn-kitchen-red"
-                aria-label="Enviar a cocina"
-                disabled={cart.length === 0 || paying}
-                onClick={handleSendToKitchen}
-              >
-                <Flame size={18} />
-                <span className="cart-action-label-full">Enviar a cocina</span>
-                <span className="cart-action-label-short" aria-hidden="true">Cocina</span>
-              </button>
-            </div>
-
-            {/* Accepted Payment Methods at bottom */}
-            <div className="payment-accepted-section mt-2">
-              <span className="accepted-title">Formas de pago aceptadas</span>
-              <div className="payment-badges-row">
-                {PAYMENT_METHODS.filter(pm => pm.method !== 'split').map((pm) => (
-                  <span key={pm.method} className="payment-badge-pill">
-                    {pm.icon} {pm.label}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        <CartSidebar mobileCartOpen={mobileCartOpen} embedded={embedded} isPhoneViewport={isPhoneViewport} mobileCartClosing={mobileCartClosing} orderType={orderType} Date={Date} closeMobileCart={closeMobileCart} cart={cart} products={products} updateQty={updateQty} removeFromCart={removeFromCart} orderNotes={orderNotes} setOrderNotes={setOrderNotes} selectedCustomer={selectedCustomer} setSelectedCustomer={setSelectedCustomer} setCustomerName={setCustomerName} setShowCustomerDropdown={setShowCustomerDropdown} customerName={customerName} loadCustomers={loadCustomers} setCustomerCreateError={setCustomerCreateError} setShowNewClientModal={setShowNewClientModal} showCustomerDropdown={showCustomerDropdown} filteredCustomers={filteredCustomers} Object={Object} Array={Array} setOrderType={setOrderType} setSelectedPaymentTab={setSelectedPaymentTab} setTableNumber={setTableNumber} occupiedTables={occupiedTables} tableNumber={tableNumber} deliveryFee={deliveryFee} setDeliveryFee={setDeliveryFee} deliveryFeeUsd={deliveryFeeUsd} bcvRate={bcvRate} subtotal={subtotal} selectedPaymentTab={selectedPaymentTab} paying={paying} handleOpenPaymentModal={handleOpenPaymentModal} total={total} payError={payError} handleSendToKitchen={handleSendToKitchen} />
           )
 
           return mobileCartOpen && isPhoneViewport
@@ -2045,584 +1143,46 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
       </div>
 
       {/* Image 1 Target: Payment Modal "Cobrar pedido" */}
-      {showPaymentModal && createPortal(
-        <div className={`modal-overlay-dark ${closingPayment ? 'closing' : ''}`} onClick={() => closePaymentModal()}>
-          <div className="payment-modal-box animate-pop caja-payment-modal-glow" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="payment-modal-header caja-payment-header-glow">
-              <h2 className="payment-modal-title">
-                Cobrar pedido <span className="payment-order-tag">Nueva venta</span>
-              </h2>
-            </div>
-
-            {/* Payment Method Tabs */}
-            <div className="payment-tabs-bar">
-              {PAYMENT_METHODS.map((pm) => (
-                <button
-                  key={pm.method}
-                  className={`payment-tab-btn ${selectedPaymentTab === pm.method ? 'active' : ''}`}
-                  onClick={() => handleSelectPaymentTab(pm.method)}
-                >
-                  <span>{pm.icon}</span>
-                  <span>{pm.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Modal Body: Left Details + Right Summary */}
-            <div className="payment-modal-body">
-              {/* Left Column: Details */}
-              <div className="payment-body-left">
-                <h3 className="payment-sub-heading">
-                  Detalles del pago ({PAYMENT_METHODS.find(p => p.method === selectedPaymentTab)?.label})
-                </h3>
-
-                {selectedPaymentTab === 'personal_account' ? (
-                  <div className="payment-field-group mt-2">
-                    <label className="payment-field-label">Cuenta personal *</label>
-                    <StyledSelect value={paymentPersonalAccountId} onChange={(event) => setPaymentPersonalAccountId(event.target.value)}>
-                      <option value="">Selecciona una cuenta personal</option>
-                      {personalAccounts.filter(account => account.isActive).map(account => <option key={account.id} value={account.id}>{account.name}</option>)}
-                    </StyledSelect>
-                    <span className="payment-hint-sub">Consumo interno; queda registrado para control y descuenta inventario, pero no entra en caja.</span>
-                  </div>
-                ) : selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && (
-                  <div className="payment-field-group mt-2">
-                    <label className="payment-field-label">Cuenta donde ingresa el dinero *</label>
-                    <StyledSelect value={paymentAccountId} onChange={(e) => setPaymentAccountId(e.target.value)}>
-                      <option value="">{selectedPaymentTab === 'card' ? 'Punto de venta' : 'Selecciona una cuenta'}</option>
-                      {accountsForMethod(selectedPaymentTab).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
-                    </StyledSelect>
-                    {selectedPaymentTab === 'mobile' && <span className="payment-hint-sub">Por defecto: Banco Exterior. Puedes cambiar a Banesco.</span>}
-                    {selectedPaymentTab === 'card' && <span className="payment-hint-sub">El dinero queda en Punto de venta. Registra la transferencia a Banesco cuando se deposite.</span>}
-                  </div>
-                )}
-
-                {selectedPaymentTab !== 'split' && selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && requiresPaymentReference(selectedPaymentTab) && (
-                  <div className="payment-field-group mt-2">
-                    <label className="payment-field-label">{paymentReferenceLabel(selectedPaymentTab)}</label>
-                    <div className="payment-ref-row">
-                      <div className="payment-input-wrap" style={{ flex: 1 }}>
-                        <input
-                          type="text"
-                          className="payment-field-input"
-                          value={refNumber}
-                          onChange={(e) => setRefNumber(e.target.value)}
-                          placeholder="Ej. 458921"
-                        />
-                        <QrCode size={16} className="qr-icon-right" />
-                      </div>
-                      <button type="button" className="cmd-add-ref-btn" title="Agregar otra referencia" onClick={() => setExtraRefs(prev => [...prev, ''])}>
-                        <Plus size={18} />
-                      </button>
-                    </div>
-                    {extraRefs.map((ref, idx) => (
-                      <div className="payment-ref-row mt-1" key={idx}>
-                        <div className="payment-input-wrap" style={{ flex: 1 }}>
-                          <input
-                            type="text"
-                            className="payment-field-input"
-                            value={ref}
-                            onChange={(e) => { const v = e.target.value; setExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
-                            placeholder={`Referencia ${idx + 2}`}
-                          />
-                        </div>
-                        <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
-                          <X size={16} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedPaymentTab === 'split' && (
-                  <div className="split-payment-grid mt-2">
-                    <section className="split-method-card">
-                      <div className="split-method-heading">
-                        <span className="split-method-number">1</span>
-                        <span>Primer método</span>
-                      </div>
-                      <PaymentMethodSelect
-                        ariaLabel="Primer método de pago"
-                        value={splitPrimaryMethod}
-                        options={SPLIT_PAYMENT_METHODS}
-                        disabledMethod={splitSecondaryMethod}
-                        onChange={(nextMethod) => {
-                          const currentUsd = paymentInputToUsd(amountReceived, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency)
-                          setSplitPrimaryMethod(nextMethod)
-                          if (nextMethod === 'cash') setSplitPrimaryCashReceived(usdToPaymentInput(currentUsd, 'cash', bcvRate, splitPrimaryCashCurrency))
-                          setAmountReceived(usdToPaymentInput(currentUsd, nextMethod, bcvRate, splitPrimaryCashCurrency))
-                          const secUsd = Math.max(0, Math.round((total - currentUsd) * 100) / 100)
-                          setAmountReceivedSecondary(usdToPaymentInput(secUsd, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency))
-                          setSplitPrimaryReference('')
-                          setSplitPrimaryExtraRefs([])
-                          setPayError('')
-                          setSplitPrimaryAccountId(ensureAccountForMethod(nextMethod, splitPrimaryCashCurrency))
-                        }}
-                      />
-                      {splitPrimaryMethod === 'cash' && (
-                        <div className="cash-currency-toggle" role="group" aria-label="Moneda del efectivo del primer método">
-                          {(['USD', 'VES'] as const).map((currency) => (
-                            <button key={currency} type="button" className={`cash-currency-btn ${splitPrimaryCashCurrency === currency ? 'active' : ''}`} onClick={() => {
-                              const currentUsd = paymentInputToUsd(amountReceived, 'cash', bcvRate, splitPrimaryCashCurrency)
-                              const receivedUsd = paymentInputToUsd(splitPrimaryCashReceived, 'cash', bcvRate, splitPrimaryCashCurrency)
-                              setSplitPrimaryCashCurrency(currency)
-                              setAmountReceived(usdToPaymentInput(currentUsd, 'cash', bcvRate, currency))
-                              setSplitPrimaryCashReceived(usdToPaymentInput(receivedUsd, 'cash', bcvRate, currency))
-                              const otherUsd = Math.max(0, Math.round((total - currentUsd) * 100) / 100)
-                              setAmountReceivedSecondary(usdToPaymentInput(otherUsd, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency))
-                              setSplitPrimaryAccountId(ensureAccountForMethod('cash', currency))
-                            }}>{currency === 'VES' ? 'Bs' : 'USD'}</button>
-                          ))}
-                        </div>
-                      )}
-                      <label className="payment-field-label">Cuenta de ingreso *</label>
-                      <StyledSelect value={splitPrimaryAccountId} onChange={(e) => setSplitPrimaryAccountId(e.target.value)}>
-                        <option value="">Selecciona una cuenta</option>
-                        {accountsForMethod(splitPrimaryMethod, splitPrimaryCashCurrency).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
-                      </StyledSelect>
-                      <label className="payment-field-label">Monto del primer método</label>
-                      <div className="payment-input-wrap">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="payment-field-input"
-                          value={amountReceived}
-                          onChange={(e) => syncSplitFromPrimary(e.target.value)}
-                        />
-                        <span className="currency-tag-right">{usesBolivares(splitPrimaryMethod, splitPrimaryCashCurrency) ? 'Bs' : 'USD'}</span>
-                      </div>
-                      <span className="payment-hint-sub">
-                        {usesBolivares(splitPrimaryMethod, splitPrimaryCashCurrency)
-                          ? `Ref. ${formatUsd(splitPrimaryAmountUsd)}`
-                          : bcvRate ? `Ref. ${formatVes(splitPrimaryAmountUsd * bcvRate)}` : 'Referencia BCV no disponible'}
-                      </span>
-                      {splitPrimaryMethod === 'cash' && <>
-                        <label className="payment-field-label">Efectivo físico recibido</label>
-                        <input className="payment-field-input" inputMode="decimal" value={splitPrimaryCashReceived} onChange={e => setSplitPrimaryCashReceived(e.target.value)} />
-                        <CashChangeSummary amountReceived={splitPrimaryCashReceived} totalUsd={splitPrimaryAmountUsd} currency={splitPrimaryCashCurrency} bcvRate={bcvRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
-                      </>}
-                      {requiresPaymentReference(splitPrimaryMethod) && (
-                        <>
-                          <label className="payment-field-label">{paymentReferenceLabel(splitPrimaryMethod)}</label>
-                          <div className="payment-ref-row">
-                            <input
-                              type="text"
-                              className="payment-field-input"
-                              style={{ flex: 1 }}
-                              value={splitPrimaryReference}
-                              onChange={(e) => setSplitPrimaryReference(e.target.value)}
-                              placeholder="Ej. 458921"
-                            />
-                            <button type="button" className="cmd-add-ref-btn" title="Agregar otra referencia" onClick={() => setSplitPrimaryExtraRefs(prev => [...prev, ''])}>
-                              <Plus size={18} />
-                            </button>
-                          </div>
-                          {splitPrimaryExtraRefs.map((ref, idx) => (
-                            <div className="payment-ref-row mt-1" key={idx}>
-                              <input
-                                type="text"
-                                className="payment-field-input"
-                                style={{ flex: 1 }}
-                                value={ref}
-                                onChange={(e) => { const v = e.target.value; setSplitPrimaryExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
-                                placeholder={`Referencia ${idx + 2}`}
-                              />
-                              <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setSplitPrimaryExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
-                                <X size={16} />
-                              </button>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </section>
-
-                    <section className="split-method-card">
-                      <div className="split-method-heading">
-                        <span className="split-method-number">2</span>
-                        <span>Segundo método</span>
-                      </div>
-                      <PaymentMethodSelect
-                        ariaLabel="Segundo método de pago"
-                        value={splitSecondaryMethod}
-                        options={SPLIT_PAYMENT_METHODS}
-                        disabledMethod={splitPrimaryMethod}
-                        onChange={(nextMethod) => {
-                          const currentUsd = paymentInputToUsd(amountReceivedSecondary, splitSecondaryMethod, bcvRate, splitSecondaryCashCurrency)
-                          setSplitSecondaryMethod(nextMethod)
-                          if (nextMethod === 'cash') setSplitSecondaryCashReceived(usdToPaymentInput(currentUsd, 'cash', bcvRate, splitSecondaryCashCurrency))
-                          setAmountReceivedSecondary(usdToPaymentInput(currentUsd, nextMethod, bcvRate, splitSecondaryCashCurrency))
-                          setSplitSecondaryReference('')
-                          setSplitSecondaryExtraRefs([])
-                          setPayError('')
-                          setSplitSecondaryAccountId(ensureAccountForMethod(nextMethod, splitSecondaryCashCurrency))
-                        }}
-                      />
-                      {splitSecondaryMethod === 'cash' && (
-                        <div className="cash-currency-toggle" role="group" aria-label="Moneda del efectivo del segundo método">
-                          {(['USD', 'VES'] as const).map((currency) => (
-                            <button key={currency} type="button" className={`cash-currency-btn ${splitSecondaryCashCurrency === currency ? 'active' : ''}`} onClick={() => {
-                              const currentUsd = paymentInputToUsd(amountReceivedSecondary, 'cash', bcvRate, splitSecondaryCashCurrency)
-                              const receivedUsd = paymentInputToUsd(splitSecondaryCashReceived, 'cash', bcvRate, splitSecondaryCashCurrency)
-                              setSplitSecondaryCashCurrency(currency)
-                              setAmountReceivedSecondary(usdToPaymentInput(currentUsd, 'cash', bcvRate, currency))
-                              setSplitSecondaryCashReceived(usdToPaymentInput(receivedUsd, 'cash', bcvRate, currency))
-                              const otherUsd = Math.max(0, Math.round((total - currentUsd) * 100) / 100)
-                              setAmountReceived(usdToPaymentInput(otherUsd, splitPrimaryMethod, bcvRate, splitPrimaryCashCurrency))
-                              setSplitSecondaryAccountId(ensureAccountForMethod('cash', currency))
-                            }}>{currency === 'VES' ? 'Bs' : 'USD'}</button>
-                          ))}
-                        </div>
-                      )}
-                      <label className="payment-field-label">Cuenta de ingreso *</label>
-                      <StyledSelect value={splitSecondaryAccountId} onChange={(e) => setSplitSecondaryAccountId(e.target.value)}>
-                        <option value="">Selecciona una cuenta</option>
-                        {accountsForMethod(splitSecondaryMethod, splitSecondaryCashCurrency).map((a) => <option key={a.id} value={a.id}>{a.name} · {a.currency}</option>)}
-                      </StyledSelect>
-                      <label className="payment-field-label">Monto del segundo método</label>
-                      <div className="payment-input-wrap">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className="payment-field-input"
-                          value={amountReceivedSecondary}
-                          onChange={(e) => syncSplitFromSecondary(e.target.value)}
-                        />
-                        <span className="currency-tag-right">{usesBolivares(splitSecondaryMethod, splitSecondaryCashCurrency) ? 'Bs' : 'USD'}</span>
-                      </div>
-                      <span className="payment-hint-sub">
-                        {usesBolivares(splitSecondaryMethod, splitSecondaryCashCurrency)
-                          ? `Ref. ${formatUsd(splitSecondaryAmountUsd)}`
-                          : bcvRate ? `Ref. ${formatVes(splitSecondaryAmountUsd * bcvRate)}` : 'Referencia BCV no disponible'}
-                      </span>
-                      {splitSecondaryMethod === 'cash' && <>
-                        <label className="payment-field-label">Efectivo físico recibido</label>
-                        <input className="payment-field-input" inputMode="decimal" value={splitSecondaryCashReceived} onChange={e => setSplitSecondaryCashReceived(e.target.value)} />
-                        <CashChangeSummary amountReceived={splitSecondaryCashReceived} totalUsd={splitSecondaryAmountUsd} currency={splitSecondaryCashCurrency} bcvRate={bcvRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
-                      </>}
-                      {requiresPaymentReference(splitSecondaryMethod) && (
-                        <>
-                          <label className="payment-field-label">{paymentReferenceLabel(splitSecondaryMethod)}</label>
-                          <div className="payment-ref-row">
-                            <input
-                              type="text"
-                              className="payment-field-input"
-                              style={{ flex: 1 }}
-                              value={splitSecondaryReference}
-                              onChange={(e) => setSplitSecondaryReference(e.target.value)}
-                              placeholder="Ej. 458921"
-                            />
-                            <button type="button" className="cmd-add-ref-btn" title="Agregar otra referencia" onClick={() => setSplitSecondaryExtraRefs(prev => [...prev, ''])}>
-                              <Plus size={18} />
-                            </button>
-                          </div>
-                          {splitSecondaryExtraRefs.map((ref, idx) => (
-                            <div className="payment-ref-row mt-1" key={idx}>
-                              <input
-                                type="text"
-                                className="payment-field-input"
-                                style={{ flex: 1 }}
-                                value={ref}
-                                onChange={(e) => { const v = e.target.value; setSplitSecondaryExtraRefs(prev => prev.map((r, i) => i === idx ? v : r)) }}
-                                placeholder={`Referencia ${idx + 2}`}
-                              />
-                              <button type="button" className="cmd-remove-ref-btn" title="Quitar" onClick={() => setSplitSecondaryExtraRefs(prev => prev.filter((_, i) => i !== idx))}>
-                                <X size={16} />
-                              </button>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </section>
-                  </div>
-                )}
-
-                {selectedPaymentTab !== 'split' && <div className="payment-field-group mt-3">
-                  <label className="payment-field-label">
-                    {selectedPaymentTab === 'cash' ? 'MONTO RECIBIDO' : 'MONTO A COBRAR'} <span className="text-red">*</span>
-                  </label>
-                  {selectedPaymentTab === 'cash' && (
-                    <div className="cash-currency-toggle">
-                      <button
-                        type="button"
-                        className={`cash-currency-btn ${cashCurrency === 'USD' ? 'active' : ''}`}
-                        onClick={() => { setCashCurrency('USD'); setAmountReceived(total.toFixed(2)); setPaymentAccountId(ensureAccountForMethod('cash', 'USD')) }}
-                      >USD</button>
-                      <button
-                        type="button"
-                        className={`cash-currency-btn ${cashCurrency === 'VES' ? 'active' : ''}`}
-                        onClick={() => { setCashCurrency('VES'); setAmountReceived(bcvRate ? (total * bcvRate).toFixed(2) : ''); setPaymentAccountId(ensureAccountForMethod('cash', 'VES')) }}
-                      >Bs</button>
-                    </div>
-                  )}
-                  <div className="payment-input-wrap">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className="payment-field-input"
-                      value={amountReceived}
-                      onChange={(e) => setAmountReceived(e.target.value)}
-                    />
-                    <span className="currency-tag-right">
-                      {selectedPaymentTab === 'cash' ? (cashCurrency === 'USD' ? 'USD' : 'Bs') : (selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab) ? 'Bs' : 'USD')}
-                    </span>
-                  </div>
-                  <span className="payment-hint-sub">
-                    {selectedPaymentTab === 'cash'
-                      ? (cashCurrency === 'USD'
-                        ? bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'
-                        : `Ref. ${formatUsd(total)}`)
-                      : selectedPaymentTab !== 'other' && selectedPaymentTab !== 'personal_account' && usesBolivares(selectedPaymentTab)
-                        ? `Ref. ${formatUsd(total)}`
-                        : bcvRate ? `Ref. ${formatVes(total * bcvRate)}` : 'Referencia BCV no disponible'}
-                  </span>
-                   {selectedPaymentTab === 'cash' && (
-                     <CashChangeSummary amountReceived={amountReceived} totalUsd={total} currency={cashCurrency} bcvRate={bcvRate} accounts={financialAccounts} changeAccountId={changeAccountId} onChangeAccountId={setChangeAccountId} showChangeAccount />
-                   )}
-                </div>}
-
-                <div className="payment-field-group mt-3">
-                  <label className="payment-field-label">NOTA (OPCIONAL)</label>
-                  <div className="payment-textarea-wrap">
-                    <textarea
-                      className="payment-field-textarea"
-                      placeholder="Ej. Pago por Yape"
-                      value={paymentNote}
-                      onChange={(e) => setPaymentNote(e.target.value.slice(0, 120))}
-                      rows={2}
-                    />
-                    <span className="payment-counter-bottom">{paymentNote.length}/120</span>
-                  </div>
-                </div>
-
-                {selectedPaymentTab === 'split' && (
-                  <div className="payment-breakdown-card mt-3">
-                    <span className="breakdown-card-title">Desglose de pago</span>
-                    <div className="breakdown-rows-list">
-                      <div className="breakdown-row-item">
-                        <span className="row-item-left">
-                          1. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.icon}{' '}
-                          {SPLIT_PAYMENT_METHODS.find(method => method.method === splitPrimaryMethod)?.label}
-                        </span>
-                        <MoneyWithBcv
-                          usd={splitPrimaryAmountUsd}
-                          rate={bcvRate}
-                          primaryCurrency={usesBolivares(splitPrimaryMethod, splitPrimaryCashCurrency) ? 'VES' : 'USD'}
-                          className="row-item-val"
-                          compact
-                        />
-                      </div>
-                      <div className="breakdown-row-item">
-                        <span className="row-item-left">
-                          2. {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.icon}{' '}
-                          {SPLIT_PAYMENT_METHODS.find(method => method.method === splitSecondaryMethod)?.label}
-                        </span>
-                        <MoneyWithBcv
-                          usd={Math.max(total - splitPrimaryAmountUsd, 0)}
-                          rate={bcvRate}
-                          primaryCurrency={usesBolivares(splitSecondaryMethod, splitSecondaryCashCurrency) ? 'VES' : 'USD'}
-                          className="row-item-val"
-                          compact
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {payError && <p className="pay-error" role="alert">{payError}</p>}
-              </div>
-
-              {/* Right Column: Order Summary */}
-              <div className="payment-body-right">
-                <div className="order-summary-box caja-order-summary-accent">
-                  <h3 className="summary-box-title">Resumen del pedido</h3>
-
-                  <div className="summary-box-lines mt-3">
-                    <div className="summary-box-line">
-                      <span>Subtotal</span>
-                      <MoneyWithBcv usd={subtotal} usdClassName="font-bold" compact />
-                    </div>
-                    <div className="summary-box-line">
-                      <span>Descuento</span>
-                      <MoneyWithBcv usd={0} usdClassName="font-bold" compact />
-                    </div>
-
-                    <div className="summary-box-total-line caja-summary-total-highlight mt-3">
-                      <span className="summary-total-label">Total</span>
-                      <MoneyWithBcv usd={total} className="summary-total-val" />
-                    </div>
-                  </div>
-
-                  {/* Customer field */}
-                  <div className="summary-box-customer mt-4">
-                    <span className="customer-box-label">Cliente</span>
-                    <div className="customer-box-card">
-                      <span className="customer-box-name"><User size={14} /> {customerName || 'Cliente general'}</span>
-                      <span className="customer-edit-btn" title="El cliente se define al crear la venta"><Pencil size={14} /></span>
-                    </div>
-                  </div>
-
-                  {/* Info Notice */}
-                  <div className="payment-security-notice mt-4">
-                    <ShieldCheck size={16} className="text-green flex-shrink-0" />
-                    <span>Los pagos combinados se registrarán en la factura correctamente.</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer Actions */}
-            <div className="payment-modal-footer">
-              <button className="btn-confirm-payment-red" onClick={handleConfirmPayment} disabled={paying}>
-                <CheckCircle size={18} /> Confirmar pago
-              </button>
-              <button className="btn-modal-action-dark" onClick={handlePrintReceipt}>
-                <Printer size={18} /> Imprimir recibo
-              </button>
-              <button className="btn-modal-action-ghost" onClick={() => closePaymentModal()}>
-                <X size={18} /> Cancelar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {showPaymentModal && (
+        <PaymentModal
+          form={paymentForm}
+          bcvRate={bcvRate}
+          customerName={customerName}
+          closingPayment={closingPayment}
+          paying={paying}
+          payError={payError}
+          setPayError={setPayError}
+          accountsForMethod={accountsForMethod}
+          ensureAccountForMethod={ensureAccountForMethod}
+          subtotal={subtotal}
+          total={total}
+          splitPrimaryAmountUsd={splitPrimaryAmountUsd}
+          splitSecondaryAmountUsd={splitSecondaryAmountUsd}
+          syncSplitFromPrimary={syncSplitFromPrimary}
+          syncSplitFromSecondary={syncSplitFromSecondary}
+          closePaymentModal={closePaymentModal}
+          handleSelectPaymentTab={handleSelectPaymentTab}
+          handleConfirmPayment={handleConfirmPayment}
+          handlePrintReceipt={handlePrintReceipt}
+        />
       )}
 
       {/* Modal Nuevo Cliente desde Caja */}
-      {showNewClientModal && createPortal(
-        <div className={`modal-overlay-dark ${closingNewClient ? 'closing' : ''}`} onClick={() => !creatingCustomer && closeNewClientModal()}>
-          <div className="client-modal-box animate-pop caja-modal-glow" role="dialog" aria-modal="true" aria-labelledby="new-client-title" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line caja-modal-header-glow">
-              <div>
-                <span className="client-modal-eyebrow">Directorio de clientes</span>
-                <h3 className="modal-title" id="new-client-title">Nuevo cliente</h3>
-                <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleCreateNewClientFromCaja} className="crm-form mt-3">
-              <div className="field">
-                <label className="field-label-white">Nombre *</label>
-                <input
-                  type="text"
-                  placeholder="Ingresa el nombre del cliente"
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  className="modal-input-dark"
-                  required
-                />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Apellido</label>
-                <input
-                  type="text"
-                  placeholder="Ingresa el apellido del cliente"
-                  value={newClientLastName}
-                  onChange={(e) => setNewClientLastName(e.target.value)}
-                  className="modal-input-dark"
-                />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cédula / RIF <span className="field-optional">Opcional</span></label>
-                <div className="input-with-icon-wrap">
-                  <IdCard size={16} className="input-left-icon" />
-                  <input
-                    type="text"
-                    inputMode="text"
-                    autoComplete="off"
-                    placeholder="Ej. V-12345678"
-                    value={newClientIdentification}
-                    onChange={(e) => setNewClientIdentification(e.target.value)}
-                    className="modal-input-dark with-left-icon"
-                    maxLength={24}
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Teléfono</label>
-                <div className="input-with-icon-wrap">
-                  <Phone size={16} className="input-left-icon" />
-                  <input
-                    type="tel"
-                    placeholder="04129206984"
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                    className="modal-input-dark with-left-icon"
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Dirección <span className="field-optional">Opcional</span></label>
-                <div className="input-with-icon-wrap input-with-icon-textarea">
-                  <MapPin size={16} className="input-left-icon" />
-                  <textarea
-                    placeholder="Dirección y punto de referencia"
-                    value={newClientAddress}
-                    onChange={(e) => setNewClientAddress(e.target.value)}
-                    className="modal-input-dark modal-textarea-dark with-left-icon"
-                    maxLength={300}
-                    rows={3}
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cumpleaños</label>
-                <div className="birthday-selects-row">
-                  <div className="select-col">
-                    <span className="select-sub-label">Mes</span>
-                    <StyledSelect
-                      className="modal-select-dark"
-                      value={birthMonth}
-                      onChange={(e) => {
-                        const nextMonth = e.target.value
-                        setBirthMonth(nextMonth)
-                        if (birthDay && Number(birthDay) > getDaysInBirthMonth(nextMonth)) setBirthDay('')
-                      }}
-                    >
-                      <option value="">Mes</option>
-                      {BIRTH_MONTHS.map((month, index) => (
-                        <option key={month} value={String(index + 1).padStart(2, '0')}>{month}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                  <div className="select-col">
-                    <span className="select-sub-label">Día</span>
-                    <StyledSelect
-                      className="modal-select-dark"
-                      value={birthDay}
-                      onChange={(e) => setBirthDay(e.target.value)}
-                    >
-                      <option value="">Día</option>
-                      {Array.from({ length: getDaysInBirthMonth(birthMonth) }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-                <span className="birthday-hint mt-1">
-                  <Info size={14} /> Solo para promociones y recordatorios
-                </span>
-              </div>
-
-              {customerCreateError && <div className="client-modal-error" role="alert">{customerCreateError}</div>}
-
-              <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" disabled={creatingCustomer} onClick={() => closeNewClientModal()}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-modal-submit-red" disabled={creatingCustomer}>
-                  {creatingCustomer ? 'Guardando…' : 'Guardar cliente'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
+      {showNewClientModal && (
+        <NewClientModal
+          closing={closingNewClient}
+          creating={creatingCustomer}
+          error={customerCreateError}
+          newClientName={newClientName} setNewClientName={setNewClientName}
+          newClientLastName={newClientLastName} setNewClientLastName={setNewClientLastName}
+          newClientIdentification={newClientIdentification} setNewClientIdentification={setNewClientIdentification}
+          newClientPhone={newClientPhone} setNewClientPhone={setNewClientPhone}
+          newClientAddress={newClientAddress} setNewClientAddress={setNewClientAddress}
+          birthMonth={birthMonth} setBirthMonth={setBirthMonth}
+          birthDay={birthDay} setBirthDay={setBirthDay}
+          onSubmit={handleCreateNewClientFromCaja}
+          onClose={() => closeNewClientModal()}
+        />
       )}
     </div>
   )

@@ -215,12 +215,6 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
             <div className="pd-rail-wrap">
             <nav className="public-categories-scroll" ref={railRef} aria-label="Categorías del menú">
               <Chopsticks railRef={railRef} active={heldCategory ?? 'Todos'} />
-              <button
-                 className={catClass('Todos')}
-                 onClick={() => chooseCategory('Todos')}>
-                 <img className="public-cat-icon-image" src={CATEGORY_ICONS.Todos} alt="" decoding="async" />
-                 <span>Menú</span>
-              </button>
               {categories.filter(c => c !== 'Todos').map(category => (
                  <button
                    key={category}
@@ -231,6 +225,12 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
                    <span>{categoryLabel(category)}</span>
                  </button>
               ))}
+              <button 
+                 className={catClass('Todos')}
+                 onClick={() => chooseCategory('Todos')}>
+                 <img className="public-cat-icon-image" src={CATEGORY_ICONS.Todos} alt="" decoding="async" />
+                 <span>Menú</span>
+              </button>
             </nav>
             </div>
 
@@ -245,7 +245,7 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
 
               {error && products.length > 0 && !cartOpen && <Toast type="error" message={error} onClose={() => setError('')} />}
               {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
-                <div className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
+                <div data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
                   {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                     <div className="public-empty-menu">
                       <span><Utensils size={42} /></span>

@@ -17,60 +17,87 @@
 .public-welcome-dialog {
   position: relative;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
-  width: min(100%, 460px);
+  align-content: space-between;
+  width: min(100%, 480px);
   min-height: 100dvh;
-  align-content: center;
-  padding: max(14px, env(safe-area-inset-top, 0px)) 22px max(18px, env(safe-area-inset-bottom, 0px));
+  padding: 0 20px max(16px, env(safe-area-inset-bottom, 0px));
   text-align: center;
 }
 
-.pd-welcome-scene { position: relative; width: min(50vw, 25dvh, 226px); aspect-ratio: 1 / .92; margin-bottom: -4px; }
-/* La llama del logo respira detrás del wok, sin meterse con el texto. */
-.pd-welcome-scene::before {
-  content: '';
-  position: absolute;
-  inset: -20% -14% -14%;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='24 0 80 80'%3E%3Cpath fill='%23C8111B' d='M64 3c3 13 19 19 20 37 5-3 7-8 6-13 9 9 12 25 4 37-4 8-12 14-30 14S36 72 33 64c-10-13-5-27 3-37 1 7 4 11 8 12-2-15 6-30 20-36Z'/%3E%3C/svg%3E") center / contain no-repeat;
-  transform-origin: 50% 100%;
-  animation: pd-sway 2.2s ease-in-out infinite alternate;
-}
-.pd-welcome-scene img { position: absolute; left: 0; width: 100%; max-width: none; }
-.pd-w-flame { bottom: 16%; left: 12% !important; width: 76% !important; transform-origin: 50% 100%; animation: pd-flame 1.1s ease-in-out infinite alternate; }
-.pd-w-bowl { bottom: 0; animation: pd-bowl-toss 2.6s cubic-bezier(.45,0,.3,1) infinite; transform-origin: 60% 90%; }
-.pd-w-food { bottom: 30%; left: 17% !important; width: 66% !important; z-index: 1; animation: pd-food-toss 2.6s cubic-bezier(.3,.1,.4,1) infinite; }
+/* ===== La caja explota en platos =====
+   Tres capas por plato, cada una con un solo trabajo: la primera sigue al
+   dedo (profundidad), la segunda sale disparada de la caja y la tercera levita. */
+.pd-boom { position: relative; width: calc(100% + 40px); height: clamp(330px, 57dvh, 540px); margin: 0 -20px; touch-action: pan-y; --px: 0; --py: 0; }
+.pd-boom-glow { position: absolute; left: 50%; bottom: -4%; width: 130%; height: 104%; margin-left: -65%; background: radial-gradient(50% 50% at 50% 56%, rgba(217, 20, 30, .62), rgba(150, 12, 20, .2) 48%, transparent 72%); opacity: 0; }
+.pd-boom-ring { position: absolute; left: 50%; bottom: 30%; width: 60px; height: 60px; margin: 0 0 -30px -30px; border: 5px solid #FFC21A; border-radius: 50%; opacity: 0; }
+.pd-boom-box { position: absolute; z-index: 2; left: 50%; bottom: -3%; width: min(66%, 320px); transform: translateX(-50%) translate(calc(var(--px) * -6px), calc(var(--py) * -4px)); pointer-events: none; }
+.pd-boom-box img { display: block; width: 100%; transform-origin: 50% 88%; opacity: 0; }
+.pd-boom-dish { position: absolute; left: var(--x); top: var(--y); width: var(--w); transform: translate(-50%, -50%) translate(calc(var(--px) * var(--z) * 26px), calc(var(--py) * var(--z) * 18px)); transition: transform .28s cubic-bezier(.2, .8, .2, 1); cursor: pointer; }
+.pd-boom-dish > span { display: block; opacity: 0; will-change: transform; }
+.pd-boom-dish b { display: block; transform: rotate(var(--r)); }
+.pd-boom-dish img { display: block; width: 100%; max-width: none; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.pd-boom-bits { position: absolute; z-index: 4; left: 50%; bottom: 34%; pointer-events: none; }
+.pd-boom-bits i { position: absolute; width: 5px; height: 13px; border-radius: 4px; background: #FFF6E3; opacity: 0; --a: 0deg; --d: 190px; }
+.pd-boom-bits i:nth-child(3n) { width: 9px; height: 9px; border: 2.5px solid #6DB33F; background: none; border-radius: 50%; }
+.pd-boom-bits i:nth-child(4n) { background: #FFC21A; }
+.pd-boom-bits i:nth-child(5n) { background: #E0141F; height: 9px; }
+.pd-boom-bits i:nth-child(1) { --a: -96deg; --d: 150px; --t: 0ms; }
+.pd-boom-bits i:nth-child(2) { --a: -78deg; --d: 203px; --t: 35ms; }
+.pd-boom-bits i:nth-child(3) { --a: -60deg; --d: 256px; --t: 70ms; }
+.pd-boom-bits i:nth-child(4) { --a: -57deg; --d: 309px; --t: 105ms; }
+.pd-boom-bits i:nth-child(5) { --a: -39deg; --d: 192px; --t: 140ms; }
+.pd-boom-bits i:nth-child(6) { --a: -21deg; --d: 245px; --t: 0ms; }
+.pd-boom-bits i:nth-child(7) { --a: -18deg; --d: 298px; --t: 35ms; }
+.pd-boom-bits i:nth-child(8) { --a: 0deg; --d: 181px; --t: 70ms; }
+.pd-boom-bits i:nth-child(9) { --a: 18deg; --d: 234px; --t: 105ms; }
+.pd-boom-bits i:nth-child(10) { --a: 21deg; --d: 287px; --t: 140ms; }
+.pd-boom-bits i:nth-child(11) { --a: 39deg; --d: 170px; --t: 0ms; }
+.pd-boom-bits i:nth-child(12) { --a: 57deg; --d: 223px; --t: 35ms; }
+.pd-boom-bits i:nth-child(13) { --a: 60deg; --d: 276px; --t: 70ms; }
+.pd-boom-bits i:nth-child(14) { --a: 78deg; --d: 159px; --t: 105ms; }
+.pd-boom-bits i:nth-child(15) { --a: 96deg; --d: 212px; --t: 140ms; }
+.pd-boom-bits i:nth-child(16) { --a: 99deg; --d: 265px; --t: 0ms; }
+/* Con las fotos listas arranca la secuencia. */
+.is-live .pd-boom-box img { animation: pd-box-drop .62s cubic-bezier(.5, 0, .8, .4) both, pd-box-kick .62s .62s cubic-bezier(.2, .9, .3, 1), pd-box-breathe 3.6s 2s ease-in-out infinite; }
+.is-live .pd-boom-glow { animation: pd-glow-in .9s .66s ease-out both; }
+.is-live .pd-boom-ring { animation: pd-ring .7s .64s cubic-bezier(.1, .7, .3, 1) forwards; }
+.is-live .pd-boom-dish > span { animation: pd-burst-out .95s calc(.64s + var(--i) * .045s) cubic-bezier(.16, 1.28, .34, 1) both; }
+.is-live .pd-boom-dish b { animation: pd-levitate calc(3.1s + var(--i) * .37s) calc(1.7s + var(--i) * -.21s) ease-in-out infinite alternate; }
+.is-live .pd-boom-bits i { animation: pd-bit 1.5s calc(.66s + var(--t, 0ms)) cubic-bezier(.12, .75, .4, 1) forwards; }
+.is-live .pd-boom-dish.is-flipped b { animation: pd-dish-flip .8s cubic-bezier(.3, .9, .4, 1); }
+@keyframes pd-box-drop { 0% { opacity: 0; transform: translateY(-120%) rotate(-14deg); } 30% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes pd-box-kick { 0% { transform: scale(1.14, .78); } 35% { transform: scale(.92, 1.13) translateY(-4%); } 65% { transform: scale(1.04, .96); } 100% { transform: none; } }
+@keyframes pd-box-breathe { 50% { transform: rotate(1.6deg) translateY(-1.5%); } }
+@keyframes pd-glow-in { from { opacity: 0; transform: scale(.3); } 40% { opacity: 1; transform: scale(1.14); } to { opacity: 1; transform: none; } }
+@keyframes pd-ring { 0% { opacity: 1; transform: scale(.2); } 100% { opacity: 0; transform: scale(9); } }
+@keyframes pd-burst-out { 0% { opacity: 0; transform: translate(var(--sx, 0px), var(--sy, 190px)) rotate(-200deg) scale(.08); } 22% { opacity: 1; } 100% { opacity: 1; transform: none; } }
+@keyframes pd-levitate { from { transform: translateY(5px) rotate(calc(var(--r) - 3deg)); } to { transform: translateY(-9px) rotate(calc(var(--r) + 4deg)); } }
+@keyframes pd-dish-flip { 0% { transform: rotate(var(--r)); } 18% { transform: rotate(var(--r)) scale(1.1, .86); } 55% { transform: translateY(-44px) rotate(calc(var(--r) + 190deg)) scale(1.24); } 100% { transform: rotate(calc(var(--r) + 360deg)); } }
+@keyframes pd-bit { 0% { opacity: 1; transform: rotate(var(--a)) translateY(0); } 45% { opacity: 1; transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) rotate(260deg); } 100% { opacity: 0; transform: rotate(var(--a)) translateY(calc(var(--d) * -1.05)) rotate(420deg); } }
+/* Al entrar, la caja se traga el banquete y baja la santamaría. */
+.public-welcome-backdrop:has(.public-welcome-confirm[aria-busy='true']) .pd-boom-dish > span { animation: pd-suck .36s calc(var(--i) * .018s) cubic-bezier(.6, 0, .9, .5) both; }
+@keyframes pd-suck { to { opacity: 0; transform: translate(var(--sx, 0px), var(--sy, 170px)) rotate(160deg) scale(.06); } }
 
-.public-welcome-brand { position: relative; z-index: 2; animation: pd-slap .5s .12s cubic-bezier(.2,1.5,.4,1) both; }
-.public-welcome-brand img { display: block; width: min(52vw, 214px); height: auto; filter: drop-shadow(0 5px 0 rgba(60, 0, 4, .35)); }
+.public-welcome-brand { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.public-welcome-menu-heading { position: relative; z-index: 5; width: 100%; }
+.public-welcome-menu-heading h1, .public-welcome-menu-heading h2 { margin: 0; color: #fff; font: 400 clamp(18px, 6.4vw, 34px)/1.05 'Alfa Slab One', Rockwell, serif; white-space: nowrap; animation: pd-rise .55s .95s cubic-bezier(.2, .8, .2, 1) both; }
+.public-welcome-menu-heading em { color: #FFC21A; font-style: normal; }
+.public-welcome-menu-heading p { max-width: 38ch; margin: 8px auto 0; color: #D9CBC3; font-size: 14.5px; line-height: 1.42; text-wrap: balance; animation: pd-rise .55s 1.03s cubic-bezier(.2, .8, .2, 1) both; }
+.public-welcome-menu-heading p strong { color: #fff; font-weight: 750; }
 
-.public-welcome-menu-heading { position: relative; margin-top: 10px; }
-.public-welcome-menu-heading > span { display: none; }
-.public-welcome-menu-heading h1, .public-welcome-menu-heading h2 { margin: 0; color: #fff; font: 400 clamp(20px, 7.2vw, 38px)/1.05 'Alfa Slab One', Rockwell, serif; white-space: nowrap; animation: pd-rise .5s .22s cubic-bezier(.2,.8,.2,1) both; }
-.public-welcome-menu-heading p { max-width: 36ch; margin: 9px auto 0; color: #FFE9DC; font-size: 14.5px; line-height: 1.42; text-wrap: pretty; animation: pd-rise .5s .3s cubic-bezier(.2,.8,.2,1) both; }
-.public-welcome-menu-heading p strong { color: #FFD24D; font-weight: 750; }
-
-/* Comanda colgada con los tres pasos. */
-.public-welcome-menu-list {
-  position: relative;
-  width: 100%;
-  margin: 24px 0 14px;
-  padding: 18px 18px 20px;
-  color: #17100E;
-  text-align: left;
-  background: #FFFBF4;
-  -webkit-mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
-  mask: conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) 50% / 14px 100%;
-  transform-origin: 50% -14px;
-  animation: pd-hang 1s .34s cubic-bezier(.3,1.4,.5,1) both;
-}
-.public-welcome-menu-section-title { display: none; }
-.public-welcome-menu-item { display: grid; padding: 8px 0 8px 46px; position: relative; opacity: 0; animation: pd-rise .42s calc(.55s + var(--i, 0) * .09s) cubic-bezier(.2,.8,.2,1) forwards; }
-.public-welcome-menu-item:nth-of-type(3) { --i: 1; }
-.public-welcome-menu-item:nth-of-type(4) { --i: 2; }
-.public-welcome-menu-item + .public-welcome-menu-item { border-top: 1.5px dashed #E6D5C4; }
-.public-welcome-menu-item b { position: absolute; left: 0; top: 50%; display: grid; place-items: center; width: 34px; height: 34px; margin-top: -17px; border-radius: 50%; color: #fff; background: #D9141E; font: 400 14px/1 'Alfa Slab One', Rockwell, serif; }
-.public-welcome-menu-item strong { font-size: 15.5px; font-weight: 800; line-height: 1.2; }
-.public-welcome-menu-item small { margin-top: 2px; color: #6B5B55; font-size: 13px; line-height: 1.35; }
+/* Tres pasos en una sola tira, unidos por un tallarín. */
+.public-welcome-menu-list { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; margin: 14px 0 6px; }
+.public-welcome-menu-list::before { content: ''; position: absolute; left: 17%; right: 17%; top: 12px; height: 22px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 22' preserveAspectRatio='none'%3E%3Cpath d='M0 11c20-16 40-16 60 0s40 16 60 0 40-16 60 0 40 16 60 0' fill='none' stroke='%23FFC21A' stroke-width='3' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat; animation: pd-noodle .7s 1.5s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes pd-noodle { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.public-welcome-menu-item { position: relative; display: grid; justify-items: center; gap: 6px; }
+.public-welcome-menu-item i { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; color: #fff; background: #D9141E; box-shadow: 0 0 0 6px #0A0706; animation: pd-slap .45s calc(1.2s + var(--i, 0) * .22s) cubic-bezier(.2, 1.5, .4, 1) both; }
+.public-welcome-menu-item:nth-child(2) { --i: 1; }
+.public-welcome-menu-item:nth-child(3) { --i: 2; }
+.public-welcome-menu-item svg { width: 24px; height: 24px; }
+.public-welcome-menu-item strong { color: #fff; font-size: 14.5px; font-weight: 750; line-height: 1; animation: pd-rise .4s calc(1.3s + var(--i, 0) * .22s) both; }
+.public-welcome-menu-item small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 .public-welcome-dismiss-choice { position: relative; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 8px; color: #FFE9DC; font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .public-welcome-dismiss-choice input { appearance: none; -webkit-appearance: none; display: grid; place-items: center; width: 22px; height: 22px; margin: 0; border: 2px solid #FFD9CC; border-radius: 7px; background: transparent; cursor: pointer; transition: background .15s, border-color .15s; }
@@ -126,30 +153,24 @@
 .public-welcome-backdrop:has(.public-welcome-confirm.is-loading) .pd-curtain--welcome,
 .public-welcome-backdrop:has(.public-welcome-confirm[aria-busy="true"]) .pd-curtain--welcome { transform: translateY(0); }
 
-@media (min-width: 900px) and (min-height: 560px) {
-  .public-welcome-dialog { width: min(100%, 980px); grid-template-columns: 1fr 1fr; column-gap: 56px; grid-template-rows: auto auto auto auto auto; text-align: left; justify-items: start; }
-  .pd-welcome-scene { grid-area: 1 / 1 / 4 / 2; width: min(100%, 380px, 52vh); justify-self: center; align-self: end; margin: 0 0 -14px; }
-  .public-welcome-brand { grid-area: 4 / 1 / 6 / 2; justify-self: center; align-self: start; }
-  .public-welcome-brand img { width: 320px; }
-  .public-welcome-menu-heading { grid-area: 1 / 2; margin: 0; }
-  .public-welcome-menu-heading h1, .public-welcome-menu-heading h2 { font-size: 46px; }
-  .public-welcome-menu-heading p { margin-left: 0; font-size: 16px; }
-  .public-welcome-menu-list { grid-area: 2 / 2; }
-  .public-welcome-dismiss-choice { grid-area: 3 / 2; padding-left: 0; }
-  .public-welcome-confirm { grid-area: 4 / 2; }
-  .public-welcome-loading-status { grid-area: 5 / 2; }
-}
-@media (max-height: 790px) and (max-width: 899px) {
-  .pd-welcome-scene { width: min(42vw, 19dvh); }
-  .public-welcome-brand img { width: 168px; }
-  .public-welcome-menu-list { margin: 16px 0 8px; padding: 10px 16px 14px; }
-  .public-welcome-menu-item { padding-block: 6px; }
-  .public-welcome-confirm { min-height: 54px; margin-top: 0; }
-}
 @media (max-height: 700px) and (max-width: 899px) {
-  .pd-welcome-scene { width: min(30vw, 128px); }
-  .public-welcome-menu-list { margin: 14px 0 6px; padding: 10px 16px 14px; }
-  .public-welcome-menu-item { padding-block: 5px; }
+  .pd-boom { height: 47dvh; min-height: 270px; }
+  .public-welcome-menu-heading p { font-size: 13.5px; }
+  .public-welcome-menu-list { margin: 8px 0 0; }
+  .public-welcome-confirm { min-height: 52px; }
+}
+@media (min-width: 900px) and (min-height: 520px) {
+  .public-welcome-backdrop { overflow: hidden; }
+  .public-welcome-dialog { width: min(100%, 1320px); height: 100dvh; min-height: 0; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); grid-template-rows: 1fr auto auto auto auto auto 1fr; column-gap: 40px; align-content: center; text-align: left; justify-items: start; padding: 0 40px; }
+  .pd-boom { grid-area: 1 / 1 / 8 / 2; align-self: center; width: 100%; height: min(88dvh, 760px); margin: 0; }
+  .pd-boom-box { width: min(52%, 380px); }
+  .public-welcome-menu-heading { grid-area: 2 / 2; }
+  .public-welcome-menu-heading h1, .public-welcome-menu-heading h2 { font-size: clamp(23px, 3.05vw, 41px); }
+  .public-welcome-menu-heading p { margin: 14px 0 0; font-size: 17px; text-wrap: pretty; }
+  .public-welcome-menu-list { grid-area: 3 / 2; margin: 26px 0 16px; }
+  .public-welcome-dismiss-choice { grid-area: 4 / 2; padding-left: 0; }
+  .public-welcome-confirm { grid-area: 5 / 2; }
+  .public-welcome-loading-status { grid-area: 6 / 2; }
 }
 
 @keyframes pd-sway { from { transform: scale(.97, .94) skewX(-2deg); } to { transform: scale(1.02, 1.05) skewX(2deg); } }
@@ -166,6 +187,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .public-welcome-backdrop *, .public-welcome-backdrop::before { animation-duration: .01ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
-  .public-welcome-menu-item { opacity: 1; }
+  .pd-boom-box img, .pd-boom-dish > span, .pd-boom-glow { opacity: 1 !important; }
   .pd-curtain:not(.pd-curtain--welcome) { display: none; }
 }
