@@ -220,9 +220,6 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
 @keyframes pd-bag { 0% { transform: translateX(26%) translateY(-34%) rotate(-5deg); } 60% { transform: translateX(26%) translateY(3%) rotate(2deg); } }
 .public-cart-drawer .public-primary.public-whatsapp-cta, .public-cart-drawer .public-primary.public-whatsapp-cta:active { box-shadow: 0 5px 0 #0A5429, 0 0 0 9px var(--bg); }
 .public-order-security { padding-top: 18px; }
-.pd-cookie.is-open .pd-cookie-l { transform: translate(-58px, 2px) rotate(-30deg); }
-.pd-cookie.is-open .pd-cookie-r { transform: translate(58px, 2px) rotate(30deg); }
-.pd-cookie.is-open .pd-cookie-slip { max-width: 250px; margin-top: -70px; }
 .public-contact-hero .public-hero-main-title { font-size: clamp(23px, 6.88vw, 39px); }
 .customer-loyalty-promotion-progress { gap: 4px; }
 .customer-loyalty-promotion-progress > span { width: 25px; height: 25px; }

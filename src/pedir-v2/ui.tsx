@@ -172,19 +172,19 @@ const FORTUNES = [
   'La paciencia sabe mejor con salsa agridulce.',
 ]
 
-/** Galleta de la fortuna: se toca y se parte. */
+/** Foto real del wok y la bolsa para el pedido recibido. */
+export function SentScene() {
+  return <span className="pd-sent-scene" aria-hidden="true"><img src="/optimized/fondos/contacto-banner.webp" alt="" /><i /><i /><i /><i /><i /><i /></span>
+}
+
+/** Sobre rojo de la suerte: se toca y sale el mensaje. */
 export function FortuneCookie() {
   const [open, setOpen] = useState(false)
   const [text] = useState(() => FORTUNES[Math.floor(Math.random() * FORTUNES.length)])
   return (
     <button type="button" className={`pd-cookie ${open ? 'is-open' : ''}`} onClick={() => setOpen(true)} aria-live="polite">
-      <span className="pd-cookie-art" aria-hidden="true">
-        <svg viewBox="0 0 150 92">
-          <g className="pd-cookie-l"><path d="M75 18C48 4 12 22 8 52c-2 17 10 30 24 28 10-1 16-9 25-12 7-2 12-2 18-2 4-16 4-32 0-48Z" fill="#E7A94D" /><path d="M66 24C46 18 22 32 18 54" stroke="#F8D08A" strokeWidth="6" strokeLinecap="round" fill="none" /></g>
-          <g className="pd-cookie-r"><path d="M75 18c27-14 63 4 67 34 2 17-10 30-24 28-10-1-16-9-25-12-7-2-12-2-18-2-4-16-4-32 0-48Z" fill="#DD9A3B" /><path d="M86 24c17-5 35 5 42 20" stroke="#F3C276" strokeWidth="6" strokeLinecap="round" fill="none" /></g>
-        </svg>
-      </span>
-      <span className="pd-cookie-slip">{open ? text : 'Toca tu galleta de la fortuna'}</span>
+      <span className="pd-envelope" aria-hidden="true"><b><img src="/optimized/pedir-v2/wok-mark.webp" alt="" /></b></span>
+      <span className="pd-cookie-slip">{open ? text : 'Toca el sobre de la suerte'}</span>
     </button>
   )
 }

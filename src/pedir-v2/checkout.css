@@ -306,8 +306,6 @@
 .public-track > *, .public-success > * { flex: 0 0 auto; }
 .public-track-hero, .public-success { position: relative; justify-items: center; text-align: center; }
 .public-track-hero { display: grid; gap: 10px; }
-.pd-sent-wok { display: block; width: 132px; margin: 6px auto 0; animation: pd-slap .5s var(--pd-spring) both; }
-.pd-sent-wok .pd-wok-svg { width: 100%; animation: pd-toss 1s .5s cubic-bezier(.3, .9, .4, 1) 2; }
 .public-track h3, .public-success h3 { font: 400 27px/1.05 var(--pd-display); color: var(--title); text-wrap: balance; }
 .public-track-code, .public-success > strong { justify-self: center; align-self: center; padding: 8px 15px; border-radius: 14px; background: var(--card); font: 500 18px/1.2 var(--pd-mono); }
 .public-track-hero p, .public-success > p { max-width: 40ch; margin: 0 auto !important; color: var(--soft); font-size: 14.5px; line-height: 1.5; text-wrap: pretty; }
@@ -344,14 +342,5 @@
 .public-track-summary li { display: grid; grid-template-columns: 34px 1fr; }
 .public-track-new { width: 100%; min-height: 50px; border: 0; border-radius: 19px; color: var(--inv-fg); background: var(--inv); font-size: 15.5px; font-weight: 800; }
 .public-success-actions .public-primary { position: static; box-shadow: 0 5px 0 var(--pd-red-deep); }
-.pd-cookie { display: grid; justify-items: center; gap: 6px; padding: 8px; border: 0; background: none; color: var(--fg); }
-.pd-cookie-art { width: 128px; animation: pd-wiggle 2.6s ease-in-out infinite; }
-.pd-cookie-art svg { display: block; overflow: visible; }
-.pd-cookie g { transform-origin: 75px 60px; transition: transform .5s var(--pd-spring); }
-.pd-cookie.is-open .pd-cookie-art { animation: none; }
-.pd-cookie.is-open .pd-cookie-l { transform: translate(-44px, 8px) rotate(-26deg); }
-.pd-cookie.is-open .pd-cookie-r { transform: translate(44px, 8px) rotate(26deg); }
-.pd-cookie-slip { padding: 10px 15px; font-size: 14px; font-weight: 700; }
-.pd-cookie.is-open .pd-cookie-slip { margin-top: -62px; max-width: 290px; background: var(--card); border: 2px solid var(--line); border-radius: 6px; color: var(--accent); font: 500 14px/1.4 var(--pd-mono); animation: pd-unroll .6s .15s var(--pd-out) both; }
 @keyframes pd-unroll { from { transform: scaleX(0); opacity: 0; } }
 @keyframes pd-wiggle { 0%, 70%, 100% { transform: none; } 76% { transform: rotate(-7deg); } 84% { transform: rotate(6deg); } 92% { transform: rotate(-3deg); } }
