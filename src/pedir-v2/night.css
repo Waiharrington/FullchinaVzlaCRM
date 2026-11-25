@@ -173,13 +173,6 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
 .pd-seat.is-front .pd-dish-disc::after { transform: none; opacity: 1; }
 .pd-seat .pd-dish img { transform: none; }
 .pd-seat.is-front .pd-dish-body { animation: pd-hover-dish 3s 1s ease-in-out infinite; }
-.pd-seat-card { display: grid; justify-items: center; align-content: center; gap: 10px; width: 92%; height: 62%; margin: 19% auto; padding: 11.5px; border-radius: 16.5px; background: #fff; }
-.pd-seat-card > img { height: 34%; width: auto; }
-.pd-seat-card > span { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 92%; }
-.pd-seat-card i { display: grid; place-items: center; aspect-ratio: 1; border: 2px dashed #DCC7B2; border-radius: 50%; }
-.pd-seat-card i img { width: 68%; opacity: 0; }
-.pd-seat-card .is-earned { border: 2px solid var(--pd-red); background: #FFE9E0; }
-.pd-seat-card .is-earned img { opacity: 1; }
 .public-recommended-copy, .customer-loyalty-promotion--recommended .customer-loyalty-promotion-copy { position: relative; z-index: 2; display: grid; justify-items: center; gap: 6px; width: 100%; text-align: center; animation: pd-rise .5s .12s var(--pd-out) both; }
 .public-recommended-copy h2, .customer-loyalty-promotion--recommended h2 { font: 400 clamp(21px, 6.29vw, 29px)/1.06 var(--pd-display); color: #fff; -webkit-line-clamp: 2; text-wrap: balance; }
 .public-recommended-copy p, .customer-loyalty-promotion--recommended p { max-width: 38ch; color: var(--soft); font-size: 13px; -webkit-line-clamp: 2; }
@@ -230,8 +223,6 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
 .pd-cookie.is-open .pd-cookie-l { transform: translate(-58px, 2px) rotate(-30deg); }
 .pd-cookie.is-open .pd-cookie-r { transform: translate(58px, 2px) rotate(30deg); }
 .pd-cookie.is-open .pd-cookie-slip { max-width: 250px; margin-top: -70px; }
-.pd-seat-card { grid-template-rows: auto auto; }
-.pd-seat-card > img { height: 44.5px; width: auto; }
 .public-contact-hero .public-hero-main-title { font-size: clamp(23px, 6.88vw, 39px); }
 .customer-loyalty-promotion-progress { gap: 4px; }
 .customer-loyalty-promotion-progress > span { width: 25px; height: 25px; }

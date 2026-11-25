@@ -15,7 +15,8 @@ import { LoadingSkeleton } from './LoadingSkeleton'
 import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { Fit } from '../pedir-v2/ui'
-import '../pedir-v2/profile.css'
+import '../pedir-v2/profile-base.css'
+import '../pedir-v2/profile-plus.css'
 
 type Visit = { order_id: string; order_number: string; visited_at: string; reward_description?: string | null }
 type LoyaltyReward = { id: number; cycle_number: number; reward_description: string; unlocked_at: string; redeemed_at?: string | null }

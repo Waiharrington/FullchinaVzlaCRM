@@ -1,5 +1,6 @@
 import { useRef, type CSSProperties, type RefObject } from 'react'
 import type { MenuProductGroup } from '../lib/menuGrouping'
+import { LoyaltyCard } from './LoyaltyCard'
 import { Dish } from './ui'
 
 type Slide = { kind: 'product'; group: MenuProductGroup } | { kind: 'loyalty' }
@@ -38,7 +39,7 @@ export function Turntable({ slides, index, tableRef }: { slides: Slide[]; index:
               {/* Solo se montan los platos cercanos: el resto no pesa nada. */}
               {slide && away <= (count > 1 ? 2 : 0) && (slide.kind === 'product'
                 ? <Dish imageUrl={slide.group.variants[0]?.product.imageUrl} alt="" eager={away === 0} />
-                : <div className="pd-seat-card pd-paper"><img src="/optimized/root/logo.webp" alt="" /><span>{Array.from({ length: 10 }, (_, s) => <i key={s} className={s < 6 ? 'is-earned' : ''}><img src="/optimized/pedir-v2/wok-mark.webp" alt="" /></i>)}</span></div>)}
+                : <div className="pd-seat-card"><LoyaltyCard /></div>)}
             </div>
           )
         })}

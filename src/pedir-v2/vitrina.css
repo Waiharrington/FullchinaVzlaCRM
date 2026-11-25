@@ -3,9 +3,12 @@
    pantalla (o con el mouse) se prende el neón del marco, la lámpara de calor
    ilumina la comida y la foto se acerca. Todo con transform y opacity. */
 
-/* Toldo */
+/* Toldo: solo en compu; en el teléfono quitaba espacio a los platos. */
 .public-menu-page .public-content { position: relative; padding-top: 0; }
-.public-menu-page .public-content::before { content: ''; display: block; height: 30px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='30'%3E%3Cpath d='M0 0h28v16a14 14 0 0 1-28 0z' fill='%23D9141E'/%3E%3Cpath d='M28 0h28v16a14 14 0 0 1-28 0z' fill='%23fff'/%3E%3Cpath d='M0 0h56v6H0z' fill='%23000' fill-opacity='.22'/%3E%3C/svg%3E") 50% 0 / 56px 30px repeat-x; transform-origin: 50% 0; animation: pd-awning 4.2s ease-in-out infinite; }
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-menu-page .public-content::before { content: ''; display: block; height: 30px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='30'%3E%3Cpath d='M0 0h28v16a14 14 0 0 1-28 0z' fill='%23D9141E'/%3E%3Cpath d='M28 0h28v16a14 14 0 0 1-28 0z' fill='%23fff'/%3E%3Cpath d='M0 0h56v6H0z' fill='%23000' fill-opacity='.22'/%3E%3C/svg%3E") 50% 0 / 56px 30px repeat-x; transform-origin: 50% 0; animation: pd-awning 4.2s ease-in-out infinite; }
+}
+@media (max-width: 899px), (max-width: 1279px) and (orientation: portrait) { .public-menu-page .public-content { padding-top: 14px; } }
 @keyframes pd-awning { 50% { transform: scaleY(.88) skewX(1.2deg); } }
 .public-menu-page .public-list-header { padding-top: 14px; }
 
@@ -45,7 +48,9 @@
 .public-menu-page :is(.public-favorite-btn, .public-home-fav-btn)::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: rgba(10, 7, 6, .72); }
 .public-menu-page :is(.public-favorite-btn, .public-home-fav-btn) svg { position: relative; }
 .public-menu-page :is(.public-favorite-btn, .public-home-fav-btn).active::before { background: #fff; }
-.public-menu-page .public-menu-label { z-index: 5; top: 10px; left: 10px; }
+/* Etiqueta: caja de luz completa al pie de la foto; nunca se corta ni choca con el corazón. */
+.public-menu-page .public-menu-label { z-index: 5; top: auto; left: 0; right: 0; bottom: 0; max-width: none; justify-content: center; gap: 6px; min-height: 26px; padding: 4px 6px; border-radius: 0; font-size: 12.5px; white-space: nowrap; transform: none; }
+.public-menu-page .public-prod-img-wrap:has(.public-menu-label) .pd-in-cart { bottom: 36px; }
 .public-menu-page .public-free-drink-sticker { position: absolute; z-index: 6; top: -14px; left: -10px; width: 78px; pointer-events: none; transform: rotate(-8deg); }
 
 /* Se prende */

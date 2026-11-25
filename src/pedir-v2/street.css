@@ -2,12 +2,26 @@
 .pd-contact { background: var(--bg); overflow: clip; }
 .pd-contact-top { position: relative; display: grid; }
 
-/* Escena */
-.pd-street { position: relative; height: clamp(236px, 66vw, 330px); overflow: hidden; background: linear-gradient(#0A0706 0 34%, #1B0C0B 72%, #2A0F0D 84%, #0A0706 84%); }
-.pd-lights { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 62px; }
-.pd-bulb { animation: pd-bulb 3.4s ease-in-out infinite; }
-@keyframes pd-bulb { 0%, 88%, 100% { opacity: 1; } 92% { opacity: .35; } 95% { opacity: 1; } 97% { opacity: .5; } }
-.pd-truck { position: absolute; left: 50%; bottom: 4%; width: min(86%, 430px); margin: 0; padding: 0; border: 0; background: none; cursor: pointer; transform: translateX(-50%); -webkit-tap-highlight-color: transparent; }
+/* Escena: el local real de noche y el food truck que llega */
+.pd-street { --px: 0; --py: 0; --ph: 366px; position: relative; height: 386px; overflow: hidden; background: #0A0706; }
+.pd-street-photo, .pd-street-fade { position: absolute; inset: 0; pointer-events: none; }
+.pd-street-photo { animation: pd-street-in 1.4s cubic-bezier(.16, .9, .2, 1) both; transform-origin: 60% 60%; }
+@keyframes pd-street-in { from { opacity: 0; transform: scale(1.18); } }
+.pd-street-photo > span { position: absolute; left: 50%; top: -6px; height: var(--ph); aspect-ratio: 1800 / 814; transform: translate(calc(-64% + var(--px) * -8px), calc(var(--py) * -5px)); transition: transform .4s cubic-bezier(.2, .8, .2, 1); }
+.pd-street-photo img { display: block; width: 100%; height: 100%; }
+.pd-street-photo i { position: absolute; width: 34px; height: 34px; margin: -17px; border-radius: 50%; background: radial-gradient(rgba(255, 196, 90, .85), rgba(255, 160, 50, .22) 38%, transparent 68%); animation: pd-bokeh 3.4s ease-in-out infinite alternate; }
+@keyframes pd-bokeh { from { opacity: .2; transform: scale(.75); } to { opacity: .95; transform: scale(1.15); } }
+/* El letrero de neón respira y parpadea. */
+.pd-street-photo b { position: absolute; left: 48%; top: 34%; width: 28%; height: 42%; background: radial-gradient(closest-side, rgba(255, 70, 40, .5), transparent); mix-blend-mode: screen; animation: pd-neon-hum 4.6s 1.2s steps(1) infinite; }
+@keyframes pd-neon-hum { 0%, 90%, 100% { opacity: 1; } 91% { opacity: .2; } 92.5% { opacity: 1; } 94% { opacity: .4; } 95% { opacity: 1; } }
+.pd-street-fade { background: linear-gradient(rgba(10, 7, 6, .35), transparent 18%, transparent 66%, rgba(10, 7, 6, .5) 84%, #0A0706 94%); }
+/* Polvo de las ruedas al frenar. */
+.pd-dust { position: absolute; left: 8%; right: 8%; bottom: 6%; height: 30px; pointer-events: none; }
+.pd-dust i { position: absolute; left: 10%; bottom: 0; width: 70px; height: 34px; background: radial-gradient(closest-side, rgba(214, 170, 128, .5), transparent); opacity: 0; animation: pd-dust 1.5s .85s ease-out; }
+.pd-dust i:nth-child(2) { left: 62%; animation-delay: .95s; } .pd-dust i:nth-child(3) { left: 84%; animation-delay: 1.05s; }
+.is-honking .pd-dust { display: none; }
+@keyframes pd-dust { 0% { opacity: 0; transform: scale(.4); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(-34px, -14px) scale(1.7); } }
+.pd-truck { position: absolute; z-index: 2; left: 50%; bottom: 8px; width: min(68%, 290px); margin: 0; padding: 0; border: 0; background: none; cursor: pointer; transform: translateX(-50%); -webkit-tap-highlight-color: transparent; }
 .pd-truck > svg { display: block; width: 100%; overflow: visible; animation: pd-truck-in 1.35s cubic-bezier(.16, .9, .25, 1.04) both; }
 .pd-truck.is-honking > svg { animation: pd-truck-hop .55s cubic-bezier(.3, 1.4, .5, 1); }
 .pd-truck:active > svg { transform: scale(.985); }
@@ -19,7 +33,7 @@
 .is-honking .pd-truck-wheel { animation: none; }
 @keyframes pd-wheel-roll { from { transform: rotate(-900deg); } }
 .pd-truck-beam { opacity: 0; animation: pd-beam-on .7s 1.35s steps(1) forwards; }
-@keyframes pd-beam-on { 0% { opacity: .5; } 20% { opacity: 0; } 40%, 100% { opacity: .28; } }
+@keyframes pd-beam-on { 0% { opacity: .5; } 20% { opacity: 0; } 40%, 100% { opacity: .8; } }
 .pd-truck-smoke circle { fill: #8D7B72; opacity: 0; animation: pd-smoke 2.6s ease-out infinite; }
 .pd-truck-smoke circle:nth-child(2) { animation-delay: .8s; } .pd-truck-smoke circle:nth-child(3) { animation-delay: 1.6s; }
 @keyframes pd-smoke { 0% { opacity: .55; transform: translateY(14px) scale(.5); transform-origin: 97px 26px; } 100% { opacity: 0; transform: translate(-16px, -34px) scale(1.7); transform-origin: 97px 26px; } }
@@ -33,12 +47,9 @@
 .pd-truck-awning { transform-origin: 154px 74px; animation: pd-awning 3.6s ease-in-out infinite; }
 .pd-honk { position: absolute; z-index: 2; right: 2%; top: -4%; padding: 8px 14px; border-radius: 15px 15px 15px 3px; color: #17100E; background: var(--pd-yellow); font: 400 17px/1 var(--pd-display); animation: pd-honk 1.6s cubic-bezier(.3, 1.6, .5, 1) both; }
 @keyframes pd-honk { 0% { opacity: 0; transform: scale(.2) rotate(-14deg); } 18%, 80% { opacity: 1; transform: rotate(-5deg); } 100% { opacity: 0; transform: translateY(-14px); } }
-.pd-road { position: absolute; left: 0; right: 0; bottom: 0; height: 16%; background: #14100E; overflow: hidden; }
-.pd-road i { position: absolute; left: -80px; right: -80px; top: 46%; height: 4px; background: repeating-linear-gradient(90deg, #5A4A42 0 40px, transparent 40px 80px); animation: pd-road 1.35s cubic-bezier(.16, .9, .25, 1) both; }
-@keyframes pd-road { from { transform: translateX(80px); } }
 
 /* Saludo y acciones */
-.pd-contact-hello { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 4px; padding: 20px 18px 6px; text-align: center; }
+.pd-contact-hello { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 4px; padding: 8px 18px 6px; position: relative; z-index: 2; text-align: center; }
 .pd-contact-hello h1 { width: 100%; font: 400 clamp(27px, 8.4vw, 46px)/1.05 var(--pd-display); color: #fff; animation: pd-rise .5s .5s var(--pd-out) both; }
 .pd-contact-hello h1 span span span, .pd-contact-hello h1 .pd-fit > span > span { color: var(--pd-yellow); }
 .pd-contact-hello > p { color: var(--soft); font-size: 15px; }
@@ -62,16 +73,16 @@
 .pd-contact-body h2 em { font-style: normal; color: var(--pd-yellow); }
 
 /* Pizarra del día */
-.pd-board { position: relative; display: grid; gap: 20px; padding: 22px 20px; border: 9px solid #6B4426; border-radius: 18px; background: #17211C; box-shadow: inset 0 0 0 2px #3E2815, inset 0 0 40px rgba(0, 0, 0, .6); }
-.pd-board h2 { color: #FFE39A; font-size: 19px; }
-.pd-board-hours p { margin-top: 2px; color: #DCE6E0; font-size: 15.5px; }
+.pd-board { position: relative; display: grid; gap: 20px; padding: 22px 20px; border-radius: 22px; background: linear-gradient(160deg, #1E1512, #120C0A); box-shadow: inset 0 0 0 1px rgba(255, 196, 61, .22); }
+.pd-board h2 { color: var(--pd-yellow); font-size: 19px; }
+.pd-board-hours p { margin-top: 2px; color: var(--soft); font-size: 15.5px; }
 .pd-board-hours strong { display: flex; align-items: center; gap: 12px; margin-top: 8px; color: #fff; font: 400 clamp(19px, 5.6vw, 27px)/1 var(--pd-display); white-space: nowrap; }
 .pd-board-hours strong i { flex: 1; max-width: 70px; height: 8px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 8' preserveAspectRatio='none'%3E%3Cpath d='M0 4c8-6 12-6 20 0s12 6 20 0 12-6 20 0' fill='none' stroke='%23FFC21A' stroke-width='2.500' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
 .pd-board-pay ul { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 14px; margin: 11px 0 0; padding: 0; list-style: none; }
-.pd-board-pay li { display: flex; align-items: center; gap: 9px; color: #F1F5F2; font-size: 14.5px; font-weight: 650; line-height: 1.2; }
+.pd-board-pay li { display: flex; align-items: center; gap: 9px; color: #fff; font-size: 14.5px; font-weight: 650; line-height: 1.2; }
 .pd-board-pay svg { flex: 0 0 auto; color: var(--pd-yellow); transition: transform .35s var(--pd-spring); }
 .pd-board-pay li:hover svg { transform: rotate(-12deg) scale(1.25); }
-.pd-board-mixed { margin-top: 13px !important; padding-top: 12px; border-top: 2px dashed #46564D; color: #DCE6E0; font-size: 14.5px; }
+.pd-board-mixed { margin-top: 13px !important; padding-top: 12px; border-top: 2px dashed var(--line-2); color: var(--soft); font-size: 14.5px; }
 
 /* Mapa */
 .pd-place { position: relative; height: 260px; border-radius: 22px; overflow: hidden; background: #E9DDCF; }
@@ -100,14 +111,16 @@
 .pd-club-stamps .is-earned { border: 0; background: #fff; }
 .pd-club-stamps img { width: 70%; opacity: 0; }
 .pd-club-stamps .is-earned img { opacity: 1; }
-.pd-club button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 20px; border: 0; border-radius: 15px; color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #7A0A10; font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
-.pd-club button:active { transform: translateY(3px); box-shadow: 0 1px 0 #7A0A10; }
+.pd-club > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; padding: 0 20px; border: 0; border-radius: 15px; color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #7A0A10; font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
+.pd-club > button:active { transform: translateY(3px); box-shadow: 0 1px 0 #7A0A10; }
 
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
-  .pd-contact-top { grid-template-columns: minmax(0, 1fr); }
-  .pd-street { height: clamp(330px, 52vh, 430px); }
-  .pd-truck { left: auto; right: max(40px, calc((100vw - 1180px) / 2)); bottom: 5%; width: min(44vw, 520px); transform: none; }
-  .pd-contact-hello { position: absolute; left: max(40px, calc((100vw - 1180px) / 2)); top: 0; bottom: 8%; width: min(40vw, 470px); align-content: center; justify-items: start; padding: 0; text-align: left; }
+  .pd-street { height: 470px; }
+  .pd-street-photo > span { left: auto; right: 0; top: auto; bottom: 0; width: max(100%, 1150px); height: auto; transform: translate(calc(var(--px) * -10px), calc(var(--py) * -6px)) scale(1.02); transform-origin: 100% 100%; }
+  .pd-street-photo i { width: 46px; height: 46px; margin: -23px; }
+  .pd-street-fade { background: linear-gradient(90deg, #0A0706 18%, transparent 52%), linear-gradient(transparent 74%, #0A0706); }
+  .pd-truck { left: 71%; bottom: 10px; width: min(26vw, 350px); }
+  .pd-contact-hello { margin-top: 0; position: absolute; z-index: 2; left: max(40px, calc((100vw - 1180px) / 2)); top: 0; bottom: 0; width: min(44vw, 500px); align-content: center; justify-items: start; padding: 0; text-align: left; }
   .pd-contact-hello h1 { font-size: clamp(34px, 3.6vw, 54px); }
   .pd-contact-hello > p { font-size: 16.5px; }
   .pd-contact-actions { grid-auto-columns: 92px; justify-content: start; gap: 14px; margin-top: 20px; }
@@ -122,10 +135,9 @@
   .pd-club h2 { font-size: clamp(28px, 2.9vw, 42px); }
   .pd-club p { font-size: 17px; }
   .pd-club-stamps { max-width: 480px; gap: 8px; }
-  .pd-club button { justify-self: start; min-height: 52px; padding: 0 26px; font-size: 16.5px; }
+  .pd-club > button { justify-self: start; min-height: 52px; padding: 0 26px; font-size: 16.5px; }
 }
 
-.pd-truck { z-index: 1; bottom: 5%; }
 .pd-cinema .public-instagram-filmstrip { height: 0; min-height: 100%; }
 .pd-cinema .public-instagram-filmstrip button { flex: 1 1 0; height: 0; }
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
@@ -137,5 +149,5 @@
   .pd-club { grid-column: span 5; padding: 32px; }
   .pd-club h2 { font-size: clamp(24px, 2.2vw, 33px); }
   .pd-club-stamps { grid-template-columns: repeat(5, 1fr); max-width: 320px; gap: 10px; }
-  .pd-club button { justify-self: stretch; }
+  .pd-club > button { justify-self: stretch; }
 }

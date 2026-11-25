@@ -1,25 +1,41 @@
 import { useRef, useState } from 'react'
 import { usePauseOffscreen } from './hooks'
 
-const BULBS = [40, 104, 168, 232, 296, 360, 424, 488, 552, 616, 680, 744]
-const bulbY = (x: number) => 14 + 34 * Math.sin((Math.PI * (x % 400)) / 400)
+/* Posición real de los bombillos en la foto del local (en % de la foto). */
+const BULBS = [[72.9, 4.9], [67.7, 13.3], [79.9, 12.9], [62.5, 14.5], [73.9, 19.3], [56.1, 22.1], [91.2, 16.6], [82.6, 25]]
 
-/** Calle de noche: el food truck llega rodando, prende la cocina y saltea. Si lo tocas, pita. */
+/** El local real de noche; el food truck llega rodando y saltea en vivo. Si lo tocas, pita. */
 export function TruckScene() {
   const ref = useRef<HTMLDivElement>(null)
   const [honk, setHonk] = useState(0)
   usePauseOffscreen(ref)
   return (
-    <div ref={ref} className="pd-street">
-      <svg className="pd-lights" viewBox="0 0 800 70" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
-        <path d="M0 14q200 68 400 0t400 0" fill="none" stroke="#4A3831" strokeWidth="2.500" />
-        {BULBS.map((x, i) => <g key={x} className="pd-bulb" style={{ animationDelay: `${(i % 5) * 0.6}s` }}><circle cx={x} cy={bulbY(x) + 10} r="13" fill="#FFC21A" opacity=".2" /><circle cx={x} cy={bulbY(x) + 10} r="5.500" fill="#FFE39A" /></g>)}
-      </svg>
+    <div
+      ref={ref}
+      className="pd-street"
+      onPointerMove={event => {
+        const el = ref.current
+        if (!el) return
+        const rect = el.getBoundingClientRect()
+        el.style.setProperty('--px', `${((event.clientX - rect.left) / rect.width) * 2 - 1}`)
+        el.style.setProperty('--py', `${((event.clientY - rect.top) / rect.height) * 2 - 1}`)
+      }}
+    >
+      <span className="pd-street-photo" aria-hidden="true">
+        <span>
+          <img src="/optimized/fondos/contacto-banner-mobile-chatgpt.webp" alt="" />
+          {BULBS.map(([x, y], i) => <i key={x} style={{ left: `${x}%`, top: `${y}%`, animationDelay: `${i * -0.7}s` }} />)}
+          <b />
+        </span>
+      </span>
+      <span className="pd-street-fade" aria-hidden="true" />
       <button type="button" className={`pd-truck ${honk ? 'is-honking' : ''}`} key={honk} aria-label="Tocar el food truck" onClick={() => setHonk(count => count + 1)}>
         {honk > 0 && <span className="pd-honk" aria-hidden="true">¡A comer!</span>}
+        <span className="pd-dust" aria-hidden="true"><i /><i /><i /></span>
         <svg viewBox="0 0 540 300" aria-hidden="true">
-          <polygon className="pd-truck-beam" points="508,196 640,170 640,262 508,214" fill="#FFE39A" />
-          <ellipse cx="270" cy="276" rx="250" ry="12" fill="#000" opacity=".6" />
+          <defs><linearGradient id="pd-beam"><stop stopColor="#FFE39A" stopOpacity=".75" /><stop offset="1" stopColor="#FFE39A" stopOpacity="0" /></linearGradient></defs>
+          <path className="pd-truck-beam" d="M508 197 720 158v112L508 214z" fill="url(#pd-beam)" />
+          <ellipse cx="270" cy="274" rx="256" ry="15" fill="#000" opacity=".75" />
           <g className="pd-truck-body">
             <path d="M60 60h16v-18q0-6 6-6h30q6 0 6 6v18z" fill="#7A0A10" />
             <g className="pd-truck-smoke"><circle cx="97" cy="26" r="9" /><circle cx="108" cy="14" r="12" /><circle cx="90" cy="4" r="8" /></g>
@@ -63,7 +79,6 @@ export function TruckScene() {
           ))}
         </svg>
       </button>
-      <span className="pd-road" aria-hidden="true"><i /></span>
     </div>
   )
 }

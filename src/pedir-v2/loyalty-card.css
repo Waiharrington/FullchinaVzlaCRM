@@ -1,0 +1,35 @@
+/* ===== Tarjeta de fidelidad =====
+   Idéntica a la de Mi perfil (150 × 104). --u equivale a 1px de esa tarjeta,
+   así conserva sus proporciones en cualquier tamaño. */
+.pd-lcard-box { display: block; width: 100%; container-type: inline-size; perspective: 900px; }
+.pd-lcard { --u: calc(100cqw / 150); position: relative; display: block; box-sizing: border-box; width: 100%; aspect-ratio: 150 / 104; margin: 0; padding: 0; overflow: hidden; border: max(1px, calc(var(--u) * 1)) solid rgba(255, 211, 119, .9); border-radius: calc(var(--u) * 13); color: #fff; background: linear-gradient(105deg, rgba(16, 5, 8, .83), rgba(26, 6, 10, .72)), url('/optimized/customer-profile/welcome-card-bg.webp') center / cover; box-shadow: inset 0 0 0 calc(var(--u) * 2) rgba(255, 206, 113, .17), inset 0 1px 0 #fff5d54d, 0 0 0 1px #8b3035, 0 0 calc(var(--u) * 16) #ff3f4a55, 0 calc(var(--u) * 8) calc(var(--u) * 15) #0009; font: inherit; text-align: left; transform: rotateX(calc(3deg + var(--rx, 0deg))) rotateY(calc(7deg + var(--ry, 0deg))) rotateZ(5deg); transition: transform .28s cubic-bezier(.2, .8, .2, 1); -webkit-tap-highlight-color: transparent; }
+button.pd-lcard { cursor: pointer; animation: pd-lcard-float 4.8s ease-in-out infinite; }
+button.pd-lcard:hover { animation-play-state: paused; }
+button.pd-lcard:focus-visible { outline: 2px solid #ffd36d; outline-offset: 5px; }
+.pd-lcard::before { content: ''; position: absolute; inset: calc(var(--u) * 4); border: 1px solid rgba(255, 222, 151, .33); border-radius: calc(var(--u) * 9); pointer-events: none; }
+.pd-lcard-top { position: absolute; z-index: 1; top: calc(var(--u) * 7); left: calc(var(--u) * 8); right: calc(var(--u) * 10); display: flex; align-items: center; justify-content: space-between; height: calc(var(--u) * 24); }
+.pd-lcard-top img { width: calc(var(--u) * 62); height: calc(var(--u) * 23); object-fit: contain; object-position: left top; filter: drop-shadow(0 2px 4px #000c); }
+.pd-lcard-top span { color: #f3d68e; font-size: calc(var(--u) * 6); font-weight: 900; line-height: 1.25; letter-spacing: .11em; text-align: right; }
+.pd-lcard-copy { position: absolute; z-index: 1; left: calc(var(--u) * 11); bottom: calc(var(--u) * 15); display: grid; gap: calc(var(--u) * 3); text-shadow: 0 1px 5px #000; }
+.pd-lcard-copy small { color: #f47d72; font-size: calc(var(--u) * 5); font-weight: 850; letter-spacing: .08em; }
+.pd-lcard-copy strong { color: #fff; font-size: calc(var(--u) * 12.5); font-weight: 900; line-height: 1.06; white-space: nowrap; }
+.pd-lcard-copy em { color: #ffd24d; font-style: normal; }
+.pd-lcard-sheen { position: absolute; inset: 0; background: linear-gradient(105deg, transparent 42%, rgba(255, 236, 190, .3) 50%, transparent 58%); transform: translateX(-120%); animation: pd-lcard-sheen 5s 1s ease-in-out infinite; pointer-events: none; }
+@keyframes pd-lcard-sheen { 0%, 60% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
+@keyframes pd-lcard-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -5px; } }
+.pd-lcard.is-spinning { animation: pd-lcard-spin 1.6s cubic-bezier(.22, .68, .24, 1); }
+@keyframes pd-lcard-spin { 0% { transform: rotateX(3deg) rotateY(7deg) rotateZ(5deg); } 50% { transform: rotateX(-1deg) rotateY(187deg) rotateZ(-3deg) scale(1.08); } 100% { transform: rotateX(3deg) rotateY(367deg) rotateZ(5deg); } }
+
+/* Mesa giratoria del menú (teléfono) */
+.pd-seat-card { display: grid; place-items: center; width: 100%; height: 100%; }
+.pd-seat-card .pd-lcard-box { width: 96%; }
+
+/* Portada en compu */
+.public-home-loyalty-card-wrap .pd-lcard-box { width: min(100%, 360px); transition: transform .6s var(--pd-spring); }
+.public-home-hero-slide:not(.is-active) .public-home-loyalty-card-wrap .pd-lcard-box { transform: rotate(40deg) translateX(60%); }
+
+/* Contacto */
+.pd-club { position: relative; overflow: hidden; }
+.pd-club-card { width: min(74%, 250px); margin: 6px auto 4px; }
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) { .pd-club-card { width: min(80%, 290px); margin: 0 auto; } }
+@media (prefers-reduced-motion: reduce) { .pd-lcard, .pd-lcard-sheen { animation: none !important; } }

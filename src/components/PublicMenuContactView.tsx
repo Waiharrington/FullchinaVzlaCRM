@@ -1,6 +1,7 @@
 import type { Dispatch, MouseEvent as ReactMouseEvent, SetStateAction } from 'react'
 import { Banknote, Bitcoin, ChevronRight, CreditCard, Landmark, MapPin, MessageSquareText, Navigation, Pause, Play, Smartphone, Volume2, VolumeX } from 'lucide-react'
 import { TruckScene } from '../pedir-v2/TruckScene'
+import { LoyaltyCard } from '../pedir-v2/LoyaltyCard'
 import { Fit } from '../pedir-v2/ui'
 import type { PublicOrderPageSettings, PublicOrderReel } from '../lib/publicOrderPageSettings'
 
@@ -212,6 +213,7 @@ export function PublicMenuContactView({
           <h2><Fit>Cada visita <em>te premia</em></Fit></h2>
           <p>Un sello por visita. Con 10, tu recompensa Full China.</p>
         </div>
+        <div className="pd-club-card"><LoyaltyCard interactive /></div>
         <div className="pd-club-stamps" aria-hidden="true">{Array.from({ length: 10 }, (_, index) => <i key={index} className={index < 6 ? 'is-earned' : ''}><img src="/optimized/pedir-v2/wok-mark.webp" alt="" /></i>)}</div>
         <button type="button" onClick={openCustomerProfile}>Únete gratis <ChevronRight size={17} aria-hidden="true" /></button>
       </section>

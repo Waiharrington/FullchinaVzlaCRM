@@ -20,7 +20,7 @@ import { usePauseOffscreen } from '../../pedir-v2/hooks'
 import { Chopsticks, Fit } from '../../pedir-v2/ui'
 import { DeckRail } from '../../pedir-v2/Deck'
 import { Turntable } from '../../pedir-v2/Turntable'
-import { Burner, NavEater, NavTruck, NavWok } from '../../pedir-v2/NavIcons'
+import { NavBowl, NavPerson, NavPlace } from '../../pedir-v2/NavIcons'
 
 interface PublicMobileViewProps {
   scrollCategory: string | null
@@ -281,17 +281,17 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
 
             {/* Bottom Tab Bar */}
             <nav className="public-mobile-tab-bar" aria-label="Secciones" style={{ '--i': currentTab === 'contacto' ? 1 : currentTab === 'perfil' ? 2 : 0 } as CSSProperties}>
-              <Burner key={currentTab === 'inicio' ? 'menu' : currentTab} />
+              <span className="pd-embers" key={currentTab === 'inicio' ? 'menu' : currentTab} aria-hidden="true">{[-16, -5, 7, 18].map((x, i) => <i key={x} style={{ '--x': `${x}px`, '--t': `${i * 0.09}s` } as CSSProperties} />)}</span>
               <button className={`public-mobile-tab ${currentTab === 'inicio' || currentTab === 'menu' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>
-                <NavWok />
+                <NavBowl />
                 <span>Menú</span>
               </button>
               <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onPointerDown={preloadPublicMenuContactView} onFocus={preloadPublicMenuContactView} onClick={() => { setHasLeftMobileMenu(true); setCurrentTab('contacto') }}>
-                <NavTruck />
+                <NavPlace />
                 <span>Contacto</span>
               </button>
               <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onPointerDown={preloadCustomerLoyaltyProfile} onFocus={preloadCustomerLoyaltyProfile} onClick={openCustomerProfile}>
-                <NavEater />
+                <NavPerson />
                 <span>Mi perfil</span>
               </button>
             </nav>

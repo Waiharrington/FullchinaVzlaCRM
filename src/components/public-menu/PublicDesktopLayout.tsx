@@ -2,6 +2,7 @@ import { PublicCatalogLoadingSkeleton } from './PublicCatalogLoadingSkeleton'
 import { CustomerLoyaltyProfile, PublicMenuContactView } from './lazyViews'
 import { CATEGORY_ICONS, DESKTOP_CATEGORY_LABELS } from '../../lib/publicMenuConfig'
 import { Suspense, useRef, type MouseEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
+import { LoyaltyCard } from '../../pedir-v2/LoyaltyCard'
 import { usePauseOffscreen } from '../../pedir-v2/hooks'
 import { Chopsticks, Fit, Odo, Thumb, Wok } from '../../pedir-v2/ui'
 import { Flame, Search, X, ChevronRight, Bike, Zap, ShieldCheck, MapPin, Clock, ShoppingBag, Heart, Trash2, Minus, Plus, Pencil, LoaderCircle, Store, MessageSquareText } from 'lucide-react'
@@ -209,12 +210,8 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                           </div>
                           <button type="button" className="public-home-loyalty-cta" onClick={openCustomerProfile}>Únete al programa <ChevronRight size={17} /></button>
                         </div>
-                        <div className="public-home-loyalty-card-wrap" aria-hidden="true">
-                          <div className="public-home-loyalty-card">
-                            <div className="public-home-loyalty-card-top"><img src="/optimized/root/logo.webp" alt="" /><span>MEMBER<br />CARD</span></div>
-                            <div className="public-home-loyalty-card-copy"><small>FULL CHINA · FIDELIDAD</small><strong>TU TARJETA<br /><em>DE VISITAS</em></strong></div>
-                            <div className="public-home-loyalty-card-stamps">{Array.from({ length: 10 }, (_, index) => <i key={index} className={index < 6 ? 'is-earned' : ''}><img src="/icons/wok-mark.png" alt="" /></i>)}</div>
-                          </div>
+                        <div className="public-home-loyalty-card-wrap">
+                          <LoyaltyCard interactive />
                         </div>
                       </div>
                     </div>
