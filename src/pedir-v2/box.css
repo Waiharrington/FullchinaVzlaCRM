@@ -1,0 +1,112 @@
+/* ===== Productos: cajitas de comida china =====
+   Detrás van las solapas, en medio el plato y delante el frente de la caja,
+   que lleva nombre, precio y botón. La caja es siempre igual de clara; lo que
+   se mueve es la comida. */
+.pd-box-back { position: absolute; left: 0; right: 0; bottom: -1px; height: 46%; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 90' preserveAspectRatio='none'%3E%3Cg stroke='%23E0141F' stroke-width='2.500' stroke-linejoin='round'%3E%3Cpath vector-effect='non-scaling-stroke' fill='%23120B09' d='M24 90 38 12q2-8 10-8h104q8 0 10 8l14 78z'/%3E%3Cpath vector-effect='non-scaling-stroke' fill='%231C1210' d='M2 90 14 34q1-6 6-9l13-9q5-3 6 3l9 71z'/%3E%3Cpath vector-effect='non-scaling-stroke' fill='%231C1210' d='M198 90 186 34q-1-6-6-9l-13-9q-5-3-6 3l-9 71z'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat; transform-origin: 50% 100%; transition: transform .5s var(--pd-spring); }
+
+.public-prod-card, .public-home-product-card, .public-home-promo-card { --front: #1C1210; --edge: #E0141F; position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0 !important; border-radius: 0; background: none; animation: none; transform: none; }
+.public-menu-page :is(.public-prod-img-wrap, .public-home-prod-img-wrap, .public-home-promo-img-wrap) { position: relative; z-index: 1; width: 100%; margin: 0; aspect-ratio: 1 / .92; border-radius: 0; background: radial-gradient(52% 50% at 50% 56%, rgba(217, 20, 30, .6), rgba(140, 10, 18, .22) 55%, transparent 76%); overflow: visible !important; transform: none; }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) :is(.pd-dish-disc, .pd-dish-flame) { display: none; }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) .pd-dish { position: absolute; z-index: 2; inset: 0; width: auto; height: auto; aspect-ratio: auto; margin: 0; }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) .pd-dish-body { inset: 4% 3% -9%; animation: none; }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) .pd-dish img { object-fit: contain; object-position: 50% 62%; filter: drop-shadow(0 10px 8px rgba(0, 0, 0, .6)); transform: rotate(0deg) scale(1); transition: transform .6s cubic-bezier(.25, 1.5, .4, 1); }
+/* Foto sin recorte: asoma como una lámina grande y completa. */
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) .pd-dish.is-photo .pd-dish-body { inset: 2% 9% -10%; }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) .pd-dish.is-photo .pd-dish-body::before { display: none; }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) .pd-dish.is-photo img { position: static; width: 100%; height: 100%; border: 5px solid #fff; border-radius: 22px 22px 0 0; object-fit: cover; object-position: 50% 45%; background: #fff; transform: rotate(-2.5deg); }
+
+/* Frente de la caja */
+.public-menu-page :is(.public-prod-info, .public-home-prod-body, .pd-promo-front) { position: relative; z-index: 3; display: flex; flex: 1; flex-direction: column; align-items: stretch; gap: 4px; margin: 0; padding: 30px 11% 18px; text-align: center; color: #fff; }
+.public-menu-page :is(.public-prod-info, .public-home-prod-body, .pd-promo-front)::before { content: ''; position: absolute; z-index: -1; inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' preserveAspectRatio='none'%3E%3Cpath vector-effect='non-scaling-stroke' fill='%231C1210' stroke='%23E0141F' stroke-width='2.500' stroke-linejoin='round' d='M2 4q0-2 3-2h50q4 0 7 2l31 15q7 3 14 0l31-15q3-2 7-2h50q3 0 3 2l-14 184q-1 10-10 10H26q-9 0-10-10z'/%3E%3C/svg%3E") center / 100% 100% no-repeat; transform-origin: 50% 100%; }
+.public-menu-page :is(.public-prod-title, .public-home-prod-title, .public-home-promo-title) { color: #fff; font: 800 17px/1.2 var(--pd-text); }
+.public-menu-page .public-prod-desc { display: -webkit-box; overflow: hidden; min-height: 2.7em; color: #CDBDB4; font-size: 13px; line-height: 1.35; text-align: center; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.public-menu-page .public-prod-footer-row { margin-top: auto; padding-top: 2px; }
+.public-menu-page :is(.public-prod-price-wrap, .public-home-prod-price-wrap) { display: grid; justify-items: center; gap: 0; margin-top: auto; line-height: 1.2; }
+.public-menu-page :is(.public-prod-price, .public-home-prod-price, .public-home-promo-price) { color: var(--pd-yellow); font-size: 20px; font-weight: 850; white-space: nowrap; }
+.public-menu-page :is(.public-prod-price-bs, .public-home-prod-price-bs) { color: #B9A79E; font-size: 13px; }
+
+/* Botón grande y con palabra: se entiende sin pensar. */
+.public-menu-page .public-prod-add { position: static; display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; height: 46px; min-width: 0; margin-top: 8px; padding: 0 8px; border-radius: 15px; color: #fff; background: var(--pd-red); box-shadow: 0 4px 0 #7A0A10; font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
+.public-menu-page .public-prod-add svg { color: #fff; }
+.public-menu-page .public-prod-add .public-prod-add-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+.public-menu-page .public-prod-add:active { transform: translateY(3px); box-shadow: 0 1px 0 #7A0A10; }
+.public-menu-page .public-prod-add.has-options { color: #17100E; background: #fff; box-shadow: 0 4px 0 #A89A92; }
+.public-menu-page .public-prod-add.has-options svg { color: var(--pd-red); }
+.public-menu-page .public-prod-card.is-in-cart .pd-dish-disc { box-shadow: none; }
+.public-menu-page .pd-in-cart { z-index: 5; top: 6px; bottom: auto; left: 50%; padding: 8px 12px; color: #17100E; background: var(--pd-yellow); transform: translateX(-50%); animation: pd-incart-in .4s var(--pd-spring); white-space: nowrap; }
+@keyframes pd-incart-in { from { transform: translateX(-50%) scale(.3); } }
+.public-menu-page .public-favorite-btn, .public-menu-page .public-home-fav-btn { z-index: 5; top: 0; right: -2px; background: none; }
+.public-menu-page .public-favorite-btn::before { background: rgba(10, 7, 6, .82); }
+.public-menu-page .public-favorite-btn.active::before { background: #fff; }
+.public-menu-page .public-favorite-btn.active svg { color: var(--pd-red); }
+.public-menu-page .public-menu-label { z-index: 5; top: 6px; left: 0; }
+.public-menu-page .public-free-drink-sticker { z-index: 6; top: 4px; left: -8px; width: 88px; }
+
+/* La comida salta de la caja */
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card).is-near .pd-box-back { transform: scaleY(1.07); }
+.public-menu-page .public-prod-card.is-near .pd-dish.is-cutout img { transform: translateY(-7%) scale(1.09); }
+.public-menu-page .public-prod-card.is-near .pd-dish.is-photo img { transform: translateY(-4%) rotate(1.5deg); }
+.public-menu-page .public-prod-card.is-near .pd-dish-body { animation: pd-box-float 2.8s .5s ease-in-out infinite; }
+.public-menu-page .public-prod-card.is-near .public-prod-info::before { animation: pd-box-squash .55s var(--pd-spring); }
+@keyframes pd-box-float { 50% { transform: translateY(-5px) rotate(1deg); } }
+@keyframes pd-box-squash { 30% { transform: scale(1.03, .95); } 60% { transform: scale(.99, 1.02); } }
+.public-menu-page .public-prod-card:active .pd-dish img { transform: translateY(7%) scale(.95); transition-duration: .12s; }
+@media (hover: hover) and (pointer: fine) {
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-box-back { transform: scaleY(1.12); }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-dish.is-cutout img { transform: translateY(-12%) rotate(-4deg) scale(1.13); }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-dish.is-photo img { transform: translateY(-7%) rotate(2deg) scale(1.02); }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover :is(.public-prod-info, .public-home-prod-body, .pd-promo-front)::before { animation: pd-box-squash .5s var(--pd-spring); }
+  .public-menu-page .public-prod-add:hover { background: #F0232E; color: #fff; }
+  .public-menu-page .public-prod-add.has-options:hover { background: var(--pd-yellow); color: #17100E; }
+  .public-menu-page .public-prod-add:hover svg, .public-menu-page .public-prod-add:not(.has-options):hover svg { color: inherit; transform: none; }
+}
+
+/* Promos: la misma caja, en rojo con filo amarillo */
+.public-menu-page :is([data-category='promociones'] .public-prod-card, .public-home-promo-card) .pd-box-back { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 90' preserveAspectRatio='none'%3E%3Cg stroke='%23FFC21A' stroke-width='3' stroke-linejoin='round'%3E%3Cpath vector-effect='non-scaling-stroke' fill='%235C060C' d='M24 90 38 12q2-8 10-8h104q8 0 10 8l14 78z'/%3E%3Cpath vector-effect='non-scaling-stroke' fill='%23A50D16' d='M2 90 14 34q1-6 6-9l13-9q5-3 6 3l9 71z'/%3E%3Cpath vector-effect='non-scaling-stroke' fill='%23A50D16' d='M198 90 186 34q-1-6-6-9l-13-9q-5-3-6 3l-9 71z'/%3E%3C/g%3E%3C/svg%3E"); }
+.public-menu-page :is([data-category='promociones'] .public-prod-info, .pd-promo-front)::before { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' preserveAspectRatio='none'%3E%3Cpath vector-effect='non-scaling-stroke' fill='%23D9141E' stroke='%23FFC21A' stroke-width='3' stroke-linejoin='round' d='M2 4q0-2 3-2h50q4 0 7 2l31 15q7 3 14 0l31-15q3-2 7-2h50q3 0 3 2l-14 184q-1 10-10 10H26q-9 0-10-10z'/%3E%3C/svg%3E"); }
+.public-menu-page [data-category='promociones'] .public-prod-desc { color: #FFE7DF; }
+.public-menu-page [data-category='promociones'] .public-prod-price { color: #FFD65C; font-size: 24px; }
+.public-menu-page [data-category='promociones'] .public-prod-price-bs { color: #FFE1D8; }
+.public-menu-page [data-category='promociones'] .public-prod-add { color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #8C0811; }
+.public-menu-page [data-category='promociones'] .public-prod-add svg { color: #17100E; }
+.public-menu-page [data-category='promociones'] .public-prod-add.has-options { background: #fff; }
+
+/* Disposición */
+.public-menu-page .public-category-section { padding-top: 22px; }
+.public-menu-page :is(.public-category-grid, .public-product-list:not(.public-product-list-grouped)) { gap: 26px 12px; }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] { grid-template-columns: minmax(0, 1fr); gap: 30px; padding: 14px 26px 30px; }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] .public-prod-title { font: 400 27px/1.1 var(--pd-display); }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] .public-prod-desc { min-height: 0; font-size: 15px; -webkit-line-clamp: 3; }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] .public-prod-price { font: 400 32px/1.15 var(--pd-display); }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] .public-prod-add { height: 54px; font-size: 17px; }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] .public-prod-info { padding: 36px 12% 24px; gap: 7px; }
+.public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] .public-free-drink-sticker { width: 118px; }
+@media (max-width: 599px) {
+  .public-menu-page .public-category-grid:has(> :last-child:nth-child(odd)) > :first-child:not(:last-child) .public-prod-img-wrap { aspect-ratio: 16 / 11 !important; }
+  .public-menu-page .public-category-grid:has(> :last-child:nth-child(odd)) > :first-child:not(:last-child) .public-prod-title { font: 400 22px/1.15 var(--pd-display) !important; }
+  .public-menu-page .public-category-grid:has(> :last-child:nth-child(odd)) > :first-child:not(:last-child) .public-prod-desc { min-height: 0; }
+}
+@media (min-width: 600px) and (max-width: 1279px) { .public-menu-page .public-mobile-view .public-product-list[data-category='promociones'] { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 22px; } }
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-menu-page .public-desktop-main .public-category-grid { grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); gap: 40px 24px; padding: 0; overflow: visible; }
+  .public-menu-page .public-desktop-main [data-category='promociones'] .public-category-grid, .public-menu-page .public-desktop-main [data-category='promociones'].public-product-list .public-category-grid { grid-template-columns: repeat(auto-fill, minmax(252px, 1fr)); gap: 44px 26px; padding: 0; }
+  .public-menu-page .public-desktop-main :is(.public-category-section, .public-product-list)[data-category='promociones'] { padding-top: 10px; }
+  .public-menu-page :is(.public-prod-title, .public-home-prod-title) { font-size: 19px; }
+  .public-menu-page [data-category='promociones'] .public-prod-title, .public-menu-page .public-home-promo-title { font: 400 24px/1.15 var(--pd-display); }
+  .public-menu-page .public-prod-desc { font-size: 14px; }
+  .public-menu-page .public-prod-price, .public-menu-page .public-home-prod-price { font-size: 22px; }
+  .public-menu-page [data-category='promociones'] .public-prod-price, .public-menu-page .public-home-promo-price { font: 400 27px/1.15 var(--pd-display); }
+  .public-menu-page .public-prod-add { height: 50px; font-size: 16.5px; }
+  .public-menu-page .public-free-drink-sticker { width: 108px; }
+  /* Inicio */
+  .public-menu-page .public-home-products-grid { gap: 22px; margin-top: 0; padding: 12px 0; }
+  .public-menu-page .public-home-prod-actions { margin-top: 10px; }
+  .public-menu-page .public-home-stepper { background: #33231E; }
+  .public-menu-page .public-home-stepper button { color: #fff; }
+  .public-menu-page .public-home-promos-grid { gap: 26px 22px; padding: 12px 0; }
+  .public-menu-page .pd-promo-front .public-home-promo-top { display: grid; justify-items: center; gap: 2px; padding: 0; }
+  .public-menu-page .pd-promo-front .public-home-promo-add-btn { margin-top: 8px; color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #8C0811; }
+  .public-menu-page .pd-promo-front .public-home-promo-title { width: 100%; }
+  .public-menu-page .pd-promo-front .public-home-promo-top { width: 100%; grid-template-columns: minmax(0, 1fr); }
+}

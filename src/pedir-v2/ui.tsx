@@ -18,6 +18,7 @@ export function Odo({ value, className = '' }: { value: string; className?: stri
         if (!/\d/.test(char)) return <span key={`c${slot}`} className="pd-odo-char" aria-hidden="true">{char === ' ' ? ' ' : char}</span>
         return (
           <span key={`d${slot}`} className="pd-odo-digit" aria-hidden="true">
+            <b>{char}</b>
             <span style={{ '--d': Number(char) } as CSSProperties}>{DIGITS.map(n => <i key={n}>{n}</i>)}</span>
           </span>
         )

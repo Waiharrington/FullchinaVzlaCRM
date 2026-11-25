@@ -378,3 +378,29 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
 /* Los campos viven dentro de su cápsula: sin el aro rojo global al enfocarlos. */
 html[data-pwa-entry='cliente'] :is(.public-hero-search-pill, .public-hero-search-box, .public-menu-search, .public-cart-extras-search, .public-address-search) input,
 html[data-pwa-entry='cliente'] :is(.public-hero-search-pill, .public-hero-search-box, .public-menu-search, .public-cart-extras-search, .public-address-search) input:is(:focus, :focus-visible, :hover) { border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important; outline: 0 !important; }
+
+/* Cada cifra ocupa su propio ancho: el 1 ya no deja hueco. */
+.pd-odo-digit { position: relative; overflow: visible; overflow-x: visible; overflow-y: clip; }
+.pd-odo-digit > b { font: inherit; visibility: hidden; }
+.pd-odo-digit > span { position: absolute; top: 0; left: 50%; width: max-content; margin-left: -1em; min-width: 2em; text-align: center; }
+/* Nada se desplaza de lado. */
+.public-sidebar-items { overflow-x: hidden; }
+.public-sidebar-trash { right: 0; }
+.public-sidebar-item { padding-right: 38px; }
+:is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track, .ppdm-content, .public-variant-options, .public-cart-extra-sections, .public-product-detail-modal) { overflow-x: hidden; }
+html[data-pwa-entry='cliente'], html[data-pwa-entry='cliente'] body { overflow-x: clip; }
+/* Escritorio: las filas caben enteras, sin carruseles de lado. */
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .ppdm-complementary-carousel { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); margin: 0; padding: 2px 0; overflow: visible; }
+  .public-desktop-main .public-categories-scroll { overflow: visible; gap: 0; }
+  .public-desktop-main .public-cat-btn { flex: 1 1 0; min-width: 0; padding: 0 2px; }
+  .public-desktop-main .public-cat-btn img { width: min(70px, 100%); height: auto; aspect-ratio: 1; }
+  .public-home-products-grid { grid-auto-columns: minmax(0, 1fr); overflow: visible; padding-inline: 0; }
+  .public-home-product-card { min-width: 0; }
+}
+@media (min-width: 900px) and (max-width: 1239px) and (orientation: landscape) {
+  .public-desktop-main .public-cat-btn { font-size: 12px; }
+  .public-home-prod-actions { flex-direction: column; }
+  .public-home-add-btn { flex: none; }
+  .public-home-stepper { justify-content: center; }
+}

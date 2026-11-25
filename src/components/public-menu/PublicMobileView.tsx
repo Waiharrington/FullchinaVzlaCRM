@@ -2,8 +2,8 @@ import type { MenuVariant } from '../../lib/menuGrouping'
 import { PublicCatalogLoadingSkeleton } from './PublicCatalogLoadingSkeleton'
 import { CustomerLoyaltyProfile, PublicMenuContactView, preloadCustomerLoyaltyProfile, preloadPublicMenuContactView } from './lazyViews'
 import { CATEGORY_ICONS } from '../../lib/publicMenuConfig'
-import { Suspense, useRef, type MouseEvent, type WheelEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
-import { Clock, Search, X, ChevronRight, Heart, Utensils, Store, UserRound } from 'lucide-react'
+import { Suspense, useRef, type CSSProperties, type MouseEvent, type WheelEvent, type Dispatch, type SetStateAction, type RefObject, type ReactNode } from 'react'
+import { Clock, Search, X, ChevronRight, Heart, Utensils } from 'lucide-react'
 import { LOCAL_ORDER_TEST_MODE } from '../../lib/publicMenuConfig'
 import { CustomerLoyaltyPromo } from '../../components/CustomerLoyaltyPromo'
 import { productTitle, money } from '../../lib/publicMenuFormat'
@@ -19,6 +19,7 @@ import { type CustomerRepeatOrder } from '../../lib/publicOrders'
 import { usePauseOffscreen } from '../../pedir-v2/hooks'
 import { Chopsticks, Fit } from '../../pedir-v2/ui'
 import { Turntable } from '../../pedir-v2/Turntable'
+import { Burner, NavEater, NavTruck, NavWok } from '../../pedir-v2/NavIcons'
 
 interface PublicMobileViewProps {
   scrollCategory: string | null
@@ -273,17 +274,18 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
             {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
 
             {/* Bottom Tab Bar */}
-            <nav className="public-mobile-tab-bar">
+            <nav className="public-mobile-tab-bar" aria-label="Secciones" style={{ '--i': currentTab === 'contacto' ? 1 : currentTab === 'perfil' ? 2 : 0 } as CSSProperties}>
+              <Burner key={currentTab === 'inicio' ? 'menu' : currentTab} />
               <button className={`public-mobile-tab ${currentTab === 'inicio' || currentTab === 'menu' ? 'active' : ''}`} onClick={() => setCurrentTab('menu')}>
-                <Utensils size={18} />
+                <NavWok />
                 <span>Menú</span>
               </button>
               <button className={`public-mobile-tab ${currentTab === 'contacto' ? 'active' : ''}`} onPointerDown={preloadPublicMenuContactView} onFocus={preloadPublicMenuContactView} onClick={() => { setHasLeftMobileMenu(true); setCurrentTab('contacto') }}>
-                <Store size={18} />
+                <NavTruck />
                 <span>Contacto</span>
               </button>
               <button className={`public-mobile-tab ${currentTab === 'perfil' ? 'active' : ''}`} onPointerDown={preloadCustomerLoyaltyProfile} onFocus={preloadCustomerLoyaltyProfile} onClick={openCustomerProfile}>
-                <UserRound size={18} />
+                <NavEater />
                 <span>Mi perfil</span>
               </button>
             </nav>
