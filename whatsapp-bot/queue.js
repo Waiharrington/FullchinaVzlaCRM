@@ -65,7 +65,7 @@ async function isClientReady(client) {
 //  - Justo antes de enviar se re-verifica el estado (ventana de "Detener").
 //  - markSent se reintenta; si falla, el loop se detiene en lugar de
 //    arriesgar un duplicado.
-function createQueueProcessor({ db, client, log = console, sleepFn = sleep, delayFn = nextSendDelay, isEnabled = () => true, quietHours = isQuietHours, staleAfterMinutes = 5, markRetries = 3 }) {
+function createQueueProcessor({ db, client, log = console, sleepFn = sleep, delayFn = nextSendDelay, isEnabled = () => true, quietHours = isQuietHours, now = () => new Date(), staleAfterMinutes = 5, markRetries = 3 }) {
   let running = false
 
   async function resolveStaleSending() {
@@ -228,7 +228,7 @@ function createQueueProcessor({ db, client, log = console, sleepFn = sleep, dela
       await resolveStaleSending()
       while (isEnabled()) {
         if (quietHours()) await cancelCampaignQueue()
-        else await cancelOvernightCampaignQueue()
+        else await cancelOvernightCampaignQueue(now())
         if (!(await isClientReady(client))) {
           log.log('WhatsApp no está listo para enviar; se reintenta en unos segundos.')
           break

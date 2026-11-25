@@ -144,6 +144,8 @@ const setup = (options = {}) => {
     delayFn: () => 9000,
     // Fijo en horario diurno: las pruebas no deben depender de la hora real.
     quietHours: () => false,
+    // Reloj fijo (14:00 Caracas, muy anterior a las filas de prueba).
+    now: () => new Date('2020-01-01T18:00:00Z'),
     ...(options.processor || {}),
   })
   return { log, sleeps, db, client, processor }
@@ -345,7 +347,7 @@ test('dos procesadores sobre la misma cola no envían ninguna fila dos veces', a
   const db = createFakeDb({ rows })
   const log = createLog()
   const client = createFakeClient()
-  const make = () => createQueueProcessor({ db, client, log, sleepFn: async () => {}, delayFn: () => 1, isEnabled: () => true, quietHours: () => false })
+  const make = () => createQueueProcessor({ db, client, log, sleepFn: async () => {}, delayFn: () => 1, isEnabled: () => true, quietHours: () => false, now: () => new Date('2020-01-01T18:00:00Z') })
 
   await Promise.all([make().processQueue(), make().processQueue()])
 
