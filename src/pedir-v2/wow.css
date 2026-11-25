@@ -115,3 +115,8 @@
   .public-product-detail-modal .ppdm-footer .ppdm-qty button { width: 38px; }
   .public-product-detail-modal .ppdm-footer .ppdm-add-btn { flex-wrap: wrap; align-content: center; gap: 0 6px; min-width: 0; padding: 4px 8px; font-size: 14px; line-height: 1.2; }
 }
+
+/* En la mesa del menú, la tarjeta de fidelidad al costado ocupa lo mismo que un plato: no pisa al del frente. */
+.pd-seat:not(.is-front) > .pd-seat-card { transform: scale(.44); animation: none; }
+/* La animación global de entrada de tarjetas anulaba el tamaño del puesto. */
+.pd-seat > .pd-seat-card { animation: none; }
