@@ -4,6 +4,7 @@ import './index.css'
 import './styles/motion.css'
 import './styles/modalBackdrop.css'
 import App from './App'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { registerSW } from 'virtual:pwa-register'
 import { clearLegacyPwaRuntimeCaches } from './lib/pwaRuntimeCache'
 
@@ -162,6 +163,6 @@ window.addEventListener('fullchina:pwa-apply-update', () => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary><App /></AppErrorBoundary>
   </StrictMode>
 )

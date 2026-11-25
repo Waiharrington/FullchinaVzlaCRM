@@ -142,6 +142,10 @@ const setup = (options = {}) => {
     log,
     sleepFn: async ms => { sleeps.push(ms) },
     delayFn: () => 9000,
+    // Fijo en horario diurno: las pruebas no deben depender de la hora real.
+    quietHours: () => false,
+    // Reloj fijo (14:00 Caracas, muy anterior a las filas de prueba).
+    now: () => new Date('2020-01-01T18:00:00Z'),
     ...(options.processor || {}),
   })
   return { log, sleeps, db, client, processor }
@@ -180,6 +184,19 @@ test('isClientReady: client.info manda (getState no devuelve READY en v1.34)', a
 test('las confirmaciones de pedidos web pueden enviarse fuera del horario de campañas', () => {
   assert.equal(isAllowedAfterHours({ template_type: 'web_order_confirmation' }), true)
   assert.equal(isAllowedAfterHours({ template_type: 'custom' }), false)
+})
+
+test('de noche cancela campañas pero deja enviar la confirmación del pedido web', async () => {
+  const { db, client, processor } = setup({
+    db: { rows: [makeRow('a1', { template_type: 'web_order_confirmation' }), makeRow('b2', { template_type: 'custom' })] },
+    processor: { quietHours: () => true },
+  })
+
+  await processor.processQueue()
+
+  assert.equal(db.rows[0].status, 'sent')
+  assert.equal(db.rows[1].status, 'cancelled')
+  assert.equal(client.sent.length, 1)
 })
 
 // --- Ciclo de envío ---------------------------------------------------------
@@ -330,7 +347,7 @@ test('dos procesadores sobre la misma cola no envían ninguna fila dos veces', a
   const db = createFakeDb({ rows })
   const log = createLog()
   const client = createFakeClient()
-  const make = () => createQueueProcessor({ db, client, log, sleepFn: async () => {}, delayFn: () => 1, isEnabled: () => true })
+  const make = () => createQueueProcessor({ db, client, log, sleepFn: async () => {}, delayFn: () => 1, isEnabled: () => true, quietHours: () => false, now: () => new Date('2020-01-01T18:00:00Z') })
 
   await Promise.all([make().processQueue(), make().processQueue()])
 
