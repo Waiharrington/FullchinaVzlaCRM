@@ -122,11 +122,12 @@
 .public-menu-page .public-mobile-view .public-category-grid > .public-prod-card:first-child .public-prod-img-wrap { aspect-ratio: 1 / .98 !important; }
 
 /* ===== Entrega: fotos completas ===== */
-.public-delivery-step .public-delivery-choice { align-items: center; }
-.public-delivery-step .public-delivery-choice > img, .public-delivery-step .public-delivery-choice:not(.selected) > img { inset: 0 0 0 auto; width: 50%; height: 100%; object-fit: contain; object-position: 50% 50%; transform: none; -webkit-mask: radial-gradient(76% 74% at 54% 50%, #000 62%, transparent 100%); mask: radial-gradient(76% 74% at 54% 50%, #000 62%, transparent 100%); }
+.public-delivery-step .public-delivery-choice { align-items: center; background: #000; }
+.public-delivery-step .public-delivery-choice > img, .public-delivery-step .public-delivery-choice:not(.selected) > img { inset: 0 0 0 auto; width: 63%; height: 100%; object-fit: contain; object-position: 100% 50%; transform: none; -webkit-mask: linear-gradient(90deg, transparent, #000 34%, #000 88%, transparent); mask: linear-gradient(90deg, transparent, #000 34%, #000 88%, transparent); }
 .public-delivery-step .public-delivery-choice:not(.selected) > img { opacity: .72; transform: scale(.95); }
 .public-delivery-step .public-delivery-choice::after { display: none; }
-.public-delivery-step .public-delivery-choice-copy { max-width: 52%; padding: 58px 0 18px 22px; }
+.public-delivery-step .public-delivery-choice-copy { max-width: 50%; padding: 44px 0 0 20px; }
+.public-delivery-step .public-choice-radio { top: calc(50% - 62px); left: 20px; width: 28px; height: 28px; }
 .public-delivery-step .public-delivery-choice.selected > img { animation: pd-moto .75s cubic-bezier(.2, 1, .3, 1); }
 .public-delivery-step .public-delivery-choice:first-of-type.selected > img { animation: pd-bag-drop .7s var(--pd-spring); }
 @keyframes pd-moto { from { transform: translateX(110%); } }
@@ -135,7 +136,7 @@
 /* ===== Detalle: la foto manda ===== */
 .public-modal-backdrop { background: rgba(0, 0, 0, .86); }
 .public-modal-backdrop > .public-product-detail-modal { background: #0E0908; }
-.ppdm-image { position: relative; overflow: hidden; border-radius: 0; background: #000; }
+.ppdm-image { position: relative; overflow: hidden; border-radius: 0; background: transparent; }
 .pd-hero-photo { --ox: 50%; --oy: 55%; position: relative; height: min(58dvh, 520px); overflow: hidden; cursor: zoom-in; touch-action: pan-y; }
 .pd-hero-photo.is-zoomed { cursor: zoom-out; touch-action: none; }
 .pd-hero-photo-img { width: 100%; height: 100%; object-fit: cover; transform-origin: var(--ox) var(--oy); transform: scale(1.02); transition: transform .5s cubic-bezier(.2, .9, .2, 1), transform-origin .2s linear; animation: pd-photo-reveal 1.15s cubic-bezier(.16, .9, .2, 1) both; user-select: none; -webkit-user-select: none; }
@@ -147,7 +148,9 @@
 .pd-hero-photo .pd-photo-steam i { width: 30px; height: 130px; animation: pd-wisp 3.2s calc(.8s + var(--o, 0s)) ease-in-out infinite; }
 .pd-hero-photo.is-zoomed :is(.pd-photo-steam, .pd-hero-photo-light, .pd-hero-photo-hint) { opacity: 0; animation: none; }
 .pd-hero-photo-hint { position: absolute; left: 14px; top: 20px; padding: 8px 13px; border-radius: 12px; color: #fff; background: rgba(10, 7, 6, .72); font-size: 13px; font-weight: 650; pointer-events: none; animation: pd-fade-out .4s 4s both; }
-.ppdm-image::after { content: ''; position: absolute; z-index: 1; inset: auto 0 0; height: 230px; background: linear-gradient(transparent, rgba(14, 9, 8, .82) 58%, #0E0908); pointer-events: none; }
+/* La foto misma se desvanece antes de su borde: así no queda ninguna línea al unirse con el texto. */
+.pd-hero-photo { -webkit-mask-image: linear-gradient(#000 calc(100% - 190px), rgba(0, 0, 0, .55) calc(100% - 110px), rgba(0, 0, 0, .12) calc(100% - 52px), transparent calc(100% - 14px)); mask-image: linear-gradient(#000 calc(100% - 190px), rgba(0, 0, 0, .55) calc(100% - 110px), rgba(0, 0, 0, .12) calc(100% - 52px), transparent calc(100% - 14px)); }
+.ppdm-image::after { content: ''; position: absolute; z-index: 1; inset: auto 0 -1px; height: 200px; background: linear-gradient(transparent, rgba(14, 9, 8, .5) 60%, transparent); pointer-events: none; }
 .ppdm-hero-copy { position: absolute; z-index: 2; inset: auto 0 0; padding: 0 20px 10px !important; pointer-events: none; animation: pd-rise .6s .25s var(--pd-out) both; }
 .ppdm-hero-copy h1 { font: 400 clamp(30px, 9.4vw, 46px)/1.02 var(--pd-display); text-shadow: 0 3px 14px rgba(0, 0, 0, .7); }
 .ppdm-price { margin-top: 6px; font: 400 28px/1.1 var(--pd-display); }
@@ -160,16 +163,36 @@
   .public-product-detail-modal::before { display: none; }
   .public-modal-backdrop > .public-product-detail-modal { height: 100dvh; max-height: 100dvh; border-radius: 0; }
   .ppdm-close { position: fixed; top: max(14px, env(safe-area-inset-top, 0px)); }
+  /* Un solo scroll: la foto sube con la información, nada se queda fijo arriba. */
+  .ppdm-content { flex: 0 0 auto; overflow: visible; }
+  .ppdm-footer { flex: 0 0 auto; }
+  .pd-hero-photo { height: min(52dvh, 460px); }
+  /* Sin relleno al terminar la animación: así la X sí queda fija en la pantalla. */
+  .public-modal-backdrop > .public-product-detail-modal { animation-fill-mode: backwards; }
 }
 
 /* Presentaciones con foto completa */
-.public-variant-option { padding: 0 !important; overflow: hidden; }
+.public-variant-options { grid-auto-rows: max-content; }
+.public-variant-option { padding: 0 !important; overflow: clip; }
 .public-variant-option-media { position: relative; padding: 0; aspect-ratio: 1 / .86; }
 .public-variant-option-media .pd-photo { border-radius: 0; }
 .public-variant-option.selected .pd-photo > img { transform: scale(1.12); }
 .public-variant-option.selected .pd-photo-dim { opacity: 0; }
 .public-variant-option.selected .pd-photo-lamp { opacity: 1; }
+.public-variant-option-description { display: block; overflow: visible; -webkit-line-clamp: none; }
 .public-variant-option-copy { padding: 11px 13px 13px; }
+/* Muchas presentaciones comparten foto: en filas, el nombre es lo que las distingue. */
+.public-variant-options.is-many { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+.is-many .public-variant-option { flex-direction: row; align-items: stretch; min-height: 112px; }
+.is-many .public-variant-option-media { flex: 0 0 106px; aspect-ratio: auto; }
+.is-many .public-variant-option-copy { display: block; align-self: center; min-width: 0; padding: 10px 13px; }
+.is-many .public-variant-option-copy strong { display: inline; margin-right: 7px; font-size: 16px; overflow-wrap: anywhere; }
+.is-many .public-variant-option-count { display: inline-block; padding: 1px 8px; border-radius: 8px; color: #17100E; background: var(--pd-yellow); font-weight: 800; }
+.is-many .public-variant-option-description { display: block; margin-top: 3px; overflow: visible; -webkit-line-clamp: none; }
+.is-many .public-variant-option-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; padding-top: 3px; }
+.is-many .public-variant-option.selected { transform: none; }
+@media (min-width: 900px) and (orientation: landscape) { .public-variant-options.is-many { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .is-many .public-variant-option { min-height: 124px; } }
+.ppdm-section-header { flex-wrap: wrap; gap: 3px 10px; }
 .public-variant-free-drink-badge { z-index: 3; left: 4px; top: 4px; }
 
 /* Mesa giratoria: cada foto servida en su plato */
@@ -227,3 +250,62 @@
 
 /* El plato de la mesa no pisa el título. */
 .pd-table-window { height: calc(var(--w) * .68); }
+
+/* La hora estimada va junto a los platos: abajo quedaba tapada por el botón. */
+.public-review-page > .public-cart-recommendations { order: 1; }
+.public-review-page > .public-total { order: 2; }
+.public-review-page > .public-primary { order: 3; }
+.public-delivery-step .selected .public-choice-radio::after { left: 5px; top: 6px; width: 12px; height: 6px; }
+.public-address-extra :is(input, textarea)::placeholder { font-size: 14px; font-weight: 500; letter-spacing: -.01em; }
+.public-address-extra textarea { resize: none; }
+
+/* Buscando: los resultados quedan justo debajo del buscador. */
+.is-searching .public-recommended-card, .is-searching .public-list-actions, .is-searching .pd-sticks { display: none !important; }
+.is-searching .pd-stage { min-height: 0; padding-bottom: 12px; }
+.is-searching .public-list-header { flex-wrap: wrap; }
+.pd-search-count { color: var(--soft); font-size: 13.5px; font-weight: 600; }
+
+/* Botón fijo del pedido: lo que pasa por debajo se desvanece, no se corta a media letra. */
+.public-cart-drawer .public-primary, .public-cart-drawer .public-primary:active { box-shadow: 0 5px 0 var(--pd-red-deep), 0 34px 0 10px var(--bg), 0 0 0 10px var(--bg), 0 -14px 16px 12px var(--bg); }
+.public-cart-drawer .public-primary.public-whatsapp-cta, .public-cart-drawer .public-primary.public-whatsapp-cta:active { box-shadow: 0 5px 0 #0A5429, 0 34px 0 10px var(--bg), 0 0 0 9px var(--bg), 0 -10px 12px 10px var(--bg); }
+.pd-pay-grid:has(> :nth-child(5):last-child) { grid-template-columns: repeat(6, 1fr); }
+.pd-pay-grid:has(> :nth-child(5):last-child) > * { grid-column: span 2; min-width: 0; }
+.pd-pay-grid > :nth-child(4):nth-last-child(2), .pd-pay-grid > :nth-child(5):last-child { grid-column: span 3 !important; }
+.public-checkout textarea { resize: none; }
+
+/* Cerrado: las "z" suben sin pisar el letrero. */
+.pd-sleepy > span { animation-name: pd-zzz-low; }
+@keyframes pd-zzz-low { 0% { opacity: 0; transform: none; } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(30px, -54px) rotate(16deg) scale(1.15); } }
+@media (max-height: 700px) and (max-width: 899px) { .pd-sleepy { width: 112px; } .pd-neon { margin-top: 44px; } }
+
+/* Nada cortado en teléfono */
+.public-cart-drawer :is(.public-address-search, .public-cart-extras-search) input { min-width: 0; padding: 0 4px !important; text-overflow: ellipsis; }
+.public-address-search input::placeholder, .public-cart-extras-search input::placeholder { font-size: 14px; letter-spacing: -.01em; }
+.public-cart-drawer .public-address-search { gap: 4px; }
+.public-profile-tab-active:has(.customer-profile-welcome-intro) .public-credits-footer { display: none; }
+@media (max-width: 899px), (max-width: 1279px) and (orientation: portrait) {
+  .public-categories-scroll { -webkit-mask: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 46px), transparent); mask: linear-gradient(90deg, transparent, #000 18px, #000 calc(100% - 46px), transparent); }
+}
+@media (max-width: 374px) {
+  .pd-fuse li { font-size: 11.5px; }
+  .public-mobile-tab { gap: 5px; padding: 0 3px; font-size: 12.5px; white-space: nowrap; }
+  .public-mobile-tab .pd-ni { width: 20px; height: 20px; }
+  .public-address-search input::placeholder, .public-cart-extras-search input::placeholder { font-size: 13px; }
+}
+@media (max-width: 345px) {
+  .public-cart-drawer .pd-fuse { padding-inline: 4px; }
+  .pd-fuse li { font-size: 10.5px; letter-spacing: -.02em; }
+  .public-menu-page .public-mobile-view .public-prod-card .public-prod-price { font-size: 17px; }
+  .public-delivery-step .public-delivery-choice-copy { max-width: 47%; padding-left: 14px; }
+  .public-delivery-step .public-delivery-choice-copy strong { font-size: 18px; }
+  .public-delivery-step .public-delivery-choice-copy span { font-size: 12.5px; }
+  .public-delivery-step .public-choice-radio { left: 14px; }
+  .public-delivery-step .public-delivery-choice > img, .public-delivery-step .public-delivery-choice:not(.selected) > img { width: 56%; }
+}
+@media (max-width: 345px) {
+  .pd-pay-grid:has(> :nth-child(5):last-child) > * { grid-column: span 3; }
+  .pd-pay-grid > :nth-child(5):last-child { grid-column: 1 / -1 !important; }
+  .public-id-prefix-toggle button { width: 34px; }
+  .public-cart-drawer .public-data-input input { padding-inline: 9px; }
+  .public-address-search input::placeholder, .public-cart-drawer .public-cart-extras-search input::placeholder { font-size: 12px; }
+}

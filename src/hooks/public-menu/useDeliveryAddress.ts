@@ -2,6 +2,7 @@ import { useRef, useEffect, type RefObject, type Dispatch, type SetStateAction }
 import { estimateDelivery, getDeliveryRoute, type DeliveryEstimate, type DeliverySettings, type DeliveryRoute } from '../../lib/delivery'
 import { getPublicDeliverySettings } from '../../lib/publicOrders'
 import { reverseGoogleAddress, searchGoogleAddresses } from '../../lib/googleMaps'
+import { money } from '../../lib/publicMenuFormat'
 import { MapCoordinates, type CheckoutStep } from '../../lib/publicMenuTypes'
 
 interface UseDeliveryAddressArgs {
@@ -126,7 +127,7 @@ export function useDeliveryAddress({ address, addressActionRef, addressRef, deli
         : deliveryCoverageUnavailable
           ? 'Fuera de cobertura'
           : deliveryEstimate && deliveryEstimate.fee != null
-      ? `$${deliveryFee.toFixed(2)}${serverDeliveryFeeOverride && serverDeliveryFeeOverride.lat === geoCoords?.lat && serverDeliveryFeeOverride.lng === geoCoords?.lng ? ' (actualizado)' : ''}`
+      ? `${money(deliveryFee)}${serverDeliveryFeeOverride && serverDeliveryFeeOverride.lat === geoCoords?.lat && serverDeliveryFeeOverride.lng === geoCoords?.lng ? ' (actualizado)' : ''}`
       : 'Por confirmar'
 
   const requestCurrentLocation = () => {

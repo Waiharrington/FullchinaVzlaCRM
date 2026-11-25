@@ -418,7 +418,6 @@
 @keyframes pd-float { 50% { transform: translateY(-9px) rotate(-2deg); } }
 .public-empty-cart-title { font: 400 18.5px/1.15 var(--pd-display); }
 .public-empty-cart-msg, .public-empty-cart-sub { color: var(--soft); font-size: 13.5px; line-height: 1.4; }
-.public-empty-cart-msg br, .public-empty-cart-sub br { display: none; }
 .public-empty-cart-msg { display: none; }
 .public-empty-explore-btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 46.5px; margin-top: 8px; padding: 0 19.5px; border: 0; border-radius: 18px; color: #fff; background: var(--pd-red); box-shadow: 0 5px 0 var(--pd-red-deep); font-size: 14.5px; font-weight: 800; }
 .public-empty-explore-btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--pd-red-deep); }

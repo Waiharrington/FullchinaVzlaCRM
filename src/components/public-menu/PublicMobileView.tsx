@@ -81,13 +81,15 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
   const railRef = useRef<HTMLElement>(null)
   const tableRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const showDeck = activeCategory === 'promociones' && visibleGroups.length > 1
+  const searching = Boolean(search.trim())
+  const showDeck = !searching && activeCategory === 'promociones' && visibleGroups.length > 1
   const stageRef = useRef<HTMLDivElement>(null)
   usePauseOffscreen(stageRef)
   // Solo visual: qué categoría sostienen los palillos mientras se recorre el menú.
   const heldCategory = activeCategory === 'Todos' ? scrollCategory : activeCategory
-  const catClass = (category: string) => `public-cat-btn ${activeCategory === category ? 'active' : ''} ${heldCategory === category || (!heldCategory && category === 'Todos') ? 'is-held' : ''}`
+  const catClass = (category: string) => `public-cat-btn ${!searching && activeCategory === category ? 'active' : ''} ${!searching && (heldCategory === category || (!heldCategory && category === 'Todos')) ? 'is-held' : ''}`
   const chooseCategory = (category: string) => {
+    closeSearch()
     setActiveCategory(category)
     const top = (stageRef.current?.offsetTop ?? 0) + (stageRef.current?.offsetHeight ?? 0)
     if (window.scrollY > top) window.scrollTo({ top, behavior: 'auto' })
@@ -96,7 +98,7 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
 <div className="public-mobile-view mobile-only">
 
             {/* MENU VIEW */}
-            <div className={`public-mobile-tab-content${hasLeftMobileMenu ? ' is-retained' : ''}`} key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
+            <div className={`public-mobile-tab-content${hasLeftMobileMenu ? ' is-retained' : ''}${searching ? ' is-searching' : ''}`} key="menu" hidden={currentTab === 'contacto' || currentTab === 'perfil'}>
             {/* 2. Hero Status */}
             <div className="pd-stage" ref={stageRef}>
             <div className="public-hero-header">
@@ -123,7 +125,7 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
                   tabIndex={showSearch ? 0 : -1}
                   placeholder={showSearch ? pageSettings.searchPlaceholder : ''}
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={e => { setShowFavorites(false); setSearch(e.target.value) }}
                 />
                 {showSearch && search && <button type="button" className="public-search-pill-clear" onClick={() => setSearch('')} aria-label="Limpiar búsqueda"><X size={14}/></button>}
                 {showSearch && <button type="button" className="public-search-pill-cancel" onClick={closeSearch}>Cancelar</button>}
@@ -241,7 +243,8 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
             {/* 5. Products Section */}
               <section className="public-content">
               <div className="public-list-header">
-                <h2 className={activeCategory === 'Todos' ? 'public-main-list-title' : undefined}>{activeCategory === 'Todos' ? 'Menú' : categoryLabel(activeCategory)}</h2>
+                <h2 className={activeCategory === 'Todos' && !searching ? 'public-main-list-title' : undefined}>{searching ? 'Resultados' : activeCategory === 'Todos' ? 'Menú' : categoryLabel(activeCategory)}</h2>
+                {searching && visibleGroups.length > 0 && <span className="pd-search-count" role="status">{visibleGroups.length} {visibleGroups.length === 1 ? 'plato' : 'platos'} en todo el menú</span>}
                 <div className="public-list-actions">
                   <button className={`public-favorites-inline ${showFavorites ? 'active' : ''}`} onClick={() => setShowFavorites(value => !value)} aria-label="Filtrar favoritos"><Heart size={16} fill={showFavorites ? 'currentColor' : 'none'} /><span>Favoritos</span>{favoriteIds.length > 0 && <b>{favoriteIds.length}</b>}</button>
                 </div>
@@ -251,7 +254,7 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
               {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
                 <>
                 {showDeck && <DeckRail listRef={listRef} groups={visibleGroups} />}
-                <div ref={listRef} data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}${showDeck ? ' is-deck' : ''}`}>
+                <div ref={listRef} data-category={searching ? 'Todos' : activeCategory} className={`public-product-list ${activeCategory === 'Todos' && !searching ? 'public-product-list-grouped' : ''}${showDeck ? ' is-deck' : ''}`}>
                   {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                     <div className="public-empty-menu">
                       <span><Utensils size={42} /></span>
@@ -259,7 +262,7 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
                       <p>{showFavorites ? 'Toca el corazón de un plato para guardarlo en este dispositivo.' : 'Prueba con otro nombre o vuelve a ver todo el menú.'}</p>
                       <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
                     </div>
-                  ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
+                  ) : activeCategory === 'Todos' && !searching ? categorySections.map((section, sectionIndex) => (
                     <section className="public-category-section" key={section.category} data-category={section.category}>
                       <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><button type="button" className="pd-see-all" onClick={() => chooseCategory(section.category)}>Ver las {section.groups.length} <ChevronRight size={15} aria-hidden="true" /></button></div>
                       <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>

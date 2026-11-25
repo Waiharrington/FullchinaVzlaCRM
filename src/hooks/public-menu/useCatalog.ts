@@ -4,13 +4,13 @@ import { PUBLIC_MODIFIER_CACHE, PREVIEW_LOADING } from '../../lib/publicMenuConf
 import { getPublicCatalogWithRetry, prepareCatalog, warmPublicMenuImages } from '../../lib/publicMenuRuntime'
 import { getPublicOrderPageSettings, type PublicOrderPageSettings } from '../../lib/publicOrderPageSettings'
 import { getPublicMenuCategories, getPublicProductModifiers, getPublicDeliverySettings } from '../../lib/publicOrders'
-import { hydrateMenuCategories, MENU_CATEGORY_ORDER, menuCategoryRank, categoryLabel } from '../../lib/menuCategories'
+import { hydrateMenuCategories, MENU_CATEGORY_ORDER, menuCategoryRank } from '../../lib/menuCategories'
 import { saveCatalogCache } from '../../lib/publicMenuStorage'
 import { groupMenuProducts, type MenuProductGroup } from '../../lib/menuGrouping'
 import { filterProteinExtraGroups } from '../../lib/publicMenuFormat'
 import { useLiveDataRefresh } from '../../lib/liveDataRefresh'
 import { getExchangeRates } from '../../lib/rates'
-import { normalizeForSearch } from '../../lib/textFormat'
+import { searchMenuGroups } from '../../lib/menuSearch'
 import { type Product, type ProductModifierGroup } from '../../lib/dataService'
 import { type DeliverySettings } from '../../lib/delivery'
 
@@ -183,16 +183,10 @@ export function useCatalog({ activeCategory, initialCatalog, loading, modifierRe
     allCats.sort((a, b) => menuCategoryRank(a) - menuCategoryRank(b));
     return [...allCats.filter(c => c !== 'otros' && c !== 'extras'), 'Todos'];
   }, [products]);
-  const groups = useMemo(() => groupMenuProducts(products.filter(product => {
-    const categoryMatch = activeCategory === 'Todos' || product.categories.includes(activeCategory)
-    const term = normalizeForSearch(search)
-    const searchableText = [
-      product.name,
-      product.description || '',
-      product.category,
-      ...product.categories.flatMap(category => [category, categoryLabel(category)]),
-    ].join(' ')
-    return categoryMatch && (!term || normalizeForSearch(searchableText).includes(term))
-  })), [products, activeCategory, search])
+  // Al buscar se recorre todo el menú: la categoría abierta no limita los resultados.
+  const groups = useMemo(() => search.trim()
+    ? searchMenuGroups(groupMenuProducts(products), search)
+    : groupMenuProducts(products.filter(product => activeCategory === 'Todos' || product.categories.includes(activeCategory))),
+  [products, activeCategory, search])
   return { groups, categories, retryPublicCatalog }
 }

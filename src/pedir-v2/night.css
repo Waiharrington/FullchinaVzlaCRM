@@ -265,7 +265,6 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
 .public-home-section-title { white-space: normal; }
 .customer-loyalty-head > div { flex: 1; }
 .customer-profile-welcome-card-copy strong, .customer-member-mini-copy strong, .public-home-loyalty-card-copy strong { white-space: nowrap; }
-.customer-profile-welcome-card-copy br, .public-home-loyalty-card-copy br { display: none; }
 .customer-profile-welcome-card-copy strong { font-size: clamp(15px, 3.91vw, 17px); }
 .customer-profile-welcome-card-copy em::before, .public-home-loyalty-card-copy em::before { content: ' '; }
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {

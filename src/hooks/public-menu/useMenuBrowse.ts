@@ -1,7 +1,7 @@
 import { useEffect, useMemo, SyntheticEvent, MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent, type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { normalizeForSearch } from '../../lib/textFormat'
 import { groupMenuProducts, MenuProductGroup } from '../../lib/menuGrouping'
-import { categoryLabel } from '../../lib/menuCategories'
+import { searchMenuGroups } from '../../lib/menuSearch'
 import { FEATURED_DISH_QUERIES } from '../../lib/publicMenuRuntime'
 import { type DesktopTab } from '../../lib/publicMenuTypes'
 import { type PublicModifierSelection } from '../../lib/publicOrderRules'
@@ -40,15 +40,9 @@ export function useMenuBrowse({ activeCategory, cardQtys, categories, currentTab
   }, [currentTab, desktopHeroPaused, homeSearchTerm, setDesktopHeroSlide])
   const homeSearchSuggestions = useMemo(() => {
     if (homeSearchTerm.length < 2) return []
-    return groupMenuProducts(products)
-      .filter(group => normalizeForSearch([
-        group.name,
-        categoryLabel(group.category),
-        ...group.variants.flatMap(variant => [variant.label, variant.product.name, variant.product.description || '']),
-      ].join(' ')).includes(homeSearchTerm))
-      .slice(0, 5)
+    return searchMenuGroups(groupMenuProducts(products), homeSearchTerm).slice(0, 5)
   }, [products, homeSearchTerm])
-  const visibleGroups = useMemo(() => showFavorites ? groups.filter(group => favoriteIds.includes(group.key)) : groups, [groups, showFavorites, favoriteIds])
+  const visibleGroups = useMemo(() => showFavorites && !homeSearchTerm ? groups.filter(group => favoriteIds.includes(group.key)) : groups, [groups, showFavorites, favoriteIds, homeSearchTerm])
   const popularGroups = useMemo(() => {
     const all = groupMenuProducts(products)
     const stopWords = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'de'])

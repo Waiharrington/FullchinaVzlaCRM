@@ -78,7 +78,7 @@
 .public-review-qty b { font-weight: 850; animation: pd-pop .3s var(--pd-spring); }
 .public-review-edit { min-height: 44px; padding: 0 4px; border: 0; color: var(--soft); background: none; font-size: 13px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .public-cart-item-total { color: var(--price); font-size: 14.5px; font-weight: 850; text-align: right; white-space: nowrap; }
-.public-recommendation-row { display: flex; gap: 10px; margin: 0 -18px; padding: 2px 15px 6px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; }
+.public-recommendation-row { display: flex; gap: 10px; margin: 0 -18px; padding: 2px 18px 6px; overflow-x: auto; scroll-padding-left: 18px; scroll-snap-type: x proximity; scrollbar-width: none; }
 .public-recommendation-row article { position: relative; flex: 0 0 136px; scroll-snap-align: start; scroll-margin-left: 18px; }
 .public-recommendation-row img { width: 100%; aspect-ratio: 1; border-radius: 16.5px; object-fit: cover; background: var(--chip); }
 .public-recommendation-row div { display: grid; padding: 7px 2px 0; line-height: 1.25; }

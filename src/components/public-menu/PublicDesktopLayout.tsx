@@ -414,7 +414,7 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
 
                   {/* Products Catalog Section */}
                   <section className="public-content">
-                    {activeCategory !== 'Todos' && (
+                    {activeCategory !== 'Todos' && !search.trim() && (
                       <div className="public-selected-category-heading">
                         <div><span /><h2>{categoryLabel(activeCategory)}</h2></div>
                         <b>{visibleGroups.length} {visibleGroups.length === 1 ? 'plato' : 'platos'}</b>
@@ -422,7 +422,7 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                     )}
 
                     {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
-                      <div data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
+                      <div data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' && !search.trim() ? 'public-product-list-grouped' : ''}`}>
                         {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                           <div className="public-empty-menu">
                             <span className="public-empty-menu-wok" aria-hidden="true">
@@ -439,7 +439,7 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                             <p>{showFavorites ? 'Toca el corazón de un plato para guardarlo en este dispositivo.' : 'Prueba con otro nombre o vuelve a ver todo el menú.'}</p>
                             <button type="button" onClick={() => { setSearch(''); setActiveCategory('Todos'); setShowFavorites(false) }}>Ver todo el menú</button>
                           </div>
-                        ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
+                        ) : activeCategory === 'Todos' && !search.trim() ? categorySections.map((section, sectionIndex) => (
                           <section className="public-category-section" key={section.category} data-category={section.category}>
                             <div className="public-category-section-header">
                               <div className="public-category-title-group">
@@ -498,10 +498,10 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                     </div>
                     <h3 className="public-empty-cart-title">Tu pedido está vacío</h3>
                     <p className="public-empty-cart-msg">
-                      Parece que aún no has agregado<br />nada a tu pedido.
+                      Parece que aún no has agregado nada a tu pedido.
                     </p>
                     <p className="public-empty-cart-sub">
-                      ¡Explora nuestro menú y encuentra<br />tu próximo favorito!
+                      ¡Explora nuestro menú y encuentra tu próximo favorito!
                     </p>
                     <button
                       type="button"
