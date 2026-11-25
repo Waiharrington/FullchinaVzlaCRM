@@ -719,3 +719,50 @@
   .fidel-accounts-table-wrap { display:none; }
   .fidel-accounts-page .fidel-accounts-list { display:grid;grid-template-columns:1fr;gap:10px;margin-top:14px; }
 }
+
+/* Premio con elección de proteína */
+.fidel-loyalty-settings .fidel-reward-mode { display:flex;align-items:center;gap:10px;grid-column:1 / -1;padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:10px;background:rgba(255,255,255,.03);color:#e5e5e8;font-size:13px;font-weight:700;cursor:pointer; }
+.fidel-loyalty-settings .fidel-reward-mode input { flex:0 0 auto;width:18px;height:18px;min-height:0;padding:0;accent-color:#e31b2b; }
+.fidel-reward-choice { display:grid;gap:4px;color:#bbb;font-size:11px;font-weight:700; }
+.fidel-reward-choice select { min-height:36px;padding:0 8px;border:1px solid #37373e;border-radius:9px;color:#fff;background:#111114;font:inherit;font-size:12px; }
+
+/* Legibilidad en teléfono */
+@media (max-width: 640px) {
+  .fidel-section-tabs { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible; }
+  .fidel-section-tabs { gap:6px; }
+  .fidel-section-tabs button { flex:none;min-width:0;min-height:48px;gap:6px;padding:4px 8px;font-size:12.5px;line-height:1.2;white-space:normal;text-align:left; }
+  .fidel-section-tabs button>b { min-width:20px;height:20px;padding:0 5px; }
+  .fidel-loyalty-settings { grid-template-columns:minmax(0,1fr); }
+  .fidel-loyalty-settings label { font-size:14px;color:#d6d4d9; }
+  .fidel-loyalty-settings input,.fidel-loyalty-settings textarea { font-size:16px;min-height:44px; }
+  .fidel-loyalty-settings input { height:44px; }
+  .fidel-loyalty-settings .fidel-reward-mode { font-size:14px;line-height:1.35; }
+  .fidel-loyalty-settings .fidel-reward-mode input { width:22px;height:22px;min-height:0; }
+  .fidel-loyalty-settings label.fidel-reward-name { grid-template-columns:minmax(0,1fr); }
+  .fidel-reward-picker-heading strong { font-size:16px; }
+  .fidel-reward-picker-heading small { font-size:13px;line-height:1.45; }
+  .fidel-reward-selected-item { gap:7px;padding:8px; }
+  .fidel-reward-selected-image,.fidel-reward-selected-fallback { flex-basis:44px;width:44px;height:44px; }
+  .fidel-reward-selected-number { flex-basis:22px;width:22px;height:22px; }
+  .fidel-reward-selected-name strong { overflow:visible;font-size:13.5px;line-height:1.3;white-space:normal; }
+  .fidel-reward-selected-name small { overflow:visible;font-size:12px;white-space:normal; }
+  .fidel-reward-selected-item>button { flex-basis:36px;width:36px;height:36px; }
+  .fidel-reward-menu-grid { grid-template-columns:minmax(0,1fr);max-height:420px; }
+  .fidel-reward-menu-option { min-height:64px;padding:8px; }
+  .fidel-reward-menu-option-image,.fidel-reward-menu-option-fallback { align-self:center;flex:0 0 56px;width:56px;height:48px;border-radius:8px;object-fit:cover; }
+  .fidel-reward-menu-option-copy strong { overflow:visible;font-size:14px;line-height:1.3;white-space:normal; }
+  .fidel-reward-menu-option-copy small { font-size:12px; }
+  .fidel-reward-search input { font-size:16px; }
+  .fidel-account-search .filter-search-input { font-size:14px; }
+  .fidel-reward-inventory-note { font-size:12px;line-height:1.45; }
+  .fidel-reward-choice { font-size:13px; }
+  .fidel-reward-choice select { min-height:44px;font-size:16px; }
+  .fidel-pending-customer strong { white-space:normal;font-size:15px; }
+  .fidel-pending-prize span { font-size:15px; }
+  .fidel-pending-customer small,.fidel-pending-prize small { font-size:12px; }
+  .fidel-pending-list article > button { min-height:44px;font-size:13px; }
+  .fidel-customer-reward-row { flex-wrap:wrap;gap:8px; }
+  .fidel-customer-reward-row strong { font-size:14px; }
+  .fidel-customer-reward-row small { font-size:12px; }
+  .fidel-customer-reward-row button { min-height:44px;font-size:13px; }
+}
