@@ -23,6 +23,7 @@ import { Turntable } from '../../pedir-v2/Turntable'
 import { NavBowl, NavPerson, NavPlace } from '../../pedir-v2/NavIcons'
 
 interface PublicMobileViewProps {
+  isWideLayout: boolean
   scrollCategory: string | null
   activeCategory: string
   bcvRate: number | null
@@ -77,7 +78,7 @@ interface PublicMobileViewProps {
   visibleGroups: MenuProductGroup[]
 }
 
-export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cartOpen, categories, categorySections, closeSearch, contactViewProps, currentTab, error, favoriteIds, formattedCloseTime, handleRecommendedWheel, hasLeftMobileMenu, hasVisitedProfile, heroSearchRef, isDesktopViewport, isLoyaltyRecommended, isStoreOpen, loading, moveRecommended, openCustomerProfile, openGroup, pageSettings, pauseRecommendedAutoplay, priceBs, products, recommendedGroup, recommendedIndex, recommendedSlideCount, recommendedSlides, recommendedSwipeStart, recommendedVariant, recommendedWasSwiped, renderProductCard, repeatPreviousOrder, resumeRecommendedAutoplay, retryPublicCatalog, search, setActiveCategory, setCurrentTab, setError, setHasLeftMobileMenu, setRequestedRecommendedIndex, setSearch, setShowFavorites, setShowSearch, showFavorites, showSearch, storeScheduleLabel, toggleFavorite, visibleGroups }: PublicMobileViewProps) {
+export function PublicMobileView({ isWideLayout, scrollCategory, activeCategory, bcvRate, cartOpen, categories, categorySections, closeSearch, contactViewProps, currentTab, error, favoriteIds, formattedCloseTime, handleRecommendedWheel, hasLeftMobileMenu, hasVisitedProfile, heroSearchRef, isDesktopViewport, isLoyaltyRecommended, isStoreOpen, loading, moveRecommended, openCustomerProfile, openGroup, pageSettings, pauseRecommendedAutoplay, priceBs, products, recommendedGroup, recommendedIndex, recommendedSlideCount, recommendedSlides, recommendedSwipeStart, recommendedVariant, recommendedWasSwiped, renderProductCard, repeatPreviousOrder, resumeRecommendedAutoplay, retryPublicCatalog, search, setActiveCategory, setCurrentTab, setError, setHasLeftMobileMenu, setRequestedRecommendedIndex, setSearch, setShowFavorites, setShowSearch, showFavorites, showSearch, storeScheduleLabel, toggleFavorite, visibleGroups }: PublicMobileViewProps) {
   const railRef = useRef<HTMLElement>(null)
   const tableRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -280,7 +281,7 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
                 <PublicMenuContactView variant="mobile" {...contactViewProps} />
               </Suspense>
             )}
-            {hasVisitedProfile && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
+            {hasVisitedProfile && !isWideLayout && <div className="public-mobile-tab-content public-mobile-profile-tab-content" key="perfil" hidden={currentTab !== 'perfil'}><Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense></div>}
 
             {/* Bottom Tab Bar */}
             <nav className="public-mobile-tab-bar" aria-label="Secciones" style={{ '--i': currentTab === 'contacto' ? 1 : currentTab === 'perfil' ? 2 : 0 } as CSSProperties}>

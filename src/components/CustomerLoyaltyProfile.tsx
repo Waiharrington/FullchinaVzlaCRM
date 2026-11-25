@@ -10,9 +10,10 @@ import Toast from './Toast'
 import CustomerRewardJourney from './CustomerRewardJourney'
 import CustomerVisitHistory from './CustomerVisitHistory'
 import CustomerOrderItems from './CustomerOrderItems'
-import { PublicProfileSkeleton } from './PublicPageSkeletons'
 import { LoadingSkeleton } from './LoadingSkeleton'
-import { getCustomerOrderForRepeat, getPublicCatalog, type CustomerRepeatOrder } from '../lib/publicOrders'
+import { getPublicCatalogWithRetry } from '../lib/publicMenuRuntime'
+import { PublicProfileSkeleton, ProfileFavoritesSkeleton, ProfileRecentOrdersSkeleton } from './PublicPageSkeletons'
+import { getCustomerOrderForRepeat, type CustomerRepeatOrder } from '../lib/publicOrders'
 import { groupMenuProducts, type MenuProductGroup } from '../lib/menuGrouping'
 import { Fit } from '../pedir-v2/ui'
 import '../pedir-v2/profile-base.css'
@@ -71,7 +72,7 @@ function CustomerSavedFavorites({ favoriteIds, onToggleFavorite }: { favoriteIds
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     let active = true
-    void getPublicCatalog().then(products => {
+    void getPublicCatalogWithRetry().then(products => {
       if (active) setGroups(groupMenuProducts(products))
     }).catch(() => undefined).finally(() => { if (active) setLoading(false) })
     return () => { active = false }
@@ -80,7 +81,7 @@ function CustomerSavedFavorites({ favoriteIds, onToggleFavorite }: { favoriteIds
   const unavailableCount = Math.max(0, favoriteIds.length - favorites.length)
   return <section className="customer-saved-favorites" aria-labelledby="customer-saved-favorites-title">
     <header><div><span><Heart size={15} fill="currentColor" /> GUARDADOS DEL MENÚ</span><h2 id="customer-saved-favorites-title">Platos favoritos</h2><p>Los platos que marcaste con el corazón.</p></div><b>{favoriteIds.length}</b></header>
-    {loading ? <LoadingSkeleton className="customer-saved-favorites-loading" label="Cargando favoritos" variant="cards" count={3} /> : favorites.length ? <div className="customer-saved-favorites-grid">{favorites.map(group => <article key={group.key}>
+    {loading ? <ProfileFavoritesSkeleton count={Math.min(Math.max(favoriteIds.length, 1), 3)} /> : favorites.length ? <div className="customer-saved-favorites-grid">{favorites.map(group => <article key={group.key}>
       <img src={customerProductImage(group.variants[0]?.product.imageUrl || '')} alt="" loading="lazy" onError={event => { event.currentTarget.hidden = true }} />
       <div><strong>{group.name}</strong><small>{group.category}</small></div>
       {onToggleFavorite && <button type="button" aria-label={`Quitar ${group.name} de favoritos`} onClick={() => onToggleFavorite(group.key)}><Trash2 size={16} /></button>}
@@ -94,6 +95,15 @@ function customerProductImage(imageUrl: string) {
   return match ? `/optimized/productos/${match[1]}.webp${match[2] || ''}` : imageUrl
 }
 
+const RECENT_ORDERS_TIMEOUT_MS = 12_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error('La consulta tardó demasiado.')), ms)
+    promise.then(resolve, reject).finally(() => window.clearTimeout(timer))
+  })
+}
+
 function CustomerRecentOrders({ visits, onRepeatOrder }: { visits: Visit[]; onRepeatOrder?: CustomerLoyaltyProfileProps['onRepeatOrder'] }) {
   const [orders, setOrders] = useState<CustomerRepeatOrder[]>([])
   const [productImages, setProductImages] = useState<Record<string, string>>({})
@@ -101,6 +111,7 @@ function CustomerRecentOrders({ visits, onRepeatOrder }: { visits: Visit[]; onRe
   const [shouldLoad, setShouldLoad] = useState(false)
   const [repeatingOrderId, setRepeatingOrderId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
   const rail = useRef<HTMLDivElement>(null)
   const section = useRef<HTMLElement>(null)
 
@@ -118,26 +129,30 @@ function CustomerRecentOrders({ visits, onRepeatOrder }: { visits: Visit[]; onRe
     return () => observer.disconnect()
   }, [shouldLoad])
 
+  // Cada actualización del perfil entrega un arreglo nuevo; solo se vuelve a
+  // consultar cuando cambian los pedidos, y sin ocultar los que ya se ven.
+  const orderKey = visits.slice(0, 5).map(visit => visit.order_id).join(',')
+
   useEffect(() => {
     if (!shouldLoad) return
     let cancelled = false
-    setLoading(true)
     setError('')
-    const load = async () => {
-      const catalogPromise = getPublicCatalog().catch(() => [])
-      const results = await Promise.allSettled(visits.slice(0, 5).map(visit => getCustomerOrderForRepeat(visit.order_id)))
-      const catalog = await catalogPromise
+    // Las fotos llegan aparte: un catálogo lento no retiene los pedidos.
+    void getPublicCatalogWithRetry().then(catalog => {
       if (!cancelled) setProductImages(Object.fromEntries(catalog.filter(product => product.imageUrl).map(product => [product.id, customerProductImage(product.imageUrl!)])))
-      if (results.every(result => result.status === 'rejected') && results.length) setError('No pudimos cargar tus pedidos recientes.')
-      return results.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])
-    }
-    load().then(nextOrders => {
-      if (!cancelled) setOrders(nextOrders)
-    }).catch(cause => {
-      if (!cancelled) setError(cause instanceof Error ? cause.message : 'No pudimos cargar tus pedidos recientes.')
-    }).finally(() => { if (!cancelled) setLoading(false) })
+    }).catch(() => undefined)
+    const orderIds = orderKey ? orderKey.split(',') : []
+    void Promise.allSettled(orderIds.map(id => withTimeout(getCustomerOrderForRepeat(id), RECENT_ORDERS_TIMEOUT_MS))).then(results => {
+      if (cancelled) return
+      const nextOrders = results.flatMap(result => result.status === 'fulfilled' ? [result.value] : [])
+      if (results.length && !nextOrders.length) setError('No pudimos cargar tus pedidos recientes.')
+      else setOrders(nextOrders)
+      setLoading(false)
+    })
     return () => { cancelled = true }
-  }, [visits, shouldLoad])
+  }, [orderKey, shouldLoad, attempt])
+
+  const retry = () => { setLoading(true); setAttempt(value => value + 1) }
 
   const repeatOrder = async (order: CustomerRepeatOrder) => {
     if (!onRepeatOrder || repeatingOrderId) return
@@ -150,7 +165,7 @@ function CustomerRecentOrders({ visits, onRepeatOrder }: { visits: Visit[]; onRe
 
   return <section ref={section} className="customer-recent-orders" aria-labelledby="customer-recent-orders-title" aria-busy={loading}>
     <header className="customer-recent-orders-heading"><div><span>PARA VOLVER A DISFRUTAR</span><h2 id="customer-recent-orders-title">Pedidos recientes</h2><p>Tus últimos pedidos, listos para repetir.</p></div><div className="customer-recent-orders-actions"><div className="customer-recent-orders-controls"><button type="button" aria-label="Pedidos anteriores" onClick={() => rail.current?.scrollBy({ left: -300, behavior: 'smooth' })}><ArrowLeft size={17} /></button><button type="button" aria-label="Más pedidos" onClick={() => rail.current?.scrollBy({ left: 300, behavior: 'smooth' })}><ArrowRight size={17} /></button></div></div></header>
-    {loading ? <div className="customer-recent-orders-skeletons" aria-label="Cargando tus últimos pedidos">{Array.from({ length: 2 }, (_, index) => <div className="customer-recent-order-skeleton" key={index}><span /><div><i /><i /><i /></div></div>)}</div> : orders.length ? <div className="customer-recent-orders-rail" ref={rail}>
+    {loading ? <ProfileRecentOrdersSkeleton />: orders.length ? <div className="customer-recent-orders-rail" ref={rail}>
       {orders.map((order, index) => {
         const leadItem = order.items[0]
         const leadImage = leadItem ? productImages[leadItem.productId] : undefined
@@ -165,7 +180,7 @@ function CustomerRecentOrders({ visits, onRepeatOrder }: { visits: Visit[]; onRe
           <button type="button" className="customer-repeat-order-button" disabled={!onRepeatOrder || repeatingOrderId !== null} onClick={() => void repeatOrder(order)}>{repeatingOrderId === order.orderId ? <LoaderCircle size={16} className="customer-repeat-order-spinner" /> : <RotateCw size={16} />}<span>{repeatingOrderId === order.orderId ? 'Preparando…' : 'Volver a pedir'}</span></button>
         </article>
       })}
-    </div> : <div className="customer-recent-orders-status">{error || 'Cuando hagas tus primeros pedidos, aparecerán aquí.'}</div>}
+    </div> : <div className="customer-recent-orders-status">{error || 'Cuando hagas tus primeros pedidos, aparecerán aquí.'}{error && <button type="button" className="customer-recent-orders-retry" onClick={retry}><RotateCw size={15} /> Reintentar</button>}</div>}
     {error && orders.length > 0 && <p className="customer-repeat-order-error" role="alert">{error}</p>}
   </section>
 }

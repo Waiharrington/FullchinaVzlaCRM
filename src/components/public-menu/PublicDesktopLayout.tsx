@@ -17,6 +17,7 @@ import { type PublicModifierSelection } from '../../lib/publicOrderRules'
 import { type Product } from '../../lib/dataService'
 
 interface PublicDesktopLayoutProps {
+  isWideLayout: boolean
   scrollCategory: string | null
   activeCategory: string
   canScrollPopular: boolean
@@ -71,7 +72,7 @@ interface PublicDesktopLayoutProps {
 
 const SIDEBAR_VISIBLE_ITEMS = 3
 
-export function PublicDesktopLayout({ scrollCategory, activeCategory, canScrollPopular, cart, cartPulse, categories, categorySections, contactViewProps, currentTab, deliveryFeeText, desktopHeroSlide, error, favoriteIds, homeSearchSuggestions, homeSearchTerm, isDesktopViewport, itemCount, loading, openCartFromSidebar, openCustomerProfile, openGroup, orderTotal, orderType, pageSettings, popularGroups, popularScrollRef, priceBs, products, promoGroups, renderDesktopProductCard, renderDesktopPromoCard, renderProductCard, repeatPreviousOrder, retryPublicCatalog, scrollPopular, search, setActiveCategory, setDesktopHeroPaused, setDesktopHeroSlide, setOrderType, setSearch, setShowFavorites, showDesktopMenu, showFavorites, sidebarCardRef, sidebarHasOverflow, submitting, toggleFavorite, total, visibleGroups }: PublicDesktopLayoutProps) {
+export function PublicDesktopLayout({ isWideLayout, scrollCategory, activeCategory, canScrollPopular, cart, cartPulse, categories, categorySections, contactViewProps, currentTab, deliveryFeeText, desktopHeroSlide, error, favoriteIds, homeSearchSuggestions, homeSearchTerm, isDesktopViewport, itemCount, loading, openCartFromSidebar, openCustomerProfile, openGroup, orderTotal, orderType, pageSettings, popularGroups, popularScrollRef, priceBs, products, promoGroups, renderDesktopProductCard, renderDesktopPromoCard, renderProductCard, repeatPreviousOrder, retryPublicCatalog, scrollPopular, search, setActiveCategory, setDesktopHeroPaused, setDesktopHeroSlide, setOrderType, setSearch, setShowFavorites, showDesktopMenu, showFavorites, sidebarCardRef, sidebarHasOverflow, submitting, toggleFavorite, total, visibleGroups }: PublicDesktopLayoutProps) {
   const railRef = useRef<HTMLElement>(null)
   const layoutRef = useRef<HTMLDivElement>(null)
   usePauseOffscreen(layoutRef)
@@ -453,7 +454,7 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, canScrollP
                   <PublicMenuContactView variant="desktop" {...contactViewProps} />
                 </Suspense>
               )}
-              {currentTab === 'perfil' && <Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
+              {currentTab === 'perfil' && isWideLayout && <Suspense fallback={<PublicProfileSkeleton />}><CustomerLoyaltyProfile onRepeatOrder={repeatPreviousOrder} favoriteIds={favoriteIds} onToggleFavorite={toggleFavorite} /></Suspense>}
 
             </div>
 

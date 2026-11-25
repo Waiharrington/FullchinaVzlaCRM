@@ -108,3 +108,36 @@
   .public-menu-page .customer-journey-copy p { font-size: 14px !important; }
   .public-menu-page .customer-journey-art { height: 128px !important; bottom: -2px !important; }
 }
+
+/* Computadora: favoritos, pedidos recientes y premios ocupan cada uno su fila
+   (antes favoritos y pedidos compartían celda y se encimaban). */
+@media (min-width: 1100px) {
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard { grid-template-areas: "welcome welcome welcome" "card saved tools" "card recent tools" "card redeemed tools" !important; grid-template-rows: auto auto auto minmax(0, 1fr) !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard > .customer-saved-favorites { grid-area: saved !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard > .customer-recent-orders { grid-area: recent !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard > .customer-redeemed-history { grid-area: redeemed !important; align-self: start !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-loyalty-card { grid-row: 2 / span 3 !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-tools { grid-row: 2 / span 3 !important; }
+}
+@media (min-width: 900px) and (max-width: 1099px) and (orientation: landscape) {
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard { grid-template-areas: "welcome welcome" "card saved" "card recent" "card redeemed" "card tools" !important; grid-template-rows: none !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard > .customer-saved-favorites { grid-area: saved !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard > .customer-recent-orders { grid-area: recent !important; }
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-dashboard > .customer-redeemed-history { grid-area: redeemed !important; }
+}
+
+/* Pantallas de poca altura: la tarjeta de acceso se reduce para caber sobre el
+   fondo sin montarse en el pie de página. */
+@media (min-width: 900px) and (orientation: landscape) and (max-height: 780px) {
+  .public-menu-page .customer-profile-page.customer-profile-auth .customer-profile-shell { zoom: .9; }
+}
+@media (min-width: 900px) and (orientation: landscape) and (max-height: 670px) {
+  .public-menu-page .customer-profile-page.customer-profile-auth .customer-profile-shell { zoom: .78; }
+}
+@media (min-width: 900px) and (max-width: 1099px) and (orientation: landscape) {
+  /* El historial se salía de su columna por la derecha. */
+  .public-menu-page.public-profile-tab-active .customer-profile-member .customer-profile-tools .customer-desktop-history { width: 100% !important; max-width: 100% !important; }
+}
+/* Nombres de plato completos: bajan de línea en vez de cortarse con "…". */
+.public-menu-page .customer-profile-page .customer-recent-order-card .customer-recent-order-title,
+.public-menu-page .customer-profile-page .customer-saved-favorites-grid strong { overflow: visible !important; white-space: normal !important; text-overflow: clip !important; overflow-wrap: anywhere; line-height: 1.25; }
