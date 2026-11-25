@@ -11,9 +11,12 @@ import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, createCustomer, updateCustomer, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, checkout, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type CartItem, type PaymentMethod, type FinancialAccount } from '../lib/dataService'
-import { Search, Users, Calendar, User, Plus, Minus, Crown, CreditCard, DollarSign, Eye, Edit2, Trash2, X, Phone, Gift, ShoppingBag, MapPin, ArrowLeft, Tag, Info, ChevronLeft, ChevronRight, IdCard, ShoppingCart, ClipboardList, Package, Wallet } from 'lucide-react'
+import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type FinancialAccount } from '../lib/dataService'
+import { Search, Users, Calendar, User, Plus, Crown, CreditCard, DollarSign, Eye, Edit2, Trash2, X, Phone, Gift, ShoppingBag, MapPin, ArrowLeft, Tag, ChevronLeft, ChevronRight, IdCard, ShoppingCart, ClipboardList, Package, Wallet } from 'lucide-react'
 import './Clientes.css'
+import { QuickOrderModal } from './clientes/QuickOrderModal'
+import { NewClientModal } from './clientes/NewClientModal'
+import { EditClientModal } from './clientes/EditClientModal'
 import { CustomerRow, formatTenure, formatRelativeDays, formatDate, formatDateTime, formatUsdText, WhatsAppIcon, normalizeCustomerName, avatarColorFor, buildDemoClientData, ORDER_TYPE_LABELS, ORDER_TYPE_ICONS, FULFILLMENT_LABELS, formatBirthday, PAYMENT_LABELS, PAYMENT_ICONS, classifyIdentification } from './clientes/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
@@ -121,23 +124,9 @@ export function Clientes() {
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false)
-  const [newClientName, setNewClientName] = useState('')
-  const [newClientLastName, setNewClientLastName] = useState('')
-  const [newClientPhone, setNewClientPhone] = useState('')
-  const [newClientAddress, setNewClientAddress] = useState('')
-  const [birthMonth, setBirthMonth] = useState('')
-  const [birthDay, setBirthDay] = useState('')
 
   // Edit client modal state
-  const [editClientId, setEditClientId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editPhone, setEditPhone] = useState('')
-  const [editIdentification, setEditIdentification] = useState('')
-  const [editAddress, setEditAddress] = useState('')
-  const [editBirthMonth, setEditBirthMonth] = useState('')
-  const [editBirthDay, setEditBirthDay] = useState('')
-  const [editSaving, setEditSaving] = useState(false)
-  const [editError, setEditError] = useState('')
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
 
   const [paymentModal, setPaymentModal] = useState<CreditType | null>(null)
   const [paymentSaving, setPaymentSaving] = useState(false)
@@ -154,12 +143,6 @@ export function Clientes() {
 
   // Modal "Nuevo pedido" embebido en la ficha del cliente (no navega a Caja).
   const [showQuickOrderModal, setShowQuickOrderModal] = useState(false)
-  const [quickOrderSearch, setQuickOrderSearch] = useState('')
-  const [quickOrderCart, setQuickOrderCart] = useState<CartItem[]>([])
-  const [quickOrderType, setQuickOrderType] = useState<'dine-in' | 'takeaway' | 'delivery'>('takeaway')
-  const [quickOrderPayment, setQuickOrderPayment] = useState<PaymentMethod>('cash')
-  const [quickOrderSaving, setQuickOrderSaving] = useState(false)
-  const [quickOrderError, setQuickOrderError] = useState('')
 
   // Detalle de un pedido del historial (la tabla es solo vista previa con
   // íconos; el modal muestra todo con nombres completos).
@@ -167,11 +150,8 @@ export function Clientes() {
 
   // Closing-delay flags: keep the overlay mounted for the exit animation
   // before flipping the visibility state to false/null.
-  const [closingNew, setClosingNew] = useState(false)
-  const [closingEdit, setClosingEdit] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
   const [closingCobrar, setClosingCobrar] = useState(false)
-  const [closingQuickOrder, setClosingQuickOrder] = useState(false)
   const [closingOrderDetail, setClosingOrderDetail] = useState(false)
 
   const closeOrderDetail = () => {
@@ -180,26 +160,6 @@ export function Clientes() {
     window.setTimeout(() => {
       setOrderDetail(null)
       setClosingOrderDetail(false)
-    }, 200)
-  }
-
-  const closeNewModal = (then?: () => void) => {
-    if (!showNewModal || closingNew) return
-    setClosingNew(true)
-    window.setTimeout(() => {
-      setShowNewModal(false)
-      setClosingNew(false)
-      then?.()
-    }, 200)
-  }
-
-  const closeEditModal = (then?: () => void) => {
-    if (!editClientId || closingEdit) return
-    setClosingEdit(true)
-    window.setTimeout(() => {
-      setEditClientId(null)
-      setClosingEdit(false)
-      then?.()
     }, 200)
   }
 
@@ -333,66 +293,7 @@ export function Clientes() {
     getProducts().then(setProducts).catch((e) => console.error('Error cargando fotos de productos:', e))
   }, [isDemoMode])
 
-  const handleSaveClient = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newClientName.trim()) return
-
-    const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
-    const birthDate = birthMonth && birthDay ? `2000-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : undefined
-    let saved: Customer
-    try {
-      saved = await createCustomer({
-        name: fullName,
-        phone: newClientPhone.trim(),
-        address: newClientAddress.trim() || undefined,
-        birthDate,
-      })
-    } catch (err) {
-      console.error('Error guardando cliente:', err)
-      void alertDialog({ message: 'No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.', danger: true })
-      return
-    }
-    const newClientObj: CustomerRow = {
-      id: saved.id,
-      initials: (newClientName[0] + (newClientLastName[0] || '')).toUpperCase(),
-      avatarBg: '#dc2626',
-      name: fullName,
-      phone: saved.phone,
-      identification: saved.identification,
-      identificationStatus: classifyIdentification(saved.identification),
-      lastPurchase: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      totalPurchased: 0.00,
-      pendingBalance: 0.00,
-      status: 'Activo',
-    }
-
-    setCustomers(prev => [saved, ...prev])
-    setNewClientName('')
-    setNewClientLastName('')
-    setNewClientPhone('')
-    setNewClientAddress('')
-    setBirthMonth('')
-    setBirthDay('')
-    closeNewModal(() => setSelectedClient(newClientObj))
-  }
-
-  const openEditCustomer = (c: Customer) => {
-    setEditClientId(c.id)
-    setEditName(c.name)
-    setEditPhone(c.phone ?? '')
-    setEditIdentification(c.identification ?? '')
-    setEditAddress(c.address ?? '')
-    const bd = (c.birthday || '').slice(0, 10)
-    if (bd) {
-      const [, m, d] = bd.split('-')
-      setEditBirthMonth(String(Number(m)))
-      setEditBirthDay(String(Number(d)))
-    } else {
-      setEditBirthMonth('')
-      setEditBirthDay('')
-    }
-    setEditError('')
-  }
+  const openEditCustomer = (c: Customer) => setEditingCustomer(c)
 
   const handleDeactivateCustomer = async (customer: CustomerRow) => {
     const ok = await confirmDialog({
@@ -408,37 +309,6 @@ export function Clientes() {
     } catch (e) {
       console.error('Error al desactivar cliente:', e)
       void alertDialog({ message: 'No se pudo desactivar el cliente', danger: true })
-    }
-  }
-
-  const handleUpdateClient = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editClientId || !editName.trim()) return
-    const birthDate = editBirthMonth && editBirthDay ? `2000-${editBirthMonth.padStart(2, '0')}-${editBirthDay.padStart(2, '0')}` : undefined
-    setEditSaving(true)
-    setEditError('')
-    try {
-      const updated = await updateCustomer(editClientId, {
-        name: editName.trim(),
-        phone: editPhone.trim(),
-        identification: editIdentification.trim(),
-        address: editAddress.trim() || undefined,
-        birthDate,
-      })
-      setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))
-      setSelectedClient(prev => prev && prev.id === updated.id ? {
-        ...prev,
-        name: updated.name,
-        phone: updated.phone,
-        identification: updated.identification,
-        identificationStatus: classifyIdentification(updated.identification),
-      } : prev)
-      closeEditModal()
-    } catch (err) {
-      console.error('Error actualizando cliente:', err)
-      setEditError('No se pudo actualizar el cliente. Revisa los datos e intenta de nuevo.')
-    } finally {
-      setEditSaving(false)
     }
   }
 
@@ -461,69 +331,6 @@ export function Clientes() {
       } finally {
         setPaymentSaving(false)
       }
-    }
-  }
-
-  const closeQuickOrderModal = () => {
-    if (!showQuickOrderModal || closingQuickOrder) return
-    setClosingQuickOrder(true)
-    window.setTimeout(() => {
-      setShowQuickOrderModal(false)
-      setClosingQuickOrder(false)
-      setQuickOrderSearch('')
-      setQuickOrderCart([])
-      setQuickOrderError('')
-    }, 200)
-  }
-
-  const addToQuickOrderCart = (product: Product) => {
-    setQuickOrderCart((prev) => {
-      const existing = prev.find((item) => item.productId === product.id)
-      if (existing) {
-        return prev.map((item) => item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item)
-      }
-      return [...prev, { productId: product.id, productName: product.name, price: product.price, quantity: 1, emoji: product.emoji, lineId: product.id }]
-    })
-  }
-
-  const adjustQuickOrderQty = (lineId: string, delta: number) => {
-    setQuickOrderCart((prev) => prev
-      .map((item) => item.lineId === lineId ? { ...item, quantity: item.quantity + delta } : item)
-      .filter((item) => item.quantity > 0))
-  }
-
-  const removeFromQuickOrderCart = (lineId: string) => {
-    setQuickOrderCart((prev) => prev.filter((item) => item.lineId !== lineId))
-  }
-
-  const quickOrderTotal = quickOrderCart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-
-  const handleQuickOrderSubmit = async () => {
-    if (isDemoMode || !selectedClient || quickOrderCart.length === 0 || !user) return
-    setQuickOrderSaving(true)
-    setQuickOrderError('')
-    try {
-      await checkout({
-        items: quickOrderCart,
-        method: quickOrderPayment,
-        bcvRate,
-        userId: user.id,
-        orderType: quickOrderType,
-        customerName: selectedClient.name,
-      })
-      closeQuickOrderModal()
-      const [orders, freshCredits] = await Promise.all([
-        getCustomerOrders(selectedClient.id, selectedClient.name),
-        getCredits(),
-      ])
-      setCustomerOrders(orders)
-      setCredits(freshCredits)
-      void alertDialog({ message: 'Pedido creado correctamente' })
-    } catch (e) {
-      console.error('Error creando pedido rápido:', e)
-      setQuickOrderError(e instanceof Error ? e.message : 'Error al crear el pedido')
-    } finally {
-      setQuickOrderSaving(false)
     }
   }
 
@@ -576,10 +383,6 @@ export function Clientes() {
     credits.filter((credit) => credit.balancePending > 0).map((credit) => credit.customerId ?? `name:${normalizeCustomerName(credit.customerName)}`),
   ).size, [credits])
 
-  const filteredQuickOrderProducts = useMemo(() => {
-    const q = normalizeForSearch(quickOrderSearch)
-    return products.filter((p) => !q || normalizeForSearch(p.name).includes(q)).slice(0, 40)
-  }, [products, quickOrderSearch])
 
   // Modales globales (Nuevo cliente, Editar, Abonar crédito, Cuentas por
   // cobrar). Se definen una sola vez aquí y se insertan tanto en la vista de
@@ -589,189 +392,29 @@ export function Clientes() {
   const clientModals = (
     <>
       {/* Modal Nuevo Cliente */}
-      {showNewModal && createPortal(
-        <div className={`modal-overlay-dark ${closingNew ? 'closing' : ''}`} onClick={() => closeNewModal()}>
-          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <div>
-                <h3 className="modal-title">Nuevo cliente</h3>
-                <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveClient} className="crm-form mt-3">
-              <div className="field">
-                <label className="field-label-white">Nombre</label>
-                <input
-                  type="text"
-                  placeholder="Ingresa el nombre del cliente"
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  className="modal-input-dark"
-                  required
-                />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Apellido</label>
-                <input
-                  type="text"
-                  placeholder="Ingresa el apellido del cliente"
-                  value={newClientLastName}
-                  onChange={(e) => setNewClientLastName(e.target.value)}
-                  className="modal-input-dark"
-                />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Teléfono</label>
-                <div className="input-with-icon-wrap">
-                  <Phone size={16} className="input-left-icon" />
-                  <input
-                    type="text"
-                    placeholder="Ej. 55 1234 5678"
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                    className="modal-input-dark with-left-icon"
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Dirección</label>
-                <div className="input-with-icon-wrap">
-                  <MapPin size={16} className="input-left-icon" />
-                  <input
-                    type="text"
-                    placeholder="Ej. Av. Bolívar, casa 12"
-                    value={newClientAddress}
-                    onChange={(e) => setNewClientAddress(e.target.value)}
-                    className="modal-input-dark with-left-icon"
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cumpleaños</label>
-                <div className="birthday-selects-row">
-                  <div className="select-col">
-                    <span className="select-sub-label">Mes</span>
-                    <StyledSelect
-                      className="modal-select-dark"
-                      value={birthMonth}
-                      onChange={(e) => setBirthMonth(e.target.value)}
-                    >
-                      <option value="">Selecciona el mes</option>
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                  <div className="select-col">
-                    <span className="select-sub-label">Día</span>
-                    <StyledSelect
-                      className="modal-select-dark"
-                      value={birthDay}
-                      onChange={(e) => setBirthDay(e.target.value)}
-                    >
-                      <option value="">Selecciona el día</option>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-                <span className="birthday-hint mt-1">
-                  <Info size={14} /> Solo para promociones y recordatorios
-                </span>
-              </div>
-
-              <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => closeNewModal()}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-modal-submit-red">
-                  Guardar cliente
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
+      {showNewModal && (
+        <NewClientModal
+          onClose={() => setShowNewModal(false)}
+          onCreated={(saved, row) => { setCustomers(prev => [saved, ...prev]); setSelectedClient(row) }}
+        />
       )}
 
       {/* Modal Editar Cliente */}
-      {editClientId && createPortal(
-        <div className={`modal-overlay-dark ${closingEdit ? 'closing' : ''}`} onClick={() => closeEditModal()}>
-          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <div>
-                <h3 className="modal-title">Editar cliente</h3>
-                <p className="modal-sub-desc">Actualiza los datos del cliente</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleUpdateClient} className="crm-form mt-3">
-              <div className="field">
-                <label className="field-label-white">Nombre completo</label>
-                <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)} className="modal-input-dark" required />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cédula / Identificación</label>
-                <input type="text" placeholder="Ej. V-12345678" value={editIdentification} onChange={(e) => setEditIdentification(e.target.value)} className="modal-input-dark" />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Teléfono</label>
-                <div className="input-with-icon-wrap">
-                  <Phone size={16} className="input-left-icon" />
-                  <input type="text" placeholder="Ej. 0412 1234567" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="modal-input-dark with-left-icon" />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Dirección</label>
-                <div className="input-with-icon-wrap">
-                  <MapPin size={16} className="input-left-icon" />
-                  <input type="text" placeholder="Ej. Av. Bolívar, casa 12" value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="modal-input-dark with-left-icon" />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cumpleaños</label>
-                <div className="birthday-selects-row">
-                  <div className="select-col">
-                    <span className="select-sub-label">Mes</span>
-                    <StyledSelect className="modal-select-dark" value={editBirthMonth} onChange={(e) => setEditBirthMonth(e.target.value)}>
-                      <option value="">Selecciona el mes</option>
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                  <div className="select-col">
-                    <span className="select-sub-label">Día</span>
-                    <StyledSelect className="modal-select-dark" value={editBirthDay} onChange={(e) => setEditBirthDay(e.target.value)}>
-                      <option value="">Selecciona el día</option>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-              </div>
-
-              {editError && <p className="login-error mt-2">{editError}</p>}
-
-              <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => closeEditModal()}>Cancelar</button>
-                <button type="submit" className="btn-modal-submit-red" disabled={editSaving}>{editSaving ? 'Guardando…' : 'Guardar cambios'}</button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
+      {editingCustomer && (
+        <EditClientModal
+          customer={editingCustomer}
+          onClose={() => setEditingCustomer(null)}
+          onSaved={(updated) => {
+            setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c))
+            setSelectedClient(prev => prev && prev.id === updated.id ? {
+              ...prev,
+              name: updated.name,
+              phone: updated.phone,
+              identification: updated.identification,
+              identificationStatus: classifyIdentification(updated.identification),
+            } : prev)
+          }}
+        />
       )}
 
       {/* Modal Abonar Crédito */}
@@ -849,111 +492,16 @@ export function Clientes() {
       ), document.body)}
 
       {/* Modal Nuevo pedido (embebido, no navega a Caja) */}
-      {showQuickOrderModal && selectedClient && createPortal(
-        <div className={`modal-overlay-dark ${closingQuickOrder ? 'closing' : ''}`} onClick={closeQuickOrderModal}>
-          <div className="client-modal-box quick-order-modal animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <div>
-                <h3 className="modal-title">Nuevo pedido</h3>
-                <p className="modal-sub-desc">Para {selectedClient.name}</p>
-              </div>
-            </div>
-
-            <div className="quick-order-search-row mt-3">
-              <Search size={15} className="ic" />
-              <input
-                type="text"
-                placeholder="Buscar producto…"
-                value={quickOrderSearch}
-                onChange={(e) => setQuickOrderSearch(e.target.value)}
-                className="modal-input-dark with-left-icon"
-              />
-            </div>
-
-            <div className="quick-order-product-list">
-              {filteredQuickOrderProducts.map((p) => (
-                <button type="button" key={p.id} className="quick-order-product-row" onClick={() => addToQuickOrderCart(p)}>
-                  {p.imageUrl
-                    ? <img src={p.imageUrl} alt="" className="quick-order-product-thumb" />
-                    : <span className="quick-order-product-thumb quick-order-product-emoji">{p.emoji || '🍽️'}</span>}
-                  <span className="quick-order-product-name">{formatProductTitle(p.name)}</span>
-                  <span className="quick-order-product-price">{formatUsdText(p.price)}</span>
-                  <Plus size={14} />
-                </button>
-              ))}
-              {filteredQuickOrderProducts.length === 0 && <p className="modal-sub-desc">Sin productos para mostrar.</p>}
-            </div>
-
-            {quickOrderCart.length > 0 && (
-              <div className="quick-order-cart mt-3">
-                {quickOrderCart.map((item) => (
-                  <div className="quick-order-cart-row" key={item.lineId}>
-                    <span className="quick-order-cart-name">{formatProductTitle(item.productName)}</span>
-                    <div className="quick-order-qty-controls">
-                      <button type="button" onClick={() => adjustQuickOrderQty(item.lineId as string, -1)}><Minus size={12} /></button>
-                      <span>{item.quantity}</span>
-                      <button type="button" onClick={() => adjustQuickOrderQty(item.lineId as string, 1)}><Plus size={12} /></button>
-                    </div>
-                    <span className="quick-order-cart-sub">{formatUsdText(item.price * item.quantity)}</span>
-                    <button type="button" className="quick-order-remove-btn" onClick={() => removeFromQuickOrderCart(item.lineId as string)}><X size={14} /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="quick-order-config-row mt-3">
-              <div className="field">
-                <label className="field-label-white">Tipo de pedido</label>
-                <StyledSelect
-                  className="modal-select-dark"
-                  value={quickOrderType}
-                  onChange={(e) => setQuickOrderType(e.target.value as 'dine-in' | 'takeaway' | 'delivery')}
-                >
-                  <option value="takeaway">Para llevar</option>
-                  <option value="dine-in">Mesa</option>
-                  <option value="delivery">Delivery</option>
-                </StyledSelect>
-              </div>
-              <div className="field">
-                <label className="field-label-white">Método de pago</label>
-                <StyledSelect
-                  className="modal-select-dark"
-                  value={quickOrderPayment}
-                  onChange={(e) => setQuickOrderPayment(e.target.value as PaymentMethod)}
-                >
-                  <option value="cash">Efectivo</option>
-                  <option value="mobile">Pago móvil</option>
-                  <option value="card">Punto</option>
-                  <option value="transfer">Transferencia</option>
-                  <option value="binance">Binance</option>
-                  <option value="other">Otro</option>
-                </StyledSelect>
-              </div>
-            </div>
-
-            {quickOrderError && <p className="login-error mt-2">{quickOrderError}</p>}
-            {isDemoMode && <p className="modal-sub-desc quick-order-demo-note">Vista previa — en modo demo no se crean pedidos reales.</p>}
-
-            <div className="quick-order-total-row mt-3">
-              <span>Total</span>
-              <span className="quick-order-total-val">{formatUsdText(quickOrderTotal)}</span>
-            </div>
-
-            <div className="modal-actions-row-right mt-4">
-              <button type="button" className="btn-modal-cancel" onClick={closeQuickOrderModal}>Cancelar</button>
-              <button
-                type="button"
-                className="btn-modal-submit-red"
-                disabled={quickOrderCart.length === 0 || quickOrderSaving || isDemoMode}
-                title={isDemoMode ? 'Deshabilitado en modo demo' : undefined}
-                onClick={handleQuickOrderSubmit}
-              >
-                {quickOrderSaving ? 'Creando…' : 'Crear pedido'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
+      {showQuickOrderModal && selectedClient && (
+        <QuickOrderModal
+          bcvRate={bcvRate}
+          client={selectedClient}
+          isDemoMode={isDemoMode}
+          products={products}
+          userId={user?.id}
+          onClose={() => setShowQuickOrderModal(false)}
+          onCreated={(orders, freshCredits) => { setCustomerOrders(orders); setCredits(freshCredits) }}
+        />
       )}
 
       {/* Modal Detalle de pedido (desde el historial, todo con nombres completos) */}
