@@ -11,10 +11,11 @@ import { alertDialog, confirmDialog } from '../components/ConfirmDialog'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, createCustomer, updateCustomer, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type FinancialAccount } from '../lib/dataService'
-import { Search, Users, Calendar, User, Plus, Crown, CreditCard, DollarSign, Eye, Edit2, Trash2, X, Phone, Gift, ShoppingBag, MapPin, ArrowLeft, Tag, Info, ChevronLeft, ChevronRight, IdCard, ShoppingCart, ClipboardList, Package, Wallet } from 'lucide-react'
+import { getCredits, getCreditPayments, addCreditPayment, getCustomerPaymentAccounts, updateCustomer, setCustomerActive, getCustomers, getCustomerOrders, getCustomerPurchaseMetrics, getProducts, type Credit as CreditType, type CreditPayment, type Customer, type CustomerOrderSummary, type CustomerPurchaseMetric, type Product, type FinancialAccount } from '../lib/dataService'
+import { Search, Users, Calendar, User, Plus, Crown, CreditCard, DollarSign, Eye, Edit2, Trash2, X, Phone, Gift, ShoppingBag, MapPin, ArrowLeft, Tag, ChevronLeft, ChevronRight, IdCard, ShoppingCart, ClipboardList, Package, Wallet } from 'lucide-react'
 import './Clientes.css'
 import { QuickOrderModal } from './clientes/QuickOrderModal'
+import { NewClientModal } from './clientes/NewClientModal'
 import { CustomerRow, formatTenure, formatRelativeDays, formatDate, formatDateTime, formatUsdText, WhatsAppIcon, normalizeCustomerName, avatarColorFor, buildDemoClientData, ORDER_TYPE_LABELS, ORDER_TYPE_ICONS, FULFILLMENT_LABELS, formatBirthday, PAYMENT_LABELS, PAYMENT_ICONS, classifyIdentification } from './clientes/model'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 
@@ -122,12 +123,6 @@ export function Clientes() {
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false)
-  const [newClientName, setNewClientName] = useState('')
-  const [newClientLastName, setNewClientLastName] = useState('')
-  const [newClientPhone, setNewClientPhone] = useState('')
-  const [newClientAddress, setNewClientAddress] = useState('')
-  const [birthMonth, setBirthMonth] = useState('')
-  const [birthDay, setBirthDay] = useState('')
 
   // Edit client modal state
   const [editClientId, setEditClientId] = useState<string | null>(null)
@@ -162,7 +157,6 @@ export function Clientes() {
 
   // Closing-delay flags: keep the overlay mounted for the exit animation
   // before flipping the visibility state to false/null.
-  const [closingNew, setClosingNew] = useState(false)
   const [closingEdit, setClosingEdit] = useState(false)
   const [closingPayment, setClosingPayment] = useState(false)
   const [closingCobrar, setClosingCobrar] = useState(false)
@@ -174,16 +168,6 @@ export function Clientes() {
     window.setTimeout(() => {
       setOrderDetail(null)
       setClosingOrderDetail(false)
-    }, 200)
-  }
-
-  const closeNewModal = (then?: () => void) => {
-    if (!showNewModal || closingNew) return
-    setClosingNew(true)
-    window.setTimeout(() => {
-      setShowNewModal(false)
-      setClosingNew(false)
-      then?.()
     }, 200)
   }
 
@@ -326,49 +310,6 @@ export function Clientes() {
     if (isDemoMode) return
     getProducts().then(setProducts).catch((e) => console.error('Error cargando fotos de productos:', e))
   }, [isDemoMode])
-
-  const handleSaveClient = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newClientName.trim()) return
-
-    const fullName = `${newClientName.trim()} ${newClientLastName.trim()}`.trim()
-    const birthDate = birthMonth && birthDay ? `2000-${birthMonth.padStart(2, '0')}-${birthDay.padStart(2, '0')}` : undefined
-    let saved: Customer
-    try {
-      saved = await createCustomer({
-        name: fullName,
-        phone: newClientPhone.trim(),
-        address: newClientAddress.trim() || undefined,
-        birthDate,
-      })
-    } catch (err) {
-      console.error('Error guardando cliente:', err)
-      void alertDialog({ message: 'No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.', danger: true })
-      return
-    }
-    const newClientObj: CustomerRow = {
-      id: saved.id,
-      initials: (newClientName[0] + (newClientLastName[0] || '')).toUpperCase(),
-      avatarBg: '#dc2626',
-      name: fullName,
-      phone: saved.phone,
-      identification: saved.identification,
-      identificationStatus: classifyIdentification(saved.identification),
-      lastPurchase: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      totalPurchased: 0.00,
-      pendingBalance: 0.00,
-      status: 'Activo',
-    }
-
-    setCustomers(prev => [saved, ...prev])
-    setNewClientName('')
-    setNewClientLastName('')
-    setNewClientPhone('')
-    setNewClientAddress('')
-    setBirthMonth('')
-    setBirthDay('')
-    closeNewModal(() => setSelectedClient(newClientObj))
-  }
 
   const openEditCustomer = (c: Customer) => {
     setEditClientId(c.id)
@@ -516,115 +457,11 @@ export function Clientes() {
   const clientModals = (
     <>
       {/* Modal Nuevo Cliente */}
-      {showNewModal && createPortal(
-        <div className={`modal-overlay-dark ${closingNew ? 'closing' : ''}`} onClick={() => closeNewModal()}>
-          <div className="client-modal-box animate-pop clientes-modal-glow" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-line clientes-modal-header-glow">
-              <div>
-                <h3 className="modal-title">Nuevo cliente</h3>
-                <p className="modal-sub-desc">Registra un nuevo cliente en el sistema</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleSaveClient} className="crm-form mt-3">
-              <div className="field">
-                <label className="field-label-white">Nombre</label>
-                <input
-                  type="text"
-                  placeholder="Ingresa el nombre del cliente"
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  className="modal-input-dark"
-                  required
-                />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Apellido</label>
-                <input
-                  type="text"
-                  placeholder="Ingresa el apellido del cliente"
-                  value={newClientLastName}
-                  onChange={(e) => setNewClientLastName(e.target.value)}
-                  className="modal-input-dark"
-                />
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Teléfono</label>
-                <div className="input-with-icon-wrap">
-                  <Phone size={16} className="input-left-icon" />
-                  <input
-                    type="text"
-                    placeholder="Ej. 55 1234 5678"
-                    value={newClientPhone}
-                    onChange={(e) => setNewClientPhone(e.target.value)}
-                    className="modal-input-dark with-left-icon"
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Dirección</label>
-                <div className="input-with-icon-wrap">
-                  <MapPin size={16} className="input-left-icon" />
-                  <input
-                    type="text"
-                    placeholder="Ej. Av. Bolívar, casa 12"
-                    value={newClientAddress}
-                    onChange={(e) => setNewClientAddress(e.target.value)}
-                    className="modal-input-dark with-left-icon"
-                  />
-                </div>
-              </div>
-
-              <div className="field mt-3">
-                <label className="field-label-white">Cumpleaños</label>
-                <div className="birthday-selects-row">
-                  <div className="select-col">
-                    <span className="select-sub-label">Mes</span>
-                    <StyledSelect
-                      className="modal-select-dark"
-                      value={birthMonth}
-                      onChange={(e) => setBirthMonth(e.target.value)}
-                    >
-                      <option value="">Selecciona el mes</option>
-                      {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                        <option key={m} value={String(i + 1)}>{m}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                  <div className="select-col">
-                    <span className="select-sub-label">Día</span>
-                    <StyledSelect
-                      className="modal-select-dark"
-                      value={birthDay}
-                      onChange={(e) => setBirthDay(e.target.value)}
-                    >
-                      <option value="">Selecciona el día</option>
-                      {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                        <option key={d} value={d}>{d}</option>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-                <span className="birthday-hint mt-1">
-                  <Info size={14} /> Solo para promociones y recordatorios
-                </span>
-              </div>
-
-              <div className="modal-actions-row-right mt-4">
-                <button type="button" className="btn-modal-cancel" onClick={() => closeNewModal()}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-modal-submit-red">
-                  Guardar cliente
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
+      {showNewModal && (
+        <NewClientModal
+          onClose={() => setShowNewModal(false)}
+          onCreated={(saved, row) => { setCustomers(prev => [saved, ...prev]); setSelectedClient(row) }}
+        />
       )}
 
       {/* Modal Editar Cliente */}
