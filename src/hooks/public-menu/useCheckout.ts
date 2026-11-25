@@ -1,3 +1,4 @@
+import { confirmDialog } from '../../components/ConfirmDialog'
 import { useRef, useEffect, useState, useCallback, type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { revealCheckoutField } from '../../lib/publicCheckoutDom'
 import { readCheckoutAttempt } from '../../lib/publicMenuStorage'
@@ -279,7 +280,12 @@ export function useCheckout({ address, addressActionRef, addressMethod, addressR
   }
 
   const repeatPreviousOrder = async (previousOrder: CustomerRepeatOrder) => {
-    if (cart.length > 0 && !window.confirm('Tu pedido actual tiene productos. ¿Quieres reemplazarlo por el pedido anterior?')) return
+    if (cart.length > 0 && !await confirmDialog({
+      title: '¿Cambiamos tu pedido?',
+      message: 'Ya tienes platos en tu pedido. Si repites este, reemplazamos lo que llevas por el pedido anterior.',
+      confirmText: 'Sí, repetir',
+      cancelText: 'Dejar el actual',
+    })) return
 
     const catalog = await getPublicCatalog()
     const activeProducts = new Map(catalog.filter(product => product.active).map(product => [product.id, product]))

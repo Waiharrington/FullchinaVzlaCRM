@@ -141,3 +141,10 @@
 /* Nombres de plato completos: bajan de línea en vez de cortarse con "…". */
 .public-menu-page .customer-profile-page .customer-recent-order-card .customer-recent-order-title,
 .public-menu-page .customer-profile-page .customer-saved-favorites-grid strong { overflow: visible !important; white-space: normal !important; text-overflow: clip !important; overflow-wrap: anywhere; line-height: 1.25; }
+
+/* Entrar y crear cuenta: una sola entrada corta, sin desenfoques, retrasos ni
+   brillos repetidos. */
+.public-menu-page .customer-profile-page.customer-profile-auth,
+.public-menu-page .customer-profile-page.customer-profile-auth *:not(.customer-profile-submit svg):not([class*="spinner"]):not(.fc-skeleton) { animation-duration: .18s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; filter: none; }
+.public-menu-page .customer-profile-auth .customer-profile-submit::after,
+.public-menu-page .customer-profile-auth .customer-profile-existing::after { display: none !important; }

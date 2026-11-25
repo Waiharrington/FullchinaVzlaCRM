@@ -50,7 +50,9 @@ export function createResponseCache({ ttlMs, maxEntries, tableDependencies, now 
     (entryTable !== null && (tableDependencies[entryTable] ?? []).includes(changedTable))
 
   const fetch = async (key: string, table: string | null, load: () => Promise<Response>) => {
-    while (true) {
+    // Con cambios constantes se entrega la última respuesta tras algunos
+    // intentos, en vez de dejar la pantalla cargando para siempre.
+    for (let attempt = 0; ; attempt += 1) {
       const cached = cache.get(key)
       if (cached && cached.expiresAt > now()) return snapshotResponse(cached)
       if (cached) cache.delete(key)
@@ -83,7 +85,7 @@ export function createResponseCache({ ttlMs, maxEntries, tableDependencies, now 
         const snapshot = await pending.promise
         // An older request can finish after a newer write. Never hand that
         // snapshot to the UI; join or start the fresh request instead.
-        if (pending.invalidated) continue
+        if (pending.invalidated && attempt < 2) continue
         return snapshotResponse(snapshot)
       } finally {
         if (inFlight.get(key) === pending) inFlight.delete(key)

@@ -1,3 +1,4 @@
+import { confirmDialog } from '../components/ConfirmDialog'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { cancelQueuedWhatsAppMessages, deleteWhatsAppSegment, deleteWhatsAppTemplate, getCustomers, getWhatsAppMessages, getWhatsAppSegments, getWhatsAppTemplates, queueWhatsAppMessages, saveWhatsAppSegment, saveWhatsAppTemplate, type Customer, type WhatsAppMessage, type WhatsAppSegment, type WhatsAppTemplate } from '../lib/dataService'
@@ -188,7 +189,7 @@ export function MarketingWhatsApp() {
     } catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo guardar la plantilla') }
   }
   const removeTemplate = async (template: WhatsAppTemplate) => {
-    if (!window.confirm(`¿Eliminar la plantilla “${template.name}”?`)) return
+    if (!await confirmDialog({ title: 'Eliminar plantilla', message: `¿Eliminar la plantilla “${template.name}”?`, confirmText: 'Eliminar', danger: true })) return
     try { await deleteWhatsAppTemplate(template.id); setTemplates(prev => prev.filter(item => item.id !== template.id)) }
     catch (error) { setSentNotice(error instanceof Error ? error.message : 'No se pudo eliminar la plantilla') }
   }
@@ -285,7 +286,7 @@ export function MarketingWhatsApp() {
   }
 
   const handleDeleteSegment = async (segment: WhatsAppSegment) => {
-    if (!window.confirm(`¿Eliminar el segmento “${segment.name}”?`)) return
+    if (!await confirmDialog({ title: 'Eliminar segmento', message: `¿Eliminar el segmento “${segment.name}”?`, confirmText: 'Eliminar', danger: true })) return
     try {
       await deleteWhatsAppSegment(segment.id)
       setSegments(prev => prev.filter(item => item.id !== segment.id))
@@ -333,7 +334,7 @@ export function MarketingWhatsApp() {
 
   const handleStopSending = async () => {
     if (stopping) return
-    if (!window.confirm('¿Detener el envío? Se cancelarán solo los mensajes pendientes de esta campaña (incluido el que esté saliendo). Los de otras campañas no se tocan.')) return
+    if (!await confirmDialog({ title: '¿Detener el envío?', message: 'Se cancelarán solo los mensajes pendientes de esta campaña (incluido el que esté saliendo). Los de otras campañas no se tocan.', confirmText: 'Detener', cancelText: 'Seguir enviando', danger: true })) return
     setStopping(true)
     try {
       const cancelled = await cancelQueuedWhatsAppMessages(activeBatchId)

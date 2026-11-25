@@ -59,6 +59,23 @@ export function ProfileFavoritesSkeleton({ count = 2 }: { count?: number }) {
   )
 }
 
+/** Productos de una comanda dentro del historial: foto, nombre y cantidad. */
+export function ProfileOrderItemsSkeleton() {
+  return (
+    <div className="pps-order-items" role="status" aria-label="Cargando productos del pedido">
+      {Array.from({ length: 2 }, (_, index) => (
+        <span className="pps-order-dish" key={index} aria-hidden="true">
+          <span className="pps-thumb fc-skeleton" />
+          <span className="pps-row-copy">
+            <span className="pps-line pps-w60 fc-skeleton" />
+            <span className="pps-line pps-w40 fc-skeleton" />
+          </span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 /** Tarjetas de "Pedidos recientes": modalidad, plato y botón de repetir. */
 export function ProfileRecentOrdersSkeleton() {
   return (

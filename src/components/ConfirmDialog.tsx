@@ -7,6 +7,8 @@ export interface DialogOptions {
   confirmText?: string
   cancelText?: string
   danger?: boolean
+  /** Muestra un campo de texto dentro del diálogo. */
+  input?: { label: string; type?: 'text' | 'password'; minLength?: number }
 }
 
 function mount(node: (onResult: (result: boolean) => void) => React.ReactElement): Promise<boolean> {
@@ -33,4 +35,11 @@ export function confirmDialog(options: DialogOptions | string): Promise<boolean>
 export function alertDialog(options: DialogOptions | string): Promise<void> {
   const opts: DialogOptions = typeof options === 'string' ? { message: options } : options
   return mount((onResult) => <ConfirmDialogView {...opts} showCancel={false} onResult={onResult} />).then(() => undefined)
+}
+
+/** Pide un texto; devuelve null si la persona cancela. */
+export function promptDialog(options: DialogOptions & { input: NonNullable<DialogOptions['input']> }): Promise<string | null> {
+  let value = ''
+  return mount((onResult) => <ConfirmDialogView {...options} showCancel onInput={next => { value = next }} onResult={onResult} />)
+    .then(accepted => accepted ? value : null)
 }

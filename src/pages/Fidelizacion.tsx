@@ -1,3 +1,4 @@
+import { confirmDialog, promptDialog } from '../components/ConfirmDialog'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { getLoyaltyCustomers, type Customer } from '../lib/dataService'
@@ -227,7 +228,12 @@ export function Fidelizacion() {
   }
 
   const resetCustomerPassword = async (account: Account) => {
-    const nextPassword = window.prompt(`Nueva contraseña para ${account.customer_name} (mínimo 8 caracteres):`)
+    const nextPassword = await promptDialog({
+      title: 'Nueva contraseña',
+      message: `Cambia la contraseña de ${account.customer_name}.`,
+      input: { label: 'Mínimo 8 caracteres', minLength: 8 },
+      confirmText: 'Guardar',
+    })
     if (!nextPassword) return
     const { data, error } = await supabase!.functions.invoke('customer-auth', { body: { action: 'admin-reset-password', customer_id: account.customer_id, new_password: nextPassword } })
     setAdminNotice(error ? (data?.message || error.message) : `Contraseña actualizada para ${account.customer_name}.`)
@@ -236,7 +242,7 @@ export function Fidelizacion() {
 
   const redeemCustomerReward = async (reward: PendingCustomerReward | CustomerRewardRecord) => {
     const customerName = 'customer_name' in reward ? reward.customer_name : selectedCustomer.name
-    if (!window.confirm(`Confirma que entregaste “${reward.reward_description}” a ${customerName}.`)) return
+    if (!await confirmDialog({ title: '¿Entregaste el premio?', message: `Confirma que entregaste “${reward.reward_description}” a ${customerName}.`, confirmText: 'Sí, entregado' })) return
     const needsChoice = Boolean(reward.choices?.length)
     const chosenProductId = needsChoice ? (rewardChoiceByReward[reward.id] || reward.choices![0].id) : null
     setRedeemingRewardId(reward.id)

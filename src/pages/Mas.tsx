@@ -205,7 +205,7 @@ export function Mas() {
       setCreditPayments(await getCreditPayments(credit.id))
     } catch (e) {
       console.error('Error cargando historial:', e)
-      alert('No se pudo cargar el historial de abonos')
+      void alertDialog({ message: 'No se pudo cargar el historial de abonos', danger: true })
     } finally {
       setLoadingHistory(false)
     }
@@ -229,7 +229,7 @@ export function Mas() {
         await fetchAll()
       } catch (e) {
         console.error('Error borrando crédito demo:', e)
-        alert('No se pudo borrar el crédito demo')
+        void alertDialog({ message: 'No se pudo borrar el crédito demo', danger: true })
       }
       return
     }
@@ -244,7 +244,7 @@ export function Mas() {
       await fetchAll()
     } catch (e) {
       console.error('Error borrando crédito:', e)
-      alert('No se pudo borrar el crédito')
+      void alertDialog({ message: 'No se pudo borrar el crédito', danger: true })
     }
   }
 

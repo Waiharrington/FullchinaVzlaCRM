@@ -1,0 +1,35 @@
+/* Avisos de /pedir: una sola familia. Fondo crema de comanda, borde rojo,
+   sello con el wok y título en la tipografía de la marca. Va al final. */
+:is(.public-menu-page, .public-cart-drawer, .public-modal-backdrop, .public-variant-backdrop) :is(.public-checkout-profile-note, .public-location-feedback, .public-address-coverage-alert, .public-delivery-hint, .public-pay-hint, .public-suggestion-status, .ppdm-modifier-error, .ppdm-footer-feedback, .ppdm-required-group-error, .customer-repeat-order-error, .customer-profile-message) {
+  box-sizing: border-box;
+  border: 0 !important;
+  border-left: 6px solid #DB1420 !important;
+  border-radius: 16px !important;
+  padding: 12px 14px !important;
+  color: #3A2721 !important;
+  background: #FFF4E0 !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  font: 650 13.5px/1.4 var(--pd-text) !important;
+}
+:is(.public-menu-page, .public-cart-drawer, .public-modal-backdrop, .public-variant-backdrop) :is(.public-checkout-profile-note, .public-location-feedback, .public-address-coverage-alert, .public-delivery-hint, .public-suggestion-status, .ppdm-modifier-error, .ppdm-footer-feedback) :is(strong, p, span) { color: #3A2721 !important; }
+:is(.public-menu-page, .public-cart-drawer, .public-modal-backdrop, .public-variant-backdrop) :is(.public-location-feedback, .public-delivery-hint, .public-suggestion-status, .ppdm-footer-feedback) > svg { flex: 0 0 auto; color: #DB1420 !important; }
+:is(.public-menu-page, .public-cart-drawer, .public-modal-backdrop, .public-variant-backdrop) :is(.public-location-feedback, .public-address-coverage-alert, .ppdm-modifier-error) button { min-height: 38px; padding: 0 14px; border: 0 !important; border-radius: 11px; color: #fff !important; background: #DB1420 !important; font: 800 13px var(--pd-text); cursor: pointer; }
+
+/* Confirmaciones tranquilas: borde amarillo en vez de rojo. */
+:is(.public-menu-page, .public-cart-drawer) :is(.public-checkout-profile-note, .public-delivery-hint, .public-pay-hint) { border-left-color: #FFC21A !important; }
+:is(.public-menu-page, .public-cart-drawer) .public-checkout-profile-note { display: flex; align-items: center; gap: 12px; }
+.public-checkout-profile-note img { flex: 0 0 auto; width: 46px; height: 46px; padding: 3px; box-sizing: border-box; border-radius: 50%; object-fit: contain; background: #DB1420; box-shadow: 0 3px 0 #8C0912; }
+.public-checkout-profile-note span { display: grid; gap: 2px; min-width: 0; }
+:is(.public-menu-page, .public-cart-drawer) .public-checkout-profile-note strong { font: 400 16px/1.2 var(--pd-display); color: #17100E !important; }
+
+/* Notificaciones flotantes sobre /pedir. */
+body:has(.public-menu-page) #toast-root .toast-item { border: 0; border-left: 6px solid #DB1420; border-radius: 18px; color: #3A2721; background: #FFF4E0; box-shadow: 0 16px 38px rgba(0, 0, 0, .45); font-family: Archivo, system-ui, sans-serif; }
+body:has(.public-menu-page) #toast-root .toast-item::before { display: none; }
+body:has(.public-menu-page) #toast-root .toast-success { border-left-color: #FFC21A; }
+body:has(.public-menu-page) #toast-root .toast-icon { width: 22px; height: 22px; color: #DB1420; }
+body:has(.public-menu-page) #toast-root .toast-success .toast-icon { color: #17803D; }
+body:has(.public-menu-page) #toast-root .toast-brand-line { flex: 1; height: 22px; background: url('/optimized/root/logo.webp') right center / contain no-repeat; opacity: 1; }
+body:has(.public-menu-page) #toast-root .toast-title { display: block; margin-bottom: 3px; color: #17100E; font: 400 16px/1.25 'Alfa Slab One', Rockwell, serif; }
+body:has(.public-menu-page) #toast-root .toast-message { color: #3A2721; font-size: 14px; font-weight: 600; line-height: 1.45; }
+body:has(.public-menu-page) #toast-root .toast-close { color: #5C4A43; background: transparent; }
+body:has(.public-menu-page) #toast-root .toast-action { border: 0; border-radius: 11px; color: #fff; background: #DB1420; }

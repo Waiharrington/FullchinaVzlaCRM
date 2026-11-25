@@ -129,7 +129,10 @@ function preloadPublicMenu() {
 
   if (!menuCatalogWarmupStarted) {
     menuCatalogWarmupStarted = true
-    void menuModuleLoad.then(module => module.preloadPublicMenuCatalog()).catch(() => undefined)
+    // Los platos se piden a la vez que el código de la carta, no después.
+    void import('./lib/publicMenuRuntime')
+      .then(runtime => runtime.getPublicCatalogWithRetry())
+      .catch(() => { menuCatalogWarmupStarted = false })
   }
 
   return menuModuleLoad
@@ -139,7 +142,7 @@ function schedulePublicMenuWarmup() {
   const connection = (navigator as Navigator & {
     connection?: { effectiveType?: string; saveData?: boolean }
   }).connection
-  if (connection?.saveData || ['slow-2g', '2g', '3g'].includes(connection?.effectiveType || '')) return
+  if (connection?.saveData || ['slow-2g', '2g'].includes(connection?.effectiveType || '')) return
 
   const warm = () => {
     if (!staticWelcome?.isConnected || window.__fullChinaPublicMenuOpenQueued) return
@@ -149,8 +152,9 @@ function schedulePublicMenuWarmup() {
     requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number
   }
 
-  if (idleWindow.requestIdleCallback) idleWindow.requestIdleCallback.call(window, warm, { timeout: 2500 })
-  else window.setTimeout(warm, 2500)
+  // Se adelanta mientras la persona lee la bienvenida.
+  if (idleWindow.requestIdleCallback) idleWindow.requestIdleCallback.call(window, warm, { timeout: 400 })
+  else window.setTimeout(warm, 200)
 }
 
 function setButtonState(label: string, loading: boolean) {
@@ -181,7 +185,14 @@ async function openPublicMenu() {
       window.__fullChinaSkipWelcomeForCurrentLoad = true
     }
   } catch { /* la carta también puede abrirse si el navegador bloquea almacenamiento */ }
-  if (await window.__fullChinaCheckPublicMenuVersion?.()) {
+  // La carta empieza a descargarse sin esperar la revisión de versión, y esa
+  // revisión nunca retiene el toque más de un instante.
+  void preloadPublicMenu().catch(() => undefined)
+  const isOutdated = await Promise.race([
+    Promise.resolve(window.__fullChinaCheckPublicMenuVersion?.()),
+    new Promise<boolean>(resolve => window.setTimeout(() => resolve(false), 600)),
+  ])
+  if (isOutdated) {
     window.__fullChinaRecoverPublicMenu?.()
     return
   }

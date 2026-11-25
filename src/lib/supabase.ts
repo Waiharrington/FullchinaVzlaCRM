@@ -103,7 +103,6 @@ const RPC_CHANGE_TABLES: Record<string, readonly string[]> = {
   fn_update_purchase: ['purchases', 'purchase_items', 'purchase_expense_items', 'purchase_payments', 'stock_movements', 'ingredients'],
   fn_create_web_order: ['web_order_requests', 'web_order_items'],
   fn_sync_customer_favorites: ['customer_favorites'],
-  fn_claim_customer_loyalty_celebration: ['customer_loyalty_rewards'],
   fn_admin_set_loyalty_reward_config: ['loyalty_settings', 'loyalty_reward_sequence'],
   fn_admin_set_loyalty_choice_reward: ['loyalty_settings', 'loyalty_reward_sequence', 'loyalty_reward_choices'],
   fn_admin_redeem_customer_loyalty_reward: ['customer_loyalty_rewards', 'customers'],
@@ -118,7 +117,12 @@ const RPC_CHANGE_TABLES: Record<string, readonly string[]> = {
   fn_delete_push_subscription: ['push_subscriptions'],
 }
 const RPC_READ_ONLY_NAMES = new Set(['fn_admin_customer_accounts'])
-const RPC_DERIVED_WRITE_NAMES = new Set(['fn_sync_dashboard_alerts'])
+// El reclamo de celebración se llama al cargar el perfil: si avisara un cambio
+// desde aquí, el perfil se recargaría y volvería a reclamar sin parar. Los
+// cambios reales llegan por el feed de versiones de la base de datos.
+const RPC_DERIVED_WRITE_NAMES = new Set(['fn_sync_dashboard_alerts', 'fn_claim_customer_loyalty_celebration'])
+// Tope de relecturas cuando llegan cambios mientras una consulta viaja.
+const MAX_STALE_READ_RETRIES = 2
 const READ_ONLY_RPC_PREFIXES = [
   'fn_get_', 'fn_admin_get_', 'fn_admin_list_', 'fn_validate_', 'fn_check_',
   'fn_search_', 'fn_preview_', 'fn_calculate_', 'fn_generate_',
@@ -268,8 +272,8 @@ async function cachedSupabaseFetch(input: RequestInfo | URL, init?: RequestInit)
 
     // Some read RPCs use POST and are intentionally not cached. If any table
     // changed while one was in flight, read again before returning old data.
-    while (response.ok && !details.cacheable && details.method === 'POST' && isReadOnlyRpc(details.rpcName)
-      && observedChangeEpoch !== dataChangeEpoch) {
+    for (let retry = 0; retry < MAX_STALE_READ_RETRIES && response.ok && !details.cacheable && details.method === 'POST'
+      && isReadOnlyRpc(details.rpcName) && observedChangeEpoch !== dataChangeEpoch; retry += 1) {
       observedChangeEpoch = dataChangeEpoch
       response = await fetch(input, init)
     }

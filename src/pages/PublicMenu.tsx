@@ -26,7 +26,7 @@ import { useMenuBrowse } from '../hooks/public-menu/useMenuBrowse'
 import { useRecommended } from '../hooks/public-menu/useRecommended'
 import { useInstagramReels } from '../hooks/public-menu/useInstagramReels'
 import { usePublicImages } from '../hooks/public-menu/usePublicImages'
-import { preloadCatalogRuntime, handleInstagramProfileClick, warmProfileBackgroundImages } from '../lib/publicMenuRuntime'
+import { handleInstagramProfileClick, warmProfileBackgroundImages } from '../lib/publicMenuRuntime'
 import { ProductCard } from '../components/public-menu/ProductCard'
 import { DesktopProductCard } from '../components/public-menu/DesktopProductCard'
 import { DesktopPromoCard } from '../components/public-menu/DesktopPromoCard'
@@ -56,12 +56,6 @@ import '../pedir-v2/index.css'
 
 
 declare global { interface Window { __removeFCSplash?: () => void } }
-
-// The public entry uses this route-level hook to share the catalog request before React mounts.
-// eslint-disable-next-line react-refresh/only-export-components
-export async function preloadPublicMenuCatalog() {
-  return preloadCatalogRuntime()
-}
 
 export function PublicMenu() {
   useEffect(() => {

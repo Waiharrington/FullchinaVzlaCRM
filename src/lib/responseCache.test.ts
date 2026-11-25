@@ -69,6 +69,14 @@ describe('shared Supabase response cache', () => {
     expect(await (await cache.fetch('orders', 'orders', async () => new Response('unexpected'))).text()).toBe('new')
   })
 
+  it('still answers when changes keep arriving while it reads', async () => {
+    const cache = createResponseCache(cacheOptions)
+    const load = vi.fn(async () => { await Promise.resolve(); cache.invalidate('orders'); return new Response('latest') })
+
+    expect(await (await cache.fetch('orders', 'orders', load)).text()).toBe('latest')
+    expect(load).toHaveBeenCalledTimes(3)
+  })
+
   it('partitions cache keys by caller identity and supports broad invalidation', async () => {
     const cache = createResponseCache(cacheOptions)
     const loader = (value: string) => vi.fn(async () => new Response(value))
