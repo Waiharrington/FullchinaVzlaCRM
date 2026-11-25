@@ -5,7 +5,7 @@ import { Suspense, useRef, type MouseEvent, type Dispatch, type SetStateAction, 
 import { LoyaltyCard } from '../../pedir-v2/LoyaltyCard'
 import { usePauseOffscreen } from '../../pedir-v2/hooks'
 import { Chopsticks, Fit, Odo, Thumb, Wok } from '../../pedir-v2/ui'
-import { Flame, Search, X, ChevronRight, Bike, Zap, ShieldCheck, MapPin, Clock, ShoppingBag, Heart, Trash2, Minus, Plus, Pencil, LoaderCircle, Store, MessageSquareText } from 'lucide-react'
+import { Flame, Search, X, ChevronRight, Bike, Zap, ShieldCheck, MapPin, Clock, ShoppingBag, Heart, Store, MessageSquareText } from 'lucide-react'
 import { productTitle, money, cartLineKey, cartProductName } from '../../lib/publicMenuFormat'
 import { categoryLabel } from '../../lib/menuCategories'
 import { PublicHomeProductSkeletons, PublicHomePromoSkeletons, PublicContactSkeleton, PublicProfileSkeleton } from '../../components/PublicPageSkeletons'
@@ -19,7 +19,6 @@ import { type Product } from '../../lib/dataService'
 interface PublicDesktopLayoutProps {
   scrollCategory: string | null
   activeCategory: string
-  address: string
   canScrollPopular: boolean
   cart: WebOrderCartItem[]
   cartPulse: boolean
@@ -27,14 +26,10 @@ interface PublicDesktopLayoutProps {
   categorySections: { category: string; groups: MenuProductGroup[]; }[]
   contactViewProps: { pageSettings: PublicOrderPageSettings; formattedOpenTime: string; formattedCloseTime: string; publicWhatsappPhone: string; publicInstagramUrl: string; publicFacebookUrl: string; mapPreviewUrl: string; currentInstagramReels: PublicOrderReel[]; instagramReels: { reel: PublicOrderReel; position: number; }[]; instagramActiveIndex: number; instagramAudioEnabled: boolean; instagramPlaybackStarted: boolean; instagramDesktopPlaybackConfirmed: boolean; instagramPaused: boolean; toggleInstagramAudio: (event: MouseEvent<HTMLButtonElement>) => void; toggleInstagramPlayback: (event: MouseEvent<HTMLElement>) => void; startInstagramReelWithSound: (event: MouseEvent<HTMLButtonElement>) => void; handleInstagramProfileClick: (event: MouseEvent<HTMLAnchorElement>) => void; setInstagramPaused: Dispatch<SetStateAction<boolean>>; setInstagramActiveIndex: Dispatch<SetStateAction<number>>; setInstagramDesktopPlaybackConfirmed: Dispatch<SetStateAction<boolean>>; openCustomerProfile: () => void; }
   currentTab: DesktopTab
-  deletingKeys: string[]
   deliveryFeeText: string
   desktopHeroSlide: number
-  editCartItem: (item: WebOrderCartItem) => void
   error: string
   favoriteIds: string[]
-  getCartIncludedCopy: (item: WebOrderCartItem) => string | null
-  handleRemoveSidebarItem: (itemKey: string, qty: number) => void
   homeSearchSuggestions: MenuProductGroup[]
   homeSearchTerm: string
   isDesktopViewport: boolean
@@ -46,46 +41,37 @@ interface PublicDesktopLayoutProps {
   orderTotal: number
   orderType: "delivery" | "takeaway"
   pageSettings: PublicOrderPageSettings
-  pendingQuickAdds: Set<string>
   popularGroups: MenuProductGroup[]
   popularScrollRef: RefObject<HTMLDivElement | null>
   priceBs: (usd: number) => string | null
   products: Product[]
   promoGroups: MenuProductGroup[]
-  recommendations: MenuProductGroup[]
   renderDesktopProductCard: (group: MenuProductGroup) => ReactNode
   renderDesktopPromoCard: (group: MenuProductGroup) => ReactNode
   renderProductCard: (group: MenuProductGroup, priority?: boolean) => ReactNode
   repeatPreviousOrder: (previousOrder: CustomerRepeatOrder) => Promise<void>
-  requestQuickAdd: (group: MenuProductGroup, quantity?: number) => Promise<void>
   retryPublicCatalog: () => void
   scrollPopular: (direction: 1 | -1) => void
   search: string
   setActiveCategory: Dispatch<SetStateAction<string>>
-  setCartOpen: Dispatch<SetStateAction<boolean>>
   setDesktopHeroPaused: Dispatch<SetStateAction<boolean>>
   setDesktopHeroSlide: Dispatch<SetStateAction<number>>
   setOrderType: Dispatch<SetStateAction<"delivery" | "takeaway">>
-  setReturnToConfirmAfterEdit: Dispatch<SetStateAction<boolean>>
   setSearch: Dispatch<SetStateAction<string>>
-  setShowAllExtras: Dispatch<SetStateAction<boolean>>
   setShowFavorites: Dispatch<SetStateAction<boolean>>
-  setSidebarRecoIndex: Dispatch<SetStateAction<number>>
-  setStep: Dispatch<SetStateAction<CheckoutStep>>
   showDesktopMenu: (category?: string, preserveSearch?: boolean) => void
   showFavorites: boolean
   sidebarCardRef: RefObject<HTMLDivElement | null>
   sidebarHasOverflow: boolean
-  sidebarRecoIndex: number
-  sidebarRecoTimer: RefObject<ReturnType<typeof setTimeout> | null>
   submitting: boolean
   toggleFavorite: (groupKey: string) => void
   total: number
-  updateQuantity: (itemKey: string, delta: number, legacyNotes?: string | undefined) => void
   visibleGroups: MenuProductGroup[]
 }
 
-export function PublicDesktopLayout({ scrollCategory, activeCategory, address, canScrollPopular, cart, cartPulse, categories, categorySections, contactViewProps, currentTab, deletingKeys, deliveryFeeText, desktopHeroSlide, editCartItem, error, favoriteIds, getCartIncludedCopy, handleRemoveSidebarItem, homeSearchSuggestions, homeSearchTerm, isDesktopViewport, itemCount, loading, openCartFromSidebar, openCustomerProfile, openGroup, orderTotal, orderType, pageSettings, pendingQuickAdds, popularGroups, popularScrollRef, priceBs, products, promoGroups, recommendations, renderDesktopProductCard, renderDesktopPromoCard, renderProductCard, repeatPreviousOrder, requestQuickAdd, retryPublicCatalog, scrollPopular, search, setActiveCategory, setCartOpen, setDesktopHeroPaused, setDesktopHeroSlide, setOrderType, setReturnToConfirmAfterEdit, setSearch, setShowAllExtras, setShowFavorites, setSidebarRecoIndex, setStep, showDesktopMenu, showFavorites, sidebarCardRef, sidebarHasOverflow, sidebarRecoIndex, sidebarRecoTimer, submitting, toggleFavorite, total, updateQuantity, visibleGroups }: PublicDesktopLayoutProps) {
+const SIDEBAR_VISIBLE_ITEMS = 3
+
+export function PublicDesktopLayout({ scrollCategory, activeCategory, canScrollPopular, cart, cartPulse, categories, categorySections, contactViewProps, currentTab, deliveryFeeText, desktopHeroSlide, error, favoriteIds, homeSearchSuggestions, homeSearchTerm, isDesktopViewport, itemCount, loading, openCartFromSidebar, openCustomerProfile, openGroup, orderTotal, orderType, pageSettings, popularGroups, popularScrollRef, priceBs, products, promoGroups, renderDesktopProductCard, renderDesktopPromoCard, renderProductCard, repeatPreviousOrder, retryPublicCatalog, scrollPopular, search, setActiveCategory, setDesktopHeroPaused, setDesktopHeroSlide, setOrderType, setSearch, setShowFavorites, showDesktopMenu, showFavorites, sidebarCardRef, sidebarHasOverflow, submitting, toggleFavorite, total, visibleGroups }: PublicDesktopLayoutProps) {
   const railRef = useRef<HTMLElement>(null)
   const layoutRef = useRef<HTMLDivElement>(null)
   usePauseOffscreen(layoutRef)
@@ -516,93 +502,22 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                   </div>
                 ) : (
                   <>
-                    {/* Sidebar Cart Items */}
-                    <div className="public-sidebar-items">
-                      {cart.map(item => {
-                        const lineKey = cartLineKey(item)
-                        const isDeleting = deletingKeys.includes(lineKey)
-                        return (
-                          <div className={`public-sidebar-item ${isDeleting ? 'is-deleting' : ''}`} key={lineKey}>
-                            <Thumb imageUrl={item.imageUrl} className="public-sidebar-item-img" />
-                            <div className="public-sidebar-item-info">
-                              <strong><Fit>{cartProductName(item.productName)}</Fit></strong>
-                              {getCartIncludedCopy(item) && <small className="public-cart-item-notes">{getCartIncludedCopy(item)}</small>}
-                              <span className="public-sidebar-item-price">{money(item.price * item.quantity)}</span>
-                              <div className="public-sidebar-item-actions">
-                                <div className="public-sidebar-stepper">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      if (item.quantity === 1) {
-                                        handleRemoveSidebarItem(lineKey, 1)
-                                      } else {
-                                        updateQuantity(lineKey, -1)
-                                      }
-                                    }}
-                                    aria-label="Disminuir"
-                                  >
-                                    {item.quantity === 1 ? <Trash2 size={12} /> : <Minus size={12} />}
-                                  </button>
-                                  <span key={item.quantity} className="public-stepper-num">{item.quantity}</span>
-                                  <button type="button" onClick={() => updateQuantity(lineKey, 1)} aria-label="Aumentar">
-                                    <Plus size={12} />
-                                  </button>
-                                </div>
-                                <button type="button" className="public-sidebar-edit" onClick={() => editCartItem(item)} aria-label={`Editar ${cartProductName(item.productName)}`}>
-                                  <Pencil size={12} /> <span>Editar</span>
-                                </button>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              className="public-sidebar-trash"
-                              onClick={() => handleRemoveSidebarItem(lineKey, item.quantity)}
-                              aria-label="Eliminar producto"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
+                    {/* Resumen: una línea por plato. Para editar se abre el pedido completo. */}
+                    <ul className="pd-mini-list">
+                      {cart.slice(0, SIDEBAR_VISIBLE_ITEMS).map(item => (
+                        <li key={cartLineKey(item)}>
+                          <Thumb imageUrl={item.imageUrl} />
+                          <b>{item.quantity}×</b>
+                          <span>{cartProductName(item.productName)}</span>
+                          <strong>{money(item.price * item.quantity)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <button type="button" className="pd-mini-all" onClick={() => openCartFromSidebar('cart')}>
+                      {cart.length > SIDEBAR_VISIBLE_ITEMS ? `Ver todo el pedido (+${cart.length - SIDEBAR_VISIBLE_ITEMS} más)` : 'Ver o editar pedido'} <ChevronRight size={15} />
+                    </button>
 
                     <div className="public-sidebar-secondary">
-                    {/* Sidebar Recommendations (carrusel: una tarjeta a la vez,
-                        rota sola — el espacio es angosto para varias en fila) */}
-                    {recommendations.length > 0 && (() => {
-                      const activeReco = recommendations[sidebarRecoIndex] ?? recommendations[0]
-                      return (
-                        <section className="public-cart-recommendations public-sidebar-recommendations public-sidebar-reco-carousel">
-                          <div className="public-cart-recommendations-head">
-                            <h3>¿Algo más?</h3>
-                            <button type="button" onClick={() => { setReturnToConfirmAfterEdit(false); setStep('cart'); setCartOpen(true); setShowAllExtras(true) }}>Ver todos <ChevronRight size={13} /></button>
-                          </div>
-                          <div className="public-sidebar-reco-card" key={activeReco.key}>
-                            <Thumb imageUrl={activeReco.variants[0]?.product.imageUrl} alt={productTitle(activeReco.name)} />
-                            <div>
-                              <strong>{productTitle(activeReco.name)}</strong>
-                              <b>{money(activeReco.minPrice)}{priceBs(activeReco.minPrice) && <small className="public-reco-bs">{priceBs(activeReco.minPrice)}</small>}</b>
-                            </div>
-                            <button type="button" disabled={pendingQuickAdds.has(activeReco.key)} aria-busy={pendingQuickAdds.has(activeReco.key)} onClick={() => requestQuickAdd(activeReco)}>{pendingQuickAdds.has(activeReco.key) ? <LoaderCircle className="public-add-spinner" size={15} /> : <Plus size={15} />}</button>
-                          </div>
-                          {recommendations.length > 1 && (
-                            <div className="public-sidebar-reco-dots">
-                              {recommendations.map((_, i) => (
-                                <span
-                                  key={i}
-                                  className={i === sidebarRecoIndex ? 'active' : ''}
-                                  onClick={() => {
-                                    if (sidebarRecoTimer.current) clearInterval(sidebarRecoTimer.current)
-                                    setSidebarRecoIndex(i)
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          )}
-                        </section>
-                      )
-                    })()}
-
                     {/* Sidebar Financials */}
                     <div className="public-sidebar-summary">
                       <div className="public-sidebar-row">
@@ -641,19 +556,6 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                         <span>Retiro en local</span>
                       </button>
                     </div>
-
-                    {/* Address Input Box */}
-                    {orderType === 'delivery' && (
-                      <div className="public-sidebar-address-box" onClick={() => openCartFromSidebar('address')}>
-                        <MapPin size={16} />
-                        <input
-                          readOnly
-                          placeholder="Ingresa tu dirección de entrega"
-                          value={address || ''}
-                        />
-                        <span className="public-sidebar-address-edit">Editar</span>
-                      </div>
-                    )}
                     </div>
 
                     {/* Big Checkout CTA Button */}

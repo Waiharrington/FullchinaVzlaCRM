@@ -526,8 +526,9 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
             : 'Tu pedido permite hasta 40 productos distintos. Quita uno desde tu pedido antes de guardar; tus productos actuales se conservarán.')
           return
         }
+        addingSelectedProductRef.current = true
+        setAddingSelectedProduct(true)
         commitCart(nextCart)
-        setEditingCartLineKey(null)
         closeProductDetail()
         const returnToReviewAfterEdit = returnToConfirmAfterEdit
         setReturnToConfirmAfterEdit(false)
@@ -535,6 +536,8 @@ export function useProductDetail({ blockClosedStoreAdd, cart, cartRef, closingDe
         // contenido del carrito/recibo. Si se cambia el paso durante esos 220ms,
         // ambas vistas y sus animaciones se pisan en escritorio.
         window.setTimeout(() => {
+          addingSelectedProductRef.current = false
+          setAddingSelectedProduct(false)
           setClosingCart(false)
           setStep(returnToReviewAfterEdit ? 'confirm' : 'cart')
           const isDesktop = typeof window.matchMedia === 'function' && window.matchMedia(DESKTOP_MEDIA_QUERY).matches

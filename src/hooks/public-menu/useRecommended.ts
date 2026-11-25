@@ -29,13 +29,11 @@ interface UseRecommendedArgs {
   setRecommendedIndex: Dispatch<SetStateAction<number>>
   setRequestedRecommendedIndex: Dispatch<SetStateAction<number | null>>
   setSidebarHasOverflow: Dispatch<SetStateAction<boolean>>
-  setSidebarRecoIndex: Dispatch<SetStateAction<number>>
   sidebarCardRef: RefObject<HTMLDivElement | null>
-  sidebarRecoTimer: RefObject<ReturnType<typeof setTimeout> | null>
   total: number
 }
 
-export function useRecommended({ activeCategory, address, cart, categories, currentTab, extrasProducts, groups, orderType, pageSettings, products, recommendedIndex, requestedRecommendedIndex, scrollCategory, setRecommendedImageSrc, setRecommendedIndex, setRequestedRecommendedIndex, setSidebarHasOverflow, setSidebarRecoIndex, sidebarCardRef, sidebarRecoTimer, total }: UseRecommendedArgs) {
+export function useRecommended({ activeCategory, address, cart, categories, currentTab, extrasProducts, groups, orderType, pageSettings, products, recommendedIndex, requestedRecommendedIndex, scrollCategory, setRecommendedImageSrc, setRecommendedIndex, setRequestedRecommendedIndex, setSidebarHasOverflow, sidebarCardRef, total }: UseRecommendedArgs) {
   const loadedRecommendedImageKey = useRef<string | null>(null)
   const [recommendedPaused, setRecommendedPaused] = useState(false)
   const recommendedTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -247,16 +245,5 @@ export function useRecommended({ activeCategory, address, cart, categories, curr
     return () => observer.disconnect()
   }, [cart, recommendations, orderType, address, total, currentTab, setSidebarHasOverflow, sidebarCardRef])
 
-  useEffect(() => {
-    setSidebarRecoIndex(0)
-  }, [recommendations, setSidebarRecoIndex])
-
-  useEffect(() => {
-    if (recommendations.length <= 1) return
-    sidebarRecoTimer.current = setInterval(() => {
-      setSidebarRecoIndex(prev => (prev + 1) % recommendations.length)
-    }, 4500)
-    return () => { if (sidebarRecoTimer.current) clearInterval(sidebarRecoTimer.current) }
-  }, [recommendations.length, setSidebarRecoIndex, sidebarRecoTimer])
   return { allCatalogGroups, cartProductIds, accentRgb, handleRecommendedWheel, isLoyaltyRecommended, moveRecommended, pauseRecommendedAutoplay, recommendedGroup, recommendedSlideCount, recommendedSlides, recommendedVariant, resumeRecommendedAutoplay, getCartIncludedCopy, recommendations, cartCarouselGroups }
 }

@@ -257,7 +257,7 @@ createPortal(
                     <span key={detailQuantity}>{detailQuantity}</span>
                     <button type="button" onClick={() => setDetailQuantity(value => value + 1)} aria-label="Aumentar cantidad"><Plus /></button>
                   </div>
-                  <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> Agregando…</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} <Odo className="ppdm-add-btn-total" value={money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)} /></>}</button>
+                  <button type="button" className="ppdm-add-btn" aria-describedby={modifierValidationError ? 'ppdm-add-feedback' : undefined} aria-busy={addingSelectedProduct} disabled={loadingModifiers || Boolean(modifierLoadError) || invalidModifierSelection || addingSelectedProduct} onClick={addSelectedProduct}>{addingSelectedProduct ? <><LoaderCircle className="public-add-spinner" size={17} /> {editingCartLineKey ? 'Guardando…' : 'Agregando…'}</> : <>{editingCartLineKey ? 'Guardar cambios' : 'Agregar'} <Odo className="ppdm-add-btn-total" value={money((selectedProduct.price + detailExtrasTotal + selectedCatalogExtrasTotal) * detailQuantity)} /></>}</button>
                 </footer>
               </section>
             </div>,

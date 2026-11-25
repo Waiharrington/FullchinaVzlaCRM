@@ -78,15 +78,23 @@ export function PickupStage() {
   )
 }
 
+const FIRST_TIMES = 6
+
 /** Horas de retiro a la vista, para elegir con un toque. */
 export function TimeChips({ value, slots, onChange }: { value: string; slots: string[]; onChange: (value: string) => void }) {
-  const options = [{ value: 'asap', label: 'Lo antes posible' }, ...slots.map(slot => ({ value: slot, label: formatPickupClock(slot) }))]
+  // Si ya eligió una hora lejana, la lista abre completa para que se vea.
+  const [expanded, setExpanded] = useState(() => slots.indexOf(value) >= FIRST_TIMES)
+  const visible = expanded ? slots : slots.slice(0, FIRST_TIMES)
+  const options = [{ value: 'asap', label: 'Lo antes posible' }, ...visible.map(slot => ({ value: slot, label: formatPickupClock(slot) }))]
   return (
-    <div className="pd-times" role="radiogroup" aria-label="¿A qué hora lo retiras?">
-      {options.map(option => (
-        <button key={option.value} type="button" role="radio" aria-checked={option.value === value} className={option.value === value ? 'is-selected' : ''} onClick={() => onChange(option.value)}>{option.label}</button>
-      ))}
-    </div>
+    <>
+      <div className="pd-times" role="radiogroup" aria-label="¿A qué hora lo retiras?">
+        {options.map(option => (
+          <button key={option.value} type="button" role="radio" aria-checked={option.value === value} className={option.value === value ? 'is-selected' : ''} onClick={() => onChange(option.value)}>{option.label}</button>
+        ))}
+      </div>
+      {slots.length > FIRST_TIMES && <button type="button" className="pd-times-more" aria-expanded={expanded} onClick={() => setExpanded(current => !current)}>{expanded ? 'Ver menos horas' : 'Ver más horas'}</button>}
+    </>
   )
 }
 

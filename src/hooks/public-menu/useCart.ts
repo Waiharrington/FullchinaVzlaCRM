@@ -15,12 +15,11 @@ interface UseCartArgs {
   setCart: Dispatch<SetStateAction<WebOrderCartItem[]>>
   setCartOpen: Dispatch<SetStateAction<boolean>>
   setClosingCart: Dispatch<SetStateAction<boolean>>
-  setDeletingKeys: Dispatch<SetStateAction<string[]>>
   setError: Dispatch<SetStateAction<string>>
   step: CheckoutStep
 }
 
-export function useCart({ cart, cartOpen, cartRef, extrasProducts, products, setCart, setCartOpen, setClosingCart, setDeletingKeys, setError, step }: UseCartArgs) {
+export function useCart({ cart, cartOpen, cartRef, extrasProducts, products, setCart, setCartOpen, setClosingCart, setError, step }: UseCartArgs) {
   useEffect(() => { cartRef.current = cart }, [cart, cartRef])
   const commitCart = (update: WebOrderCartItem[] | ((current: WebOrderCartItem[]) => WebOrderCartItem[])) => {
     const next = typeof update === 'function' ? update(cartRef.current) : update
@@ -59,13 +58,5 @@ export function useCart({ cart, cartOpen, cartRef, extrasProducts, products, set
     commitCart(candidateCart)
   }
 
-  const handleRemoveSidebarItem = (itemKey: string, qty: number) => {
-    const key = itemKey
-    setDeletingKeys(prev => [...prev, key])
-    window.setTimeout(() => {
-      updateQuantity(itemKey, -qty)
-      setDeletingKeys(prev => prev.filter(k => k !== key))
-    }, 220)
-  }
-  return { total, commitCart, handleRemoveSidebarItem, itemCount, updateQuantity }
+  return { total, commitCart, itemCount, updateQuantity }
 }
