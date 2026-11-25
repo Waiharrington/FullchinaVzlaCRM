@@ -1,9 +1,12 @@
 import { type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { UserRound, Phone, Wallet, MessageSquareText, ChevronRight } from 'lucide-react'
 import { maxIdentificationDigits, isValidPublicIdentification, normalizeVenezuelanPhone } from '../../lib/publicOrderRules'
+import { LiveTicket } from '../../pedir-v2/wow'
+import { type WebOrderCartItem } from '../../lib/publicOrders'
 import { PayDropdown } from '../../components/public-checkout/PayDropdown'
 
 interface DetailsStepProps {
+  cart: WebOrderCartItem[]
   continueToConfirmation: () => void
   customerDetailsAutofilled: boolean
   customerDetailsTouched: RefObject<boolean>
@@ -31,9 +34,10 @@ interface DetailsStepProps {
   submitting: boolean
 }
 
-export function DetailsStep({ continueToConfirmation, customerDetailsAutofilled, customerDetailsTouched, fieldError, identification, identificationRef, idPrefix, name, nameRef, notes, payMode, payPrimary, paySecondary, phone, phoneRef, setFieldError, setIdentification, setIdPrefix, setName, setNotes, setPayMode, setPayPrimary, setPaySecondary, setPhone, submitting }: DetailsStepProps) {
+export function DetailsStep({ cart, continueToConfirmation, customerDetailsAutofilled, customerDetailsTouched, fieldError, identification, identificationRef, idPrefix, name, nameRef, notes, payMode, payPrimary, paySecondary, phone, phoneRef, setFieldError, setIdentification, setIdPrefix, setName, setNotes, setPayMode, setPayPrimary, setPaySecondary, setPhone, submitting }: DetailsStepProps) {
   return (
 <div className="public-checkout">
+                <LiveTicket cart={cart} name={name} identification={identification} phone={phone} payMode={payMode} payPrimary={payPrimary} paySecondary={paySecondary} />
                 <div className="public-data-intro">
                   <strong>¿A nombre de quién?</strong>
                   <span>Solo para coordinar tu pedido.</span>
