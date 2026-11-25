@@ -163,14 +163,11 @@ export function PublicMenu() {
     )?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [cartOpen, step])
 
-  // En escritorio, el contenido del checkout tiene su propio scroll y la
-  // página conserva el suyo fuera de la tarjeta. En móvil sí se bloquea el fondo.
-  const desktopCheckoutCanScrollPage = typeof window !== 'undefined'
-    && window.matchMedia('(min-width: 900px) and (orientation: landscape)').matches
+  // Con cualquier ventana abierta la página de atrás se queda quieta.
   const hasBlockingOverlay = Boolean(
     quickVariantGroup
     || selectedGroup
-    || (cartOpen && !desktopCheckoutCanScrollPage)
+    || cartOpen
     || showAllExtras
     || showStoreClosedNotice
     || showWelcomeNotice

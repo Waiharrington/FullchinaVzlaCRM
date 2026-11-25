@@ -25,6 +25,7 @@ export function DesktopProductCard({ group, changeCardQty, favoriteIds, getCardQ
     return (
       <article className="public-home-product-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
         <div className="public-home-prod-img-wrap">
+          <i className="pd-box-back" aria-hidden="true" />
           <Dish imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
           <button
             type="button"
@@ -42,7 +43,7 @@ export function DesktopProductCard({ group, changeCardQty, favoriteIds, getCardQ
 
           <div className="public-home-prod-price-wrap">
             <span className="public-home-prod-price">
-              {group.isGrouped && group.minPrice !== group.maxPrice ? 'Desde ' : ''}{money(group.minPrice)}
+              {group.isGrouped && group.minPrice !== group.maxPrice && <small>Desde </small>}{money(group.minPrice)}
             </span>
             {priceBs(group.minPrice) && <span className="public-home-prod-price-bs">{priceBs(group.minPrice)}</span>}
           </div>

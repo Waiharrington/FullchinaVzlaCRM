@@ -17,6 +17,11 @@ export function DesktopPromoCard({ group, handleCardAdd, openProductFromCard, op
     const isQuickAddPending = pendingQuickAdds.has(group.key)
     return (
       <article className="public-home-promo-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
+        <div className="public-home-promo-img-wrap">
+          <i className="pd-box-back" aria-hidden="true" />
+          <Dish imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
+        </div>
+        <div className="pd-promo-front">
         <div className="public-home-promo-top">
           <h3 className="public-home-promo-title"><Fit>{productTitle(group.name)}</Fit></h3>
           <div className="public-home-promo-price-row">
@@ -24,11 +29,6 @@ export function DesktopPromoCard({ group, handleCardAdd, openProductFromCard, op
           </div>
 
         </div>
-
-        <div className="public-home-promo-img-wrap">
-          <Dish imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
-        </div>
-
         <div className="public-home-promo-footer" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
@@ -41,6 +41,7 @@ export function DesktopPromoCard({ group, handleCardAdd, openProductFromCard, op
             {isQuickAddPending ? <LoaderCircle className="public-add-spinner" size={15} /> : <Plus size={15} />}
             <span>{isQuickAddPending ? 'Revisando…' : 'Pedir promo'}</span>
           </button>
+        </div>
         </div>
       </article>
     )

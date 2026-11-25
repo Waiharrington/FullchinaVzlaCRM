@@ -78,27 +78,6 @@ img.is-cut { object-fit: contain !important; background: var(--chip); padding: 3
 .public-category-section-header h3::after, .public-list-header h2:not(.public-main-list-title)::after { content: ''; display: block; width: 46px; height: 6px; margin-top: 8px; border-radius: 3px; background: var(--pd-red); }
 
 /* Promociones: carteles rojos con el plato saliéndose del marco */
-.public-category-section[data-category='promociones'] { margin: 0; padding: 26px 0 30px; border-radius: 0; background: none; }
-.public-category-section[data-category='promociones'] .public-category-section-header { padding: 0 18px; margin-bottom: -22px; }
-.public-category-section[data-category='promociones'] .public-category-section-header h3 { color: #fff; }
-.public-category-section[data-category='promociones'] .public-category-section-header > span { color: var(--soft); }
-.public-category-section[data-category='promociones'] .public-category-grid { display: flex; gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 92px 18px 12px; }
-.public-category-section[data-category='promociones'] .public-category-grid::-webkit-scrollbar { display: none; }
-.public-category-section[data-category='promociones'] .public-prod-card { flex: 0 0 min(72vw, 290px); scroll-snap-align: center; padding: 0 18px 20px; border-radius: 34px; background: var(--pd-red-stage); transition: transform .5s var(--pd-out); transform: scale(.94); animation: none; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-card.is-near { transform: none; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-img-wrap { margin: -54px -4px 0; aspect-ratio: 1 !important; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .pd-dish-disc { background: #A50D16; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .pd-dish-disc::after { background: #17100E; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .pd-dish-flame { bottom: 26%; height: 82%; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-title { font: 400 23px/1.08 var(--pd-display) !important; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-desc { color: #FFE1D8; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-price { color: var(--pd-yellow); font-size: 22px; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-price-bs { color: #FFE1D8; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-favorite-btn { top: 46px; right: -6px; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-favorite-btn.active svg { color: #fff; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-favorite-btn::before { background: #8C0811; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-favorite-btn.active::before { background: #17100E; }
-:is(.public-category-section, .public-product-list)[data-category='promociones'] .public-free-drink-sticker { top: -50px; left: -6px; z-index: 4; }
 
 /* ===== Escenario y navegación ===== */
 .pd-stage { padding-bottom: 26px; border-radius: 0; }
@@ -210,10 +189,6 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
   .public-home-promo-card .pd-dish-flame { bottom: 26%; height: 82%; }
   .public-home-promo-title { color: #fff; font: 400 20px/1.1 var(--pd-display); }
   .public-home-promo-price { color: var(--pd-yellow); }
-  .public-desktop-main .public-category-section[data-category='promociones'] { margin: 0; padding: 26px 0; }
-  .public-desktop-main .public-category-section[data-category='promociones'] .public-category-section-header { padding: 0; }
-  .public-desktop-main .public-category-section[data-category='promociones'] .public-category-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 84px 22px; overflow: visible; padding: 66px 4px 10px; }
-  .public-desktop-main :is(.public-category-section, .public-product-list)[data-category='promociones'] .public-prod-card { transform: none; }
   .public-desktop-main .public-category-grid { gap: 44px 26px; }
   .public-desktop-main .pd-rail-wrap { overflow: clip; }
   .public-desktop-sidebar::before { background: linear-gradient(#E3373F, #A50D16); z-index: 5; }
@@ -364,15 +339,7 @@ html[data-pwa-entry='cliente'] aside.pwa-install-prompt { --bg: #FFF8EE; --card:
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) { .public-contact-hub { grid-template-columns: repeat(12, minmax(0, 1fr)); } .public-contact-hero .public-hero-main-title { font-size: 72px; } }
 
 /* Promociones elegida como categoría: carteles a todo el ancho, uno por uno. */
-.public-product-list[data-category='promociones'] { grid-template-columns: minmax(0, 1fr) !important; gap: 84px !important; padding-top: 74px !important; }
-.public-product-list[data-category='promociones'] .public-prod-card { padding: 0 22px 24px; border-radius: 34px; background: var(--pd-red-stage); animation: none; }
-.public-product-list[data-category='promociones'] .public-prod-img-wrap { width: min(100%, 330px); margin: -54px auto 0; }
-.public-product-list[data-category='promociones'] .public-prod-info { padding-top: 14px; }
-.public-product-list[data-category='promociones'] .public-favorite-btn { top: 46px; }
-@media (min-width: 600px) { .public-mobile-view .public-product-list[data-category='promociones'] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
-  .public-desktop-main .public-product-list[data-category='promociones'] { padding-top: 64px !important; }
-  .public-desktop-main .public-product-list[data-category='promociones'] .public-category-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 84px 22px; }
 }
 
 /* Los campos viven dentro de su cápsula: sin el aro rojo global al enfocarlos. */

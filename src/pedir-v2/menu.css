@@ -86,9 +86,6 @@
 .public-category-section-header h3 { font: 400 27px/1.1 var(--pd-display); color: var(--title); }
 .public-category-section-header > span { color: var(--soft); font-size: 14.5px; font-weight: 600; }
 /* Promociones es la única franja de color: ahí va la atención. */
-.public-category-section[data-category='promociones'] { margin: 14px 10px 8px; padding: 22px 14px 24px; border-radius: 26px; background: var(--pd-yellow); }
-.public-category-section[data-category='promociones'] .public-category-section-header h3 { color: var(--fg); }
-.public-category-section[data-category='promociones'] .public-category-section-header > span { color: #5A3F00; }
 .public-category-grid, .public-product-list:not(.public-product-list-grouped) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px 14px; }
 .public-product-list:not(.public-product-list-grouped) { padding: 16px 18px 26px; }
 .public-product-list:has(> .public-empty-menu, > .public-catalog-skeleton) { grid-template-columns: 1fr; }
@@ -138,8 +135,6 @@
 .public-prod-price-wrap { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
 .public-prod-price { color: var(--price); font-size: 17px; font-weight: 850; font-variant-numeric: tabular-nums; }
 .public-prod-price-bs { color: var(--soft); font-size: 13px; font-variant-numeric: tabular-nums; }
-.public-category-section[data-category='promociones'] :is(.public-prod-desc, .public-prod-price-bs) { color: #5A3F00; }
-.public-category-section[data-category='promociones'] .public-prod-price { color: #A00811; }
 /* Si la sección es impar, el primer plato ocupa todo el ancho: nunca queda un hueco. */
 @media (max-width: 899px) {
   .public-category-grid:has(> :last-child:nth-child(odd)) > :first-child:not(:last-child) { grid-column: 1 / -1; }
@@ -344,7 +339,6 @@
   .public-desktop-main .public-cat-btn:hover { color: var(--fg); }
   .public-desktop-main .public-cat-btn:not(.is-held):hover img { transform: translateY(-4px) rotate(-5deg); }
   .public-desktop-main .public-category-section { padding-inline: 0; scroll-margin-top: 220px; }
-  .public-desktop-main .public-category-section[data-category='promociones'] { margin: 18px 0 10px; padding: 26px; border-radius: 34px; }
   .public-desktop-main .public-category-section-header { justify-content: flex-start; }
   .public-desktop-main .public-category-section-header h3, .public-selected-category-heading h2 { font-size: 34px; }
   .public-cat-section-bar { display: none; }
