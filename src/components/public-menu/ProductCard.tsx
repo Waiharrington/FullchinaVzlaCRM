@@ -3,7 +3,8 @@ import { menuLabelMeta, productTitle, groupDescription, money } from '../../lib/
 import { Heart, LoaderCircle, Plus, SlidersHorizontal } from 'lucide-react'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
 import { useServe } from '../../pedir-v2/hooks'
-import { Dish, Fit } from '../../pedir-v2/ui'
+import { Photo } from '../../pedir-v2/Photo'
+import { Fit } from '../../pedir-v2/ui'
 
 interface ProductCardProps {
   group: MenuProductGroup
@@ -29,14 +30,13 @@ export function ProductCard({ group, inCart = 0, priority = false, favoriteIds, 
           <img src="/optimized/pedir-v2/free-drink.webp" alt="Refresco gratis" className="public-free-drink-sticker" />
         )}
         <div className="public-prod-img-wrap" onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
-          <i className="pd-box-back" aria-hidden="true" />
           {(() => {
             const label = menuLabelMeta[group.variants.find(v => v.product.menuLabel)?.product.menuLabel as keyof typeof menuLabelMeta]
             if (!label || label.className === 'free-drink') return null
             const LabelIcon = label.icon
             return <span className={`public-menu-label ${label.className}`}><LabelIcon size={12} strokeWidth={2.4} aria-hidden="true" /> {label.text}</span>
           })()}
-          <Dish imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} eager={Boolean(priority)} />
+          <Photo imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} eager={Boolean(priority)} />
           <button type="button" className={`public-favorite-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`} onPointerDown={stopProductCardInteraction} onClick={event => { event.stopPropagation(); toggleFavorite(group.key) }} aria-label={favoriteIds.includes(group.key) ? `Quitar ${group.name} de favoritos` : `Guardar ${group.name} en favoritos`}><Heart size={16} fill={favoriteIds.includes(group.key) ? 'currentColor' : 'none'} /></button>
         {inCart > 0 && <span className="pd-in-cart" key={inCart}>{inCart} en tu wok</span>}
         </div>

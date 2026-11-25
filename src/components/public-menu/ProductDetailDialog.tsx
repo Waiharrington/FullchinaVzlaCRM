@@ -10,7 +10,8 @@ import { getPublicProductModifiers } from '../../lib/publicOrders'
 import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { formatSpanishText, formatProductTitle } from '../../lib/textFormat'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
-import { Fit, Odo, SpinDish, Thumb } from '../../pedir-v2/ui'
+import { PhotoHero } from '../../pedir-v2/Photo'
+import { Fit, Odo, Thumb } from '../../pedir-v2/ui'
 
 interface ProductDetailDialogProps {
   addingSelectedProduct: boolean
@@ -63,8 +64,7 @@ createPortal(
                 style={detailOrigin ? { transformOrigin: `${detailOrigin.x}px ${detailOrigin.y}px` } : undefined}
               >
                 <div className="ppdm-image">
-                  <SpinDish key={selectedProduct.imageUrl} imageUrl={selectedProduct.imageUrl} alt={selectedProduct.name} />
-                  <span className="pd-spin-hint" aria-hidden="true">Gíralo con el dedo</span>
+                  <PhotoHero key={selectedProduct.imageUrl} imageUrl={selectedProduct.imageUrl} alt={selectedProduct.name} />
                   {selectedProduct.menuLabel === 'free_drink' && (
                     <img src="/icons/free-drink-badge.png" alt="Refresco gratis" className="ppdm-free-drink-sticker" />
                   )}

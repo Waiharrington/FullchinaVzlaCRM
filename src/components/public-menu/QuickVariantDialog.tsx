@@ -7,7 +7,8 @@ import { publicVariantCopy } from '../../lib/publicMenuLabels'
 import { formatSpanishText } from '../../lib/textFormat'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
 import { type ProductModifierGroup } from '../../lib/dataService'
-import { Dish, Fit } from '../../pedir-v2/ui'
+import { Photo } from '../../pedir-v2/Photo'
+import { Fit } from '../../pedir-v2/ui'
 
 interface QuickVariantDialogProps {
   closeQuickVariant: () => void
@@ -57,7 +58,7 @@ createPortal(
                         aria-pressed={selected}
                       >
                         <span className="public-variant-option-media">
-                          <Dish imageUrl={inheritedImage} alt="" eager />
+                          <Photo imageUrl={inheritedImage} alt="" eager />
                           {selected && <span className="public-variant-option-badge">Elegido</span>}
                           {product.menuLabel === 'free_drink' && <img src="/icons/free-drink-badge.png" alt="Incluye refresco gratis" className="public-variant-free-drink-badge" />}
                           <span className="public-variant-option-check"><Check size={16} /></span>

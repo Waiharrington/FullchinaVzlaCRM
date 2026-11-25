@@ -1,7 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import type { CheckoutStep } from '../lib/publicMenuTypes'
 import { optimizedProductImage, productImage } from '../lib/publicMenuFormat'
-import { cutoutFor } from './cutouts'
 
 /* Piezas visuales del rediseño de /pedir. Ninguna toca datos ni reglas del
    pedido: solo dibujan y animan lo que ya calculan los hooks existentes. */
@@ -83,81 +82,19 @@ export function Wok({ className = '', lit = true }: { className?: string; lit?: 
   )
 }
 
-/** El plato protagonista: recortado flota sobre su disco; sin recorte, va servido en un plato redondo. */
-export function Dish({ imageUrl, alt, eager = false, children }: { imageUrl?: string | null; alt: string; eager?: boolean; children?: ReactNode }) {
-  const cutout = cutoutFor(imageUrl)
+/** Foto servida en un plato redondo de porcelana (mesa giratoria). */
+export function Dish({ imageUrl, alt, eager = false }: { imageUrl?: string | null; alt: string; eager?: boolean }) {
   return (
-    <span className={`pd-dish ${cutout ? 'is-cutout' : 'is-photo'}`}>
+    <span className="pd-dish is-photo">
       <i className="pd-dish-disc" aria-hidden="true" />
-      <i className="pd-dish-flame" aria-hidden="true" />
-      <span className="pd-dish-body"><img src={cutout || optimizedProductImage(imageUrl) || productImage()} alt={alt} loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : 'auto'} decoding="async" draggable={false} /></span>
-      {children}
+      <span className="pd-dish-body"><img src={optimizedProductImage(imageUrl) || productImage()} alt={alt} loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : 'auto'} decoding="async" draggable={false} /></span>
     </span>
   )
 }
 
-/** Miniatura que usa el recorte cuando existe. */
+/** Miniatura del plato. */
 export function Thumb({ imageUrl, className = '', alt = '' }: { imageUrl?: string | null; className?: string; alt?: string }) {
-  const cutout = cutoutFor(imageUrl)
-  return <img className={`${className}${cutout ? ' is-cut' : ''}`} src={cutout || optimizedProductImage(imageUrl) || productImage()} alt={alt} loading="lazy" decoding="async" />
-}
-
-/** Plato que se puede girar con el dedo o el mouse; un toque lo hace saltar. */
-export function SpinDish({ imageUrl, alt }: { imageUrl?: string | null; alt: string }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const motion = useRef({ angle: 0, velocity: 0, lastX: 0, moved: 0, dragging: false, frame: 0 })
-  const paint = () => ref.current?.style.setProperty('--spin', `${motion.current.angle}deg`)
-  useEffect(() => {
-    const state = motion.current
-    return () => cancelAnimationFrame(state.frame)
-  }, [])
-  const coast = () => {
-    const m = motion.current
-    const rest = Math.round(m.angle / 360) * 360
-    // Inercia al soltar y, cuando casi se detiene, un resorte lo vuelve a servir derecho.
-    if (Math.abs(m.velocity) > 1.2) m.velocity *= 0.965
-    else m.velocity = m.velocity * 0.86 + (rest - m.angle) * 0.02
-    m.angle += m.velocity
-    paint()
-    if (Math.abs(m.velocity) < 0.02 && Math.abs(rest - m.angle) < 0.1) return
-    m.frame = requestAnimationFrame(coast)
-  }
-  return (
-    <div
-      ref={ref}
-      className="pd-spin"
-      onPointerDown={event => {
-        const m = motion.current
-        cancelAnimationFrame(m.frame)
-        Object.assign(m, { dragging: true, moved: 0, velocity: 0, lastX: event.clientX })
-        event.currentTarget.setPointerCapture(event.pointerId)
-      }}
-      onPointerMove={event => {
-        const m = motion.current
-        if (!m.dragging) return
-        const dx = event.clientX - m.lastX
-        m.lastX = event.clientX
-        m.moved += Math.abs(dx)
-        m.velocity = dx * 0.75
-        m.angle += m.velocity
-        paint()
-      }}
-      onPointerUp={event => {
-        const m = motion.current
-        m.dragging = false
-        if (m.moved < 6) {
-          const el = event.currentTarget
-          el.classList.remove('is-tossed')
-          void el.offsetWidth
-          el.classList.add('is-tossed')
-        }
-        coast()
-      }}
-      onPointerCancel={() => { motion.current.dragging = false; coast() }}
-    >
-      <Dish imageUrl={imageUrl} alt={alt} eager />
-    </div>
-  )
+  return <img className={className} src={optimizedProductImage(imageUrl) || productImage()} alt={alt} loading="lazy" decoding="async" />
 }
 
 /** Estallido de precio, como los de las promos impresas. */

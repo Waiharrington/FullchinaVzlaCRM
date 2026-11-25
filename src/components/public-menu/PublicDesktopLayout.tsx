@@ -449,7 +449,7 @@ export function PublicDesktopLayout({ scrollCategory, activeCategory, address, c
                                 <span className="public-cat-section-bar" />
                                 <h3>{categoryLabel(section.category)}</h3>
                               </div>
-                              <span className="public-category-count-badge">{section.groups.length} {section.groups.length === 1 ? 'opción' : 'opciones'}</span>
+                              <button type="button" className="pd-see-all" onClick={() => showDesktopMenu(section.category)}>Ver {section.groups.length === 1 ? 'el plato' : `las ${section.groups.length}`} <ChevronRight size={15} aria-hidden="true" /></button>
                             </div>
                             <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
                           </section>

@@ -1,0 +1,224 @@
+/* ===== Ventanillas del food truck =====
+   Cada plato se muestra con su foto completa. Al pasar por el centro de la
+   pantalla (o con el mouse) se prende el neón del marco, la lámpara de calor
+   ilumina la comida y la foto se acerca. Todo con transform y opacity. */
+
+/* Toldo */
+.public-menu-page .public-content { position: relative; padding-top: 0; }
+.public-menu-page .public-content::before { content: ''; display: block; height: 30px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='30'%3E%3Cpath d='M0 0h28v16a14 14 0 0 1-28 0z' fill='%23D9141E'/%3E%3Cpath d='M28 0h28v16a14 14 0 0 1-28 0z' fill='%23fff'/%3E%3Cpath d='M0 0h56v6H0z' fill='%23000' fill-opacity='.22'/%3E%3C/svg%3E") 50% 0 / 56px 30px repeat-x; transform-origin: 50% 0; animation: pd-awning 4.2s ease-in-out infinite; }
+@keyframes pd-awning { 50% { transform: scaleY(.88) skewX(1.2deg); } }
+.public-menu-page .public-list-header { padding-top: 14px; }
+
+/* Foto */
+.pd-photo { position: absolute; inset: 0; display: block; overflow: hidden; border-radius: inherit; background: #17100E; }
+.pd-photo > img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.03); transition: transform 1.1s cubic-bezier(.2, .8, .2, 1); }
+.pd-photo > i { position: absolute; inset: 0; pointer-events: none; transition: opacity .45s; }
+.pd-photo-dim { background: radial-gradient(85% 80% at 50% 52%, rgba(10, 7, 6, .04) 30%, rgba(10, 7, 6, .62) 100%); }
+.pd-photo-lamp { background: conic-gradient(from 148deg at 50% -18%, transparent 0 4deg, rgba(255, 205, 120, .22) 20deg 44deg, transparent 60deg); opacity: 0; mix-blend-mode: screen; }
+.pd-photo-steam { position: absolute; left: 50%; bottom: 46%; pointer-events: none; }
+.pd-photo-steam i { position: absolute; bottom: 0; width: 18px; height: 70px; background: radial-gradient(50% 50% at 50% 50%, rgba(255, 255, 255, .34), transparent 72%); opacity: 0; }
+.pd-photo-steam i:nth-child(1) { left: -38px; } .pd-photo-steam i:nth-child(2) { left: -4px; --o: .7s; } .pd-photo-steam i:nth-child(3) { left: 30px; --o: 1.3s; }
+@keyframes pd-wisp { 0% { opacity: 0; transform: translateY(26px) skewX(-9deg); } 40% { opacity: .85; } 100% { opacity: 0; transform: translateY(-52px) skewX(11deg) scaleX(1.7); } }
+
+/* Tarjeta */
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card) { --neon: #FF2E38; position: relative; display: flex; flex-direction: column; min-width: 0; padding: 0; border-radius: 22px; background: #17100E; box-shadow: inset 0 0 0 2px #35201B; animation: none; transform: none; transition: transform .4s var(--pd-spring); }
+.public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card)::after { content: ''; position: absolute; z-index: 4; inset: 0; border: 2.5px solid var(--neon); border-radius: inherit; box-shadow: 0 0 18px -1px var(--neon), inset 0 0 14px -4px var(--neon); opacity: 0; pointer-events: none; }
+.public-menu-page :is(.public-prod-img-wrap, .public-home-prod-img-wrap, .public-home-promo-img-wrap) { position: relative; z-index: 1; width: 100%; margin: 0; aspect-ratio: 1 / .98; border-radius: 22px 22px 0 0; background: none; overflow: visible !important; transform: none; cursor: pointer; }
+/* Mostrador */
+.public-menu-page :is(.public-prod-info, .public-home-prod-body, .pd-promo-front) { position: relative; z-index: 2; display: flex; flex: 1; flex-direction: column; align-items: stretch; gap: 3px; margin: 0; padding: 12px 12px 12px; border-top: 4px solid var(--pd-red); text-align: left; color: #fff; }
+.public-menu-page :is(.public-prod-title, .public-home-prod-title, .public-home-promo-title) { color: #fff; font: 800 16px/1.2 var(--pd-text); }
+.public-menu-page .public-prod-desc { display: -webkit-box; overflow: hidden; min-height: 2.6em; color: #C9B9B0; font-size: 12.5px; line-height: 1.3; text-align: left; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.public-menu-page .public-prod-footer-row { margin-top: auto; padding-top: 2px; }
+.public-menu-page :is(.public-prod-price-wrap, .public-home-prod-price-wrap) { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-start; gap: 0 8px; margin-top: auto; line-height: 1.2; }
+.public-menu-page :is(.public-prod-price, .public-home-prod-price, .public-home-promo-price) { color: var(--pd-yellow); font: 400 19px/1.2 var(--pd-display); white-space: nowrap; }
+.public-menu-page :is(.public-prod-price, .public-home-prod-price) small { color: #C9B9B0; font: 600 12px/1 var(--pd-text); }
+.public-menu-page :is(.public-prod-price-bs, .public-home-prod-price-bs) { color: #A9968C; font-size: 12.5px; }
+.public-menu-page .public-prod-add { position: static; display: inline-flex; align-items: center; justify-content: center; gap: 7px; width: 100%; min-width: 0; height: 44px; margin-top: 9px; padding: 0 8px; border: 0; border-radius: 13px; color: #fff; background: var(--pd-red); box-shadow: 0 4px 0 #7A0A10; font-size: 14.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
+.public-menu-page .public-prod-add svg { color: #fff; transition: transform .35s var(--pd-spring); }
+.public-menu-page .public-prod-add .public-prod-add-label { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+.public-menu-page .public-prod-add:active { transform: translateY(3px); box-shadow: 0 1px 0 #7A0A10; }
+.public-menu-page .public-prod-add:active svg { transform: rotate(90deg) scale(1.2); }
+.public-menu-page .public-prod-add.has-options { color: #17100E; background: #fff; box-shadow: 0 4px 0 #A89A92; }
+.public-menu-page .public-prod-add.has-options svg { color: var(--pd-red); }
+.public-menu-page .pd-in-cart { position: absolute; z-index: 5; top: auto; bottom: 10px; left: 10px; padding: 7px 11px; border-radius: 10px; color: #17100E; background: var(--pd-yellow); font-size: 12.5px; font-weight: 800; line-height: 1; animation: pd-pop .4s var(--pd-spring); }
+.public-menu-page :is(.public-favorite-btn, .public-home-fav-btn) { z-index: 5; top: 2px; right: 2px; background: none; }
+.public-menu-page :is(.public-favorite-btn, .public-home-fav-btn)::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: rgba(10, 7, 6, .72); }
+.public-menu-page :is(.public-favorite-btn, .public-home-fav-btn) svg { position: relative; }
+.public-menu-page :is(.public-favorite-btn, .public-home-fav-btn).active::before { background: #fff; }
+.public-menu-page .public-menu-label { z-index: 5; top: 10px; left: 10px; }
+.public-menu-page .public-free-drink-sticker { position: absolute; z-index: 6; top: -14px; left: -10px; width: 78px; pointer-events: none; transform: rotate(-8deg); }
+
+/* Se prende */
+.public-menu-page .public-prod-card.is-near::after, .public-menu-page .public-prod-card.is-in-cart::after { animation: pd-neon-strike .55s steps(1) forwards; }
+.public-menu-page .public-prod-card.is-in-cart { --neon: #FFC21A; }
+@keyframes pd-neon-strike { 0% { opacity: .9; } 16% { opacity: .1; } 30% { opacity: 1; } 42% { opacity: .3; } 56%, 100% { opacity: 1; } }
+.public-menu-page .public-prod-card.is-near .pd-photo > img { transform: scale(1.14); }
+.public-menu-page .public-prod-card.is-near .pd-photo-dim { opacity: 0; }
+.public-menu-page .public-prod-card.is-near .pd-photo-lamp { opacity: 1; }
+.public-menu-page .public-prod-card.is-near .pd-photo-steam i { animation: pd-wisp 2.8s calc(.3s + var(--o, 0s)) ease-in-out infinite; }
+.public-menu-page .public-prod-card:active { transform: scale(.975); }
+@media (hover: hover) and (pointer: fine) {
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover { transform: translateY(-6px); }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover::after { animation: pd-neon-strike .55s steps(1) forwards; }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-photo > img { transform: scale(1.16); }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-photo-dim { opacity: 0; }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-photo-lamp { opacity: 1; }
+  .public-menu-page :is(.public-prod-card, .public-home-product-card, .public-home-promo-card):hover .pd-photo-steam i { animation: pd-wisp 2.8s calc(.2s + var(--o, 0s)) ease-in-out infinite; }
+  .public-menu-page .public-prod-add:hover { background: #F0232E; color: #fff; }
+  .public-menu-page .public-prod-add:hover svg { color: inherit; transform: rotate(90deg); }
+  .public-menu-page .public-prod-add.has-options:hover { background: var(--pd-yellow); color: #17100E; }
+  .public-menu-page .public-prod-add.has-options:hover svg { transform: scale(1.15); }
+}
+
+/* Promos: neón amarillo y letrero grande */
+.public-menu-page :is([data-category='promociones'] .public-prod-card, .public-home-promo-card) { --neon: #FFC21A; background: #C8111B; box-shadow: inset 0 0 0 2px #E8313B; }
+.public-menu-page :is([data-category='promociones'] .public-prod-info, .pd-promo-front) { border-top-color: var(--pd-yellow); }
+.public-menu-page :is([data-category='promociones'] .public-prod-title, .public-home-promo-title) { font: 400 19px/1.15 var(--pd-display); }
+.public-menu-page [data-category='promociones'] .public-prod-desc { color: #FFE5DD; }
+.public-menu-page [data-category='promociones'] .public-prod-price { color: #FFD65C; font-size: 22px; }
+.public-menu-page [data-category='promociones'] .public-prod-price small, .public-menu-page [data-category='promociones'] .public-prod-price-bs { color: #FFE1D8; }
+.public-menu-page [data-category='promociones'] .public-prod-add { color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #7A0A10; }
+.public-menu-page [data-category='promociones'] .public-prod-add svg { color: #17100E; }
+.public-menu-page [data-category='promociones'] .public-prod-add.has-options { background: #fff; }
+
+/* Disposición */
+.public-menu-page :is(.public-category-grid, .public-product-list:not(.public-product-list-grouped)) { gap: 18px 12px; }
+.public-menu-page .public-category-section { padding-top: 18px; }
+.public-menu-page .public-mobile-view .public-product-list:not(.is-deck):not(.public-product-list-grouped) { gap: 16px 11px; padding: 14px 14px 24px; }
+
+/* ===== Mazo de promos (teléfono) ===== */
+.pd-deck-rail { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 0 0 16px; }
+.pd-deck-count { color: var(--soft); font-size: 13.5px; white-space: nowrap; }
+.pd-deck-count b { display: inline-block; min-width: 1.1em; color: var(--pd-yellow); font: 400 22px/1 var(--pd-display); animation: pd-pop .3s var(--pd-spring); }
+.pd-deck-thumbs { display: flex; gap: 6px; overflow-x: auto; padding: 8px 18px 8px 4px; scrollbar-width: none; }
+.pd-deck-thumbs::-webkit-scrollbar { display: none; }
+.pd-deck-thumbs button { flex: 0 0 auto; width: 46px; height: 46px; padding: 0; border: 2.5px solid transparent; border-radius: 14px; overflow: hidden; background: #241815; opacity: .6; transition: transform .35s var(--pd-spring), opacity .2s, border-color .2s; }
+.pd-deck-thumbs .is-front { border-color: var(--pd-yellow); opacity: 1; transform: scale(1.12); }
+.pd-deck-thumbs img { width: 100%; height: 100%; object-fit: cover; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck[data-category='promociones'] { --w: min(70vw, 300px); position: relative; display: flex; align-items: stretch; gap: 12px; padding: 18px calc((100vw - var(--w)) / 2) 20px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.public-menu-page .public-product-list.is-deck::-webkit-scrollbar { display: none; }
+.public-menu-page .public-product-list.is-deck .public-prod-card { flex: 0 0 var(--w); scroll-snap-align: center; scroll-snap-stop: always; opacity: .5; transform: perspective(900px) rotateY(0) scale(.9); transition: transform .5s cubic-bezier(.25, 1.3, .4, 1), opacity .3s; }
+.public-menu-page .public-product-list.is-deck .public-prod-card.is-near { opacity: 1; transform: none; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-info { padding: 14px 16px 16px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-title { font-size: 23px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-desc { font-size: 13.5px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-price { font-size: 26px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-add { height: 48px; font-size: 16px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-img-wrap { aspect-ratio: 1 / .92; }
+
+/* ===== Menú completo: una fila por categoría (teléfono) ===== */
+.pd-see-all { display: inline-flex; align-items: center; gap: 3px; min-height: 44px; margin-left: auto; padding: 0 2px; border: 0; color: var(--pd-yellow); background: none; font-size: 14.5px; font-weight: 750; white-space: nowrap; }
+.public-menu-page .public-mobile-view .public-category-section { padding: 8px 0 12px; contain-intrinsic-size: auto 400px; }
+.public-menu-page .public-mobile-view .public-category-section-header { align-items: center; margin-bottom: 2px; padding: 0 16px; }
+.public-menu-page .public-mobile-view .public-category-grid { display: flex; gap: 11px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; padding: 16px 16px 14px; }
+.public-menu-page .public-mobile-view .public-category-grid::-webkit-scrollbar { display: none; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card { flex: 0 0 min(42vw, 180px); scroll-snap-align: start; scroll-margin-left: 16px; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card .public-prod-title { font: 800 14.5px/1.2 var(--pd-text) !important; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card:first-child .public-prod-img-wrap { aspect-ratio: 1 / .98 !important; }
+
+/* ===== Entrega: fotos completas ===== */
+.public-delivery-step .public-delivery-choice { align-items: center; }
+.public-delivery-step .public-delivery-choice > img, .public-delivery-step .public-delivery-choice:not(.selected) > img { inset: 0 0 0 auto; width: 50%; height: 100%; object-fit: contain; object-position: 50% 50%; transform: none; -webkit-mask: radial-gradient(76% 74% at 54% 50%, #000 62%, transparent 100%); mask: radial-gradient(76% 74% at 54% 50%, #000 62%, transparent 100%); }
+.public-delivery-step .public-delivery-choice:not(.selected) > img { opacity: .72; transform: scale(.95); }
+.public-delivery-step .public-delivery-choice::after { display: none; }
+.public-delivery-step .public-delivery-choice-copy { max-width: 52%; padding: 58px 0 18px 22px; }
+.public-delivery-step .public-delivery-choice.selected > img { animation: pd-moto .75s cubic-bezier(.2, 1, .3, 1); }
+.public-delivery-step .public-delivery-choice:first-of-type.selected > img { animation: pd-bag-drop .7s var(--pd-spring); }
+@keyframes pd-moto { from { transform: translateX(110%); } }
+@keyframes pd-bag-drop { 0% { transform: translateY(-60%) rotate(-7deg); } 60% { transform: translateY(3%) rotate(3deg); } }
+
+/* ===== Detalle: la foto manda ===== */
+.public-modal-backdrop { background: rgba(0, 0, 0, .86); }
+.public-modal-backdrop > .public-product-detail-modal { background: #0E0908; }
+.ppdm-image { position: relative; overflow: hidden; border-radius: 0; background: #000; }
+.pd-hero-photo { --ox: 50%; --oy: 55%; position: relative; height: min(58dvh, 520px); overflow: hidden; cursor: zoom-in; touch-action: pan-y; }
+.pd-hero-photo.is-zoomed { cursor: zoom-out; touch-action: none; }
+.pd-hero-photo-img { width: 100%; height: 100%; object-fit: cover; transform-origin: var(--ox) var(--oy); transform: scale(1.02); transition: transform .5s cubic-bezier(.2, .9, .2, 1), transform-origin .2s linear; animation: pd-photo-reveal 1.15s cubic-bezier(.16, .9, .2, 1) both; user-select: none; -webkit-user-select: none; }
+.pd-hero-photo.is-zoomed .pd-hero-photo-img { transform: scale(2.1); }
+@keyframes pd-photo-reveal { from { transform: scale(1.42); opacity: .2; } }
+/* La lámpara se prende sobre el plato. */
+.pd-hero-photo-light { position: absolute; inset: 0; pointer-events: none; background: conic-gradient(from 150deg at 50% -24%, transparent 0 4deg, rgba(255, 206, 120, .24) 22deg 40deg, transparent 56deg); mix-blend-mode: screen; opacity: 0; animation: pd-lamp-on .9s .35s steps(1) forwards; }
+@keyframes pd-lamp-on { 0% { opacity: .9; } 14% { opacity: 0; } 30% { opacity: 1; } 44% { opacity: .2; } 60%, 100% { opacity: 1; } }
+.pd-hero-photo .pd-photo-steam i { width: 30px; height: 130px; animation: pd-wisp 3.2s calc(.8s + var(--o, 0s)) ease-in-out infinite; }
+.pd-hero-photo.is-zoomed :is(.pd-photo-steam, .pd-hero-photo-light, .pd-hero-photo-hint) { opacity: 0; animation: none; }
+.pd-hero-photo-hint { position: absolute; left: 14px; top: 20px; padding: 8px 13px; border-radius: 12px; color: #fff; background: rgba(10, 7, 6, .72); font-size: 13px; font-weight: 650; pointer-events: none; animation: pd-fade-out .4s 4s both; }
+.ppdm-image::after { content: ''; position: absolute; z-index: 1; inset: auto 0 0; height: 230px; background: linear-gradient(transparent, rgba(14, 9, 8, .82) 58%, #0E0908); pointer-events: none; }
+.ppdm-hero-copy { position: absolute; z-index: 2; inset: auto 0 0; padding: 0 20px 10px !important; pointer-events: none; animation: pd-rise .6s .25s var(--pd-out) both; }
+.ppdm-hero-copy h1 { font: 400 clamp(30px, 9.4vw, 46px)/1.02 var(--pd-display); text-shadow: 0 3px 14px rgba(0, 0, 0, .7); }
+.ppdm-price { margin-top: 6px; font: 400 28px/1.1 var(--pd-display); }
+.ppdm-price-bs { font: 500 15px/1.2 var(--pd-text); }
+.ppdm-close { z-index: 6; }
+.ppdm-free-drink-sticker { z-index: 3; right: 10px; bottom: 96px; width: 112px; }
+.pd-steam { display: none; }
+.public-product-detail-modal::before { content: ''; position: absolute; z-index: 7; inset: 0; border: 3px solid var(--pd-red); border-radius: inherit; box-shadow: inset 0 0 26px -6px var(--pd-red); pointer-events: none; opacity: 0; animation: pd-neon-strike .6s .3s steps(1) forwards; }
+@media (max-width: 899px), (orientation: portrait) {
+  .public-product-detail-modal::before { display: none; }
+  .public-modal-backdrop > .public-product-detail-modal { height: 100dvh; max-height: 100dvh; border-radius: 0; }
+  .ppdm-close { position: fixed; top: max(14px, env(safe-area-inset-top, 0px)); }
+}
+
+/* Presentaciones con foto completa */
+.public-variant-option { padding: 0 !important; overflow: hidden; }
+.public-variant-option-media { position: relative; padding: 0; aspect-ratio: 1 / .86; }
+.public-variant-option-media .pd-photo { border-radius: 0; }
+.public-variant-option.selected .pd-photo > img { transform: scale(1.12); }
+.public-variant-option.selected .pd-photo-dim { opacity: 0; }
+.public-variant-option.selected .pd-photo-lamp { opacity: 1; }
+.public-variant-option-copy { padding: 11px 13px 13px; }
+.public-variant-free-drink-badge { z-index: 3; left: 4px; top: 4px; }
+
+/* Mesa giratoria: cada foto servida en su plato */
+.pd-seat .pd-dish.is-photo .pd-dish-body::before { inset: 3%; }
+.pd-seat .pd-dish.is-photo img { inset: 8%; width: 84%; height: 84%; transform: none; }
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-menu-page .public-desktop-main .public-content::before { margin: 8px 0 4px; border-radius: 14px 14px 0 0; background-position: 0 0; }
+  .public-menu-page .public-desktop-main .public-category-grid { grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 24px 18px; padding: 6px 0; overflow: visible; }
+  .public-menu-page .public-desktop-main .public-product-list[data-category='promociones'] .public-category-grid { grid-template-columns: repeat(auto-fill, minmax(216px, 1fr)); }
+  .public-menu-page :is(.public-prod-title, .public-home-prod-title) { font-size: 16px; }
+  .public-menu-page :is(.public-prod-info, .public-home-prod-body, .pd-promo-front) { padding: 13px 14px 14px; }
+  .public-menu-page :is(.public-prod-add, .public-home-add-btn, .public-home-promo-add-btn) { height: 42px; min-height: 42px; font-size: 14.5px; }
+  .public-menu-page .public-free-drink-sticker { width: 84px; }
+  .public-menu-page .public-home-products-grid { gap: 18px; margin-top: 0; padding: 12px 2px; }
+  .public-menu-page .public-home-stepper { background: #33231E; }
+  .public-menu-page .public-home-stepper button { height: 42px; color: #fff; }
+  .public-menu-page .public-home-prod-actions { margin-top: 9px; }
+  .public-menu-page .public-home-promos-grid { gap: 18px; padding: 12px 2px; }
+  .public-menu-page .pd-promo-front .public-home-promo-top { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 2px; width: 100%; padding: 0; text-align: left; }
+  .public-menu-page .pd-promo-front .public-home-promo-price { font-size: 22px; }
+  .public-menu-page .pd-promo-front .public-home-promo-add-btn { margin-top: 8px; color: #17100E; background: var(--pd-yellow); box-shadow: 0 4px 0 #7A0A10; }
+
+  .public-modal-backdrop > .public-product-detail-modal { grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr); width: min(1120px, calc(100vw - 72px)); height: min(700px, calc(100dvh - 56px)); border-radius: 28px; }
+  .ppdm-image { display: block; border-radius: 28px 0 0 28px; }
+  .pd-hero-photo { height: 100%; }
+  .pd-hero-photo-hint { left: 76px; top: 26px; }
+  .ppdm-image::after { height: 280px; }
+  .ppdm-hero-copy { padding: 0 28px 24px !important; }
+  .ppdm-hero-copy h1 { font-size: clamp(32px, 3.5vw, 50px); }
+  .ppdm-price { font-size: 32px; }
+  .ppdm-free-drink-sticker { bottom: 130px; right: 22px; width: 132px; }
+}
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  /* Con varias tarjetas a la vista, el neón solo se prende en la que señalas. */
+  .public-menu-page .public-prod-card.is-near:not(:hover)::after, .public-menu-page .public-prod-card.is-in-cart:not(:hover)::after { animation: none; }
+  .public-menu-page .public-prod-card.is-in-cart:not(:hover)::after { opacity: 1; box-shadow: none; }
+  .public-menu-page .public-prod-card.is-near:not(:hover) .pd-photo > img { transform: scale(1.06); }
+  .public-menu-page .public-prod-card.is-near:not(:hover) :is(.pd-photo-lamp, .pd-photo-steam) { opacity: 0; }
+  /* "Todos": una fila por categoría y el resto a un clic. */
+  .public-menu-page .public-desktop-main .public-product-list-grouped .public-category-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .public-menu-page .public-desktop-main .public-product-list-grouped .public-prod-card:nth-child(n + 5) { display: none; }
+  .public-menu-page .public-desktop-main .public-category-section { contain-intrinsic-size: auto 420px; }
+  .public-menu-page .public-desktop-main .public-category-section-header { align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .public-menu-page .public-prod-price-wrap { gap: 0 7px; }
+  .public-menu-page .public-prod-card .public-prod-price { font-size: 18px; }
+  .public-menu-page [data-category='promociones'] .public-prod-card .public-prod-price { font-size: 20px; }
+  .public-menu-page .public-prod-price-bs { font-size: 12px; }
+}
+@media (min-width: 900px) and (max-width: 1179px) and (orientation: landscape) {
+  .public-menu-page .public-desktop-main .public-product-list-grouped .public-category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .public-menu-page .public-desktop-main .public-product-list-grouped .public-prod-card:nth-child(n + 4) { display: none; }
+}
+
+/* El plato de la mesa no pisa el título. */
+.pd-table-window { height: calc(var(--w) * .68); }

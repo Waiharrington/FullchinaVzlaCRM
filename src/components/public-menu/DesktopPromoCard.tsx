@@ -2,7 +2,8 @@ import { type SyntheticEvent, type MouseEvent, type KeyboardEvent } from 'react'
 import { productTitle, money } from '../../lib/publicMenuFormat'
 import { LoaderCircle, Plus } from 'lucide-react'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
-import { Dish, Fit } from '../../pedir-v2/ui'
+import { Photo } from '../../pedir-v2/Photo'
+import { Fit } from '../../pedir-v2/ui'
 
 interface DesktopPromoCardProps {
   group: MenuProductGroup
@@ -18,8 +19,7 @@ export function DesktopPromoCard({ group, handleCardAdd, openProductFromCard, op
     return (
       <article className="public-home-promo-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
         <div className="public-home-promo-img-wrap">
-          <i className="pd-box-back" aria-hidden="true" />
-          <Dish imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
+          <Photo imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
         </div>
         <div className="pd-promo-front">
         <div className="public-home-promo-top">

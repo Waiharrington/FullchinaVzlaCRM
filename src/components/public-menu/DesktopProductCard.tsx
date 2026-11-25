@@ -2,7 +2,8 @@ import { type SyntheticEvent, type MouseEvent, type KeyboardEvent } from 'react'
 import { productTitle, money } from '../../lib/publicMenuFormat'
 import { Heart, Minus, Plus, LoaderCircle } from 'lucide-react'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
-import { Dish, Fit } from '../../pedir-v2/ui'
+import { Photo } from '../../pedir-v2/Photo'
+import { Fit } from '../../pedir-v2/ui'
 
 interface DesktopProductCardProps {
   group: MenuProductGroup
@@ -25,8 +26,7 @@ export function DesktopProductCard({ group, changeCardQty, favoriteIds, getCardQ
     return (
       <article className="public-home-product-card" key={group.key} onClick={event => openProductFromCard(group, event)} tabIndex={0} onKeyDown={event => openProductFromCardKeyboard(group, event)}>
         <div className="public-home-prod-img-wrap">
-          <i className="pd-box-back" aria-hidden="true" />
-          <Dish imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
+          <Photo imageUrl={group.variants[0]?.product.imageUrl} alt={group.name} />
           <button
             type="button"
             className={`public-home-fav-btn ${favoriteIds.includes(group.key) ? 'active' : ''}`}

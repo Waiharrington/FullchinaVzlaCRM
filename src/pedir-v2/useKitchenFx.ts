@@ -1,5 +1,4 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import { cutoutFor } from './cutouts'
 
 /* Efecto insignia: el plato vuela hasta el wok (el carrito) y el wok salta.
    Solo escucha lo que ya pasó (addFeedback); no decide nada del pedido. */
@@ -37,21 +36,20 @@ function fly(src: string, from: { x: number; y: number; size: number }) {
   const rect = target.getBoundingClientRect()
   const toX = rect.left + rect.width / 2
   const toY = rect.top + rect.height * 0.42
-  const size = Math.min(170, Math.max(84, from.size * 0.8))
+  const size = Math.min(140, Math.max(84, from.size * 0.7))
   const dx = toX - from.x
   const dy = toY - from.y
   const lift = Math.min(170, 70 + Math.abs(dx) * 0.18)
 
   const outer = document.createElement('div')
-  const cutout = cutoutFor(src)
-  outer.className = cutout ? 'pd-fly is-cut' : 'pd-fly'
+  outer.className = 'pd-fly'
   outer.style.width = `${size}px`
   outer.style.height = `${size}px`
   outer.style.left = `${from.x - size / 2}px`
   outer.style.top = `${from.y - size / 2}px`
   const inner = document.createElement('div')
   const img = document.createElement('img')
-  img.src = cutout || src
+  img.src = src
   img.alt = ''
   inner.append(img)
   outer.append(inner)
