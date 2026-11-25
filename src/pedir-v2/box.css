@@ -128,3 +128,45 @@
 .pd-box-back { bottom: 0; }
 .pd-box-back::after { content: ''; position: absolute; left: 24%; right: 24%; top: calc(100% - 4px); height: 34px; background: #120B09; }
 .public-menu-page :is([data-category='promociones'] .public-prod-card, .public-home-promo-card) .pd-box-back::after { background: #5C060C; }
+
+/* ===== Mazo de promos (teléfono) ===== */
+.pd-deck-rail { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 12px 0 0 18px; }
+.pd-deck-count { color: var(--soft); font-size: 14px; white-space: nowrap; }
+.pd-deck-count b { display: inline-block; min-width: 1.1em; color: var(--pd-yellow); font: 400 24px/1 var(--pd-display); animation: pd-pop .3s var(--pd-spring); }
+.pd-deck-thumbs { display: flex; gap: 6px; overflow-x: auto; padding: 8px 18px 8px 4px; scrollbar-width: none; }
+.pd-deck-thumbs::-webkit-scrollbar { display: none; }
+.pd-deck-thumbs button { flex: 0 0 auto; width: 48px; height: 48px; padding: 3px; border: 2.5px solid transparent; border-radius: 50%; background: #241815; opacity: .7; transition: transform .35s var(--pd-spring), opacity .2s, border-color .2s; }
+.pd-deck-thumbs .is-front { border-color: var(--pd-yellow); opacity: 1; transform: scale(1.14); }
+.pd-deck-thumbs img, .pd-deck-thumbs img.is-cut { width: 100%; height: 100%; padding: 0; border-radius: 50%; object-fit: cover !important; background: none; }
+.pd-deck-thumbs img.is-cut { object-fit: contain !important; }
+
+.public-menu-page .public-mobile-view .public-product-list.is-deck[data-category='promociones'] { display: flex; align-items: stretch; gap: 14px; padding: 4px calc((100vw - min(78vw, 330px)) / 2) 14px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; position: relative; }
+.public-menu-page .public-product-list.is-deck::-webkit-scrollbar { display: none; }
+.public-menu-page .public-product-list.is-deck .public-prod-card { flex: 0 0 min(78vw, 330px); scroll-snap-align: center; scroll-snap-stop: always; opacity: .55; transform: scale(.9); transform-origin: 50% 100%; transition: transform .45s cubic-bezier(.25, 1.3, .4, 1), opacity .3s; }
+.public-menu-page .public-product-list.is-deck .public-prod-card.is-near { opacity: 1; transform: none; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck .public-prod-img-wrap { aspect-ratio: 1 / .74; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck[data-category='promociones'] .public-prod-info { padding: 32px 12% 20px; gap: 5px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck[data-category='promociones'] .public-prod-desc { font-size: 14px; -webkit-line-clamp: 2; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck[data-category='promociones'] .public-prod-price { font-size: 28px; }
+.public-menu-page .public-mobile-view .public-product-list.is-deck[data-category='promociones'] .public-prod-add { height: 50px; margin-top: 4px; }
+
+/* ===== Menú completo: una fila corta por categoría (teléfono) ===== */
+.pd-see-all { display: inline-flex; align-items: center; gap: 3px; min-height: 44px; margin-left: auto; padding: 0 2px; border: 0; color: var(--pd-yellow); background: none; font-size: 15px; font-weight: 750; white-space: nowrap; }
+.public-menu-page .public-mobile-view .public-category-section { padding: 10px 0 12px; contain-intrinsic-size: auto 430px; }
+.public-menu-page .public-mobile-view .public-category-section-header { align-items: center; margin-bottom: 2px; padding: 0 18px; }
+.public-menu-page .public-mobile-view .public-category-grid { display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: none; padding: 12px 18px 8px; }
+.public-menu-page .public-mobile-view .public-category-grid::-webkit-scrollbar { display: none; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card { flex: 0 0 min(46vw, 210px); scroll-snap-align: start; scroll-margin-left: 18px; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card:first-child .public-prod-img-wrap { aspect-ratio: 1 / .92 !important; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card:first-child .public-prod-title { font: 800 17px/1.2 var(--pd-text) !important; }
+.public-menu-page .public-mobile-view .public-category-grid > .public-prod-card .public-prod-desc { min-height: 2.7em !important; }
+
+@media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
+  .public-menu-page .public-desktop-main [data-category='promociones'] .public-category-grid, .public-menu-page .public-desktop-main [data-category='promociones'].public-product-list .public-category-grid, .public-menu-page .public-desktop-main .public-category-grid { grid-template-columns: repeat(auto-fill, minmax(clamp(178px, 13vw, 218px), 1fr)); gap: 30px 18px; }
+  .public-menu-page :is(.public-prod-img-wrap) { aspect-ratio: 1 / .8; }
+  .public-menu-page [data-category='promociones'] .public-prod-title { font-size: 20px; }
+  .public-menu-page [data-category='promociones'] .public-prod-price { font-size: 24px; }
+  .public-menu-page .public-prod-add { height: 46px; font-size: 15.5px; }
+  .public-menu-page :is(.public-prod-info) { padding-top: 28px; padding-bottom: 16px; }
+  .public-menu-page .public-prod-desc { font-size: 13px; }
+}

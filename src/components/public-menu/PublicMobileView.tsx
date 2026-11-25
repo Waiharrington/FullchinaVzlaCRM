@@ -18,6 +18,7 @@ import { type Product } from '../../lib/dataService'
 import { type CustomerRepeatOrder } from '../../lib/publicOrders'
 import { usePauseOffscreen } from '../../pedir-v2/hooks'
 import { Chopsticks, Fit } from '../../pedir-v2/ui'
+import { DeckRail } from '../../pedir-v2/Deck'
 import { Turntable } from '../../pedir-v2/Turntable'
 import { Burner, NavEater, NavTruck, NavWok } from '../../pedir-v2/NavIcons'
 
@@ -79,6 +80,8 @@ interface PublicMobileViewProps {
 export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cartOpen, categories, categorySections, closeSearch, contactViewProps, currentTab, error, favoriteIds, formattedCloseTime, handleRecommendedWheel, hasLeftMobileMenu, hasVisitedProfile, heroSearchRef, isDesktopViewport, isLoyaltyRecommended, isStoreOpen, loading, moveRecommended, openCustomerProfile, openGroup, pageSettings, pauseRecommendedAutoplay, priceBs, products, recommendedGroup, recommendedIndex, recommendedSlideCount, recommendedSlides, recommendedSwipeStart, recommendedVariant, recommendedWasSwiped, renderProductCard, repeatPreviousOrder, resumeRecommendedAutoplay, retryPublicCatalog, search, setActiveCategory, setCurrentTab, setError, setHasLeftMobileMenu, setRequestedRecommendedIndex, setSearch, setShowFavorites, setShowSearch, showFavorites, showSearch, storeScheduleLabel, toggleFavorite, visibleGroups }: PublicMobileViewProps) {
   const railRef = useRef<HTMLElement>(null)
   const tableRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const showDeck = activeCategory === 'promociones' && visibleGroups.length > 1
   const stageRef = useRef<HTMLDivElement>(null)
   usePauseOffscreen(stageRef)
   // Solo visual: qué categoría sostienen los palillos mientras se recorre el menú.
@@ -246,7 +249,9 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
 
               {error && products.length > 0 && !cartOpen && <Toast type="error" message={error} onClose={() => setError('')} />}
               {error && products.length === 0 ? <div className="public-state error" role="alert"><p>{error}</p><button type="button" className="public-catalog-retry" onClick={retryPublicCatalog}>Reintentar</button></div> : (
-                <div data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}`}>
+                <>
+                {showDeck && <DeckRail listRef={listRef} groups={visibleGroups} />}
+                <div ref={listRef} data-category={activeCategory} className={`public-product-list ${activeCategory === 'Todos' ? 'public-product-list-grouped' : ''}${showDeck ? ' is-deck' : ''}`}>
                   {loading && products.length === 0 ? <PublicCatalogLoadingSkeleton /> : visibleGroups.length === 0 ? (
                     <div className="public-empty-menu">
                       <span><Utensils size={42} /></span>
@@ -256,11 +261,12 @@ export function PublicMobileView({ scrollCategory, activeCategory, bcvRate, cart
                     </div>
                   ) : activeCategory === 'Todos' ? categorySections.map((section, sectionIndex) => (
                     <section className="public-category-section" key={section.category} data-category={section.category}>
-                      <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><span>{section.groups.length} {section.groups.length === 1 ? 'opción' : 'opciones'}</span></div>
+                      <div className="public-category-section-header"><h3>{categoryLabel(section.category)}</h3><button type="button" className="pd-see-all" onClick={() => chooseCategory(section.category)}>Ver las {section.groups.length} <ChevronRight size={15} aria-hidden="true" /></button></div>
                       <div className="public-category-grid">{section.groups.map((group, groupIndex) => renderProductCard(group, sectionIndex === 0 && groupIndex < (isDesktopViewport ? 4 : 2)))}</div>
                     </section>
                   )) : visibleGroups.map((group, groupIndex) => renderProductCard(group, groupIndex < (isDesktopViewport ? 4 : 2)))}
                 </div>
+                </>
               )}
             </section>
               </div>
