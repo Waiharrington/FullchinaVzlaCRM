@@ -302,6 +302,9 @@ html[data-pwa-entry='cliente'] :is(.public-hero-search-pill, .public-hero-search
 .public-sidebar-item { padding-right: 31px; }
 :is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track, .ppdm-content, .public-variant-options, .public-cart-extra-sections, .public-product-detail-modal) { overflow-x: hidden; }
 html[data-pwa-entry='cliente'], html[data-pwa-entry='cliente'] body { overflow-x: clip; }
+/* En escritorio solo se bloquea el scroll de html: si body también se oculta,
+   la tarjeta "Tu pedido" pierde su posición sticky y salta hacia arriba. */
+html:root body:has(.public-menu-page .public-desktop-layout) { overflow-x: clip !important; overflow-y: visible !important; }
 /* Escritorio: las filas caben enteras, sin carruseles de lado. */
 @media (min-width: 1280px), (min-width: 900px) and (orientation: landscape) {
   .ppdm-complementary-carousel { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); margin: 0; padding: 2px 0; overflow: visible; }
