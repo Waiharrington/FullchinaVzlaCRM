@@ -67,12 +67,12 @@ export function LiveTicket({ cart, name, identification, phone, payMode, payPrim
   )
 }
 
-/** Escaparate del retiro: letrero de neón, bolsa y el recorrido del pedido. */
+/** Escaparate del retiro: rótulo con las letras del logo, bolsa y el recorrido del pedido. */
 export function PickupStage() {
   return (
     <div className="pd-pickup-stage">
       <img src="/optimized/fondos/pickup-card.webp" alt="" />
-      <p className="pd-letrero">Tu pedido<br />te espera</p>
+      <p className="pd-letrero"><span>Tu pedido</span> <strong>te espera</strong></p>
       <ol aria-label="Cómo va tu retiro"><li>Se cocina</li><li>Queda listo</li><li>Lo buscas</li></ol>
     </div>
   )

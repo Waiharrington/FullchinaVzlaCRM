@@ -36,7 +36,11 @@
 .pd-pickup-stage { position: relative; height: 236px; overflow: hidden; border-radius: 24px; background: #070403; }
 .pd-pickup-stage > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 100% 50%; animation: pd-bag-in .7s var(--pd-spring) both; }
 .pd-pickup-stage::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7, 4, 3, .9) 22%, transparent 66%), linear-gradient(transparent 60%, rgba(7, 4, 3, .95)); }
-.pd-letrero { position: absolute; z-index: 1; top: 34px; left: 18px; margin: 0; color: #FFF3D0; font: 400 clamp(23px, 7.2vw, 30px)/1.14 var(--pd-display); text-shadow: 0 0 6px #FFC21A, 0 0 18px #FF7A1A, 0 0 36px #E0141F; animation: pd-letrero-on 1.4s linear both; }
+/* Rótulo con las letras del logo: blanco y amarillo, contorno rojo y algo inclinado. */
+.pd-letrero { position: absolute; z-index: 1; top: 30px; left: 18px; display: grid; justify-items: start; margin: 0; font-family: var(--pd-display); text-transform: uppercase; white-space: nowrap; transform: rotate(-7deg); }
+.pd-letrero span, .pd-letrero strong { font-weight: 400; line-height: 1; paint-order: stroke fill; -webkit-text-stroke: 7px #D9141E; filter: drop-shadow(0 4px 0 #5C0207); animation: pd-letrero-in .55s var(--pd-spring) both; }
+.pd-letrero span { color: #fff; font-size: clamp(21px, 6.4vw, 27px); }
+.pd-letrero strong { margin: 2px 0 0 14px; color: #FFC21A; font-size: clamp(28px, 8.6vw, 37px); animation-delay: .18s; }
 .pd-pickup-stage ol { position: absolute; z-index: 1; right: 14px; bottom: 12px; left: 14px; display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; padding: 0; list-style: none; color: #fff; font-size: 12px; font-weight: 750; text-align: center; }
 .pd-pickup-stage li { position: relative; padding-top: 22px; }
 .pd-pickup-stage li::before { content: ''; position: absolute; top: 2px; left: calc(50% - 6px); z-index: 1; width: 12px; height: 12px; border-radius: 50%; background: #FFC21A; box-shadow: 0 0 10px #FF7A1A; animation: pd-light .4s both; }
@@ -44,7 +48,7 @@
 .pd-pickup-stage li:nth-child(2)::before { animation-delay: .5s; }
 .pd-pickup-stage li:nth-child(3)::before { animation-delay: 1s; }
 @keyframes pd-bag-in { from { opacity: 0; transform: translateY(-22px) scale(1.08); } }
-@keyframes pd-letrero-on { 0%, 18%, 30% { opacity: .15; } 24%, 38%, 100% { opacity: 1; } }
+@keyframes pd-letrero-in { from { opacity: 0; transform: translateX(-26px) scale(1.25); } }
 @keyframes pd-light { from { opacity: .15; transform: scale(.4); } }
 .public-cart-drawer .public-pickup-step .public-pickup-map { height: 150px; }
 .pd-times { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
@@ -65,7 +69,7 @@
 @keyframes pd-wok-rise { from { opacity: 0; transform: translateY(60px) scale(.7); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .pd-mesa-top, .pd-mesa-seat img, .pd-mesa-hub, .pd-pickup-stage > img, .pd-letrero, .pd-pickup-stage li::before, .pd-sending-wok, .public-confirm-page.is-sending .pd-receipt-feed { animation: none !important; }
+  .pd-mesa-top, .pd-mesa-seat img, .pd-mesa-hub, .pd-pickup-stage > img, .pd-letrero span, .pd-letrero strong, .pd-pickup-stage li::before, .pd-sending-wok, .public-confirm-page.is-sending .pd-receipt-feed { animation: none !important; }
   .pd-live dl i, .pd-live-stamp, .public-cart-drawer .public-checkout .pd-pay-tile > svg { transition: none; }
 }
 

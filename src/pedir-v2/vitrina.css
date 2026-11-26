@@ -266,8 +266,8 @@
 .pd-search-count { color: var(--soft); font-size: 13.5px; font-weight: 600; }
 
 /* Botón fijo del pedido: lo que pasa por debajo se desvanece, no se corta a media letra. */
-.public-cart-drawer .public-primary, .public-cart-drawer .public-primary:active { box-shadow: 0 5px 0 var(--pd-red-deep), 0 34px 0 10px var(--bg), 0 0 0 10px var(--bg), 0 -14px 16px 12px var(--bg); }
-.public-cart-drawer .public-primary.public-whatsapp-cta, .public-cart-drawer .public-primary.public-whatsapp-cta:active { box-shadow: 0 5px 0 #0A5429, 0 34px 0 10px var(--bg), 0 0 0 9px var(--bg), 0 -10px 12px 10px var(--bg); }
+.public-cart-drawer .public-primary, .public-cart-drawer .public-primary:active { box-shadow: 0 5px 0 var(--pd-red-deep), 0 34px 0 10px var(--bg), 0 0 0 10px var(--bg), 0 -8px 8px 0 var(--bg); }
+.public-cart-drawer .public-primary.public-whatsapp-cta, .public-cart-drawer .public-primary.public-whatsapp-cta:active { box-shadow: 0 5px 0 #0A5429, 0 34px 0 10px var(--bg), 0 0 0 9px var(--bg), 0 -8px 8px 0 var(--bg); }
 .pd-pay-grid:has(> :nth-child(5):last-child) { grid-template-columns: repeat(6, 1fr); }
 .pd-pay-grid:has(> :nth-child(5):last-child) > * { grid-column: span 2; min-width: 0; }
 .pd-pay-grid > :nth-child(4):nth-last-child(2), .pd-pay-grid > :nth-child(5):last-child { grid-column: span 3 !important; }

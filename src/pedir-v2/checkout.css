@@ -47,7 +47,9 @@
 :is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track) { flex: 1 0 auto; display: flex; flex-direction: column; gap: 13px; padding: 20px 18px max(18px, env(safe-area-inset-bottom, 0px)); animation: pd-step-in .38s var(--pd-out) both; }
 @keyframes pd-step-in { from { opacity: 0; transform: translateX(34px); } }
 :is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page) > * { flex: 0 0 auto; }
-.public-cart-drawer .public-primary { position: sticky; z-index: 4; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 51.5px; margin-top: auto; padding: 0 16.5px; border: 0; border-radius: 19px; color: #fff; background: var(--pd-red); box-shadow: 0 5px 0 var(--pd-red-deep), 0 0 0 10px var(--bg); font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
+/* Flota a la misma distancia del borde que tiene al final del paso: no queda
+   cortado por la barra del navegador ni salta al llegar abajo. */
+.public-cart-drawer .public-primary { position: sticky; z-index: 4; bottom: max(18px, env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 51.5px; margin-top: auto; padding: 0 16.5px; border: 0; border-radius: 19px; color: #fff; background: var(--pd-red); box-shadow: 0 5px 0 var(--pd-red-deep), 0 0 0 10px var(--bg); font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
 .public-cart-drawer .public-primary svg { transition: transform .25s var(--pd-spring); }
 .public-cart-drawer .public-primary:hover svg { transform: translateX(5px); }
 .public-cart-drawer .public-primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--pd-red-deep), 0 0 0 10px var(--bg); }
