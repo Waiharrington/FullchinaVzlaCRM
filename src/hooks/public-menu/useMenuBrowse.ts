@@ -1,6 +1,6 @@
 import { useEffect, useMemo, SyntheticEvent, MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent, type RefObject, type Dispatch, type SetStateAction } from 'react'
 import { normalizeForSearch } from '../../lib/textFormat'
-import { groupMenuProducts, MenuProductGroup } from '../../lib/menuGrouping'
+import { groupMenuProducts, labeledGroupsFirst, MenuProductGroup } from '../../lib/menuGrouping'
 import { searchMenuGroups } from '../../lib/menuSearch'
 import { FEATURED_DISH_QUERIES } from '../../lib/publicMenuRuntime'
 import { type DesktopTab } from '../../lib/publicMenuTypes'
@@ -42,7 +42,11 @@ export function useMenuBrowse({ activeCategory, cardQtys, categories, currentTab
     if (homeSearchTerm.length < 2) return []
     return searchMenuGroups(groupMenuProducts(products), homeSearchTerm).slice(0, 5)
   }, [products, homeSearchTerm])
-  const visibleGroups = useMemo(() => showFavorites && !homeSearchTerm ? groups.filter(group => favoriteIds.includes(group.key)) : groups, [groups, showFavorites, favoriteIds, homeSearchTerm])
+  const visibleGroups = useMemo(() => {
+    // Al buscar manda la relevancia de los resultados.
+    if (homeSearchTerm) return groups
+    return labeledGroupsFirst(showFavorites ? groups.filter(group => favoriteIds.includes(group.key)) : groups)
+  }, [groups, showFavorites, favoriteIds, homeSearchTerm])
   const popularGroups = useMemo(() => {
     const all = groupMenuProducts(products)
     const stopWords = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'de'])
@@ -73,7 +77,7 @@ export function useMenuBrowse({ activeCategory, cardQtys, categories, currentTab
       p.category.toLowerCase().includes('ejecutivo') ||
       p.category.toLowerCase().includes('individual')
     )
-    return (promoItems.length > 0 ? groupMenuProducts(promoItems) : groupMenuProducts(products)).slice(0, 4)
+    return labeledGroupsFirst(groupMenuProducts(promoItems.length > 0 ? promoItems : products)).slice(0, 4)
   }, [products])
   const getCardQty = (key: string) => cardQtys[key] || 1
   const changeCardQty = (key: string, delta: number) => setCardQtys(prev => ({ ...prev, [key]: Math.max(1, (prev[key] || 1) + delta) }))

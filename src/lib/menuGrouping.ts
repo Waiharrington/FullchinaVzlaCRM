@@ -94,3 +94,14 @@ export function groupMenuProducts(products: Product[]): MenuProductGroup[] {
     }
   })
 }
+
+/** Misma regla que las tarjetas: "refresco gratis" solo se muestra si lo traen todas las presentaciones. */
+export function hasMenuLabel(group: MenuProductGroup): boolean {
+  const labels = group.variants.map(variant => variant.product.menuLabel)
+  return labels.some(label => label && label !== 'free_drink') || (labels.length > 0 && labels.every(label => label === 'free_drink'))
+}
+
+/** Los productos con etiqueta van primero; dentro de cada bloque se respeta el orden original. */
+export function labeledGroupsFirst(groups: MenuProductGroup[]): MenuProductGroup[] {
+  return [...groups].sort((a, b) => Number(hasMenuLabel(b)) - Number(hasMenuLabel(a)))
+}

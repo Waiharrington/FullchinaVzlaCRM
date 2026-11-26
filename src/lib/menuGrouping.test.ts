@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Product } from './dataService'
-import { groupMenuProducts } from './menuGrouping'
+import { groupMenuProducts, labeledGroupsFirst } from './menuGrouping'
 
 function product(id: string, name: string, price: number, category = 'arroz'): Product {
   return { id, name, price, category, categories: [category], description: null, cost: null, emoji: '🍚', active: true, imageUrl: null }
@@ -42,5 +42,14 @@ describe('groupMenuProducts', () => {
 
     expect(groups).toHaveLength(3)
     expect(groups.every(group => !group.isGrouped)).toBe(true)
+  })
+})
+
+describe('labeledGroupsFirst', () => {
+  const group = (key: string, ...labels: Array<string | undefined>) => ({ key, variants: labels.map(menuLabel => ({ product: { menuLabel } })) }) as unknown as Parameters<typeof labeledGroupsFirst>[0][number]
+
+  it('sube los productos con etiqueta sin alterar el orden dentro de cada bloque', () => {
+    const groups = [group('a', undefined), group('b', 'free_drink'), group('c', undefined), group('d', 'recommended'), group('e', 'free_drink', undefined)]
+    expect(labeledGroupsFirst(groups).map(item => item.key)).toEqual(['b', 'd', 'a', 'c', 'e'])
   })
 })
