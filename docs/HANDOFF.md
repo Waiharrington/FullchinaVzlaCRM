@@ -1,5 +1,16 @@
 # Estado y continuidad de FullChinaVzla
 
+## Nuevo texto de confirmación por WhatsApp (2026-11-26)
+
+Se aplicó y registró `20261126000000_whatsapp_order_confirmation_copy.sql` en
+`fullchinavzla`, después del respaldo
+`/root/fullchina-backups/fullchinavzla-pre-whatsapp-confirmation-copy-20261126.dump`
+(7.938.669 bytes, solo esquema `fullchinavzla`, 1.723 entradas de `pg_restore --list`;
+SHA-256 `6f297b4594c765b9b650eec4eb6d7bbf3def0568e1f827b703807719c3690136`).
+Antes se ensayó en una transacción revertida. Solo cambia la redacción del
+mensaje para pedidos nuevos; la función del servidor coincide con el repositorio
+y el trigger sigue activo. No se crearon pedidos ni mensajes de prueba.
+
 ## Endurecimiento del pedido web /pedir (2026-11-22)
 
 Se aplicó y registró `20261122000000_harden_public_web_orders.sql` en

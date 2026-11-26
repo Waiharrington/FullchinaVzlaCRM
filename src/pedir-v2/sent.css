@@ -25,3 +25,8 @@
 .public-delivery-step .public-delivery-choice:not(.selected) { border-width: 2px; border-color: var(--line-2); }
 @media (prefers-reduced-motion: reduce) { .pd-sent-wok, .pd-sent-wok *, .pd-cookie-art { animation: none !important; } }
 :is(.public-track, .public-success) > h3, .public-track-hero > h3 { position: relative; z-index: 3; }
+
+/* Dos líneas a propósito: cada una se ajusta al ancho y nunca se sale. */
+.public-track-hero > .pd-sent-title { display: grid; gap: 5px; width: 100%; min-width: 0; text-align: center; }
+.pd-sent-title > span, .pd-sent-title > small { display: block; min-width: 0; }
+.pd-sent-title > small { color: #FFC21A; font-size: .78em; line-height: 1.2; }

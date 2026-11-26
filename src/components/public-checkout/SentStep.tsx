@@ -27,7 +27,7 @@ LOCAL_ORDER_TEST_MODE ? <div className="public-success"><Firecrackers /><span cl
                 <Firecrackers />
                 <span className="pd-sent-wok" aria-hidden="true"><Wok /></span>
                 <span className="pd-stamp" aria-hidden="true">Enviado</span>
-                <h3>Falta un paso: confírmalo por WhatsApp</h3>
+                <h3 className="pd-sent-title"><span><Fit>Falta un paso</Fit></span> <small><Fit>Confírmalo por WhatsApp</Fit></small></h3>
                 <strong className="public-track-code">#{orderCode || 'WEB-PENDIENTE'}</strong>
                 <p>Ya recibimos tu pedido. <b>No tienes que enviarlo otra vez:</b> en un momento te llegará la comanda por WhatsApp{(sentSummary?.phone ?? phone) ? <> al <b className="public-track-phone">{sentSummary?.phone ?? phone}</b></> : null} para que la revises y la confirmes respondiendo.</p>
               </div>
