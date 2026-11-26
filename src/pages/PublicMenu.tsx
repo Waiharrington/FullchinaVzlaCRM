@@ -17,6 +17,7 @@ import { menuCategoryRank, hydrateMenuCategories } from '../lib/menuCategories'
 import Toast from '../components/Toast'
 import { useFavorites } from '../hooks/public-menu/useFavorites'
 import { useStoreStatus } from '../hooks/public-menu/useStoreStatus'
+import { useTypingMode } from '../hooks/public-menu/useTypingMode'
 import { useDeliveryAddress } from '../hooks/public-menu/useDeliveryAddress'
 import { useCart } from '../hooks/public-menu/useCart'
 import { useCatalog } from '../hooks/public-menu/useCatalog'
@@ -147,16 +148,19 @@ export function PublicMenu() {
   const [returnToConfirmAfterEdit, setReturnToConfirmAfterEdit] = useState(false)
   const [editingCartLineKey, setEditingCartLineKey] = useState<string | null>(null)
 
+  const { typing, reset: resetTyping, typingHandlers } = useTypingMode()
+
   // Cada paso reaparece desde el inicio de su contenido. Es especialmente
   // importante al volver a "Tu pedido", cuyo alto puede superar el panel.
   useLayoutEffect(() => {
+    resetTyping()
     if (!cartOpen) return
     const drawer = document.querySelector<HTMLElement>('.public-cart-drawer')
     drawer?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
     drawer?.querySelector<HTMLElement>(
       '.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-preparing-page, .public-success, .public-track',
     )?.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [cartOpen, step])
+  }, [cartOpen, step, resetTyping])
 
   // Con cualquier ventana abierta la página de atrás se queda quieta.
   const hasBlockingOverlay = Boolean(
@@ -526,7 +530,7 @@ export function PublicMenu() {
       {selectedGroup && selectedProduct && <ProductDetailDialog addingSelectedProduct={addingSelectedProduct} addSelectedProduct={addSelectedProduct} catalogExtraProducts={catalogExtraProducts} closeProductDetail={closeProductDetail} closingDetail={closingDetail} complementaryProducts={complementaryProducts} detailExtrasTotal={detailExtrasTotal} detailModifierGroups={detailModifierGroups} detailNotes={detailNotes} detailNotesRef={detailNotesRef} detailOrigin={detailOrigin} detailQuantity={detailQuantity} editingCartLineKey={editingCartLineKey} invalidModifierSelection={invalidModifierSelection} loadingModifiers={loadingModifiers} modifierLoadError={modifierLoadError} modifierRequestRef={modifierRequestRef} modifierSelectionError={modifierSelectionError} modifierValidationError={modifierValidationError} priceBs={priceBs} requiredModifierRef={requiredModifierRef} selectedCatalogExtras={selectedCatalogExtras} selectedCatalogExtrasTotal={selectedCatalogExtrasTotal} selectedExtras={selectedExtras} selectedGroup={selectedGroup} selectedProduct={selectedProduct} selectedVariantId={selectedVariantId} setDetailModifierGroups={setDetailModifierGroups} setDetailNotes={setDetailNotes} setDetailQuantity={setDetailQuantity} setLoadingModifiers={setLoadingModifiers} setModifierLoadError={setModifierLoadError} setModifierValidationError={setModifierValidationError} setSelectedCatalogExtras={setSelectedCatalogExtras} setSelectedExtras={setSelectedExtras} setSelectedVariantId={setSelectedVariantId} showModifierGuidance={showModifierGuidance} toggleProteinExclusion={toggleProteinExclusion} />}
 
       {cartOpen && createPortal(
-        <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}${step === 'details' && autofillingDetails ? ' is-autofilling' : ''}`} onClick={event => event.stopPropagation()}>
+        <div className={`public-drawer-backdrop ${closingCart ? 'closing' : ''}`} onClick={closeCart}><aside className={`public-cart-drawer ${step === 'details' ? 'public-data-drawer' : ''} public-step-${step}${step === 'details' && autofillingDetails ? ' is-autofilling' : ''}${typing ? ' is-typing' : ''}`} {...typingHandlers} onClick={event => event.stopPropagation()}>
         <header className="public-review-header">{step !== 'sent' && <button className="public-review-back" onClick={() => { if (step === 'details') { setStep(orderType === 'delivery' ? 'address' : 'pickup'); } else if (step === 'confirm') { setStep('details'); } else if (step === 'address' || step === 'pickup') { setStep('delivery'); } else if (step === 'delivery') { if (window.matchMedia(DESKTOP_SIDEBAR_MEDIA_QUERY).matches) { closeCart(); } else { setStep('cart'); } } else { closeCart(); } }} aria-label="Volver"><ChevronRight /></button>}<img src="/optimized/root/logo.webp" alt="Full China" />{step !== 'sent' && <Fuse step={step} />}{step !== 'sent' && <div className="public-review-heading" key={step}><h2><Fit>{step === 'delivery' ? '¿Cómo quieres recibirlo?' : step === 'pickup' ? 'Retira en Full China' : step === 'address' ? '¿Dónde te lo llevamos?' : step === 'details' ? 'Tus datos' : step === 'confirm' ? 'Revisa tu pedido' : 'Tu pedido'}</Fit></h2><p>{step === 'delivery' ? 'Elige delivery o retiro en el local.' : step === 'pickup' ? 'Dirección y horario para retirar tu pedido.' : step === 'address' ? 'Busca tu dirección o márcala en el mapa.' : step === 'details' ? 'Déjanos tus datos para preparar el pedido.' : step === 'confirm' ? 'Revisa los datos y el total antes de enviarlo.' : 'Revisa tus productos y ajusta cantidades.'}</p></div>}</header>
         {cartGuardMessage && <div className={`public-cart-guard ${cartGuardClosing ? 'closing' : ''}`} role="alert"><CircleAlert /><div><strong>Tu pedido está vacío</strong><span>{cartGuardMessage}</span></div></div>}
         {step === 'cart' && error && <Toast type="error" message={error} onClose={() => setError('')} />}
