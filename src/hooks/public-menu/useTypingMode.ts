@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FocusEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FocusEvent, type SyntheticEvent } from 'react'
 
 const NON_TEXT_INPUTS = new Set(['button', 'checkbox', 'color', 'file', 'hidden', 'radio', 'range', 'reset', 'submit'])
 // Margen sobre el campo para que su etiqueta siga a la vista.
@@ -31,7 +31,7 @@ export function useTypingMode() {
   const panelRef = useRef<HTMLElement | null>(null)
   const restoreTimer = useRef<number | undefined>(undefined)
 
-  const onFocus = useCallback((event: FocusEvent<HTMLElement>) => {
+  const onFocus = useCallback((event: SyntheticEvent<HTMLElement>) => {
     if (!isTextField(event.target) || !window.matchMedia?.('(pointer: coarse)').matches) return
     window.clearTimeout(restoreTimer.current)
     panelRef.current = event.currentTarget
@@ -51,7 +51,14 @@ export function useTypingMode() {
     if (!typing || !panel) return
     const viewport = window.visualViewport
     let timer: number | undefined
+    const fullHeight = viewport?.height ?? 0
+    let keyboardSeen = false
     const fit = () => {
+      if (viewport) {
+        // El teclado puede cerrarse sin que el campo pierda el foco.
+        if (viewport.height < fullHeight - 120) keyboardSeen = true
+        else if (keyboardSeen && viewport.height > fullHeight - 60) { setTyping(false); return }
+      }
       // iOS no encoge la página al abrir el teclado: se mide el área visible.
       if (viewport) {
         panel.style.setProperty('--pd-visible-height', `${viewport.height}px`)
@@ -80,5 +87,6 @@ export function useTypingMode() {
   // Si el campo desaparece con su paso no llega el evento de salida.
   const reset = useCallback(() => setTyping(false), [])
 
-  return { typing, reset, typingHandlers: { onFocus, onBlur } }
+  // `onClick` cubre volver a tocar un campo que conservó el foco.
+  return { typing, reset, typingHandlers: { onFocus, onBlur, onClickCapture: onFocus } }
 }

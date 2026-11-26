@@ -52,9 +52,10 @@
 .public-cart-drawer .public-primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--pd-red-deep), 0 0 0 10px var(--bg); }
 .public-cart-drawer .public-primary:disabled { opacity: .55; }
 /* Escribiendo con teclado en pantalla (useTypingMode): el panel ocupa solo el
-   área visible, sin cabecera y con el botón principal al final del contenido. */
+   área visible, con la cabecera sin título y el botón principal al final. */
 .public-drawer-backdrop > .public-cart-drawer.is-typing { align-self: flex-start; height: var(--pd-visible-height, 100%); margin-top: var(--pd-visible-top, 0px); }
-.public-cart-drawer.is-typing .public-review-header { display: none; }
+.public-cart-drawer.is-typing .public-review-header { padding-bottom: 12px; }
+.public-cart-drawer.is-typing .public-review-heading { display: none; }
 .public-cart-drawer.is-typing .public-primary { position: static; }
 .public-field-attention { animation: pd-shake .45s, pd-glow 1.3s ease-out; }
 @keyframes pd-glow { from { box-shadow: 0 0 0 6px rgba(255, 194, 26, .9); } }

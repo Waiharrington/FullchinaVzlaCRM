@@ -27,6 +27,23 @@ describe('useTypingMode', () => {
     expect(screen.getByTestId('panel')).not.toHaveClass('is-typing')
   })
 
+  it('restaura el panel si el teclado se cierra sin salir del campo', () => {
+    pointer(true)
+    const viewport = Object.assign(new EventTarget(), { height: 800, offsetTop: 0 })
+    vi.stubGlobal('visualViewport', viewport)
+    render(<Panel />)
+    const field = screen.getByLabelText('Referencia')
+    fireEvent.focus(field)
+    const resize = (height: number) => act(() => { viewport.height = height; viewport.dispatchEvent(new Event('resize')) })
+
+    resize(450)
+    expect(screen.getByTestId('panel')).toHaveClass('is-typing')
+    resize(800)
+    expect(screen.getByTestId('panel')).not.toHaveClass('is-typing')
+    fireEvent.click(field)
+    expect(screen.getByTestId('panel')).toHaveClass('is-typing')
+  })
+
   it('ignora casillas y computadoras', () => {
     pointer(true)
     const view = render(<Panel />)
