@@ -48,6 +48,11 @@ describe('groupMenuProducts', () => {
 describe('labeledGroupsFirst', () => {
   const group = (key: string, ...labels: Array<string | undefined>) => ({ key, variants: labels.map(menuLabel => ({ product: { menuLabel } })) }) as unknown as Parameters<typeof labeledGroupsFirst>[0][number]
 
+  it('junta los productos de una misma etiqueta sin intercalarlos', () => {
+    const groups = [group('a', 'free_drink'), group('b', 'recommended'), group('c', undefined), group('d', 'free_drink'), group('e', 'recommended')]
+    expect(labeledGroupsFirst(groups).map(item => item.key)).toEqual(['a', 'd', 'b', 'e', 'c'])
+  })
+
   it('sube los productos con etiqueta sin alterar el orden dentro de cada bloque', () => {
     const groups = [group('a', undefined), group('b', 'free_drink'), group('c', undefined), group('d', 'recommended'), group('e', 'free_drink', undefined)]
     expect(labeledGroupsFirst(groups).map(item => item.key)).toEqual(['b', 'd', 'a', 'c', 'e'])

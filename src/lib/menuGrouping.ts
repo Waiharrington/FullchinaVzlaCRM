@@ -95,13 +95,26 @@ export function groupMenuProducts(products: Product[]): MenuProductGroup[] {
   })
 }
 
-/** Misma regla que las tarjetas: "refresco gratis" solo se muestra si lo traen todas las presentaciones. */
-export function hasMenuLabel(group: MenuProductGroup): boolean {
+/** Etiqueta que muestra la tarjeta. "Refresco gratis" solo cuenta si lo traen todas las presentaciones. */
+export function shownMenuLabel(group: MenuProductGroup): string | null {
   const labels = group.variants.map(variant => variant.product.menuLabel)
-  return labels.some(label => label && label !== 'free_drink') || (labels.length > 0 && labels.every(label => label === 'free_drink'))
+  const other = labels.find(label => label && label !== 'free_drink')
+  if (other) return other
+  return labels.length > 0 && labels.every(label => label === 'free_drink') ? 'free_drink' : null
 }
 
-/** Los productos con etiqueta van primero; dentro de cada bloque se respeta el orden original. */
+/**
+ * Los productos con etiqueta van primero, juntos por tipo de etiqueta (en el
+ * orden en que aparece cada tipo); dentro de cada bloque se respeta el orden original.
+ */
 export function labeledGroupsFirst(groups: MenuProductGroup[]): MenuProductGroup[] {
-  return [...groups].sort((a, b) => Number(hasMenuLabel(b)) - Number(hasMenuLabel(a)))
+  const blocks = new Map<string, MenuProductGroup[]>()
+  const unlabeled: MenuProductGroup[] = []
+  for (const group of groups) {
+    const label = shownMenuLabel(group)
+    if (!label) unlabeled.push(group)
+    else if (blocks.has(label)) blocks.get(label)!.push(group)
+    else blocks.set(label, [group])
+  }
+  return [...[...blocks.values()].flat(), ...unlabeled]
 }
