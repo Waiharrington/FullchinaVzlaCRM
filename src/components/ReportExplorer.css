@@ -247,3 +247,24 @@
 .report-detail-payment { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07); border-radius: 9px; font-size: 12.5px; color: #cbd5e1; }
 .report-detail-payment strong { color: #fff; white-space: nowrap; }
 .report-detail-payment small { color: #8a8a94; font-weight: 500; }
+
+/* ===== Reportes más fáciles de leer ===== */
+.admin-app .report-explorer { container: reports / inline-size; }
+.admin-app .report-explorer .report-links { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.admin-app .report-explorer .report-group h3 { padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 16px; }
+.admin-app .report-explorer .report-link { justify-content: center; padding: 12px 14px; }
+.admin-app .report-explorer .report-link strong { font-size: 15px; line-height: 1.3; }
+.admin-app .report-explorer .report-link small { font-size: 13px; line-height: 1.35; }
+.admin-app .report-explorer .report-favorite { min-width: 48px; }
+@container reports (max-width: 640px) {
+  /* Atajos de fecha primero: es lo más usado. */
+  .admin-app .report-explorer .report-filters .report-presets { order: -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 0; padding: 0; border: 0; }
+  .admin-app .report-explorer .report-presets button { justify-content: center; min-height: 44px; }
+  .admin-app .report-explorer .report-screen-rows tr { padding-block: 6px; }
+  .admin-app .report-explorer .report-screen-rows td { min-height: 0; padding-block: 7px; }
+}
+/* Menos ruido: la etiqueta "Disponible" se repetía en todas las tarjetas. */
+.admin-app .report-explorer .report-link em { display: none; }
+@media (max-width: 760px) {
+  .admin-app .report-explorer .report-screen-rows tr > td:last-child { margin-top: 4px; border-radius: 10px; background: rgba(34,197,94,.1); padding-inline: 10px; font-size: 15px; font-weight: 800; }
+}

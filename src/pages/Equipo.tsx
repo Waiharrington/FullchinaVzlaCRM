@@ -560,10 +560,10 @@ export function Equipo() {
                     <td>
                       <div className="team-row-actions">
                         <button className="icon-action-btn" title="Editar" onClick={() => handleOpenModal(emp)}>
-                          <Edit3 size={16} />
+                          <Edit3 size={16} /><span className="team-btn-label">Editar</span>
                         </button>
                         <button className="icon-action-btn danger" title="Archivar de nómina" onClick={() => handleDelete(emp)}>
-                          <Trash2 size={16} />
+                          <Trash2 size={16} /><span className="team-btn-label">Archivar</span>
                         </button>
                       </div>
                     </td>

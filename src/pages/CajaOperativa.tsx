@@ -193,7 +193,7 @@ export function CajaOperativa() {
       <header className="cash-ops-header management-workspace-header">
         <div>
           <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /><span className="cash-ops-title-desktop">Apertura y cierre de caja</span><span className="cash-ops-title-mobile">Control de caja</span></h1>
-          <p>Fondos y arqueo del turno.</p>
+          <p>El efectivo que debe haber en la caja.</p>
         </div>
         <button className="cash-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar caja" title="Actualizar caja">
           <RefreshCw size={18} className={loading ? 'is-spinning' : ''} /><span className="cash-refresh-label">Actualizar</span>
@@ -230,18 +230,18 @@ export function CajaOperativa() {
 
           <section className="cash-currency-grid management-workspace-metrics">
             <article className="cash-currency-card usd">
-              <div className="cash-currency-heading"><span>Efectivo en dólares</span><strong>{money(session.expectedCashUsd)}</strong></div>
+              <div className="cash-currency-heading"><span>Efectivo en dólares</span><strong>{money(session.expectedCashUsd)}</strong><small>Debe haber en la caja</small></div>
               <div className="cash-currency-details"><div><span>Fondo inicial</span><b>{money(session.openingCashUsd)}</b></div><div><span>Ventas en efectivo</span><b>{money(session.cashSalesUsd)}</b></div><div><span>Entradas / salidas</span><b>{money(session.movementInUsd - session.movementOutUsd)}</b></div></div>
             </article>
             <article className="cash-currency-card ves">
-              <div className="cash-currency-heading"><span>Efectivo en bolívares</span><strong>{money(session.expectedCashVes, 'VES')}</strong></div>
+              <div className="cash-currency-heading"><span>Efectivo en bolívares</span><strong>{money(session.expectedCashVes, 'VES')}</strong><small>Debe haber en la caja</small></div>
               <div className="cash-currency-details"><div><span>Fondo inicial</span><b>{money(session.openingCashVes, 'VES')}</b></div><div><span>Ventas en efectivo</span><b>{money(session.cashSalesVes, 'VES')}</b></div><div><span>Entradas / salidas</span><b>{money(session.movementInVes - session.movementOutVes, 'VES')}</b></div></div>
             </article>
           </section>
 
           <section className="cash-content-grid">
             <article className="cash-card">
-              <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary cash-add-movement" aria-label="Añadir movimiento manual" onClick={toggleMovement}><Plus size={16} aria-hidden="true" />Movimiento</button></div>
+              <div className="cash-card-heading"><div><span>Actividad del turno</span><h2>Movimientos manuales</h2></div><button className="cash-secondary cash-add-movement" aria-label="Añadir movimiento manual" onClick={toggleMovement}><Plus size={16} aria-hidden="true" />Anotar movimiento</button></div>
               {(showMovement || closingMovement) && (
                 <form className={`cash-inline-form ${closingMovement ? 'closing' : ''}`} onSubmit={handleMovement}>
                   <label>Dirección<StyledSelect value={direction} onChange={event => setDirection(event.target.value as 'in' | 'out')}><option value="in">Entrada</option><option value="out">Salida</option></StyledSelect></label>
@@ -280,6 +280,7 @@ export function CajaOperativa() {
                 <p className="cash-payment-note">Los pagos digitales van en Finanzas.</p>
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
+              <p className="cash-close-help">Al terminar el turno, cuenta el dinero y ciérralo aquí.</p>
             </article>
           </section>
 
@@ -345,12 +346,12 @@ export function CajaOperativa() {
           <form className="cash-close-modal" onSubmit={handleClose} onClick={event => event.stopPropagation()}>
             <span className="cash-ops-eyebrow">Arqueo del turno #{session.sessionNumber}</span>
             <h2>Cuenta el efectivo físico</h2>
-            <p>Compara lo contado con lo esperado.</p>
+            <p>Escribe lo que contaste. Abajo ves si falta o sobra.</p>
             <div className="cash-close-grid">
               <label>Contado USD<NumberStepper min={0} step={0.01} value={countedUsd} onChange={(v) => setCountedUsd(v)} required /><small>Esperado: {money(session.expectedCashUsd)}</small></label>
               <label>Contado Bs.<NumberStepper min={0} step={0.01} value={countedVes} onChange={(v) => setCountedVes(v)} required /><small>Esperado: {money(session.expectedCashVes, 'VES')}</small></label>
             </div>
-            <div className="cash-difference-grid"><div className={closeDifference.usd === 0 ? 'ok' : closeDifference.usd < 0 ? 'negative' : 'positive'}><span>Diferencia USD</span><strong>{money(closeDifference.usd)}</strong></div><div className={closeDifference.ves === 0 ? 'ok' : closeDifference.ves < 0 ? 'negative' : 'positive'}><span>Diferencia Bs.</span><strong>{money(closeDifference.ves, 'VES')}</strong></div></div>
+            <div className="cash-difference-grid"><div className={closeDifference.usd === 0 ? 'ok' : closeDifference.usd < 0 ? 'negative' : 'positive'}><span>Diferencia USD</span><strong>{money(closeDifference.usd)}</strong><em>{closeDifference.usd === 0 ? 'Cuadra' : closeDifference.usd < 0 ? 'Falta dinero' : 'Sobra dinero'}</em></div><div className={closeDifference.ves === 0 ? 'ok' : closeDifference.ves < 0 ? 'negative' : 'positive'}><span>Diferencia Bs.</span><strong>{money(closeDifference.ves, 'VES')}</strong><em>{closeDifference.ves === 0 ? 'Cuadra' : closeDifference.ves < 0 ? 'Falta dinero' : 'Sobra dinero'}</em></div></div>
             <label>Nota del cierre<textarea rows={3} value={closingNotes} onChange={event => setClosingNotes(event.target.value.slice(0, 180))} placeholder="Explica cualquier diferencia" /></label>
             <div className="cash-modal-actions"><button type="button" className="cash-secondary" onClick={() => closeCloseModal()}>Cancelar</button><button className="cash-primary" disabled={saving}>{saving ? 'Cerrando…' : 'Confirmar cierre'}</button></div>
           </form>

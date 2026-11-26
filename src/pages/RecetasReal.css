@@ -1138,3 +1138,79 @@
   .admin-app .rec-filters > * { width: 100%; min-width: 0; }
   .admin-app .rec-card .rec-thumb { display: none; }
 }
+
+/* ===== Recetas más claras ===== */
+.rec-act-label { font-size: 13px; font-weight: 700; white-space: nowrap; }
+.rec-add-field { display: grid; gap: 6px; min-width: 0; }
+.rec-add-field > span { color: #e4e4e7; font-size: 13px; font-weight: 700; }
+.rec-price-box .gain { margin-top: 6px; color: #6ee7a0; font-size: 13px; font-weight: 700; }
+
+/* Filtros: tres botones iguales, con la cantidad arriba. */
+.admin-app .management-workspace--recipes .rec-tabs.rec-tabs { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.admin-app .management-workspace--recipes .rec-tabs .rec-tab.rec-tab { display: flex; grid-column: auto; flex-direction: column-reverse; align-items: center; justify-content: center; gap: 2px; width: 100%; min-width: 0; height: auto; min-height: 62px; padding: 8px 4px; border-radius: 14px; font-size: 13px; font-weight: 700; line-height: 1.2; text-align: center; }
+.admin-app .management-workspace--recipes .rec-tabs .rec-tab .rec-count { padding: 0; background: none; font-size: 20px; font-weight: 800; line-height: 1.1; }
+
+/* Ingredientes de la receta: nombre y cantidad claros, botones con su nombre. */
+.admin-app .management-workspace--recipes .rec-ing-row.rec-ing-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name cost" "qty cost"; align-items: center; gap: 4px 10px; margin-bottom: 8px; padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 14px; background: #18181c; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-name { grid-area: name; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-qty { grid-area: qty; justify-self: start; color: #ffd166; font-size: 17px; font-weight: 800; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-cost { grid-area: cost; justify-self: end; color: #a1a1aa; font-size: 14px; font-weight: 700; }
+.admin-app .management-workspace--recipes .rec-ing-row :is(.rec-ing-edit, .rec-ing-del) { display: flex; grid-row: 3; align-items: center; justify-content: center; gap: 7px; width: 100%; min-height: 40px; margin-top: 6px; border: 1px solid rgba(255,255,255,.12); border-radius: 11px; background: #232329; color: #e4e4e7; cursor: pointer; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-edit { grid-column: 1; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-del { grid-column: 2; min-width: 108px; padding: 0 12px; color: #fca5a5; }
+.admin-app .management-workspace--recipes .rec-ing-row.is-editing { grid-template-areas: "name cost" "fields fields" "actions actions"; }
+.admin-app .management-workspace--recipes .rec-ing-row.is-editing .rec-ing-edit-fields { grid-area: fields; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 8px; width: 100%; margin-top: 6px; }
+.admin-app .management-workspace--recipes .rec-ing-row.is-editing .rec-ing-edit-fields input { max-width: none; font-size: 16px; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-edit-actions { grid-area: actions; display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 4px; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-edit-actions .rec-ing-action { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; height: 44px; border-radius: 11px; }
+.admin-app .management-workspace--recipes .rec-ing-row .rec-ing-edit-actions .rec-ing-save { order: 2; border-color: #16a34a; background: #16a34a; color: #fff; }
+
+/* Agregar ingrediente: cada campo con su nombre. */
+.admin-app .management-workspace--recipes .rec-add-form.rec-add-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px; border: 1px solid rgba(227,27,43,.4); border-radius: 16px; background: #18181c; }
+.admin-app .management-workspace--recipes .rec-add-form .rec-add-field { grid-column: auto; }
+.admin-app .management-workspace--recipes .rec-add-form .rec-add-field.wide { grid-column: 1 / -1; }
+.admin-app .management-workspace--recipes .rec-add-form .rec-add-field :is(input, .fc-select, .num-stepper) { box-sizing: border-box; width: 100%; max-width: none; min-width: 0; }
+.admin-app .management-workspace--recipes .rec-add-form .rec-add-field input { min-height: 46px; font-size: 16px; }
+.admin-app .management-workspace--recipes .rec-add-form > button { grid-column: auto; min-height: 46px; border-radius: 12px; font: inherit; font-size: 14.5px; font-weight: 800; cursor: pointer; }
+.admin-app .management-workspace--recipes .rec-add-form > .cancel { border: 1px solid rgba(255,255,255,.14); background: #232329; color: #d4d4d8; }
+
+@media (max-width: 767px) {
+  .admin-app .management-workspace--recipes .rec-card .rec-card-name { white-space: normal; font-size: 15px; line-height: 1.25; }
+  .admin-app .management-workspace--recipes .rec-card .rec-card-meta { font-size: 12.5px; }
+  .admin-app .management-workspace--recipes .rec-card .rec-thumb { width: 54px; height: 54px; }
+}
+
+/* Nombre del plato arriba y debajo las tres cifras. */
+.admin-app .management-workspace--recipes .rec-detail-head.rec-detail-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; }
+.admin-app .management-workspace--recipes .rec-detail-head .rec-detail-title h2 { font-size: 18px; line-height: 1.25; }
+.admin-app .management-workspace--recipes .rec-detail-head .rec-detail-ref { display: none; }
+.admin-app .management-workspace--recipes .rec-detail-head .rec-price-box.rec-price-box { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto; gap: 8px; width: 100%; padding: 0; border: 0; background: none; text-align: center; }
+.admin-app .management-workspace--recipes .rec-price-box .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.admin-app .management-workspace--recipes .rec-price-box.rec-price-box :is(.price, .cost, .gain) { grid-row: 1; grid-column: auto; display: block; margin: 0; padding: 10px 4px; border-radius: 12px; background: #1f1f25; font-size: 15px; font-weight: 800; line-height: 1.4; }
+.admin-app .management-workspace--recipes .rec-price-box.rec-price-box .price::before { content: "Lo vendes en"; display: block; color: #a1a1aa; font-size: 11.5px; font-weight: 600; }
+.admin-app .management-workspace--recipes .rec-price-box.rec-price-box :is(.cost, .gain) { color: #a1a1aa; font-size: 11.5px; font-weight: 600; }
+.admin-app .management-workspace--recipes .rec-price-box .cost::first-line, .admin-app .management-workspace--recipes .rec-price-box .gain::first-line { font-size: 11.5px; }
+.admin-app .management-workspace--recipes .rec-price-box.rec-price-box .cost { color: #fff; }
+.admin-app .management-workspace--recipes .rec-price-box.rec-price-box .gain { color: #6ee7a0; background: rgba(34,197,94,.12); }
+.admin-app .management-workspace--recipes .rec-price-box :is(.cost, .gain)::first-line { color: #a1a1aa; }
+.admin-app .management-workspace--recipes .rec-stats { display: none; }
+.admin-app .management-workspace--recipes .rec-detail-tab { flex: 1 1 0; justify-content: center; min-height: 44px; font-size: 14px; }
+.admin-app .management-workspace--recipes .rec-ingredients-toolbar { flex-direction: column; align-items: stretch; gap: 8px; padding: 0; border: 0; background: none; }
+.admin-app .management-workspace--recipes .rec-ingredients-toolbar > span { font-size: 16px; font-weight: 800; color: #fff; }
+.admin-app .management-workspace--recipes .rec-ingredients-toolbar .rec-add-component-btn { justify-content: center; width: 100%; min-height: 48px; border-color: #e31b2b; background: #e31b2b; color: #fff; font-size: 15px; }
+
+/* ===== Ventanas emergentes de recetas ===== */
+body .rec-modal-overlay .rec-modal { box-sizing: border-box; width: min(500px, 100%); border-radius: 18px; overflow-x: hidden; }
+body .rec-modal-overlay .rec-modal-header h3 { font-size: 18px; line-height: 1.25; }
+body .rec-modal-overlay .rec-modal .rec-detail-sub { font-size: 13.5px; }
+body .rec-modal-overlay .rec-form-label { color: #e4e4e7; font-size: 13.5px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+body .rec-modal-overlay .rec-form-label input { box-sizing: border-box; width: 100%; min-height: 48px; font-size: 16px; }
+body .rec-modal-overlay .rec-modal-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+body .rec-modal-overlay .rec-modal-actions > button { justify-content: center; width: 100%; min-height: 48px; border-radius: 12px; font-size: 14.5px; }
+
+/* Cada cifra: nombre arriba y valor abajo. */
+.admin-app .management-workspace--recipes .rec-price-box.rec-price-box :is(.cost, .gain) br { display: initial !important; }
+
+@media (min-width: 768px) {
+  .admin-app .management-workspace--recipes .rec-module-view-head > button { flex-shrink: 0; width: auto; padding-inline: 18px; white-space: nowrap; }
+}

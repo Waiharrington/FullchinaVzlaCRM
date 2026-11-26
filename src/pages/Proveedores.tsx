@@ -603,7 +603,7 @@ export function Proveedores() {
                       onClick={() => setSelectedId(supplier.id)}
                     >
                       {/* Proveedor / Avatar */}
-                      <td data-label="Proveedor">
+                      <td data-label="Proveedor" className="prv-td-who">
                         <div className="prv-supplier-cell">
                           <span
                             className="prv-cell-avatar"
@@ -616,7 +616,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Contacto */}
-                      <td data-label="Contacto">
+                      <td data-label="Contacto" className={`prv-td-contact${supplier.contact ? '' : ' is-empty'}`}>
                         {supplier.contact ? (
                           <div className="prv-contact-person">
                             <UserRound size={13} className="prv-icon-muted" />
@@ -628,7 +628,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Teléfono / Correo */}
-                      <td data-label="Teléfono y correo">
+                      <td data-label="Teléfono y correo" className={`prv-td-phone${supplier.phone ? '' : ' is-empty'}`}>
                         <div className="prv-contact-cell">
                           {supplier.phone ? (
                             <div className="prv-phone-row">
@@ -668,14 +668,14 @@ export function Proveedores() {
                       </td>
 
                       {/* Compras */}
-                      <td data-label="Compras" style={{ textAlign: 'center' }}>
+                      <td data-label="Compras" className="prv-td-count" style={{ textAlign: 'center' }}>
                         <span className={`prv-purchases-badge ${purchaseCount > 0 ? 'active' : 'zero'}`}>
                           {purchaseCount} {purchaseCount === 1 ? 'compra' : 'compras'}
                         </span>
                       </td>
 
                       {/* Total Acumulado */}
-                      <td className="amount-td" data-label="Total acumulado">
+                      <td className="amount-td prv-td-total" data-label="Total acumulado">
                         <MoneyWithBcv
                           usd={totalAmount}
                           className={totalAmount === 0 ? 'text-muted-amount' : 'text-green'}
@@ -685,7 +685,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Última Compra */}
-                      <td data-label="Última compra">
+                      <td data-label="Última compra" className={`prv-td-date${lastPurchaseDate ? '' : ' is-empty'}`}>
                         {lastPurchaseDate ? (
                           <div className="prv-date-cell">
                             <span className="prv-date-main">{formatDate(lastPurchaseDate)}</span>
@@ -697,7 +697,7 @@ export function Proveedores() {
                       </td>
 
                       {/* Acciones */}
-                      <td data-label="Acciones">
+                      <td data-label="Acciones" className="prv-td-actions">
                         <div className="prv-actions-flex" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
@@ -706,6 +706,7 @@ export function Proveedores() {
                             onClick={() => setSelectedId(supplier.id)}
                           >
                             <Eye size={15} />
+                            <span className="prv-action-label">Ver compras</span>
                           </button>
                           <button
                             type="button"
@@ -714,6 +715,7 @@ export function Proveedores() {
                             onClick={() => openEditModal(supplier)}
                           >
                             <Edit2 size={15} />
+                            <span className="prv-action-label">Editar</span>
                           </button>
                         </div>
                       </td>
@@ -750,51 +752,41 @@ export function Proveedores() {
         <div className={`prv-overlay ${closingForm ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeForm() }}>
           <section className="prv-modal prv-modal-supplier" role="dialog" aria-modal="true" aria-labelledby="new-supplier-title">
             <form onSubmit={saveSupplier}>
-              <div className="prv-modal-topbar">
+              <header className="prv-form-head">
+                <div>
+                  <h2 id="new-supplier-title">Nuevo proveedor</h2>
+                  <p>Solo el nombre es obligatorio.</p>
+                </div>
+                <button type="button" className="prv-modal-close-btn" onClick={() => closeForm()} aria-label="Cerrar"><X size={18} /></button>
+              </header>
+
+              <div className="prv-form-body">
+                <label className="prv-field wide">
+                  <span>Nombre del proveedor <em>(obligatorio)</em></span>
+                  <input autoFocus placeholder="Nombre del proveedor" value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} required />
+                </label>
+                <label className="prv-field wide">
+                  <span>Persona de contacto</span>
+                  <input placeholder="Nombre de contacto (opcional)" value={draft.contact} onChange={(event) => updateDraft('contact', event.target.value)} />
+                </label>
+                <label className="prv-field">
+                  <span>Teléfono</span>
+                  <input type="tel" placeholder="Ej. 0414-1234567" value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} />
+                </label>
+                <label className="prv-field">
+                  <span>Correo</span>
+                  <input type="email" placeholder="correo@ejemplo.com" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} />
+                </label>
+                <label className="prv-field wide">
+                  <span>Notas</span>
+                  <textarea rows={3} placeholder="Condiciones de pago, horarios de entrega…" value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
+                </label>
+              </div>
+
+              <footer className="prv-form-foot">
                 <button type="button" className="prv-modal-cancel" onClick={() => closeForm()}>Cancelar</button>
-                <h2 id="new-supplier-title">Nuevo proveedor</h2>
-                <button type="submit" className="prv-modal-save" disabled={saving}>{saving ? <Loader2 className="animate-spin" size={15} /> : 'Guardar'}</button>
-              </div>
-
-              <div className="prv-modal-avatar">
-                <span className="prv-modal-avatar-circle"><Building2 size={26} /></span>
-              </div>
-
-              <div className="prv-form-group">
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><Building2 size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Nombre *</span>
-                    <input autoFocus placeholder="Nombre del proveedor" value={draft.name} onChange={(event) => updateDraft('name', event.target.value)} required />
-                  </span>
-                </label>
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><UserRound size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Persona de contacto</span>
-                    <input placeholder="Nombre de contacto (opcional)" value={draft.contact} onChange={(event) => updateDraft('contact', event.target.value)} />
-                  </span>
-                </label>
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><Phone size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Teléfono</span>
-                    <input placeholder="Ej. 0414-1234567" value={draft.phone} onChange={(event) => updateDraft('phone', event.target.value)} />
-                  </span>
-                </label>
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><Mail size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Correo</span>
-                    <input type="email" placeholder="correo@ejemplo.com" value={draft.email} onChange={(event) => updateDraft('email', event.target.value)} />
-                  </span>
-                </label>
-              </div>
-
-              <label className="prv-form-notes">
-                <span className="prv-form-row-label">Notas</span>
-                <textarea rows={3} placeholder="Condiciones de pago, horarios de entrega…" value={draft.notes} onChange={(event) => updateDraft('notes', event.target.value)} />
-              </label>
+                <button type="submit" className="prv-modal-save" disabled={saving}>{saving ? <Loader2 className="animate-spin" size={16} /> : 'Guardar'}</button>
+              </footer>
             </form>
           </section>
         </div>,
@@ -806,53 +798,41 @@ export function Proveedores() {
         <div className={`prv-overlay ${closingEditModal ? 'closing' : ''}`} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditModal() }}>
           <section className="prv-modal prv-modal-supplier" role="dialog" aria-modal="true" aria-labelledby="edit-supplier-title">
             <form onSubmit={handleUpdateSupplier}>
-              <div className="prv-modal-topbar">
+              <header className="prv-form-head">
+                <div>
+                  <h2 id="edit-supplier-title">Editar proveedor</h2>
+                  <p>Cambia los datos y guarda.</p>
+                </div>
+                <button type="button" className="prv-modal-close-btn" onClick={() => closeEditModal()} aria-label="Cerrar"><X size={18} /></button>
+              </header>
+
+              <div className="prv-form-body">
+                <label className="prv-field wide">
+                  <span>Nombre del proveedor <em>(obligatorio)</em></span>
+                  <input autoFocus placeholder="Nombre del proveedor" value={editDraft.name} onChange={(event) => updateEditDraft('name', event.target.value)} required />
+                </label>
+                <label className="prv-field wide">
+                  <span>Persona de contacto</span>
+                  <input placeholder="Nombre de contacto (opcional)" value={editDraft.contact} onChange={(event) => updateEditDraft('contact', event.target.value)} />
+                </label>
+                <label className="prv-field">
+                  <span>Teléfono</span>
+                  <input type="tel" placeholder="Ej. 0414-1234567" value={editDraft.phone} onChange={(event) => updateEditDraft('phone', event.target.value)} />
+                </label>
+                <label className="prv-field">
+                  <span>Correo</span>
+                  <input type="email" placeholder="correo@ejemplo.com" value={editDraft.email} onChange={(event) => updateEditDraft('email', event.target.value)} />
+                </label>
+                <label className="prv-field wide">
+                  <span>Notas</span>
+                  <textarea rows={3} placeholder="Condiciones de pago, horarios de entrega…" value={editDraft.notes} onChange={(event) => updateEditDraft('notes', event.target.value)} />
+                </label>
+              </div>
+
+              <footer className="prv-form-foot">
                 <button type="button" className="prv-modal-cancel" onClick={() => closeEditModal()}>Cancelar</button>
-                <h2 id="edit-supplier-title">Editar proveedor</h2>
-                <button type="submit" className="prv-modal-save" disabled={saving}>{saving ? <Loader2 className="animate-spin" size={15} /> : 'Guardar'}</button>
-              </div>
-
-              <div className="prv-modal-avatar">
-                <span className="prv-modal-avatar-circle" style={{ background: getAvatarBg(editDraft.name || editingSupplier.name) }}>
-                  {(editDraft.name || editingSupplier.name).slice(0, 2).toUpperCase()}
-                </span>
-              </div>
-
-              <div className="prv-form-group">
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><Building2 size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Nombre *</span>
-                    <input autoFocus placeholder="Nombre del proveedor" value={editDraft.name} onChange={(event) => updateEditDraft('name', event.target.value)} required />
-                  </span>
-                </label>
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><UserRound size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Persona de contacto</span>
-                    <input placeholder="Nombre de contacto (opcional)" value={editDraft.contact} onChange={(event) => updateEditDraft('contact', event.target.value)} />
-                  </span>
-                </label>
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><Phone size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Teléfono</span>
-                    <input placeholder="Ej. 0414-1234567" value={editDraft.phone} onChange={(event) => updateEditDraft('phone', event.target.value)} />
-                  </span>
-                </label>
-                <label className="prv-form-row">
-                  <span className="prv-form-row-icon"><Mail size={15} /></span>
-                  <span className="prv-form-row-content">
-                    <span className="prv-form-row-label">Correo</span>
-                    <input type="email" placeholder="correo@ejemplo.com" value={editDraft.email} onChange={(event) => updateEditDraft('email', event.target.value)} />
-                  </span>
-                </label>
-              </div>
-
-              <label className="prv-form-notes">
-                <span className="prv-form-row-label">Notas</span>
-                <textarea rows={3} placeholder="Condiciones de pago, horarios de entrega…" value={editDraft.notes} onChange={(event) => updateEditDraft('notes', event.target.value)} />
-              </label>
+                <button type="submit" className="prv-modal-save" disabled={saving}>{saving ? <Loader2 className="animate-spin" size={16} /> : 'Guardar'}</button>
+              </footer>
             </form>
           </section>
         </div>,

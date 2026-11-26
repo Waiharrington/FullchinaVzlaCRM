@@ -7,7 +7,9 @@ import { exportInventoryWorkbook, previewInventoryWorkbook, type InventoryImport
 import { normalizeForSearch } from '../lib/textFormat'
 import { StyledSelect } from '../components/StyledSelect'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
-import { Package, Search, Eye, Pencil, TrendingUp, AlertTriangle, ShoppingBag, ArrowDown, ArrowUp, RefreshCw, ChevronLeft, ChevronRight, ShoppingCart, X, Plus, Minus, Save, Loader2, Trash2, Upload, Download, FileSpreadsheet } from 'lucide-react'
+import {
+  Package, Search, Eye, Pencil, TrendingUp, AlertTriangle, ShoppingBag, ArrowDown, ArrowUp, RefreshCw, ChevronLeft, ChevronRight, ShoppingCart, X, Plus, Minus, Save, Loader2, Trash2, Upload, Download, FileSpreadsheet, LayoutGrid, Beef, Soup, Box, CupSoda,
+} from 'lucide-react'
 import { EmptyState } from '../components/EmptyState'
 import { PageSkeleton } from '../components/PageSkeleton'
 import { confirmDialog } from '../components/ConfirmDialog'
@@ -536,7 +538,7 @@ export function Inventario() {
           <div className="inv-kpi-info">
             <span className="inv-kpi-label">Valor de inventario</span>
             <span className="inv-kpi-value">${totalInventoryValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            <span className="inv-kpi-sub green">+8.2% vs. ayer</span>
+            <span className="inv-kpi-sub">Según costo promedio</span>
           </div>
         </div>
         <div
@@ -601,9 +603,13 @@ export function Inventario() {
             </button>
           )}
         </div>
-        <div className="inv-filter-pills">
-          {[['all', 'Todos'], ['raw', 'Materia prima'], ['portions', 'Porciones'], ['packaging', 'Empaques'], ['beverages', 'Bebidas']].map(([key, label]) => (
-            <button key={key} className={`inv-filter-pill ${categoryFilter === key ? 'active' : ''}`} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>{label}</button>
+        <div className="inv-cats" role="group" aria-label="Filtrar por categoría">
+          {([['all', 'Todos', LayoutGrid], ['raw', 'Materia prima', Beef], ['portions', 'Porciones', Soup], ['packaging', 'Empaques', Box], ['beverages', 'Bebidas', CupSoda]] as const).map(([key, label, Icon]) => (
+            <button key={key} type="button" className="inv-cat" aria-pressed={categoryFilter === key} onClick={() => { setCategoryFilter(key); setCurrentPage(1) }}>
+              <Icon size={20} aria-hidden="true" />
+              <span>{label}</span>
+              <small>{key === 'all' ? ingredients.length : ingredients.filter(ing => getIngredientCategory(ing) === key).length}</small>
+            </button>
           ))}
         </div>
         <div className="inv-import-export-actions">
@@ -653,35 +659,36 @@ export function Inventario() {
                     const status = getStockStatus(ing)
                     return (
                       <tr key={ing.id}>
-                        <td data-label="Producto">
+                        <td data-label="Producto" className="inv-td-name">
                           <div className="inv-product-cell">
                             <div className="inv-product-img"><Package size={16} /></div>
                             {ing.name}
                           </div>
                         </td>
-                        <td data-label="Stock actual">
+                        <td data-label="Stock actual" className={`inv-td-stock ${status}`}>
                           <span className="inv-stock-value">{ing.currentStock}</span>
+                          <span className="inv-stock-unit"> {ing.unitSymbol}</span>
                         </td>
-                        <td data-label="Unidad" style={{ color: 'var(--text-secondary)' }}>{ing.unitSymbol}</td>
+                        <td data-label="Unidad" className="inv-td-unit" style={{ color: 'var(--text-secondary)' }}>{ing.unitSymbol}</td>
                         {showCosts && (
-                          <td data-label="Costo promedio" style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                          <td data-label="Costo promedio" className="inv-td-cost" style={{ color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
                             {ing.pricePerUnit !== null ? `$${ing.pricePerUnit.toFixed(2)}` : '-'}
                           </td>
                         )}
-                        <td data-label="Estado">
+                        <td data-label="Estado" className="inv-td-status">
                           <span className={`inv-status-badge ${status}`}>
                             <span className="status-dot" />
                             {getStockStatusLabel(status)}
                           </span>
                         </td>
-                        <td data-label="Acciones">
+                        <td data-label="Acciones" className="inv-td-actions">
                           <div className="inv-actions">
-                            <button className="inv-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${ing.name}`} onClick={() => openView(ing)}>
-                              <Eye size={13} /><span className="inv-action-label">Ver</span>
+                            <button className="inv-action-btn view" title="Ver movimientos" aria-label={`Ver movimientos de ${ing.name}`} onClick={() => openView(ing)}>
+                              <Eye size={13} /><span className="inv-action-label">Historial</span>
                             </button>
                             {showCosts && (
                               <>
-                                <button className="inv-action-btn" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={13} /><span className="inv-action-label">Editar</span></button>
+                                <button className="inv-action-btn edit" title="Editar artículo" aria-label={`Editar ${ing.name}`} onClick={() => openEdit(ing)}><Pencil size={13} /><span className="inv-action-label">Editar</span></button>
                                 <button className="inv-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${ing.name}`} onClick={() => openAdjustment(ing, 1)}><Plus size={13} /><span className="inv-action-label">Agregar</span></button>
                                 <button className="inv-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${ing.name}`} onClick={() => openAdjustment(ing, -1)}><Minus size={13} /><span className="inv-action-label">Descontar</span></button>
                                 <button className="inv-action-btn danger" title="Eliminar artículo" aria-label={`Eliminar ${ing.name}`} onClick={() => handleDelete(ing)}><Trash2 size={13} /><span className="inv-action-label">Eliminar</span></button>
@@ -1019,6 +1026,7 @@ export function Inventario() {
               <div className="inv-modal-heading"><span className={adjustment.direction > 0 ? 'positive' : 'negative'}>{adjustment.direction > 0 ? <Plus size={18} /> : <Minus size={18} />}</span><div><small>{adjustment.direction > 0 ? 'Agregar al inventario' : 'Descontar del inventario'}</small><h3>{selectedIngredient.name}</h3></div></div>
               <div className="inv-current-stock"><small>Stock actual</small><strong>{selectedIngredient.currentStock} {selectedIngredient.unitSymbol}</strong></div>
               <div className="inv-form-grid"><label className="wide"><span>Cantidad ({selectedIngredient.unitSymbol})</span><input autoFocus type="number" min="0" step="any" value={adjustment.quantity} onChange={e => setAdjustment(a => ({ ...a, quantity: e.target.value }))} placeholder="Cantidad" /></label><label className="wide"><span>Motivo del ajuste</span><textarea value={adjustment.notes} onChange={e => setAdjustment(a => ({ ...a, notes: e.target.value }))} placeholder="Ej. conteo físico, merma, recepción manual…" /></label></div>
+              {Number(adjustment.quantity) > 0 && <div className="inv-current-stock inv-next-stock"><small>Quedará en</small><strong>{Math.round((selectedIngredient.currentStock + adjustment.direction * Number(adjustment.quantity)) * 1000) / 1000} {selectedIngredient.unitSymbol}</strong></div>}
               {modalError && <p className="inv-form-error" role="alert">{modalError}</p>}
               <button className={`inv-generate-order-btn ${adjustment.direction < 0 ? 'danger' : ''}`} disabled={modalLoading}>{modalLoading ? <Loader2 className="spin" size={17} /> : adjustment.direction > 0 ? <Plus size={17} /> : <Minus size={17} />} {adjustment.direction > 0 ? 'Registrar entrada' : 'Registrar salida'}</button>
             </form>}

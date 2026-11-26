@@ -447,3 +447,15 @@
 .promo-form-row input:not([type="checkbox"]):not([type="color"]) { width: 100%; min-width: 0; box-sizing: border-box; }
 @media (max-width: 520px) { .promo-form-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (min-width: 768px) and (max-width: 899px) { .promo-preview-pane { flex-basis: 220px; padding-inline: 12px; } }
+
+/* ===== Cupones legibles y botones con nombre ===== */
+.admin-app .management-workspace--promotions .promos-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 14px; }
+.admin-app .management-workspace--promotions .promo-item { padding: 18px 16px 14px; }
+.admin-app .management-workspace--promotions .promo-item.inactive { opacity: 1; }
+.admin-app .management-workspace--promotions .promo-item.inactive > :not(.promo-item-actions):not(.promo-item-drag):not(.promo-hidden-flag) { opacity: .6; }
+.admin-app .management-workspace--promotions .promo-item-actions { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; order: 10; width: 100%; margin-top: auto; padding-top: 8px; }
+.admin-app .management-workspace--promotions .promo-item-actions button { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; height: 44px; font: inherit; font-size: 13px; font-weight: 700; }
+.admin-app .management-workspace--promotions .promo-hidden-flag { position: static; order: 9; }
+.admin-app .management-workspace--promotions .promo-item:has(.promo-item-drag) { padding-top: 48px; }
+.admin-app .management-workspace--promotions .promo-subtitle { font-size: 13.5px; color: #c4c4cc; }
+.admin-app .management-workspace--promotions .promo-footer-note { color: #a1a1aa; text-align: center; }

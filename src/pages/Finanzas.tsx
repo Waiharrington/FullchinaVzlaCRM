@@ -896,27 +896,27 @@ export function Finanzas() {
       <div className="fin-kpis management-workspace-metrics">
         <div className="fin-kpi green fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('sales')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('sales') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><ShoppingCart size={18} /></span>
-            <div><div className="fin-kpi-lbl">Ventas Brutas</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Ventas Brutas</div><div className="fin-kpi-help">Todo lo que vendiste</div><div className="fin-kpi-val">{formatUsd(cur.grossSales)}</div></div></div>
           <div className="fin-kpi-sub">{salesDelta != null ? <span className={salesDelta >= 0 ? 'fin-up' : 'fin-down'}>{salesDelta >= 0 ? '▲' : '▼'} {Math.abs(salesDelta).toFixed(0)}% vs ayer</span> : periodLabel}</div>
         </div>
         <div className="fin-kpi red fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('cogs')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('cogs') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><Wallet size={18} /></span>
-            <div><div className="fin-kpi-lbl">Costo Insumos</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Costo Insumos</div><div className="fin-kpi-help">Lo que costó preparar lo vendido</div><div className="fin-kpi-val">{formatUsd(cur.cogs)}</div></div></div>
           <div className="fin-kpi-sub fin-down">{cogsPctSales.toFixed(1)}% de las ventas</div>
         </div>
         <div className="fin-kpi purple fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('expenses')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('expenses') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><DollarSign size={18} /></span>
-            <div><div className="fin-kpi-lbl">Gastos + Nómina</div><div className="fin-kpi-val">{formatUsd(cur.opex + cur.payroll)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Gastos + Nómina</div><div className="fin-kpi-help">Gastos del negocio y sueldos</div><div className="fin-kpi-val">{formatUsd(cur.opex + cur.payroll)}</div></div></div>
           <div className="fin-kpi-sub">{formatUsd(cur.opex)} gastos · {formatUsd(cur.payroll)} nómina</div>
         </div>
         <div className="fin-kpi green fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('net')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('net') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><TrendingUp size={18} /></span>
-            <div><div className="fin-kpi-lbl">Ganancia Neta</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
+            <div><div className="fin-kpi-lbl">Ganancia Neta</div><div className="fin-kpi-help">Lo que te queda al final</div><div className="fin-kpi-val" style={{ color: cur.netProfit >= 0 ? '#22c55e' : '#ef4444' }}>{formatUsd(cur.netProfit)}</div></div></div>
           <div className="fin-kpi-sub">{netDelta != null ? <span className={netDelta >= 0 ? 'fin-up' : 'fin-down'}>{netDelta >= 0 ? '▲' : '▼'} {Math.abs(netDelta).toFixed(0)}% vs ayer</span> : `${cur.margin.toFixed(1)}% de las ventas`}</div>
         </div>
         <div className="fin-kpi blue fin-kpi--clickable" role="button" tabIndex={0} onClick={() => setKpiDetail('margin')} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setKpiDetail('margin') } }}>
           <div className="fin-kpi-top"><span className="fin-kpi-ic"><Percent size={18} /></span>
-            <div><div className="fin-kpi-lbl">Margen Neto</div><div className="fin-kpi-val">{cur.margin.toFixed(1)}%</div></div></div>
+            <div><div className="fin-kpi-lbl">Margen Neto</div><div className="fin-kpi-help">Cuánto queda de cada venta</div><div className="fin-kpi-val">{cur.margin.toFixed(1)}%</div></div></div>
           <div className="fin-kpi-sub"><span className={marginPP >= 0 ? 'fin-up' : 'fin-down'}>{marginPP >= 0 ? '▲' : '▼'} {Math.abs(marginPP).toFixed(1)} pp vs ayer</span></div>
         </div>
       </div>

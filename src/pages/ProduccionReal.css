@@ -831,29 +831,6 @@
   .prod-batch-create-modal .prod-modal-submit .prod-submit-copy { min-width: 0; }
   .prod-batch-create-modal .prod-modal-submit .prod-submit-copy strong { font-size: .76rem; }
   .prod-batch-create-modal .prod-modal-submit .prod-submit-copy small { font-size: 0.6875rem; }
-  .management-workspace--production .prod-table-wrap { display: none; }
-  .management-workspace--production .prod-batch-cards { display: grid; gap: 12px; }
-  .management-workspace--production .prod-batch-card {
-    min-width: 0;
-    padding: 14px;
-    border: 1px solid rgba(255,255,255,.09);
-    border-radius: 14px;
-    background: linear-gradient(145deg, rgba(25,25,30,.98), rgba(18,18,21,.98));
-  }
-  .prod-batch-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-  .prod-batch-card-top time { color: var(--text-muted); font-size: .78rem; font-weight: 650; }
-  .prod-batch-card-top .prod-view-detail-btn { min-height: 34px; padding: 6px 10px; font-size: .74rem; }
-  .prod-batch-card h3 { margin: 0 0 10px; color: #fff; font-size: .98rem; line-height: 1.3; overflow-wrap: anywhere; text-wrap: balance; }
-  .prod-batch-card-operator { margin: 3px 0 12px; color: var(--text-muted); font-size: .76rem; }
-  .prod-batch-card-metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
-  .prod-batch-card-metrics > div { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 9px; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; background: rgba(255,255,255,.025); }
-  .prod-batch-card-metrics > div.wide { grid-column: 1 / -1; margin-bottom: 4px; }
-  .prod-batch-card-metrics span { color: var(--text-muted); font-size: 0.6875rem; font-weight: 700; }
-  .prod-batch-card-metrics strong { max-width: 100%; color: #f4f4f5; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
-  .prod-batch-card-metrics small { color: var(--text-muted); font-size: 0.6875rem; }
-  .prod-batch-card-metrics .prod-badge { font-size: 0.6875rem; }
-  .prod-batch-card-metrics .prod-batch-yield { color: #4ade80; }
-  .prod-batch-card-metrics .prod-batch-cost { color: #facc15; }
   .prod-stat-label-desktop { display: none; }
   .prod-stat-label-mobile { display: inline; }
   .management-workspace--production .prod-stat-val { white-space: nowrap; }
@@ -915,38 +892,71 @@
   .prod-yield-bar-labels { flex-direction: column; align-items: flex-start; gap: 3px; }
 }
 
-/* Tablet con el menú abierto: tarjetas en vez de tabla apretada. */
-@media (min-width: 900px) and (max-width: 1199px) {
-  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--production .prod-table-wrap { display: none; }
-  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--production .prod-batch-cards { display: grid; gap: 12px; }
-  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--production .prod-batch-card {
-    min-width: 0;
-    padding: 14px;
-    border: 1px solid rgba(255,255,255,.09);
-    border-radius: 14px;
-    background: linear-gradient(145deg, rgba(25,25,30,.98), rgba(18,18,21,.98));
-  }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-top time { color: var(--text-muted); font-size: .78rem; font-weight: 650; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-top .prod-view-detail-btn { min-height: 34px; padding: 6px 10px; font-size: .74rem; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card h3 { margin: 0 0 10px; color: #fff; font-size: .98rem; line-height: 1.3; overflow-wrap: anywhere; text-wrap: balance; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-operator { margin: 3px 0 12px; color: var(--text-muted); font-size: .76rem; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics > div { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; padding: 9px; border: 1px solid rgba(255,255,255,.06); border-radius: 10px; background: rgba(255,255,255,.025); }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics > div.wide { grid-column: 1 / -1; margin-bottom: 4px; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics span { color: var(--text-muted); font-size: 0.6875rem; font-weight: 700; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics strong { max-width: 100%; color: #f4f4f5; font-size: .78rem; line-height: 1.25; overflow-wrap: anywhere; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics small { color: var(--text-muted); font-size: 0.6875rem; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics .prod-badge { font-size: 0.6875rem; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics .prod-batch-yield { color: #4ade80; }
-  .main-content-wrapper:not(.sidebar-collapsed) .prod-batch-card-metrics .prod-batch-cost { color: #facc15; }
-}
-
-@media (min-width: 900px) and (max-width: 1199px) {
-  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--production .prod-batch-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-
 @media (max-width: 767px) {
   .admin-app .prod-stats-grid .prod-stat-card .prod-stat-info { width: 100%; align-items: flex-start; }
   .admin-app .prod-stats-grid .prod-stat-card .prod-stat-info * { max-width: 100%; }
+}
+
+/* ===== Lotes: tarjetas claras; la tabla solo cuando cabe completa ===== */
+.admin-app .management-workspace--production .prod-panel { container: prod-list / inline-size; }
+.admin-app .management-workspace--production .prod-batch-cards { display: none; }
+@container prod-list (max-width: 999px) {
+  .admin-app .management-workspace--production .prod-table-wrap { display: none; }
+  .admin-app .management-workspace--production .prod-batch-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 12px; }
+}
+.admin-app .management-workspace--production .prod-batch-card { display: flex; flex-direction: column; min-width: 0; padding: 14px; border: 1px solid rgba(255,255,255,.1); border-radius: 16px; background: #18181c; }
+.admin-app .management-workspace--production .prod-batch-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.admin-app .management-workspace--production .prod-batch-card-top time { color: #a1a1aa; font-size: 13px; font-weight: 700; }
+.admin-app .management-workspace--production .prod-batch-card h3 { margin: 0; color: #fff; font-size: 17px; line-height: 1.3; overflow-wrap: anywhere; }
+.admin-app .management-workspace--production .prod-batch-card-operator { margin: 4px 0 0; color: #a1a1aa; font-size: 13px; }
+.admin-app .management-workspace--production .prod-batch-card-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }
+.admin-app .management-workspace--production .prod-batch-card-metrics > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px; border-radius: 12px; background: #212127; }
+.admin-app .management-workspace--production .prod-batch-card-metrics > div.wide { grid-column: 1 / -1; }
+.admin-app .management-workspace--production .prod-batch-card-metrics > div.main { background: rgba(34,197,94,.12); }
+.admin-app .management-workspace--production .prod-batch-card-metrics span { color: #a1a1aa; font-size: 12px; font-weight: 600; }
+.admin-app .management-workspace--production .prod-batch-card-metrics strong { color: #fff; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
+.admin-app .management-workspace--production .prod-batch-card-metrics small { color: #a1a1aa; font-size: 12px; }
+.admin-app .management-workspace--production .prod-batch-card-metrics .prod-batch-yield { color: #4ade80; }
+.admin-app .management-workspace--production .prod-batch-card-metrics .prod-batch-cost { color: #facc15; }
+.admin-app .management-workspace--production .prod-batch-card .prod-view-detail-btn { width: 100%; min-height: 44px; margin-top: auto; border-radius: 12px; font-size: 14px; font-weight: 800; }
+
+/* Filtros de fecha: cuatro botones iguales. */
+@media (max-width: 767px) {
+  .admin-app .management-workspace--production .prod-date-filter { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; width: 100%; box-sizing: border-box; }
+  .admin-app .management-workspace--production .prod-date-filter button { justify-content: center; min-width: 0; min-height: 42px; padding: 6px 2px; font-size: 13px; white-space: nowrap; }
+  /* Resumen compacto: icono al lado del número. */
+  .admin-app .management-workspace--production .prod-stats-grid .prod-stat-card.prod-stat-card { display: flex; flex-direction: row !important; align-items: center; gap: 10px; min-height: 0; padding: 12px 10px; }
+  .admin-app .management-workspace--production .prod-stats-grid .prod-stat-icon { width: 34px; height: 34px; flex: 0 0 34px; margin: 0; }
+  .admin-app .management-workspace--production .prod-stats-grid .prod-stat-card .prod-stat-info { flex: 1 1 0; width: 0; min-width: 0; }
+}
+
+/* ===== Ventanas de producción ===== */
+body .prod-modal-overlay .prod-section-label { color: #fff; font-size: 15px; letter-spacing: 0; text-transform: none; }
+body .prod-modal-overlay .prod-modal-header-text { flex: 1; min-width: 0; }
+body .prod-modal-overlay .prod-modal-header-text p { font-size: 13px; }
+body .prod-modal-overlay :is(.prod-form-field label, .prod-calc-item label, .prod-meta-label) { display: block; margin-bottom: 5px; color: #d4d4d8; font-size: 13.5px; font-weight: 700; }
+body .prod-modal-overlay .prod-calc-item label[style] { color: #4ade80 !important; }
+body .prod-modal-overlay :is(.prod-batch-name-field input, .prod-form-field input, .prod-calc-item input, .prod-batch-meta input) { box-sizing: border-box; width: 100%; min-width: 0; min-height: 48px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 12px; background: #121214; color: #fff; font: inherit; font-size: 16px; }
+body .prod-modal-overlay .prod-form-field > input { color: #facc15; font-weight: 800; }
+body .prod-modal-overlay .prod-protein-chip { font-size: 13.5px; }
+body .prod-modal-overlay .prod-location-btn { min-height: 52px; font-size: 14px; }
+body .prod-modal-overlay .prod-stock-available-badge { display: flex; flex-wrap: wrap; font-size: 13px; line-height: 1.4; }
+body .prod-modal-overlay .prod-stock-available-badge svg { flex-shrink: 0; }
+body .prod-modal-overlay .prod-calc-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 10px; }
+body .prod-modal-overlay .prod-calc-hint { color: #a1a1aa; font-size: 13px; }
+body .prod-modal-overlay .prod-yield-bar-labels { flex-wrap: wrap; gap: 4px 10px; font-size: 13px; }
+body .prod-modal-overlay .prod-batch-create-modal .prod-modal-actions { position: sticky; bottom: -1px; z-index: 2; padding: 10px 0 2px; background: #18181c; }
+body .prod-modal-overlay .prod-modal-actions button { min-height: 52px; font-size: 14.5px; }
+body .prod-modal-overlay .prod-modal-submit .prod-submit-copy strong { font-size: 14.5px; }
+body .prod-modal-overlay .prod-modal-submit .prod-submit-copy small { font-size: 12px; white-space: normal; }
+body .prod-modal-overlay .prod-detail-modal { max-width: 520px; }
+body .prod-modal-overlay .prod-detail-item { gap: 5px; padding: 12px; }
+body .prod-modal-overlay .prod-detail-item small { font-size: 12.5px; text-transform: none; }
+body .prod-modal-overlay .prod-detail-item strong { font-size: 17px; }
+body .prod-modal-overlay .prod-detail-modal > .prod-modal-cancel { min-height: 48px; flex-shrink: 0; font-size: 14.5px; }
+
+/* Los botones quedan pegados al borde inferior, sin contenido asomando debajo. */
+body .prod-modal-overlay .prod-batch-create-modal .prod-modal-actions { bottom: -26px; margin: 0; padding: 12px 0 26px; }
+@media (max-width: 699px) {
+  body .prod-modal-overlay .prod-batch-create-modal .prod-modal-actions { bottom: -18px; padding-bottom: 18px; }
 }

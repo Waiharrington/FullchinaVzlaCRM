@@ -264,3 +264,24 @@
   .gst-header-actions > button { padding-inline:5px; font-size:11px; }
   .gst-header-actions > .gst-help { flex-basis:38px; width:38px; height:38px; }
 }
+
+/* ===== Gastos más fáciles de leer ===== */
+.gst-btn-label { font-size: 12.5px; font-weight: 700; }
+@media (max-width: 767px) {
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum { flex-direction: row !important; align-items: flex-start; gap: 8px; min-height: 0; padding: 12px 10px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum-ic { width: 30px; height: 30px; flex: 0 0 30px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum > div { flex: 1 1 0; min-width: 0; }
+  .admin-app .management-workspace--expenses .gst-filter-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .admin-app .management-workspace--expenses .gst-filter-row .gst-tool { justify-content: center; min-width: 0; min-height: 42px; padding: 4px 2px; font-size: 12.5px; }
+}
+.admin-app .management-workspace--expenses .gst-mobile-expense > header { margin: 0; }
+.admin-app .management-workspace--expenses .gst-mobile-expense-title { font-size: 16px; }
+.admin-app .management-workspace--expenses .gst-mobile-expense > dl { margin-top: 8px; padding: 8px 0; }
+.admin-app .management-workspace--expenses .gst-mobile-expense > footer { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.admin-app .management-workspace--expenses .gst-mobile-expense-amount { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; }
+.admin-app .management-workspace--expenses .gst-mobile-expense-amount strong { font-size: 21px; }
+.admin-app .management-workspace--expenses .gst-mobile-expense-amount small { font-size: 13px; }
+.admin-app .management-workspace--expenses .gst-mobile-expense .gst-row-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.admin-app .management-workspace--expenses .gst-mobile-expense .gst-icon-btn.gst-icon-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; max-width: none; height: 42px; }
+body .gst-form-col .gst-expense-modal { max-width: 100%; overflow-x: hidden; }
+body .gst-form-col .gst-expense-modal .gst-field :is(input, textarea) { box-sizing: border-box; min-width: 0; font-size: 16px; }

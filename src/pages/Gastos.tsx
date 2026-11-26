@@ -408,7 +408,7 @@ export function Gastos() {
                 </dl>
                 <footer>
                   <div className="gst-mobile-expense-amount"><strong>{formatUsd(e.amountUsd)}</strong><small>{formatVes(e.amountUsd * rate)}</small></div>
-                  {e.purchaseExpenseItemId ? <span className="gst-mobile-edit-note">Editar en Compras</span> : <div className="gst-row-actions"><button type="button" className="gst-icon-btn" title="Editar gasto" aria-label={`Editar gasto ${e.description}`} onClick={() => openEditExpense(e)}><Pencil size={16} /></button><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={16} />}</button></div>}
+                  {e.purchaseExpenseItemId ? <span className="gst-mobile-edit-note">Editar en Compras</span> : <div className="gst-row-actions"><button type="button" className="gst-icon-btn" title="Editar gasto" aria-label={`Editar gasto ${e.description}`} onClick={() => openEditExpense(e)}><Pencil size={16} /><span className="gst-btn-label">Editar</span></button><button type="button" className="gst-icon-btn gst-icon-danger" title="Eliminar gasto" aria-label={`Eliminar gasto ${e.description}`} onClick={() => void handleDeleteExpense(e)} disabled={deletingExpenseId === e.id}>{deletingExpenseId === e.id ? <span className="gst-spinner" /> : <Trash2 size={16} />}<span className="gst-btn-label">Borrar</span></button></div>}
                 </footer>
               </article>
             ))}

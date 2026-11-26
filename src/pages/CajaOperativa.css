@@ -213,3 +213,45 @@
 @media (max-width: 720px) {
   .admin-app .cash-metric-grid > article:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
+
+/* ===== Control de caja más claro ===== */
+.admin-app .management-workspace--cash-ops { container: cash-page / inline-size; }
+.admin-app .management-workspace--cash-ops .cash-currency-grid.cash-currency-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.admin-app .management-workspace--cash-ops .cash-currency-grid .cash-currency-card { min-width: 0; padding: 16px; }
+.admin-app .management-workspace--cash-ops .cash-currency-grid .cash-currency-heading { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding-bottom: 12px; }
+.admin-app .management-workspace--cash-ops .cash-currency-heading span { color: #fff; font-size: 15px; font-weight: 800; }
+.admin-app .management-workspace--cash-ops .cash-currency-heading strong { font-size: 30px; line-height: 1.15; overflow-wrap: anywhere; }
+.admin-app .management-workspace--cash-ops .cash-currency-heading small { color: #a1a1aa; font-size: 12.5px; }
+.admin-app .management-workspace--cash-ops .cash-currency-grid .cash-currency-details { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; padding-top: 12px; }
+.admin-app .management-workspace--cash-ops .cash-currency-grid .cash-currency-details > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.045); }
+.admin-app .management-workspace--cash-ops .cash-currency-details span { margin: 0; color: #c4c4cc; font-size: 13px; }
+.admin-app .management-workspace--cash-ops .cash-currency-details b { font-size: 14px; text-align: right; white-space: nowrap; }
+.admin-app .management-workspace--cash-ops .cash-close-help { margin: 10px 0 0; color: #a1a1aa; font-size: 12.5px; line-height: 1.4; text-align: center; }
+.admin-app .management-workspace--cash-ops .cash-close-button { min-height: 50px; background: #e31b2b; color: #fff; font-size: 15px; }
+.admin-app .management-workspace--cash-ops .cash-payment-list > div strong { color: #fff; white-space: nowrap; }
+@container cash-page (max-width: 899px) {
+  .admin-app .management-workspace--cash-ops .cash-content-grid.cash-content-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  /* Cerrar el turno queda a la vista, antes de los movimientos. */
+  .admin-app .management-workspace--cash-ops .cash-content-grid > .cash-card:nth-child(2) { order: -1; }
+  .admin-app .management-workspace--cash-ops .cash-content-grid > .cash-card:first-child { min-height: 0; }
+  .admin-app .management-workspace--cash-ops .cash-content-grid > .cash-card .cash-movement-list { min-height: 0; }
+  .admin-app .management-workspace--cash-ops .cash-content-grid .cash-card-heading { flex-wrap: wrap; }
+  .admin-app .management-workspace--cash-ops .cash-content-grid .cash-card-heading .cash-add-movement { width: 100%; min-height: 46px; font-size: 14px; }
+}
+
+/* Ventana de cierre */
+body .cash-modal-backdrop .cash-close-modal { box-sizing: border-box; width: min(520px, 100%); max-height: calc(100dvh - 32px); padding: 20px; overflow-x: hidden; }
+body .cash-modal-backdrop .cash-close-modal h2 { font-size: 21px; line-height: 1.25; }
+body .cash-modal-backdrop .cash-close-modal > p { margin: 0; font-size: 14px; }
+body .cash-modal-backdrop .cash-close-modal label { min-width: 0; font-size: 14px; }
+body .cash-modal-backdrop .cash-close-modal :is(input, textarea) { font-size: 16px; }
+body .cash-modal-backdrop .cash-close-modal small { color: #c4c4cc; font-size: 13px; }
+body .cash-modal-backdrop .cash-close-grid, body .cash-modal-backdrop .cash-difference-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; margin: 16px 0; }
+body .cash-modal-backdrop .cash-difference-grid span { font-size: 13px; }
+body .cash-modal-backdrop .cash-difference-grid strong { display: block; font-size: 22px; }
+body .cash-modal-backdrop .cash-difference-grid em { font-size: 13px; font-style: normal; font-weight: 700; }
+body .cash-modal-backdrop .cash-modal-actions { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+body .cash-modal-backdrop .cash-modal-actions button { width: 100%; min-height: 50px; }
+@media (max-width: 720px) {
+  .admin-app .management-workspace--cash-ops .cash-currency-grid.cash-currency-grid.cash-currency-grid { display: grid !important; grid-template-columns: minmax(0, 1fr) !important; }
+}

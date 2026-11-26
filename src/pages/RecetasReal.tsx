@@ -566,7 +566,7 @@ export function RecetasReal() {
               Completas <span className="rec-count">{counts.completas}</span>
             </button>
             <button className={`rec-tab${tab === 'faltan' ? ' active' : ''}`} onClick={() => setTab('faltan')}>
-              Faltan ingredientes <span className="rec-count">{counts.faltan}</span>
+              Incompletas <span className="rec-count">{counts.faltan}</span>
             </button>
           </div>
 
@@ -670,9 +670,10 @@ export function RecetasReal() {
                   <div className="rec-detail-ref">Ref. {bs(sel.salePrice)}</div>
                 </div>
                 <div className="rec-price-box">
-                  <div className="lbl">Precio de venta</div>
+                  <div className="lbl">Lo vendes en</div>
                   <div className="price">{formatUsd(sel.salePrice)}</div>
-                  <div className="cost">Costo estimado<br />{cost != null ? formatUsdPrecise(cost) : 'Sin costo'}</div>
+                  <div className="cost">Te cuesta<br />{cost != null ? formatUsdPrecise(cost) : 'Sin costo'}</div>
+                  <div className="gain">Te queda<br />{margin != null ? formatUsd(margin) : '--'}</div>
                 </div>
               </div>
 
@@ -681,7 +682,7 @@ export function RecetasReal() {
                   <BookOpen size={15} /> Ingredientes
                 </button>
                 <button className={`rec-detail-tab${detailTab === 'info' ? ' active' : ''}`} onClick={() => setDetailTab('info')}>
-                  <Info size={15} /> Información adicional
+                  <Info size={15} /> Detalles
                 </button>
               </div>
 
@@ -689,27 +690,28 @@ export function RecetasReal() {
                 <>
                   {showAdd && (
                     <form className="rec-add-form" onSubmit={handleAddComponent}>
-                      <StyledSelect value={addComponentType} onChange={(e) => { setAddComponentType(e.target.value as 'ingredient' | 'portion'); setAddIngredientId(''); setAddPortionId('') }}>
+                      <div className="rec-add-field wide"><span>Qué vas a agregar</span><StyledSelect value={addComponentType} onChange={(e) => { setAddComponentType(e.target.value as 'ingredient' | 'portion'); setAddIngredientId(''); setAddPortionId('') }}>
                         <option value="ingredient">Ingrediente</option><option value="portion">Porción</option>
-                      </StyledSelect>
-                      {addComponentType === 'ingredient' ? <SearchSelect
+                      </StyledSelect></div>
+                      <div className="rec-add-field wide"><span>Cuál</span>{addComponentType === 'ingredient' ? <SearchSelect
                         options={ingredients.map((i) => ({ value: i.id, label: `${i.name} (${i.unitSymbol})` }))}
                         value={addIngredientId}
                         onChange={handleAddIngredientIdChange}
                         placeholder="Buscar ingrediente..."
                         emptyText="Sin ingredientes"
-                      /> : <SearchSelect options={portions.map(p => ({ value: p.id, label: `${p.name} (${p.quantity} ${p.unitSymbol})` }))} value={addPortionId} onChange={id => { setAddPortionId(id); setAddUnitId(portions.find(p => p.id === id)?.unitId ?? '') }} placeholder="Escribe para buscar porción..." emptyText="Sin porciones" />}
-                      <NumberStepper step={0.001} min={0.000001} placeholder="Cant." value={addQuantity} onChange={(v) => setAddQuantity(v)} required allowComma />
-                      <StyledSelect value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
+                      /> : <SearchSelect options={portions.map(p => ({ value: p.id, label: `${p.name} (${p.quantity} ${p.unitSymbol})` }))} value={addPortionId} onChange={id => { setAddPortionId(id); setAddUnitId(portions.find(p => p.id === id)?.unitId ?? '') }} placeholder="Escribe para buscar porción..." emptyText="Sin porciones" />}</div>
+                      <div className="rec-add-field"><span>Cantidad</span><NumberStepper step={0.001} min={0.000001} placeholder="Cant." value={addQuantity} onChange={(v) => setAddQuantity(v)} required allowComma /></div>
+                      <div className="rec-add-field"><span>Unidad</span><StyledSelect value={addUnitId} onChange={(e) => setAddUnitId(e.target.value)}>
                         {units.map((u) => <option key={u.id} value={u.id}>{u.symbol}</option>)}
-                      </StyledSelect>
+                      </StyledSelect></div>
+                      <button type="button" className="cancel" onClick={() => setShowAdd(false)}>Cancelar</button>
                       <button type="submit" className="save">Guardar</button>
                     </form>
                   )}
 
                   {components.length > 0 && !showAdd && (
                     <div className="rec-ingredients-toolbar">
-                      <span>Componentes</span>
+                      <span>Lleva cada plato</span>
                       <button type="button" className="rec-add-component-btn" onClick={() => setShowAdd(true)}>
                         <Plus size={15} /> Agregar ingrediente
                       </button>
@@ -740,13 +742,13 @@ export function RecetasReal() {
                           {c.ingredientId && (
                             editingComponentId === c.id ? (
                               <div className="rec-ing-edit-actions">
-                                <button className="rec-ing-action rec-ing-save" onClick={() => void handleUpdateComponent(c)} title="Guardar"><Check size={15} /></button>
-                                <button className="rec-ing-action rec-ing-cancel" onClick={cancelEditingComponent} title="Cancelar"><X size={15} /></button>
+                                <button className="rec-ing-action rec-ing-save" onClick={() => void handleUpdateComponent(c)} title="Guardar"><Check size={15} /><span className="rec-act-label">Guardar</span></button>
+                                <button className="rec-ing-action rec-ing-cancel" onClick={cancelEditingComponent} title="Cancelar"><X size={15} /><span className="rec-act-label">Cancelar</span></button>
                               </div>
                             ) : (
                               <>
-                                <button className="rec-ing-action rec-ing-edit" onClick={() => startEditingComponent(c)} title="Editar"><Pencil size={15} /></button>
-                                <button className="rec-ing-del" onClick={() => void handleDeleteComponent(c.id)} title="Eliminar"><Trash2 size={15} /></button>
+                                <button className="rec-ing-action rec-ing-edit" onClick={() => startEditingComponent(c)} title="Editar"><Pencil size={15} /><span className="rec-act-label">Cambiar cantidad</span></button>
+                                <button className="rec-ing-del" onClick={() => void handleDeleteComponent(c.id)} title="Eliminar"><Trash2 size={15} /><span className="rec-act-label">Quitar</span></button>
                               </>
                             )
                           )}

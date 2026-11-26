@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useMemo, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/auth-context'
-import { AlertTriangle, ArrowRightLeft, DollarSign, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2, Search } from 'lucide-react'
+import { AlertTriangle, ArrowDownToLine, ArrowRightLeft, ArrowUpFromLine, Package, Plus, Warehouse, Eye, Pencil, Minus, X, Save, Loader2, Search } from 'lucide-react'
 import { adjustStock, getIngredients, getWarehouseIngredients, getStockMovements, getUnits, transferStock, updateIngredient, updateIngredientCost, type Ingredient, type StockMovement } from '../lib/dataService'
 import { StyledSelect } from '../components/StyledSelect'
 import Toast from '../components/Toast'
@@ -210,10 +210,9 @@ export function Almacen() {
       <header className="almacen-page-header management-workspace-header">
         <div className="almacen-page-title-wrap">
           <div>
-            <p className="almacen-eyebrow">OPERACIÓN · ABASTECIMIENTO</p>
             <h1 className="page-title"><Warehouse size={22} className="page-title-icon" /> Almacén principal</h1>
             <p>
-              Insumos listos para el Food Truck.
+              Lo que está guardado antes de ir al Food Truck.
             </p>
           </div>
         </div>
@@ -222,209 +221,77 @@ export function Almacen() {
       {successMsg && <Toast type="success" message={successMsg} onClose={() => setSuccessMsg('')} />}
       {errorMsg && <Toast type="error" message={errorMsg} onClose={() => setErrorMsg('')} />}
 
-      <section className="almacen-metrics-grid management-workspace-metrics" aria-label="Resumen del almacén">
-        <div className="almacen-metric-card accent-red">
-          <div className="metric-icon-box"><Package size={18} /></div>
-          <div className="metric-info-group">
-            <span className="metric-label">Insumos con stock</span>
-            <strong className="metric-large-val">{itemsWithStock.length}</strong>
-            <span className="metric-sub-text">de {items.length} materias primas</span>
-          </div>
-        </div>
-
-        <div className="almacen-metric-card accent-green">
-          <div className="metric-icon-box"><DollarSign size={18} /></div>
-          <div className="metric-info-group">
-            <span className="metric-label">Valorización</span>
-            <strong className="metric-large-val">${totalValuation.toFixed(2)}</strong>
-            <span className="metric-sub-text">Total a costo en almacén</span>
-          </div>
-        </div>
-
-        <button type="button" className="almacen-metric-card accent-purple" onClick={() => setQuickAction('transfer')}>
-          <div className="metric-icon-box"><ArrowRightLeft size={18} /></div>
-          <div className="metric-info-group">
-            <span className="metric-label">Enviar a inventario</span>
-            <strong className="metric-large-val">{itemsWithStock.length}</strong>
-            <span className="metric-sub-text">Despachar a cocina</span>
-          </div>
+      <section className="alm-moves" aria-label="Mover insumos">
+        <button type="button" className="alm-move" onClick={() => setQuickAction('receive')}>
+          <span><ArrowDownToLine size={22} aria-hidden="true" /></span>
+          <strong>Traer al almacén</strong>
+          <small>Desde el Food Truck</small>
         </button>
-
-        <button type="button" className="almacen-metric-card accent-blue" onClick={() => setQuickAction('receive')}>
-          <div className="metric-icon-box"><Plus size={18} /></div>
-          <div className="metric-info-group">
-            <span className="metric-label">Traer desde inventario</span>
-            <strong className="metric-large-val">{operationalItemsLoaded ? operationalItems.filter(i => i.quantity > 0).length : '…'}</strong>
-            <span className="metric-sub-text">Disponibles en cocina</span>
-          </div>
-        </button>
-
-        <button type="button" className="almacen-metric-card accent-red" onClick={() => setQuickAction('critical')}>
-          <div className="metric-icon-box"><AlertTriangle size={18} /></div>
-          <div className="metric-info-group">
-            <span className="metric-label">Stock crítico</span>
-            <strong className="metric-large-val">{criticalItems}</strong>
-            <span className="metric-sub-text">Por debajo de mínimo</span>
-          </div>
+        <button type="button" className="alm-move primary" onClick={() => setQuickAction('transfer')}>
+          <span><ArrowUpFromLine size={22} aria-hidden="true" /></span>
+          <strong>Enviar al Food Truck</strong>
+          <small>Desde el almacén</small>
         </button>
       </section>
 
-      <div className="almacen-main-grid">
-        <section className="almacen-card inventory-card management-workspace-panel">
-          <div className="almacen-card-header">
-            <div className="header-title-group">
-              <div className="card-header-icon"><Package size={18} /></div>
-              <div>
-                <h2 className="almacen-card-title">Productos en almacén</h2>
-                <p className="almacen-card-description">
-                  Insumos listos para transferir.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="almacen-add-stock-btn"
-              onClick={() => setQuickAction('receive')}
-              aria-label="Traer productos al almacén desde el Food Truck"
-              title="Traer productos del Food Truck al almacén"
-            >
-              <Plus size={15} /> <span className="almacen-add-stock-label-desktop">Traer al almacén</span><span className="almacen-add-stock-label-mobile">Traer</span>
-            </button>
-          </div>
+      <section className="alm-summary" aria-label="Resumen del almacén">
+        <div><strong>{itemsWithStock.length}<em> de {items.length}</em></strong><span>Insumos con stock</span></div>
+        <div><strong>${totalValuation.toFixed(2)}</strong><span>Valor guardado</span></div>
+        <button type="button" onClick={() => setQuickAction('critical')}><strong>{criticalItems}</strong><span>Agotados ›</span></button>
+      </section>
 
-          <div className="almacen-table-controls">
-            <div className="almacen-filter-pills" role="tablist" aria-label="Filtrar insumos">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={filterMode === 'stock'}
-                className={`almacen-filter-pill ${filterMode === 'stock' ? 'active' : ''}`}
-                onClick={() => setFilterMode('stock')}
-              >
-                Con existencias ({itemsWithStock.length})
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={filterMode === 'all'}
-                className={`almacen-filter-pill ${filterMode === 'all' ? 'active' : ''}`}
-                onClick={() => setFilterMode('all')}
-              >
-                Todos los insumos ({items.length})
-              </button>
-            </div>
-            <div className="almacen-search-wrap">
-              <Search size={14} className="almacen-search-icon" />
-              <input
-                type="text"
-                className="almacen-search-input"
-                placeholder="Buscar insumo..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
+      <section className="alm-products" aria-label="Productos en almacén">
+        <div className="alm-toolbar">
+          <div className="alm-segment" role="tablist" aria-label="Filtrar insumos">
+            <button type="button" role="tab" aria-selected={filterMode === 'stock'} onClick={() => setFilterMode('stock')}>Con stock <small>{itemsWithStock.length}</small></button>
+            <button type="button" role="tab" aria-selected={filterMode === 'all'} onClick={() => setFilterMode('all')}>Todos <small>{items.length}</small></button>
           </div>
+          <label className="alm-search">
+            <Search size={17} aria-hidden="true" />
+            <input type="text" aria-label="Buscar insumo" placeholder="Buscar insumo..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </label>
+        </div>
 
-          <div className="table-responsive-wrapper">
-            <table className="almacen-table">
-              <thead>
-                <tr>
-                  <th>Insumo</th>
-                  <th>Categoría</th>
-                  <th>Stock en Almacén</th>
-                  <th>Stock en Food Truck</th>
-                  <th>Costo / unidad</th>
-                  <th>Valor Almacén</th>
-                  <th>Estado</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="almacen-empty-cell">
-                      <EmptyState
-                        compact
-                        title={
-                          searchTerm
-                            ? 'No se encontraron insumos'
-                            : filterMode === 'stock'
-                            ? 'No hay insumos con existencias en almacén'
-                            : 'No hay insumos registrados'
-                        }
-                        description={
-                          searchTerm
-                            ? `No hay resultados para "${searchTerm}".`
-                            : filterMode === 'stock'
-                            ? 'Puedes traer insumos desde el Food Truck con el botón "Traer al almacén" o cambiar a la pestaña "Todos los insumos".'
-                            : 'Agrega tu primer insumo para empezar a llevar el inventario.'
-                        }
-                        actionLabel={
-                          searchTerm
-                            ? 'Limpiar búsqueda'
-                            : filterMode === 'stock'
-                            ? 'Traer desde inventario'
-                            : undefined
-                        }
-                        onAction={
-                          searchTerm
-                            ? () => setSearchTerm('')
-                            : filterMode === 'stock'
-                            ? () => setQuickAction('receive')
-                            : undefined
-                        }
-                      />
-                    </td>
-                  </tr>
-                ) : paginatedItems.map(item => {
-                  const isLow = item.quantity <= item.minStock
-                  const operationalQty = operationalStockMap.get(item.id) ?? 0
-                  return (
-                    <tr key={item.id}>
-                      <td className="almacen-item-name" data-label="Insumo">{item.name}</td>
-                      <td data-label="Categoría"><span className="almacen-category">{item.category}</span></td>
-                      <td className="almacen-stock-value" data-label="Stock en almacén">{item.quantity} <small>{item.unit}</small></td>
-                      <td className="almacen-stock-operational" data-label="Stock en Food Truck">{operationalItemsLoaded ? <>{operationalQty} <small>{item.unit}</small></> : '…'}</td>
-                      <td data-label="Costo por unidad">{formatUsdPrecise(item.costPerUnit)}</td>
-                      <td className="almacen-total-value" data-label="Valor en almacén">${(item.quantity * item.costPerUnit).toFixed(2)}</td>
-                      <td data-label="Estado">
-                        <span className={`badge-stock ${isLow ? 'low' : 'normal'}`}>
-                          <span className="status-dot" />
-                          {isLow ? 'Crítico' : 'Suficiente'}
-                        </span>
-                      </td>
-                      <td data-label="Acciones">
-                        <div className="almacen-actions">
-                          {item.quantity > 0 && (
-                            <button
-                              type="button"
-                              className="almacen-action-btn positive"
-                              title="Transferir al Food Truck"
-                              aria-label={`Transferir ${item.name} al Food Truck`}
-                              onClick={() => {
-                                setSelectedItemId(item.id)
-                                setTransferQty(String(Math.min(10, item.quantity)))
-                                setQuickAction('transfer')
-                              }}
-                            >
-                              <ArrowRightLeft size={14} />
-                            </button>
-                          )}
-                          <button type="button" className="almacen-action-btn" title="Ver movimientos" aria-label={`Ver movimientos de ${item.name}`} onClick={() => openView(item)}><Eye size={14} /></button>
-                          <button type="button" className="almacen-action-btn" title="Editar insumo" aria-label={`Editar ${item.name}`} onClick={() => openEdit(item)}><Pencil size={14} /></button>
-                          <button type="button" className="almacen-action-btn positive" title="Agregar inventario" aria-label={`Agregar inventario a ${item.name}`} onClick={() => openAdjustment(item, 1)}><Plus size={14} /></button>
-                          <button type="button" className="almacen-action-btn negative" title="Descontar inventario" aria-label={`Descontar inventario de ${item.name}`} onClick={() => openAdjustment(item, -1)}><Minus size={14} /></button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          {displayedItems.length > pageSize && <div className="almacen-pagination"><span>Mostrando {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, displayedItems.length)} de {displayedItems.length}</span><div><button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(page => page - 1)}>Anterior</button><b>Página {currentPage} de {totalPages}</b><button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage(page => page + 1)}>Siguiente</button></div></div>}
-        </section>
-      </div>
+        {displayedItems.length === 0 ? (
+          <EmptyState
+            compact
+            title={searchTerm ? 'No se encontraron insumos' : filterMode === 'stock' ? 'No hay insumos con existencias en almacén' : 'No hay insumos registrados'}
+            description={searchTerm ? `No hay resultados para "${searchTerm}".` : filterMode === 'stock' ? 'Usa "Traer al almacén" o cambia a "Todos".' : 'Agrega tu primer insumo para empezar a llevar el inventario.'}
+            actionLabel={searchTerm ? 'Limpiar búsqueda' : filterMode === 'stock' ? 'Traer al almacén' : undefined}
+            onAction={searchTerm ? () => setSearchTerm('') : filterMode === 'stock' ? () => setQuickAction('receive') : undefined}
+          />
+        ) : (
+          <ul className="alm-list">
+            {paginatedItems.map(item => {
+              const isLow = item.quantity <= item.minStock
+              const operationalQty = operationalStockMap.get(item.id) ?? 0
+              return (
+                <li key={item.id} className="alm-card">
+                  <header>
+                    <h3>{item.name}</h3>
+                    <span className={`alm-badge${isLow ? ' low' : ''}`}>{isLow ? 'Agotado' : 'Disponible'}</span>
+                  </header>
+                  <div className="alm-stocks">
+                    <div className="main"><span>En almacén</span><strong>{item.quantity} <small>{item.unit}</small></strong></div>
+                    <div><span>En Food Truck</span><strong>{operationalItemsLoaded ? <>{operationalQty} <small>{item.unit}</small></> : '…'}</strong></div>
+                  </div>
+                  <p className="alm-cost">Costo {formatUsdPrecise(item.costPerUnit)} por {item.unit} · Valor <b>${(item.quantity * item.costPerUnit).toFixed(2)}</b></p>
+                  <div className="alm-actions">
+                    {item.quantity > 0 && (
+                      <button type="button" className="send" aria-label={`Transferir ${item.name} al Food Truck`} onClick={() => { setSelectedItemId(item.id); setTransferQty(String(Math.min(10, item.quantity))); setQuickAction('transfer') }}><ArrowUpFromLine size={16} /> Enviar al Food Truck</button>
+                    )}
+                    <button type="button" className="add" aria-label={`Agregar inventario a ${item.name}`} onClick={() => openAdjustment(item, 1)}><Plus size={16} /> Agregar</button>
+                    <button type="button" className="sub" aria-label={`Descontar inventario de ${item.name}`} onClick={() => openAdjustment(item, -1)}><Minus size={16} /> Descontar</button>
+                    <button type="button" aria-label={`Ver movimientos de ${item.name}`} onClick={() => openView(item)}><Eye size={15} /> Historial</button>
+                    <button type="button" aria-label={`Editar ${item.name}`} onClick={() => openEdit(item)}><Pencil size={15} /> Editar</button>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        {displayedItems.length > pageSize && <div className="almacen-pagination"><span>Mostrando {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, displayedItems.length)} de {displayedItems.length}</span><div><button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(page => page - 1)}>Anterior</button><b>Página {currentPage} de {totalPages}</b><button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage(page => page + 1)}>Siguiente</button></div></div>}
+      </section>
 
       {selectedItem && modalMode && createPortal(<div className={`almacen-modal-overlay ${closingItemModal ? 'closing' : ''}`} onClick={closeModal}><div className={`almacen-action-modal ${modalMode === 'view' ? 'almacen-history-modal' : ''}`} onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeModal} aria-label="Cerrar"><X size={16} /></button>
         {modalMode === 'view' && <><div className="almacen-modal-heading"><span><Eye size={18} /></span><div><small>Historial del insumo</small><h3>{selectedItem.name}</h3></div></div><div className="almacen-modal-stock"><small>Stock actual</small><strong>{selectedItem.quantity} {selectedItem.unit}</strong></div>{modalLoading ? <LoadingSkeleton label="Cargando movimientos del insumo" count={4} /> : itemMovements.length === 0 ? <p className="almacen-modal-empty">Este insumo todavía no tiene movimientos.</p> : <div className="almacen-history-list">{itemMovements.map(movement => <div className="almacen-history-row" key={movement.id}><div className="almacen-history-main"><div className="almacen-history-title"><span className={`almacen-history-kind ${movement.quantity > 0 ? 'positive' : 'negative'}`}>{movement.quantity > 0 ? <Plus size={13} /> : <Minus size={13} />}</span><strong>{movement.movementType === 'purchase' ? 'Entrada' : movement.movementType === 'consumption' ? 'Salida' : 'Ajuste'}</strong></div><small>{movement.notes || movement.referenceType || 'Sin motivo'}</small><time>{new Date(movement.createdAt).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short', hour12: true })}</time></div><b className={movement.quantity > 0 ? 'positive' : 'negative'}>{movement.quantity > 0 ? '+' : ''}{movement.quantity} {movement.unitSymbol}</b></div>)}</div>}</>}
@@ -433,9 +300,9 @@ export function Almacen() {
       </div></div>, document.body)}
 
       {quickAction && createPortal(<div className={`almacen-modal-overlay ${closingQuickAction ? 'closing' : ''}`} onClick={closeQuickAction}><div className="almacen-action-modal" onClick={event => event.stopPropagation()}><button type="button" className="almacen-modal-close" onClick={closeQuickAction} aria-label="Cerrar"><X size={16} /></button>
-        {quickAction === 'receive' && <form onSubmit={handleReceiveToWarehouse}><div className="almacen-modal-heading"><span><Package size={18} /></span><div><small>Transferencia interna</small><h3>Traer desde inventario</h3></div></div><p className="almacen-card-description">Mueve existencias del inventario operativo al almacén. No genera una compra.</p>{!operationalItemsLoaded && <LoadingSkeleton label="Cargando existencias del inventario" variant="inline" />}<div className="almacen-modal-fields transfer-modal-fields"><label>Producto de inventario<StyledSelect value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={warehouseQty} onChange={setWarehouseQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId || !operationalItemsLoaded}><ArrowRightLeft size={17} /> Traer al almacén</button></form>}
-        {quickAction === 'transfer' && <form onSubmit={handleTransfer}><div className="almacen-modal-heading"><span className="positive"><ArrowRightLeft size={18} /></span><div><small>Transferencia interna</small><h3>Enviar a inventario</h3></div></div><p className="almacen-card-description">Despacha existencias del almacén al inventario operativo del Food Truck.</p><div className="almacen-modal-fields transfer-modal-fields"><label>Producto de almacén<StyledSelect value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>{items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={transferQty} onChange={setTransferQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedItemId}><ArrowRightLeft size={17} /> Enviar a inventario</button></form>}
-        {quickAction === 'critical' && <><div className="almacen-modal-heading"><span className="negative"><AlertTriangle size={18} /></span><div><small>Revisión de existencias</small><h3>Stock crítico</h3></div></div><p className="almacen-card-description">Insumos en almacén con existencia igual o menor al mínimo configurado.</p>{items.filter(item => item.quantity <= item.minStock).length === 0 ? <p className="almacen-modal-empty">No hay insumos en estado crítico.</p> : <div className="almacen-critical-list"><div className="almacen-critical-header"><span>Insumo</span><span>Existencia actual</span></div><div className="almacen-history-list">{items.filter(item => item.quantity <= item.minStock).map(item => <div className="almacen-history-row" key={item.id}><div><strong>{item.name}</strong></div><b className="negative">{item.quantity} {item.unit}</b></div>)}</div></div>}</>}
+        {quickAction === 'receive' && <form onSubmit={handleReceiveToWarehouse}><div className="almacen-modal-heading"><span><Package size={18} /></span><div><small>Del Food Truck al almacén</small><h3>Traer al almacén</h3></div></div><p className="almacen-card-description">Elige el producto y cuánto vas a guardar. No cuenta como compra.</p>{!operationalItemsLoaded && <LoadingSkeleton label="Cargando existencias del inventario" variant="inline" />}<div className="almacen-modal-fields transfer-modal-fields"><label>Producto del Food Truck<StyledSelect value={selectedOperationalItemId} onChange={event => setSelectedOperationalItemId(event.target.value)}>{operationalItems.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={warehouseQty} onChange={setWarehouseQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedOperationalItemId || !operationalItemsLoaded}><ArrowRightLeft size={17} /> Traer al almacén</button></form>}
+        {quickAction === 'transfer' && <form onSubmit={handleTransfer}><div className="almacen-modal-heading"><span className="positive"><ArrowRightLeft size={18} /></span><div><small>Del almacén al Food Truck</small><h3>Enviar al Food Truck</h3></div></div><p className="almacen-card-description">Elige el producto y cuánto sale del almacén.</p><div className="almacen-modal-fields transfer-modal-fields"><label>Producto de almacén<StyledSelect value={selectedItemId} onChange={event => setSelectedItemId(event.target.value)}>{items.map(item => <option key={item.id} value={item.id}>{item.name} · {item.quantity} {item.unit} disponibles</option>)}</StyledSelect></label><label>Cantidad<NumberStepper hideControls min={0.001} step={0.001} value={transferQty} onChange={setTransferQty} /></label></div><button type="submit" className="btn-primary-red" disabled={!selectedItemId}><ArrowRightLeft size={17} /> Enviar al Food Truck</button></form>}
+        {quickAction === 'critical' && <><div className="almacen-modal-heading"><span className="negative"><AlertTriangle size={18} /></span><div><small>Revisión de existencias</small><h3>Insumos agotados</h3></div></div><p className="almacen-card-description">No quedan unidades de estos insumos en el almacén.</p>{items.filter(item => item.quantity <= item.minStock).length === 0 ? <p className="almacen-modal-empty">No hay insumos agotados.</p> : <div className="almacen-critical-list"><div className="almacen-critical-header"><span>Insumo</span><span>Existencia actual</span></div><div className="almacen-history-list">{items.filter(item => item.quantity <= item.minStock).map(item => <div className="almacen-history-row" key={item.id}><div><strong>{item.name}</strong></div><b className="negative">{item.quantity} {item.unit}</b></div>)}</div></div>}</>}
       </div></div>, document.body)}
     </div>
   )

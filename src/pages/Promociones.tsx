@@ -254,9 +254,9 @@ export function Promociones() {
 
               <div className="promo-item-actions">
                 <button className="promo-btn-toggle" onClick={(e) => { e.stopPropagation(); toggleActive(p) }} title={p.isActive ? 'Desactivar' : 'Activar'}>
-                  {p.isActive ? <Eye size={15} /> : <EyeOff size={15} />}
+                  {p.isActive ? <EyeOff size={15} /> : <Eye size={15} />}<span>{p.isActive ? 'Desactivar' : 'Activar'}</span>
                 </button>
-                <button className="promo-btn-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }} title="Eliminar"><Trash2 size={15} /></button>
+                <button className="promo-btn-delete" onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }} title="Eliminar"><Trash2 size={15} /><span>Borrar</span></button>
               </div>
 
               <div className="promo-icon-preview">{(() => { const Ico = ICON_MAP[p.icon]; return Ico ? <Ico size={26} /> : p.icon; })()}</div>
@@ -278,7 +278,7 @@ export function Promociones() {
         </div>
       )}
 
-      <p className="promo-footer-note"><Lock size={13} /> Las activas se usan en WhatsApp</p>
+      <p className="promo-footer-note"><Lock size={13} /> Toca una promoción para editarla. Las activas se usan en WhatsApp.</p>
 
       {showForm && createPortal(
         <div className={`promo-modal-overlay ${closingForm ? 'closing' : ''}`} onClick={() => closeForm()}>

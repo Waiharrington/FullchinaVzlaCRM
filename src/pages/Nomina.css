@@ -611,3 +611,28 @@ body:has(.nom-modal-overlay) .app-main::-webkit-scrollbar {
 @media(max-width:360px){.nom-detail-section h4{gap:5px;font-size:11px}.nom-detail-month-trigger{gap:4px;padding-inline:7px;font-size:11px}}
 
 .nom-employee-name-wrap strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; }
+
+/* ===== Nómina: montos completos y tarjetas más ordenadas ===== */
+.admin-app .management-workspace--payroll .nom-employee-card .nom-employee-totals { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.admin-app .management-workspace--payroll .nom-employee-card .nom-employee-totals > div { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 8px; }
+.admin-app .management-workspace--payroll .nom-employee-card .nom-employee-totals strong { margin: 0 0 0 auto; font-size: 15px; white-space: nowrap; }
+.admin-app .management-workspace--payroll .nom-employee-card .nom-employee-actions .nom-employee-action { min-height: 44px; font-size: 13.5px; }
+.admin-app .management-workspace--payroll .nom-employee-card .nom-employee-pay { grid-column: 1 / -1; order: -1; min-height: 50px; font-size: 15px; }
+.admin-app .management-workspace--payroll .nom-employee-card .nom-employee-action--detail { grid-column: 1 / -1; }
+body .nom-modal-overlay .nom-modal { box-sizing: border-box; max-width: 100%; overflow-x: hidden; }
+body .nom-modal-overlay .nom-modal .nom-field { min-width: 0; }
+body .nom-modal-overlay .nom-modal .nom-field > label { color: #e4e4e7; font-size: 13.5px; font-weight: 700; }
+body .nom-modal-overlay .nom-modal .nom-field :is(input, textarea) { box-sizing: border-box; width: 100%; min-width: 0; font-size: 16px; }
+body .nom-modal-overlay .nom-modal .nom-modal-actions > button { justify-content: center; min-height: 48px; }
+@media (max-width: 520px) { body .nom-modal-overlay .nom-modal .nom-row2 { grid-template-columns: minmax(0, 1fr); } }
+/* Teléfonos angostos (o con la letra agrandada): nada se sale ni se parte. */
+@media (max-width: 389px) {
+  .admin-app .management-workspace--payroll .nom-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; min-width: 0; }
+  .admin-app .management-workspace--payroll .nom-title-row .page-title { min-width: 0; margin: 0; }
+  .admin-app .management-workspace--payroll .nom-card { padding-inline: 10px; }
+  .admin-app .management-workspace--payroll .nom-employee-card { padding-inline: 10px; }
+  .admin-app .management-workspace--payroll .nom-employee-card > div:has(> .nom-employee-identity) { flex-wrap: wrap; gap: 8px; }
+  .admin-app .management-workspace--payroll .nom-employee-card .nom-employee-identity { flex: 1 1 180px; min-width: 0; }
+  .admin-app .management-workspace--payroll .nom-employee-card .nom-employee-name-wrap { min-width: 0; }
+  .admin-app .management-workspace--payroll .nom-employee-card .nom-employee-name-wrap :is(strong, span) { overflow-wrap: normal; word-break: normal; }
+}

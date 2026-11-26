@@ -407,7 +407,7 @@ export function ProduccionReal() {
         <div className="prod-header-title-wrap">
           <div>
             <h1 className="page-title"><Flame size={22} className="page-title-icon" /><span className="prod-title-desktop">Producción y Porcionamiento</span><span className="prod-title-mobile">Producción</span></h1>
-            <p>Controla tus lotes y mermas.</p>
+            <p>Anota lo que preparas y lo que se bota.</p>
           </div>
         </div>
         <button
@@ -436,7 +436,7 @@ export function ProduccionReal() {
           <div className="prod-stat-icon"><CheckCircle2 size={18} /></div>
           <div className="prod-stat-info">
             <span className="prod-stat-val">{(stats?.avgYield ?? 0).toFixed(1)}%</span>
-            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Rendimiento promedio</span><span className="prod-stat-label-mobile">Rendimiento</span></span>
+            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Aprovechado en promedio</span><span className="prod-stat-label-mobile">Aprovechado</span></span>
           </div>
         </div>
 
@@ -444,7 +444,7 @@ export function ProduccionReal() {
           <div className="prod-stat-icon"><AlertTriangle size={18} /></div>
           <div className="prod-stat-info">
             <span className="prod-stat-val">{(stats?.totalWaste ?? 0).toFixed(2)} kg</span>
-            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Merma acumulada hoy</span><span className="prod-stat-label-mobile">Merma de hoy</span></span>
+            <span className="prod-stat-lbl"><span className="prod-stat-label-desktop">Desperdicio de hoy</span><span className="prod-stat-label-mobile">Desperdicio de hoy</span></span>
           </div>
         </div>
 
@@ -464,7 +464,7 @@ export function ProduccionReal() {
             <Search size={16} />
             <input
               type="text"
-              placeholder="Buscar por lote, proteína u operador..."
+              placeholder="Buscar lote o persona..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -520,34 +520,34 @@ export function ProduccionReal() {
                 <article className="prod-batch-card" key={b.id}>
                   <div className="prod-batch-card-top">
                     <time dateTime={b.productionDate}>{b.productionDate}</time>
-                    <button type="button" className="prod-view-detail-btn" onClick={() => setSelectedBatch(b)}>Ver detalle</button>
+                    {b.items.length > 0 && <small className={`prod-badge ${isWarehouse ? 'origin-warehouse' : 'origin-truck'}`}>{isWarehouse ? 'Almacén' : 'Food Truck'}</small>}
                   </div>
                   <h3>{b.name}</h3>
-                  {operatorLabel && <p className="prod-batch-card-operator">{operatorLabel}</p>}
+                  {operatorLabel && <p className="prod-batch-card-operator">Hecho por {operatorLabel}</p>}
                   <div className="prod-batch-card-metrics">
                     <div className="wide">
-                      <span>Materia prima</span>
+                      <span>Se usó</span>
                       <strong>{b.items.length > 0 ? `${b.items[0].quantityUsed} ${b.items[0].unitSymbol} de ${b.items[0].ingredientName}` : 'Sin detalle'}</strong>
-                      {b.items.length > 0 && <small className={`prod-badge ${isWarehouse ? 'origin-warehouse' : 'origin-truck'}`}>{isWarehouse ? 'Almacén' : 'Food Truck'}</small>}
                     </div>
-                    <div>
-                      <span>Porciones</span>
+                    <div className="main">
+                      <span>Salieron</span>
                       <strong>{b.quantityProduced} {b.unitProduced || 'porciones'}</strong>
                     </div>
                     <div>
-                      <span>Merma</span>
+                      <span>Desperdicio</span>
                       <strong>{b.wasteQuantity.toFixed(2)} kg ({b.wastePercentage.toFixed(1)}%)</strong>
                     </div>
                     <div>
-                      <span>Rendimiento</span>
+                      <span>Aprovechado</span>
                       <strong className={`prod-batch-yield ${yieldVal >= 80 ? 'yield-high' : yieldVal >= 65 ? 'yield-med' : 'yield-low'}`}>{yieldVal.toFixed(1)}%</strong>
                     </div>
                     <div>
-                      <span>Costo estimado</span>
+                      <span>Costo</span>
                       <strong className="prod-batch-cost">{formatUsd(b.totalCost)}</strong>
                       {b.quantityProduced > 0 && <small>{formatUsd(b.costPerPortion)} por porción</small>}
                     </div>
                   </div>
+                  <button type="button" className="prod-view-detail-btn" onClick={() => setSelectedBatch(b)}>Ver detalle</button>
                 </article>
               )
             })}
@@ -558,10 +558,10 @@ export function ProduccionReal() {
                 <tr>
                   <th>Fecha</th>
                   <th>Lote / Preparación</th>
-                  <th>Materia Prima Usada</th>
-                  <th>Porciones Obtenidas</th>
-                  <th>Merma</th>
-                  <th>Rendimiento</th>
+                  <th>Se usó</th>
+                  <th>Salieron</th>
+                  <th>Desperdicio</th>
+                  <th>Aprovechado</th>
                   <th>Costo Estimado</th>
                   <th>Acción</th>
                 </tr>
@@ -656,7 +656,7 @@ export function ProduccionReal() {
                   <span className="prod-modal-title-desktop">Nuevo Lote de Producción</span>
                   <span className="prod-modal-title-mobile">Nuevo lote</span>
                 </h3>
-                <p>Porciones, merma y rendimiento.</p>
+                <p>Sigue los 3 pasos y confirma abajo.</p>
               </div>
               <button
                 type="button"
@@ -677,7 +677,7 @@ export function ProduccionReal() {
 
             {/* Paso 1: Atajos de Proteína */}
             <div className="prod-protein-chips-wrap">
-              <span className="prod-section-label">1. ¿Qué proteína vas a procesar?</span>
+              <span className="prod-section-label">1. ¿Qué vas a preparar?</span>
               <div className="prod-protein-chips">
                 <button
                   type="button"
@@ -734,12 +734,12 @@ export function ProduccionReal() {
             <div className={`prod-batch-identity${portionRecipes.length > 0 ? ' has-portion-link' : ''}`}>
               {portionRecipes.length > 0 && (
                 <div className="prod-batch-portion-link">
-                  <span className="prod-section-label">O vincular a Receta de Porción existente:</span>
+                  <span className="prod-section-label">Receta de porción (opcional)</span>
                   <StyledSelect
                     value={selectedPortionRecipeId}
                     onChange={(e) => handlePortionRecipeChange(e.target.value)}
                   >
-                    <option value="">-- Sin vincular (usar configuración manual) --</option>
+                    <option value="">Ninguna, escribo las cantidades</option>
                     {portionRecipes.map(pr => (
                       <option key={pr.id} value={pr.id}>
                         {pr.name} ({pr.quantity} {pr.unitSymbol})
@@ -751,7 +751,7 @@ export function ProduccionReal() {
 
               {/* Nombre del Lote */}
               <div className="prod-batch-name-field">
-                <span className="prod-section-label">Nombre del Lote / Preparación</span>
+                <span className="prod-section-label">Nombre del lote</span>
                 <input
                   type="text"
                   value={batchName}
@@ -764,7 +764,7 @@ export function ProduccionReal() {
 
             {/* Paso 2: Origen y Materia Prima */}
             <div className="prod-batch-source">
-              <span className="prod-section-label">2. Origen de la materia prima</span>
+              <span className="prod-section-label">2. ¿Qué vas a usar y de dónde sale?</span>
               <div className="prod-location-group">
                 <button
                   type="button"
@@ -785,7 +785,7 @@ export function ProduccionReal() {
               <div className="prod-raw-inputs">
                 <div className="prod-form-field">
                   <label>
-                    Insumo crudo
+                    Producto crudo
                   </label>
                   <SearchSelect
                     options={rawIngredientsList.map(i => ({
@@ -805,7 +805,7 @@ export function ProduccionReal() {
 
                 <div className="prod-form-field">
                   <label>
-                    Kilos / Cantidad bruta usada
+                    Cantidad que usaste
                   </label>
                   <input
                     type="number"
@@ -814,18 +814,6 @@ export function ProduccionReal() {
                     value={rawQuantityUsed}
                     onChange={(e) => handleRawQtyChange(e.target.value)}
                     placeholder="10.00"
-                    style={{
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      padding: '10px 12px',
-                      background: '#121214',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '10px',
-                      color: '#facc15',
-                      font: 'inherit',
-                      fontWeight: 750,
-                      fontSize: '0.9rem',
-                    }}
                     required
                   />
                 </div>
@@ -850,12 +838,12 @@ export function ProduccionReal() {
 
             {/* Paso 3: Calculadora de Porcionamiento y Merma */}
             <div className="prod-calc-card">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="prod-calc-head">
                 <span className="prod-section-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Scale size={15} /> 3. Porcionamiento, Merma y Rendimiento
+                  <Scale size={15} /> 3. ¿Cuánto salió?
                 </span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                  Teórico: <strong>{theoreticalPortions} porciones</strong>
+                <span className="prod-calc-hint">
+                  Sin desperdicio serían <strong>{theoreticalPortions} porciones</strong>
                 </span>
               </div>
 
@@ -880,7 +868,7 @@ export function ProduccionReal() {
                 </div>
 
                 <div className="prod-calc-item">
-                  <label>Merma (kg desperdicio)</label>
+                  <label>Desperdicio (kg)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -892,7 +880,7 @@ export function ProduccionReal() {
                 </div>
 
                 <div className="prod-calc-item">
-                  <label style={{ color: '#4ade80' }}>Porciones reales producidas *</label>
+                  <label style={{ color: '#4ade80' }}>Porciones que salieron *</label>
                   <input
                     type="number"
                     step="1"
@@ -912,8 +900,8 @@ export function ProduccionReal() {
                   <div className="prod-yield-bar-fill" style={{ width: `${yieldPct}%` }} />
                 </div>
                 <div className="prod-yield-bar-labels">
-                  <span className="yield-text">Rendimiento: {yieldPct.toFixed(1)}% ({netQty.toFixed(2)} kg netos)</span>
-                  <span className="waste-text">Merma: {wastePct.toFixed(1)}% ({wasteQty.toFixed(2)} kg)</span>
+                  <span className="yield-text">Aprovechado: {yieldPct.toFixed(1)}% ({netQty.toFixed(2)} kg)</span>
+                  <span className="waste-text">Desperdicio: {wastePct.toFixed(1)}% ({wasteQty.toFixed(2)} kg)</span>
                 </div>
               </div>
             </div>
@@ -921,9 +909,9 @@ export function ProduccionReal() {
             {/* Paso 4: Operador y Notas */}
             <div className="prod-batch-meta">
               <div>
-                <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                <label className="prod-meta-label">
                   <User size={12} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                  Cocinero / Responsable
+                  ¿Quién lo preparó?
                 </label>
                 <StyledSelect
                   value={operatorId}
@@ -937,25 +925,14 @@ export function ProduccionReal() {
               </div>
 
               <div>
-                <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
-                  Nota u observación
+                <label className="prod-meta-label">
+                  Nota (opcional)
                 </label>
                 <input
                   type="text"
                   value={batchNotes}
                   onChange={(e) => setBatchNotes(e.target.value)}
                   placeholder="Ej. Pechuga limpia para turno tarde"
-                  style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    padding: '9px 12px',
-                    background: '#121214',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '10px',
-                    color: '#fff',
-                    font: 'inherit',
-                    fontSize: '0.82rem',
-                  }}
                 />
               </div>
             </div>
@@ -992,7 +969,7 @@ export function ProduccionReal() {
           ============================================================ */}
       {selectedBatch && createPortal(
         <div className={`prod-modal-overlay ${closingBatchDetail ? 'closing' : ''}`} onClick={closeBatchDetail}>
-          <div className="prod-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="prod-modal prod-detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="prod-modal-header">
               <div className="prod-modal-header-icon">
                 <Flame size={22} />
@@ -1001,32 +978,35 @@ export function ProduccionReal() {
                 <h3>{selectedBatch.name}</h3>
                 <p>Registrado el {selectedBatch.productionDate} por {selectedBatch.operator}</p>
               </div>
+              <button type="button" className="prod-modal-close" aria-label="Cerrar detalle del lote" onClick={closeBatchDetail}>
+                <X size={18} />
+              </button>
             </div>
 
             <div className="prod-detail-grid">
               <div className="prod-detail-item">
-                <small>Porciones Producidas</small>
+                <small>Salieron</small>
                 <strong style={{ color: '#4ade80' }}>
                   {selectedBatch.quantityProduced} {selectedBatch.unitProduced || 'porciones'}
                 </strong>
               </div>
 
               <div className="prod-detail-item">
-                <small>Rendimiento del Lote</small>
+                <small>Aprovechado</small>
                 <strong style={{ color: selectedBatch.wastePercentage <= 20 ? '#4ade80' : '#ff4d5f' }}>
                   {(100 - selectedBatch.wastePercentage).toFixed(1)}%
                 </strong>
               </div>
 
               <div className="prod-detail-item">
-                <small>Merma Registrada</small>
+                <small>Desperdicio</small>
                 <strong style={{ color: '#f87171' }}>
                   {selectedBatch.wasteQuantity.toFixed(2)} kg ({selectedBatch.wastePercentage.toFixed(1)}%)
                 </strong>
               </div>
 
               <div className="prod-detail-item">
-                <small>Costo Total del Lote</small>
+                <small>Costo total</small>
                 <strong style={{ color: '#facc15' }}>
                   {formatUsd(selectedBatch.totalCost)}
                   {selectedBatch.quantityProduced > 0 && (
@@ -1040,7 +1020,7 @@ export function ProduccionReal() {
 
             {/* Insumos consumidos */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <span className="prod-section-label">Insumos Descontados</span>
+              <span className="prod-section-label">Se descontó del inventario</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {selectedBatch.items.map(it => (
                   <div

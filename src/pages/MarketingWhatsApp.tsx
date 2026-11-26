@@ -54,6 +54,12 @@ const waLink = (phone: string) => {
   return `https://wa.me/${digits}`
 }
 
+// Nombres en español para los tipos que guarda el sistema.
+function historyTypeLabel(type: string) {
+  const labels: Record<string, string> = { post_purchase: 'Gracias por tu compra', web_order_confirmation: 'Confirmación de pedido web', birthday: 'Cumpleaños', inactive: 'Cliente inactivo', vip: 'Cliente VIP', manual: 'Manual', campaign: 'Campaña', custom: 'Personalizado' }
+  return labels[type] ?? type.replace(/_/g, ' ')
+}
+
 export function MarketingWhatsApp() {
   const MODAL_PAGE_SIZE = 10
   const { user } = useAuth()
@@ -414,7 +420,7 @@ export function MarketingWhatsApp() {
               <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Aquí verás tus envíos.</p></div></div>
             ) : (
               <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
-                {visibleMessages.map(msg => <tr key={msg.id} className="wa-history-row" tabIndex={0} title="Ver detalle del mensaje" onClick={() => setMessageDetail(msg)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMessageDetail(msg) } }}><td data-label="Cliente"><strong>{msg.customerName}</strong></td><td data-label="Teléfono">{msg.phone}</td><td data-label="Tipo"><span className="wa-type">{msg.templateType}</span></td><td data-label="Fecha">{formatMessageDate(msg.sentAt)}</td><td data-label="Estado"><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{statusLabel(msg.status)}</span></td></tr>)}
+                {visibleMessages.map(msg => <tr key={msg.id} className="wa-history-row" tabIndex={0} title="Ver detalle del mensaje" onClick={() => setMessageDetail(msg)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMessageDetail(msg) } }}><td data-label="Cliente"><strong>{msg.customerName}</strong></td><td data-label="Teléfono">{msg.phone}</td><td data-label="Tipo"><span className="wa-type">{historyTypeLabel(msg.templateType)}</span></td><td data-label="Fecha">{formatMessageDate(msg.sentAt)}</td><td data-label="Estado"><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{statusLabel(msg.status)}</span></td></tr>)}
               </tbody></table><div className="wa-modal-pagination wa-history-pagination"><span>Mostrando {(historyPage - 1) * MODAL_PAGE_SIZE + 1}–{Math.min(historyPage * MODAL_PAGE_SIZE, messages.length)} de {messages.length}</span><div><button type="button" aria-label="Página anterior" disabled={historyPage === 1} onClick={() => setHistoryPage(page => page - 1)}><ChevronLeft size={15} /></button><strong>Página {historyPage} de {historyPageCount}</strong><button type="button" aria-label="Página siguiente" disabled={historyPage === historyPageCount} onClick={() => setHistoryPage(page => page + 1)}><ChevronRight size={15} /></button></div></div></div>
             )}
           </section>

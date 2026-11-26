@@ -625,3 +625,21 @@
   .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-footer .cmp-icon-btn { display:inline-grid; width:100%; min-width:0; height:42px; box-sizing:border-box; padding:0; place-items:center; border-radius:9px; background:rgba(255,255,255,.045); }
   .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchases.cmp-mobile-purchases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* ===== Compras en teléfono: sin desplazamiento lateral y botones con nombre ===== */
+.cmp-btn-label { font-size: 12px; font-weight: 700; line-height: 1; }
+.admin-app .management-workspace--purchases .cmp-mobile-purchase { box-sizing: border-box; min-width: 0; max-width: 100%; }
+.admin-app .management-workspace--purchases .cmp-mobile-purchase-footer { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: start; gap: 10px; }
+.admin-app .management-workspace--purchases .cmp-mobile-purchase-footer .cmp-row-actions { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 6px; width: 100%; }
+.admin-app .management-workspace--purchases .cmp-mobile-purchase-footer .cmp-icon-btn.cmp-icon-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; min-width: 0; max-width: none; height: auto; min-height: 52px; padding: 6px 2px; }
+@media (max-width: 767px) {
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum { flex-direction: row !important; align-items: flex-start; gap: 8px; min-height: 0; padding: 12px 10px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum-ic { width: 30px; height: 30px; flex: 0 0 30px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum > div { flex: 1 1 0; min-width: 0; }
+  .admin-app .management-workspace--purchases .cmp-hist-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .admin-app .management-workspace--purchases .cmp-hist-tools .cmp-search { grid-column: 1 / -1; width: 100%; max-width: none; }
+  .admin-app .management-workspace--purchases .cmp-hist-tools .cmp-tool { justify-content: center; width: 100%; min-width: 0; min-height: 44px; }
+}
+body .cmp-modal-overlay :is(.cmp-modal, .cmp-purchase-modal) { max-width: 100%; overflow-x: hidden; }
+body .cmp-modal-overlay .cmp-detail-row { min-width: 0; }
+body .cmp-modal-overlay .cmp-detail-row > span { min-width: 0; overflow-wrap: anywhere; }
