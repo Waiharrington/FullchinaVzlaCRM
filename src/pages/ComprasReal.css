@@ -643,3 +643,33 @@
 body .cmp-modal-overlay :is(.cmp-modal, .cmp-purchase-modal) { max-width: 100%; overflow-x: hidden; }
 body .cmp-modal-overlay .cmp-detail-row { min-width: 0; }
 body .cmp-modal-overlay .cmp-detail-row > span { min-width: 0; overflow-wrap: anywhere; }
+/* ===== Ventanas de compra en teléfono ===== */
+@media (max-width: 600px) {
+  /* Detalle: cada producto ocupa su columna y el subtotal queda a la derecha. */
+  body .cmp-modal-overlay .cmp-detail-row > span:has(.cmp-item-destination) { flex: 1 1 0; }
+  body .cmp-modal-overlay .cmp-detail-row > span > .money-with-bcv { display: flex; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin-block: 2px; }
+  body .cmp-modal-overlay .cmp-detail-row .cmp-item-destination { display: block; }
+
+  body .cmp-purchase-overlay .cmp-prov-row { flex-direction: column; align-items: stretch; gap: 8px; }
+  body .cmp-purchase-overlay .cmp-prov-row > * { flex: 0 0 auto; width: 100%; }
+  body .cmp-purchase-overlay .cmp-prov-row > .cmp-ghost-btn { justify-content: center; min-height: 44px; }
+
+  /* Cada producto usa todo el ancho; el botón de borrar va en la esquina. */
+  body .cmp-purchase-overlay .cmp-item-row.cmp-item-row { position: relative; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; padding: 12px !important; }
+  body .cmp-purchase-overlay .cmp-item-row .cmp-item-cell--name { grid-column: 1 / -1 !important; padding-right: 48px; }
+  body .cmp-purchase-overlay .cmp-item-row .cmp-item-cell--destination { grid-column: 1 / -1 !important; }
+  body .cmp-purchase-overlay .cmp-item-row .cmp-item-cell--subtotal { grid-column: 1 / -1 !important; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  body .cmp-purchase-overlay .cmp-item-row > .cmp-del { position: absolute; top: 30px; right: 12px; width: 40px; height: 44px; }
+
+  body .cmp-purchase-overlay div:has(> .cmp-add-item) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  body .cmp-purchase-overlay div:has(> .cmp-add-item) > button { justify-content: center; width: 100%; min-height: 46px; margin: 0; }
+  body .cmp-purchase-overlay div:has(> .cmp-add-item) > button:first-child { grid-column: 1 / -1; }
+  body .cmp-purchase-overlay .cmp-paid-toggle { box-sizing: border-box; width: 100%; }
+
+  body .cmp-purchase-overlay .cmp-src-grid.cmp-src-grid { grid-template-columns: minmax(0, 1fr); }
+  body .cmp-purchase-overlay .cmp-src-grid > * { grid-column: 1; min-width: 0; }
+  body .cmp-purchase-overlay .cmp-src-grid :is(.fc-select, input) { box-sizing: border-box; width: 100%; }
+
+  /* Pie más bajo para ver mejor el formulario. */
+  body .cmp-purchase-overlay .cmp-form-foot { row-gap: 8px; padding-block: 10px; }
+}
