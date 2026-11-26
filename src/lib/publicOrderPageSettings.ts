@@ -37,18 +37,25 @@ export const PUBLIC_ORDER_REEL_BUCKET = 'fullchina-public-media'
 export const PUBLIC_ORDER_REEL_MAX_BYTES = 25 * 1024 * 1024
 
 /**
+ * Store map centred on the verified coordinates without any Google marker, so
+ * the Full China pin drawn on top of it is the only one.
+ */
+export const STORE_MAP_EMBED_URL = 'https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d500!2d-67.5926267!3d10.2547567!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1ses!2sve'
+
+function isStoreMapLink(directionsUrl: string) {
+  return /maps\.app\.goo\.gl\/(sh8SDNhhdD6is87y8|TCkxvm3a956aHfjy9)(?![\w-])/i.test(directionsUrl)
+}
+
+/**
  * Builds an embeddable Google Maps URL from the same directions link customers
  * use. Google short links cannot be expanded in the browser because of CORS,
  * so the store's configured short link is mapped to its verified coordinates.
  */
 export function getPublicOrderMapEmbedUrl(directionsUrl: string, address: string) {
-  const shortLinkLocations: Record<string, string> = {
-    sh8sdnhhdd6is87y8: '10.2547567,-67.5926267',
-  }
-  const shortCode = directionsUrl.match(/maps\.app\.goo\.gl\/([\w-]+)/i)?.[1]?.toLowerCase()
-  let query = shortCode ? shortLinkLocations[shortCode] : undefined
+  if (isStoreMapLink(directionsUrl)) return STORE_MAP_EMBED_URL
+  let query: string | undefined
 
-  if (!query && directionsUrl) {
+  if (directionsUrl) {
     try {
       const url = new URL(directionsUrl)
       const coordinates = url.href.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)

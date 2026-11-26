@@ -87,7 +87,10 @@
 /* Mapa */
 .pd-place { position: relative; height: 260px; border-radius: 22px; overflow: hidden; background: #E9DDCF; }
 .pd-place iframe { width: 100%; height: calc(100% + 70px); border: 0; }
-.pd-place .public-contact-brand-pin { top: 50%; }
+/* La punta del pin cae en el centro del iframe (70px más alto que la caja). El
+   mapa queda fijo para que el pin no se despegue del local al arrastrar. */
+.pd-place .public-contact-brand-pin { top: calc(50% + 35px - 10px); }
+.pd-place.is-store-map iframe { pointer-events: none; }
 .pd-place-go { position: absolute; left: 12px; right: 12px; bottom: 12px; display: grid; grid-template-columns: 20px 1fr 18px; align-items: center; gap: 10px; min-height: 48px; padding: 0 16px; border-radius: 15px; color: #fff; background: #17100E; font-size: 15.5px; font-weight: 800; text-decoration: none; transition: background .2s; }
 .pd-place-go svg:first-child { color: var(--pd-yellow); }
 .pd-place-go:hover { background: var(--pd-red); }

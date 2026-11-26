@@ -3,7 +3,7 @@ import { Banknote, Bitcoin, ChevronRight, CreditCard, Landmark, MapPin, MessageS
 import { TruckScene } from '../pedir-v2/TruckScene'
 import { LoyaltyCard } from '../pedir-v2/LoyaltyCard'
 import { Fit } from '../pedir-v2/ui'
-import type { PublicOrderPageSettings, PublicOrderReel } from '../lib/publicOrderPageSettings'
+import { STORE_MAP_EMBED_URL, type PublicOrderPageSettings, type PublicOrderReel } from '../lib/publicOrderPageSettings'
 
 type PublicMenuContactViewProps = {
   variant: 'mobile' | 'desktop'
@@ -94,7 +94,7 @@ export function PublicMenuContactView({
         </div>
       </section>
 
-      <section className="pd-place public-contact-location-stage" aria-label="Ubicación">
+      <section className={'pd-place public-contact-location-stage' + (mapPreviewUrl === STORE_MAP_EMBED_URL ? ' is-store-map' : '')} aria-label="Ubicación">
         <iframe
           title="Ubicación de Full China en Google Maps"
           src={mapPreviewUrl}
@@ -102,7 +102,7 @@ export function PublicMenuContactView({
           referrerPolicy="no-referrer-when-downgrade"
           allowFullScreen
         />
-        <span className="public-contact-brand-pin" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></span>
+        {mapPreviewUrl === STORE_MAP_EMBED_URL && <span className="public-contact-brand-pin" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></span>}
         <a className="pd-place-go" href={pageSettings.contactDirectionsUrl} target="_blank" rel="noopener noreferrer"><MapPin size={18} aria-hidden="true" /><span>Abrir en el mapa</span><ChevronRight size={17} aria-hidden="true" /></a>
       </section>
 

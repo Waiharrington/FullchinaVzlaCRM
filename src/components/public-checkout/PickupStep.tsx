@@ -4,7 +4,7 @@ import { MapPin, Clock, Navigation, ChevronRight } from 'lucide-react'
 
 import { type WebOrderCartItem } from '../../lib/publicOrders'
 import { PickupStage, TimeChips } from '../../pedir-v2/wow'
-import { type PublicOrderPageSettings } from '../../lib/publicOrderPageSettings'
+import { STORE_MAP_EMBED_URL, type PublicOrderPageSettings } from '../../lib/publicOrderPageSettings'
 
 interface PickupStepProps {
   cart: WebOrderCartItem[]
@@ -27,11 +27,11 @@ export function PickupStep({ cart, formattedCloseTime, formattedOpenTime, mapPre
                 <TimeChips value={pickupTime} slots={pickupSlots} onChange={setPickupTime} />
                 <small>{pickupSlots.length ? 'Puedes elegir una hora dentro del horario de hoy.' : 'Ya no quedan horas para elegir hoy; lo preparamos lo antes posible.'}</small>
               </div>
-              <div className="public-pickup-map public-contact-location-stage">
+              <div className={'public-pickup-map public-contact-location-stage' + (mapPreviewUrl === STORE_MAP_EMBED_URL ? ' is-store-map' : '')}>
                 <iframe title="Ubicación de Full China en Google Maps" src={mapPreviewUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
                 <span className="public-contact-location-tint" aria-hidden="true" />
                 <span className="public-contact-location-tag"><MapPin size={14} /> Punto Full China</span>
-                <span className="public-contact-brand-pin" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></span>
+                {mapPreviewUrl === STORE_MAP_EMBED_URL && <span className="public-contact-brand-pin" aria-hidden="true"><img src="/optimized/root/logo.webp" alt="" /></span>}
               </div>
               <div className="public-pickup-details">
                 <div className="public-pickup-info"><MapPin size={19} /><div><small>Dirección</small><strong>{pageSettings.contactAddress}</strong></div></div>
