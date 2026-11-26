@@ -1,0 +1,45 @@
+/* Zona segura de las ventanas emergentes en teléfono (isla dinámica, barra de
+   estado e indicador de inicio). Regla única: el fondo reserva la zona segura y
+   la ventana nunca puede ser más alta que el espacio que queda; lo que sobra se
+   desplaza dentro de ella.
+   Toda ventana nueva debe sumar aquí la clase de su fondo.
+   `html body` da prioridad sobre los estilos propios de cada pantalla. */
+@media (max-width: 767px) {
+  html body {
+    --safe-modal-top: max(16px, calc(env(safe-area-inset-top, 0px) + 8px));
+    --safe-modal-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 8px));
+  }
+
+  html body :is(
+    .modal-overlay, .modal-overlay-dark, .confirm-overlay, .aito-overlay,
+    .almacen-modal-overlay, .inv-modal-overlay, .cmp-modal-overlay,
+    .cmd-modal-overlay, .cmd-sales-overlay, .fin-modal-overlay, .rec-modal-overlay,
+    .nom-modal-overlay, .prod-modal-overlay, .promo-modal-overlay, .prv-overlay,
+    .ws-modal-overlay, .wa-modal-backdrop, .mesas-modal-overlay, .mnu-modal-overlay,
+    .mas-credit-overlay, .db-modal-backdrop, .cash-modal-backdrop,
+    .report-detail-overlay, .print-choice-overlay, .gst-ai-overlay,
+    .fidel-customer-card-modal-overlay
+  ) {
+    box-sizing: border-box !important;
+    height: 100dvh;
+    padding-top: var(--safe-modal-top) !important;
+    padding-bottom: var(--safe-modal-bottom) !important;
+  }
+
+  html body :is(
+    .modal-overlay, .modal-overlay-dark, .confirm-overlay, .aito-overlay,
+    .almacen-modal-overlay, .inv-modal-overlay, .cmp-modal-overlay,
+    .cmd-modal-overlay, .cmd-sales-overlay, .fin-modal-overlay, .rec-modal-overlay,
+    .nom-modal-overlay, .prod-modal-overlay, .promo-modal-overlay, .prv-overlay,
+    .ws-modal-overlay, .wa-modal-backdrop, .mesas-modal-overlay, .mnu-modal-overlay,
+    .mas-credit-overlay, .db-modal-backdrop, .cash-modal-backdrop,
+    .report-detail-overlay, .print-choice-overlay, .gst-ai-overlay,
+    .fidel-customer-card-modal-overlay
+  ) > * {
+    box-sizing: border-box;
+    min-height: 0;
+    max-height: calc(100dvh - var(--safe-modal-top) - var(--safe-modal-bottom)) !important;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}

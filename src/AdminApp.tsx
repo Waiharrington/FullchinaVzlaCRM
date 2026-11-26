@@ -14,6 +14,7 @@ import './styles/controlSizing.css'
 import './styles/financeWorkspace.css'
 import './styles/managementGroup.css'
 import './styles/mobileExperience.css'
+import './styles/mobileSafeArea.css'
 
 const loadInicioModule = () => import('./pages/Inicio').then(module => ({ default: module.Inicio }))
 const Inicio = lazy(loadInicioModule)

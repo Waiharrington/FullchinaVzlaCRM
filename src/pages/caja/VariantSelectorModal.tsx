@@ -40,12 +40,14 @@ export function VariantSelectorModal({ closingModifier, closeModifierPicker, mod
                   const sel = modifierSelections[group.modifierId] ?? {}
                   const rule = group.maxSelections === 1
                     ? (group.minSelections >= 1 ? 'Elige 1' : 'Elige 1 (opcional)')
-                    : `Elige ${group.minSelections}${group.maxSelections != null ? `–${group.maxSelections}` : '+'}`
+                    : group.maxSelections == null
+                      ? (group.minSelections > 0 ? `Elige al menos ${group.minSelections}` : 'Elige las que quieras')
+                      : group.minSelections > 0 ? `Elige de ${group.minSelections} a ${group.maxSelections}` : `Elige hasta ${group.maxSelections}`
                   return (
-                    <div key={group.modifierId} style={{ marginBottom: 14 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                      <strong>{formatProductTitle(group.name)}</strong>
-                        <small style={{ opacity: 0.7 }}>{rule}</small>
+                    <div key={group.modifierId} className="variant-option-group">
+                      <div className="variant-option-grouphead">
+                        <strong>{formatProductTitle(group.name)}</strong>
+                        <small>{rule}</small>
                       </div>
                       {group.options.map((opt) => {
                         const qty = sel[opt.id] ?? 0
@@ -55,7 +57,7 @@ export function VariantSelectorModal({ closingModifier, closeModifierPicker, mod
                             key={opt.id}
                             role="button"
                             tabIndex={0}
-                            className="variant-option-card"
+                            className={`variant-option-card ${selected ? 'is-selected' : ''}`}
                             onClick={() => toggleModifierOption(group, opt.id)}
                             onKeyDown={(event) => {
                               // Los botones de cantidad internos manejan sus propias teclas.
@@ -65,15 +67,14 @@ export function VariantSelectorModal({ closingModifier, closeModifierPicker, mod
                                 toggleModifierOption(group, opt.id)
                               }
                             }}
-                            style={selected ? { outline: '2px solid var(--accent, #f97316)', outlineOffset: -2 } : undefined}
                           >
                             <span className="variant-option-emoji">{selected ? <CheckCircle2 size={16} /> : <Circle size={16} />}</span>
                             <span className="variant-option-copy">
                               <strong>{formatProductTitle(opt.name)}{qty > 1 ? ` ×${qty}` : ''}</strong>
+                              {opt.price > 0
+                                ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact align="start" />
+                                : <span className="variant-option-price is-included">Incluido</span>}
                             </span>
-                            {opt.price > 0
-                              ? <MoneyWithBcv usd={opt.price} className="variant-option-price" compact />
-                              : <span className="variant-option-price" style={{ opacity: 0.6 }}>Incluido</span>}
                             {isQuantityModifierGroup(group) ? <span className="quantity-modifier-controls"><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, -1) }} disabled={!selected} aria-label={`Quitar ${opt.name}`}>−</button><strong>{qty}</strong><button type="button" onClick={(event) => { event.stopPropagation(); changeQuantityModifier(group, opt.id, 1) }} aria-label={`Agregar ${opt.name}`}>+</button></span> : <span className="variant-option-add">{selected ? 'Quitar' : 'Elegir'}</span>}
                           </div>
                         )

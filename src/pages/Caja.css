@@ -457,7 +457,7 @@
 @media (max-width: 680px) {
   .variant-selector-footer { padding: 14px 16px; gap: 12px; }
   .variant-selector-total-money .money-usd { font-size: 21px; }
-  .variant-selector-cta { padding: 12px 18px; font-size: 14px; }
+  .variant-selector-cta { flex: 1 1 auto; min-width: 0; padding: 12px 10px; font-size: 14px; }
 }
 
 @media (max-width: 767px) {
@@ -485,6 +485,18 @@
 .quantity-modifier-controls button { width: 25px; height: 25px; padding: 0; color: #fff; background: #e31b2b; border: 0; border-radius: 6px; font-size: 17px; line-height: 1; cursor: pointer; }
 .quantity-modifier-controls button:disabled { opacity: .35; cursor: not-allowed; }
 .quantity-modifier-controls strong { min-width: 14px; color: #fff; font-size: 12px; text-align: center; }
+
+/* Opciones de un producto: foto o marca, nombre con precio y control en una sola fila. */
+.variant-option-group { display: grid; gap: 8px; align-content: start; }
+.variant-option-grouphead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; color: #fff; }
+.variant-option-grouphead small { color: #a1a1aa; }
+.variant-option-group .variant-option-card { grid-template-columns: 44px minmax(0, 1fr) auto; min-height: 66px; padding: 10px 12px; }
+.variant-option-group .variant-option-card.is-selected { border-color: #e31b2b; background: rgba(227, 27, 43, .12); }
+.variant-option-group .variant-option-price { min-width: 0; }
+.variant-option-price.is-included { color: #a1a1aa; font-size: 12px; }
+.variant-selector-modal .quantity-modifier-controls { gap: 4px; padding: 3px; border-radius: 12px; }
+.variant-selector-modal .quantity-modifier-controls button { display: grid; place-items: center; flex: 0 0 40px; width: 40px; min-width: 40px; height: 40px; min-height: 40px; border-radius: 9px; font-size: 22px; }
+.variant-selector-modal .quantity-modifier-controls strong { min-width: 26px; font-size: 16px; }
 
 .product-card-meta {
   display: flex;
@@ -2466,6 +2478,7 @@
   .variant-selector-header h2 { font-size: 19px; }
   .variant-selector-list { padding: 12px; }
   .variant-option-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 10px; padding: 12px; }
+  .variant-option-group .variant-option-card { grid-template-columns: 38px minmax(0, 1fr) auto; padding: 9px 10px; }
   .variant-option-emoji, .variant-option-img { width: 38px; height: 38px; }
   .variant-option-emoji { font-size: 20px; }
   .variant-option-price { min-width: 96px; }
