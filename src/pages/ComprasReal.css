@@ -673,3 +673,26 @@ body .cmp-modal-overlay .cmp-detail-row > span { min-width: 0; overflow-wrap: an
   /* Pie más bajo para ver mejor el formulario. */
   body .cmp-purchase-overlay .cmp-form-foot { row-gap: 8px; padding-block: 10px; }
 }
+/* Resumen en teléfono: el total destacado y debajo una lista ordenada. */
+@media (max-width: 767px) {
+  .admin-app .management-workspace--purchases .cmp-summary.cmp-summary { display: flex !important; flex-direction: column; gap: 0; overflow: visible; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum { box-sizing: border-box; width: 100%; min-width: 0; min-height: 0; margin: 0; box-shadow: none; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum > div { min-width: 0; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum .cmp-sum-lbl { white-space: normal; overflow: visible; text-overflow: clip; }
+
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:first-child { align-items: center; gap: 12px; margin-bottom: 10px; padding: 14px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:first-child .cmp-sum-ic { width: 40px; height: 40px; flex: 0 0 40px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:first-child .cmp-sum-val { font-size: 24px; line-height: 1.2; }
+
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:not(:first-child) { display: block; padding: 11px 14px; border: 1px solid rgba(255,255,255,.09); border-top-width: 0; border-radius: 0; background: #141417; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:nth-child(2) { border-top-width: 1px; border-radius: 14px 14px 0 0; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:last-child { border-radius: 0 0 14px 14px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:not(:first-child) .cmp-sum-ic { display: none; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:not(:first-child) > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; width: 100%; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:not(:first-child) .cmp-sum-lbl { grid-column: 1; grid-row: 1; margin: 0; color: #e4e4e7; font-size: 13.5px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:not(:first-child) .cmp-sum-sub { grid-column: 1; grid-row: 2; margin: 0; font-size: 12px; }
+  .admin-app .management-workspace--purchases .cmp-summary .cmp-sum.cmp-sum:not(:first-child) .cmp-sum-val { grid-column: 2; grid-row: 1 / span 2; margin: 0; font-size: 17px; text-align: right; white-space: nowrap; }
+
+  .admin-app .management-workspace--purchases .cmp-pagination { flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .admin-app .management-workspace--purchases .cmp-pagination > * { flex-wrap: wrap; justify-content: center; max-width: 100%; }
+}

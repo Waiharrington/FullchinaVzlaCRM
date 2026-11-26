@@ -285,3 +285,36 @@
 .admin-app .management-workspace--expenses .gst-mobile-expense .gst-icon-btn.gst-icon-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; max-width: none; height: 42px; }
 body .gst-form-col .gst-expense-modal { max-width: 100%; overflow-x: hidden; }
 body .gst-form-col .gst-expense-modal .gst-field :is(input, textarea) { box-sizing: border-box; min-width: 0; font-size: 16px; }
+/* Resumen en teléfono: el total destacado y debajo una lista ordenada. */
+@media (max-width: 767px) {
+  .admin-app .management-workspace--expenses .gst-summary.gst-summary { display: flex !important; flex-direction: column; gap: 0; overflow: visible; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum { box-sizing: border-box; width: 100%; min-width: 0; min-height: 0; margin: 0; box-shadow: none; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum > div { min-width: 0; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum .gst-sum-lbl { white-space: normal; overflow: visible; text-overflow: clip; }
+
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:first-child { align-items: center; gap: 12px; margin-bottom: 10px; padding: 14px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:first-child .gst-sum-ic { width: 40px; height: 40px; flex: 0 0 40px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:first-child .gst-sum-val { font-size: 24px; line-height: 1.2; }
+
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:not(:first-child) { display: block; padding: 11px 14px; border: 1px solid rgba(255,255,255,.09); border-top-width: 0; border-radius: 0; background: #141417; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:nth-child(2) { border-top-width: 1px; border-radius: 14px 14px 0 0; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:last-child { border-radius: 0 0 14px 14px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:not(:first-child) .gst-sum-ic { display: none; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:not(:first-child) > div { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; width: 100%; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:not(:first-child) .gst-sum-lbl { grid-column: 1; grid-row: 1; margin: 0; color: #e4e4e7; font-size: 13.5px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:not(:first-child) .gst-sum-sub { grid-column: 1; grid-row: 2; margin: 0; font-size: 12px; }
+  .admin-app .management-workspace--expenses .gst-summary .gst-sum.gst-sum:not(:first-child) .gst-sum-val { grid-column: 2; grid-row: 1 / span 2; margin: 0; font-size: 17px; text-align: right; white-space: nowrap; }
+
+  .admin-app .management-workspace--expenses .gst-pagination { flex-wrap: wrap; justify-content: center; gap: 6px; }
+  .admin-app .management-workspace--expenses .gst-pagination > * { flex-wrap: wrap; justify-content: center; max-width: 100%; }
+}
+@media (max-width: 420px) {
+  .admin-app .management-workspace--expenses .page-header .gst-header-actions.gst-header-actions { display: flex !important; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .admin-app .management-workspace--expenses .page-header .gst-header-actions.gst-header-actions > * { flex: 1 1 auto; justify-content: center; min-width: 0; }
+  .admin-app .management-workspace--expenses .page-header .gst-header-actions.gst-header-actions > :last-child { flex: 1 1 100% !important; width: 100% !important; max-width: none; }
+}
+/* La ayuda es un botón pequeño junto a "Gasto con IA". */
+@media (max-width: 420px) {
+  .admin-app .management-workspace--expenses .page-header .gst-header-actions.gst-header-actions > :first-child:not(:last-child) { flex: 0 0 48px !important; width: 48px !important; }
+  .admin-app .management-workspace--expenses .page-header .gst-header-actions.gst-header-actions > :nth-child(2):not(:last-child) { flex: 1 1 0 !important; width: auto !important; }
+}
