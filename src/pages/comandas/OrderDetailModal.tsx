@@ -251,7 +251,7 @@ export function OrderDetailModal({ closingSelectedOrder, closeSelectedOrder, ord
                     >
                       <CheckCircle size={18} /> {confirmingWebId === order.webRequestId ? 'Confirmando…' : 'Confirmar pedido'}
                     </button>
-                    <small className="cmdx-actions-hint">Al confirmarlo podrás prepararlo, editarlo y cobrarlo.</small>
+                    <small className="cmdx-actions-hint">Confírmalo para prepararlo y cobrarlo.</small>
                   </>
                 ) : advanceButton || chargeButton ? (
                   <>

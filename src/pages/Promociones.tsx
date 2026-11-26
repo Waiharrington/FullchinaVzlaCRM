@@ -212,7 +212,7 @@ export function Promociones() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Tag size={22} className="page-title-icon" /> Promociones</h1>
-          <p className="page-subtitle"><span className="promo-subtitle-desktop">Cupones listos para tus automatizaciones de WhatsApp</span><span className="promo-subtitle-mobile">Cupones para tus promociones</span></p>
+          <p className="page-subtitle">Cupones para tus promociones</p>
         </div>
 
         <div className="promo-header-actions">
@@ -278,7 +278,7 @@ export function Promociones() {
         </div>
       )}
 
-      <p className="promo-footer-note"><Lock size={13} /> Las promociones activas quedan listas para usarse en tus automatizaciones de WhatsApp</p>
+      <p className="promo-footer-note"><Lock size={13} /> Las activas se usan en WhatsApp</p>
 
       {showForm && createPortal(
         <div className={`promo-modal-overlay ${closingForm ? 'closing' : ''}`} onClick={() => closeForm()}>

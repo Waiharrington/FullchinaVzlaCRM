@@ -637,7 +637,7 @@
     border: 1px solid rgba(255, 255, 255, 0.075);
     border-radius: 999px;
     background: rgba(255, 255, 255, 0.035);
-    font-size: 10.5px;
+    font-size: 11px;
     white-space: nowrap;
   }
 
@@ -659,7 +659,7 @@
     border-color: transparent;
     background: transparent;
     color: #96969d;
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .filter-clear-control:disabled { opacity: 0.45; }
@@ -726,9 +726,9 @@
   .comandas-pulse-icon { width: 40px; height: 40px; flex-basis: 40px; border-radius: 11px; }
   .comandas-pulse h1 { font-size: 23px; }
   .comandas-pulse-title-row p { margin-top: 3px; font-size: 11.5px; }
-  .comandas-pending-badge { padding: 3px 8px; font-size: 10.5px; }
+  .comandas-pending-badge { padding: 3px 8px; font-size: 11px; }
   .comandas-flow { margin-top: 9px; padding-bottom: 9px; gap: 8px; }
-  .comandas-flow-step { gap: 6px; font-size: 10px; }
+  .comandas-flow-step { gap: 6px; font-size: 11px; }
   .comandas-filters { gap: 6px; margin-top: 0; }
   .comandas-filters-toprow { gap: 6px; }
   .comandas-mobile-filters-toggle,
@@ -974,7 +974,7 @@
 .badge-retraso {
   background: #b91c2b;
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1070,7 +1070,7 @@
 }
 .card-total-amounts .money-usd,
 .card-total-amounts .money-ves {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.15;
 }
 .card-footer-line > .status-ready-group,
@@ -1099,7 +1099,7 @@
 }
 
 .payment-type-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1154,7 +1154,7 @@
 .badge-ready-tag {
   background: #10b981;
   color: #fff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1167,7 +1167,7 @@
 .badge-delivered-tag {
   background: rgba(59, 130, 246, 0.14);
   color: #60a5fa;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
@@ -1243,7 +1243,7 @@
 .badge-sin-pagar.is-credit {
   gap: 3px;
   padding-inline: 6px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* Último ajuste para tarjetas excepcionalmente estrechas: los indicadores
@@ -1258,7 +1258,7 @@
   .badge-delivered-tag,
   .timer-mins,
   .badge-sin-pagar {
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .payment-type-badge,
@@ -1390,7 +1390,7 @@
 .payment-sub-heading,
 .summary-box-title { margin: 0 0 8px; color: #fff; font-size: 13px; font-weight: 800; }
 .payment-field-group { display: flex; flex-direction: column; gap: 4px; }
-.payment-field-label { color: #a1a1aa; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.payment-field-label { color: #a1a1aa; font-size: 11px; font-weight: 700; text-transform: uppercase; }
 
 .cash-currency-toggle {
   display: flex;
@@ -1445,9 +1445,9 @@
 
 .qr-icon-right,
 .currency-tag-right { position: absolute; right: 12px; color: #a1a1aa; }
-.currency-tag-right { font-size: 10px; font-weight: 800; }
+.currency-tag-right { font-size: 11px; font-weight: 800; }
 .payment-hint-sub,
-.payment-counter-bottom { color: #71717a; font-size: 10px; }
+.payment-counter-bottom { color: #71717a; font-size: 11px; }
 .payment-textarea-wrap { display: flex; flex-direction: column; }
 .payment-counter-bottom { align-self: flex-end; }
 
@@ -1479,11 +1479,11 @@
 .summary-total-label { font-size: 14px; font-weight: 800; }
 .summary-total-val { color: #FF4D3D; font-size: 22px; font-weight: 900; }
 .summary-box-customer { margin-top: 12px; }
-.customer-box-label { color: #a1a1aa; font-size: 10px; font-weight: 700; }
+.customer-box-label { color: #a1a1aa; font-size: 11px; font-weight: 700; }
 .customer-box-card { margin-top: 5px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.04); }
 .customer-box-name { font-size: 12px; font-weight: 700; }
 .customer-edit-btn { border: 0; background: transparent; color: #71717a; }
-.payment-security-notice { margin-top: 16px; padding: 8px; border-radius: 8px; background: rgba(255,77,61,.08); color: #ff8a80; font-size: 10px; }
+.payment-security-notice { margin-top: 16px; padding: 8px; border-radius: 8px; background: rgba(255,77,61,.08); color: #ff8a80; font-size: 11px; }
 
 .payment-modal-footer {
   flex-wrap: wrap;
@@ -1873,7 +1873,7 @@
   .comandas-pulse .btn-historial { flex: 0 0 42px; width: 42px; }
   .comandas-flow { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
   .comandas-flow-line { display: none; }
-  .comandas-flow-step { justify-content: center; gap: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-size: 9px; }
+  .comandas-flow-step { justify-content: center; gap: 6px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-size: 11px; }
   .comandas-flow-step span { gap: 4px; }
   .comandas-flow-step svg { width: 12px; height: 12px; }
 }
@@ -1903,7 +1903,7 @@
   .cmd-sales-modal-body .caja-embedded .product-card-body { gap: 4px; padding: 9px 10px 11px; }
   .cmd-sales-modal-body .caja-embedded .product-card-title { font-size: 12px; }
   .cmd-sales-modal-body .caja-embedded .product-card-price { font-size: 13px; }
-  .cmd-sales-modal-body .caja-embedded .product-variant-preview { font-size: 10px; }
+  .cmd-sales-modal-body .caja-embedded .product-variant-preview { font-size: 11px; }
   .cmd-sales-modal-body .caja-embedded .products-section { padding-bottom: 68px; }
 }
 
@@ -2144,7 +2144,7 @@
 .cmd-meta-icon { color: #6b7280; flex-shrink: 0; }
 .cmd-icon-time { color: #ff4d3d; }
 .cmd-icon-ops { color: #f4f4f5; }
-.cmd-meta-label { display: block; font-size: 10px; color: #9ca3af; margin-bottom: 1px; }
+.cmd-meta-label { display: block; font-size: 11px; color: #9ca3af; margin-bottom: 1px; }
 .cmd-meta-val { display: block; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .cmd-elapsed-chip {
@@ -2531,7 +2531,7 @@
 }
 .cmd-step-info { text-align: center; }
 .cmd-step-name { display: block; font-size: 11px; font-weight: 600; margin-bottom: 2px; }
-.cmd-step-time { display: block; font-size: 10px; color: #9ca3af; }
+.cmd-step-time { display: block; font-size: 11px; color: #9ca3af; }
 .cmd-timeline-line {
   flex: 1;
   height: 1px;
@@ -2578,11 +2578,11 @@
   height: 13px;
 }
 .cmd-modal-timeline-compact .cmd-step-name {
-  font-size: 9.5px;
+  font-size: 11px;
   white-space: nowrap;
 }
 .cmd-modal-timeline-compact .cmd-step-time {
-  font-size: 8.5px;
+  font-size: 11px;
 }
 .cmd-modal-timeline-compact .cmd-timeline-line {
   margin: 0 -6px;
@@ -3078,14 +3078,14 @@
 .cmd-history-item-tag {
   background: rgba(255, 255, 255, 0.06);
   color: #999;
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 2px 7px;
   border-radius: 5px;
   white-space: nowrap;
 }
 .cmd-history-item-more {
   color: #666;
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 2px 4px;
 }
 
@@ -3106,7 +3106,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
@@ -3145,7 +3145,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 4px;
@@ -3269,7 +3269,7 @@
     max-width: 126px;
     gap: 4px;
     padding: 0 7px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .cmd-history-date-filter .fc-calendar-value { min-width: 0; }
   .cmd-history-weeks {
@@ -3287,7 +3287,7 @@
     flex: 1 1 auto;
     min-width: 0;
     padding: 5px 9px;
-    font-size: 10px;
+    font-size: 11px;
   }
   .cmd-history-year-btn { gap: 4px; padding: 5px 8px; font-size: 11px; }
   .cmd-history-body { min-height: 0; padding: 0 14px 14px; }
@@ -3876,7 +3876,7 @@
   .cmd-history-row-title { grid-area: title; align-self: center; flex-wrap: wrap; row-gap: 0; }
   .cmd-history-row-title strong { flex: 0 1 auto; max-width: 100%; }
   .cmd-history-row-title strong { font-size: 14px; }
-  .cmd-history-row-title small { font-size: 10.5px; }
+  .cmd-history-row-title small { font-size: 11px; }
   .cmd-history-row-detail { grid-area: detail; }
   .cmd-history-row-side { display: contents; }
   .cmd-history-row-total { grid-area: total; justify-self: end; align-self: end; text-align: right; }
@@ -3912,4 +3912,47 @@
 @media (max-width: 640px) {
   .cmd-history-skeleton-row { grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px !important; }
   .cmd-history-skeleton-cell.is-side i:last-child { width: 70px; }
+}
+
+/* Carga y error del tablero */
+.command-load-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.command-load-error button { min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid currentColor; background: transparent; color: inherit; font-weight: 700; cursor: pointer; }
+.kanban-col-loading { width: 100%; }
+
+/* Cobro en teléfono: un nombre de cuenta largo ensanchaba el formulario y
+   cortaba montos y avisos por la derecha. */
+.payment-modal-body > * { min-width: 0; }
+@media (max-width: 767px) {
+  .payment-modal-body.payment-modal-body { grid-template-columns: minmax(0, 1fr); }
+  .payment-modal-footer > button:first-of-type { flex-basis: 100%; }
+}
+
+/* Tableta vertical: dos columnas completas a la vez (se desliza para ver las
+   otras dos), sin columnas cortadas por la mitad. */
+@media (min-width: 768px) and (max-width: 949px) {
+  .admin-app .kanban-board-grid.kanban-board-grid > .kanban-column { width: calc((100% - 14px) / 2); max-width: none; }
+  .admin-app .comandas-pulse-top { flex-wrap: wrap; }
+}
+/* Tableta horizontal: las cuatro etapas completas a la vista. */
+@media (min-width: 1000px) and (max-width: 1199px) {
+  .admin-app .kanban-board-grid.kanban-board-grid > .kanban-column { width: calc((100% - 42px) / 4); min-width: 0; max-width: none; }
+  .admin-app .kanban-board-grid .card-footer-line { flex-wrap: wrap; }
+}
+
+/* Tablet: todas las categorías visibles, sin arrastrar de lado. */
+@media (min-width:768px) and (max-width:1100px) { .cmd-sales-modal .category-tabs { flex-wrap:wrap; overflow:visible; height:auto; flex-shrink:0; } }
+
+/* Teléfono y tablet vertical: nada se encoge ni se sale; los botones quedan al final. */
+@media (max-width: 899px) {
+  .cmd-modal-container.cmdx-detail { overflow-x: hidden; }
+  .cmd-modal-container.cmdx-detail > * { flex: 0 0 auto; width: 100%; min-width: 0; box-sizing: border-box; }
+  .cmd-modal-container.cmdx-detail .cmdx-main,
+  .cmd-modal-container.cmdx-detail .cmdx-summary { grid-template-columns: minmax(0, 1fr); min-height: auto; }
+  .cmd-modal-container.cmdx-detail :is(.cmdx-main, .cmdx-summary) > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+}
+@media (max-width: 899px) {
+  .cmd-modal-container.cmdx-detail .cmdx-main :is(section, .cmdx-card, .cmdx-delivery-fee) { grid-template-columns: minmax(0, 1fr); min-width: 0; max-width: 100%; box-sizing: border-box; }
+  .cmd-modal-container.cmdx-detail .cmdx-main section > *,
+  .cmd-modal-container.cmdx-detail .cmdx-delivery-fee > * { min-width: 0; max-width: 100%; }
+  .cmd-modal-container.cmdx-detail .cmdx-delivery-fee-row input { width: 0; }
 }

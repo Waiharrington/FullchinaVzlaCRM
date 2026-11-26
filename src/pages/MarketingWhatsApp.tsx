@@ -321,7 +321,7 @@ export function MarketingWhatsApp() {
     try {
       const { count, batchId } = await queueWhatsAppMessages({ customerIds: recipients.map(customer => customer.id), customers, message: customMsg, userId: user.id })
       setActiveBatchId(batchId)
-      const sentAt = `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      const sentAt = `${dateKeyInTimeZone()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}`
       const newMessages: WhatsAppMessage[] = recipients.map((target, index) => ({ id: `wm-${Date.now()}-${index}`, templateType: audienceMode === 'segment' ? (customSegment?.name ?? selectedSegment) : 'custom', customerName: target.name, phone: target.phone, message: customMsg, sentAt, status: 'queued' }))
       setMessages(prev => [...newMessages, ...prev])
       setConfirmCount(0)
@@ -353,7 +353,7 @@ export function MarketingWhatsApp() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><MessageSquare size={22} className="page-title-icon" /> Marketing por WhatsApp</h1>
-          <p className="page-subtitle">Automatiza conversaciones y crea campañas para tus clientes.</p>
+          <p className="page-subtitle">Mensajes y campañas para clientes.</p>
         </div>
         <div className="wa-header-actions">
           <span className={`wa-provider-state ${user?.role === 'owner' ? (botIsConnected ? 'wa-provider-state--connected' : 'wa-provider-state--disconnected') : ''}`}><span /> {user?.role === 'owner' ? `${botStatusLabel}${hasQueued ? ` · ${queuedCount} en cola` : ''}` : hasQueued ? `Enviando: ${queuedCount} en cola` : 'Envío por el WhatsApp de Full China'}</span>
@@ -379,7 +379,7 @@ export function MarketingWhatsApp() {
       </section>
 
       <section className="wa-panel wa-lists-panel" aria-labelledby="wa-lists-title">
-        <header className="wa-panel-header"><span className="wa-panel-icon wa-panel-icon--lists"><Users size={19} /></span><div><span className="wa-eyebrow">Audiencias guardadas</span><h2 id="wa-lists-title">Listas de difusión</h2><p>Crea y administra los grupos de clientes para tus campañas.</p></div><button type="button" className="wa-inline-create" aria-label="Crear lista" onClick={openNewSegment}><Plus size={14} /><span className="wa-inline-create-label">Crear lista</span></button></header>
+        <header className="wa-panel-header"><span className="wa-panel-icon wa-panel-icon--lists"><Users size={19} /></span><div><span className="wa-eyebrow">Audiencias guardadas</span><h2 id="wa-lists-title">Listas de difusión</h2><p>Grupos para tus campañas.</p></div><button type="button" className="wa-inline-create" aria-label="Crear lista" onClick={openNewSegment}><Plus size={14} /><span className="wa-inline-create-label">Crear lista</span></button></header>
         {segments.length === 0 ? <div className="wa-lists-empty"><Users size={18} /><span>Aún no tienes listas personalizadas. Crea una para agrupar clientes frecuentes, empresas o promociones.</span><button type="button" onClick={openNewSegment}>Crear mi primera lista</button></div> : <div className="wa-lists-grid">{segments.map(segment => <article className="wa-list-card" key={segment.id}><div className="wa-list-card-top"><span className="wa-list-card-icon"><Users size={16} /></span><div><h3>{segment.name}</h3><p>{segment.description || 'Lista personalizada de clientes'}</p></div></div><div className="wa-list-card-meta"><strong>{segment.customerIds.length}</strong><span>clientes seleccionados</span></div><div className="wa-list-card-actions"><button type="button" onClick={() => openAudienceModal(segment.name, segment.description || 'Clientes de esta lista de difusión.', customers.filter(customer => segment.customerIds.includes(customer.id)))}><Users size={14} /> Ver clientes</button><button type="button" aria-label={`Editar ${segment.name}`} onClick={() => openEditSegment(segment)}><Pencil size={14} /></button><button type="button" aria-label={`Eliminar ${segment.name}`} onClick={() => handleDeleteSegment(segment)}><Trash2 size={14} /></button></div></article>)}</div>}
       </section>
 
@@ -388,7 +388,7 @@ export function MarketingWhatsApp() {
           <section className="wa-panel wa-automations">
             <header className="wa-panel-header">
               <span className="wa-panel-icon"><Bot size={19} /></span>
-              <div><span className="wa-eyebrow">Siempre activas</span><h2>Automatizaciones</h2><p>Mensajes preparados para cada momento del cliente.</p></div>
+              <div><span className="wa-eyebrow">Siempre activas</span><h2>Automatizaciones</h2><p>Mensajes listos para usar.</p></div>
               <button type="button" className="wa-inline-create" onClick={openNewTemplate}><Plus size={14} /> Nueva plantilla</button>
             </header>
 
@@ -406,12 +406,12 @@ export function MarketingWhatsApp() {
           <section className="wa-panel wa-history">
             <header className="wa-panel-header">
               <span className="wa-panel-icon wa-panel-icon--history"><MessageSquare size={19} /></span>
-              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Haz clic en un mensaje para ver el contenido completo y el error si falló.</p></div>
+              <div><span className="wa-eyebrow">Seguimiento</span><h2>Historial de envíos</h2><p>Toca un mensaje para ver el detalle.</p></div>
               <span className="wa-count">{messages.length} recientes</span>
             </header>
 
             {messages.length === 0 ? (
-              <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Los envíos aparecerán aquí cuando guardes tu primera campaña.</p></div></div>
+              <div className="wa-empty"><span><Send size={22} /></span><div><strong>Aún no hay mensajes</strong><p>Aquí verás tus envíos.</p></div></div>
             ) : (
               <div className="wa-table-wrap"><table className="wa-table"><thead><tr><th>Cliente</th><th>Teléfono</th><th>Tipo</th><th>Fecha</th><th>Estado</th></tr></thead><tbody>
                 {visibleMessages.map(msg => <tr key={msg.id} className="wa-history-row" tabIndex={0} title="Ver detalle del mensaje" onClick={() => setMessageDetail(msg)} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setMessageDetail(msg) } }}><td data-label="Cliente"><strong>{msg.customerName}</strong></td><td data-label="Teléfono">{msg.phone}</td><td data-label="Tipo"><span className="wa-type">{msg.templateType}</span></td><td data-label="Fecha">{formatMessageDate(msg.sentAt)}</td><td data-label="Estado"><span className={`wa-status wa-status--${msg.status}`}><CheckCircle2 size={12} />{statusLabel(msg.status)}</span></td></tr>)}
@@ -423,7 +423,7 @@ export function MarketingWhatsApp() {
         <aside className="wa-panel wa-composer">
           <header className="wa-panel-header">
             <span className="wa-panel-icon wa-panel-icon--send"><Send size={19} /></span>
-            <div><span className="wa-eyebrow">Campaña manual</span><h2>Crear mensaje</h2><p>Selecciona el público y personaliza el contenido.</p></div>
+            <div><span className="wa-eyebrow">Campaña manual</span><h2>Crear mensaje</h2><p>Elige público y mensaje.</p></div>
           </header>
 
           {sentNotice && <div className="wa-notice" role="status"><CheckCircle2 size={16} /><span>{sentNotice}</span></div>}
@@ -457,7 +457,7 @@ export function MarketingWhatsApp() {
       </main>
 
       {editingTemplate && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => setEditingTemplate(null)}><section className="wa-standard-modal wa-segment-modal wa-template-modal" role="dialog" aria-modal="true" aria-labelledby="wa-template-title" onClick={event => event.stopPropagation()}>
-        <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Plantillas</span><h2 id="wa-template-title">{editingTemplate.id ? 'Editar plantilla' : 'Nueva plantilla'}</h2><p>Personaliza el contenido que usará Full China.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setEditingTemplate(null)}><X size={18} /></button></header>
+        <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Plantillas</span><h2 id="wa-template-title">{editingTemplate.id ? 'Editar plantilla' : 'Nueva plantilla'}</h2><p>Edita el contenido del mensaje.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setEditingTemplate(null)}><X size={18} /></button></header>
         <form onSubmit={saveTemplate} className="wa-segment-form">
           <label><span>Nombre</span><input value={editingTemplate.name} onChange={event => setEditingTemplate({ ...editingTemplate, name: event.target.value })} maxLength={100} placeholder="Ej. Promoción de viernes" required /></label>
           <label><span>Categoría</span><input value={editingTemplate.category} onChange={event => setEditingTemplate({ ...editingTemplate, category: event.target.value })} maxLength={60} placeholder="Promoción, cumpleaños, post-compra..." required /></label>
@@ -473,7 +473,7 @@ export function MarketingWhatsApp() {
 
       {showSegmentModal && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => !segmentSaving && setShowSegmentModal(false)}>
         <section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-segment-title" onClick={event => event.stopPropagation()}>
-          <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Audiencias</span><h2 id="wa-segment-title">{editingSegmentId ? 'Editar segmento' : 'Crear segmento'}</h2><p>Arma una lista de difusión con clientes seleccionados.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setShowSegmentModal(false)}><X size={18} /></button></header>
+          <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Audiencias</span><h2 id="wa-segment-title">{editingSegmentId ? 'Editar segmento' : 'Crear segmento'}</h2><p>Elige los clientes de la lista.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" onClick={() => setShowSegmentModal(false)}><X size={18} /></button></header>
           <form onSubmit={handleSaveSegment} className="wa-segment-form">
             <label><span>Nombre del segmento</span><input value={segmentName} onChange={event => setSegmentName(event.target.value)} maxLength={80} placeholder="Ej. Clientes de cumpleaños" required /></label>
             <label><span>Descripción <small>Opcional</small></span><input value={segmentDescription} onChange={event => setSegmentDescription(event.target.value)} maxLength={160} placeholder="Para explicar cuándo usar esta lista" /></label>
@@ -485,7 +485,7 @@ export function MarketingWhatsApp() {
 
       {confirmCount > 0 && createPortal(<div className="wa-modal-backdrop" role="presentation" onClick={() => { if (!sendingNow) setConfirmCount(0) }}>
         <section className="wa-standard-modal wa-segment-modal" role="dialog" aria-modal="true" aria-labelledby="wa-confirm-title" onClick={event => event.stopPropagation()}>
-          <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Campaña manual</span><h2 id="wa-confirm-title">¿Enviar ahora?</h2><p>Los mensajes salen uno a uno, como si los escribiera la dueña.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" disabled={sendingNow} onClick={() => setConfirmCount(0)}><X size={18} /></button></header>
+          <header className="wa-segment-modal-header"><div><span className="wa-eyebrow">Campaña manual</span><h2 id="wa-confirm-title">¿Enviar ahora?</h2><p>Los mensajes salen uno a uno.</p></div><button type="button" className="wa-modal-close" aria-label="Cerrar" disabled={sendingNow} onClick={() => setConfirmCount(0)}><X size={18} /></button></header>
           <div className="wa-segment-form">
             <div className="wa-confirm-body">
               <p>Se enviarán <strong>{confirmCount} mensaje{confirmCount === 1 ? '' : 's'}</strong> con ~10 s de separación entre cada uno (unos {estimatedMinutes(confirmCount)} min en total) desde el WhatsApp de Full China.</p>

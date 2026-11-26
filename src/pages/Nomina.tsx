@@ -263,7 +263,7 @@ export function Nomina() {
                     <strong>Así funciona Nómina</strong>
                     <button type="button" className="nom-help-close" aria-label="Cerrar ayuda" onClick={() => setShowPayrollHelp(false)}><X size={16} /></button>
                   </div>
-                  <p>Todo el saldo y los movimientos de cada persona, en un solo lugar.</p>
+                  <p>Saldo y movimientos de cada persona.</p>
                   <ol>
                     <li><span>1</span><span><b>Registra</b> salarios, bonos, descuentos o adelantos.</span></li>
                     <li><span>2</span><span><b>Anota pagos</b> completos o parciales para actualizar el saldo.</span></li>
@@ -273,7 +273,7 @@ export function Nomina() {
               )}
             </div>
           </div>
-          <p className="page-subtitle nom-subtitle-desktop">Saldos acumulados por empleado, pagos parciales y movimientos organizados por mes.</p>
+          <p className="page-subtitle nom-subtitle-desktop">Pagos y saldos del equipo.</p>
           <p className="page-subtitle nom-subtitle-mobile">Pagos y saldos del equipo.</p>
         </div>
       </header>
@@ -282,7 +282,7 @@ export function Nomina() {
       {notice && <Toast type="success" message={notice} onClose={() => setNotice('')} />}
 
       <div className="nom-card">
-        <div className="nom-card-head"><div><h2>Cuenta corriente del personal</h2><p className="nom-card-subtitle-desktop">Saldo acumulado por empleado. Añade conceptos y registra pagos parciales; el detalle se organiza por mes y abre en el movimiento más reciente.</p><p className="nom-card-subtitle-mobile">Consulta cada movimiento por mes.</p></div></div>
+        <div className="nom-card-head"><div><h2>Cuenta corriente del personal</h2><p className="nom-card-subtitle-desktop">Saldos y pagos por empleado.</p><p className="nom-card-subtitle-mobile">Saldos y pagos por empleado.</p></div></div>
         <div className="nom-employee-grid">
           {activeEmployees.map((emp) => {
             const isDelivery = emp.position?.toLowerCase() === 'delivery' || employees.find((item) => item.id === emp.id)?.position?.toLowerCase() === 'delivery'

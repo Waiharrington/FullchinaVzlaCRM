@@ -261,3 +261,46 @@
   background: #10b981;
   color: #fff;
 }
+
+.kds-header-title { flex-wrap: wrap; }
+.kds-live-badge { white-space: nowrap; }
+@media (max-width: 480px) { .kds-header-title h1.page-title { font-size: 1.2rem; } }
+
+/* Controles claros: cada botón con su texto dentro, sin montarse entre sí. */
+.kds-header { gap: 12px; }
+.station-filters { flex-wrap: wrap; overflow: visible; }
+.admin-app .kds-page .kds-btn-station,
+.admin-app .kds-page .kds-btn-sound {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-width: 0; min-height: 44px; white-space: nowrap;
+}
+.admin-app .kds-page .kds-btn-station.active { background: #d61f2c; border-color: #ff4d3d; color: #fff; }
+.kds-card-header { gap: 8px; }
+.kds-order-info { display: flex; align-items: baseline; margin-right: auto; white-space: nowrap; }
+.kds-status { font-size: 12px; font-weight: 700; color: #93c5fd; }
+.kds-card.in-prep .kds-status { color: #fbbf24; }
+.kds-timer { white-space: nowrap; }
+.kds-btn-action { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.kds-item { align-items: flex-start; }
+.kds-item-qty { min-width: 40px; text-align: center; flex: 0 0 auto; }
+.kds-item-name { align-self: center; min-width: 0; }
+@media (max-width: 767px) {
+  .kds-page { padding: 12px 0; }
+  .station-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-app .kds-page .kds-btn-sound { width: 100%; }
+  .kds-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .kds-header { margin-bottom: 14px; padding: 12px; }
+}
+@media (max-width: 767px) { .admin-app .kds-page .station-filters > .kds-btn-station { width: 100%; } }
+/* El botón de avisos acompaña al título, a la derecha. */
+.kds-header-title { width: 100%; flex-wrap: nowrap; gap: 8px; }
+@media (min-width: 900px) { .kds-header-title { width: auto; flex: 1; margin-right: 12px; } }
+.admin-app .kds-page .kds-header-title .kds-btn-sound { width: auto; margin-left: auto; min-height: 38px; padding: 6px 11px; flex: 0 0 auto; }
+@media (max-width: 767px) { .admin-app .kds-page .station-filters > .kds-btn-station { width: 100% !important; } }
+
+/* Tablet: las estaciones bajan a una fila propia y completa. */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .kds-page .station-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; flex-basis: 100%; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .kds-page .station-filters > .kds-btn-station { width: 100% !important; justify-content: center; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .kds-page :has(> .station-filters) { flex-wrap: wrap; }
+}

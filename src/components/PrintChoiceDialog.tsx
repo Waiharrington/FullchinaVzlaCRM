@@ -28,7 +28,7 @@ export function PrintChoiceDialog({
         </button>
         <span className="print-choice-icon"><Printer size={22} /></span>
         <h2 id="print-choice-title">¿Imprimir {documentName}?</h2>
-        <p>El pedido se guardó correctamente. Puedes imprimirlo ahora o hacerlo después desde la comanda.</p>
+        <p>Pedido guardado. Puedes imprimirlo.</p>
         <div className="print-choice-actions">
           <button className="print-choice-skip" type="button" onClick={() => finish(onSkip)}>No imprimir</button>
           <button className="print-choice-confirm" type="button" onClick={() => finish(onPrint)}><Printer size={16} /> Imprimir</button>

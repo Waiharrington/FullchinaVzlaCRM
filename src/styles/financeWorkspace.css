@@ -255,9 +255,9 @@
 
 @media (min-width: 768px) and (max-width: 1199px) and (orientation: landscape) {
   /* Evita los textos de 9 px que tenía Finanzas en tablet horizontal. */
-  .management-workspace--finance .fin-kpi-lbl { font-size: .68rem !important; }
-  .management-workspace--finance .fin-kpi-sub { font-size: .66rem !important; }
+  .management-workspace--finance .fin-kpi-lbl { font-size: 0.6875rem !important; }
+  .management-workspace--finance .fin-kpi-sub { font-size: 0.6875rem !important; }
   .management-workspace--finance .fin-daily-table { font-size: .74rem !important; }
-  .management-workspace--finance .fin-daily-table th { font-size: .66rem !important; }
+  .management-workspace--finance .fin-daily-table th { font-size: 0.6875rem !important; }
   .management-workspace--finance .fin-period .fc-select-trigger { min-height: 40px !important; height: 40px !important; }
 }

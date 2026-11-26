@@ -290,7 +290,7 @@ export function ReportExplorer() {
 
   return <section className="report-explorer card" aria-label="Catálogo de reportes">
     {!active ? <>
-      <div className="report-explorer-heading"><div><span className="report-eyebrow">CENTRO DE REPORTES</span><h2><span className="report-title-full">Encuentra el dato que necesitas</span><span className="report-title-short">Busca reportes</span></h2><p>Reportes basados en las operaciones registradas en FullChina.</p></div><span className="report-count">{REPORTS.length} reportes disponibles</span></div>
+      <div className="report-explorer-heading"><div><span className="report-eyebrow">CENTRO DE REPORTES</span><h2><span className="report-title-full">Encuentra el dato que necesitas</span><span className="report-title-short">Busca reportes</span></h2><p>Basados en tus operaciones.</p></div><span className="report-count">{REPORTS.length} reportes disponibles</span></div>
       <label className="report-search"><Search size={19} /><input value={search} onChange={event => { setSearch(event.target.value); setCatalogPage(1) }} placeholder="Buscar reportes..." aria-label="Buscar reportes" /></label>
       {favorites.length > 0 && !search && <div className="report-group"><h3><Star size={16} /> Favoritos</h3><div className="report-links">{REPORTS.filter(report => favorites.includes(report.id)).map(report => <button key={report.id} className="report-link" onClick={() => setActive(report.id)}>{report.title}<span>Ver reporte →</span></button>)}</div></div>}
       {(['Ventas', 'Finanzas', 'Inventario'] as const).map(group => { const reports = visibleCatalogReports.filter(report => report.group === group); return reports.length ? <div className="report-group" key={group}><h3>{group}</h3><div className="report-links">{reports.map(report => <div className="report-link-row" key={report.id}><button className="report-link" onClick={() => { setTableSearch(''); setActive(report.id) }}><strong>{report.title}</strong><small>{report.description}</small><em>{report.ready === false ? 'Requiere módulo de datos' : 'Disponible'}</em></button><button className={`report-favorite ${favorites.includes(report.id) ? 'is-active' : ''}`} aria-label={`${favorites.includes(report.id) ? 'Quitar' : 'Añadir'} ${report.title} a favoritos`} onClick={() => toggleFavorite(report.id)}><Star size={18} fill={favorites.includes(report.id) ? 'currentColor' : 'none'} /></button></div>)}</div></div> : null })}
@@ -334,7 +334,7 @@ export function ReportExplorer() {
             <div className="report-detail-copy">
               <span className="report-eyebrow">COMANDA</span>
               <h3>#{order.orderNumber}</h3>
-              <p>{order.customerName || 'Cliente'} · {order.tableNumber ? `Mesa ${order.tableNumber}` : detailOrderType(order.orderType)} · {dateKeyInTimeZone(new Date(order.createdAt))} {new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(order.createdAt))}</p>
+              <p>{order.customerName || 'Cliente'} · {order.tableNumber ? `Mesa ${order.tableNumber}` : detailOrderType(order.orderType)} · {dateKeyInTimeZone(new Date(order.createdAt))} {new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(order.createdAt))}</p>
             </div>
             <button type="button" className="report-detail-close" onClick={closeOrderDetail} aria-label="Cerrar"><X size={18} /></button>
           </div>

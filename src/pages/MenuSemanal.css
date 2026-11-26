@@ -56,7 +56,7 @@
 }
 .ws-card-title { flex: 1; min-width: 0; }
 .ws-card-title h3 { font-size: 15px; font-weight: 700; margin: 0; }
-.ws-card-week { font-size: 10px; font-weight: 800; color: #e11d2a; text-transform: uppercase; letter-spacing: .3px; }
+.ws-card-week { font-size: 11px; font-weight: 800; color: #e11d2a; text-transform: uppercase; letter-spacing: .3px; }
 .ws-card-desc { color: #a1a1aa; font-size: 12px; line-height: 1.45; margin: 4px 0 0; }
 .ws-price { font-size: 20px; font-weight: 800; }
 .ws-cost { font-size: 12px; color: #a1a1aa; }
@@ -195,3 +195,23 @@
   .ws-image-field > div { flex-wrap: wrap; }
   .ws-modal-heading { margin: -18px -16px 12px; padding: 12px 16px; border-radius: 18px 18px 0 0; }
 }
+
+/* Teléfono: el icono va arriba para que el texto use todo el ancho de la tarjeta. */
+@media (max-width: 520px) {
+  .ws-summary { gap: 8px; }
+  .ws-sum-card { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; min-width: 0; }
+  .ws-sum-card > * { max-width: 100%; }
+  .ws-sum-sub { color: #a1a1aa; }
+}
+
+.ws-table th { white-space: nowrap; }
+.ws-table td strong { display: inline-block; min-width: 130px; }
+
+/* Precio y costo siempre caben dentro de la ventana. */
+@media (min-width: 768px) {
+  .ws-row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ws-row2 > *, .ws-row2 .num-stepper { min-width: 0; width: 100%; }
+}
+
+/* El emoji ocupa lo justo y el nombre el resto. */
+.ws-row2:has(> .ws-field[style*="max-width"]) { grid-template-columns: 90px minmax(0, 1fr); }

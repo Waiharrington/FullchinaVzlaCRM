@@ -13,11 +13,11 @@
 .db-push-settings-copy > svg { flex: 0 0 auto; margin-top: 2px; }
 .db-push-settings-copy span { display: grid; gap: 3px; min-width: 0; }
 .db-push-settings-copy strong { color: #f1f1f4; font-size: 11px; }
-.db-push-settings-copy small { color: #9999a3; font-size: 10px; line-height: 1.35; }
-.db-push-settings > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; padding: 0 10px; border: 1px solid rgba(255, 77, 61, .28); border-radius: 9px; background: rgba(227, 27, 43, .12); color: #ff8a82; font: inherit; font-size: 10px; font-weight: 750; cursor: pointer; }
+.db-push-settings-copy small { color: #9999a3; font-size: 11px; line-height: 1.35; }
+.db-push-settings > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 32px; padding: 0 10px; border: 1px solid rgba(255, 77, 61, .28); border-radius: 9px; background: rgba(227, 27, 43, .12); color: #ff8a82; font: inherit; font-size: 11px; font-weight: 750; cursor: pointer; }
 .db-push-settings > button:hover:not(:disabled) { background: rgba(227, 27, 43, .2); color: #fff; }
 .db-push-settings > button:disabled { opacity: .55; cursor: wait; }
-.db-push-settings > p { grid-column: 1 / -1; margin: 0; color: #fca5a5; font-size: 10px; line-height: 1.4; }
+.db-push-settings > p { grid-column: 1 / -1; margin: 0; color: #fca5a5; font-size: 11px; line-height: 1.4; }
 .db-push-entry-backdrop { z-index: 1450; }
 .db-push-entry-dialog { width: min(430px, 100%); }
 .db-push-entry-header { align-items: center; }

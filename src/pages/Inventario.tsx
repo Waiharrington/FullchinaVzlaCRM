@@ -522,8 +522,7 @@ export function Inventario() {
         <div className="inv-header-text">
           <h1 className="page-title"><Package size={22} className="page-title-icon" /> Inventario</h1>
           <p>
-            <span className="inv-subtitle-desktop">Gestiona tu inventario en tiempo real y controla tus existencias.</span>
-            <span className="inv-subtitle-mobile">Controla inventario y existencias.</span>
+            Controla inventario y existencias.
           </p>
         </div>
       </header>
@@ -1152,7 +1151,7 @@ export function Inventario() {
                         <div className="inv-movement-detail">{mov.notes || mov.referenceType || 'Sin notas'}</div>
                       </div>
                       <div className="inv-movement-meta">
-                        <div className="inv-movement-time">{new Date(mov.createdAt).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short' })}</div>
+                        <div className="inv-movement-time">{new Date(mov.createdAt).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short', hour12: true })}</div>
                         <div className={`inv-movement-amount ${mov.quantity > 0 ? 'positive' : 'negative'}`}>
                           {mov.quantity > 0 ? '+' : ''}{mov.quantity} {mov.unitSymbol}
                         </div>

@@ -89,7 +89,7 @@
 }
 
 .bottom-nav-label {
-  font-size: 0.625rem;
+  font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
@@ -292,7 +292,7 @@
 
   .bottom-nav-item.active .bottom-nav-icon-wrap { color: #ff6a5f !important; filter: none !important; }
   .bottom-nav-active-dot { display: none !important; }
-  .bottom-nav-label { font-size: .61rem !important; line-height: 1.1 !important; }
+  .bottom-nav-label { font-size: 0.6875rem !important; line-height: 1.1 !important; }
   .bottom-nav-drawer { max-height: min(88dvh, 760px); padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); }
 
   .bottom-nav-overlay.closing {

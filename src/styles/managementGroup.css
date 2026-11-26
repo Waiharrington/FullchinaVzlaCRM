@@ -196,7 +196,7 @@
     .management-workspace--recipes,
     .management-workspace--production
   ) :is(.kpi-label-sm, .inv-kpi-label, .metric-label, .prod-stat-lbl) {
-    font-size: .68rem !important;
+    font-size: 0.6875rem !important;
   }
   .management-workspace--production .prod-stats-grid { gap: 10px; }
 }

@@ -179,12 +179,12 @@
 .cmp-items-head { font-size: 11px; text-transform: uppercase; letter-spacing: .3px; color: #71717a; padding: 0 2px 8px; }
 .cmp-cost-heading { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; white-space: nowrap; }
 .cmp-cost-currency { display: inline-flex; align-items: center; padding: 2px; gap: 1px; border: 1px solid rgba(255,255,255,.1); border-radius: 7px; background: #1c1c22; }
-.cmp-cost-currency button { min-width: 23px; padding: 3px 5px; border: 0; border-radius: 5px; background: transparent; color: #a1a1aa; font: inherit; font-size: 10px; font-weight: 800; line-height: 1; cursor: pointer; }
+.cmp-cost-currency button { min-width: 23px; padding: 3px 5px; border: 0; border-radius: 5px; background: transparent; color: #a1a1aa; font: inherit; font-size: 11px; font-weight: 800; line-height: 1; cursor: pointer; }
 .cmp-cost-currency button.active { background: #e11d2a; color: #fff; }
 .cmp-cost-currency button:focus-visible { outline: 2px solid #f87171; outline-offset: 1px; }
 .cmp-item-row { margin-bottom: 8px; }
 .cmp-item-row input, .cmp-item-row select { border-radius: 9px; padding: 9px; font-size: 13px; width: 100%; }
-.cmp-item-name small { display: block; margin: 3px 0 0; color: #fde68a; font-size: 10px; }
+.cmp-item-name small { display: block; margin: 3px 0 0; color: #fde68a; font-size: 11px; }
 .cmp-expense-destination { color: #a1a1aa; font-size: 11px; }
 .cmp-del:disabled { opacity: .35; cursor: not-allowed; }
 .cmp-cost-wrap { position: relative; }
@@ -313,7 +313,7 @@
 .cmp-purchase-modal .cmp-item-cell .fc-select-trigger { box-sizing: border-box; height: 48px; min-height: 48px; }
 .cmp-purchase-modal .cmp-item-cell input,
 .cmp-purchase-modal .cmp-item-cell .search-select-input { box-sizing: border-box; height: 48px; min-height: 48px; }
-.cmp-purchase-modal .cmp-items-head { padding-bottom: 6px; font-size: 10px; }
+.cmp-purchase-modal .cmp-items-head { padding-bottom: 6px; font-size: 11px; }
 .cmp-purchase-modal .cmp-item-row { margin-bottom: 6px; }
 .cmp-purchase-modal .cmp-item-row input,
 .cmp-purchase-modal .cmp-item-row select,
@@ -341,7 +341,7 @@
   .cmp-purchase-modal .cmp-form-grid > .cmp-field:first-child { grid-column: 1 / -1; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .cmp-purchase-modal .cmp-items-head { display: none; }
   .cmp-purchase-modal .cmp-item-row {
     position: relative;
@@ -355,7 +355,7 @@
     background: rgba(255,255,255,.025);
   }
   .cmp-purchase-modal .cmp-item-cell { display: grid; align-content: start; gap: 6px; }
-  .cmp-purchase-modal .cmp-item-cell::before { content: attr(data-label); color: #8f8f99; font-size: 10px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
+  .cmp-purchase-modal .cmp-item-cell::before { content: attr(data-label); color: #8f8f99; font-size: 11px; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
   .cmp-purchase-modal .cmp-item-cell--name,
   .cmp-purchase-modal .cmp-item-cell--destination { grid-column: 1 / -1; }
   .cmp-purchase-modal .cmp-item-cell--subtotal { align-content: center; }
@@ -393,7 +393,7 @@
   .cmp-purchase-modal .cmp-form-foot > .cmp-total .val { font-size: clamp(20px, 5.5vw, 24px); line-height: 1.1; }
   .cmp-purchase-modal .cmp-form-foot > .cmp-total-money { align-items: flex-end; }
   .cmp-purchase-modal .cmp-form-foot > .cmp-total .money-ves { color: #d4d4d8; font-size: 13px; font-weight: 700; line-height: 1.2; }
-  .cmp-purchase-modal .cmp-form-foot > .cmp-total .cmp-payment-ref { font-size: 10px; line-height: 1.2; }
+  .cmp-purchase-modal .cmp-form-foot > .cmp-total .cmp-payment-ref { font-size: 11px; line-height: 1.2; }
   .cmp-purchase-modal .cmp-form-foot > .cmp-actions { grid-column: 1 / -1; display: grid; width: auto; min-width: 0; grid-template-columns: minmax(0,.85fr) minmax(0,1.15fr); gap: 8px; }
   .cmp-purchase-modal .cmp-form-foot > .cmp-actions > * { width: 100%; min-width: 0; min-height: 44px; padding-inline: 8px; box-sizing: border-box; font-size: 12px; }
 }
@@ -421,10 +421,10 @@
   .cmp-mobile-purchase-who > time { color: #92929d; font-size: .72rem; }
   .cmp-mobile-purchase-money { flex: 0 1 48%; max-width: 48%; text-align: right; }
   .cmp-mobile-purchase-money .money-usd { font-size: .98rem; letter-spacing: -.035em; }
-  .cmp-mobile-purchase-money .money-ves { font-size: .68rem; }
+  .cmp-mobile-purchase-money .money-ves { font-size: 0.6875rem; }
   .cmp-mobile-purchase-meta { display: grid; grid-template-columns: .9fr .55fr 1.2fr; gap: 8px; margin-top: 11px; }
   .cmp-mobile-purchase-meta > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .cmp-mobile-purchase-meta small { color: #85858f; font-size: .64rem; }
+  .cmp-mobile-purchase-meta small { color: #85858f; font-size: 0.6875rem; }
   .cmp-mobile-purchase-meta strong { color: #d4d4d8; font-size: .73rem; line-height: 1.2; overflow-wrap: anywhere; }
   .cmp-mobile-purchase-footer { display:flex; flex-direction:column; align-items:stretch; gap:10px; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.07); }
   .cmp-mobile-purchase-footer .cmp-badge { align-self:flex-start; min-width:0; min-height:30px; padding-inline:8px; font-size:11px; white-space:nowrap; }
@@ -548,4 +548,80 @@
   .cmp-purchase-overlay { align-items: center; padding: 12px; }
   .cmp-purchase-modal { max-height: calc(100dvh - 24px); border-radius: 18px; }
   .cmp-payment-grid { grid-template-columns: 1fr; }
+}
+
+/* Tableta vertical: tarjetas en vez de una tabla apretada. */
+@media (min-width: 768px) and (max-width: 899px) {
+  .admin-app .cmp-page.management-workspace--purchases .cmp-mobile-purchases {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+  .admin-app .cmp-page.management-workspace--purchases .cmp-table-wrap { display: none; }
+  .admin-app .cmp-mobile-purchase {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 13px;
+    background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(20,20,25,.96) 70%);
+  }
+  .admin-app .cmp-mobile-purchase-head,
+  .admin-app .cmp-mobile-purchase-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+  .admin-app .cmp-mobile-purchase-head { align-items: flex-start; }
+  .admin-app .cmp-mobile-purchase-who { display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-width: 0; }
+  .admin-app .cmp-mobile-purchase-who > strong { color: #f4f4f5; font-size: .91rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .admin-app .cmp-mobile-purchase-who > time { color: #92929d; font-size: .72rem; }
+  .admin-app .cmp-mobile-purchase-money { flex: 0 1 48%; max-width: 48%; text-align: right; }
+  .admin-app .cmp-mobile-purchase-money .money-usd { font-size: .98rem; letter-spacing: -.035em; }
+  .admin-app .cmp-mobile-purchase-money .money-ves { font-size: 0.6875rem; }
+  .admin-app .cmp-mobile-purchase-meta { display: grid; grid-template-columns: .9fr .55fr 1.2fr; gap: 8px; margin-top: 11px; }
+  .admin-app .cmp-mobile-purchase-meta > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .admin-app .cmp-mobile-purchase-meta small { color: #85858f; font-size: 0.6875rem; }
+  .admin-app .cmp-mobile-purchase-meta strong { color: #d4d4d8; font-size: .73rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .admin-app .cmp-mobile-purchase-footer { display:flex; flex-direction:column; align-items:stretch; gap:10px; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.07); }
+  .admin-app .cmp-mobile-purchase-footer .cmp-badge { align-self:flex-start; min-width:0; min-height:30px; padding-inline:8px; font-size:11px; white-space:nowrap; }
+  .admin-app .cmp-mobile-purchase-footer .cmp-row-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; width:100%; min-width:0; }
+  .admin-app .cmp-mobile-purchase-footer .cmp-icon-btn { display:inline-grid; width:100%; min-width:0; height:42px; box-sizing:border-box; padding:0; place-items:center; border-radius:9px; background:rgba(255,255,255,.045); }
+  .admin-app .cmp-mobile-purchases.cmp-mobile-purchases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1100px) {
+  .cmp-purchase-modal .cmp-form-grid > .cmp-field:first-child ~ :last-child:nth-child(even) { grid-column: 1 / -1; }
+}
+
+/* Tablet con el menú abierto: tarjetas en vez de tabla apretada. */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-page.management-workspace--purchases .cmp-mobile-purchases {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    min-width: 0;
+  }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-page.management-workspace--purchases .cmp-table-wrap { display: none; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 13px;
+    background: linear-gradient(145deg, rgba(255,255,255,.035), rgba(20,20,25,.96) 70%);
+  }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-head,
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-head { align-items: flex-start; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-who { display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-width: 0; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-who > strong { color: #f4f4f5; font-size: .91rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-who > time { color: #92929d; font-size: .72rem; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-money { flex: 0 1 48%; max-width: 48%; text-align: right; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-money .money-usd { font-size: .98rem; letter-spacing: -.035em; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-money .money-ves { font-size: 0.6875rem; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-meta { display: grid; grid-template-columns: .9fr .55fr 1.2fr; gap: 8px; margin-top: 11px; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-meta > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-meta small { color: #85858f; font-size: 0.6875rem; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-meta strong { color: #d4d4d8; font-size: .73rem; line-height: 1.2; overflow-wrap: anywhere; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-footer { display:flex; flex-direction:column; align-items:stretch; gap:10px; margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.07); }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-footer .cmp-badge { align-self:flex-start; min-width:0; min-height:30px; padding-inline:8px; font-size:11px; white-space:nowrap; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-footer .cmp-row-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; width:100%; min-width:0; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchase-footer .cmp-icon-btn { display:inline-grid; width:100%; min-width:0; height:42px; box-sizing:border-box; padding:0; place-items:center; border-radius:9px; background:rgba(255,255,255,.045); }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .cmp-mobile-purchases.cmp-mobile-purchases { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

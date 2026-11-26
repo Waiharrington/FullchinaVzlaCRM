@@ -319,7 +319,7 @@ export function Mesas() {
       <div className="mesas-legend">
         <span><i className="dot free" /> Libre</span>
         <span><i className="dot occupied" /> Ocupada</span>
-        {editMode && <span className="mesas-legend-hint">Arrastra una mesa para reubicarla · toca una mesa para editarla</span>}
+        {editMode && <span className="mesas-legend-hint">Arrastra para mover · toca para editar</span>}
       </div>
 
       {selectedTable?.openOrderId && <Comandas

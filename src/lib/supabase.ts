@@ -107,6 +107,7 @@ const RPC_CHANGE_TABLES: Record<string, readonly string[]> = {
   fn_admin_set_loyalty_choice_reward: ['loyalty_settings', 'loyalty_reward_sequence', 'loyalty_reward_choices'],
   fn_admin_redeem_customer_loyalty_reward: ['customer_loyalty_rewards', 'customers'],
   fn_admin_update_public_order_page_settings: ['public_order_page_settings'],
+  fn_admin_update_public_order_store_status: ['public_order_page_settings'],
   fn_admin_update_public_order_contact: ['public_order_page_settings'],
   fn_admin_update_public_order_reels: ['public_order_page_settings'],
   fn_admin_set_public_order_carousel: ['public_order_page_settings'],
@@ -120,7 +121,10 @@ const RPC_READ_ONLY_NAMES = new Set(['fn_admin_customer_accounts'])
 // El reclamo de celebración se llama al cargar el perfil: si avisara un cambio
 // desde aquí, el perfil se recargaría y volvería a reclamar sin parar. Los
 // cambios reales llegan por el feed de versiones de la base de datos.
-const RPC_DERIVED_WRITE_NAMES = new Set(['fn_sync_dashboard_alerts', 'fn_claim_customer_loyalty_celebration'])
+// El vencimiento de pedidos web es limpieza que se dispara al leer el tablero:
+// tratarlo como cambio desconocido recargaba Comandas en bucle. Si vence algo,
+// el feed de versiones de la base de datos lo avisa.
+const RPC_DERIVED_WRITE_NAMES = new Set(['fn_sync_dashboard_alerts', 'fn_claim_customer_loyalty_celebration', 'fn_expire_stale_web_order_requests'])
 // Tope de relecturas cuando llegan cambios mientras una consulta viaja.
 const MAX_STALE_READ_RETRIES = 2
 const READ_ONLY_RPC_PREFIXES = [
@@ -230,6 +234,18 @@ function ensureCrossTabChangeFeed() {
     if (!event.key?.startsWith(CROSS_TAB_CHANGE_STORAGE_KEY_PREFIX) || !event.newValue) return
     try { receiveCrossTabChange(JSON.parse(event.newValue)) } catch { /* Ignore malformed cross-tab notices. */ }
   })
+}
+
+/** Fuerza que la próxima lectura de estas tablas vaya al servidor, sin avisar a las pantallas. */
+export function invalidateCachedReads(tables: readonly string[]) {
+  for (const table of tables) invalidateTable(table)
+}
+
+const sessionResetListeners = new Set<() => void>()
+/** Para vaciar datos guardados en memoria cuando cambia o se cierra la sesión. */
+export function onSessionReset(listener: () => void) {
+  sessionResetListeners.add(listener)
+  return () => sessionResetListeners.delete(listener)
 }
 
 export function publishDataChange(table: string) {
@@ -417,6 +433,7 @@ export function stopDataChangeFeed() {
   realtimeOwnerId = null
   lastKnownVersions.clear()
   responseCache.clear()
+  for (const listener of sessionResetListeners) listener()
 }
 
 type ChangeFeedClient = NonNullable<typeof supabase>

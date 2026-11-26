@@ -296,7 +296,7 @@ export function Gastos() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Wallet size={22} className="page-title-icon" /> Gastos</h1>
-          <p className="page-subtitle"><span className="gst-subtitle-desktop">Registra y controla todos los egresos operativos del negocio que no son compras de inventario.</span><span className="gst-subtitle-mobile">Control de gastos operativos.</span></p>
+          <p className="page-subtitle">Control de gastos operativos.</p>
         </div>
         <div className="gst-header-actions">
           <button type="button" className="gst-help" aria-label="Ayuda sobre gastos" title="Ayuda sobre gastos" aria-expanded={showExpenseHelp} aria-controls="gst-expense-help" onClick={() => setShowExpenseHelp((visible) => !visible)}>?</button>
@@ -306,7 +306,7 @@ export function Gastos() {
         {showExpenseHelp && <aside className="gst-help-popover" id="gst-expense-help" aria-label="Cómo registrar gastos">
           <button className="gst-help-popover-close" type="button" aria-label="Cerrar ayuda" onClick={() => setShowExpenseHelp(false)}><X size={15} /></button>
           <div className="gst-help-popover-heading"><span>GUÍA RÁPIDA</span><strong>¿Qué va en Gastos?</strong></div>
-          <p>Registra aquí nómina, delivery, comisiones y servicios: egresos que no corresponden a inventario.</p>
+          <p>Nómina, delivery, comisiones y servicios.</p>
           <div className="gst-help-purchase"><span>¿Es una compra de insumos?</span><strong>Regístrala en Compras</strong></div>
         </aside>}
       </header>
@@ -383,7 +383,7 @@ export function Gastos() {
                     <EmptyState
                       compact
                       title="No hay gastos registrados"
-                      description="Registra tu primer gasto para llevar el control de tus finanzas."
+                      description="Registra tu primer gasto."
                       actionLabel="Registrar gasto"
                       onAction={openExpenseForm}
                     />

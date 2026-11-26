@@ -259,7 +259,7 @@ export function MenuSemanal() {
       <header className="page-header">
         <div>
           <h1 className="page-title"><Utensils size={22} className="page-title-icon" /> Menú Semanal</h1>
-          <p className="page-subtitle">Administra los especiales rotativos y decide cuáles están disponibles esta semana.</p>
+          <p className="page-subtitle">Especiales disponibles esta semana.</p>
         </div>
         <div className="ws-head-actions">
           <button className="ws-help" onClick={() => flash('Crea un plato especial, actívalo para la semana y agrégalo a Caja para venderlo. Los platos quedan guardados para reusarlos.')}>
@@ -277,15 +277,15 @@ export function MenuSemanal() {
       <div className="ws-summary">
         <div className="ws-sum-card">
           <span className="ws-sum-ic" style={{ background: 'rgba(225,29,42,0.15)', color: '#e11d2a' }}><Flame size={20} /></span>
-          <div><div className="ws-sum-val">{active.length}</div><div className="ws-sum-lbl">Activos esta semana</div><div className="ws-sum-sub">Disponibles para tus clientes</div></div>
+          <div><div className="ws-sum-val">{active.length}</div><div className="ws-sum-lbl">Activos esta semana</div><div className="ws-sum-sub">Para tus clientes</div></div>
         </div>
         <div className="ws-sum-card">
           <span className="ws-sum-ic" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}><Library size={20} /></span>
-          <div><div className="ws-sum-val">{dishes.length}</div><div className="ws-sum-lbl">Platos guardados</div><div className="ws-sum-sub">En tu catálogo rotativo</div></div>
+          <div><div className="ws-sum-val">{dishes.length}</div><div className="ws-sum-lbl">Platos guardados</div><div className="ws-sum-sub">En el catálogo</div></div>
         </div>
         <div className="ws-sum-card">
           <span className="ws-sum-ic" style={{ background: 'rgba(16,185,129,0.15)', color: '#10b981' }}><Link2 size={20} /></span>
-          <div><div className="ws-sum-val">{inCatalog.length}</div><div className="ws-sum-lbl">En catálogo (Caja)</div><div className="ws-sum-sub">Disponibles para vender</div></div>
+          <div><div className="ws-sum-val">{inCatalog.length}</div><div className="ws-sum-lbl">En catálogo (Caja)</div><div className="ws-sum-sub">Listos para vender</div></div>
         </div>
         <div className="ws-sum-card">
           <span className="ws-sum-ic" style={{ background: 'rgba(255,255,255,0.06)', color: '#d4d4d8' }}><CalendarDays size={20} /></span>
@@ -303,7 +303,7 @@ export function MenuSemanal() {
       <div className="ws-section-head">
         <div className="ws-section-title">
           <Flame size={18} style={{ color: '#e11d2a' }} />
-          <div><h2>{isCurrentWeek ? 'Esta semana' : `Semana: ${weekLabel(viewStart)}`}</h2><p>{isCurrentWeek ? 'Platos activos que tus clientes pueden pedir.' : 'Platos que estuvieron activos esa semana (solo lectura).'}</p></div>
+          <div><h2>{isCurrentWeek ? 'Esta semana' : `Semana: ${weekLabel(viewStart)}`}</h2><p>{isCurrentWeek ? 'Lo que tus clientes pueden pedir.' : 'Activos esa semana (solo lectura).'}</p></div>
         </div>
         <button className="ws-help" onClick={openCalendar}><CalendarDays size={15} /> Ver calendario</button>
       </div>
@@ -349,7 +349,7 @@ export function MenuSemanal() {
       <div className="ws-catalog">
         <div className="ws-section-title" style={{ marginBottom: 12 }}>
           <Library size={18} style={{ color: '#a78bfa' }} />
-          <div><h2>Catálogo de platos rotativos</h2><p>Todos tus platos especiales guardados. Actívalos cuando quieras.</p></div>
+          <div><h2>Catálogo de platos rotativos</h2><p>Actívalos cuando quieras.</p></div>
         </div>
 
         <div className="ws-cat-tools">
@@ -409,7 +409,7 @@ export function MenuSemanal() {
         <div className={`ws-modal-overlay ${closingCreate ? 'closing' : ''}`} onClick={() => closeCreate()}>
           <form className="ws-modal" onClick={(e) => e.stopPropagation()} onSubmit={handleCreate}>
             <div className="ws-modal-heading"><h3>Nuevo plato especial</h3></div>
-            <p className="sub">Se guarda en tu catálogo rotativo para reutilizarlo cuando quieras.</p>
+            <p className="sub">Queda guardado para reutilizarlo.</p>
             <ImagePicker value={form.imageUrl} emoji={form.emoji} onPick={(f) => pickImage(f, (u) => setForm({ ...form, imageUrl: u }))} onClear={() => setForm({ ...form, imageUrl: null })} />
             <div className="ws-row2">
               <div className="ws-field" style={{ maxWidth: 90 }}><label>Emoji</label><input value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} style={{ textAlign: 'center', fontSize: 20 }} /></div>
@@ -466,7 +466,7 @@ export function MenuSemanal() {
               <h3>Calendario de semanas</h3>
               <button type="button" className="ws-modal-close" onClick={() => closeCalendar()} aria-label="Cerrar"><X size={16} /></button>
             </div>
-            <p className="sub">Semanas con platos activos. Toca una para verla.</p>
+            <p className="sub">Toca una semana para verla.</p>
             {weekSummary.length === 0 && <p style={{ color: '#71717a' }}>Aún no hay historial de semanas.</p>}
             {weekSummary.map((w) => (
               <button key={w.weekStart} className="ws-btn-sm" style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}

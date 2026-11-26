@@ -279,7 +279,7 @@ export function PaymentModal({ form, closingPayment, paymentOrder, paymentRate, 
                 <div className="payment-textarea-wrap">
                   <textarea
                     className="payment-field-textarea"
-                    placeholder="Ej. Pago por Yape / Pago Móvil"
+                    placeholder="Ej. Pagó una parte en Bs"
                     value={paymentNote}
                     onChange={(e) => setPaymentNote(e.target.value.slice(0, 120))}
                     rows={2}

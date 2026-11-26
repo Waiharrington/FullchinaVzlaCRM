@@ -78,7 +78,7 @@ export function Auditoria() {
     return (
       <div className="page animate-fade-in">
         <header className="page-header">
-          <div><h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1><p className="page-subtitle">Cambios y movimientos realizados en el sistema</p></div>
+          <div><h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1><p className="page-subtitle">Cambios hechos en el sistema</p></div>
         </header>
         <div className="card table-card" style={{ textAlign: 'center', padding: '48px 16px' }}>
           <AlertTriangle size={42} style={{ color: '#eab308', marginBottom: 14, opacity: .7 }} />
@@ -97,7 +97,7 @@ export function Auditoria() {
             <h1 className="page-title"><Activity size={22} className="page-title-icon" /> Historial general</h1>
             <button type="button" className="activity-history-refresh" onClick={() => void load()} aria-label="Actualizar historial general" title="Actualizar historial general"><RefreshCw size={16} /><span>Actualizar</span></button>
           </div>
-          <p className="page-subtitle"><span className="activity-history-subtitle-desktop">{logs.length} movimientos cargados · Quién hizo cada cambio y cuándo</span><span className="activity-history-subtitle-mobile">{logs.length} cambios · Quién y cuándo</span></p>
+          <p className="page-subtitle">{logs.length} cambios · Quién y cuándo</p>
         </div>
       </header>
 

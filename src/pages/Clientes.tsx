@@ -855,8 +855,7 @@ export function Clientes() {
           <div>
             <h1 className="page-title"><User size={22} className="page-title-icon" /> Clientes</h1>
             <p className="clientes-subtitle">
-              <span className="clientes-subtitle-desktop">Gestiona tu base de clientes, créditos y actividad de compra.</span>
-              <span className="clientes-subtitle-mobile">Clientes, compras y créditos.</span>
+              Clientes, compras y créditos.
             </p>
           </div>
         </div>

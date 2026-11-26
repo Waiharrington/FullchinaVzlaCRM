@@ -526,8 +526,7 @@ export function RecetasReal() {
         <div>
           <h1 className="page-title"><BookOpen size={22} className="page-title-icon" /> Recetas</h1>
           <p className="page-subtitle">
-            <span className="rec-subtitle-desktop">Gestiona todas las recetas y sus componentes por producto vendible.</span>
-            <span className="rec-subtitle-mobile">Recetas para cada plato.</span>
+            Recetas para cada plato.
           </p>
         </div>
         <button
@@ -614,7 +613,7 @@ export function RecetasReal() {
             {pageItems.length === 0 && (
               <EmptyState
                 title="No hay recetas que coincidan"
-                description="Prueba con otro nombre o crea una receta nueva."
+                description="Prueba otro nombre."
                 actionLabel="Agregar receta"
                 onAction={() => { setNewRecipeProductId(''); setShowNewRecipe(true) }}
               />
@@ -721,7 +720,7 @@ export function RecetasReal() {
                     <div className="rec-empty">
                       <div className="ic"><Soup size={44} /></div>
                       <h4>Esta receta no tiene ingredientes agregados</h4>
-                      <p>Agrega los ingredientes y cantidades para calcular el costo real de esta receta.</p>
+                      <p>Agrega ingredientes para ver el costo.</p>
                       <button className="rec-add-btn" onClick={() => setShowAdd(true)}><Plus size={16} /> Agregar ingrediente</button>
                     </div>
                   ) : (
@@ -799,7 +798,7 @@ export function RecetasReal() {
             </div>
             <button className="rec-add-btn" onClick={openPortionForm}><Plus size={16} /><span className="rec-portion-action-desktop">Nueva receta de porción</span><span className="rec-portion-action-mobile">Nueva porción</span></button>
           </div>
-          {portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Crea una porción base como pollo de 125 g para usarla en tus platos." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-portion-list"><div className="rec-portion-header"><span>Porción</span><span>Ingrediente</span><span>Cantidad</span><span>Origen</span><span>Acciones</span></div>{portions.map(portion => <article className="rec-portion-row" key={portion.id}><strong>{portion.name}</strong><span>{portion.ingredientName || 'Ingrediente no encontrado'}</span><b>{portion.quantity} {portion.unitSymbol}</b><span className="rec-origin">Inventario</span><div className="rec-portion-actions"><button type="button" aria-label={`Editar ${portion.name}`} onClick={() => openEditPortion(portion)}><Pencil size={15} /></button><button type="button" aria-label={`Eliminar ${portion.name}`} onClick={() => void handleDeletePortion(portion)}><Trash2 size={15} /></button></div></article>)}</div>}
+          {portions.length === 0 ? <div className="rec-empty-module"><EmptyState title="No hay recetas de porciones registradas" description="Ej.: pollo de 125 g." actionLabel="Crear receta de porción" onAction={openPortionForm} /></div> : <div className="rec-portion-list"><div className="rec-portion-header"><span>Porción</span><span>Ingrediente</span><span>Cantidad</span><span>Origen</span><span>Acciones</span></div>{portions.map(portion => <article className="rec-portion-row" key={portion.id}><strong>{portion.name}</strong><span>{portion.ingredientName || 'Ingrediente no encontrado'}</span><b>{portion.quantity} {portion.unitSymbol}</b><span className="rec-origin">Inventario</span><div className="rec-portion-actions"><button type="button" aria-label={`Editar ${portion.name}`} onClick={() => openEditPortion(portion)}><Pencil size={15} /></button><button type="button" aria-label={`Eliminar ${portion.name}`} onClick={() => void handleDeletePortion(portion)}><Trash2 size={15} /></button></div></article>)}</div>}
         </section>
       ) : (
         <section className="rec-module-view management-workspace-content rec-staff-view">
@@ -937,7 +936,7 @@ export function RecetasReal() {
               <h3>Configurar nueva receta</h3>
             </div>
             <p className="rec-detail-sub" style={{ marginBottom: 14 }}>
-              Elige el producto vendible al que le vas a configurar la receta. Los que aún no tienen ingredientes aparecen primero.
+              Elige un plato. Primero, los sin receta.
             </p>
             <SearchSelect
               options={[...products]
@@ -1036,7 +1035,7 @@ export function RecetasReal() {
               <h3>Agregar a ración de {staffIngTargetMeal === 'lunch' ? 'Almuerzo' : 'Cena'}</h3>
             </div>
             <p className="rec-detail-sub">
-              Define la cantidad estándar que consume una persona de este insumo.
+              Cantidad que consume una persona.
             </p>
 
             <div className="rec-form-label">

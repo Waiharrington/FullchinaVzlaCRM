@@ -996,7 +996,7 @@ export function Caja({ embedded = false, onClose, onOrderCreated }: CajaProps = 
   if (showConfirmation && currentOrder) {
     const orderNo = `#FC-${String(currentOrder.orderNumber).padStart(6, '0')}`
     const formattedDate = new Date(currentOrder.createdAt).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-    const formattedTime = new Date(currentOrder.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })
+    const formattedTime = new Date(currentOrder.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })
     const paymentLabel = currentOrder.paymentMethod === 'personal_account'
       ? `Cuenta personal · ${personalAccounts.find(account => account.id === currentOrder.payments?.[0]?.personalAccountId)?.name ?? 'Consumo interno'}`
       : currentOrder.paymentMethod === 'cash'

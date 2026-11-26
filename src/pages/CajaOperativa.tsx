@@ -193,7 +193,7 @@ export function CajaOperativa() {
       <header className="cash-ops-header management-workspace-header">
         <div>
           <h1 className="page-title"><WalletCards size={22} className="page-title-icon" /><span className="cash-ops-title-desktop">Apertura y cierre de caja</span><span className="cash-ops-title-mobile">Control de caja</span></h1>
-          <p><span className="cash-subtitle-desktop">Fondos iniciales, movimientos, arqueo y diferencias del turno.</span><span className="cash-subtitle-mobile">Fondos y arqueo del turno.</span></p>
+          <p>Fondos y arqueo del turno.</p>
         </div>
         <button className="cash-refresh" onClick={() => void refresh()} disabled={loading} aria-label="Actualizar caja" title="Actualizar caja">
           <RefreshCw size={18} className={loading ? 'is-spinning' : ''} /><span className="cash-refresh-label">Actualizar</span>
@@ -209,7 +209,7 @@ export function CajaOperativa() {
             <div className="cash-open-icon"><LockKeyhole size={30} /></div>
             <span>La caja está cerrada</span>
             <h2>Abre el turno antes de cobrar</h2>
-            <p>Registra el efectivo físico con el que comienza la Caja principal.</p>
+            <p>Cuenta el efectivo inicial de la caja.</p>
           </div>
           <form className="cash-form" onSubmit={handleOpen}>
             <label>Fondo inicial en USD<NumberStepper min={0} step={0.01} value={openingUsd} onChange={(v) => setOpeningUsd(v)} required /></label>
@@ -258,14 +258,14 @@ export function CajaOperativa() {
                     <span className="cash-empty-state-icon" aria-hidden="true"><ArrowLeftRight size={22} /></span>
                     <div>
                       <strong>Tu turno aún no tiene movimientos</strong>
-                      <p>Las entradas, salidas, retiros y ajustes que registres aparecerán aquí.</p>
+                      <p>Aquí verás entradas, salidas y ajustes.</p>
                     </div>
                   </div>
                 )}
                 {session.movements.map(movement => (
                   <div className="cash-movement-row" key={movement.id}>
                     <span className={`cash-direction ${movement.direction}`}>{movement.direction === 'in' ? <ArrowDownLeft size={17} /> : <ArrowUpRight size={17} />}</span>
-                    <div><strong>{movement.description}</strong><span>{new Date(movement.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                    <div><strong>{movement.description}</strong><span>{new Date(movement.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}</span></div>
                     <b className={movement.direction}>{movement.direction === 'in' ? '+' : '-'}{money(movement.amount, movement.currency)}</b>
                   </div>
                 ))}
@@ -277,7 +277,7 @@ export function CajaOperativa() {
               <div className="cash-payment-list">
                 <div><span>Dólares en efectivo</span><strong>{money(session.cashSalesUsd)}</strong></div>
                 <div><span>Bolívares en efectivo</span><strong>{money(session.cashSalesVes, 'VES')}</strong></div>
-                <p className="cash-payment-note">Pago móvil, punto, transferencias y Binance se concilian en sus cuentas financieras.</p>
+                <p className="cash-payment-note">Los pagos digitales van en Finanzas.</p>
               </div>
               <button className="cash-close-button" onClick={prepareClose}><LockKeyhole size={18} /> Iniciar arqueo y cierre</button>
             </article>
@@ -320,7 +320,7 @@ export function CajaOperativa() {
                             {tx.orderType && <span className="cash-tx-badge muted">{ORDER_TYPE_LABELS[tx.orderType] ?? tx.orderType}</span>}
                           </>
                         )}
-                        <span>{new Date(tx.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{new Date(tx.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                       </span>
                       {tx.itemsSummary && <span className="cash-tx-items">{tx.itemsSummary}</span>}
                     </div>
@@ -345,7 +345,7 @@ export function CajaOperativa() {
           <form className="cash-close-modal" onSubmit={handleClose} onClick={event => event.stopPropagation()}>
             <span className="cash-ops-eyebrow">Arqueo del turno #{session.sessionNumber}</span>
             <h2>Cuenta el efectivo físico</h2>
-            <p>Compara lo contado con el monto esperado antes de confirmar.</p>
+            <p>Compara lo contado con lo esperado.</p>
             <div className="cash-close-grid">
               <label>Contado USD<NumberStepper min={0} step={0.01} value={countedUsd} onChange={(v) => setCountedUsd(v)} required /><small>Esperado: {money(session.expectedCashUsd)}</small></label>
               <label>Contado Bs.<NumberStepper min={0} step={0.01} value={countedVes} onChange={(v) => setCountedVes(v)} required /><small>Esperado: {money(session.expectedCashVes, 'VES')}</small></label>

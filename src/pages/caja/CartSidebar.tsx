@@ -72,7 +72,7 @@ export function CartSidebar({ mobileCartOpen, embedded, isPhoneViewport, mobileC
 
                 <span className="cart-badge-type">{ORDER_TYPE_LABELS[orderType].label}</span>
 
-                <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="cart-time">{new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
 
               </div>
 
@@ -450,7 +450,7 @@ export function CartSidebar({ mobileCartOpen, embedded, isPhoneViewport, mobileC
 
                   {occupiedTables.size > 0 && (
 
-                    <small className="delivery-fee-hint">Las mesas resaltadas ya tienen un pedido abierto sin cobrar.</small>
+                    <small className="delivery-fee-hint">Resaltadas: pedido sin cobrar.</small>
 
                   )}
 

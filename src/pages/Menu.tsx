@@ -479,7 +479,7 @@ export function Menu() {
       <header className="page-header">
         <div>
           <h1 className="page-title"><UtensilsCrossed size={22} className="page-title-icon" /> Menú</h1>
-          <p className="page-subtitle">Gestiona y organiza todos tus platos.</p>
+          <p className="page-subtitle">Organiza todos tus platos.</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="mnu-select-btn" onClick={() => setCatManagerOpen(true)}><Tag size={15} /> Categorías</button>
@@ -527,7 +527,7 @@ export function Menu() {
       {filtered.length === 0 ? (
         <EmptyState
           title="No hay platos que coincidan"
-          description="Prueba con otro nombre, cambia los filtros o crea un plato nuevo."
+          description="Prueba otro nombre o filtro."
           actionLabel="Nuevo plato"
           onAction={openNew}
         />

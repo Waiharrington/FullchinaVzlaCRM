@@ -94,7 +94,7 @@ function formatAlertDateTime(value: string) {
     month: 'short',
     year: 'numeric',
     hour: 'numeric',
-    minute: '2-digit',
+    minute: '2-digit', hour12: true
   }).format(new Date(value))
 }
 
@@ -104,7 +104,7 @@ function formatCompactAlertDateTime(value: string) {
     day: '2-digit',
     month: 'short',
     hour: 'numeric',
-    minute: '2-digit',
+    minute: '2-digit', hour12: true
   }).format(new Date(value))
 }
 
@@ -988,7 +988,7 @@ export function Inicio() {
           <div className="db-card-head db-payment-head">
             <div>
               <h3>Método de pago</h3>
-                <span className="db-card-support">Cobros del {selectedDayLabel} · consumos internos y pendientes aparte</span>
+                <span className="db-card-support">Cobros del {selectedDayLabel}</span>
             </div>
             <span className="db-payment-count">{selectedDayLoading ? <LoadingSkeleton label="Cargando medios de pago" variant="inline" /> : `${dashboardPaymentMethods.length} medio${dashboardPaymentMethods.length === 1 ? '' : 's'}`}</span>
           </div>
@@ -1009,7 +1009,7 @@ export function Inicio() {
                 <div className="db-pago-empty" role="status">
                   <CreditCard size={22} />
                   <span>{isSelectedToday ? 'Aún no hay cobros hoy' : 'No hay cobros ese día'}</span>
-                  <small>El desglose aparecerá al registrar el primer pago.</small>
+                  <small>Aparece con el primer pago.</small>
                 </div>
               ) : dashboardPaymentMethods.map((m, i) => {
                 const share = paymentTotal > 0 ? Math.round((m.total / paymentTotal) * 100) : 0
@@ -1062,7 +1062,7 @@ export function Inicio() {
               <div className="db-empty-state"><ClipboardList size={20} /><span>Sin comandas pagadas ese día</span></div>
             ) : recentOrders.map((o) => (
               <div key={o.id} className="db-order-row">
-                <span className="ord-time">{new Date(o.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="ord-time">{new Date(o.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
                 <span className="ord-folio">#{String(o.orderNumber).padStart(4, '0')}</span>
                 <span className="ord-badge paid">Pagada</span>
                 <MoneyWithBcv usd={o.totalAmount || 0} rate={'bcvRate' in o ? o.bcvRate : bcvRate} className="ord-total" compact />
@@ -1231,7 +1231,7 @@ export function Inicio() {
             <div className="db-modal-list">
               {paymentMethodDetails.length === 0 ? <div className="db-modal-empty"><CreditCard size={24} /><span>No hay cobros registrados con este método ese día.</span></div> : paymentMethodDetails.map(({ order, payment }) => (
                 <button className={`db-payment-detail-row ${expandedPaymentOrderId === order.id ? 'is-expanded' : ''}`} type="button" key={payment.id} onClick={() => setExpandedPaymentOrderId(current => current === order.id ? null : order.id)} aria-expanded={expandedPaymentOrderId === order.id}>
-                  <div><strong>Comanda #{String(order.orderNumber).padStart(4, '0')}</strong><small>{new Date(payment.createdAt || order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small>{expandedPaymentOrderId === order.id && <div className="db-order-items-detail"><span className="db-order-items-title">Detalle de la orden</span>{order.items.map(item => <span key={item.id}>{item.quantity} × {formatProductTitle(item.productName)}</span>)}</div>}</div>
+                  <div><strong>Comanda #{String(order.orderNumber).padStart(4, '0')}</strong><small>{new Date(payment.createdAt || order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })} · {order.customerName}</small>{expandedPaymentOrderId === order.id && <div className="db-order-items-detail"><span className="db-order-items-title">Detalle de la orden</span>{order.items.map(item => <span key={item.id}>{item.quantity} × {formatProductTitle(item.productName)}</span>)}</div>}</div>
                   <MoneyWithBcv usd={payment.amount} className="db-payment-detail-amount" compact />
                 </button>
               ))}
@@ -1263,7 +1263,7 @@ export function Inicio() {
                     navigate('/comandas', { state: { openOrderId: order.id } })
                   }}
                 >
-                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className={`ord-badge ${order.status === 'paid' ? 'paid' : 'pending'}`}>{order.status === 'paid' ? 'Pagada' : isCreditAuthorizedOrder(order) ? 'Crédito autorizado' : 'Pendiente'}</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName}</small></div>
+                  <div><strong>#{String(order.orderNumber).padStart(4, '0')}</strong><span className={`ord-badge ${order.status === 'paid' ? 'paid' : 'pending'}`}>{order.status === 'paid' ? 'Pagada' : isCreditAuthorizedOrder(order) ? 'Crédito autorizado' : 'Pendiente'}</span><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })} · {order.customerName}</small></div>
                   <MoneyWithBcv usd={order.totalAmount} className="db-payment-detail-amount" compact />
                 </button>
               ))}

@@ -10,10 +10,10 @@ import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 type StationFilter = 'all' | 'wok' | 'fryer' | 'prep'
 
 const STATIONS = [
-  { key: 'all', label: 'Todas las Estaciones', icon: <ChefHat size={16} /> },
-  { key: 'wok', label: 'Arroz & Wok', icon: <CookingPot size={16} /> },
-  { key: 'fryer', label: 'Freidora & Lumpias', icon: <Utensils size={16} /> },
-  { key: 'prep', label: 'Salsas & Empaque', icon: <Package size={16} /> },
+  { key: 'all', label: 'Todas', icon: <ChefHat size={16} /> },
+  { key: 'wok', label: 'Arroz y wok', icon: <CookingPot size={16} /> },
+  { key: 'fryer', label: 'Freidora', icon: <Utensils size={16} /> },
+  { key: 'prep', label: 'Empaque', icon: <Package size={16} /> },
 ]
 
 // Cache a nivel de módulo: al volver a Cocina se muestran las órdenes de la
@@ -60,9 +60,9 @@ export function Cocina() {
   }
 
   const getTimerBadge = (minutes: number) => {
-    if (minutes >= 15) return { text: `${minutes} MIN - RETRASADO`, class: 'kds-timer-urgent' }
-    if (minutes >= 10) return { text: `${minutes} MIN - ALERTA`, class: 'kds-timer-warning' }
-    return { text: `${minutes} MIN`, class: 'kds-timer-normal' }
+    if (minutes >= 15) return { text: `${minutes} min · Retrasado`, class: 'kds-timer-urgent' }
+    if (minutes >= 10) return { text: `${minutes} min · Atención`, class: 'kds-timer-warning' }
+    return { text: `${minutes} min`, class: 'kds-timer-normal' }
   }
 
   const handleStatusChange = async (orderId: string, newStatus: FullOrder['fulfillmentStatus']) => {
@@ -94,8 +94,16 @@ export function Cocina() {
     <div className="kds-page animate-fade-in">
       <header className="kds-header">
         <div className="kds-header-title">
-          <h1 className="page-title"><ChefHat size={22} className="page-title-icon" /> KDS - Pantalla de Cocina</h1>
+          <h1 className="page-title"><ChefHat size={22} className="page-title-icon" /> Cocina</h1>
           <span className="kds-live-badge"><span className="kds-live-dot" /> EN VIVO</span>
+          <button
+            className={`kds-btn-sound ${soundEnabled ? 'active' : ''}`}
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            aria-pressed={soundEnabled}
+            title={soundEnabled ? 'Avisos activados' : 'Avisos apagados'}
+          >
+            {soundEnabled ? <><Bell size={14} /> Avisos</> : <><BellOff size={14} /> Sin avisos</>}
+          </button>
         </div>
 
         <div className="kds-header-actions">
@@ -110,14 +118,6 @@ export function Cocina() {
               </button>
             ))}
           </div>
-
-          <button
-            className={`kds-btn-sound ${soundEnabled ? 'active' : ''}`}
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            title="Toggle alerta de sonido"
-          >
-            {soundEnabled ? <><Bell size={14} /> Alertas ON</> : <><BellOff size={14} /> Alertas OFF</>}
-          </button>
         </div>
       </header>
 
@@ -139,9 +139,10 @@ export function Cocina() {
                   <div className="kds-order-info">
                     <span className="kds-order-id">#{String(order.orderNumber).padStart(4, '0')}</span>
                     <span className="kds-order-time">
-                      {new Date(order.createdAt).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}
                     </span>
                   </div>
+                  <span className="kds-status">{order.fulfillmentStatus === 'preparing' ? 'Preparando' : 'Nueva'}</span>
                   <span className={`kds-timer ${timerInfo.class}`}>{timerInfo.text}</span>
                 </div>
 
@@ -150,7 +151,7 @@ export function Cocina() {
                     {order.items.map((item) => (
                       <li key={item.id} className="kds-item">
                         <span className="kds-item-qty">{item.quantity}</span>
-                        <span className="kds-item-name"><ChefHat size={14} style={{opacity:.7}} /> {formatProductTitle(item.productName)}</span>
+                        <span className="kds-item-name">{formatProductTitle(item.productName)}</span>
                       </li>
                     ))}
                   </ul>

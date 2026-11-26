@@ -531,7 +531,7 @@ export function Equipo() {
         {activeTeam.length === 0 ? (
           <EmptyState
             title="No hay empleados activos"
-            description="Los empleados suspendidos o archivados no aparecen en la nómina. Crea o activa un empleado para continuar."
+            description="Crea o activa un empleado."
             actionLabel="Nuevo empleado"
             onAction={() => handleOpenModal()}
           />
@@ -699,7 +699,7 @@ export function Equipo() {
                     <h3>{userModalMode === 'create' ? 'Crear usuario de acceso' : 'Editar usuario'}</h3>
                     <span className={`user-role-badge ${uRole}`}>{ROLE_LABEL[uRole]}</span>
                   </div>
-                  <p>Identidad, rol y módulos disponibles en un solo lugar.</p>
+                  <p>Datos, rol y accesos.</p>
                 </div>
               </div>
             </div>
@@ -841,7 +841,7 @@ export function Equipo() {
               </div>
 
               <div className="modal-actions-bar user-access-actions">
-                <p>Los cambios se aplicarán al próximo acceso del usuario.</p>
+                <p>Se aplica en su próximo ingreso.</p>
                 <div>
                   <button type="button" className="btn-cancel" onClick={() => closeUserModal()}>Cancelar</button>
                   <button type="submit" className="btn-save" disabled={uSaving}>

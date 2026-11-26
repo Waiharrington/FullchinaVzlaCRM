@@ -795,7 +795,7 @@ export function Finanzas() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><TrendingUp size={22} className="page-title-icon" /> <span className="fin-title-desktop">Finanzas & Cierre Financiero Automático</span><span className="fin-title-mobile">Finanzas y reportes</span></h1>
-          <p className="page-subtitle"><span className="fin-subtitle-desktop">Ingresos, egresos, saldos y rentabilidad del negocio en un solo lugar.</span><span className="fin-subtitle-mobile">Ingresos, gastos y saldos del negocio.</span></p>
+          <p className="page-subtitle">Ingresos, gastos y saldos del negocio.</p>
         </div>
         <div className="fin-head-actions">
           <span className="fin-period"><CalendarDays size={15} />
@@ -815,7 +815,7 @@ export function Finanzas() {
 
       {!loading && !fullHistory && (
         <p className="fin-history-window" role="status" style={{ margin: '0 0 12px', fontSize: 13, opacity: 0.8 }}>
-          Mostrando pedidos desde {new Date(`${windowStart}T12:00:00`).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}. Los saldos de las cuentas son siempre completos.{' '}
+          Pedidos desde {new Date(`${windowStart}T12:00:00`).toLocaleDateString('es-VE', { day: 'numeric', month: 'long' })}.{' '}
           <button type="button" className="fin-dialog-secondary" disabled={loadingFull} onClick={() => void loadFullHistory()}>{loadingFull ? 'Cargando…' : 'Cargar historial completo'}</button>
         </p>
       )}
@@ -855,7 +855,7 @@ export function Finanzas() {
         <div className="fin-be fin-be--ring">
           <div className="fin-be-head">
             <span className="fin-be-ic"><Target size={20} /></span>
-            <div><h2>Cobertura de costos del período</h2><p>Compara las ventas con insumos, gastos y nómina realmente registrados.</p></div>
+            <div><h2>Cobertura de costos del período</h2><p>Ventas frente a costos registrados.</p></div>
           </div>
           <div className="fin-be-body">
             <div className="fin-be-ring-wrap">
@@ -924,7 +924,7 @@ export function Finanzas() {
       <div className="fin-card fin-accounts-card management-workspace-panel">
         <div className="fin-accounts-toolbar">
           <div><h2><span className="fin-accounts-title-desktop">Saldos actuales por cuenta</span><span className="fin-accounts-title-mobile">Saldos por cuenta</span></h2>
-            <p className="sub"><span className="fin-accounts-sub-desktop">Saldo inicial más cobros, menos compras y gastos asociados a cada cuenta.</span><span className="fin-accounts-sub-mobile">Saldo disponible y movimientos por cuenta.</span></p>
+            <p className="sub">Saldo y movimientos por cuenta.</p>
           </div>
           <div className="fin-manual-movement-actions">
             <button type="button" className="fin-manual-movement-btn income" onClick={() => openManualFinance('income')}><TrendingUp size={15}/> Registrar ingreso</button>
@@ -932,7 +932,7 @@ export function Finanzas() {
           </div>
         </div>
         {accounts.length === 0 ? (
-          <p className="fin-account-empty">Configura las cuentas para ver Banco Exterior, Banesco, efectivo y punto de venta.</p>
+          <p className="fin-account-empty">Configura las cuentas para verlas aquí.</p>
         ) : (
           <>
             {usdAccounts.length > 0 && (
@@ -974,15 +974,15 @@ export function Finanzas() {
       </div>
 
       <div className="fin-currency-summary">
-        <button className="fin-card" onClick={() => setSelectedLedgerCurrency('VES')}><span className="sub">Cobros recibidos en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>{formatUsd(salesVesUsd)} de referencia contable · Ver control diario</small></button>
-        <button className="fin-card" onClick={() => setSelectedLedgerCurrency('USD')}><span className="sub">Cobros recibidos en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Efectivo y medios denominados en USD · Ver control diario</small></button>
+        <button className="fin-card" onClick={() => setSelectedLedgerCurrency('VES')}><span className="sub">Cobros recibidos en bolívares · {periodLabel}</span><strong>{bcvRate ? formatVes(salesVesUsd * bcvRate) : 'Bs. —'}</strong><small>Ref. {formatUsd(salesVesUsd)} · Ver control diario</small></button>
+        <button className="fin-card" onClick={() => setSelectedLedgerCurrency('USD')}><span className="sub">Cobros recibidos en dólares · {periodLabel}</span><strong>{formatUsd(salesUsd)}</strong><small>Ver control diario</small></button>
       </div>
       </>}
 
       {activeTab === 'daily' && <>
       <section className="fin-card fin-daily-summary">
         <div className="fin-daily-head">
-          <div><h2>Resumen diario de operación</h2><p className="sub">Ventas y egresos reales organizados como el control diario del negocio.</p></div>
+          <div><h2>Resumen diario de operación</h2><p className="sub">Ventas y egresos del día a día.</p></div>
           <span className="fin-period-context">{periodLabel}</span>
         </div>
         <div className="fin-daily-layout">
@@ -1022,7 +1022,7 @@ export function Finanzas() {
                 <summary>Desglose de ingresos · {paidOrdersByDay.get(row.date)?.length ?? 0} comandas</summary>
                 {(paidOrdersByDay.get(row.date)?.length ?? 0) > 0 ? <ul>
                   {paidOrdersByDay.get(row.date)!.map(order => <li key={order.id}>
-                    <span><strong>#{String(order.orderNumber).padStart(6, '0')}</strong><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })} · {order.customerName || 'Cliente general'}</small></span>
+                    <span><strong>#{String(order.orderNumber).padStart(6, '0')}</strong><small>{new Date(order.createdAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })} · {order.customerName || 'Cliente general'}</small></span>
                     <b>{formatUsd(order.totalAmount)}</b>
                   </li>)}
                 </ul> : <p className="fin-daily-income-empty">No hay comandas pagadas este día.</p>}
@@ -1077,7 +1077,7 @@ export function Finanzas() {
       </div>
       <div className="fin-card">
         <h2>Movimientos administrativos</h2>
-        <p className="sub">Traspasos, cobros, adelantos y propinas, sin afectar la utilidad.</p>
+        <p className="sub">No afectan la utilidad.</p>
         <div className="fin-ops-actions">
           <button className="fin-export" onClick={() => openTransfer('transfer')}><ArrowRightLeft size={15} /> Registrar transferencia</button>
           <button className="fin-export fin-export--convert" onClick={() => openTransfer('convert')}><DollarSign size={15} /> Convertir divisa</button>
@@ -1118,7 +1118,7 @@ export function Finanzas() {
       {activeTab === 'history' && <section className="fin-history">
         <div className="fin-card fin-history-card">
           <div className="fin-history-head">
-            <div><h2>Historial financiero</h2><p className="sub">Movimientos reales de dinero. Los traspasos entre cuentas aparecen aparte y no cuentan como ingreso ni egreso.</p></div>
+            <div><h2>Historial financiero</h2><p className="sub">Los traspasos se muestran aparte.</p></div>
             <span className="fin-period-context">{periodLabel}</span>
           </div>
           <div className="fin-history-summary">
@@ -1143,7 +1143,7 @@ export function Finanzas() {
                 <td className={`fin-history-amount ${entry.direction}`}>{entry.direction === 'in' ? '+' : entry.direction === 'out' ? '−' : ''}{entry.currency === 'VES' ? formatVes(entry.nativeAmount) : formatUsd(entry.nativeAmount)}<small>{entry.currency === 'VES' ? `${formatUsd(entry.amountUsd)} equivalente` : 'USD'}</small></td>
               </tr>)}</tbody>
             </table>
-            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos en este período" description="Cuando se registren cobros, gastos, compras o movimientos, aparecerán aquí." />}
+            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos en este período" description="Aquí verás cobros, gastos y compras." />}
           </div>
           <div className="fin-history-mobile-list">
             {historyPageGroups.map(group => <section className="fin-history-mobile-day" key={group.date}>
@@ -1161,7 +1161,7 @@ export function Finanzas() {
                 </div>
               </article>)}
             </section>)}
-            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos en este período" description="Cuando se registren cobros, gastos, compras o movimientos, aparecerán aquí." />}
+            {pagedHistoryEntries.length === 0 && <EmptyState compact title="No hay movimientos en este período" description="Aquí verás cobros, gastos y compras." />}
           </div>
           {visibleHistoryEntries.length > historyPageSize && <div className="fin-history-pagination">
             <span>Mostrando {(safeHistoryPage - 1) * historyPageSize + 1}–{Math.min(safeHistoryPage * historyPageSize, visibleHistoryEntries.length)} de {visibleHistoryEntries.length}</span>
@@ -1207,7 +1207,7 @@ export function Finanzas() {
               <tr className="total"><th>Saldo actual</th><td>{money(ledger.closing)}</td></tr>
             </tbody></table></div>
             <section className="fin-account-movements" aria-labelledby="fin-account-movements-title">
-              <header className="fin-account-movements-head"><div><h3 id="fin-account-movements-title">Historial de la cuenta</h3><p>Ingresos, egresos y saldo acumulado desde el saldo inicial.</p></div><div className="fin-account-page-size"><label htmlFor="fin-account-page-size">Mostrar</label><select id="fin-account-page-size" value={accountMovementPageSize} onChange={event => { setAccountMovementPageSize(Number(event.target.value) as 10 | 20); setAccountMovementPage(1) }}><option value={10}>10</option><option value={20}>20</option></select></div></header>
+              <header className="fin-account-movements-head"><div><h3 id="fin-account-movements-title">Historial de la cuenta</h3><p>Ingresos, egresos y saldo.</p></div><div className="fin-account-page-size"><label htmlFor="fin-account-page-size">Mostrar</label><select id="fin-account-page-size" value={accountMovementPageSize} onChange={event => { setAccountMovementPageSize(Number(event.target.value) as 10 | 20); setAccountMovementPage(1) }}><option value={10}>10</option><option value={20}>20</option></select></div></header>
               <div className="fin-account-history-opening"><span>Saldo inicial registrado</span><strong>{money(accountHistory.opening)}</strong></div>
               {Math.abs(balanceDifference) >= 0.01 && <div className="fin-account-history-warning"><CircleAlert size={15}/><span>El historial suma {money(accountHistory.calculatedClosing)} y el saldo actual es {money(accountHistory.actualClosing)}. Diferencia por identificar: <strong>{balanceDifference > 0 ? '+' : '−'} {money(Math.abs(balanceDifference))}</strong>.</span></div>}
               <div className="fin-account-movement-filters" role="group" aria-label="Filtrar movimientos">
@@ -1217,7 +1217,7 @@ export function Finanzas() {
               </div>
               {pageMovements.length ? <div className="fin-account-movement-list">{pageMovements.map(movement => <article className={`fin-account-movement ${movement.direction}`} key={movement.id}>
                 <span className="fin-account-movement-icon" aria-hidden="true">{movement.direction === 'in' ? <TrendingUp size={16}/> : <TrendingDown size={16}/>}</span>
-                <div className="fin-account-movement-copy"><strong>{movement.concept}</strong><span>{movement.category}{movement.detail ? ` · ${movement.detail}` : ''}</span><small>{new Date(`${movement.date}T12:00:00`).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}{movement.occurredAt ? ` · ${new Date(movement.occurredAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}` : ''}</small></div>
+                <div className="fin-account-movement-copy"><strong>{movement.concept}</strong><span>{movement.category}{movement.detail ? ` · ${movement.detail}` : ''}</span><small>{new Date(`${movement.date}T12:00:00`).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}{movement.occurredAt ? ` · ${new Date(movement.occurredAt).toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}` : ''}</small></div>
                 <div className="fin-account-movement-amount"><b>{movement.direction === 'in' ? '+' : '−'} {money(movement.amount)}</b><small>Saldo: {money(movement.balanceAfter)}</small></div>
               </article>)}</div> : <EmptyState compact title="Sin movimientos para este filtro" description="Prueba con otra opción o revisa otra fecha."/>}
               {filteredMovements.length > accountMovementPageSize && <div className="fin-account-movement-pagination"><span>Mostrando {(safePage - 1) * accountMovementPageSize + 1}–{Math.min(safePage * accountMovementPageSize, filteredMovements.length)} de {filteredMovements.length}</span><div><button type="button" onClick={() => setAccountMovementPage(Math.max(1, safePage - 1))} disabled={safePage <= 1} aria-label="Página anterior"><ChevronLeft size={16}/></button><strong>{safePage} / {pageCount}</strong><button type="button" onClick={() => setAccountMovementPage(Math.min(pageCount, safePage + 1))} disabled={safePage >= pageCount} aria-label="Página siguiente"><ChevronRight size={16}/></button></div></div>}
@@ -1244,8 +1244,8 @@ export function Finanzas() {
             <button type="button" className="fin-dialog-close" onClick={() => setSelectedPersonalAccount(null)} aria-label="Cerrar ventana"><X size={18}/></button>
           </header>
           <div className="fin-dialog-body fin-personal-consumption-body">
-            {pageRows.length === 0 ? <EmptyState compact title="Sin consumos registrados" description="Las comandas cargadas a esta cuenta aparecerán aquí." /> : <div className="fin-personal-consumption-list">{pageRows.map(({ order, amount }) => <article className="fin-personal-consumption-order" key={order.id}>
-              <div className="fin-personal-consumption-order-head"><div><strong>Comanda #{String(order.orderNumber).padStart(6, '0')}</strong><small>{new Date(order.createdAt).toLocaleString('es-VE', { dateStyle: 'medium', timeStyle: 'short' })}</small></div><b>{formatUsd(amount)}</b></div>
+            {pageRows.length === 0 ? <EmptyState compact title="Sin consumos registrados" description="Aquí verás sus comandas." /> : <div className="fin-personal-consumption-list">{pageRows.map(({ order, amount }) => <article className="fin-personal-consumption-order" key={order.id}>
+              <div className="fin-personal-consumption-order-head"><div><strong>Comanda #{String(order.orderNumber).padStart(6, '0')}</strong><small>{new Date(order.createdAt).toLocaleString('es-VE', { dateStyle: 'medium', timeStyle: 'short', hour12: true })}</small></div><b>{formatUsd(amount)}</b></div>
               <p>{order.customerName || 'Cliente sin nombre'}{order.orderType ? ` · ${order.orderType}` : ''}</p>
               <small className="fin-personal-consumption-items">{order.items.map(item => `${item.quantity} × ${item.productName}`).join(' · ') || 'Sin detalle de productos'}</small>
             </article>)}</div>}
@@ -1275,7 +1275,7 @@ export function Finanzas() {
         return createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingLedger ? 'closing' : ''}`} role="presentation" onClick={() => closeLedger()}><section className="modal-card fin-dialog fin-account-modal fin-ledger-modal" role="dialog" aria-modal="true" aria-labelledby="fin-ledger-dialog-title" onClick={event => event.stopPropagation()}>
           <header className="fin-dialog-header">
             <span className="fin-dialog-icon"><Wallet size={20}/></span>
-            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario de saldos</span><h2 id="fin-ledger-dialog-title">{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p><span className="fin-ledger-subtitle-desktop">{selectedSummaryDate} · {bcvRate ? `Tasa BCV ${formatVes(bcvRate)} por $1` : 'Sin tasa BCV disponible'}</span><span className="fin-ledger-subtitle-mobile">{selectedSummaryDate} · {bcvRate ? `BCV ${formatVes(bcvRate)} Bs/$` : 'Sin tasa BCV'}</span></p></div>
+            <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Control diario de saldos</span><h2 id="fin-ledger-dialog-title">{selectedLedgerCurrency === 'VES' ? 'Bolívares' : 'Dólares'}</h2><p>{selectedSummaryDate} · {bcvRate ? `BCV ${formatVes(bcvRate)} Bs/$` : 'Sin tasa BCV'}</p></div>
             <button type="button" className="fin-dialog-close" onClick={() => closeLedger()} aria-label="Cerrar ventana"><X size={18}/></button>
           </header>
           <div className="fin-dialog-body fin-ledger-body">{rows.length ? <><div className="fin-ledger-mobile-list">{rows.map(({ account, ledger }) => <article className="fin-ledger-mobile-account" key={account.id}>
@@ -1350,7 +1350,7 @@ export function Finanzas() {
       {(showTransfer || closingTransfer) && createPortal(<div className={`modal-overlay-dark fin-modal-overlay ${closingTransfer ? 'closing' : ''}`} role="presentation" onClick={() => { if (!transferSaving) closeTransfer() }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-transfer-dialog-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveTransfer() }}>
         <header className="fin-dialog-header">
           <span className="fin-dialog-icon">{isConvertMode ? <DollarSign size={20}/> : <ArrowRightLeft size={20}/>}</span>
-          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento administrativo</span><h2 id="fin-transfer-dialog-title">{isConvertMode ? 'Convertir divisa' : 'Registrar transferencia'}</h2><p>{isConvertMode ? 'Cambia dinero entre monedas (USD ↔ Bs) a la tasa que indiques.' : 'Mueve dinero entre cuentas de la misma moneda, sin afectar la utilidad.'}</p></div>
+          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento administrativo</span><h2 id="fin-transfer-dialog-title">{isConvertMode ? 'Convertir divisa' : 'Registrar transferencia'}</h2><p>{isConvertMode ? 'Cambia USD ↔ Bs a tu tasa.' : 'Entre cuentas de la misma moneda.'}</p></div>
           <button type="button" className="fin-dialog-close" disabled={transferSaving} onClick={() => closeTransfer()} aria-label="Cerrar ventana"><X size={18}/></button>
         </header>
         <div className="fin-dialog-body fin-transfer-body">
@@ -1375,7 +1375,7 @@ export function Finanzas() {
       {manualFinanceMode && createPortal(<div className="modal-overlay-dark fin-modal-overlay" role="presentation" onClick={() => { if (!manualFinanceSaving) setManualFinanceMode(null) }}><form className="modal-card fin-dialog fin-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="fin-manual-title" onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); void saveManualFinance() }}>
         <header className="fin-dialog-header">
           <span className="fin-dialog-icon">{manualFinanceMode === 'income' ? <TrendingUp size={20}/> : <TrendingDown size={20}/>}</span>
-          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento de caja</span><h2 id="fin-manual-title">Registrar {manualFinanceMode === 'income' ? 'ingreso' : 'gasto'}</h2><p>{manualFinanceMode === 'income' ? 'Registra capital u otro dinero que entró a una cuenta.' : 'Registra un egreso y descuéntalo de la cuenta de origen.'}</p></div>
+          <div className="fin-dialog-copy"><span className="fin-dialog-eyebrow">Movimiento de caja</span><h2 id="fin-manual-title">Registrar {manualFinanceMode === 'income' ? 'ingreso' : 'gasto'}</h2><p>{manualFinanceMode === 'income' ? 'Dinero que entró a una cuenta.' : 'Se descuenta de la cuenta elegida.'}</p></div>
           <button type="button" className="fin-dialog-close" disabled={manualFinanceSaving} onClick={() => setManualFinanceMode(null)} aria-label="Cerrar ventana"><X size={18}/></button>
         </header>
         <div className="fin-dialog-body fin-transfer-body">

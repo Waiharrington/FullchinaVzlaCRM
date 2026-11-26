@@ -69,7 +69,7 @@
 .fidel-section-tabs button:hover { color:#fff;background:rgba(255,255,255,.05); }
 .fidel-section-tabs button[aria-selected="true"] { color:#fff;border-color:rgba(255,77,91,.32);background:linear-gradient(135deg,rgba(227,27,43,.22),rgba(227,27,43,.08));box-shadow:inset 0 -2px #e31b2b; }
 .fidel-section-tabs button>svg { color:#ff6259;flex:0 0 auto; }
-.fidel-section-tabs button>b { display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;color:#ffd96a;background:rgba(255,200,61,.1);font-size:10px; }
+.fidel-section-tabs button>b { display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:999px;color:#ffd96a;background:rgba(255,200,61,.1);font-size:11px; }
 .fidel-tab-panel { min-width:0; }
 .fidel-accounts-page { margin-top:0; }
 .fidel-accounts-page-head { display:flex;align-items:center;justify-content:space-between;gap:16px; }
@@ -274,7 +274,7 @@
 
 .fidel-row-visits { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
 .fidel-row-visits strong { color: #FFC83D; font-weight: 900; font-size: 16px; }
-.fidel-row-visits small { color: #71717a; font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.fidel-row-visits small { color: #71717a; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 
 .fidel-row-reward {
   display: inline-flex; align-items: center; gap: 4px;
@@ -356,7 +356,7 @@
   .management-workspace.management-workspace--loyalty .fidel-metric-label { font-size: 12px; line-height: 1.35; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
   .management-workspace.management-workspace--loyalty .fidel-metric-value { font-size: 24px; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
   .management-workspace.management-workspace--loyalty .fidel-metric-sub { font-size: 11px; line-height: 1.4; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
-  .fidel-carousel-hint { display: block; margin: -8px 0 0; color: #85858f; text-align: center; font-size: 10px; line-height: 1.3; }
+  .fidel-carousel-hint { display: block; margin: -8px 0 0; color: #85858f; text-align: center; font-size: 11px; line-height: 1.3; }
   .fidel-row { grid-template-columns: 36px minmax(0, 1fr) auto; row-gap: 6px; }
   .fidel-row-reward { display: none; }
 }
@@ -413,7 +413,7 @@
 }
 
 .loyalty-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; position: relative; z-index: 1; }
-.loyalty-kicker { font-size: 10.5px; color: #FF6259; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.loyalty-kicker { font-size: 11px; color: #FF6259; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
 .loyalty-name {
   color: #fff; font-size: 21px; font-weight: 900; margin: 4px 0 2px;
   font-family: var(--font-display), 'Inter', sans-serif;
@@ -511,19 +511,19 @@
 .fidel-loyalty-settings input,.fidel-loyalty-settings textarea { width:100%;box-sizing:border-box;min-height:39px;padding:10px;border:1px solid #37373e;border-radius:9px;color:#fff;background:#111114;font:inherit; }
 .fidel-loyalty-settings input { height:39px;padding:0 10px; }
 .fidel-loyalty-settings textarea { resize:vertical;line-height:1.45; }
-.fidel-loyalty-settings label small { color:#929099;font-size:10px;font-weight:500;line-height:1.4; }
+.fidel-loyalty-settings label small { color:#929099;font-size:11px;font-weight:500;line-height:1.4; }
 .fidel-reward-picker { display:grid;gap:9px;min-width:0; }
 .fidel-reward-picker-heading { display:grid;gap:5px;color:#eee;font-size:13px;font-weight:750; }
 .fidel-reward-picker-heading strong { display:flex;align-items:center;justify-content:space-between;gap:8px; }
-.fidel-reward-picker-heading strong span { padding:3px 8px;border:1px solid rgba(255,200,61,.2);border-radius:999px;color:#ffd65a;background:rgba(255,200,61,.09);font-size:10px; }
-.fidel-reward-picker-heading small { color:#929099;font-size:10px;font-weight:500;line-height:1.4; }
+.fidel-reward-picker-heading strong span { padding:3px 8px;border:1px solid rgba(255,200,61,.2);border-radius:999px;color:#ffd65a;background:rgba(255,200,61,.09);font-size:11px; }
+.fidel-reward-picker-heading small { color:#929099;font-size:11px;font-weight:500;line-height:1.4; }
 .fidel-reward-selected-list { display:grid;gap:6px; }
 .fidel-reward-selected-item { display:flex;align-items:center;gap:8px;min-width:0;padding:6px 8px;border:1px solid rgba(255,200,61,.2);border-radius:10px;background:linear-gradient(110deg,rgba(255,200,61,.09),rgba(255,255,255,.025)); }
 .fidel-reward-selected-image,.fidel-reward-selected-fallback { display:grid;place-items:center;flex:0 0 48px;width:48px;height:40px;border-radius:7px;object-fit:cover;color:#f5bf45;background:#28221a; }
 .fidel-reward-selected-number { display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;border-radius:8px;color:#211600;background:#ffd34f;font-size:11px;font-weight:900; }
 .fidel-reward-selected-name { display:grid;gap:2px;min-width:0;flex:1; }
 .fidel-reward-selected-name strong { overflow:hidden;color:#fff;font-size:11px;text-overflow:ellipsis;white-space:nowrap; }
-.fidel-reward-selected-name small { overflow:hidden;color:#a4a0a5;font-size:9px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-reward-selected-name small { overflow:hidden;color:#a4a0a5;font-size:11px;text-overflow:ellipsis;white-space:nowrap; }
 .fidel-reward-selected-item>button { display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border:1px solid rgba(255,77,91,.24);border-radius:8px;color:#ff8992;background:rgba(227,27,43,.08);cursor:pointer; }
 .fidel-reward-selected-item>button:hover { color:#fff;background:rgba(227,27,43,.28); }
 .fidel-side .fidel-loyalty-settings .fidel-reward-search { display:flex;align-items:center;gap:8px;min-height:40px;padding:0 11px;border:1px solid #37373e;border-radius:10px;color:#999;background:#111114;font-size:12px;font-weight:400; }
@@ -538,9 +538,9 @@
 .fidel-reward-menu-option-fallback { border:1px solid rgba(255,200,61,.18); }
 .fidel-reward-menu-option-add { display:grid;place-items:center;flex:0 0 24px;width:24px;height:24px;margin-left:auto;border:1px solid rgba(255,77,91,.28);border-radius:50%;color:#ff8992;background:rgba(227,27,43,.1); }
 .fidel-reward-menu-option-copy { display:grid;gap:3px;min-width:0;flex:1; }
-.fidel-reward-menu-option-copy strong { overflow:hidden;font-size:10px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap; }
-.fidel-reward-menu-option-copy small { color:#aaa6ad;font-size:9px;text-transform:capitalize; }
-.fidel-reward-inventory-note { display:flex;align-items:center;gap:6px;margin:0;color:#a6d9b4;font-size:10px;line-height:1.35; }
+.fidel-reward-menu-option-copy strong { overflow:hidden;font-size:11px;line-height:1.25;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-reward-menu-option-copy small { color:#aaa6ad;font-size:11px;text-transform:capitalize; }
+.fidel-reward-inventory-note { display:flex;align-items:center;gap:6px;margin:0;color:#a6d9b4;font-size:11px;line-height:1.35; }
 .fidel-reward-inventory-note svg { flex:0 0 auto; }
 .fidel-reward-picker-empty { margin:0;padding:10px 11px;border:1px dashed rgba(255,255,255,.12);border-radius:9px;color:#aaa6ad;font-size:11px;line-height:1.45; }
 .fidel-side .fidel-loyalty-settings input,.fidel-side .fidel-loyalty-settings textarea { min-width: 0; }
@@ -549,7 +549,7 @@
 .fidel-admin-notice { margin:12px 0 0;padding:10px 12px;border-radius:9px;color:#bde8ca;background:rgba(38,132,76,.14);font-size:12px; }
 .fidel-accounts-heading { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:18px; }
 .fidel-accounts-heading h3 { margin:0;color:#eee;font-size:15px; }
-.fidel-accounts-heading>span,.fidel-account-status { padding:4px 8px;border-radius:20px;color:#ffd96a;background:rgba(255,200,61,.1);font-size:10px;font-weight:800; }
+.fidel-accounts-heading>span,.fidel-account-status { padding:4px 8px;border-radius:20px;color:#ffd96a;background:rgba(255,200,61,.1);font-size:11px;font-weight:800; }
 .fidel-accounts-list { display:grid;gap:8px;margin-top:10px; }
 .fidel-accounts-list>p { color:#888;font-size:12px; }
 .fidel-accounts-list article { display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.025); }
@@ -584,12 +584,12 @@
   border-radius: 12px; padding: 12px 14px;
 }
 .loyalty-reward-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.loyalty-reward-label { font-size: 10.5px; color: #8a8a93; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.loyalty-reward-label { font-size: 11px; color: #8a8a93; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
 .loyalty-reward-value { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; color: #fff; font-weight: 700; font-size: 13px; line-height: 1.35; }
 .fidel-customer-reward-row { display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid rgba(255,200,61,.24);border-radius:10px;background:rgba(255,200,61,.06); }
 .fidel-customer-reward-row>span { display:grid;gap:4px;min-width:0; }
 .fidel-customer-reward-row strong { color:#ffe6a5;font-size:12px; }
-.fidel-customer-reward-row small,.fidel-customer-redeemed small { color:#98939b;font-size:10px; }
+.fidel-customer-reward-row small,.fidel-customer-redeemed small { color:#98939b;font-size:11px; }
 .fidel-customer-reward-row button { flex:none;min-height:34px;padding:0 10px;border:1px solid rgba(227,27,43,.5);border-radius:9px;color:#fff;background:rgba(227,27,43,.18);font-size:11px;font-weight:750;cursor:pointer; }
 .fidel-customer-reward-row button:disabled { opacity:.55;cursor:wait; }
 .fidel-customer-redeemed { border-top:1px solid rgba(255,255,255,.08);padding-top:9px;color:#bbb;font-size:11px; }
@@ -626,7 +626,7 @@
 .fidel-program-panel .fidel-reward-menu-option { min-height:76px !important; height:auto; gap:10px; padding:8px; }
 .fidel-program-panel .fidel-reward-menu-option-image,.fidel-program-panel .fidel-reward-menu-option-fallback { flex-basis:76px; width:76px; height:58px; border-radius:8px; }
 .fidel-program-panel .fidel-reward-menu-option-copy strong { font-size:11px; }
-.fidel-program-panel .fidel-reward-menu-option-copy small { font-size:10px; }
+.fidel-program-panel .fidel-reward-menu-option-copy small { font-size:11px; }
 .fidel-program-panel .fidel-reward-selected-list { grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:8px; }
 .fidel-program-panel .fidel-reward-selected-item { min-height:56px; padding:8px 10px; }
 .fidel-program-panel .fidel-reward-inventory-note { padding-top:2px; font-size:12px; }
@@ -645,13 +645,13 @@
 /* Cuentas Mi perfil: directorio visual para búsqueda y gestión frecuente. */
 .fidel-accounts-page { gap:0; padding:clamp(20px,2.5vw,34px); border-color:rgba(255,255,255,.1); background:radial-gradient(ellipse at 0 0,rgba(227,27,43,.11),transparent 38%),linear-gradient(145deg,#171619,#111113 72%); }
 .fidel-accounts-page-head { align-items:center; padding-bottom:22px; border-bottom:1px solid rgba(255,255,255,.08); }
-.fidel-accounts-eyebrow { display:block; margin-bottom:7px; color:#ff7774; font-size:10px; font-weight:850; letter-spacing:.14em; }
+.fidel-accounts-eyebrow { display:block; margin-bottom:7px; color:#ff7774; font-size:11px; font-weight:850; letter-spacing:.14em; }
 .fidel-accounts-page-head h2 { gap:10px; font-size:22px; }
 .fidel-accounts-page-head h2 svg { width:22px;height:22px;padding:9px;box-sizing:content-box;border:1px solid rgba(255,98,89,.2);border-radius:12px;color:#ff6259;background:rgba(227,27,43,.12); }
 .fidel-accounts-page-head p { margin:7px 0 0 42px;max-width:620px;color:#a4a1a8;font-size:13px;line-height:1.5; }
 .fidel-accounts-total { display:grid;place-items:center;align-content:center;gap:2px;min-width:78px;height:72px;padding:0 12px;border:1px solid rgba(255,200,61,.2);border-radius:16px;color:#ffd65a;background:linear-gradient(145deg,rgba(255,200,61,.12),rgba(255,200,61,.04)); }
 .fidel-accounts-total strong { font-size:23px;line-height:1;font-weight:900; }
-.fidel-accounts-total small { color:#bdb3a0;font-size:10px;font-weight:750; }
+.fidel-accounts-total small { color:#bdb3a0;font-size:11px;font-weight:750; }
 .fidel-account-search { width:min(100%,760px);max-width:none;height:54px;margin-top:22px;border-color:rgba(255,255,255,.09);background:#19191d; }
 .fidel-account-search:focus-within { border-color:rgba(255,98,89,.52);box-shadow:0 0 0 3px rgba(227,27,43,.1); }
 .fidel-account-search input { font-size:14px; }
@@ -664,11 +664,11 @@
 .fidel-account-identity { display:grid;gap:4px;flex:1;min-width:0; }
 .fidel-accounts-page .fidel-account-identity strong { overflow:hidden;color:#fff;font-size:14px;text-overflow:ellipsis;white-space:nowrap; }
 .fidel-account-identity>span { color:#8e8b94;font-size:11px; }
-.fidel-accounts-page .fidel-account-status { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:6px 9px;font-size:10px; }
+.fidel-accounts-page .fidel-account-status { display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;padding:6px 9px;font-size:11px; }
 .fidel-account-status i { width:6px;height:6px;border-radius:50%;background:currentColor; }
 .fidel-account-details { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px; }
 .fidel-account-details>span { display:grid;gap:5px;min-width:0;padding:10px 11px;border:1px solid rgba(255,255,255,.055);border-radius:10px;background:rgba(0,0,0,.16); }
-.fidel-account-details small { color:#77747e;font-size:9px;font-weight:800;letter-spacing:.08em; }
+.fidel-account-details small { color:#77747e;font-size:11px;font-weight:800;letter-spacing:.08em; }
 .fidel-account-details strong { overflow:hidden;color:#d5d2d9;font-size:11px;font-weight:650;text-overflow:ellipsis;white-space:nowrap; }
 .fidel-account-details .fidel-account-email { grid-column:1/-1; }
 .fidel-accounts-page .fidel-account-actions { margin-top:auto; }
@@ -699,7 +699,7 @@
 /* En pantallas medianas y grandes, las cuentas se leen como directorio tabular. */
 .fidel-accounts-table-wrap { display:block;width:100%;margin-top:20px;overflow-x:auto;border:1px solid rgba(255,255,255,.08);border-radius:15px;background:rgba(12,12,14,.38); }
 .fidel-accounts-table { width:100%;min-width:720px;border-collapse:separate;border-spacing:0;text-align:left; }
-.fidel-accounts-table th { height:46px;padding:0 17px;border-bottom:1px solid rgba(255,255,255,.08);color:#85828c;background:rgba(255,255,255,.025);font-size:10px;font-weight:850;letter-spacing:.09em;text-transform:uppercase; }
+.fidel-accounts-table th { height:46px;padding:0 17px;border-bottom:1px solid rgba(255,255,255,.08);color:#85828c;background:rgba(255,255,255,.025);font-size:11px;font-weight:850;letter-spacing:.09em;text-transform:uppercase; }
 .fidel-accounts-table td { height:72px;padding:10px 17px;border-bottom:1px solid rgba(255,255,255,.055);color:#cbc8d0;font-size:12px; }
 .fidel-accounts-table tbody tr:last-child td { border-bottom:0; }
 .fidel-accounts-table tbody tr { transition:background .14s; }
@@ -709,7 +709,7 @@
 .fidel-account-table-customer .fidel-account-avatar { width:38px;height:38px;flex-basis:38px;border-radius:11px;font-size:11px; }
 .fidel-account-table-contact { display:grid;gap:4px; }
 .fidel-account-table-contact strong { color:#e6e3e8;font-size:12px;font-weight:650; }
-.fidel-account-table-contact small { max-width:240px;overflow:hidden;color:#898690;font-size:10px;text-overflow:ellipsis;white-space:nowrap; }
+.fidel-account-table-contact small { max-width:240px;overflow:hidden;color:#898690;font-size:11px;text-overflow:ellipsis;white-space:nowrap; }
 .fidel-table-muted { color:#797680; }
 .fidel-accounts-table .fidel-account-status { display:inline-flex;align-items:center;gap:6px;padding:6px 9px;white-space:nowrap; }
 .fidel-account-table-action { display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:36px;padding:0 11px;border:1px solid rgba(255,98,89,.24);border-radius:9px;color:#ffaaa5;background:rgba(227,27,43,.08);font:inherit;font-size:11px;font-weight:750;white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s,color .15s; }
@@ -765,4 +765,11 @@
   .fidel-customer-reward-row strong { font-size:14px; }
   .fidel-customer-reward-row small { font-size:12px; }
   .fidel-customer-reward-row button { min-height:44px;font-size:13px; }
+}
+
+.fidel-row-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: normal; overflow-wrap: anywhere; }
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .admin-app .fidel-section-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+  .admin-app .fidel-section-tabs > button { justify-content: center; min-width: 0; }
 }

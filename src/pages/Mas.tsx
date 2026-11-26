@@ -384,7 +384,7 @@ export function Mas() {
             {isCreditsModule ? <CreditCard size={22} className="page-title-icon" /> : <Settings size={22} className="page-title-icon" />}
             {isCreditsModule ? 'Cuentas por cobrar' : 'Configuración'}
           </h1>
-          <p className="page-subtitle">{isCreditsModule ? <><span className="mas-subtitle-desktop">Controla los créditos pendientes y los pagos de tus clientes.</span><span className="mas-subtitle-mobile">Créditos y pagos pendientes.</span></> : <><span className="mas-subtitle-desktop">Administración general, accesos y servicio de delivery.</span><span className="mas-subtitle-mobile">Administra accesos y ajustes.</span></>}</p>
+          <p className="page-subtitle">{isCreditsModule ? <>Créditos y pagos pendientes.</> : <>Administra accesos y ajustes.</>}</p>
         </div>
       </header>
 
@@ -399,7 +399,7 @@ export function Mas() {
         <span className="settings-printer-icon"><Printer size={22} /></span>
         <div className="settings-printer-copy">
           <h2>Impresión de tickets</h2>
-          <p>Imprime comandas y recibos desde esta tablet con la XP-80C por red.</p>
+          <p>Impresora XP-80C por red.</p>
           <small>{printerStatus}</small>
         </div>
         <button type="button" className="btn-accent btn-sm" onClick={() => window.FullChinaPrinter?.openSettings()}>
@@ -414,7 +414,7 @@ export function Mas() {
           <div className="card-header-row">
             <div>
               <h2 className="card-title">Cuentas por cobrar</h2>
-              <p className="card-subtitle">${totalPending.toFixed(2)} pendiente en créditos autorizados y cuentas manuales</p>
+              <p className="card-subtitle">${totalPending.toFixed(2)} pendiente por cobrar</p>
             </div>
             <button className="btn-accent btn-sm" onClick={() => { setClosingNewCredit(false); setShowNewCredit(true) }}>
               + Nuevo crédito

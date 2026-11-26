@@ -494,8 +494,7 @@ export function Proveedores() {
         <div>
           <h1 className="page-title"><Building2 size={22} className="page-title-icon" /> Proveedores</h1>
           <p className="page-subtitle prv-subtitle">
-            <span className="prv-subtitle-desktop">Directorio, contactos e historial de compras con cada proveedor.</span>
-            <span className="prv-subtitle-mobile">Contactos y compras de proveedores.</span>
+            Contactos y compras de proveedores.
           </p>
         </div>
         <button className="prv-primary" onClick={() => setShowForm(true)} aria-label="Nuevo proveedor">
@@ -585,7 +584,7 @@ export function Proveedores() {
                     <EmptyState
                       compact
                       title="No se encontraron proveedores"
-                      description="Prueba con otro término de búsqueda o agrega un proveedor nuevo."
+                      description="Prueba otra búsqueda."
                     />
                   </td>
                 </tr>

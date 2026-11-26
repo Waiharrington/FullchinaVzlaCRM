@@ -3,6 +3,7 @@ import { formatElapsed } from '../comandas/model'
 import type { Dispatch, SetStateAction } from 'react'
 
 export interface KitchenPulseProps {
+  loading?: boolean
   kitchenPulse: { tone: string; label: string; message: string; }
   pendientesCount: number
   boardExpanded: boolean
@@ -17,7 +18,7 @@ export interface KitchenPulseProps {
   avgMins: number
 }
 
-export function KitchenPulse({ kitchenPulse, pendientesCount, boardExpanded, setBoardExpanded, isDemoMode, setShowHistoryModal, setShowNewOrderModal, totalComandasCount, nuevasCount, preparandoCount, listasCount, avgMins }: KitchenPulseProps) {
+export function KitchenPulse({ loading = false, kitchenPulse, pendientesCount, boardExpanded, setBoardExpanded, isDemoMode, setShowHistoryModal, setShowNewOrderModal, totalComandasCount, nuevasCount, preparandoCount, listasCount, avgMins }: KitchenPulseProps) {
   return (
     <section className={`comandas-pulse comandas-pulse--${kitchenPulse.tone}`} aria-labelledby="comandas-title">
         <div className="comandas-pulse-top">
@@ -61,25 +62,25 @@ export function KitchenPulse({ kitchenPulse, pendientesCount, boardExpanded, set
           </div>
         </div>
 
-        <div className="comandas-flow" role="status" aria-label={`Resumen: ${totalComandasCount} total, ${nuevasCount} nuevas, ${preparandoCount} preparando, ${listasCount} listas, ${avgMins} minutos de promedio`}>
+        <div className="comandas-flow" role="status" aria-label={loading ? 'Cargando resumen de comandas' : `Resumen: ${totalComandasCount} total, ${nuevasCount} nuevas, ${preparandoCount} preparando, ${listasCount} listas, ${avgMins} minutos de promedio`}>
           <div className="comandas-flow-step comandas-flow-step--total comandas-flow-step--extra">
-            <span><Package size={14} /> Total hoy</span><strong>{totalComandasCount}</strong>
+            <span><Package size={14} /> Total hoy</span><strong>{loading ? '…' : totalComandasCount}</strong>
           </div>
           <span className="comandas-flow-line comandas-flow-line--extra" aria-hidden="true" />
           <div className="comandas-flow-step comandas-flow-step--new">
-            <span><Package size={14} /> Nuevas</span><strong>{nuevasCount}</strong>
+            <span><Package size={14} /> Nuevas</span><strong>{loading ? '…' : nuevasCount}</strong>
           </div>
           <span className="comandas-flow-line" aria-hidden="true" />
           <div className="comandas-flow-step comandas-flow-step--preparing">
-            <span><ChefHat size={14} /> Preparando</span><strong>{preparandoCount}</strong>
+            <span><ChefHat size={14} /> Preparando</span><strong>{loading ? '…' : preparandoCount}</strong>
           </div>
           <span className="comandas-flow-line" aria-hidden="true" />
           <div className="comandas-flow-step comandas-flow-step--ready">
-            <span><CheckCircle2 size={14} /> Listas</span><strong>{listasCount}</strong>
+            <span><CheckCircle2 size={14} /> Listas</span><strong>{loading ? '…' : listasCount}</strong>
           </div>
           <span className="comandas-flow-line comandas-flow-line--extra" aria-hidden="true" />
           <div className="comandas-flow-step comandas-flow-step--time comandas-flow-step--extra">
-            <span><Timer size={14} /> Prom.</span><strong>{avgMins > 0 ? formatElapsed(avgMins) : '—'}</strong>
+            <span><Timer size={14} /> Prom.</span><strong>{!loading && avgMins > 0 ? formatElapsed(avgMins) : '—'}</strong>
           </div>
         </div>
       </section>

@@ -548,8 +548,7 @@ export function ComprasReal() {
         <div>
           <h1 className="page-title"><ShoppingCart size={22} className="page-title-icon" /> <span className="cmp-title-desktop">Compras e Insumos</span><span className="cmp-title-mobile">Compras</span></h1>
           <p className="page-subtitle">
-            <span className="cmp-subtitle-desktop">Registra tus compras a proveedores. El inventario se actualiza automáticamente.</span>
-            <span className="cmp-subtitle-mobile">Compras a proveedores.</span>
+            Compras a proveedores.
           </p>
         </div>
         <div className="cmp-header-actions">
@@ -753,7 +752,7 @@ export function ComprasReal() {
             </article>
           ))}
           {pageItems.length === 0 && (
-            <EmptyState compact title="No hay compras registradas" description="Registra tu primera compra para llevar el control de insumos." actionLabel="Nueva compra" onAction={openPurchaseForm} />
+            <EmptyState compact title="No hay compras registradas" description="Registra tu primera compra." actionLabel="Nueva compra" onAction={openPurchaseForm} />
           )}
         </div>
 
@@ -780,7 +779,7 @@ export function ComprasReal() {
                   <EmptyState
                     compact
                     title="No hay compras registradas"
-                    description="Registra tu primera compra para llevar el control de insumos."
+                    description="Registra tu primera compra."
                     actionLabel="Nueva compra"
                     onAction={openPurchaseForm}
                   />

@@ -1,4 +1,5 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core'
+import { LoadingSkeleton } from '../../components/LoadingSkeleton'
 import { MoneyWithBcv } from '../../components/MoneyWithBcv'
 import { CalendarPicker } from '../../components/CalendarPicker'
 import { type ComandaStatus } from '../../lib/comandaWorkflow'
@@ -190,6 +191,8 @@ export function ComandaCard({ order, color, onOpen, onAdvance, onConfirmWeb, onP
 
 export interface KanbanColumnProps {
   col: typeof COLUMNS[number]
+  loading?: boolean
+  failed?: boolean
   colOrders: ComandaOrder[]
   visibleOrders: ComandaOrder[]
   hiddenCount: number
@@ -205,7 +208,7 @@ export interface KanbanColumnProps {
 
 // Columna del tablero, receptora de la tarjeta; la máquina de estados valida
 // que el destino sea exactamente la siguiente etapa antes de persistirlo.
-export function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, onPrint, confirmingWebId, updatingOrderIds }: KanbanColumnProps) {
+export function KanbanColumn({ col, loading = false, failed = false, colOrders, visibleOrders, hiddenCount, isExpanded, onToggleExpand, onOpen, onAdvance, onConfirmWeb, onPrint, confirmingWebId, updatingOrderIds }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: col.key })
 
   return (
@@ -216,15 +219,17 @@ export function KanbanColumn({ col, colOrders, visibleOrders, hiddenCount, isExp
           <span className="col-icon" style={{ color: col.color }}>{col.icon}</span>
           <h2 className="col-title">{col.label}</h2>
         </div>
-        <span className="col-count-badge">{colOrders.length}</span>
+        <span className="col-count-badge">{loading || failed ? '…' : colOrders.length}</span>
       </div>
 
       {/* Column Body / Order Cards */}
       <div ref={setNodeRef} className={`kanban-col-body ${isOver ? 'drag-over' : ''}`}>
-        {colOrders.length === 0 ? (
+        {loading ? (
+          <LoadingSkeleton className="kanban-col-loading" label={`Cargando comandas: ${col.label}`} count={3} />
+        ) : colOrders.length === 0 ? (
           <div className="empty-col">
             <span className="empty-col-icon" style={{ color: col.color }}>{col.icon}</span>
-            <span className="empty-col-text">Sin comandas</span>
+            <span className="empty-col-text">{failed ? 'No se pudo cargar' : 'Sin comandas'}</span>
           </div>
         ) : (
           visibleOrders.map(order => (

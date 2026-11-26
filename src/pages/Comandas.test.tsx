@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CashSessionSnapshot, FinancialAccount, FullOrder } from '../lib/dataService'
 import { Comandas } from './Comandas'
+import { clearBoardSnapshots } from './comandas/boardData'
 
 // Pantallas completas: bajo la carga de toda la suite pueden pasar de los 5 s por defecto.
 vi.setConfig({ testTimeout: 20000 })
@@ -58,6 +59,7 @@ function renderComandas() {
 describe('Comandas · cobro de punta a punta (datos demo)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearBoardSnapshots()
     mocks.getOrdersWithItems.mockResolvedValue([order])
     mocks.getOrderById.mockResolvedValue(order)
     mocks.getActiveCashSession.mockResolvedValue(openSession)
@@ -92,5 +94,47 @@ describe('Comandas · cobro de punta a punta (datos demo)', () => {
     expect(await screen.findByText(/abrir la caja antes de cobrar/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Confirmar pago/ })).toBeDisabled()
     expect(mocks.recordOrderPayments).not.toHaveBeenCalled()
+  })
+})
+
+describe('Comandas · carga del tablero', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    clearBoardSnapshots()
+    mocks.getAllSellableProducts.mockResolvedValue([])
+    mocks.getFinancialAccounts.mockResolvedValue([])
+    mocks.getPendingWebOrders.mockResolvedValue([])
+  })
+
+  it('muestra que está cargando, nunca un tablero vacío falso', async () => {
+    let deliver: (orders: FullOrder[]) => void = () => undefined
+    mocks.getOrdersWithItems.mockReturnValue(new Promise<FullOrder[]>(resolve => { deliver = resolve }))
+    renderComandas()
+
+    expect(screen.getByRole('status', { name: 'Cargando comandas: Nuevas' })).toBeInTheDocument()
+    expect(screen.queryByText('Sin comandas')).not.toBeInTheDocument()
+    deliver([order])
+    expect(await screen.findByText('María Demo')).toBeInTheDocument()
+  })
+
+  it('al volver a entrar pinta al instante lo último recibido', async () => {
+    mocks.getOrdersWithItems.mockResolvedValue([order])
+    const first = renderComandas()
+    await screen.findByText('María Demo')
+    first.unmount()
+
+    mocks.getOrdersWithItems.mockReturnValue(new Promise(() => undefined))
+    renderComandas()
+    expect(screen.getByText('María Demo')).toBeInTheDocument()
+  })
+
+  it('si falla la lectura lo dice y permite reintentar', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.getOrdersWithItems.mockRejectedValueOnce(new Error('sin red')).mockResolvedValue([order])
+    renderComandas()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reintentar' }))
+    expect(await screen.findByText('María Demo')).toBeInTheDocument()
+    vi.restoreAllMocks()
   })
 })

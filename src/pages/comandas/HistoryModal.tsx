@@ -197,7 +197,7 @@ export function HistoryModal({ closingHistory, closeHistoryModal, historyLoading
                 <EmptyState
                   compact
                   title="No se encontraron comandas"
-                  description="Prueba con otro número, cliente o rango de fechas."
+                  description="Prueba otro número, cliente o fecha."
                 />
               ) : (
                 historyGroups.map(group => (

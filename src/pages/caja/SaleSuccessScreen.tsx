@@ -228,7 +228,7 @@ export function SaleSuccessScreen({ embedded, printPrompt, resolvePrintPrompt, c
 
                     <span className="step-time">{formattedTime}</span>
 
-                    <span className="step-desc">El equipo de cocina ha sido notificado del pedido.</span>
+                    <span className="step-desc">Cocina ya recibió el pedido.</span>
 
                   </div>
 

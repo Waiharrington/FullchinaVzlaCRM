@@ -407,7 +407,7 @@ export function ProduccionReal() {
         <div className="prod-header-title-wrap">
           <div>
             <h1 className="page-title"><Flame size={22} className="page-title-icon" /><span className="prod-title-desktop">Producción y Porcionamiento</span><span className="prod-title-mobile">Producción</span></h1>
-            <p><span className="prod-subtitle-desktop">Transformación de proteínas crudas, porcionamiento, merma y rendimiento de cocina</span><span className="prod-subtitle-mobile">Controla tus lotes y mermas.</span></p>
+            <p>Controla tus lotes y mermas.</p>
           </div>
         </div>
         <button
@@ -505,7 +505,7 @@ export function ProduccionReal() {
         {displayedBatches.length === 0 ? (
           <EmptyState
             title="No se encontraron lotes de producción"
-            description="Registra la transformación de pollo, cerdo, camarón o jamón para descontar stock y generar porciones listas para los platos."
+            description="Registra tu primer lote de proteína."
             actionLabel="Registrar Nuevo Lote"
             onAction={handleOpenNewBatch}
           />

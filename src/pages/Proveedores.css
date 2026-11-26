@@ -412,7 +412,7 @@
 }
 .prv-form-row:focus-within .prv-form-row-icon { background: rgba(227,27,43,.3); color: #fff; }
 .prv-form-row-content { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.prv-form-row-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #71717a; }
+.prv-form-row-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #71717a; }
 .prv-form-row input {
   border: 0; border-radius: 0; background: none; padding: 1px 0; margin: 0; color: #fff; font-size: 14.5px;
   font-weight: 500; line-height: 1.35; outline: none; width: 100%; height: auto; box-shadow: none;
@@ -625,7 +625,7 @@
   .prv-kpis.management-workspace-metrics > .prv-kpi-card > span { width: 36px; height: 36px; flex: 0 0 36px; }
   .prv-kpis.management-workspace-metrics > .prv-kpi-card > div { flex: 1 1 auto; min-width: 0; }
   .prv-kpis.management-workspace-metrics > .prv-kpi-card small {
-    font-size: 10px;
+    font-size: 11px;
     line-height: 1.15;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -673,7 +673,7 @@
   .prv-custom-table tbody tr.prv-table-row > td::before {
     content: attr(data-label);
     color: #858994;
-    font-size: 9.5px;
+    font-size: 11px;
     font-weight: 700;
   }
   .prv-custom-table tbody tr.prv-table-row > td:first-child { grid-column: 1 / -1; padding-top: 6px; }
@@ -735,8 +735,8 @@
   }
   .admin-app .prv-contact-cell .prv-phone-row .prv-wsap-pill svg { width: 16px; height: 16px; }
   .prv-wsap-label { display: inline; }
-  .prv-purchases-badge { padding: 2px 7px; font-size: 10px; }
-  .prv-date-sub { font-size: 9.5px; }
+  .prv-purchases-badge { padding: 2px 7px; font-size: 11px; }
+  .prv-date-sub { font-size: 11px; }
   .prv-custom-table .money-with-bcv.compact .money-ves {
     color: #c4c4cc;
     font-size: 11px;
@@ -807,4 +807,64 @@
     gap: 10px; color: #52525b; text-align: center; padding: 30px;
   }
   .prv-history-detail-empty p { margin: 0; font-size: 13px; }
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+  .admin-app .prv-toolbar-right { flex-wrap: nowrap; min-width: 0; }
+  .admin-app .prv-toolbar-right > * { min-width: 0; }
+}
+
+.prv-history-weeks.prv-history-weeks { flex-wrap: wrap; overflow: visible; }
+
+/* Tablet con el menú abierto: tarjetas en vez de tabla apretada. */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-table-card { padding: 14px 12px; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-table-card { min-width: 0; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-table-card .table-responsive-wrapper { overflow: visible; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody { display: block; width: 100%; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table thead { display: none; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 10px;
+    align-items: start;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: #141416;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    overflow-wrap: anywhere;
+    text-align: left !important;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:last-child { border-bottom: 0; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td::before {
+    content: attr(data-label);
+    color: #858994;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:first-child { grid-column: 1 / -1; padding-top: 6px; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:nth-child(2),
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:nth-child(3),
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:nth-child(4),
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:nth-child(5),
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:nth-child(6),
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:nth-child(7) { grid-column: span 1; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody td { font-size: 11.5px; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td[data-label="Teléfono y correo"] { grid-column: 1 / -1; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row > td:last-child { grid-column: 1 / -1; }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+  .main-content-wrapper:not(.sidebar-collapsed) .prv-custom-table tbody tr.prv-table-row { margin: 0; }
 }

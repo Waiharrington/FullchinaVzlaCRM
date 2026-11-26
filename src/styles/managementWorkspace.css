@@ -450,7 +450,7 @@
   }
 
   .management-workspace--inventory .inv-kpi-label {
-    font-size: 0.66rem;
+    font-size: 0.6875rem;
     line-height: 1.3;
   }
 
@@ -505,9 +505,9 @@
     height: 19px;
   }
 
-  .management-workspace--warehouse .metric-label { font-size: 0.68rem; }
+  .management-workspace--warehouse .metric-label { font-size: 0.6875rem; }
   .management-workspace--warehouse .metric-large-val { font-size: 1.25rem; }
-  .management-workspace--warehouse .metric-sub-text { font-size: 0.64rem; }
+  .management-workspace--warehouse .metric-sub-text { font-size: 0.6875rem; }
 
   .management-workspace--warehouse .almacen-main-grid {
     grid-template-columns: minmax(0, 1fr) 320px;
@@ -527,7 +527,7 @@
   }
 
   .management-workspace--warehouse .almacen-card-title { font-size: 0.95rem; }
-  .management-workspace--warehouse .almacen-card-description { font-size: 0.68rem; }
+  .management-workspace--warehouse .almacen-card-description { font-size: 0.6875rem; }
 
   .management-workspace--warehouse .almacen-table th:nth-child(2),
   .management-workspace--warehouse .almacen-table td:nth-child(2),
@@ -560,7 +560,7 @@
   }
 
   .management-workspace--production .stat-value { font-size: 1.3rem; }
-  .management-workspace--production .stat-label { font-size: 0.68rem; }
+  .management-workspace--production .stat-label { font-size: 0.6875rem; }
 
   .management-workspace--production > .table-card,
   .management-workspace--production > .almacen-card {
@@ -584,7 +584,7 @@
   .management-workspace--recipes .rec-search input { height: 40px; }
   .management-workspace--recipes .rec-tabs { gap: 6px; margin-bottom: 10px; flex-wrap: nowrap; }
   .management-workspace--recipes .rec-tab { padding: 7px 10px; font-size: 0.72rem; }
-  .management-workspace--recipes .rec-tab .rec-count { padding-inline: 6px; font-size: 0.68rem; }
+  .management-workspace--recipes .rec-tab .rec-count { padding-inline: 6px; font-size: 0.6875rem; }
   .management-workspace--recipes .rec-filters { margin-bottom: 10px; flex-wrap: nowrap; }
   .management-workspace--recipes .rec-card { padding: 8px 10px; gap: 10px; }
   .management-workspace--recipes .rec-thumb { width: 40px; height: 40px; }
@@ -608,9 +608,9 @@
     height: 19px;
   }
 
-  .management-workspace--customers .kpi-label-sm { font-size: 0.68rem; }
+  .management-workspace--customers .kpi-label-sm { font-size: 0.6875rem; }
   .management-workspace--customers .kpi-value-lg { font-size: 1.25rem; }
-  .management-workspace--customers .kpi-sub-tag { font-size: 0.66rem; }
+  .management-workspace--customers .kpi-sub-tag { font-size: 0.6875rem; }
 
   .management-workspace--customers .clientes-table-card {
     padding: 14px;
@@ -696,7 +696,7 @@
     height: 19px;
   }
 
-  .management-workspace--suppliers .prv-kpis small { font-size: 0.68rem; }
+  .management-workspace--suppliers .prv-kpis small { font-size: 0.6875rem; }
   .management-workspace--suppliers .prv-kpis strong { font-size: 1.25rem; }
 
   .management-workspace--suppliers .prv-card {
@@ -755,9 +755,9 @@
     height: 34px;
   }
 
-  .management-workspace--finance .fin-kpi-lbl { font-size: 0.56rem !important; }
+  .management-workspace--finance .fin-kpi-lbl { font-size: 0.6875rem !important; }
   .management-workspace--finance .fin-kpi-val { font-size: 1.1rem !important; }
-  .management-workspace--finance .fin-kpi-sub { margin-top: 5px; font-size: 0.62rem !important; }
+  .management-workspace--finance .fin-kpi-sub { margin-top: 5px; font-size: 0.6875rem !important; }
   .management-workspace--finance .fin-data-status { margin: 0; padding: 10px 12px; }
   .management-workspace--finance .fin-be { margin: 0; padding: 12px 14px; }
   .management-workspace--finance .fin-card { padding: 14px; border-radius: var(--workspace-panel-radius); }
@@ -789,12 +789,12 @@
   .management-workspace--finance .fin-daily-table {
     min-width: 0;
     width: 100%;
-    font-size: 0.68rem;
+    font-size: 0.6875rem;
   }
 
   .management-workspace--finance .fin-daily-table th {
     padding: 8px 4px;
-    font-size: 0.58rem;
+    font-size: 0.6875rem;
     line-height: 1.25;
     white-space: normal;
     word-break: break-word;
@@ -828,7 +828,7 @@
 
   .management-workspace--purchases .cmp-sum-lbl,
   .management-workspace--expenses .gst-sum-lbl,
-  .management-workspace--payroll .nom-sum-lbl { font-size: 0.68rem; }
+  .management-workspace--payroll .nom-sum-lbl { font-size: 0.6875rem; }
 
   .management-workspace--purchases .cmp-sum-val,
   .management-workspace--expenses .gst-sum-val,
@@ -836,7 +836,7 @@
 
   .management-workspace--purchases .cmp-sum-sub,
   .management-workspace--expenses .gst-sum-sub,
-  .management-workspace--payroll .nom-sum-sub { font-size: 0.64rem; }
+  .management-workspace--payroll .nom-sum-sub { font-size: 0.6875rem; }
 
   .management-workspace--purchases .cmp-card,
   .management-workspace--expenses .gst-card,
@@ -906,7 +906,7 @@
     padding: 13px;
   }
 
-  .management-workspace--reports .stat-card .stat-label { font-size: 0.68rem; }
+  .management-workspace--reports .stat-card .stat-label { font-size: 0.6875rem; }
   .management-workspace--reports .stat-card .stat-value { font-size: 1.25rem; }
   .management-workspace--reports .charts-grid { gap: 12px; margin-bottom: 12px; }
   .management-workspace--reports .charts-grid.three-col { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -930,9 +930,9 @@
     border-radius: 11px;
   }
   .management-workspace--loyalty .fidel-metric-icon svg { width: 19px; height: 19px; }
-  .management-workspace--loyalty .fidel-metric-label { font-size: 0.66rem; }
+  .management-workspace--loyalty .fidel-metric-label { font-size: 0.6875rem; }
   .management-workspace--loyalty .fidel-metric-value { font-size: 1.25rem; }
-  .management-workspace--loyalty .fidel-metric-sub { font-size: 0.64rem; }
+  .management-workspace--loyalty .fidel-metric-sub { font-size: 0.6875rem; }
   .management-workspace--loyalty .fidel-grid {
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 12px;
@@ -959,9 +959,9 @@
   }
   .management-workspace--whatsapp .metric-icon-box { width: 38px; height: 38px; flex-basis: 38px; }
   .management-workspace--whatsapp .metric-icon-box svg { width: 19px; height: 19px; }
-  .management-workspace--whatsapp .metric-label { font-size: 0.66rem; }
+  .management-workspace--whatsapp .metric-label { font-size: 0.6875rem; }
   .management-workspace--whatsapp .metric-large-val { font-size: 1.15rem; }
-  .management-workspace--whatsapp .metric-sub-text { font-size: 0.62rem; }
+  .management-workspace--whatsapp .metric-sub-text { font-size: 0.6875rem; }
   .management-workspace--whatsapp .whatsapp-grid {
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 12px;
@@ -998,4 +998,104 @@
   }
   .management-workspace--settings .shortcut-card { padding: 12px; gap: 10px; }
   .management-workspace--settings .tabs { margin-bottom: 12px; }
+}
+
+/* Tableta: las tarjetas de resumen siempre forman filas completas
+   (nunca una tarjeta sola abajo). */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .admin-app .management-workspace-metrics.management-workspace-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics > * { min-width: 0; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics > :last-child:nth-child(odd) { grid-column: 1 / -1 !important; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(3):last-child) > * { grid-column: auto !important; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(5):last-child),
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(6):last-child) { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(5):last-child) > *,
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(6):last-child) > * { grid-column: span 2 !important; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(5):last-child) > :nth-child(n + 4) { grid-column: span 3 !important; }
+}
+@media (min-width: 960px) and (max-width: 1100px) {
+  .admin-app .management-workspace-metrics.management-workspace-metrics:has(> :nth-child(4):last-child) { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+}
+
+/* Sin barras de desplazamiento horizontales a la vista en el administrador:
+   se sigue pudiendo deslizar con el dedo, el trackpad o Shift + rueda. */
+::-webkit-scrollbar:horizontal { display: none; height: 0; }
+@supports not selector(::-webkit-scrollbar) {
+  .admin-app *, [role='dialog'] * { scrollbar-width: none; }
+}
+.payment-tabs-bar, .kanban-board-grid, .category-tabs, .inv-filter-pills,
+.fidel-metrics, .ws-table-wrap, .station-filters { scrollbar-width: none; }
+.admin-app :is(.table-responsive-wrapper, .inv-table-wrapper, .prod-table-wrap, .fin-tabs,
+  .cmp-table-wrap, .gst-table-wrap, .wa-table-wrap) { scrollbar-width: none !important; }
+
+/* Pantallas medianas: las tablas caben completas, con las acciones a la vista. */
+@media (min-width: 768px) and (max-width: 1399px) {
+  .admin-app :is(.almacen-table, .cmp-table, .prod-table, .prv-custom-table) :is(th, td) {
+    padding-inline: 7px !important; white-space: normal !important; min-width: 0 !important;
+  }
+  .admin-app :is(.almacen-table, .cmp-table, .prod-table, .prv-custom-table) th { letter-spacing: 0 !important; }
+  .admin-app :is(.almacen-table, .cmp-table, .prod-table, .prv-custom-table) td:last-child > div { flex-wrap: wrap; row-gap: 6px; }
+  .admin-app .prv-custom-table td { overflow-wrap: anywhere; }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+  .admin-app :is(.prod-table, .prv-custom-table) :is(th, td) { padding-inline: 4px !important; font-size: 11px !important; overflow-wrap: anywhere; }
+  .admin-app .kanban-board-grid .quick-advance-btn { white-space: normal; }
+}
+.admin-app .kanban-board-grid .quick-advance-btn { white-space: normal; line-height: 1.2; padding-inline: 6px; }
+
+/* Grupos de botones en filas completas, sin elementos sueltos ni cortados. */
+.admin-app .almacen-actions > :last-child:nth-child(odd),
+.admin-app .pedir-schedule-days > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+.admin-app .inv-filter-pills.inv-filter-pills { flex-wrap: wrap; overflow: visible; }
+.admin-app .ws-btn-sm, .admin-app .ws-help, .admin-app .prod-view-detail-btn { white-space: nowrap; }
+@media (max-width: 767px) {
+  .admin-app .cmp-hist-tools > :last-child:nth-child(odd) { flex: 1 1 100%; }
+  .admin-app .fidel-section-tabs > button { font-size: 12px; gap: 5px; padding-inline: 6px; }
+  .admin-app .ws-card :has(> .ws-btn-sm) { flex-wrap: wrap; }
+}
+/* Teléfono horizontal y tabletas pequeñas. */
+@media (min-width: 768px) and (max-width: 899px) {
+  .admin-app :is(.inv-table, .cmp-table) :is(th, td) { padding-inline: 4px !important; white-space: normal !important; min-width: 0 !important; }
+  .admin-app :is(.inv-table, .cmp-table) td:last-child > div { flex-wrap: wrap; }
+  .admin-app .db-grid-3.db-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .admin-app .db-grid-3.db-grid-3 > * { grid-column: auto; }
+}
+.admin-app .inv-filter-pills > * { flex: 1 1 auto; justify-content: center; }
+@media (max-width: 767px) {
+  .admin-app .wa-metrics.wa-metrics.wa-metrics { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }
+  .admin-app .wa-metrics.wa-metrics > * { min-width: 0; gap: 8px; padding: 12px; }
+  .admin-app .fidel-section-tabs > button > span { white-space: nowrap; }
+}
+@media (min-width: 768px) and (max-width: 899px) {
+  .admin-app .inv-actions { flex-wrap: nowrap; gap: 3px; }
+  .admin-app :is(.almacen-table, .ws-card) :is(th, td) { padding-inline: 3px !important; }
+  .admin-app .ws-card :has(> .ws-btn-sm) { flex-wrap: wrap; }
+}
+
+/* Cifras largas: nunca se cortan. La letra se ajusta al ancho de la tarjeta y,
+   si aun así no cabe junto al icono, el texto pasa debajo de él. */
+.admin-app .management-workspace-metrics > * { container-type: inline-size; min-width: 0; flex-wrap: wrap; }
+.admin-app .management-workspace-metrics > * > div:last-child { flex: 1 1 0; min-width: min-content; }
+.admin-app .management-workspace-metrics.management-workspace-metrics > *
+  :is(.gst-sum-val, .kpi-value-lg, .fin-kpi-val, .fin-kpi-value, .inv-kpi-val, .inv-kpi-value, .prod-stat-val, .cmp-sum-val, .ws-sum-val, [class*='-val'], [class*='-value'], div > strong) {
+  font-size: clamp(0.75rem, 8.2cqi, 1.35rem) !important; white-space: nowrap; line-height: 1.25;
+}
+.admin-app .money-with-bcv { min-width: 0; max-width: 100%; }
+/* Teléfono: todas las tarjetas de cifras iguales, icono arriba y cifra a todo el ancho. */
+@media (max-width: 767px) {
+  .admin-app .management-workspace-metrics.management-workspace-metrics.management-workspace-metrics > * { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics.management-workspace-metrics > * > * { max-width: 100%; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics > * > div:last-child { flex: 0 0 auto; min-width: 0; }
+  .admin-app .management-workspace-metrics.management-workspace-metrics > * :is([class*='-val'], [class*='-value'], div > strong) { font-size: clamp(0.8125rem, 11cqi, 1.35rem) !important; }
+}
+/* Tableta vertical: botones de acción de las tablas siempre visibles. */
+@media (min-width: 768px) and (max-width: 899px) {
+  .admin-app :is(.almacen-table, .gst-table) :is(th, td) { padding-inline: 3px !important; white-space: normal !important; min-width: 0 !important; font-size: 11px !important; overflow-wrap: anywhere; }
+  .admin-app :is(.almacen-table, .gst-table) td:last-child > div { flex-wrap: wrap; gap: 3px; }
+}
+
+/* Teléfono: el subtítulo va debajo del título. */
+@media (max-width: 767px) {
+  .admin-app .management-workspace--reports .management-workspace-header > div { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; }
 }

@@ -86,7 +86,7 @@ export function mapFullOrderToComanda(order: FullOrder): ComandaOrder {
   return {
     id: order.id,
     orderNumber: `#FC-${String(order.orderNumber).padStart(6, '0')}`,
-    time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+    time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }),
     date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     createdAt: order.createdAt,
     customerId: order.customerId,
@@ -116,7 +116,7 @@ export function mapFullOrderToComanda(order: FullOrder): ComandaOrder {
     bcvRate: order.bcvRate || undefined,
     elapsedMins: Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)),
     status: order.fulfillmentStatus,
-    deliveredTime: order.fulfillmentStatus === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+    deliveredTime: order.fulfillmentStatus === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }) : undefined,
     attendedBy: 'Usuario del sistema',
     source: 'pos',
   }
@@ -215,7 +215,7 @@ export function createDemoComandas(): ComandaOrder[] {
       return {
         id: `demo-order-${index + 1}`,
         orderNumber: `#FC-D${String(index + 1).padStart(3, '0')}`,
-        time: createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+        time: createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }),
         date: createdAt.toLocaleDateString('es-VE'),
         createdAt: createdAt.toISOString(),
         isRetraso: status !== 'ready' && status !== 'delivered' && elapsedMins >= 20,
@@ -235,7 +235,7 @@ export function createDemoComandas(): ComandaOrder[] {
         bcvRate: 798.33,
         elapsedMins,
         status,
-        deliveredTime: status === 'delivered' ? createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+        deliveredTime: status === 'delivered' ? createdAt.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }) : undefined,
         attendedBy: index % 2 === 0 ? 'Ana · Caja' : 'Luis · Caja',
         source: 'pos',
       }

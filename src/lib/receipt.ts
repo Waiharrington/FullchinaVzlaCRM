@@ -37,7 +37,7 @@ export function generateReceipt(data: ReceiptData): jsPDF {
   const date = new Date(data.createdAt)
   doc.text(`Fecha: ${date.toLocaleDateString('es')}`, margin, y)
   y += 4
-  doc.text(`Hora: ${date.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}`, margin, y)
+  doc.text(`Hora: ${date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true })}`, margin, y)
   y += 4
   const paymentLabel = data.paymentMethod === 'personal_account'
     ? 'Cuenta personal'

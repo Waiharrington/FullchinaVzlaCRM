@@ -137,7 +137,7 @@ export function DeliverySettings() {
       <div className="card-header-row">
         <div>
           <h2 className="card-title"><Bike size={18} style={{ verticalAlign: -3, marginRight: 6 }} />Delivery por distancia</h2>
-          <p className="card-subtitle">Se estima el costo en el menú de clientes según la distancia al local. En Caja el monto sigue siendo manual.</p>
+          <p className="card-subtitle">Costo estimado según la distancia.</p>
         </div>
         <label className="ds-toggle">
           <span>{config.enabled ? 'Activado' : 'Desactivado'}</span>
@@ -151,14 +151,14 @@ export function DeliverySettings() {
 
       {(user?.role === 'owner' || user?.role === 'manager') && <div className="ds-section">
         <h3 className="ds-h3">Comisión del repartidor</h3>
-        <p className="ds-hint">Porcentaje del cargo de delivery que se asigna a nómina en nuevas comandas pagadas. Las comisiones anteriores conservan su porcentaje.</p>
+        <p className="ds-hint">Parte que va a nómina (comandas nuevas).</p>
         <div className="ds-grid"><div className="ds-field"><label htmlFor="delivery-employee-percent">Porcentaje para el repartidor (%)</label><input id="delivery-employee-percent" type="number" min="0" max="100" step="0.01" value={employeePercent} onChange={event => setEmployeePercent(event.target.value)} /></div></div>
         <button type="button" className="ds-btn-primary" onClick={saveEmployeePercent} disabled={savingPercent}>{savingPercent ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar porcentaje</button>
       </div>}
 
       <div className="ds-section">
         <h3 className="ds-h3"><MapPin size={15} style={{ verticalAlign: -2, marginRight: 5 }} />Ubicación de Full China (origen)</h3>
-        <p className="ds-hint">Haz clic en el mapa para marcar el local; puedes ajustar las coordenadas abajo.</p>
+        <p className="ds-hint">Marca el local en el mapa.</p>
         <div className="ds-origin-map">
           <Suspense fallback={<div className="ds-origin-map-loading" role="status">Cargando Google Maps…</div>}>
             <AddressMap
@@ -171,14 +171,14 @@ export function DeliverySettings() {
         <div className="ds-grid">
           <div className="ds-field"><label>Latitud</label><input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="10.2547567" /></div>
           <div className="ds-field"><label>Longitud</label><input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="-67.5926267" /></div>
-          <div className="ds-field"><label>Factor de ruta</label><input value={factor} onChange={(e) => setFactor(e.target.value)} placeholder="1.3" /><span className="ds-sub">1.3 = ruta ~30% más larga que la línea recta.</span></div>
+          <div className="ds-field"><label>Factor de ruta</label><input value={factor} onChange={(e) => setFactor(e.target.value)} placeholder="1.3" /><span className="ds-sub">1.3 = 30% más que en línea recta.</span></div>
         </div>
         <button className="ds-btn-primary" onClick={saveConfig} disabled={saving}>{saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />} Guardar ubicación</button>
       </div>
 
       <div className="ds-section">
         <h3 className="ds-h3">Zonas por distancia</h3>
-        <p className="ds-hint">Rango en km y su precio. Deja "hasta" vacío en la última zona para "más de X km".</p>
+        <p className="ds-hint">Última zona: deja "hasta" vacío.</p>
         <div className="ds-zones">
           <div className="ds-zone-head"><span>Desde (km)</span><span>Hasta (km)</span><span>Precio ($)</span><span></span></div>
           {zones.map((z) => (
@@ -202,7 +202,7 @@ export function DeliverySettings() {
 
       <div className="ds-section">
         <h3 className="ds-h3">Probar cálculo</h3>
-        <p className="ds-hint">Pega unas coordenadas de cliente ("lat, lng") para ver la distancia y el costo estimado.</p>
+        <p className="ds-hint">Pega coordenadas ("lat, lng").</p>
         <input className="ds-test-input" value={testCoords} onChange={(e) => setTestCoords(e.target.value)} placeholder="10.28, -67.60" />
         {testEstimate && (
           <div className="ds-test-result">

@@ -306,9 +306,23 @@ export function caracasTodayStartIso(now = new Date()): string {
   return new Date(Date.UTC(caracas.getUTCFullYear(), caracas.getUTCMonth(), caracas.getUTCDate(), 4)).toISOString()
 }
 
+let expiredForDay: string | null = null
+
+/**
+ * Las solicitudes sin confirmar vencen a la medianoche de Caracas. La lectura ya
+ * filtra por el día, así que la limpieza se pide una sola vez por día: es una
+ * escritura y repetirla en cada lectura volvía a avisar un cambio sin fin.
+ */
+function expireStaleWebOrdersOncePerDay() {
+  const today = caracasTodayStartIso()
+  if (expiredForDay === today) return
+  expiredForDay = today
+  const retryLater = () => { expiredForDay = null }
+  void db().rpc('fn_expire_stale_web_order_requests').then(result => { if (result?.error) retryLater() }, retryLater)
+}
+
 export async function getPendingWebOrders(): Promise<PendingWebOrder[]> {
-  // Las solicitudes sin confirmar vencen a la medianoche de Caracas.
-  void db().rpc('fn_expire_stale_web_order_requests').then(() => undefined, () => undefined)
+  expireStaleWebOrdersOncePerDay()
   const { data, error } = await db()
     .from('web_order_requests')
     .select('id,request_number,customer_name,customer_phone,customer_identification,order_type,delivery_address,notes,subtotal,bcv_rate,created_at,web_order_items(id,sellable_product_id,product_name,quantity,unit_price,notes,modifiers,line_number)')

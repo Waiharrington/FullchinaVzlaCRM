@@ -31,7 +31,7 @@
 }
 
 .mesas-page-header p:not(.mesas-eyebrow) { margin: 4px 0 0; color: var(--text-secondary); font-size: 0.88rem; }
-.mesas-eyebrow { margin: 0 0 4px; color: #f87171; font-size: 0.64rem; font-weight: 800; letter-spacing: 1.2px; }
+.mesas-eyebrow { margin: 0 0 4px; color: #f87171; font-size: 0.6875rem; font-weight: 800; letter-spacing: 1.2px; }
 
 .mesas-header-actions { display: flex; gap: 8px; }
 
@@ -206,7 +206,7 @@
 
 .mesas-tile-seats {
   display: flex; align-items: center; gap: 4px;
-  font-size: 0.65rem; font-weight: 700; color: #a1a1aa;
+  font-size: 0.6875rem; font-weight: 700; color: #a1a1aa;
   opacity: 0.9;
   z-index: 2;
 }
@@ -231,7 +231,7 @@
 
 .mesas-tile-elapsed {
   display: flex; align-items: center; gap: 3px;
-  font-size: 0.6rem; font-weight: 700; color: #fff;
+  font-size: 0.6875rem; font-weight: 700; color: #fff;
   position: absolute; bottom: -20px; white-space: nowrap;
   background: linear-gradient(135deg, rgba(227,27,43,0.9), rgba(127,29,29,0.9));
   padding: 2px 7px; border-radius: 100px;
@@ -389,7 +389,7 @@
 
   .mesas-tile.square { border-radius: 15px; }
   .mesas-tile-number { font-size: 1.08rem; }
-  .mesas-tile-seats { gap: 2px; font-size: 0.52rem; }
+  .mesas-tile-seats { gap: 2px; font-size: 0.6875rem; }
   .mesas-tile-seats svg { width: 9px; height: 9px; }
 
   .mesas-tile-elapsed {
@@ -398,7 +398,7 @@
     max-width: 60px;
     padding: 2px 4px;
     overflow: hidden;
-    font-size: 0.49rem;
+    font-size: 0.6875rem;
     text-overflow: ellipsis;
     transform: translateX(-50%);
   }

@@ -98,7 +98,7 @@
 .fc-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .fc-calendar-weekday,
 .fc-calendar-day { display: grid; width: 34px; height: 32px; place-items: center; justify-self: center; }
-.fc-calendar-weekday { height: 26px; color: #85858f; font-size: 10px; font-weight: 700; }
+.fc-calendar-weekday { height: 26px; color: #85858f; font-size: 11px; font-weight: 700; }
 .fc-calendar-day {
   border: 1px solid transparent;
   border-radius: 9px;
@@ -122,7 +122,7 @@
   padding-top: 9px;
   border-top: 1px solid rgba(255, 255, 255, .07);
   color: #85858f;
-  font-size: 10px;
+  font-size: 11px;
 }
 .fc-calendar-footer button { padding: 5px 9px; border: 0; border-radius: 7px; background: rgba(227, 27, 43, .12); color: #ff737d; font-size: 11px; font-weight: 700; cursor: pointer; }
 .fc-calendar-footer button:hover { background: rgba(227, 27, 43, .22); color: #fff; }

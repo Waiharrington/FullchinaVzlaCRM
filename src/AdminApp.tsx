@@ -111,6 +111,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoutes() {
   const { user, splashDone } = useAuth()
+  const canSeeComandas = Boolean(user && canAccessModule('/comandas', user.role, user.allowedModules))
+
+  // Pide las comandas apenas hay sesión, para que ya estén al abrir el módulo.
+  useEffect(() => {
+    if (!canSeeComandas) return
+    void import('./pages/comandas/boardData')
+      .then(board => board.fetchBoardOrders('today'))
+      .catch(() => undefined) // Comandas muestra su propio aviso si falla.
+  }, [canSeeComandas])
   return (
     <Suspense fallback={null}>
       <>

@@ -358,7 +358,7 @@ export function Fidelizacion() {
       <header className="page-header management-workspace-header">
         <div>
           <h1 className="page-title"><Award size={22} className="page-title-icon" /> Fidelización</h1>
-          <p className="page-subtitle"><span className="fidel-subtitle-desktop">Premia las visitas recurrentes y sigue a tus clientes VIP.</span><span className="fidel-subtitle-mobile">Premia la fidelidad de tus clientes.</span></p>
+          <p className="page-subtitle">Premia la fidelidad de tus clientes.</p>
         </div>
       </header>
 
@@ -401,12 +401,12 @@ export function Fidelizacion() {
           </div>
         ))}
       </div>
-      <p className="fidel-carousel-hint">Pasan automáticamente · También puedes deslizar</p>
+      <p className="fidel-carousel-hint">Desliza para ver más</p>
 
       <nav className="fidel-section-tabs" role="tablist" aria-label="Secciones de fidelización">
         <button type="button" role="tab" aria-selected={activeSection === 'cards'} onClick={() => setActiveSection('cards')}><CreditCard size={17} /><span>Tarjetas</span><b>{customers.length}</b></button>
-        <button type="button" role="tab" aria-selected={activeSection === 'rewards'} onClick={() => setActiveSection('rewards')}><Gift size={17} /><span>Premios por entregar</span><b>{pendingRewards.length}</b></button>
-        <button type="button" role="tab" aria-selected={activeSection === 'accounts'} onClick={() => setActiveSection('accounts')}><UsersRound size={17} /><span>Cuentas de clientes</span><b>{accounts.length}</b></button>
+        <button type="button" role="tab" aria-selected={activeSection === 'rewards'} onClick={() => setActiveSection('rewards')}><Gift size={17} /><span>Premios</span><b>{pendingRewards.length}</b></button>
+        <button type="button" role="tab" aria-selected={activeSection === 'accounts'} onClick={() => setActiveSection('accounts')}><UsersRound size={17} /><span>Cuentas</span><b>{accounts.length}</b></button>
         <button type="button" role="tab" aria-selected={activeSection === 'program'} onClick={() => setActiveSection('program')}><SlidersHorizontal size={17} /><span>Programa</span></button>
       </nav>
 
@@ -453,13 +453,13 @@ export function Fidelizacion() {
       )}
 
       {activeSection === 'rewards' && <section className="fidel-pending-panel fidel-tab-panel" role="tabpanel" aria-labelledby="fidel-pending-title">
-        <header><div><Gift size={19} /><div><h2 id="fidel-pending-title">Premios por entregar</h2><p>Confirma el canje cuando el cliente reciba su recompensa.</p></div></div><b>{pendingRewards.length}</b></header>
+        <header><div><Gift size={19} /><div><h2 id="fidel-pending-title">Premios por entregar</h2><p>Confirma al entregar el premio.</p></div></div><b>{pendingRewards.length}</b></header>
         {rewardStorageError && <p className="fidel-reward-storage-notice" role="status">{rewardStorageError}</p>}{rewardActionNotice && <p className="fidel-admin-notice" role="status">{rewardActionNotice}</p>}
         {pendingRewards.length ? <div className="fidel-pending-list">{pendingRewards.map(reward => <article key={reward.id}><div className="fidel-pending-customer"><strong>{reward.customer_name}</strong><small>{reward.phone || 'Sin teléfono'} · Tarjeta {reward.cycle_number}</small></div><div className="fidel-pending-prize"><span>{reward.reward_description}</span><small>Disponible desde {new Date(reward.unlocked_at).toLocaleDateString('es-VE', { day: 'numeric', month: 'short', year: 'numeric' })}</small></div><RewardChoiceSelect reward={reward} value={rewardChoiceByReward[reward.id]} onChange={value => setRewardChoiceByReward(current => ({ ...current, [reward.id]: value }))} /><button type="button" disabled={redeemingRewardId !== null} onClick={() => void redeemCustomerReward(reward)}>{redeemingRewardId === reward.id ? 'Guardando…' : 'Marcar canjeado'}</button></article>)}</div> : !rewardStorageError && <p className="fidel-pending-empty">No hay premios pendientes. Aquí aparecerán al completar una tarjeta.</p>}
       </section>}
 
       {activeSection === 'accounts' && <section className="fidel-accounts-panel fidel-accounts-page" role="tabpanel">
-        <header className="fidel-accounts-page-head"><div><span className="fidel-accounts-eyebrow">ACCESO A MI PERFIL</span><h2><UsersRound size={19} /> Cuentas de clientes</h2><p>Busca una cuenta, revisa sus datos y restablece su clave cuando lo necesite.</p></div><span className="fidel-accounts-total"><strong>{filteredAccounts.length}</strong><small>{filteredAccounts.length === 1 ? 'cuenta' : 'cuentas'}</small></span></header>
+        <header className="fidel-accounts-page-head"><div><span className="fidel-accounts-eyebrow">ACCESO A MI PERFIL</span><h2><UsersRound size={19} /> Cuentas de clientes</h2><p>Revisa cuentas y restablece claves.</p></div><span className="fidel-accounts-total"><strong>{filteredAccounts.length}</strong><small>{filteredAccounts.length === 1 ? 'cuenta' : 'cuentas'}</small></span></header>
         {adminNotice && <p className="fidel-admin-notice" role="status">{adminNotice}</p>}
         <div className="filter-search-box fidel-account-search"><Search size={17} className="filter-search-icon" /><input type="search" placeholder="Buscar por nombre, cédula, teléfono o correo…" value={accountSearch} onChange={event => setAccountSearch(event.target.value)} className="filter-search-input" />{accountSearch && <button type="button" className="search-clear-btn" onClick={() => setAccountSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</div>
         {pagedAccounts.length > 0 && <div className="fidel-accounts-table-wrap"><table className="fidel-accounts-table"><thead><tr><th>Cliente</th><th>Cédula</th><th>Contacto</th><th>Estado</th><th><span className="sr-only">Acciones</span></th></tr></thead><tbody>{pagedAccounts.map(account => <tr key={account.customer_id}><td><div className="fidel-account-table-customer"><span className="fidel-account-avatar" style={{ background: avatarColorFor(account.customer_name) }}>{initialsFor(account.customer_name)}</span><strong>{account.customer_name}</strong></div></td><td>{account.identification || <span className="fidel-table-muted">Sin cédula</span>}</td><td><div className="fidel-account-table-contact"><strong>{account.phone || 'Sin teléfono'}</strong>{account.email && <small>{account.email}</small>}</div></td><td><span className={`fidel-account-status ${account.status}`}><i />{account.status === 'active' ? 'Activa' : 'Desactivada'}</span></td><td><button className="fidel-account-table-action" type="button" onClick={() => void resetCustomerPassword(account)}><KeyRound size={14} /> Restablecer clave</button></td></tr>)}</tbody></table></div>}
@@ -469,7 +469,7 @@ export function Fidelizacion() {
       </section>}
 
       {activeSection === 'program' && <section className="fidel-accounts-panel fidel-program-panel" role="tabpanel">
-            <header><div><h2><Settings2 size={19} /> Programa de fidelización</h2><p>Configura las visitas necesarias y los premios que se entregan.</p></div></header>
+            <header><div><h2><Settings2 size={19} /> Programa de fidelización</h2><p>Visitas necesarias y premios.</p></div></header>
             <div className="fidel-loyalty-settings">
               <label>Visitas para ganar un premio<input type="number" min={1} max={50} value={visitsPerReward} onChange={e => setVisitsPerReward(Number(e.target.value))} /></label>
               <label className="fidel-reward-mode"><input type="checkbox" checked={choiceMode} onChange={e => setChoiceMode(e.target.checked)} /> El cliente elige la proteína del premio (ración genérica)</label>

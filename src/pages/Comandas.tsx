@@ -8,8 +8,9 @@ import { AddItemsToOrderModal } from '../components/AddItemsToOrderModal'
 import { LoadingSkeleton } from '../components/LoadingSkeleton'
 import { PrintChoiceDialog } from '../components/PrintChoiceDialog'
 import { confirmDialog, alertDialog } from '../components/ConfirmDialog'
-import { confirmWebOrder, getPendingWebOrders } from '../lib/publicOrders'
-import { publishDataChange, subscribeToDataChanges, supabase } from '../lib/supabase'
+import { confirmWebOrder } from '../lib/publicOrders'
+import { invalidateCachedReads, publishDataChange, subscribeToDataChanges, supabase } from '../lib/supabase'
+import { boardKey, fetchBoardOrders, readBoardSnapshot, saveBoardSnapshot } from './comandas/boardData'
 import { useLiveDataRefresh } from '../lib/liveDataRefresh'
 import { normalizeForSearch } from '../lib/textFormat'
 import { canMoveComandaStatus, getInvalidComandaTransitionMessage, isComandaStatus, nextComandaStatus, type ComandaStatus } from '../lib/comandaWorkflow'
@@ -18,6 +19,9 @@ import { calculateCashChange, formatUsd, dayRangeInTimeZone, parseMoneyInput } f
 import { printThermalReceipt, type ThermalReceiptData } from '../lib/thermalReceipt'
 import { Search, ChevronLeft, CheckCircle, ShoppingBag, Bike, UtensilsCrossed, Plus, Trash2, X, ShieldCheck, DollarSign, Sparkles, UserPlus } from 'lucide-react'
 import './Comandas.css'
+
+/** Cada cuánto se vuelve a leer el tablero aunque no llegue ningún aviso. */
+const BOARD_POLL_MS = 20_000
 
 import { COLUMN_PREVIEW_LIMIT, ActivePaymentMethod, SplitPaymentMethod, paymentInputToUsd, usdToPaymentInput, ComandaItem, ComandaOrder, mapFullOrderToComanda, thermalReceiptForComanda, MOCK_COMANDAS, createDemoComandas, getInitials, cleanNotes, extractPreferredPayment, COLUMNS } from './comandas/model'
 import { KitchenPulse } from './comandas/KitchenPulse'
@@ -41,7 +45,13 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const navigate = useNavigate()
   const handledOrderNavigationKey = useRef<string | null>(null)
   const isDemoMode = new URLSearchParams(window.location.search).get('demo') === '1'
-  const [comandas, setComandas] = useState<ComandaOrder[]>(() => isDemoMode ? createDemoComandas() : MOCK_COMANDAS)
+  const [initialSnapshot] = useState(() => isDemoMode || embeddedOrderId ? undefined : readBoardSnapshot('today'))
+  const [comandas, setComandas] = useState<ComandaOrder[]>(() => isDemoMode ? createDemoComandas() : initialSnapshot ?? MOCK_COMANDAS)
+  // Día cuyos datos están en pantalla; mientras no coincida con el filtro se está cargando.
+  const [loadedBoardKey, setLoadedBoardKey] = useState<string | null>(() => initialSnapshot ? boardKey('today') : null)
+  const loadedBoardKeyRef = useRef(loadedBoardKey)
+  loadedBoardKeyRef.current = loadedBoardKey
+  const [boardError, setBoardError] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<ComandaOrder | null>(null)
   const orderItemsSectionRef = useRef<HTMLDivElement | null>(null)
@@ -737,23 +747,19 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
 
     let active = true
     let latestLoadRequest = 0
+    const snapshot = readBoardSnapshot(dateFilter)
+    if (snapshot && loadedBoardKeyRef.current !== boardKey(dateFilter)) {
+      setComandas(snapshot)
+      setLoadedBoardKey(boardKey(dateFilter))
+    }
+    setBoardError(false)
     const loadRealOrders = async () => {
       const loadRequest = ++latestLoadRequest
       try {
-        // El "día" del negocio se calcula en horario de Venezuela (UTC-4), no en
-        // UTC: de lo contrario las comandas creadas después de las 8pm local
-        // caen en el día UTC siguiente y desaparecen del tablero.
-        const targetDate = dateFilter === 'yesterday' ? new Date(Date.now() - 24 * 60 * 60 * 1000) : new Date()
-        const { start, end } = dayRangeInTimeZone(targetDate)
-        const [realOrders, webOrders] = await Promise.all([
-          getOrdersWithItems(start, end),
-          dateFilter === 'today' ? getPendingWebOrders() : Promise.resolve([]),
-        ])
+        const key = boardKey(dateFilter)
+        const [realOrders, webOrders] = await fetchBoardOrders(dateFilter)
 
-        // Several changes can arrive while Supabase is responding. Only the
-        // newest snapshot may replace the board, or a slower older request
-        // can make a just-created/cancelled/updated order appear stale again.
-        if (active && loadRequest === latestLoadRequest) {
+        if (active) {
           const mapped: ComandaOrder[] = realOrders.map((o) => {
             const date = new Date(o.createdAt)
             const elapsed = Math.floor((Date.now() - date.getTime()) / 60000)
@@ -783,7 +789,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
             return {
               id: o.id,
               orderNumber: `#FC-${String(o.orderNumber).padStart(6, '0')}`,
-              time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+              time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }),
               date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
               createdAt: o.createdAt,
               isRetraso: elapsed > 15 && status !== 'delivered',
@@ -823,7 +829,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               bcvRate: o.bcvRate || undefined,
               elapsedMins: elapsed < 0 ? 1 : elapsed,
               status,
-              deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+              deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }) : undefined,
               attendedBy: 'Usuario del sistema',
               source: 'pos',
             }
@@ -843,7 +849,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               webRequestId: order.id,
               source: 'web',
               orderNumber: order.code,
-              time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+              time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }),
               date: date.toLocaleDateString('es-VE'),
               createdAt: order.createdAt,
               isRetraso: elapsed > 10,
@@ -877,6 +883,8 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               attendedBy: 'Pedido desde la web',
             }
           })
+          setLoadedBoardKey(key)
+          setBoardError(false)
           setComandas(previous => {
             const previousById = new Map(previous.map(order => [order.id, order]))
             return [...pendingWeb, ...mapped].map(order => {
@@ -916,10 +924,36 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         }
       } catch (e) {
         console.error('Error cargando comandas reales:', e)
+        if (active) setBoardError(true)
       }
     }
 
-    loadRealOrders()
+    // Una sola lectura a la vez: los avisos que llegan mientras tanto piden otra
+    // al terminar, sin descartar la que está en camino (así el tablero nunca se
+    // queda vacío aunque haya cambios seguidos).
+    let loading = false
+    let queued = false
+    const requestLoad = async () => {
+      if (loading) { queued = true; return }
+      loading = true
+      do {
+        queued = false
+        await loadRealOrders()
+      } while (active && queued)
+      loading = false
+    }
+    // Respaldo por si el aviso en tiempo real no llega: los pedidos nuevos
+    // aparecen igual, y al volver a la app o recuperar internet.
+    const refreshFromServer = () => {
+      if (document.visibilityState === 'hidden') return
+      invalidateCachedReads(['orders', 'web_order_requests'])
+      void requestLoad()
+    }
+    const pollTimer = setInterval(refreshFromServer, BOARD_POLL_MS)
+    document.addEventListener('visibilitychange', refreshFromServer)
+    window.addEventListener('online', refreshFromServer)
+
+    void requestLoad()
     let refreshTimer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = subscribeToDataChanges((table) => {
       if (!['orders', 'order_items', 'order_item_modifiers', 'modifiers', 'modifier_options', 'sellable_products', 'payments', 'web_order_requests', 'web_order_items', 'order_event_logs', 'profiles', 'customers', '*'].includes(table)) return
@@ -935,15 +969,22 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
             }
           })
       }
-      if (refreshTimer) clearTimeout(refreshTimer)
-      refreshTimer = setTimeout(() => { void loadRealOrders() }, 180)
+      if (refreshTimer) return
+      refreshTimer = setTimeout(() => { refreshTimer = null; void requestLoad() }, 180)
     })
     return () => {
       active = false
       unsubscribe()
+      clearInterval(pollTimer)
+      document.removeEventListener('visibilitychange', refreshFromServer)
+      window.removeEventListener('online', refreshFromServer)
       if (refreshTimer) clearTimeout(refreshTimer)
     }
   }, [reloadToken, dateFilter, isDemoMode, embeddedOrderId, showAssociateCustomerModal])
+
+  useEffect(() => {
+    if (loadedBoardKey) saveBoardSnapshot(loadedBoardKey, comandas)
+  }, [comandas, loadedBoardKey])
 
   useEffect(() => {
     if (!embeddedOrderId || isDemoMode) return
@@ -1121,7 +1162,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       const dateFrom = dayRangeInTimeZone(monthStart).start
       const dateTo = dayRangeInTimeZone(monthEnd).end
 
-      const allOrders = await getOrdersWithItems(dateFrom, dateTo)
+      const allOrders = await getOrdersWithItems(dateFrom, dateTo, true)
       if (loadRequest !== historyLoadRequestRef.current) return
 
       const creatorNames = new Map<string, string>()
@@ -1156,7 +1197,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
         return {
           id: o.id,
           orderNumber: `#FC-${String(o.orderNumber).padStart(6, '0')}`,
-          time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+          time: date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }),
           date: date.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
           customerId: o.customerId,
           customerName: o.customerName || 'Cliente general',
@@ -1181,7 +1222,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
           balanceDue: Math.max(0, (o.totalAmount || 0) - o.payments.reduce((sum, payment) => sum + payment.amount, 0)),
           elapsedMins: Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000)),
           status,
-          deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+          deliveredTime: status === 'delivered' ? date.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }) : undefined,
           attendedBy: creatorNames.get(o.createdBy) || 'Admin',
           source: 'pos',
         }
@@ -1331,7 +1372,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               ...c,
               status: nextStatus,
               isRetraso: false,
-              deliveredTime: nextStatus === 'delivered' ? new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }) : undefined,
+              deliveredTime: nextStatus === 'delivered' ? new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true }) : undefined,
             }
           : c
       )
@@ -1426,6 +1467,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const draggingOrder = draggingOrderId ? comandas.find(c => c.id === draggingOrderId) ?? null : null
   const draggingOrderColor = draggingOrder ? COLUMNS.find(c => c.key === draggingOrder.status)?.color ?? '#ff4d3d' : '#ff4d3d'
 
+  const boardPending = !isDemoMode && loadedBoardKey !== boardKey(dateFilter)
   const totalComandasCount = comandas.length
   const nuevasCount = comandas.filter(c => c.status === 'new').length
   const preparandoCount = comandas.filter(c => c.status === 'preparing').length
@@ -1435,7 +1477,11 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
   const avgMins = activeComandas.length > 0
     ? Math.round(activeComandas.reduce((sum, comanda) => sum + comanda.elapsedMins, 0) / activeComandas.length)
     : 0
-  const kitchenPulse = pendientesCount === 0
+  const kitchenPulse = boardPending
+    ? boardError
+      ? { tone: 'busy', label: 'Sin conexión', message: 'No se pudo cargar.' }
+      : { tone: 'steady', label: 'Cargando', message: 'Un momento…' }
+    : pendientesCount === 0
     ? { tone: 'calm', label: 'Todo bajo control', message: 'Cocina libre.' }
     : pendientesCount >= 8 || avgMins >= 20
       ? { tone: 'critical', label: 'Alta carga', message: 'Prioriza mayor espera.' }
@@ -1445,7 +1491,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
 
   return (
     <div className={`comandas-page animate-fade-in ${boardExpanded ? 'is-board-expanded' : ''} ${embeddedOrderId ? 'comandas-page-embedded' : ''}`}>
-      <KitchenPulse kitchenPulse={kitchenPulse} pendientesCount={pendientesCount} boardExpanded={boardExpanded} setBoardExpanded={setBoardExpanded} isDemoMode={isDemoMode} setShowHistoryModal={setShowHistoryModal} setShowNewOrderModal={setShowNewOrderModal} totalComandasCount={totalComandasCount} nuevasCount={nuevasCount} preparandoCount={preparandoCount} listasCount={listasCount} avgMins={avgMins} />
+      <KitchenPulse loading={boardPending} kitchenPulse={kitchenPulse} pendientesCount={boardPending ? 0 : pendientesCount} boardExpanded={boardExpanded} setBoardExpanded={setBoardExpanded} isDemoMode={isDemoMode} setShowHistoryModal={setShowHistoryModal} setShowNewOrderModal={setShowNewOrderModal} totalComandasCount={totalComandasCount} nuevasCount={nuevasCount} preparandoCount={preparandoCount} listasCount={listasCount} avgMins={avgMins} />
 
       {isDemoMode ? (
         <div className="comandas-demo-banner" role="status">
@@ -1479,6 +1525,13 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
 
       {statusError && <div className="command-status-error" role="alert">{statusError}</div>}
 
+      {boardError && (
+        <div className="command-status-error command-load-error" role="alert">
+          <span>{boardPending ? 'No se pudieron cargar las comandas. Revisa la conexión.' : 'No se pudo actualizar. Estás viendo la última información recibida.'}</span>
+          <button type="button" onClick={() => { setBoardError(false); setReloadToken(value => value + 1) }}>Reintentar</button>
+        </div>
+      )}
+
       {/* 4 columnas Kanban: el flujo operativo avanza una etapa por movimiento. */}
       <DndContext
         sensors={dndSensors}
@@ -1493,7 +1546,7 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
       >
         <div className="kanban-board-grid">
           {COLUMNS.map(col => {
-            const colOrders = getOrdersByStatus(col.key)
+            const colOrders = boardPending ? [] : getOrdersByStatus(col.key)
             const isExpanded = expandedCols[col.key] ?? false
             const visibleOrders = isExpanded ? colOrders : colOrders.slice(0, COLUMN_PREVIEW_LIMIT)
             const hiddenCount = colOrders.length - visibleOrders.length
@@ -1502,6 +1555,8 @@ export function Comandas({ embeddedOrderId, onEmbeddedClose }: ComandasProps = {
               <KanbanColumn
                 key={col.key}
                 col={col}
+                loading={boardPending && !boardError}
+                failed={boardPending && boardError}
                 colOrders={colOrders}
                 visibleOrders={visibleOrders}
                 hiddenCount={hiddenCount}

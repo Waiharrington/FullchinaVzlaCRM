@@ -1150,7 +1150,7 @@
   .inv-wide-modal .inv-modal-heading > div { display: flex; flex: 1 1 auto; flex-direction: column; gap: 4px; min-width: 0; }
   .inv-wide-modal .inv-modal-heading small {
     white-space: nowrap;
-    font-size: .66rem;
+    font-size: 0.6875rem;
     letter-spacing: .045em;
   }
   .inv-wide-modal .inv-modal-heading h3 {
@@ -1646,7 +1646,7 @@
     flex: 0 0 36px;
   }
   .inv-modal-filter-pills { gap: 4px; }
-  .inv-modal-filter-pill { padding-inline: 5px; font-size: .68rem; }
+  .inv-modal-filter-pill { padding-inline: 5px; font-size: 0.6875rem; }
   .inv-modal-date-range { gap: 8px; }
   .inv-modal-date-box span { font-size: .7rem; }
   .inv-modal-date-box > .fc-date-field-shell > input { padding-left: 10px; font-size: .82rem; }
@@ -1867,7 +1867,7 @@
     display: block;
     margin-bottom: 9px;
     color: #a1a1aa;
-    font-size: 10px;
+    font-size: 11px;
     letter-spacing: .07em;
     text-transform: uppercase;
   }
@@ -1897,7 +1897,7 @@
     max-width: 100%;
     overflow: hidden;
     color: inherit;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 650;
     line-height: 1.1;
     text-overflow: ellipsis;
@@ -1918,4 +1918,68 @@
     max-width: 100%;
   }
   .management-workspace--inventory .inv-page-btn { min-width: 44px; min-height: 44px; }
+}
+
+@media (max-width: 420px) {
+  .management-workspace--inventory .inv-action-label { letter-spacing: -.35px; overflow: visible; }
+  .management-workspace--inventory .inv-action-btn { padding-inline: 0; }
+}
+
+/* Tablet con el menú abierto: tarjetas en vez de tabla apretada. */
+@media (min-width: 900px) and (max-width: 1199px) {
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table-card { min-width: 0; padding: 12px; }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table-wrapper { overflow: visible; }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table,
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody { display: block; width: 100%; min-width: 0; }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table thead { display: none; }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody tr:not(:has(td[colspan])) {
+    display: block;
+    margin-bottom: 10px;
+    padding: 4px 12px;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 14px;
+    background: #141416;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody tr:not(:has(td[colspan])) td {
+    display: grid;
+    grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody tr:not(:has(td[colspan])) td::before {
+    content: attr(data-label);
+    color: #858994;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody tr:not(:has(td[colspan])) td:last-child {
+    display: block;
+    padding-top: 12px;
+    border-bottom: 0;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody tr:not(:has(td[colspan])) td:last-child::before {
+    display: block;
+    margin-bottom: 9px;
+    color: #a1a1aa;
+    font-size: 11px;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table td[colspan] { display: block; }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+  .main-content-wrapper:not(.sidebar-collapsed) .management-workspace--inventory .inv-table tbody tr { margin: 0; }
+}
+
+@media (min-width: 900px) and (max-width: 1199px) {
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .inv-filters-row { flex-wrap: wrap; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .inv-filters-row .inv-search-box { flex: 1 1 100%; max-width: none; }
+  .admin-app .main-content-wrapper:not(.sidebar-collapsed) .inv-filters-row .inv-filter-pills { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; }
 }

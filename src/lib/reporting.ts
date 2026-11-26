@@ -8,27 +8,27 @@ export interface ReportTable { columns: string[]; rows: string[][]; total?: stri
 export interface ReportData { orders?: FullOrder[]; expenses?: Expense[]; purchases?: Purchase[]; credits?: Credit[]; closes?: DailyCloseSummary[]; ingredients?: Ingredient[]; warehouseIngredients?: WarehouseIngredient[]; movements?: StockMovement[]; batches?: ProductionBatch[]; customers?: Customer[]; operations?: FinancialOperation[]; payrollPayments?: PayrollPayment[]; advances?: Advance[]; auditLogs?: AuditLog[]; products?: Product[]; recipeSummaries?: Map<string, RecipeSummary>; legacySales?: LegacySaleReportRow[]; legacyDeletedOrders?: LegacyDeletedOrderReportRow[]; legacyPurchaseOrders?: LegacyPurchaseOrderReportRow[]; events?: ReportEventRow[]; adjustments?: ReportAdjustmentRow[]; attendance?: ReportAttendanceRow[]; requisitions?: ReportRequisitionRow[]; giftCards?: ReportGiftCardRow[]; sourceUnavailable?: boolean }
 
 export const REPORTS: ReportDefinition[] = [
-  { id: 'orders', title: 'Órdenes cerradas', group: 'Ventas', description: 'Comandas cobradas, cliente, mesa y total' },
+  { id: 'orders', title: 'Órdenes cerradas', group: 'Ventas', description: 'Cobradas: cliente, mesa y total' },
   { id: 'items', title: 'Ventas por ítem', group: 'Ventas', description: 'Unidades e ingresos por producto' },
-  { id: 'categories', title: 'Ventas por categoría', group: 'Ventas', description: 'Ingresos y unidades por grupo del menú' },
+  { id: 'categories', title: 'Ventas por categoría', group: 'Ventas', description: 'Ventas por grupo del menú' },
   { id: 'payments', title: 'Por tipo de pago', group: 'Ventas', description: 'Pagos registrados por método' },
   { id: 'tables', title: 'Órdenes por mesa', group: 'Ventas', description: 'Cantidad y ventas por mesa' },
   { id: 'orderTypes', title: 'Tipo de órdenes', group: 'Ventas', description: 'Mesa, para llevar y delivery' },
   { id: 'hours', title: 'Ventas por hora', group: 'Ventas', description: 'Horas de mayor movimiento' },
   { id: 'customers', title: 'Ventas por cliente', group: 'Ventas', description: 'Clientes identificados y frecuencia' },
   { id: 'expenses', title: 'Gastos por categoría', group: 'Finanzas', description: 'Egresos registrados y sus conceptos' },
-  { id: 'purchases', title: 'Compras por proveedor', group: 'Finanzas', description: 'Compras vigentes agrupadas por proveedor' },
-  { id: 'purchaseItems', title: 'Productos comprados', group: 'Finanzas', description: 'Cantidades y costos de insumos adquiridos' },
-  { id: 'credits', title: 'Cuentas por cobrar', group: 'Finanzas', description: 'Créditos y saldo pendiente por cliente' },
-  { id: 'closes', title: 'Cierres diarios de caja', group: 'Finanzas', description: 'Ventas, pagos y balance calculado de cada cierre' },
-  { id: 'inventory', title: 'Inventario actual', group: 'Inventario', description: 'Existencias y valor del stock operativo' },
+  { id: 'purchases', title: 'Compras por proveedor', group: 'Finanzas', description: 'Compras por proveedor' },
+  { id: 'purchaseItems', title: 'Productos comprados', group: 'Finanzas', description: 'Cantidades y costos' },
+  { id: 'credits', title: 'Cuentas por cobrar', group: 'Finanzas', description: 'Saldo pendiente por cliente' },
+  { id: 'closes', title: 'Cierres diarios de caja', group: 'Finanzas', description: 'Ventas, pagos y balance' },
+  { id: 'inventory', title: 'Inventario actual', group: 'Inventario', description: 'Existencias y su valor' },
   { id: 'movements', title: 'Historial de inventario', group: 'Inventario', description: 'Entradas, salidas y ajustes registrados' },
-  { id: 'productionWaste', title: 'Mermas de producción', group: 'Inventario', description: 'Cantidad y porcentaje de merma de cada preparación' },
-  { id: 'customersList', title: 'Clientes', group: 'Ventas', description: 'Clientes activos, visitas y última compra', ready: true },
-  { id: 'financialOperations', title: 'Operaciones financieras', group: 'Finanzas', description: 'Transferencias, cobros, ajustes y movimientos confirmados', ready: true },
+  { id: 'productionWaste', title: 'Mermas de producción', group: 'Inventario', description: 'Merma de cada preparación' },
+  { id: 'customersList', title: 'Clientes', group: 'Ventas', description: 'Visitas y última compra', ready: true },
+  { id: 'financialOperations', title: 'Operaciones financieras', group: 'Finanzas', description: 'Traspasos, cobros y ajustes', ready: true },
   { id: 'payrollPayments', title: 'Pagos de nómina', group: 'Finanzas', description: 'Pagos efectuados a empleados', ready: true },
   { id: 'advances', title: 'Adelantos de salario', group: 'Finanzas', description: 'Adelantos y estado de deducción', ready: true },
-  { id: 'auditLogs', title: 'Auditoría del sistema', group: 'Finanzas', description: 'Acciones importantes registradas por usuario', ready: true },
+  { id: 'auditLogs', title: 'Auditoría del sistema', group: 'Finanzas', description: 'Acciones por usuario', ready: true },
   { id: 'productsList', title: 'Catálogo de productos', group: 'Ventas', description: 'Productos activos y precios actuales', ready: true },
 ]
 
@@ -139,6 +139,7 @@ for (const report of REPORTS) if (operationalReportIds.has(report.id)) report.re
 
 const localDate = (value: string) => dateKeyInTimeZone(new Date(value))
 const localTime = (value: string) => new Intl.DateTimeFormat('en-GB', { timeZone: 'America/Caracas', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(value))
+const displayTime = (value: string) => new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(value))
 const inRange = (value: string, start: string, end: string, startHour = '', endHour = '') => {
   const day = value.includes('T') ? localDate(value) : value.slice(0, 10)
   if (day < start || day > end) return false
@@ -194,7 +195,7 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
   switch (id) {
     case 'orders': return {
       columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Método de pago', 'Tasa del día', 'Cobrado'],
-      rows: paid.map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), orderPaymentMethods(order), order.bcvRate ? formatVes(order.bcvRate) : '—', orderAmountSummary(order)]),
+      rows: paid.map(order => [localDate(order.createdAt), displayTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), orderPaymentMethods(order), order.bcvRate ? formatVes(order.bcvRate) : '—', orderAmountSummary(order)]),
       total: formatUsd(paid.reduce((sum, order) => sum + order.totalAmount, 0)),
       orderIds: paid.map(order => order.id),
     }
@@ -206,7 +207,7 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
     }
     case 'tables': return grouped(aggregate(paid, order => order.tableNumber ? `Mesa ${order.tableNumber}` : 'Sin mesa', order => order.totalAmount), 'Mesa', 'Órdenes')
     case 'orderTypes': return grouped(aggregate(paid, order => ({ dine_in: 'Mesa', takeaway: 'Para llevar', delivery: 'Delivery' } as Record<string, string>)[order.orderType] ?? order.orderType, order => order.totalAmount), 'Tipo', 'Órdenes')
-    case 'hours': return grouped(aggregate(paid, order => new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: '2-digit', hour12: false }).format(new Date(order.createdAt)) + ':00', order => order.totalAmount), 'Hora', 'Órdenes')
+    case 'hours': return grouped(aggregate(paid, order => new Intl.DateTimeFormat('es-VE', { timeZone: 'America/Caracas', hour: 'numeric', hour12: true }).format(new Date(order.createdAt)), order => order.totalAmount), 'Hora', 'Órdenes')
     case 'customers': return grouped(aggregate(paid.filter(order => order.customerName && order.customerName !== 'Cliente'), order => order.customerName, order => order.totalAmount), 'Cliente', 'Órdenes')
     case 'expenses': return grouped(aggregate((data.expenses ?? []).filter(row => inRange(row.expenseDate, start, end)), row => row.category, row => row.amount), 'Categoría', 'Gastos')
     case 'purchases': return grouped(aggregate((data.purchases ?? []).filter(row => !row.isVoided && inRange(row.purchaseDate, start, end)), row => row.supplierName, row => row.totalAmount), 'Proveedor', 'Compras')
@@ -237,7 +238,7 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
     }
     case 'movements': return {
       columns: ['Fecha', 'Hora', 'Insumo', 'Movimiento', 'Cantidad', 'Ubicación', 'Referencia'],
-      rows: (data.movements ?? []).filter(row => inRange(row.createdAt, start, end, startHour, endHour)).map(row => [localDate(row.createdAt), localTime(row.createdAt), row.ingredientName, row.movementType, `${count(row.quantity)} ${row.unitSymbol}`, row.stockLocation, row.referenceType ?? 'Manual']),
+      rows: (data.movements ?? []).filter(row => inRange(row.createdAt, start, end, startHour, endHour)).map(row => [localDate(row.createdAt), displayTime(row.createdAt), row.ingredientName, row.movementType, `${count(row.quantity)} ${row.unitSymbol}`, row.stockLocation, row.referenceType ?? 'Manual']),
       note: 'Los movimientos son append-only; esta vista no modifica el historial.',
     }
     case 'productionWaste': return {
@@ -248,12 +249,12 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
     case 'customersList': return { columns: ['Cliente', 'Teléfono', 'Visitas', 'Última visita', 'Producto favorito', 'Estado'], rows: (data.customers ?? []).filter(row => row.isActive).map(row => [row.name, row.phone || 'Sin teléfono', String(row.totalVisits), row.lastVisit ? localDate(row.lastVisit) : 'Sin visitas', row.favoriteProduct || 'Sin datos', 'Activo']) }
     case 'openOrders': return {
       columns: ['Fecha', 'Hora', 'Comanda', 'Cliente', 'Tipo / mesa', 'Ítems', 'Total (USD)'],
-      rows: (data.orders ?? []).filter(order => order.status !== 'paid' && inRange(order.createdAt, start, end, startHour, endHour)).map(order => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), formatUsd(order.totalAmount)]),
+      rows: (data.orders ?? []).filter(order => order.status !== 'paid' && inRange(order.createdAt, start, end, startHour, endHour)).map(order => [localDate(order.createdAt), displayTime(order.createdAt), `#${order.orderNumber}`, order.customerName || 'Cliente', order.tableNumber ? `Mesa ${order.tableNumber}` : orderTypeName(order.orderType), count(order.items.reduce((sum, item) => sum + item.quantity, 0)), formatUsd(order.totalAmount)]),
       note: 'Incluye comandas que todavía no tienen estado pagado en el período seleccionado.',
     }
     case 'salesDetail': return {
       columns: ['Fecha', 'Hora', 'Comanda', 'Producto', 'Categoría', 'Cantidad', 'Precio unitario', 'Subtotal'],
-      rows: paid.flatMap(order => order.items.map(item => [localDate(order.createdAt), localTime(order.createdAt), `#${order.orderNumber}`, item.productName, item.category, count(item.quantity), formatUsd(item.unitPrice), formatUsd(item.quantity * item.unitPrice)])),
+      rows: paid.flatMap(order => order.items.map(item => [localDate(order.createdAt), displayTime(order.createdAt), `#${order.orderNumber}`, item.productName, item.category, count(item.quantity), formatUsd(item.unitPrice), formatUsd(item.quantity * item.unitPrice)])),
       note: 'Detalle de líneas de venta cobradas; no incluye cargos que no pertenecen a un producto.',
     }
     case 'modifiers': return grouped(aggregate(salesItems.flatMap(item => (item.modifiers ?? []).map(modifier => ({ label: modifier.optionName, amount: item.quantity * modifier.quantity * modifier.price, quantity: item.quantity * modifier.quantity }))), row => row.label, row => row.amount, row => row.quantity), 'Opción', 'Unidades')
@@ -301,17 +302,17 @@ export function buildReport(id: ReportId, start: string, end: string, data: Repo
     case 'generalLossGain': { const sales = (data.orders ?? []).filter(order => order.status === 'paid' && !isPersonalAccountOrder(order) && inRange(order.createdAt, start, end)).reduce((sum, order) => sum + order.totalAmount, 0); const expenses = (data.expenses ?? []).filter(row => inRange(row.expenseDate, start, end)).reduce((sum, row) => sum + row.amount, 0); return { columns: ['Concepto', 'Monto (USD)'], rows: [['Ventas cobradas', formatUsd(sales)], ['Gastos registrados', formatUsd(-expenses)], ['Resultado', formatUsd(sales - expenses)]], total: formatUsd(sales - expenses), note: 'Resultado operativo simple: ventas cobradas menos gastos registrados. No incluye costo de recetas ni nómina.' } }
     case 'laborCost': return grouped(aggregate((data.payrollPayments ?? []).filter(row => inRange(row.paymentDate, start, end)).map(row => ({ label: row.employeeName, amount: row.currency === 'USD' ? row.amount : (row.exchangeRate ? row.amount / row.exchangeRate : 0) })), row => row.label, row => row.amount), 'Empleado', 'Pagos')
     case 'exchangeRates': return { columns: ['Fecha', 'Tasa BCV (Bs/USD)', 'Órdenes registradas'], rows: [...new Set((data.orders ?? []).filter(order => inRange(order.createdAt, start, end) && order.bcvRate).map(order => `${localDate(order.createdAt)}|${order.bcvRate}`))].map(value => { const [date, rate] = value.split('|'); return [date, Number(rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 4 }), String((data.orders ?? []).filter(order => localDate(order.createdAt) === date && String(order.bcvRate) === rate).length)] }) , note: 'Historial de tasas guardadas en las órdenes; no sustituye una serie oficial diaria del BCV.' }
-    case 'orderTime': return { columns: ['Orden', 'Evento', 'Valor anterior', 'Valor actual', 'Fecha', 'Hora'], rows: (data.events ?? []).filter(row => inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, row.eventType, row.previousValue ?? '-', row.currentValue ?? '-', localDate(row.occurredAt), localTime(row.occurredAt)]) }
-    case 'cashLogs': return { columns: ['Orden', 'Evento', 'Fecha', 'Hora', 'Detalle'], rows: (data.events ?? []).filter(row => row.eventType === 'drawer_opened' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, row.eventType, localDate(row.occurredAt), localTime(row.occurredAt), row.currentValue ?? '-']) }
-    case 'kdsLogs': return { columns: ['Orden', 'Evento', 'Estado', 'Fecha', 'Hora'], rows: (data.events ?? []).filter(row => row.eventType === 'kitchen_status_changed' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, row.eventType, row.currentValue ?? '-', localDate(row.occurredAt), localTime(row.occurredAt)]) }
-    case 'kdsItems': return { columns: ['Orden', 'Evento', 'Estado', 'Fecha', 'Hora'], rows: (data.events ?? []).filter(row => row.eventType === 'kitchen_status_changed' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, 'Estado de comanda', row.currentValue ?? '-', localDate(row.occurredAt), localTime(row.occurredAt)]), note: 'El registro actual audita cambios de estado de la comanda; el detalle por ítem requiere eventos KDS por línea.' }
+    case 'orderTime': return { columns: ['Orden', 'Evento', 'Valor anterior', 'Valor actual', 'Fecha', 'Hora'], rows: (data.events ?? []).filter(row => inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, row.eventType, row.previousValue ?? '-', row.currentValue ?? '-', localDate(row.occurredAt), displayTime(row.occurredAt)]) }
+    case 'cashLogs': return { columns: ['Orden', 'Evento', 'Fecha', 'Hora', 'Detalle'], rows: (data.events ?? []).filter(row => row.eventType === 'drawer_opened' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, row.eventType, localDate(row.occurredAt), displayTime(row.occurredAt), row.currentValue ?? '-']) }
+    case 'kdsLogs': return { columns: ['Orden', 'Evento', 'Estado', 'Fecha', 'Hora'], rows: (data.events ?? []).filter(row => row.eventType === 'kitchen_status_changed' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, row.eventType, row.currentValue ?? '-', localDate(row.occurredAt), displayTime(row.occurredAt)]) }
+    case 'kdsItems': return { columns: ['Orden', 'Evento', 'Estado', 'Fecha', 'Hora'], rows: (data.events ?? []).filter(row => row.eventType === 'kitchen_status_changed' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, 'Estado de comanda', row.currentValue ?? '-', localDate(row.occurredAt), displayTime(row.occurredAt)]), note: 'El registro actual audita cambios de estado de la comanda; el detalle por ítem requiere eventos KDS por línea.' }
     case 'precheckLogs':
-    case 'prebillPrintLogs': return { columns: ['Orden', 'Evento', 'Fecha', 'Hora', 'Detalle'], rows: (data.events ?? []).filter(row => row.eventType === 'printed' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, 'Precuenta impresa', localDate(row.occurredAt), localTime(row.occurredAt), row.currentValue ?? '-']) }
-    case 'openDrawerLogs': return { columns: ['Orden', 'Evento', 'Fecha', 'Hora', 'Detalle'], rows: (data.events ?? []).filter(row => row.eventType === 'drawer_opened' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, 'Apertura de cajón', localDate(row.occurredAt), localTime(row.occurredAt), row.currentValue ?? '-']) }
+    case 'prebillPrintLogs': return { columns: ['Orden', 'Evento', 'Fecha', 'Hora', 'Detalle'], rows: (data.events ?? []).filter(row => row.eventType === 'printed' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, 'Precuenta impresa', localDate(row.occurredAt), displayTime(row.occurredAt), row.currentValue ?? '-']) }
+    case 'openDrawerLogs': return { columns: ['Orden', 'Evento', 'Fecha', 'Hora', 'Detalle'], rows: (data.events ?? []).filter(row => row.eventType === 'drawer_opened' && inRange(row.occurredAt, start, end, startHour, endHour)).map(row => [`#${row.orderId.slice(0, 8)}`, 'Apertura de cajón', localDate(row.occurredAt), displayTime(row.occurredAt), row.currentValue ?? '-']) }
     case 'tipsByEmployee': return grouped(aggregate((data.adjustments ?? []).filter(row => row.adjustmentType === 'tip' && inRange(row.createdAt, start, end)).map(row => ({ label: row.employeeId ?? 'Sin asignar', amount: row.amountUsd })), row => row.label, row => row.amount), 'Empleado', 'Propinas')
     case 'tipsAddedLogs': return { columns: ['Fecha', 'Empleado', 'Orden', 'Monto (USD)', 'Motivo'], rows: (data.adjustments ?? []).filter(row => row.adjustmentType === 'tip' && inRange(row.createdAt, start, end)).map(row => [localDate(row.createdAt), row.employeeId ?? 'Sin asignar', `#${row.orderId.slice(0, 8)}`, formatUsd(row.amountUsd), row.reason ?? '-']) }
     case 'laborHours': return grouped(aggregate((data.attendance ?? []).filter(row => inRange(row.workDate, start, end)).map(row => ({ label: row.employeeId, amount: row.clockIn && row.clockOut ? (new Date(row.clockOut).getTime() - new Date(row.clockIn).getTime()) / 3600000 : 0 })), row => row.label, row => row.amount), 'Empleado', 'Horas')
-    case 'employeeMarkings': return { columns: ['Fecha', 'Empleado', 'Entrada', 'Salida', 'Horas'], rows: (data.attendance ?? []).filter(row => inRange(row.workDate, start, end)).map(row => [row.workDate, row.employeeId, row.clockIn ? localTime(row.clockIn) : 'Sin entrada', row.clockOut ? localTime(row.clockOut) : 'Sin salida', row.clockIn && row.clockOut ? ((new Date(row.clockOut).getTime() - new Date(row.clockIn).getTime()) / 3600000).toFixed(2) : '-']) }
+    case 'employeeMarkings': return { columns: ['Fecha', 'Empleado', 'Entrada', 'Salida', 'Horas'], rows: (data.attendance ?? []).filter(row => inRange(row.workDate, start, end)).map(row => [row.workDate, row.employeeId, row.clockIn ? displayTime(row.clockIn) : 'Sin entrada', row.clockOut ? displayTime(row.clockOut) : 'Sin salida', row.clockIn && row.clockOut ? ((new Date(row.clockOut).getTime() - new Date(row.clockIn).getTime()) / 3600000).toFixed(2) : '-']) }
     case 'requisitions': return { columns: ['Fecha', 'Insumo', 'Cantidad', 'Origen', 'Destino', 'Estado'], rows: (data.requisitions ?? []).filter(row => inRange(row.requestedAt, start, end)).map(row => [localDate(row.requestedAt), row.ingredientId, count(row.quantity), row.fromLocation, row.toLocation, row.status]) }
     case 'giftCards': return { columns: ['Fecha', 'Código', 'Movimiento', 'Monto (USD)', 'Orden'], rows: (data.giftCards ?? []).filter(row => inRange(row.transactionAt ?? row.createdAt, start, end)).map(row => [localDate(row.transactionAt ?? row.createdAt), row.code, row.transactionType ?? 'Emisión', formatUsd(row.transactionAmountUsd ?? row.initialAmountUsd), row.orderId ? `#${row.orderId.slice(0, 8)}` : '-']) }
     case 'inventoryUsage': return grouped(aggregate((data.movements ?? []).filter(row => row.movementType === 'consumption' && inRange(row.createdAt, start, end)), row => row.ingredientName, row => Math.abs(row.quantity), row => Math.abs(row.quantity)), 'Insumo', 'Cantidad consumida')
