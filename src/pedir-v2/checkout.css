@@ -1,7 +1,7 @@
 /* ===== Panel del pedido ===== */
 .public-drawer-backdrop { position: fixed; inset: 0; z-index: 9000; display: flex; justify-content: flex-end; background: rgba(23, 10, 6, .68); animation: pd-fade .22s ease both; }
 .public-drawer-backdrop.closing { pointer-events: none; animation: pd-fade-out .34s ease both; }
-.public-drawer-backdrop > .public-cart-drawer { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; max-width: none; max-height: none; overflow: hidden; background: var(--bg); animation: pd-drawer-in .42s cubic-bezier(.2, 1, .3, 1) both; }
+.public-drawer-backdrop > .public-cart-drawer { position: relative; display: flex; flex-direction: column; width: 100%; height: 100%; max-width: none; max-height: none; overflow: hidden auto; overscroll-behavior: contain; scroll-padding: 96px 0 80px; background: var(--bg); animation: pd-drawer-in .42s cubic-bezier(.2, 1, .3, 1) both; }
 .public-drawer-backdrop.closing > .public-cart-drawer { animation: pd-drawer-out .34s cubic-bezier(.6, 0, .9, .4) both; }
 @keyframes pd-drawer-in { from { transform: translateY(100%); } }
 @keyframes pd-drawer-out { to { transform: translateY(100%); } }
@@ -12,12 +12,13 @@
 @keyframes pd-drawer-in-x { from { transform: translateX(100%); } }
 @keyframes pd-drawer-out-x { to { transform: translateX(100%); } }
 
-.public-review-header { position: relative; z-index: 5; flex: 0 0 auto; display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 0 10px; padding: max(12px, env(safe-area-inset-top, 0px)) 18px 18px; color: #fff; background: var(--stage); border-radius: 0 0 50% 50% / 0 0 18px 18px; }
+/* Solo la franja de volver y pasos queda fija; el título se desplaza. */
+.public-review-header { position: sticky; top: 0; z-index: 5; flex: 0 0 auto; display: grid; grid-template-columns: 48px 1fr; align-items: center; gap: 0 10px; padding: max(12px, env(safe-area-inset-top, 0px)) 18px 18px; color: #fff; background: var(--stage); border-radius: 0 0 50% 50% / 0 0 18px 18px; }
 .public-review-header > img { display: none; }
 .public-review-back { display: grid; place-items: center; width: 48px; height: 44px; margin-left: -8px; border: 0; border-radius: 50%; color: #fff; background: rgba(60, 0, 4, .3); transition: transform .25s var(--pd-spring); }
 .public-review-back svg { transform: rotate(180deg); }
 .public-review-back:hover { transform: translateX(-3px); }
-.public-review-heading { grid-column: 1 / -1; margin-top: 8px; animation: pd-rise .35s var(--pd-out) both; }
+.public-review-heading { flex: 0 0 auto; padding: 0 18px; color: #fff; animation: pd-rise .35s var(--pd-out) both; }
 .public-review-heading h2 { font: 400 clamp(20.5px, 5.95vw, 25.5px)/1.06 var(--pd-display); text-wrap: balance; }
 .public-review-heading p { margin-top: 4px !important; color: #FFE5DA; font-size: 13.5px; line-height: 1.35; }
 .public-step-sent .public-review-header { grid-template-columns: 1fr; justify-items: center; padding-bottom: 11.5px; }
@@ -43,7 +44,7 @@
 .pd-fuse li.is-now i { background: var(--pd-yellow); }
 
 /* Contenedor común de cada paso */
-:is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track) { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 13px; overflow: hidden auto; overscroll-behavior: contain; padding: 20px 18px max(18px, env(safe-area-inset-bottom, 0px)); animation: pd-step-in .38s var(--pd-out) both; }
+:is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track) { flex: 1 0 auto; display: flex; flex-direction: column; gap: 13px; padding: 20px 18px max(18px, env(safe-area-inset-bottom, 0px)); animation: pd-step-in .38s var(--pd-out) both; }
 @keyframes pd-step-in { from { opacity: 0; transform: translateX(34px); } }
 :is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page) > * { flex: 0 0 auto; }
 .public-cart-drawer .public-primary { position: sticky; z-index: 4; bottom: 0; display: flex; align-items: center; justify-content: center; gap: 9px; width: 100%; min-height: 51.5px; margin-top: auto; padding: 0 16.5px; border: 0; border-radius: 19px; color: #fff; background: var(--pd-red); box-shadow: 0 5px 0 var(--pd-red-deep), 0 0 0 10px var(--bg); font-size: 15.5px; font-weight: 800; transition: transform .14s, box-shadow .14s; }
@@ -52,10 +53,8 @@
 .public-cart-drawer .public-primary:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--pd-red-deep), 0 0 0 10px var(--bg); }
 .public-cart-drawer .public-primary:disabled { opacity: .55; }
 /* Escribiendo con teclado en pantalla (useTypingMode): el panel ocupa solo el
-   área visible, con la cabecera sin título y el botón principal al final. */
+   área visible y el botón principal queda al final del contenido. */
 .public-drawer-backdrop > .public-cart-drawer.is-typing { align-self: flex-start; height: var(--pd-visible-height, 100%); margin-top: var(--pd-visible-top, 0px); }
-.public-cart-drawer.is-typing .public-review-header { padding-bottom: 12px; }
-.public-cart-drawer.is-typing .public-review-heading { display: none; }
 .public-cart-drawer.is-typing .public-primary { position: static; }
 .public-field-attention { animation: pd-shake .45s, pd-glow 1.3s ease-out; }
 @keyframes pd-glow { from { box-shadow: 0 0 0 6px rgba(255, 194, 26, .9); } }
@@ -160,6 +159,7 @@
 /* Mismo criterio que en Contacto: mapa fijo y punta del pin en su centro. */
 .public-pickup-map.is-store-map iframe { height: calc(100% + 60px) !important; pointer-events: none; }
 .public-pickup-map.is-store-map .public-contact-brand-pin { top: calc(50% + 30px - 41px) !important; margin: 0 !important; transform: translate(-50%, -50%) rotate(-45deg) !important; }
+.public-pickup-map.is-store-map .public-contact-location-tag { display: none; }
 .public-contact-location-tint { display: none; }
 .public-contact-location-tag { position: absolute; top: 14px; left: 14px; display: inline-flex; align-items: center; gap: 6px; padding: 9px 10.5px; border-radius: 14px; color: #fff; background: var(--pd-red); font-size: 13px; font-weight: 800; }
 .public-contact-brand-pin { position: absolute; top: 50%; left: 50%; display: grid; place-items: center; width: 78px; height: 78px; margin: -84px 0 0 -39px; border-radius: 50% 50% 50% 6px; background: var(--pd-red); transform: rotate(-45deg); pointer-events: none; animation: pd-pin .7s .2s var(--pd-spring) both; }

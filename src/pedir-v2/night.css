@@ -300,7 +300,9 @@ html[data-pwa-entry='cliente'] :is(.public-hero-search-pill, .public-hero-search
 .public-sidebar-items { overflow-x: hidden; }
 .public-sidebar-trash { right: 0; }
 .public-sidebar-item { padding-right: 31px; }
-:is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track, .ppdm-content, .public-variant-options, .public-cart-extra-sections, .public-product-detail-modal) { overflow-x: hidden; }
+:is(.ppdm-content, .public-variant-options, .public-cart-extra-sections, .public-product-detail-modal) { overflow-x: hidden; }
+/* Los pasos no se desplazan solos (lo hace el panel): recortan sin crear scroll. */
+.public-cart-drawer :is(.public-review-page, .public-delivery-step, .public-pickup-step, .public-address-step, .public-checkout, .public-confirm-page, .public-success, .public-track) { overflow-x: clip; }
 html[data-pwa-entry='cliente'], html[data-pwa-entry='cliente'] body { overflow-x: clip; }
 /* En escritorio solo se bloquea el scroll de html: si body también se oculta,
    la tarjeta "Tu pedido" pierde su posición sticky y salta hacia arriba. */

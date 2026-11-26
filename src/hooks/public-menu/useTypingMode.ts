@@ -17,7 +17,9 @@ function revealField(field: HTMLElement) {
   let container = field.parentElement
   while (container && !/(auto|scroll)/.test(getComputedStyle(container).overflowY)) container = container.parentElement
   if (!container) return
-  const top = field.getBoundingClientRect().top - container.getBoundingClientRect().top - FIELD_TOP_GAP
+  // La franja fija de pasos tapa la parte alta del área desplazable.
+  const pinned = container.querySelector<HTMLElement>(':scope > .public-review-header')?.offsetHeight ?? 0
+  const top = field.getBoundingClientRect().top - container.getBoundingClientRect().top - pinned - FIELD_TOP_GAP
   container.scrollBy?.({ top, behavior: 'smooth' })
 }
 
