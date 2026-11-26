@@ -3,10 +3,11 @@ import { StyledSelect } from '../../components/StyledSelect'
 import { type MenuProductGroup } from '../../lib/menuGrouping'
 import { categoryLabel } from '../../lib/menuCategories'
 import { type Product } from '../../lib/dataService'
-import { X, ShoppingCart, Search } from 'lucide-react'
+import { X, ShoppingCart, Search, LayoutGrid, ChevronDown } from 'lucide-react'
 import { formatProductTitle } from '../../lib/textFormat'
 import { getProductImage } from '../caja/model'
-import type { Dispatch, SetStateAction } from 'react'
+import { useState, type Dispatch, type SetStateAction } from 'react'
+import { createPortal } from 'react-dom'
 
 export interface ProductsSectionProps {
   activeCategory: string
@@ -26,6 +27,11 @@ export interface ProductsSectionProps {
 }
 
 export function ProductsSection({ activeCategory, setActiveCategory, categories, searchTerm, setSearchTerm, sortBy, setSortBy, salesRank, loading, products, productsError, filteredProductGroups, topProductRanks, selectMenuGroup }: ProductsSectionProps) {
+  // En teléfono las categorías se eligen en un panel (ver Caja.css).
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const activeLabel = activeCategory === 'all' ? 'Todos' : categoryLabel(activeCategory)
+  const chooseCategory = (category: string) => { setActiveCategory(category); setPickerOpen(false) }
+
   return (
     <div className="products-section">
           {/* Hero Wok Flame Banner */}
@@ -74,6 +80,11 @@ export function ProductsSection({ activeCategory, setActiveCategory, categories,
                 </button>
               )}
             </div>
+            <button type="button" className="category-picker-btn" aria-haspopup="dialog" onClick={() => setPickerOpen(true)}>
+              <LayoutGrid size={17} aria-hidden="true" />
+              <span><small>Categoría</small><strong>{activeLabel}</strong></span>
+              <ChevronDown size={15} aria-hidden="true" />
+            </button>
             <StyledSelect
               className="sort-select"
               value={sortBy}
@@ -84,6 +95,25 @@ export function ProductsSection({ activeCategory, setActiveCategory, categories,
               <option value="name">Nombre</option>
             </StyledSelect>
           </div>
+
+          {pickerOpen && createPortal(
+            <div className="modal-overlay-dark category-sheet-overlay" onClick={() => setPickerOpen(false)}>
+              <section className="category-sheet" role="dialog" aria-modal="true" aria-labelledby="category-sheet-title" onClick={event => event.stopPropagation()} onKeyDown={event => { if (event.key === 'Escape') setPickerOpen(false) }}>
+                <header>
+                  <h2 id="category-sheet-title">¿Qué quieres ver?</h2>
+                  <button type="button" className="payment-modal-close" autoFocus onClick={() => setPickerOpen(false)} aria-label="Cerrar categorías"><X size={18} /></button>
+                </header>
+                <div className="category-sheet-grid">
+                  {['all', ...categories].map(category => (
+                    <button key={category} type="button" aria-pressed={activeCategory === category} onClick={() => chooseCategory(category)}>
+                      {category === 'all' ? 'Todos' : categoryLabel(category)}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            </div>,
+            document.body
+          )}
 
           {/* Products Grid */}
           <div className="products-container grid">

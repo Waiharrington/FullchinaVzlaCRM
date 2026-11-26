@@ -803,7 +803,7 @@ export function ComprasReal() {
           <div className="cmp-modal" onClick={(e) => e.stopPropagation()}>
             <div className="cmp-modal-header">
               <h3>Compra · {detail.supplierName}</h3>
-              <button className="cmp-icon-btn" onClick={() => closeDetail()}><X size={18} /></button>
+              <button className="cmp-icon-btn" aria-label="Cerrar" onClick={() => closeDetail()}><X size={18} /></button>
             </div>
             <div className="cmp-detail-row"><span className="k">Fecha</span><span>{formatDateOnly(detail.purchaseDate)}</span></div>
             <div className="cmp-detail-row"><span className="k">Factura</span><span>{detail.invoiceNumber || '—'}</span></div>

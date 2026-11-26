@@ -3800,90 +3800,56 @@
 .cmd-history-state.is-credit { border-color: rgba(96, 165, 250, 0.4); background: rgba(96, 165, 250, 0.12); color: #93c5fd; }
 .cmd-history-state.is-active { border-color: rgba(227, 27, 43, 0.45); background: rgba(227, 27, 43, 0.14); color: #ff8078; }
 
-@media (max-width: 640px) {
-  .cmd-history-weeks-row .cmd-history-weeks { padding: 2px 14px; }
-  .cmd-history-filters { flex-wrap: nowrap; overflow-x: auto; padding: 0 14px 10px; scrollbar-width: none; }
-  .cmd-history-filters::-webkit-scrollbar { display: none; }
-  .cmd-history-filter { flex: 0 0 auto; }
-  .cmd-history-row {
-    grid-template-columns: 50px minmax(0, 1fr) auto;
-    gap: 10px;
-    padding: 11px 12px;
-  }
-  .cmd-history-row-type { display: none; }
-  .cmd-history-row-time strong { font-size: 15px; }
-  .cmd-history-row-detail { flex-wrap: wrap; row-gap: 2px; }
-  .cmd-history-row-kind::after { content: none; }
-  .cmd-history-row-products { flex: 1 1 100%; }
-  .cmd-history-row-total .money-usd { font-size: 15px; }
-  .cmd-history-state { font-size: 11px; padding: 3px 8px; }
+.cmd-history-phone-filters, .cmd-history-row-meta, .cmd-history-month-year { display: none; }
+
+/* ===== Historial de comandas (todas las pantallas) =====
+   Sin filas de botones: buscar, elegir el período, dos listas (semana y qué
+   mostrar) y tarjetas que se leen de arriba abajo. */
+.cmd-history-modal .cmd-history-nav { display: flex !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 0 14px 10px !important; }
+.cmd-history-modal .cmd-history-nav-actions { display: flex !important; flex: 0 0 auto !important; width: auto !important; align-items: center; gap: 6px; margin-left: auto; }
+.cmd-history-modal .cmd-history-year-wrap,
+.cmd-history-modal .cmd-history-weeks-row,
+.cmd-history-modal .cmd-history-filters,
+.cmd-history-modal .cmd-history-nav-actions .fc-calendar-prefix { display: none !important; }
+.cmd-history-month-year { display: inline; }
+.cmd-history-modal .cmd-history-month-nav { gap: 2px !important; }
+.cmd-history-modal .cmd-history-month-label { min-width: 0 !important; padding: 0 2px; font-size: 13.5px !important; white-space: nowrap; }
+.cmd-history-modal .cmd-history-month-btn { width: 30px !important; height: 38px !important; }
+.cmd-history-modal .cmd-history-date-filter { gap: 6px; max-width: none !important; min-height: 38px !important; padding: 0 9px !important; font-size: 12px !important; }
+.cmd-history-modal .cmd-history-date-filter svg:last-child { display: none; }
+.cmd-history-modal .cmd-history-clear-date { min-height: 38px; white-space: nowrap; }
+
+.cmd-history-phone-filters { display: flex; flex-shrink: 0; gap: 8px; padding: 0 14px 12px; border-bottom: 1px solid rgba(255, 255, 255, .08); }
+.cmd-history-phone-filters label { display: grid; flex: 1 1 0; gap: 4px; min-width: 0; }
+.cmd-history-phone-filters label:first-child:not(:last-child) { flex-grow: 1.7; }
+.cmd-history-phone-filters label > span { color: #8b8b93; font-size: 11.5px; font-weight: 700; }
+.cmd-history-phone-filters .fc-select { width: 100%; min-width: 0; }
+
+.cmd-history-modal .cmd-history-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "title total" "meta total" "detail detail" "state state";
+  align-items: start;
+  gap: 3px 12px;
+  padding: 12px;
 }
+.cmd-history-modal :is(.cmd-history-row-time, .cmd-history-row-type, .cmd-history-row-title small, .cmd-history-row-kind) { display: none; }
+.cmd-history-modal :is(.cmd-history-row-main, .cmd-history-row-side) { display: contents; }
+.cmd-history-modal .cmd-history-row-title { grid-area: title; }
+.cmd-history-modal .cmd-history-row-title strong { overflow: visible; font-size: 15px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
+.cmd-history-row-meta { display: block; grid-area: meta; color: #a1a1aa; font-size: 12px; line-height: 1.35; }
+.cmd-history-modal .cmd-history-row-detail { grid-area: detail; margin-top: 3px; }
+.cmd-history-modal .cmd-history-row-products { display: -webkit-box; flex: 1 1 100%; overflow: hidden; color: #d4d4d8; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.cmd-history-modal .cmd-history-row-total { grid-area: total; justify-self: end; text-align: right; }
+.cmd-history-modal .cmd-history-row-total .money-usd { font-size: 16px; }
+.cmd-history-modal .cmd-history-state { grid-area: state; justify-self: start; max-width: 100%; margin-top: 6px; line-height: 1.25; white-space: normal; }
+.cmd-history-group-label { align-items: center; }
 
-/* ===== Historial de comandas en el teléfono =====
-   El estado baja a su propia línea para que el nombre del cliente tenga
-   espacio; mes, fecha y año van en una fila y las semanas se deslizan en una
-   sola línea. La computadora no cambia. */
-@media (max-width: 640px) {
-  .cmd-history-nav {
-    display: flex !important;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 6px 8px;
-    padding: 0 14px 8px !important;
-  }
-  .cmd-history-nav-actions {
-    display: flex !important;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-  }
-  .cmd-history-nav-actions > .filter-dropdown-wrap:first-child .cmd-history-date-filter {
-    max-width: none !important;
-    min-height: 32px !important;
-    padding: 0 10px !important;
-    font-size: 11.5px !important;
-  }
-  .cmd-history-year-btn { min-height: 32px; padding: 0 10px !important; font-size: 12px !important; }
-  .cmd-history-month-label { min-width: 74px !important; font-size: 13px !important; }
-  .cmd-history-month-btn { width: 30px !important; height: 30px !important; }
-
-  .cmd-history-weeks-row .cmd-history-weeks {
-    flex-wrap: nowrap !important;
-    overflow-x: auto !important;
-    width: auto !important;
-    padding: 2px 14px !important;
-  }
-  .cmd-history-weeks-row .cmd-history-week-btn {
-    flex: 0 0 auto !important;
-    height: 32px;
-    padding: 0 13px !important;
-    font-size: 12px !important;
-  }
-
-  .cmd-history-row {
-    grid-template-columns: 48px minmax(0, 1fr) auto;
-    grid-template-areas:
-      "time title title"
-      "time detail detail"
-      "time state total";
-    align-items: start;
-    row-gap: 4px;
-    column-gap: 10px;
-  }
-  .cmd-history-row-time { grid-area: time; padding-top: 1px; }
-  .cmd-history-row-main { display: contents; }
-  .cmd-history-row-title { grid-area: title; align-self: center; flex-wrap: wrap; row-gap: 0; }
-  .cmd-history-row-title strong { flex: 0 1 auto; max-width: 100%; }
-  .cmd-history-row-title strong { font-size: 14px; }
-  .cmd-history-row-title small { font-size: 11px; }
-  .cmd-history-row-detail { grid-area: detail; }
-  .cmd-history-row-side { display: contents; }
-  .cmd-history-row-total { grid-area: total; justify-self: end; align-self: end; text-align: right; }
-  .cmd-history-state { grid-area: state; justify-self: start; align-self: end; min-width: 0; max-width: 100%; margin-top: 2px; white-space: normal; line-height: 1.25; }
-  .cmd-history-nav-actions .fc-calendar-prefix { display: none !important; }
-  .cmd-history-month-nav { gap: 0 !important; }
-  .cmd-history-group-label { align-items: center; }
+/* En pantallas grandes: más aire y las listas sin estirarse de lado a lado. */
+@media (min-width: 641px) {
+  .cmd-history-modal .cmd-history-nav { padding: 0 20px 12px !important; }
+  .cmd-history-phone-filters { padding: 0 20px 14px; }
+  .cmd-history-phone-filters label,
+  .cmd-history-phone-filters label:first-child:not(:last-child) { flex: 0 1 240px; }
 }
 
 /* Esqueleto del historial: imita la fila nueva (hora · cliente y productos ·

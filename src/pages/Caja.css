@@ -2917,5 +2917,25 @@
 .admin-app .payment-badge-pill { justify-content: center; white-space: nowrap; min-width: 0; }
 .admin-app .payment-badge-pill:last-child:nth-child(odd) { grid-column: 1 / -1; }
 
-/* Teléfono: todas las categorías visibles sin deslizar. */
-@media (max-width: 767px) { .admin-app .products-section .category-tabs { flex-wrap: wrap; overflow: visible; height: auto; flex-shrink: 0; } }
+/* Teléfono: las categorías se eligen con un botón que abre un panel, y la barra
+   de búsqueda queda fija arriba al bajar por los productos. */
+.category-picker-btn { display: none; }
+.category-sheet { display: flex; flex-direction: column; gap: 14px; width: min(460px, 100%); padding: 16px; border: 1px solid rgba(255, 77, 61, .32); border-radius: 18px; background: #18181b; color: #fff; }
+.category-sheet header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.category-sheet h2 { margin: 0; font-size: 18px; }
+.category-sheet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.category-sheet-grid button { display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 6px 4px; border: 1px solid rgba(255, 255, 255, .1); border-radius: 12px; background: #232327; color: #e4e4e7; font: inherit; min-width: 0; overflow-wrap: anywhere; font-size: 13px; font-weight: 700; line-height: 1.2; cursor: pointer; }
+.category-sheet-grid button[aria-pressed='true'] { border-color: #e31b2b; background: #e31b2b; color: #fff; }
+
+@media (max-width: 767px) {
+  .admin-app .products-section .category-tabs { display: none; }
+  /* Sin esto la barra no se queda fija: la página es la que se desplaza. */
+  .admin-app .app-main:has(.products-section) { overflow: visible; }
+  .admin-app .products-section .products-toolbar { position: sticky; top: 0; z-index: 20; flex-wrap: wrap; gap: 8px; margin: 0 -6px 14px; padding: calc(env(safe-area-inset-top, 0px) + 6px) 6px 8px; background: var(--bg-primary, #0b0c0f); }
+  .admin-app .products-section .products-toolbar .search-box { flex: 1 1 100%; }
+  .category-picker-btn { display: flex; flex: 1 1 0; align-items: center; gap: 9px; min-width: 0; min-height: 46px; padding: 4px 12px; border: 1px solid rgba(227, 27, 43, .55); border-radius: 12px; background: rgba(227, 27, 43, .12); color: #fff; font: inherit; text-align: left; cursor: pointer; }
+  .category-picker-btn > span { display: grid; flex: 1 1 auto; min-width: 0; line-height: 1.2; }
+  .category-picker-btn small { color: #a1a1aa; font-size: 11px; font-weight: 600; }
+  .category-picker-btn strong { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+  .category-picker-btn > svg { flex: 0 0 auto; color: #ff6257; }
+}

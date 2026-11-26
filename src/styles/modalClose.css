@@ -1,0 +1,66 @@
+/* Botón de cerrar (X) de todas las ventanas emergentes del administrador:
+   un solo tamaño, forma y color. Cada pantalla decide dónde se coloca.
+   Toda ventana nueva debe sumar aquí la clase de su botón. */
+html body :is(
+  .aito-close, .almacen-modal-close, .bottom-nav-close, .cmd-close-btn,
+  .cmd-sales-modal-head > button, .cmdx-icon-btn[aria-label='Cerrar detalle de comanda'],
+  .cmp-icon-btn[aria-label='Cerrar'], .db-modal-close, .db-quick-access-close,
+  .fidel-customer-card-modal-header > button, .fin-dialog-close, .gst-close,
+  .gst-help-popover-close, .inv-modal-close, .mesas-modal-close, .mobile-cart-close,
+  .modal-close-btn, .nom-detail-close, .nom-help-close, .payment-modal-close,
+  .pedir-replace-close, .print-choice-close, .prod-modal-close, .prv-modal-close-btn,
+  .report-detail-close, .wa-modal-close, .ws-modal-close
+) {
+  box-sizing: border-box !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  flex: 0 0 40px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  padding: 0 !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 12px !important;
+  background: #2a2a2f !important;
+  box-shadow: none !important;
+  color: #fff !important;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease;
+}
+
+html body :is(
+  .aito-close, .almacen-modal-close, .bottom-nav-close, .cmd-close-btn,
+  .cmd-sales-modal-head > button, .cmdx-icon-btn[aria-label='Cerrar detalle de comanda'],
+  .cmp-icon-btn[aria-label='Cerrar'], .db-modal-close, .db-quick-access-close,
+  .fidel-customer-card-modal-header > button, .fin-dialog-close, .gst-close,
+  .gst-help-popover-close, .inv-modal-close, .mesas-modal-close, .mobile-cart-close,
+  .modal-close-btn, .nom-detail-close, .nom-help-close, .payment-modal-close,
+  .pedir-replace-close, .print-choice-close, .prod-modal-close, .prv-modal-close-btn,
+  .report-detail-close, .wa-modal-close, .ws-modal-close
+) > svg {
+  width: 20px !important;
+  height: 20px !important;
+  stroke-width: 2.4 !important;
+}
+
+html body :is(
+  .aito-close, .almacen-modal-close, .bottom-nav-close, .cmd-close-btn,
+  .cmd-sales-modal-head > button, .cmdx-icon-btn[aria-label='Cerrar detalle de comanda'],
+  .cmp-icon-btn[aria-label='Cerrar'], .db-modal-close, .db-quick-access-close,
+  .fidel-customer-card-modal-header > button, .fin-dialog-close, .gst-close,
+  .gst-help-popover-close, .inv-modal-close, .mesas-modal-close, .mobile-cart-close,
+  .modal-close-btn, .nom-detail-close, .nom-help-close, .payment-modal-close,
+  .pedir-replace-close, .print-choice-close, .prod-modal-close, .prv-modal-close-btn,
+  .report-detail-close, .wa-modal-close, .ws-modal-close
+):is(:hover, :focus-visible):not(:disabled) {
+  border-color: #ff4d3d !important;
+  background: #e31b2b !important;
+}
+
+html body :is(.fin-dialog-close, .gst-close, .cmd-close-btn, .cmp-icon-btn[aria-label='Cerrar']):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
